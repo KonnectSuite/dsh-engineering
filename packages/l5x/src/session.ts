@@ -87,12 +87,13 @@ export class ProjectSession {
   /**
    * Read, parse and retain one export.
    *
-   * @param requestedPath - Path as the caller supplied it.
+   * @param requestedPath - Path as the caller supplied it, absolute or relative to the session workspace.
    * @param signal - Cancellation from the tool call.
+   * @param cwd - Session workspace root, so a relative path resolves where the reader expects.
    * @returns The retained project, including its handle.
    */
-  async open(requestedPath: string, signal?: AbortSignal): Promise<ProjectSnapshot> {
-    const bytes = await this.readBytes(requestedPath, signal)
+  async open(requestedPath: string, signal?: AbortSignal, cwd?: string): Promise<ProjectSnapshot> {
+    const { bytes, target } = await this.readBytes(requestedPath, signal, cwd)
     const xml = decodeExport(bytes)
     if (/<!DOCTYPE\b|<!ENTITY\b/iu.test(xml)) {
       throw new L5xError(
@@ -125,7 +126,7 @@ export class ProjectSession {
     const project: ProjectSnapshot = {
       id: randomUUID(),
       requestedPath,
-      path: await this.fs.resolve(requestedPath, signal === undefined ? {} : { signal }),
+      path: target,
       sha256,
       bytes: bytes.length,
       xml,
@@ -201,7 +202,7 @@ export class ProjectSession {
   }
 
   /** Resolve, check and read one path through the filesystem provider. */
-  private async readBytes(requestedPath: string, signal?: AbortSignal): Promise<Uint8Array> {
+  private async readBytes(requestedPath: string, signal?: AbortSignal, cwd?: string): Promise<{ bytes: Uint8Array; target: string }> {
     if (requestedPath.trim() === '') {
       throw new L5xError(
         'INVALID_ARGUMENT',
@@ -209,7 +210,10 @@ export class ProjectSession {
         'Pass the L5X file path, for example "C:/Projects/Line/Line.L5X".',
       )
     }
-    const target = await this.fs.resolve(requestedPath, signal === undefined ? {} : { signal })
+    const target = await this.fs.resolve(requestedPath, {
+      ...(cwd === undefined ? {} : { cwd }),
+      ...(signal === undefined ? {} : { signal }),
+    })
     const info = await this.fs.stat(target, signal)
     if (info === undefined) {
       throw new L5xError(
@@ -225,7 +229,7 @@ export class ProjectSession {
         'Pass the path of one .L5X export, not a directory.',
       )
     }
-    return this.fs.readBytes(target, signal, this.maxFileBytes)
+    return { bytes: await this.fs.readBytes(target, signal, this.maxFileBytes), target }
   }
 }
 

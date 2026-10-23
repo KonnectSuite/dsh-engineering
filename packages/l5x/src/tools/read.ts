@@ -43,8 +43,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       parameters: object({
         path: string('Path to the .L5X export, absolute or relative to the workspace root. Example: "C:/Projects/Line/Line.L5X"'),
       }, ['path']),
-      async run(args, signal) {
-        const project = await session.open(requiredString(args, 'path'), signal)
+      async run(args, signal, cwd) {
+        const project = await session.open(requiredString(args, 'path'), signal, cwd)
         const document = project.document
         return success(
           `${document.controller.name}: ${document.programs.length} programs, ${document.tags.length} tags, ${document.routines.length} routines.`,

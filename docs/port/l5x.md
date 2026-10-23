@@ -258,6 +258,7 @@ Errors stay results rather than throws. `candidates` lists valid names for ambig
 
 - `project_id` is optional on every tool. Resolution order: explicit argument, the single open project, otherwise `UNKNOWN_PROJECT` with the fix.
 - `draft_id` follows the same rule.
+- A relative path resolves against the session workspace: the execution context supplies its cwd to the filesystem provider, so a name `list_components` or `glob` returned opens without an absolute path.
 - Handles expire with the chat, as today.
 
 ## 8. Draft lifecycle

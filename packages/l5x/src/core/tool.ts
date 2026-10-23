@@ -22,13 +22,19 @@ export interface ToolOutput {
   render(args: unknown, value: unknown): readonly TextBlock[]
 }
 
+/** The execution context a tool receives from the registry. */
+export interface ToolExec {
+  readonly signal?: AbortSignal
+  readonly agent?: { readonly session?: { readonly header?: { readonly cwd?: string } } }
+}
+
 /** A registered tool. */
 export interface ToolDefinition {
   readonly name: string
   readonly description: string
   readonly parameters: Parameters
   readonly output: ToolOutput
-  execute(args: Readonly<Record<string, unknown>>, exec: { readonly signal?: AbortSignal }): Promise<unknown>
+  execute(args: Readonly<Record<string, unknown>>, exec: ToolExec): Promise<unknown>
 }
 
 /** The registry service. */

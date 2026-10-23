@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { apply, type ToolDefinition } from '../src/index.ts'
 import { fixtureBytes, harness } from './harness.ts'
 
 describe('registration', () => {
@@ -152,6 +153,26 @@ describe('revisions', () => {
     const opened = await call('open_project', { path: 'new.l5x' })
     expect(opened.error).toBeUndefined()
     expect(opened.data?.verification).toBe('untested_revision')
+  })
+})
+
+describe('path resolution', () => {
+  it('passes the session workspace to the filesystem for a relative path', async () => {
+    const seen: unknown[] = []
+    const definitions: ToolDefinition[] = []
+    const ctx: Parameters<typeof apply>[0] = {
+      tools: { register(definition: ToolDefinition) { definitions.push(definition) } },
+      fs: {
+        async resolve(_path: string, options?: { cwd?: string; signal?: AbortSignal }) { seen.push(options); return 'C:/work/sample.L5X' },
+        async stat() { return { type: 'file' } },
+        async readBytes() { return fixtureBytes() },
+      },
+    }
+    apply(ctx, {})
+    const open = definitions.find(definition => definition.name === 'open_project')
+    expect(open).toBeTruthy()
+    await open?.execute({ path: 'sample.L5X' }, { agent: { session: { header: { cwd: 'C:/work' } } } })
+    expect(seen[0]).toMatchObject({ cwd: 'C:/work' })
   })
 })
 

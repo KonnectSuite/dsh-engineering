@@ -31,7 +31,7 @@ export interface ToolSpec {
   readonly name: string
   readonly description: string
   readonly parameters: Parameters
-  run(args: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<unknown>
+  run(args: Readonly<Record<string, unknown>>, signal?: AbortSignal, cwd?: string): Promise<unknown>
 }
 
 /**
@@ -48,7 +48,7 @@ export function tool(spec: ToolSpec): ToolDefinition {
     output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
     async execute(args, exec) {
       try {
-        return await spec.run(args, exec.signal)
+        return await spec.run(args, exec.signal, exec.agent?.session?.header?.cwd)
       } catch (error) {
         return errorEnvelope(error)
       }

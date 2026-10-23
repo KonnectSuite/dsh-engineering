@@ -45,10 +45,10 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
   const byName = new Map(definitions.map(definition => [definition.name, definition]))
   return {
     definitions,
-    async call(name, args = {}) {
+    async call(name, args = {}, exec = {}) {
       const definition = byName.get(name)
       if (definition === undefined) throw new Error(`no tool ${name}`)
-      return await definition.execute(args, {}) as Envelope
+      return await definition.execute(args, exec) as Envelope
     },
   }
 }
