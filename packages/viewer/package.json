@@ -24,7 +24,8 @@
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-locale"
       ]
-    }
+    },
+    "component": true
   },
   "files": [
     "lib/index.js",
