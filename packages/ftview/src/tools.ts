@@ -6,6 +6,7 @@
 
 import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from './core.ts'
 import type { DisplayFile, TagRow } from './model.ts'
+import { findingsOf } from './checks.ts'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -28,14 +29,6 @@ const PAGE = {
   limit: integer('Most rows to return. Default 50, maximum 200.', { minimum: 1, maximum: 200, default: 50 }),
 }
 
-/** One finding the check reports. */
-interface Finding {
-  readonly rule: string
-  readonly severity: 'error' | 'warning' | 'info'
-  readonly message: string
-  readonly evidence: unknown
-}
-
 /** Slice one page. */
 function page<T>(rows: readonly T[], offset: number, limit: number): { rows: readonly T[]; offset: number; limit: number; total: number; truncated: boolean } {
   return { rows: rows.slice(offset, offset + limit), offset, limit, total: rows.length, truncated: offset + limit < rows.length }
@@ -55,30 +48,6 @@ function tagRows(tags: readonly TagRow[]): readonly Record<string, unknown>[] {
 function nearest(names: readonly string[], wanted: string): readonly string[] {
   const lower = wanted.toLowerCase()
   return names.filter(name => name.toLowerCase().includes(lower)).slice(0, 5)
-}
-
-/** Structural checks over one application. */
-function findingsOf(app: { displays: readonly DisplayFile[]; tags: readonly TagRow[]; tagErrors: readonly string[]; diagnostics: readonly string[] }): Finding[] {
-  const findings: Finding[] = []
-  for (const error of app.tagErrors) findings.push({ rule: 'TAG_CSV', severity: 'warning', message: error, evidence: { file: 'tag CSV' } })
-  for (const diagnostic of app.diagnostics) findings.push({ rule: 'UNPARSED_FILE', severity: 'warning', message: diagnostic, evidence: { file: diagnostic.split(':')[0] } })
-  const displayNames = new Set<string>()
-  for (const display of app.displays) {
-    if (displayNames.has(display.name)) findings.push({ rule: 'DUPLICATE_DISPLAY_NAME', severity: 'warning', message: `Two displays are named ${JSON.stringify(display.name)}.`, evidence: { display: display.name, file: display.file } })
-    displayNames.add(display.name)
-    const objectNames = new Set<string>()
-    for (const object of display.objects) {
-      if (object.name === undefined) continue
-      if (objectNames.has(object.name)) findings.push({ rule: 'DUPLICATE_OBJECT_NAME', severity: 'warning', message: `Display ${JSON.stringify(display.name)} has more than one object named ${JSON.stringify(object.name)}.`, evidence: { display: display.name, object: object.name } })
-      objectNames.add(object.name)
-    }
-  }
-  const tagNames = new Set<string>()
-  for (const tag of app.tags) {
-    if (tagNames.has(tag.name)) findings.push({ rule: 'DUPLICATE_TAG_NAME', severity: 'error', message: `The tag CSV declares ${JSON.stringify(tag.name)} more than once.`, evidence: { tag: tag.name } })
-    tagNames.add(tag.name)
-  }
-  return findings
 }
 
 /**
@@ -202,7 +171,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         }
         for (const tag of app.tags) {
           if (tag.name.toLowerCase().includes(query) || tag.description.toLowerCase().includes(query)) {
-            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` Ã¢â‚¬â€ ${tag.description}`}` })
+            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${tag.description}`}` })
           }
         }
         const limit = optionalInteger(args, 'limit') ?? 50

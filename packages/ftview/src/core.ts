@@ -147,6 +147,7 @@ export interface FsService {
   stat(path: string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(path: string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   listDir?(path: string, signal?: AbortSignal): Promise<readonly DirEntry[]>
+  writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
 }
 
 /** The tool registry the plugin registers into. */

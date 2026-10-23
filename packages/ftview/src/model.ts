@@ -66,7 +66,7 @@ export interface TagCsv {
 const ATTRIBUTE = '@_'
 
 /** Split one semicolon-separated CSV line, honouring double quotes. */
-function splitCsv(line: string): string[] {
+export function splitCsv(line: string): string[] {
   const cells: string[] = []
   let current = ''
   let quoted = false

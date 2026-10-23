@@ -52,10 +52,11 @@ switch for this product.
 | Package | `packages/ftview`, `dsh-engineering-ftview` 0.1.0 |
 | Tools | 6 read intents, every parameter described, summary/data/coverage envelopes, repairable errors |
 | Skill | `factorytalk-view`, registered from `SKILL.md` |
-| Tests | 12 passing: registration, parameter descriptions, open, list, get, not-found candidates, find, check, compare, skill registration and body budget |
+| Tests | 20 passing: 12 read/skill plus 8 editing tests (registration, display attribute apply, tag upsert, display copy, draft clearing, unknown display, duplicate name, existing output) |
 | Mounted in dev | rows inserted but disabled until the old plugin retires |
 | Display preview | `packages/ftview-viewer` (`dsh-engineering-ftview-viewer`), the old 36 KB closure bundle re-registered under the bundle name; row `ftview-viewer`, disabled until retirement |
-| Not ported | editing drafts, Studio apply/verify |
+| Editing | `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` — 3,101 schema characters, row disabled until retirement |
+| Not ported | Studio apply/verify |
 
 ## Next
 

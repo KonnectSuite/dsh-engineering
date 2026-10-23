@@ -17,6 +17,9 @@ export const name = 'ftview-read'
 /** Services this plugin cannot register without. */
 export const inject = ['tools', 'fs'] as const
 
+/** Service name the editing entry consumes. */
+export const VIEWS_SERVICE = 'ftviewViews'
+
 /** Configuration for the read surface. */
 export interface Config {
   /** Most display and tag files one open may scan. Defaults to 2000. */
@@ -35,6 +38,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
     throw new Error('ftview-read: maxFiles must be a positive integer')
   }
   const session = new ViewSession(ctx.fs, maxFiles)
+  ctx.provide?.(VIEWS_SERVICE, session)
   for (const definition of ftviewTools(session)) ctx.tools.register(definition)
 }
 
