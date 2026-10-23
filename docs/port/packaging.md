@@ -34,6 +34,14 @@ requires `blockExoticSubdeps: false`:
 - new profile templates set it in `PROFILE_PNPM_WORKSPACE`, documented in
   `packages/boot/app-boot/src/profile.ts`.
 
+## Component packages
+
+The four package assets are parts of the bundle, not separately managed plugins.
+Each declares `"dsh": { "component": true }`, and the Harness plugin inventory omits
+such packages, so the Plugins page lists the Engineering bundle alone rather than
+its components. A component also carries no product entry of its own; the bundle
+patch is the only composition surface.
+
 ## Release steps
 
 1. Build and pack:
