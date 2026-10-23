@@ -1,28 +1,23 @@
 # dsh-engineering-ftview-viewer
 
-The FactoryTalk View ME display preview, folded into the `dsh-engineering` bundle.
+The FactoryTalk View ME display preview client face of the `dsh-engineering` bundle.
+
+The host half is a no-op entry; the package exists for its `dsh.client` module. It renders an
+exported ME display at its exported geometry from the document XML, and falls back to the raw source
+for XML that is not a display export. It claims `.xml` document previews and registers a Better
+Sidebar file viewer, and is mounted by the `ftview-viewer` row.
+
+The viewer is independent of the FactoryTalk View tools rows: switching `ftview-read` or
+`ftview-edit` off does not remove it.
 
 ## Provenance
 
-The client bundle is copied from `dsh-tool-factorytalk-view` **0.3.0**
-(`client.js`) with its module-loader id and its internal document slot key
-rewritten to `dsh-engineering-ftview-viewer`, so this bundle serves and
-registers the preview under its own package name. The host half is a no-op
-entry; the package exists for its client face.
-
-The preview renders an exported ME display at its exported geometry from the
-document XML, and falls back to the raw source for XML that is not a display
-export. It claims `.xml` document previews and also registers a Better Sidebar
-file viewer.
-
-## Mounting
-
-The bundle row `ftview-viewer` is inserted `disabled: true` until the old
-`dsh-tool-factorytalk-view` plugin is retired, because both claim `.xml`
-previews. Enabling the row is the last step of that retirement.
+The client bundle was carried over from the retired `dsh-tool-factorytalk-view` plugin (`client.js`)
+with its module-loader id and internal document slot key rewritten to
+`dsh-engineering-ftview-viewer`, so the bundle serves and registers the preview under this package
+name.
 
 ## Tests
 
-The preview has no tests of its own in this repository. Its behavior is covered
-by the old plugin's published client and was visually verified there; this
-package only re-registers it under the bundle name.
+The preview has no tests of its own in this repository. Its behavior was covered by the retired
+plugin's published client; this package re-registers it under the bundle name.

@@ -56,7 +56,8 @@ The `l5x-live` entry reads declared scalar tags straight from a controller over 
 ## Revisions
 
 - Reading accepts any export revision 19 or later. Revisions outside the observed matrix open and report `verification: "untested_revision"`.
-- Reading never needs Studio 5000. The studio entry runs offline import and build; controller transfer is not part of this surface yet.
+- Reading never needs Studio 5000. The studio entry adds offline import and build, and its controller
+  tools handle upload, mode change and download under per-call approval.
 
 ## Studio
 

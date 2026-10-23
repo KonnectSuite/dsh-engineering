@@ -1,0 +1,164 @@
+{
+  "tools": [
+    "open_project",
+    "project_overview",
+    "list_components",
+    "get_component",
+    "search_logic",
+    "find_references",
+    "trace_dependencies",
+    "resolve_tag",
+    "usage_map",
+    "run_checks",
+    "compare_projects",
+    "draft_rung",
+    "draft_st",
+    "draft_routine",
+    "draft_tag",
+    "draft_tag_description",
+    "draft_udt_member",
+    "draft_udt_description",
+    "draft_validate",
+    "draft_apply",
+    "studio_sdk_status",
+    "studio_capabilities",
+    "export_acd_to_l5x",
+    "verify_offline_l5x",
+    "build_acd_from_draft",
+    "studio_review_evidence",
+    "controller_approval_status",
+    "capture_controller_snapshot",
+    "go_online",
+    "read_controller_mode",
+    "read_live_tag",
+    "change_controller_mode",
+    "download_project",
+    "poll_live_tags",
+    "start_plc_trend",
+    "ftview_open",
+    "ftview_list",
+    "ftview_get",
+    "ftview_find",
+    "ftview_check",
+    "ftview_compare",
+    "ftview_draft_display_set",
+    "ftview_draft_display_add",
+    "ftview_draft_tag_upsert",
+    "ftview_validate",
+    "ftview_apply",
+    "ftview_studio_status",
+    "ftview_studio_preflight",
+    "ftview_studio_handoff"
+  ],
+  "groups": [
+    {
+      "product": "L5X",
+      "group": "L5X read",
+      "tools": [
+        "open_project",
+        "project_overview",
+        "list_components",
+        "get_component"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X references",
+      "tools": [
+        "search_logic",
+        "find_references",
+        "trace_dependencies",
+        "resolve_tag",
+        "usage_map"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X checks",
+      "tools": [
+        "run_checks",
+        "compare_projects"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X drafts",
+      "tools": [
+        "draft_rung",
+        "draft_st",
+        "draft_routine",
+        "draft_tag",
+        "draft_tag_description",
+        "draft_udt_member",
+        "draft_udt_description",
+        "draft_validate",
+        "draft_apply"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X Studio SDK",
+      "tools": [
+        "studio_sdk_status",
+        "studio_capabilities",
+        "export_acd_to_l5x",
+        "verify_offline_l5x",
+        "build_acd_from_draft",
+        "studio_review_evidence"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X controller",
+      "tools": [
+        "controller_approval_status",
+        "capture_controller_snapshot",
+        "go_online",
+        "read_controller_mode",
+        "read_live_tag",
+        "change_controller_mode",
+        "download_project"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X live",
+      "tools": [
+        "poll_live_tags",
+        "start_plc_trend"
+      ]
+    },
+    {
+      "product": "FactoryTalk View",
+      "group": "FTView read",
+      "tools": [
+        "ftview_open",
+        "ftview_list",
+        "ftview_get",
+        "ftview_find",
+        "ftview_check",
+        "ftview_compare"
+      ]
+    },
+    {
+      "product": "FactoryTalk View",
+      "group": "FTView edit",
+      "tools": [
+        "ftview_draft_display_set",
+        "ftview_draft_display_add",
+        "ftview_draft_tag_upsert",
+        "ftview_validate",
+        "ftview_apply"
+      ]
+    },
+    {
+      "product": "FactoryTalk View",
+      "group": "FTView Studio",
+      "tools": [
+        "ftview_studio_status",
+        "ftview_studio_preflight",
+        "ftview_studio_handoff"
+      ]
+    }
+  ]
+}

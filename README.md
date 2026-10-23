@@ -1,199 +1,159 @@
 # dsh-engineering
 
-One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, FactoryTalk Optix, MotionWorks IEC and CAD plugins composed behind a single install surface, with one place where their tool exposure is decided.
+One built-in engineering bundle for AryaAI. It puts the Studio 5000 L5X and FactoryTalk View ME
+products behind a single install surface, one row per capability, and one switch per product. The
+switch governs the tools and the guidance together, so turning a product off removes its tool
+schemas from the request instead of leaving them visible.
 
-## Status
+The bundle currently owns two products:
 
-The old L5X plugin is retired from the dev profile: the new bundle is the only L5X surface there, and a live session lists the eleven read tools with the new `rockwell-l5x` guidance and no `l5x_*` tool.
+- **Studio 5000 L5X** — offline reading, references and checks, staged draft editing, Logix Designer
+  SDK builds, supervised controller access, live EtherNet/IP reads, and a ladder viewer.
+- **FactoryTalk View ME** — export reading, structural checks and comparison, staged display and HMI
+  tag editing, a manual Studio handoff, and a display preview.
 
-**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, the draft family as `l5x-editing` (off by default), and the SDK and supervised controller surface as `l5x-studio` the live reads as `l5x-live` (both off by default), and the ladder viewer as `l5x-viewer`. The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
+FactoryTalk Optix, MotionWorks IEC and CAD mount as independent plugins outside this repository.
+The policy links their namespaces to their skills so the same switch model applies; the bundle does
+not port them.
 
-The FactoryTalk View ME read surface is ported next: `ftview-read` and `ftview-read-skill` are in the bundle, inserted disabled until the old FTView plugin retires: read (`ftview-read`), editing (`ftview-edit`, 5 draft tools over display attributes, display copies and tag rows), Studio status/preflight/handoff (`ftview-studio`), skill, and the display preview `ftview-viewer`. The [FTView port design](docs/port/ftview.md) records the decisions.
+## Components
 
-The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
+Each row is a stable component id. Profiles and patches address these ids, so per-row enable state
+survives upgrades even when the implementation behind a row changes.
 
-The L5X port has started: `packages/l5x` holds the complete offline surface — eleven read tools from `open_project` through `compare_projects`, nine `draft_*` tools, thirteen SDK and controller tools, two live read tools, the `rockwell-l5x` guidance, and a client bundle for the PLC trend card — with described parameters, summary-first results and repairable failures. Its 60 tests pass. The dev profile mounts the bundle; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+| Row id | Package entry | Default | Contributes |
+|---|---|---|---|
+| `l5x-read` | `dsh-engineering-l5x` | on | Eleven offline tools: open, overview, list, read, search, references, trace, resolve, usage, checks, compare |
+| `l5x-read-skill` | `dsh-engineering-l5x/skill` | on | The `rockwell-l5x` guidance shown to the model |
+| `l5x-editing` | `dsh-engineering-l5x/editing` | off | Nine `draft_*` tools that stage edits and write one new L5X |
+| `l5x-studio` | `dsh-engineering-l5x/studio` | off | Six Logix Designer SDK tools: status, capabilities, export, verify, build, evidence |
+| `l5x-live` | `dsh-engineering-l5x/live` | off | Direct EtherNet/IP reads and the bounded PLC trend |
+| `l5x-viewer` | `dsh-engineering-l5x-viewer` | on | The ladder viewer client face |
+| `ftview-read` | `dsh-engineering-ftview` | on | Six read tools for a FactoryTalk View ME export |
+| `ftview-read-skill` | `dsh-engineering-ftview/skill` | on | The `factorytalk-view` guidance |
+| `ftview-edit` | `dsh-engineering-ftview/edit` | on | Five tools that stage display and tag edits and apply them to a new folder |
+| `ftview-studio` | `dsh-engineering-ftview/studio` | on | Studio discovery, changed-file preflight and the manual import plan |
+| `ftview-viewer` | `dsh-engineering-ftview-viewer` | on | The ME display preview client face |
 
-## How the bundle composes
+The heavy surfaces are separate rows on purpose: a read-only profile pays for the read tools and
+nothing else. The viewers are independent of the tools, so switching L5X tools off does not remove
+the ladder viewer.
 
-Phase 1 adds one layer after `@deepseek-ai/dsh-web-app`: it patches a row that layer already inserts, and mounts the L5X pilot as a component of this bundle.
+## Install
+
+The bundle ships with AryaAI. The installer pins the packed bundle
+(`apps/desktop/bundled-plugins/dsh-engineering-<version>.tgz`) and installs it into the application's
+`dsh` payload; a profile lists `dsh-engineering` in its bundle list.
+
+- In the application, the bundle appears as the **Engineering** card on the Plugins page, and each
+  row above is listed under it as a component.
+- In a development checkout, link this repository into the profile bundle list and run the app; the
+  development home mounts the same rows.
+- Updates ship with the installer. Disabling a row keeps its enable state in the profile, so the
+  next update does not silently turn it back on.
+
+## How it composes
+
+The bundle adds one loader layer after the Web app. It patches the existing `tool-capability-policy`
+row and inserts its own rows; it does not replace a product plugin id.
 
 ```mermaid
 flowchart TB
   Profile["Profile bundle list"] --> Bundle["dsh-engineering"]
   Bundle -->|"id-targeted config override"| Policy["tool-capability-policy"]
-  Bundle -->|"insert"| Read["l5x-read<br/>offline read surface"]
-  Bundle -->|"insert"| Skill["l5x-read-skill<br/>rockwell-l5x guidance"]
-  Policy -->|"l5x_* linked to"| L5X["rockwell-l5x skill"]
-  Policy -->|"ftview_* linked to"| FTV["factorytalk-view skill"]
-  Policy -->|"mw_* linked to"| MWI["motionworks-iec skill"]
+  Bundle -->|insert| L5XRead["l5x-read"]
+  L5XRead --> L5XSkill["l5x-read-skill"]
+  Bundle -->|insert| L5XEdit["l5x-editing (off)"]
+  Bundle -->|insert| L5XStudio["l5x-studio (off)"]
+  Bundle -->|insert| L5XLive["l5x-live (off)"]
+  Bundle -->|insert| L5XViewer["l5x-viewer"]
+  Bundle -->|insert| FTVRead["ftview-read"]
+  FTVRead --> FTVSkill["ftview-read-skill"]
+  Bundle -->|insert| FTVEdit["ftview-edit"]
+  Bundle -->|insert| FTVStudio["ftview-studio"]
+  Bundle -->|insert| FTVViewer["ftview-viewer"]
+  Policy -->|"rockwell-l5x governs 35 L5X tools"| L5XRead
+  Policy -->|"factorytalk-view governs ftview_*"| FTVRead
+  Policy -->|"motionworks-iec governs mw_*"| MW["motionworks-iec plugin"]
 ```
 
-The composed config labels the policy row `# == @deepseek-ai/dsh-web-app, patched by dsh-engineering`, contains exactly one `tool-capability-policy` entry, and carries the `l5x-read`, `l5x-read-skill`, `l5x-editing`, `l5x-studio` and `l5x-live` rows this bundle inserts; every entry beyond the read surface is inserted disabled so a read-only profile pays only for the read surface.
+The policy keeps `onDemand: false`, so the bundle does not change the product-wide eager tool
+exposure. Context is saved by the switches and by splitting the surfaces into separate rows.
 
 ## What the policy changes
 
-| Skill | Tools it governs | Switch off |
+Turning a skill off removes its tool schemas and its guidance from the next request. Turning it back
+on restores both.
+
+| Skill | Tools it governs | What switching it off hides |
 |---|---|---|
-| `rockwell-l5x` | `l5x_*` | schemas and guidance both leave the request |
-| `factorytalk-view` | `ftview_*` | schemas and guidance both leave the request |
-| `motionworks-iec` | `mw_*` | schemas and guidance both leave the request |
-| — | `optix_*` | unlinked; always visible |
+| `rockwell-l5x` | `l5x_*` and the 35 L5X tools listed in the [reference](docs/reference/tools.md#l5x) | L5X tools and the L5X guidance |
+| `factorytalk-view` | `ftview_*` | FactoryTalk View tools and guidance |
+| `motionworks-iec` | `mw_*` | Guidance and tools for the independent MotionWorks plugin |
+| — | `optix_*` | Nothing: Optix has no skill yet, so its tools stay visible |
 
-Before this bundle, a skill switch changed only the guidance; the tool schemas stayed exposed.
+The patch still links `l5x_` for future prefixed tools; the rebuilt L5X tools use descriptive names
+(`open_project`, `draft_apply`, …), so the capability also lists them by exact name. The reference is
+generated from the registered definitions, and `pnpm test` fails if a tool is not governed.
 
-**Client faces are not linked.** The ladder viewer, the FactoryTalk View display renderer, and the DXF viewer are separate entries. Switching a product's skill off removes its guidance and its tool schemas, and leaves those surfaces mounted. Context cost lives in tool schemas and skill bodies; a client bundle adds none, so a reader who is not programming a PLC still gets to open and inspect the file.
+## Tools
 
-That makes the skill the single per-product switch: off means guidance and tools together. The tools entry remains separately disableable for an operator who wants the schemas gone while keeping the guidance, but the link means it cannot expose tools whose skill is off.
+49 tools across the two products. The [tool reference](docs/reference/tools.md) documents every name,
+description and parameter, generated from the same definitions the plugins register.
 
-The switch differs per product, because not every product carries a skill or a viewer:
-
-| Product | Switch that clears its context | What stays mounted |
+| Product | Groups | Tools |
 |---|---|---|
-| Studio 5000 L5X | `rockwell-l5x` skill | ladder viewer, PLC trend card |
-| FactoryTalk View ME | `factorytalk-view` skill | display renderer |
-| MotionWorks IEC | `motionworks-iec` skill | — |
-| FactoryTalk Optix | `optix-tools` row | — |
-| CAD | `tool-cad` row | drawings service, DXF viewer |
+| L5X | read, references, checks, drafts, Studio SDK, controller, live | 35 |
+| FactoryTalk View | read, edit, Studio | 14 |
 
-The CAD row is the tools entry rather than a skill because the viewer needs `cad-drawings` and the SVG controller mounted to render a sheet; only the four schemas cost context.
+Start with [Examples](docs/examples.md) for an end-to-end read, a staged edit and a FactoryTalk View
+session.
 
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant S as Skills page
-  participant P as tool-capability-policy
-  participant M as Next model request
-  U->>S: switch motionworks-iec off
-  S->>P: skill permission becomes disabled
-  P->>M: mw_* schemas filtered out
-```
+## Requirements
 
-`optix_*` is deliberately unlinked. There is no FactoryTalk Optix skill, and linking tools to a skill that never registers would hide them permanently rather than gate them.
-
-`onDemand` stays `false`. Arya measured bounded on-demand discovery against eager exposure and kept eager exposure because discovery cost more turns than the schema characters it saved. Changing that is a product decision, not a bundle side effect.
-
-## What phase 1 does not do
-
-- It does not reduce the size of any tool schema.
-- It composes the L5X pilot only; the other product rows still come from their own bundles.
-- It does not fold the L5X ladder viewer into the L5X package.
-- It does not change a single product entry id or enable state.
-
-Measured with `name` + `description` + `parameters` serialized per tool:
-
-| Plugin | Tools registered | Schema characters | Approx. tokens |
-|---|---|---|---|
-| MotionWorks IEC 0.7.0 | 61 | 55,808 | 14.0k |
-| L5X 0.6.2 | 43 | 20,400 | 5.1k |
-| FactoryTalk View 0.3.0 | 11 | 5,671 | 1.4k |
-
-The per-product switches now make that cost controllable; shrinking it is product-repository work.
-
-## Install in a development profile
-
-Link the checkout into the profile and list the bundle **after** `@deepseek-ai/dsh-web-app`, because it overrides a row that bundle inserts:
-
-```json
-{
-  "dependencies": {
-    "dsh-engineering": "link:C:/Users/<you>/.arya/github/KonnectSuite/dsh-engineering"
-  },
-  "dsh": {
-    "profile": {
-      "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-engineering"]
-    }
-  }
-}
-```
-
-Then `pnpm install` in the profile and verify the composed row before starting the app:
-
-```sh
-pnpm dsh --profile <name> --dump-config | Select-String 'tool-capability-policy'
-```
-
-The `desktop` profile is owned by the Electron application, so it cannot be dumped through the CLI. Verify it with a copy of its bundle list under another profile name, as the phase-1 check did.
-
-## Classification
-
-AryaAI's product catalog (`packages/boot/app-boot/src/product-plugins.ts`) lists this package as AryaAI-authored with `distribution: 'market'`, which places it under **AryaAI** in the Plugins page instead of **Community**. A profile-installed plugin does not carry the **Built in** badge; that badge means the installer ships the package, which happens at the flip.
-
-## Target composition
-
-Porting the products changes one package boundary at a time; the bundle becomes the only bundle, and the products become its entries.
-
-```mermaid
-flowchart LR
-  Bundle["dsh-engineering<br/>bundle + policy + skills"] --> L5X["l5x<br/>tools Â· skill Â· analysis Â· client"]
-  Bundle --> FTV["factorytalk-view<br/>tools Â· skill Â· client"]
-  Bundle --> OPT["factorytalk-optix<br/>tools"]
-  Bundle --> MWI["motionworks-iec<br/>tools Â· skill"]
-  Bundle --> CAD["cad<br/>drawings Â· tools Â· client"]
-  Bundle --> CORE["core<br/>library, registers nothing"]
-```
-
-Entry ids stay exactly as they are today — `l5x-tools`, `l5x-skill`, `factorytalk-view-tools`, `motionworks-iec-tools` — which is what preserves per-entry enable state through the move.
-
-A product keeps its own package rather than folding into one package because a package carries one client face (`dsh.client` and one `./client` export). Merging the ladder viewer, the display renderer and the DXF viewer into one package would mean one client switch for all engineering UI and one build failure across all three.
-
-Each client entry stays independent of its product's tools entry. The port splits parsing into an isomorphic model shared by both: the host tools keep the Node-only I/O, the client bundle imports the model without it, and the viewer renders with the tools row switched off.
-
-## Retirement plan
-
-When the port completes, these are removed, not just unmounted:
-
-| Where | Removed |
+| Surface | Needs |
 |---|---|
-| Profile bundles | `dsh-tool-l5x`, `dsh-tool-factorytalk-view`, `dsh-tool-motionworks-iec`, `@deepseek-ai/dsh-client-ui-logix-project-viewer` |
-| `packages/bundle/web-app/aryaai-work.patch.yml` | the `tool-ft-optix` row |
-| `packages/bundle/base/cordis.patch.yml` | the `cad-drawings` and `tool-cad` rows |
-| `apps/cli/package.json` | the three bundled product tarballs, the optix workspace dependency, the logix viewer dependency |
-| `apps/desktop/bundled-plugins` | the product tarball payloads |
-| `PRODUCT_PLUGINS` | the product entries, replaced by `dsh-engineering` at installer distribution |
-| Plugin Market | the individual listings retire; Engineering is the listing |
-| Repositories | product repositories archived one release after the flip |
+| L5X read, references, checks, drafts | Node only; reads `.L5X` revision 19 or later |
+| L5X Studio SDK | Studio 5000 with the Logix Designer SDK service, FactoryTalk Linx, .NET |
+| L5X controller | Reachable controller, FactoryTalk Linx, a matching uploaded ACD |
+| L5X live | A reachable controller over EtherNet/IP; no Studio, Linx or ACD |
+| FactoryTalk View read, edit | Node only; a FactoryTalk View ME export folder |
+| FactoryTalk View Studio | FactoryTalk View Studio ME installed for discovery and the manual import |
 
-Moving CAD out of the base bundle removes CAD from headless and SDK profiles that do not add this bundle. That is a deliberate decision to record, not an accident of the move.
+## Safety
 
-## Migration risk
+- **Read-only by default.** Reading, checks, comparison and the viewers do not change a controller.
+- **Edits write new files.** `draft_apply` writes one new L5X beside the source and refuses to
+  overwrite; `ftview_apply` writes a new export folder and leaves the source untouched.
+- **Controller changes need a human.** Upload, mode change and download require per-call approval
+  and a session policy that permits asking. The tools refuse before contacting a controller when
+  approval is unavailable, and downloads accept only a verification id produced by a passed build.
+- **No hidden vendor execution.** FactoryTalk View Studio handoff returns a manual import plan; it
+  does not run a vendor utility.
+- **Coverage is stated.** Results name what the export cannot establish, including whether online
+  logic matches the export and whether FBD/SFC semantics are exercised.
 
-`RETIRED_BUNDLES` currently removes a retired name from a profile. Retiring a product bundle that way would silently drop its tools instead of replacing them with this bundle.
+## Documentation
 
-The flip therefore needs a replacement map — old bundle name to `dsh-engineering` — that rewrites the profile list in place, preserves position, and deduplicates. It needs a test for a profile listing the old product bundles, a test that an unrelated customized list is untouched, and a check of the Desktop `adoptShippedBundles()` path, which app-boot's web hook does not cover.
-
-## Roadmap
-
-The L5X port is specified in [docs/port/l5x.md](docs/port/l5x.md): the measured failures of the current 43-tool surface, the target entry split, the draft lifecycle, and the small-model acceptance test.
-
-1. **Phase 1 (done):** exposure policy, no product code moved.
-2. **Pilot:** port L5X into `packages/l5x`, move its rows into this bundle, split parsing into an isomorphic model shared by the tools and the viewer, and fold the ladder viewer into the client face.
-3. **Port:** FactoryTalk View, then Optix, then MotionWorks, each keeping its entry ids.
-4. **Port CAD** and decide the base-bundle removal.
-5. **Flip to built-in:** installer distribution, `apps/cli` anchor, template and replacement migration, notices, payload removal.
-6. **Retire:** archive the product repositories one release later.
+| Document | Owns |
+|---|---|
+| [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
+| [Examples](docs/examples.md) | End-to-end sessions for both products |
+| [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
+| [Port designs](docs/port/l5x.md) | The L5X port decisions and measurements |
+| [FTView port design](docs/port/ftview.md) | The FactoryTalk View port decisions |
+| [Packaging](docs/port/packaging.md) | How the bundle is packed and pinned |
+| [Retirement](docs/port/retirement.md) | What "gone" means for a retired plugin |
+| [Changelog](CHANGELOG.md) | Released and unreleased changes |
 
 ## Known gaps
 
-- No `icon.svg`. The Plugins page shows the generic glyph until approved artwork lands.
-- Not listed in Plugin Market; the listing is part of the built-in flip.
-- No suite release; the package is 0.1.0 and exists as a development link only.
-- The Skills-page toggle has not been exercised in a live session. The composed config and the upstream policy tests cover the wiring; the UI switch is the remaining smoke check.
-- The shipped L5X surface is not reliable for small models. [The port specification](docs/port/l5x.md) records the measurements and the replacement design.
-
-## Compatibility and rollback
-
-Pinned to the DSH `0.2.x` line: `@deepseek-ai/dsh-tool-skill` `^0.2.0-rc.2`, Cordis `~4.0.4`. A profile on another line refuses the bundle at boot rather than composing it partially.
-
-Remove the bundle from the profile bundle list to roll back. No product plugin, row id, or enable state is touched, so the previous behavior returns exactly.
-
-## Verification
-
-```sh
-pnpm install
-pnpm test
-```
-
-The test parses `cordis.patch.yml` and enforces the phase-1 invariants: one id-targeted override, no inserted rows, a known skill for every prefix, each prefix owned once, and eager exposure preserved.
-
-A second suite, `test/docs.spec.mjs`, enforces that the documentation still describes the patch: the README policy table must list exactly the skills and prefixes declared in `cordis.patch.yml`, the documented unlinked namespace must stay unlinked, the row id must appear in the README, the package version must have a changelog heading, and the English and Chinese locales must declare the same keys. Both drift cases — a deleted policy row and a renamed prefix — were reproduced and observed to fail before the file was restored.
+- AryaAI 0.12.14 installs bundle 0.1.1. In that build the `rockwell-l5x` switch linked only the
+  `l5x_` prefix, so the unprefixed L5X tools stayed visible when the skill was off. Version 0.1.2
+  links the exact names; the next installer carries it.
+- FactoryTalk Optix, MotionWorks IEC and CAD are not ported into this repository. Their plugins mount
+  independently, and Optix has no skill to link yet.
+- FactoryTalk View Studio work is a manual handoff: the bundle plans the import and checks changed
+  files but does not import them.
+- Live reads and SDK builds cannot establish that online logic matches the export; every result says
+  so in `coverage`.

@@ -15,8 +15,8 @@
 #    Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
 #    it here once a FactoryTalk Optix skill registers one.
 #
-# 2. The L5X pilot. Mounts the rebuilt offline read surface and its guidance as
-#    components of this bundle. The row ids are stable, so per-entry enable
+# 2. The product rows. Mounts the rebuilt L5X and FactoryTalk View surfaces and
+#    their guidance as components of this bundle. The row ids are stable, so per-entry enable
 #    state survives upgrades even as the package behind them is rebuilt.
 - id: tool-capability-policy
   config:
@@ -25,6 +25,45 @@
       onDemand: false
       capabilities:
         - skill: rockwell-l5x
+          # The rebuilt L5X tools keep descriptive names (open_project,
+          # draft_apply, ...). This exact list is what the skill switch
+          # governs; `l5x_` stays linked for any prefixed tool added later.
+          tools:
+            - open_project
+            - project_overview
+            - list_components
+            - get_component
+            - search_logic
+            - find_references
+            - trace_dependencies
+            - resolve_tag
+            - usage_map
+            - run_checks
+            - compare_projects
+            - draft_rung
+            - draft_st
+            - draft_routine
+            - draft_tag
+            - draft_tag_description
+            - draft_udt_member
+            - draft_udt_description
+            - draft_validate
+            - draft_apply
+            - studio_sdk_status
+            - studio_capabilities
+            - export_acd_to_l5x
+            - verify_offline_l5x
+            - build_acd_from_draft
+            - studio_review_evidence
+            - controller_approval_status
+            - capture_controller_snapshot
+            - go_online
+            - read_controller_mode
+            - read_live_tag
+            - change_controller_mode
+            - download_project
+            - poll_live_tags
+            - start_plc_trend
           prefixes:
             - l5x_
         - skill: factorytalk-view
@@ -54,8 +93,8 @@
     # The ladder viewer is the bundle's own client face, independent of the tools.
     - id: l5x-viewer
       name: dsh-engineering-l5x-viewer
-    # FactoryTalk View ME read surface. Kept off until the old FTView plugin is retired,
-    # because both register the factorytalk-view skill.
+    # FactoryTalk View ME: read, edit and Studio entries plus the display
+    # preview. The old plugin is retired, so these mount by default.
     - id: ftview-read
       name: dsh-engineering-ftview
     - id: ftview-read-skill
