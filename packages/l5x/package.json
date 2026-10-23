@@ -20,7 +20,10 @@
       "types": "./lib/editing.d.ts",
       "default": "./lib/editing.js"
     },
-    "./live": { "types": "./lib/live.d.ts", "default": "./lib/live.js" },
+    "./live": {
+      "types": "./lib/live.d.ts",
+      "default": "./lib/live.js"
+    },
     "./studio": {
       "types": "./lib/studio.d.ts",
       "default": "./lib/studio.js"
@@ -37,12 +40,15 @@
     "studio-bridge/*.csproj",
     "studio-bridge/NuGet.Config",
     "lib/**/*.js",
-    "lib/**/*.d.ts"
+    "lib/**/*.d.ts",
+    "lib/client.js",
+    "lib/client.js.map"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsdown --config tsdown.client.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:client": "tsdown --config tsdown.client.config.ts"
   },
   "dependencies": {
     "fast-xml-parser": "5.11.1",
@@ -51,7 +57,23 @@
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "tsdown": "^0.23.1",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-api-job-controller",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   }
 }

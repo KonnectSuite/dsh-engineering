@@ -8,7 +8,7 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 
-The L5X port has started: `packages/l5x` holds the complete offline surface — eleven read tools from `open_project` through `compare_projects`, nine `draft_*` tools, thirteen SDK and controller tools, two live read tools, and the `rockwell-l5x` guidance — with described parameters, summary-first results and repairable failures. Its 60 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+The L5X port has started: `packages/l5x` holds the complete offline surface — eleven read tools from `open_project` through `compare_projects`, nine `draft_*` tools, thirteen SDK and controller tools, two live read tools, the `rockwell-l5x` guidance, and a client bundle for the PLC trend card — with described parameters, summary-first results and repairable failures. Its 60 tests pass. The dev profile mounts the bundle; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
 
 ## How the bundle composes
 
