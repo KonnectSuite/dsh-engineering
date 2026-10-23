@@ -23,17 +23,31 @@ Remove **all** of the following, in the same change:
 4. **Package source** — delete the workspace package under `packages/**` when the bundle
    replaces it, together with its tsconfig aggregate references, tests, docs rows, and
    any viewer registration or bundle patch row.
-5. **Profiles** — remove the bundle and dependency entries from each existing profile
+5. **Packaging scripts and their tests** — pack lists, payload copies, source-commit
+   metadata, and stage tests that name the package. These run only during a release, so
+   a stale entry fails at the last step of the installer build.
+6. **Generated artifacts** — regenerate every catalog that derives from the package set:
+   config catalog, module graph, tool catalog (and its anchor metadata), client slot
+   catalog, plugin-package reference, dependency catalog, third-party notices, tsconfig
+   paths and the lockfile. A hand-edited catalog drifts from its generator and fails the
+   next regeneration.
+7. **Profiles** — remove the bundle and dependency entries from each existing profile
    (dev home and installed), plus any patch rows targeting ids the package declared.
-6. **Market catalog** — regenerate and publish the catalog without the entry, and verify
-   the published URL no longer contains it.
+   Remove stale profile-local copies from `node_modules` and reconcile the profile
+   lockfile; a leftover package shadows the payload even when the bundle is gone.
+8. **Market catalog and release assets** — regenerate and publish the catalog without the
+   entry, delete the retired tarballs and source metadata from the bundled-plugin
+   directory, and verify the published catalog URL no longer contains it.
 
 ## Verification
 
 - `rg` over the repository finds no reference to the package name outside historical notes.
 - The installer's package set (`desktop-packages.json`, `dsh/package.json`) does not list it.
+- A full packaging build passes; a source-only build does not run the packaging pack list.
 - The Plugins page shows the replacement bundle only; no retired card, no "Built in" row,
   no Problem row.
-- A fresh profile and an upgraded profile both compose without the package.
+- A fresh profile and an upgraded profile both compose without the package, and neither
+  resolves a stale profile-local copy.
+- The published market catalog does not list it.
 
 Record the evidence in the retirement change: the commands and the observed output.

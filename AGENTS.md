@@ -45,6 +45,17 @@ A change is not finished until the documentation it invalidates is updated in th
 
 When one of these fails, fix the documentation — not the test — unless the documented behavior itself is what changed.
 
+## Contract, upgrade and release rules
+
+- **Test the host contract with the host's services.** Declare only the services the bundle uses, and test one real composition that mounts it through a profile with the harness's own `fs`, `tools` and `skills`. A fake is a double, not the contract: mirrors must return what the host returns (`fs.resolve` yields an `FsTarget`, not a string). A string-returning fake hid the target change and shipped a broken ACD export.
+- **Test the upgrade path.** A profile with an older local copy of the bundle or a component must not keep loading it after the installer updates the payload. Cover N-1 → N, assert the components resolve from the installed payload, and prune stale copies; a leftover package shadows the payload even when resolution prefers the installation.
+- **Release evidence calls a changed tool.** The packaged smoke must exercise at least one tool whose behavior changed, end to end, and the release body records the command and result. A boot smoke and a green unit suite do not prove a tool works.
+- **Every documented switch or command is checked.** Generated inventories and policy coverage are mandatory; a README claim without a test is a defect.
+- **Tag the release commit.** Create `vX.Y.Z` in this repository at the commit the bundle was built from; artifacts live on the download host, but the tag is what maps payload to source.
+- **Withholding is documented.** If this bundle stays private or out of the market index, the README records that decision and the reason.
+
+Retirement includes packaging scripts and their tests, generated catalogs and profile-local packages; follow `docs/port/retirement.md`.
+
 ## Commands
 
 ```sh
