@@ -27,17 +27,18 @@ export interface Harness {
 /**
  * Register the plugin with a filesystem that serves one export.
  *
- * @param bytes - Export bytes; defaults to the fixture.
+ * @param source - Export bytes for every path, or one entry per resolved path.
  * @returns The registered definitions and a call helper.
  */
-export function harness(bytes: () => Uint8Array = fixtureBytes): Harness {
+export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes): Harness {
   const definitions: ToolDefinition[] = []
+  const read = (path: string): Uint8Array => source instanceof Map ? source.get(path) ?? new Uint8Array() : source()
   const ctx = {
     tools: { register(definition: ToolDefinition) { definitions.push(definition) } },
     fs: {
       async resolve(path: string) { return path },
-      async stat() { return { type: 'file' } },
-      async readBytes() { return bytes() },
+      async stat(path: string) { return source instanceof Map && !source.has(path) ? undefined : { type: 'file' } },
+      async readBytes(path: string) { return read(path) },
     },
   }
   apply(ctx, {})

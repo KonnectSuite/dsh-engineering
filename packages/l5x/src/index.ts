@@ -12,6 +12,7 @@ import type { PluginContext } from './core/tool.ts'
 import { ProjectSession } from './session.ts'
 import { readTools } from './tools/read.ts'
 import { referenceTools } from './tools/references.ts'
+import { checkTools } from './tools/checks.ts'
 
 /** Plugin name in a composition. */
 export const name = 'l5x-read'
@@ -37,12 +38,13 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
     throw new Error('l5x-read: maxFileBytes must be a positive integer')
   }
   const session = new ProjectSession(ctx.fs, maxFileBytes)
-  for (const definition of [...readTools(session), ...referenceTools(session)]) ctx.tools.register(definition)
+  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session)]) ctx.tools.register(definition)
 }
 
 export { ProjectSession } from './session.ts'
 export { readTools } from './tools/read.ts'
 export { referenceTools } from './tools/references.ts'
+export { checkTools } from './tools/checks.ts'
 export { L5xError } from './core/errors.ts'
 export type { NextStep, Coverage, Success } from './core/result.ts'
 export type { ToolDefinition } from './core/tool.ts'

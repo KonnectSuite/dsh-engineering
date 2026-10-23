@@ -366,11 +366,11 @@ The pilot lives in `packages/l5x` of this repository and is not mounted in any p
 |---|---|
 | Model layer | The existing parser, copied unchanged into `src/model` |
 | Engines | The reference, dependency, tag-resolution and usage engines, copied into `src/engine` |
-| Tools | `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map` |
-| Schema budget | 9 tools, 6,154 characters, 31 of 31 parameters described |
+| Tools | `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` |
+| Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 24 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT` |
+| Tests | 31 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, checks, checks filters, comparison, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 
@@ -384,4 +384,4 @@ Mounting for a comparison: add the package to a profile dependency and insert on
 
 Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `project_overview` and `get_component` exist in both, and duplicate tool names are a registry conflict. Compare surfaces in two profiles running the same tasks.
 
-Next tools on the same envelope: `run_checks` and `compare_projects` complete the offline read surface. The reference cluster (`search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`) is implemented.
+Next tools on the same envelope: the offline read surface is complete. The reference cluster and the check/comparison pair are implemented; the draft family, the studio entry and the live entry remain.

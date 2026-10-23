@@ -14,6 +14,8 @@ describe('registration', () => {
       'trace_dependencies',
       'resolve_tag',
       'usage_map',
+      'run_checks',
+      'compare_projects',
     ])
   })
 
