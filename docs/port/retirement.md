@@ -51,3 +51,15 @@ Remove **all** of the following, in the same change:
 - The published market catalog does not list it.
 
 Record the evidence in the retirement change: the commands and the observed output.
+
+
+## MotionWorks IEC retirement record
+
+`dsh-tool-motionworks-iec` 0.7.0 is retired by engineering bundle 0.2.0. Removed in the same change:
+
+- `PRODUCT_PLUGINS` entry in `packages/boot/app-boot/src/product-plugins.ts`.
+- `apps/cli/package.json` dependency pin and the `dsh-tool-motionworks-iec-0.7.0.tgz` payload with its source record.
+- `scripts/release/arya-plugins.json` entry, so Plugin Market no longer offers it.
+- Plugins page scope in `ui-settings-plugin-inventory`, its test fixture, and the third-party notice row.
+- README and PRODUCT claims now name `dsh-engineering` 0.2.0 and the redesign.
+- The older `dsh-motionworks-iec-use` bundle stays in `RETIRED_BUNDLES` and in the installation-owned tuple fingerprints; it is removed from a profile, not shipped.

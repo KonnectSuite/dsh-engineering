@@ -18,11 +18,11 @@ test/                     patch, docs, tool-reference and doc-agreement tests
 ```
 
 Each package is an ordinary Cordis plugin. The bundle package itself `files` only the patch, locale,
-README, changelog and license; the four product packages are its dependencies.
+README, changelog and license; the five product packages are its dependencies.
 
 ## Row model
 
-The patch inserts eleven rows with stable ids. Ids are the contract: a profile, a patch or the
+The patch inserts sixteen rows with stable ids. Ids are the contract: a profile, a patch or the
 Plugins page addresses a row by id, so the implementation behind a row can be rebuilt without
 resetting the user's enabled state.
 
@@ -39,10 +39,16 @@ resetting the user's enabled state.
 | `ftview-edit` | `dsh-engineering-ftview/edit` | on |
 | `ftview-studio` | `dsh-engineering-ftview/studio` | on |
 | `ftview-viewer` | `dsh-engineering-ftview-viewer` | on |
+| `mwi-session` | `dsh-engineering-mwi` | on |
+| `mwi-read` | `dsh-engineering-mwi/read` | on |
+| `mwi-read-skill` | `dsh-engineering-mwi/skill` | on |
+| `mwi-verify` | `dsh-engineering-mwi/verify` | on |
+| `mwi-edit` | `dsh-engineering-mwi/edit` | off |
 
 Rows are split by cost, not by product alone. The L5X read surface is eager; drafts, SDK builds and
 live reads are opt-in because each adds schemas a read-only profile never uses. FactoryTalk View is
-small enough that its read, edit and Studio entries default on.
+small enough that its read, edit and Studio entries default on. MotionWorks IEC keeps session, read
+and verify eager and its seven edit tools opt-in, because those schemas are the largest in the bundle.
 
 Each plugin defines `inject`, so a row that needs a service the profile does not provide fails to
 mount instead of running degraded:
@@ -58,6 +64,11 @@ mount instead of running degraded:
 | `dsh-engineering-ftview/edit` | `tools`, `fs`, `ftviewViews` (provided by the read entry) |
 | `dsh-engineering-ftview/studio` | `tools`, `fs`, `ftviewViews` |
 | `dsh-engineering-ftview/skill` | `skills` |
+| `dsh-engineering-mwi` | `tools` |
+| `dsh-engineering-mwi/read` | `tools` |
+| `dsh-engineering-mwi/verify` | `tools` |
+| `dsh-engineering-mwi/edit` | `tools` |
+| `dsh-engineering-mwi/skill` | `skills` |
 | `l5x` trend card | `slots`, `locale`, `remote` |
 | `l5x-viewer` | `slots`, `locale`, `documentPreviews`, `remote`, `remote.workspaceFiles` |
 

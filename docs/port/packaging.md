@@ -2,7 +2,7 @@
 
 ## Artifacts
 
-Five tarballs make up a release:
+Six tarballs make up a release:
 
 | Package | Role |
 |---|---|
@@ -11,6 +11,7 @@ Five tarballs make up a release:
 | `dsh-engineering-l5x-viewer` | the folded L5X ladder viewer client face |
 | `dsh-engineering-ftview` | FactoryTalk View read, editing and studio entries |
 | `dsh-engineering-ftview-viewer` | the folded FTView display preview client face |
+| `dsh-engineering-mwi` | MotionWorks IEC session, read, verify and edit entries, the COM bridge and the saved-model engine |
 
 ## Where they are hosted
 
@@ -19,7 +20,7 @@ fetchable. Releases are published on the public site repository
 `KonnectSuite/KonnectSuite.github.io` under the tag `plugins-v<version>`, which
 serves the assets without authentication.
 
-The bundle declares its four component packages as **URL dependencies** pointing
+The bundle declares its five component packages as **URL dependencies** pointing
 at those assets:
 
 ```
@@ -51,6 +52,7 @@ patch is the only composition surface.
    pnpm --filter dsh-engineering-ftview run build
    pnpm --filter dsh-engineering-l5x-viewer run build
    pnpm --filter dsh-engineering-ftview-viewer run build
+   pnpm --filter dsh-engineering-mwi run build
    pnpm pack --pack-destination dist/<version>            # from each package dir
    pnpm --filter dsh-engineering pack --pack-destination dist/<version>
    ```
