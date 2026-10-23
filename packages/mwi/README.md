@@ -4,45 +4,49 @@ MotionWorks IEC 3 Pro tools, redesigned for the `dsh-engineering` bundle. The pr
 **staged copy** of a workspace project and drives the running IDE through the existing 32-bit COM
 bridge; the tool surface is new.
 
-This package is not mounted yet. The legacy `dsh-tool-motionworks-iec` remains the shipped surface
-until the redesign flips in Phase 5. The migration design and phase order are in
+This package is **not mounted yet**. The legacy `dsh-tool-motionworks-iec` remains the shipped
+surface until the redesign flips in Phase 5. The migration design and phase order are in
 [docs/port/mwi.md](../../docs/port/mwi.md).
 
-## Planned rows
+## Rows and progress
 
-| Row | Default | Tools |
-|---|---|---|
-| `mwi-session` | on | 7 — find, status, start, stage, open, worksheet open, close |
-| `mwi-read` | on | 7 — overview, list, get, search, references, review, help |
-| `mwi-verify` | on | 3 — compile, diagnostics, verify |
-| `mwi-edit` | off | 7 — edit code/variables/structure, insert block, transfer POU, validate, apply |
-| `mwi-skill` | on | the `motionworks-iec` guidance |
+| Row | Default | Tools | Status |
+|---|---|---|---|
+| `mwi-session` | on | 7 | implemented and live-verified |
+| `mwi-read` | on | 7 | next |
+| `mwi-verify` | on | 3 | planned |
+| `mwi-edit` | off | 7 | planned |
+| `mwi-skill` | on | the `motionworks-iec` guidance | implemented |
 
-## Phase 0 scope
+Session tools: `mw_project_find`, `mw_ide_status`, `mw_project_stage`, `mw_project_open`,
+`mw_ide_start`, `mw_worksheet_open`, `mw_project_close`.
 
-- The shared tool core: described parameters, the `{ schema, render }` output declaration, the
-  `summary`/`data`/`coverage`/`next` envelope, and recoverable failures.
-- The typed bridge boundary (`src/core/bridge.ts`); the PowerShell transport lands with the session
-  row.
-- The rewritten `SKILL.md` and its registration (`mwi-skill`), Windows-gated.
-- Contract tests for the core and the skill.
+## Live evidence
 
-The session, read, verify and edit entries land in Phases 1-4; this package exports only `./skill`
-until then.
+Verified against MotionWorks IEC 3 Pro 1.19 on 2026-10-23 with a copy of a real project in a temporary
+workspace:
+
+1. `stage` copied the project, bound the wrapper to the staged directory and wrote its identity.
+2. `start` launched the IDE and answered the trial prompt (`posted_bm_click`).
+3. `status` reported the staged project open, `in_stage: true`.
+4. `worksheet` opened `Global_Variables` and verified the active editor and unchanged modified state.
+5. `close` reported `closed: true`, and the next status reported the IDE not running.
 
 ## Structure
 
 ```
 SKILL.md          the redesigned guidance
-bridge/           the COM bridge asset (copied in Phase 1)
-src/core/         params, result, errors, tool, bridge boundary
-src/skill.ts      the skill registration
-test/             core and skill contracts
+bridge/           the 32-bit PowerShell COM bridge
+code/             the Python engine (wrapper binding, saved-model reads, validation)
+src/core/         params, result, errors, tool, bridge, PowerShell transport, code engine
+src/session/      workspace, stage, runtime
+src/tools/        session row (read/verify/edit rows next)
+test/             contract tests and the live fixtures
 ```
 
 ## Requirements
 
-Windows, MotionWorks IEC 3 Pro (licensed or trial), Python 3 for the read engine, Windows 32-bit
+Windows, MotionWorks IEC 3 Pro (licensed or trial), Python 3 for the code engine, Windows 32-bit
 PowerShell for the COM bridge, and a computer-use companion for desktop-only operations.
 
 ## Develop

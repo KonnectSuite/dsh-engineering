@@ -4,6 +4,10 @@
   "description": "MotionWorks IEC 3 Pro IDE tools, redesigned for the engineering bundle.",
   "type": "module",
   "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
     "./skill": {
       "types": "./lib/skill.d.ts",
       "default": "./lib/skill.js"

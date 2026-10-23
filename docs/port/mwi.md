@@ -49,6 +49,12 @@ skills row**:
 The 55 folded tools do not disappear as capabilities; their behavior moves behind one intent. The
 [mapping](mwi-mapping.json) lists every legacy tool, its disposition and its target.
 
+## Status
+
+- Phase 0 complete: the package scaffold, shared core, typed bridge boundary, rewritten skill and contract tests.
+- Phase 1 complete and live-verified against MotionWorks IEC 3 Pro 1.19 on 2026-10-23: stage, start, status, worksheet and close ran against a copy of a real project in a temporary workspace. The trial prompt was answered, the staged project was open with `in_stage: true`, `Global_Variables` opened with unchanged modified state, and close reported `closed: true`.
+- Next: the `mwi-read` row over the engine's saved-model verbs and the bridge's live reads.
+
 ## Target surface
 
 Every row is a stable id. Rows inject the services they need, so a profile that disables editing never
