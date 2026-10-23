@@ -9,7 +9,7 @@
  * @module dsh-engineering-ftview/edit
  */
 
-import type { PluginContext } from './core.ts'
+import { stringFs, type PluginContext } from './core.ts'
 import { EditDrafts } from './edit/drafts.ts'
 import { editTools } from './edit/tools.ts'
 import type { ViewSession } from './session.ts'
@@ -41,7 +41,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxDraftOperations) || maxDraftOperations <= 0) {
     throw new Error('ftview-edit: maxDraftOperations must be a positive integer')
   }
-  for (const definition of editTools(session, new EditDrafts(), ctx.fs, maxDraftOperations)) ctx.tools.register(definition)
+  for (const definition of editTools(session, new EditDrafts(), stringFs(ctx.fs), maxDraftOperations)) ctx.tools.register(definition)
 }
 
 export { EditDrafts } from './edit/drafts.ts'

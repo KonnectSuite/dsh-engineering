@@ -47,10 +47,10 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
   const ctx = {
     tools: { register(definition: ToolDefinition) { definitions.push(definition) } },
     fs: {
-      async resolve(path: string) { return path },
-      async stat(path: string) { return exists(path) ? { type: 'file' } : undefined },
-      async readBytes(path: string) { return read(path) },
-      async writeText(path: string, text: string) { written.set(path, text) },
+      async resolve(path: string) { return { targetKey: path, displayPath: path } },
+      async stat(target: { displayPath: string }) { return exists(target.displayPath) ? { type: 'file' } : undefined },
+      async readBytes(target: { displayPath: string }) { return read(target.displayPath) },
+      async writeText(target: { displayPath: string }, text: string) { written.set(target.displayPath, text) },
     },
     provide(name: string, value: unknown) { services.set(name, value) },
     get(name: string) { return services.get(name) },

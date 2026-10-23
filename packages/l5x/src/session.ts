@@ -17,7 +17,7 @@ import { L5xParseError, loadL5x, type L5xDocument } from './model/index.ts'
 import type { ExecContext } from './core/tool.ts'
 import { L5xError } from './core/errors.ts'
 import { decodeExport } from './fs.ts'
-import type { FsService } from './core/tool.ts'
+import type { FsService, FsTarget } from './core/tool.ts'
 
 /** How completely one export feature can be analyzed. */
 export type FeatureLevel = 'analyzed' | 'partial' | 'unsupported' | 'not_present'
@@ -28,8 +28,10 @@ export interface ProjectSnapshot {
   readonly id: string
   /** Path as the caller supplied it. */
   readonly requestedPath: string
-  /** Resolved path the filesystem provider returned. */
+  /** Resolved path the filesystem provider returned, for model- and engine-facing output. */
   readonly path: string
+  /** Filesystem target used to re-read the export. */
+  readonly target: FsTarget
   /** SHA-256 of the bytes this document was parsed from. */
   readonly sha256: string
   /** Size of the export in bytes. */
@@ -101,7 +103,7 @@ export class ProjectSession {
    * @returns The retained project, including its handle.
    */
   async open(requestedPath: string, exec?: ExecContext): Promise<ProjectSnapshot> {
-    const { bytes, target } = await this.readBytes(requestedPath, exec)
+    const { bytes, target, displayPath } = await this.readBytes(requestedPath, exec)
     const xml = decodeExport(bytes)
     if (/<!DOCTYPE\b|<!ENTITY\b/iu.test(xml)) {
       throw new L5xError(
@@ -134,7 +136,8 @@ export class ProjectSession {
     const project: ProjectSnapshot = {
       id: randomUUID(),
       requestedPath,
-      path: target,
+      path: displayPath,
+      target,
       sha256,
       bytes: bytes.length,
       xml,
@@ -178,7 +181,7 @@ export class ProjectSession {
         ids,
       )
     }
-    const bytes = await this.fs.readBytes(project.path, exec?.signal, this.maxFileBytes)
+    const bytes = await this.fs.readBytes(project.target, exec?.signal, this.maxFileBytes)
     const sha256 = createHash('sha256').update(bytes).digest('hex')
     if (sha256 !== project.sha256) {
       throw new L5xError(
@@ -198,10 +201,11 @@ export class ProjectSession {
    * @returns The resolved path.
    */
   async resolvePath(requestedPath: string, exec?: ExecContext): Promise<string> {
-    return await this.fs.resolve(requestedPath, {
+    const target = await this.fs.resolve(requestedPath, {
       ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
       ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
     })
+    return target.displayPath
   }
 
   /**
@@ -236,7 +240,7 @@ export class ProjectSession {
       )
     }
     await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal)
-    return target
+    return target.displayPath
   }
 
   /** The handle set for one calling chat. */
@@ -272,7 +276,7 @@ export class ProjectSession {
   }
 
   /** Resolve, check and read one path through the filesystem provider. */
-  private async readBytes(requestedPath: string, exec?: ExecContext): Promise<{ bytes: Uint8Array; target: string }> {
+  private async readBytes(requestedPath: string, exec?: ExecContext): Promise<{ bytes: Uint8Array; target: FsTarget; displayPath: string }> {
     if (requestedPath.trim() === '') {
       throw new L5xError(
         'INVALID_ARGUMENT',
@@ -299,7 +303,7 @@ export class ProjectSession {
         'Pass the path of one .L5X export, not a directory.',
       )
     }
-    return { bytes: await this.fs.readBytes(target, exec?.signal, this.maxFileBytes), target }
+    return { bytes: await this.fs.readBytes(target, exec?.signal, this.maxFileBytes), target, displayPath: target.displayPath }
   }
 }
 

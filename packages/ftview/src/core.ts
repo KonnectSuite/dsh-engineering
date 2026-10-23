@@ -150,6 +150,60 @@ export interface FsService {
   writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
 }
 
+/** A path resolved by the harness filesystem into its backend identity. */
+export interface FsTarget {
+  /** Opaque key for stale guards and target lookup. */
+  readonly targetKey: unknown
+  /** Path for model- and UI-facing output. */
+  readonly displayPath: string
+}
+
+/** The harness filesystem as it is actually provided: operations take resolved targets. */
+export interface RawFsService {
+  resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget | string>
+  stat(target: FsTarget | string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
+  readBytes(target: FsTarget | string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
+  listDir?(target: FsTarget | string, signal?: AbortSignal): Promise<readonly DirEntry[]>
+  writeText?(target: FsTarget | string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
+}
+
+/**
+ * Present the harness filesystem with string paths.
+ *
+ * The model, edits and discovery compose paths (`${root}/${file}`); the harness
+ * service takes opaque targets. This adapter resolves each path before calling
+ * the service and returns display strings, so path composition stays readable.
+ * A provider that already returns strings, such as a test double, passes through.
+ *
+ * @param service - The harness filesystem service.
+ * @returns The same operations addressed by path strings.
+ */
+export function stringFs(service: RawFsService): FsService {
+  const targetOf = async (path: string, signal?: AbortSignal): Promise<FsTarget | string> =>
+    await service.resolve(path, signal === undefined ? {} : { signal })
+  const fs: FsService = {
+    async resolve(path, options) {
+      const value = await service.resolve(path, options)
+      return typeof value === 'string' ? value : value.displayPath
+    },
+    async stat(path, signal) {
+      return await service.stat(await targetOf(path, signal), signal)
+    },
+    async readBytes(path, signal, maxBytes) {
+      return await service.readBytes(await targetOf(path, signal), signal, maxBytes)
+    },
+  }
+  if (service.listDir !== undefined) {
+    fs.listDir = async (path, signal) => await service.listDir!(await targetOf(path, signal), signal)
+  }
+  if (service.writeText !== undefined) {
+    fs.writeText = async (path, text, options, signal) => {
+      await service.writeText!(await targetOf(path, signal), text, options, signal)
+    }
+  }
+  return fs
+}
+
 /** The tool registry the plugin registers into. */
 export interface ToolRegistry {
   register(definition: ToolDefinition): void
@@ -158,7 +212,7 @@ export interface ToolRegistry {
 /** The services a composition must provide before this plugin loads. */
 export interface PluginContext {
   readonly tools: ToolRegistry
-  readonly fs: FsService
+  readonly fs: RawFsService
   provide?(name: string, value: unknown): void
   get?(name: string): unknown
 }

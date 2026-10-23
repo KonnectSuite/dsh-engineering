@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering-l5x",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Studio 5000 L5X: the rebuilt offline read surface for the AryaAI engineering suite.",
   "license": "MIT",

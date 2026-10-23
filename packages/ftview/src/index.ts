@@ -7,7 +7,7 @@
  * @module dsh-engineering-ftview
  */
 
-import type { PluginContext } from './core.ts'
+import { stringFs, type PluginContext } from './core.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
 
@@ -37,7 +37,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxFiles) || maxFiles <= 0) {
     throw new Error('ftview-read: maxFiles must be a positive integer')
   }
-  const session = new ViewSession(ctx.fs, maxFiles)
+  const session = new ViewSession(stringFs(ctx.fs), maxFiles)
   ctx.provide?.(VIEWS_SERVICE, session)
   for (const definition of ftviewTools(session)) ctx.tools.register(definition)
 }

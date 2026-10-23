@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering-ftview-viewer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "FactoryTalk View ME display preview, folded into the engineering bundle.",
   "type": "module",
   "main": "lib/index.js",

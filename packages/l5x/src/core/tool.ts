@@ -58,12 +58,20 @@ export interface ToolRegistry {
   register(definition: ToolDefinition): unknown
 }
 
+/** A path resolved by the filesystem provider into its backend identity. */
+export interface FsTarget {
+  /** Opaque key for stale guards and target lookup. */
+  readonly targetKey: unknown
+  /** Path for model- and UI-facing output. */
+  readonly displayPath: string
+}
+
 /** The filesystem service operations this package uses. */
 export interface FsService {
-  resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<string>
-  stat(path: string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
-  readBytes(path: string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
-  writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' }, signal?: AbortSignal): Promise<void>
+  resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget>
+  stat(target: FsTarget, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
+  readBytes(target: FsTarget, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
+  writeText?(target: FsTarget, text: string, options?: { readonly kind?: 'createIfAbsent' }, signal?: AbortSignal): Promise<void>
 }
 
 /** The services a composition must provide before this plugin loads. */
