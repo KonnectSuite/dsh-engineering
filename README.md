@@ -34,6 +34,10 @@ The composed config labels the row `# == @deepseek-ai/dsh-web-app, patched by ds
 
 Before this bundle, a skill switch changed only the guidance; the tool schemas stayed exposed.
 
+**Client faces are not linked.** The ladder viewer, the FactoryTalk View display renderer, and the DXF viewer are separate entries. Switching a product's skill off removes its guidance and its tool schemas, and leaves those surfaces mounted. Context cost lives in tool schemas and skill bodies; a client bundle adds none, so a reader who is not programming a PLC still gets to open and inspect the file.
+
+That makes the skill the single per-product switch: off means guidance and tools together. The tools entry remains separately disableable for an operator who wants the schemas gone while keeping the guidance, but the link means it cannot expose tools whose skill is off.
+
 ```mermaid
 sequenceDiagram
   participant U as User
@@ -113,6 +117,8 @@ Entry ids stay exactly as they are today — `l5x-tools`, `l5x-skill`, `factoryt
 
 A product keeps its own package rather than folding into one package because a package carries one client face (`dsh.client` and one `./client` export). Merging the ladder viewer, the display renderer and the DXF viewer into one package would mean one client switch for all engineering UI and one build failure across all three.
 
+Each client entry stays independent of its product's tools entry. The port splits parsing into an isomorphic model shared by both: the host tools keep the Node-only I/O, the client bundle imports the model without it, and the viewer renders with the tools row switched off.
+
 ## Retirement plan
 
 When the port completes, these are removed, not just unmounted:
@@ -139,7 +145,7 @@ The flip therefore needs a replacement map — old bundle name to `dsh-engineeri
 ## Roadmap
 
 1. **Phase 1 (done):** exposure policy, no product code moved.
-2. **Pilot:** port L5X into `packages/l5x`, move its rows into this bundle, fold the ladder viewer into its client face.
+2. **Pilot:** port L5X into `packages/l5x`, move its rows into this bundle, split parsing into an isomorphic model shared by the tools and the viewer, and fold the ladder viewer into the client face.
 3. **Port:** FactoryTalk View, then Optix, then MotionWorks, each keeping its entry ids.
 4. **Port CAD** and decide the base-bundle removal.
 5. **Flip to built-in:** installer distribution, `apps/cli` anchor, template and replacement migration, notices, payload removal.
