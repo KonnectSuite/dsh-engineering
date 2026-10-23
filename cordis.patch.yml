@@ -38,3 +38,8 @@
       name: dsh-engineering-l5x
     - id: l5x-read-skill
       name: dsh-engineering-l5x/skill
+    # Editing is its own entry so a read-only profile does not pay for nine
+    # draft schemas. It consumes the read entry's project service.
+    - id: l5x-editing
+      name: dsh-engineering-l5x/editing
+      disabled: true

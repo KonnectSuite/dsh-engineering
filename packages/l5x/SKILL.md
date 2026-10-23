@@ -8,7 +8,7 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 
 ## Boundary
 
-This surface is read-only. It never edits a file, connects to a controller, changes mode, or writes runtime data. If the user asks for an edit, say the draft tools are not part of this surface yet.
+This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into Studio, connects to a controller, changes mode, or writes runtime data.
 
 ## Start
 
@@ -48,3 +48,12 @@ This surface is read-only. It never edits a file, connects to a controller, chan
 
 - Reading accepts any export revision 19 or later. Revisions outside the observed matrix open and report `verification: "untested_revision"`.
 - Reading never needs Studio 5000. Build, import and controller transfer are not part of this surface.
+## Editing
+
+Editing uses the draft_* family. It may be disabled in this profile; if a draft tool is unavailable, say editing is not enabled here rather than trying another tool.
+
+- One operation per call: draft_rung, draft_st, draft_routine, draft_tag, draft_tag_description, draft_udt_member, draft_udt_description. Each returns the draft id and the operation count.
+- draft_validate prepares the accumulated draft against the project and returns its hash, diff summary and check findings. Read the findings before applying.
+- draft_apply writes the draft to ONE new .L5X path. It never overwrites an existing file.
+- After applying, reopen the written file with open_project to review it.
+- Drafts belong to this chat. Another chat starts with none, and an applied draft is cleared.

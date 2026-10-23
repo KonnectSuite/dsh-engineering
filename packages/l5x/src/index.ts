@@ -1,9 +1,10 @@
 /**
  * The rebuilt offline L5X read surface.
  *
- * Four tools, one intent each, with described parameters, a summary-first
- * result and repairable failures. This package is the pilot for the engineering
- * port: the model layer is the existing parser, and everything above it is new.
+ * Eleven read tools, one intent each, with described parameters, a
+ * summary-first result and repairable failures. The project handles it opens are
+ * provided as the `l5xProjects` service so the editing entry can draft against
+ * the same exports without opening them twice.
  *
  * @module dsh-engineering-l5x
  */
@@ -19,6 +20,9 @@ export const name = 'l5x-read'
 
 /** Services this plugin cannot register without. */
 export const inject = ['tools', 'fs'] as const
+
+/** Service name the editing entry consumes. */
+export const PROJECTS_SERVICE = 'l5xProjects'
 
 /** Configuration for the read surface. */
 export interface Config {
@@ -38,7 +42,10 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
     throw new Error('l5x-read: maxFileBytes must be a positive integer')
   }
   const session = new ProjectSession(ctx.fs, maxFileBytes)
-  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session)]) ctx.tools.register(definition)
+  ctx.provide?.(PROJECTS_SERVICE, session)
+  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session)]) {
+    ctx.tools.register(definition)
+  }
 }
 
 export { ProjectSession } from './session.ts'

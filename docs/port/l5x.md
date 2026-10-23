@@ -121,7 +121,8 @@ flowchart LR
 
 | Entry | Contents | Default | Config |
 |---|---|---|---|
-| `l5x-tools` | Offline reads, checks, drafts | on | `maxFileBytes`, `traceLimits` |
+| `l5x-tools` | Offline reads, checks | on | `maxFileBytes`, `traceLimits` |
+| `l5x-editing` | Drafts: rung, ST, routine, tag, UDT, validate, apply | off | `maxFileBytes`, `maxDraftOperations` |
 | `l5x-studio` | SDK build, online session, supervised transfer | off | `sdk`, `allowControllerOperations` |
 | `l5x-live` | SDK-free EtherNet/IP polling and trends | off | `polling` |
 | `l5x-skill` | Decision tree and safety | on | — |
@@ -135,7 +136,9 @@ The client entry never depends on `l5x-tools`. The viewer imports the isomorphic
 
 ## 6. Target surface
 
-### 6.1 `l5x-tools` — offline, default entry
+### 6.1 `l5x-tools` — offline reads, default entry
+
+The `draft_*` rows in the table below are registered by the separate `l5x-editing` entry, off by default. They are shown together because they share one intent: work over an opened export.
 
 | Tool | Intent | Parameters (all described) | Returns |
 |---|---|---|---|
@@ -383,13 +386,14 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 |---|---|
 | Model layer | The existing parser, copied unchanged into `src/model` |
 | Engines | The reference, dependency, tag-resolution and usage engines, copied into `src/engine` |
-| Tools | `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` |
-| Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 2.9 KB decision tree (budget 8 KB) |
+| Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default) |
+| Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 4.0 KB decision tree (budget 8 KB) |
+| Drafts | One operation per call, accumulated per chat and project; `draft_validate` prepares, `draft_apply` writes one new file and clears the draft |
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 41 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION` |
+| Tests | 48 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, draft accumulation, validation, application, overwrite refusal, draft handles, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION`, `NO_DRAFT` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 
-Next tools on the same envelope: the offline read surface is complete. The reference cluster and the check/comparison pair are implemented; the draft family, the studio entry and the live entry remain.
+Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio entry, the live entry and the client face remain.

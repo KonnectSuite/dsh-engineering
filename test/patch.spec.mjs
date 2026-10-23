@@ -21,6 +21,7 @@ test('inserts exactly the L5X pilot rows', () => {
   assert.deepEqual(inserted.insert, [
     { id: 'l5x-read', name: 'dsh-engineering-l5x' },
     { id: 'l5x-read-skill', name: 'dsh-engineering-l5x/skill' },
+    { id: 'l5x-editing', name: 'dsh-engineering-l5x/editing', disabled: true },
   ])
 })
 

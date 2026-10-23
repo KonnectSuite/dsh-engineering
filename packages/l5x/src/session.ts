@@ -190,6 +190,41 @@ export class ProjectSession {
     return project
   }
 
+  /**
+   * Write one prepared draft to a new path, never overwriting.
+   *
+   * @param outputPath - Destination as the caller supplied it.
+   * @param text - The prepared L5X document.
+   * @param exec - Calling context: cancellation and workspace root.
+   * @returns The resolved destination.
+   */
+  async writeNew(outputPath: string, text: string, exec?: ExecContext): Promise<string> {
+    if (!/\.l5x$/iu.test(outputPath)) {
+      throw new L5xError('OUTPUT_EXTENSION', 'The draft must be written to an .L5X file.', 'Pass output_path ending in .L5X.')
+    }
+    const target = await this.fs.resolve(outputPath, {
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
+    })
+    const info = await this.fs.stat(target, exec?.signal)
+    if (info !== undefined) {
+      throw new L5xError(
+        'OUTPUT_EXISTS',
+        `A file already exists at ${outputPath}.`,
+        'Pass a new output_path; this tool never overwrites an existing file.',
+      )
+    }
+    if (this.fs.writeText === undefined) {
+      throw new L5xError(
+        'OUTPUT_UNAVAILABLE',
+        'The filesystem provider in this profile cannot write files.',
+        'Use a profile whose filesystem provider allows writes, or copy the draft text into Studio manually.',
+      )
+    }
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal)
+    return target
+  }
+
   /** The handle set for one calling chat. */
   private projectsOf(exec?: ExecContext): Map<string, ProjectSnapshot> {
     const chat = exec?.chat

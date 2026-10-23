@@ -52,9 +52,10 @@ export interface ToolRegistry {
 
 /** The filesystem service operations this package uses. */
 export interface FsService {
-  resolve(path: string, options?: { readonly signal?: AbortSignal }): Promise<string>
+  resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<string>
   stat(path: string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(path: string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
+  writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' }, signal?: AbortSignal): Promise<void>
 }
 
 /** The services a composition must provide before this plugin loads. */
@@ -62,6 +63,10 @@ export interface PluginContext {
   readonly tools: ToolRegistry
   readonly fs: FsService
   readonly logger?: { warn(message: string): void }
+  /** Register a service other entries in the same composition can consume. */
+  provide?(name: string, value: unknown): void
+  /** Read a service another entry in the same composition provided. */
+  get?(name: string): unknown
 }
 
 /**

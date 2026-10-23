@@ -1,0 +1,428 @@
+/** Validate and stage coordinated edits while retaining untouched XML bytes. */
+import { createHash, randomUUID } from 'node:crypto'
+import { loadL5x } from '../model/index.ts'
+import type { L5xDocument } from '../model/types.ts'
+import { parseLadder, lexLogic } from './logic-syntax.ts'
+import { compareProjects, runChecks } from './review.ts'
+import { EngineeringError, type ProjectSnapshot } from '../session.ts'
+import { typeInstances, typeIndex, udtDetail } from './details.ts'
+import { uniqueRegion, xmlRegions, type XmlRegion } from './xml-regions.ts'
+
+type Operation =
+  | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string }
+  | { readonly operation: 'delete_rung'; readonly program: string; readonly routine: string; readonly rung: number }
+  | { readonly operation: 'insert_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly before_rung?: number }
+  | { readonly operation: 'replace_st'; readonly program: string; readonly routine: string; readonly code: string }
+  | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST'; readonly code: string }
+  | { readonly operation: 'add_tag'; readonly scope: string; readonly name: string; readonly data_type: string; readonly value?: number; readonly dimensions?: string; readonly external_access?: string; readonly description: string }
+  | { readonly operation: 'set_tag_description'; readonly scope: string; readonly name: string; readonly description: string }
+  | { readonly operation: 'add_udt_member'; readonly udt: string; readonly name: string; readonly data_type: string; readonly description: string }
+  | { readonly operation: 'set_udt_description'; readonly udt: string; readonly description: string }
+  | { readonly operation: 'set_udt_member_description'; readonly udt: string; readonly member: string; readonly description: string }
+
+/** Scalar types the plugin can create with a literal initial value. */
+const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
+/** Operation names accepted by a version-1 change set. */
+const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
+/** Compact contract returned with validation errors and embedded in tool descriptions. */
+export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
+replace_rung {program,routine,rung,text}
+insert_rung {program,routine,rung,text,before_rung?}
+delete_rung {program,routine,rung}
+replace_st {program,routine,code}
+add_routine {program,name,language:"RLL"|"ST",code}
+add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
+set_tag_description {scope,name,description}
+add_udt_member {udt,name,data_type,description}
+set_udt_description {udt,description}
+set_udt_member_description {udt,member,description}
+Identifiers are at most 40 characters. Example: {"version":1,"operations":[{"operation":"add_tag","scope":"controller","name":"SP_Start","data_type":"REAL","value":80,"description":"Start threshold"}]}`
+
+/** Operations that change one existing data type. */
+type UdtOperation = Extract<Operation, { operation: 'add_udt_member' | 'set_udt_description' | 'set_udt_member_description' }>
+const UDT_OPERATIONS = ['add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
+const isUdtOperation = (operation: Operation): operation is UdtOperation => (UDT_OPERATIONS as readonly string[]).includes(operation.operation)
+
+/** Parse a Studio `Dimensions` value: one to three positive sizes. */
+function parseDimensions(row: Record<string, unknown>): string | undefined {
+  const value = row.dimensions
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || !/^[1-9]\d*(?: [1-9]\d*){0,2}$/u.test(value)) throw new EngineeringError('INVALID_CHANGE_SET', 'dimensions must be one to three space-separated positive integers')
+  const sizes = value.split(' ').map(part => Number.parseInt(part, 10))
+  if (sizes.some(size => size > 1_000_000) || sizes.reduce((product, size) => product * size, 1) > 10_000_000) throw new EngineeringError('INVALID_CHANGE_SET', 'dimensions exceed the supported element count')
+  return value
+}
+
+/** Limits are resolved by the plugin's configuration before tools call this module. */
+export interface ChangeSetLimits { readonly operations: number; readonly bytes: number }
+
+function object(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new EngineeringError('INVALID_CHANGE_SET', 'Expected an object')
+  return value as Record<string, unknown>
+}
+function text(row: Record<string, unknown>, name: string): string {
+  if (typeof row[name] !== 'string') throw new EngineeringError('INVALID_CHANGE_SET', `${name} must be a string`)
+  return row[name]
+}
+function identifier(row: Record<string, unknown>, name: string): string {
+  const value = text(row, name)
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/u.test(value)) throw new EngineeringError('INVALID_CHANGE_SET', `${name} must be a Logix identifier of at most 40 characters`)
+  return value
+}
+function integer(row: Record<string, unknown>, name: string): number {
+  const value = row[name]
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new EngineeringError('INVALID_CHANGE_SET', `${name} must be a nonnegative safe integer`)
+  return value
+}
+function fields(row: Record<string, unknown>, allowed: readonly string[]): void {
+  const extra = Object.keys(row).filter(name => !allowed.includes(name))
+  if (extra.length > 0) throw new EngineeringError('INVALID_CHANGE_SET', `Unsupported field(s): ${extra.join(', ')}. Allowed: ${allowed.join(', ')}`)
+}
+/** Whether one literal fits the scalar type's range and integer-ness. */
+function fitsScalar(type: string, value: unknown): boolean {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return false
+  switch (type.toUpperCase()) {
+    case 'BOOL': return value === 0 || value === 1
+    case 'SINT': return Number.isInteger(value) && value >= -128 && value <= 127
+    case 'INT': return Number.isInteger(value) && value >= -32768 && value <= 32767
+    case 'DINT': return Number.isInteger(value) && value >= -2147483648 && value <= 2147483647
+    case 'USINT': return Number.isInteger(value) && value >= 0 && value <= 255
+    case 'UINT': return Number.isInteger(value) && value >= 0 && value <= 65535
+    case 'UDINT': return Number.isInteger(value) && value >= 0 && value <= 4294967295
+    case 'LINT': return Number.isSafeInteger(value)
+    case 'ULINT': return Number.isSafeInteger(value) && value >= 0
+    case 'REAL': return Math.abs(value) <= 3.4028234663852886e38
+    case 'LREAL': return Math.abs(value) <= Number.MAX_VALUE
+    default: return false
+  }
+}
+function externalAccess(row: Record<string, unknown>): string | undefined {
+  const value = row.external_access
+  if (value === undefined) return undefined
+  if (typeof value !== 'string') throw new EngineeringError('INVALID_CHANGE_SET', 'external_access must be "Read/Write", "Read Only" or "None"')
+  const normalized = value.trim().toLowerCase().replace(/[\s/]+/gu, '/')
+  if (normalized === 'read/write') return 'Read/Write'
+  if (normalized === 'read/only') return 'Read Only'
+  if (normalized === 'none') return 'None'
+  throw new EngineeringError('INVALID_CHANGE_SET', 'external_access must be "Read/Write", "Read Only" or "None"')
+}
+
+function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation {
+  const row = object(value)
+  switch (row.operation) {
+    case 'replace_rung':
+    case 'insert_rung':
+    case 'delete_rung': {
+      fields(row, row.operation === 'delete_rung' ? ['operation', 'program', 'routine', 'rung'] : row.operation === 'insert_rung' ? ['operation', 'program', 'routine', 'rung', 'text', 'before_rung'] : ['operation', 'program', 'routine', 'rung', 'text'])
+      const selected = { program: identifier(row, 'program'), routine: identifier(row, 'routine'), rung: integer(row, 'rung') }
+      if (row.operation === 'delete_rung') return { operation: row.operation, ...selected }
+      const source = text(row, 'text')
+      if (parseLadder(source).issues.length > 0) throw new EngineeringError('INVALID_LADDER', 'Rung contains malformed or unsupported NeutralText structure')
+      if (row.operation === 'replace_rung') return { operation: row.operation, ...selected, text: source }
+      return { operation: row.operation, ...selected, text: source, ...(row.before_rung === undefined ? {} : { before_rung: integer(row, 'before_rung') }) }
+    }
+    case 'replace_st':
+      fields(row, ['operation', 'program', 'routine', 'code'])
+      return { operation: row.operation, program: identifier(row, 'program'), routine: identifier(row, 'routine'), code: text(row, 'code') }
+    case 'add_routine': {
+      fields(row, ['operation', 'program', 'name', 'language', 'code'])
+      if (row.language !== 'RLL' && row.language !== 'ST') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL" or "ST"')
+      return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
+    }
+    case 'add_tag': {
+      fields(row, ['operation', 'scope', 'name', 'data_type', 'value', 'dimensions', 'external_access', 'description'])
+      const dataType = text(row, 'data_type')
+      if (!declaredTypes.has(dataType.toLowerCase())) throw new EngineeringError('UNKNOWN_DATA_TYPE', `Data type "${dataType}" is not a scalar or declared type in this export; call get_component kind="udt" or project_overview to check names`)
+      const scalar = SCALAR_TYPES.has(dataType.toUpperCase())
+      const dimensions = parseDimensions(row)
+      const access = externalAccess(row)
+      if (!scalar && row.value !== undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'A declared-type tag takes Studio default values; omit value')
+      if (dimensions !== undefined && row.value !== undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'An array tag takes Studio default element values; omit value')
+      if (dimensions === undefined && scalar) {
+        if (row.value === undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'value is required for a scalar tag; omit value for an array or declared-type tag')
+        if (!fitsScalar(dataType, row.value)) throw new EngineeringError('INVALID_CHANGE_SET', `value ${String(row.value)} does not fit ${dataType}; BOOL accepts 0/1 and integer types accept their signed/unsigned range`)
+        return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), data_type: dataType, value: row.value as number, description: text(row, 'description'), ...(access === undefined ? {} : { external_access: access }) }
+      }
+      return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), data_type: dataType, ...(dimensions === undefined ? {} : { dimensions }), description: text(row, 'description'), ...(access === undefined ? {} : { external_access: access }) }
+    }
+    case 'add_udt_member': {
+      fields(row, ['operation', 'udt', 'name', 'data_type', 'description'])
+      const dataType = text(row, 'data_type')
+      if (dataType.toUpperCase() === 'BIT') throw new EngineeringError('UNSUPPORTED_OPERATION', 'A BIT member needs a backing member and bit position; append a BOOL, numeric or declared-type member instead')
+      if (!declaredTypes.has(dataType.toLowerCase())) throw new EngineeringError('UNKNOWN_DATA_TYPE', `Data type "${dataType}" is not a scalar or declared type in this export`)
+      return { operation: row.operation, udt: identifier(row, 'udt'), name: identifier(row, 'name'), data_type: dataType, description: text(row, 'description') }
+    }
+    case 'set_udt_description':
+      fields(row, ['operation', 'udt', 'description'])
+      return { operation: row.operation, udt: identifier(row, 'udt'), description: text(row, 'description') }
+    case 'set_udt_member_description':
+      fields(row, ['operation', 'udt', 'member', 'description'])
+      return { operation: row.operation, udt: identifier(row, 'udt'), member: identifier(row, 'member'), description: text(row, 'description') }
+    case 'set_tag_description':
+      fields(row, ['operation', 'scope', 'name', 'description'])
+      return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), description: text(row, 'description') }
+    default: throw new EngineeringError('INVALID_CHANGE_SET', `Unsupported operation "${String(row.operation)}"; supported: ${SUPPORTED_OPERATIONS.join(', ')}. Arbitrary XML replacement is not accepted.`)
+  }
+}
+
+function parseOperations(request: string, maximum: number, declaredTypes: ReadonlySet<string>): readonly Operation[] {
+  let value: unknown
+  try { value = JSON.parse(request) } catch (error) { throw new EngineeringError('INVALID_CHANGE_SET', `Invalid JSON: ${error instanceof Error ? error.message : String(error)}. ${CHANGE_SET_HELP}`) }
+  const root = object(value)
+  fields(root, ['version', 'operations'])
+  if (root.version !== 1 || !Array.isArray(root.operations) || root.operations.length < 1 || root.operations.length > maximum) throw new EngineeringError('INVALID_CHANGE_SET', `version must be 1 with between 1 and ${maximum} operations. ${CHANGE_SET_HELP}`)
+  const operations: Operation[] = []
+  const errors: string[] = []
+  for (const [index, entry] of root.operations.entries()) {
+    try { operations.push(parseOne(entry, declaredTypes)) }
+    catch (error) {
+      const code = error instanceof EngineeringError ? error.code : 'INVALID_CHANGE_SET'
+      const message = error instanceof Error ? error.message.replace(/^[A-Z][A-Z_]*: /u, '') : String(error)
+      errors.push(`#${index} [${code}]: ${message}`)
+    }
+  }
+  if (errors.length > 0) throw new EngineeringError('INVALID_CHANGE_SET', `${errors.length} of ${root.operations.length} operation(s) failed:\n${errors.map(line => `- ${line}`).join('\n')}\n${CHANGE_SET_HELP}`)
+  return operations
+}
+const escape = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
+const cdata = (value: string): string => `<![CDATA[${value.replaceAll(']]>', ']]]]><![CDATA[>')}]]>`
+const replace = (xml: string, start: number, end: number, value: string): string => xml.slice(0, start) + value + xml.slice(end)
+
+function editable(region: XmlRegion): void {
+  const protectedRegion = (region: XmlRegion): boolean => region.kind === 'EncodedData' || /safety/iu.test(region.attributes.Class ?? '') || Object.entries(region.attributes).some(([name, value]) => /Encrypted|SourceProtected/iu.test(name) && value.toLowerCase() !== 'false') || region.children.some(protectedRegion)
+  if (protectedRegion(region)) throw new EngineeringError('PROTECTED_TARGET', 'Safety or protected target cannot be changed')
+}
+function insert(xml: string, region: XmlRegion, child: string): string {
+  if (!region.selfClosing) return replace(xml, region.contentEnd, region.contentEnd, child)
+  return replace(xml, region.start, region.end, xml.slice(region.start, region.end).replace(/\/\s*>$/u, '>') + child + `</${region.kind}>`)
+}
+function stContent(code: string): string {
+  if (lexLogic(code).issues.length > 0) throw new EngineeringError('INVALID_ST', 'Structured Text contains unterminated comments or strings')
+  return '<STContent>' + code.split('\n').map((line, index) => `<Line Number="${index}">${cdata(line)}</Line>`).join('') + '</STContent>'
+}
+
+/** Replace a description attribute or element inside one region. */
+function setDescription(xml: string, region: XmlRegion, value: string): string {
+  const element = `<Description>${escape(value)}</Description>`
+  const open = xml.slice(region.start, region.contentStart)
+  if (/\sDescription="/u.test(open)) return replace(xml, region.start, region.contentStart, open.replace(/(\sDescription=")[^"]*(")/u, (_match, start: string, end: string) => `${start}${escape(value)}${end}`))
+  const child = region.children.find(entry => entry.kind === 'Description')
+  if (child !== undefined) return replace(xml, child.start, child.end, element)
+  return insert(xml, region, element)
+}
+
+interface ApplyContext {
+  readonly document: L5xDocument
+  readonly allowUdtInstances?: boolean
+}
+
+function applyOperation(xml: string, operation: Operation, context: ApplyContext): string {
+  const root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
+  const controller = uniqueRegion(root.children, 'Controller')
+  const program = (name: string): XmlRegion => {
+    const found = uniqueRegion(uniqueRegion(controller.children, 'Programs').children, 'Program', name)
+    if (/safety/iu.test(found.attributes.Class ?? '') || /^safety$/iu.test(name)) throw new EngineeringError('PROTECTED_TARGET', 'Safety programs cannot be changed')
+    const tasks = controller.children.find(child => child.kind === 'Tasks')
+    if (tasks?.children.some(task => /safety/iu.test(`${task.attributes.Type ?? ''} ${task.attributes.Class ?? ''}`) && task.children.some(child => child.kind === 'ScheduledPrograms' && child.children.some(program => program.attributes.Name?.toLowerCase() === name.toLowerCase())))) throw new EngineeringError('PROTECTED_TARGET', 'Safety-scheduled programs cannot be changed')
+    return found
+  }
+  if (operation.operation === 'add_udt_member' || operation.operation === 'set_udt_description' || operation.operation === 'set_udt_member_description') {
+    const dataTypes = uniqueRegion(controller.children, 'DataTypes')
+    const type = uniqueRegion(dataTypes.children, 'DataType', operation.udt)
+    if (type.attributes.Family !== 'NoFamily') throw new EngineeringError('PROTECTED_TARGET', 'Module-defined and built-in data types are vendor-owned and cannot be changed')
+    if (operation.operation === 'set_udt_description') return setDescription(xml, type, operation.description)
+    const members = uniqueRegion(type.children, 'Members')
+    if (operation.operation === 'set_udt_member_description') {
+      const member = uniqueRegion(members.children, 'Member', operation.member)
+      return setDescription(xml, member, operation.description)
+    }
+    const instances = typeInstances(context.document, operation.udt)
+    if (context.allowUdtInstances !== true && instances.length > 0) throw new EngineeringError('UDT_HAS_INSTANCES', `Data type ${operation.udt} has ${instances.length} instance(s) (first: ${instances[0]}); changing a member rewrites serialized tag data. Use propose_udt_change to emit a Data Type component for Studio import.`)
+    if (members.children.some(member => member.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Member already exists in the data type')
+    const dataType = operation.data_type.toUpperCase()
+    const scalar = SCALAR_TYPES.has(dataType)
+    const radix = scalar ? (dataType === 'REAL' || dataType === 'LREAL' ? 'Float' : 'Decimal') : 'NullType'
+    const description = operation.description === '' ? '' : ` Description="${escape(operation.description)}"`
+    return insert(xml, members, `<Member Name="${operation.name}" DataType="${operation.data_type}" Dimension="0" Radix="${radix}" Hidden="false" ExternalAccess="Read/Write"${description}/>`)
+  }
+  if (operation.operation === 'add_tag' || operation.operation === 'set_tag_description') {
+    const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
+    const tags = uniqueRegion(owner.children, 'Tags')
+    if (operation.operation === 'add_tag') {
+      if (tags.children.some(tag => tag.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Tag already exists in the selected scope')
+      if (operation.dimensions === undefined && operation.value !== undefined) {
+        const float = operation.data_type.toUpperCase() === 'REAL' || operation.data_type.toUpperCase() === 'LREAL'
+        return insert(xml, tags, `<Tag Name="${operation.name}" TagType="Base" DataType="${operation.data_type}" Radix="${float ? 'Float' : 'Decimal'}" Constant="false" ExternalAccess="${operation.external_access ?? 'Read/Write'}"><Description>${escape(operation.description)}</Description><Data Format="L5K">${cdata(String(operation.value))}</Data></Tag>`)
+      }
+      const scalar = SCALAR_TYPES.has(operation.data_type.toUpperCase())
+      const radix = scalar ? ` Radix="${operation.data_type.toUpperCase() === 'REAL' || operation.data_type.toUpperCase() === 'LREAL' ? 'Float' : 'Decimal'}"` : ''
+      const dimensions = operation.dimensions === undefined ? '' : ` Dimensions="${operation.dimensions}"`
+      return insert(xml, tags, `<Tag Name="${operation.name}" TagType="Base" DataType="${operation.data_type}"${dimensions}${radix} Constant="false" ExternalAccess="${operation.external_access ?? 'Read/Write'}"><Description>${escape(operation.description)}</Description></Tag>`)
+    }
+    const tag = uniqueRegion(tags.children, 'Tag', operation.name); editable(tag)
+    if (tag.attributes.Description !== undefined) throw new EngineeringError('UNSUPPORTED_TARGET', 'Attribute-style descriptions require the legacy description tool')
+    const description = tag.children.find(child => child.kind === 'Description')
+    return description === undefined ? tag.selfClosing ? insert(xml, tag, `<Description>${escape(operation.description)}</Description>`) : replace(xml, tag.contentStart, tag.contentStart, `<Description>${escape(operation.description)}</Description>`)
+      : replace(xml, description.start, description.end, `<Description>${escape(operation.description)}</Description>`)
+  }
+  const owner = program(operation.program)
+  const routines = uniqueRegion(owner.children, 'Routines')
+  if (operation.operation === 'add_routine') {
+    if (routines.children.some(routine => routine.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Routine already exists')
+    let body: string
+    if (operation.language === 'ST') body = stContent(operation.code)
+    else {
+      const lines = operation.code.split('\n').filter(line => line.trim() !== '')
+      if (lines.some(line => parseLadder(line).issues.length > 0)) throw new EngineeringError('INVALID_LADDER', 'Each nonempty line must contain one complete rung')
+      body = '<RLLContent>' + lines.map((line, index) => `<Rung Number="${index}" Type="N"><Text>${cdata(line)}</Text></Rung>`).join('') + '</RLLContent>'
+    }
+    return insert(xml, routines, `<Routine Name="${operation.name}" Type="${operation.language}">${body}</Routine>`)
+  }
+  const routine = uniqueRegion(routines.children, 'Routine', operation.routine); editable(routine)
+  if (operation.operation === 'replace_st') {
+    if (routine.attributes.Type !== 'ST') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not Structured Text')
+    const content = uniqueRegion(routine.children, 'STContent')
+    return replace(xml, content.start, content.end, stContent(operation.code))
+  }
+  if (routine.attributes.Type !== 'RLL') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not ladder')
+  const content = uniqueRegion(routine.children, 'RLLContent')
+  const rungs = content.children.filter(child => child.kind === 'Rung')
+  const targets = rungs.filter(rung => Number(rung.attributes.Number) === operation.rung)
+  if (operation.operation === 'insert_rung') {
+    if (targets.length !== 0) throw new EngineeringError('NAME_COLLISION', 'Rung number already exists; no automatic renumbering is performed')
+    const newRung = `<Rung Number="${operation.rung}" Type="N"><Text>${cdata(operation.text)}</Text></Rung>`
+    if (operation.before_rung === undefined) return insert(xml, content, newRung)
+    const before = rungs.filter(rung => Number(rung.attributes.Number) === operation.before_rung)
+    if (before.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Insertion target rung is absent or ambiguous')
+    return replace(xml, before[0]!.start, before[0]!.start, newRung)
+  }
+  if (targets.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Selected rung is absent or ambiguous')
+  const target = targets[0]!
+  if (operation.operation === 'delete_rung') return replace(xml, target.start, target.end, '')
+  const contentText = uniqueRegion(target.children, 'Text')
+  return replace(xml, contentText.start, contentText.end, `<Text>${cdata(operation.text)}</Text>`)
+}
+
+/** Every type name a change may reference: scalars plus declared types. */
+function declaredTypeNames(project: ProjectSnapshot): ReadonlySet<string> {
+  const names = new Set<string>([...SCALAR_TYPES].map(name => name.toLowerCase()))
+  for (const name of typeIndex(project.document).keys()) names.add(name)
+  return names
+}
+
+/** One prepared draft and its review data. */
+export interface PreparedChangeSet {
+  readonly xml: string
+  readonly operations: readonly Operation[]
+  readonly source_sha256: string
+  readonly draft_sha256: string
+  readonly diff: unknown
+  readonly checks: unknown
+  readonly validation: { readonly xml: string; readonly studio_import: string; readonly studio_build: string; readonly behavior: string }
+  readonly prepared: 'computed' | 'cache'
+}
+
+/** Baseline audit for one snapshot, reused by every preparation against it. */
+const baselineAudits = new WeakMap<ProjectSnapshot, { findings: readonly ChangeFinding[]; summary: unknown }>()
+/** Last full preparation per snapshot, so apply does not recompute checks and diff. */
+const preparedCache = new WeakMap<ProjectSnapshot, { key: string; result: PreparedChangeSet }>()
+
+interface ChangeFinding { readonly rule: string; readonly severity: string; readonly message: string; readonly evidence: unknown }
+
+function findingKey(finding: ChangeFinding): string { return JSON.stringify([finding.rule, finding.severity, finding.message, finding.evidence]) }
+
+function baselineAudit(project: ProjectSnapshot): { findings: readonly ChangeFinding[]; summary: unknown } {
+  const cached = baselineAudits.get(project)
+  if (cached !== undefined) return cached
+  const audit = runChecks(project) as unknown as { findings: readonly ChangeFinding[]; summary: unknown }
+  baselineAudits.set(project, audit)
+  return audit
+}
+
+/** Findings this draft adds or resolves, not the whole project audit. */
+function deltaChecks(project: ProjectSnapshot, draft: ProjectSnapshot): object {
+  const before = baselineAudit(project)
+  const after = runChecks(draft, project) as unknown as { findings: readonly ChangeFinding[]; summary: unknown }
+  const beforeKeys = new Set(before.findings.map(findingKey))
+  const afterKeys = new Set(after.findings.map(findingKey))
+  const added = after.findings.filter(finding => !beforeKeys.has(findingKey(finding)))
+  const resolved = before.findings.filter(finding => !afterKeys.has(findingKey(finding)))
+  return {
+    summary: after.summary,
+    baseline_summary: before.summary,
+    new_finding_count: added.length,
+    resolved_count: resolved.length,
+    new_findings: added.slice(0, 25),
+    truncated: added.length > 25,
+    note: 'Lists only findings this draft adds or resolves; call run_checks for the full project audit.',
+  }
+}
+
+/** Prepare every operation in memory, without writing a draft or touching Studio.
+ * @param project - Hash-verified baseline.
+ * @param request - Version-1 JSON change set.
+ * @param limits - Validated operation and draft-size limits.
+ * @returns Draft text and review data; malformed, unsupported or protected changes throw.
+ */
+export function prepareChangeSet(project: ProjectSnapshot, request: string, limits: ChangeSetLimits): PreparedChangeSet {
+  if (Buffer.byteLength(request, 'utf8') > limits.bytes) throw new EngineeringError('REQUEST_TOO_LARGE', 'Change-set request exceeds maxFileBytes')
+  if (!/<\?xml[^>]*encoding=["'](?:UTF-8|utf-8)["']/u.test(project.xml) && /<\?xml[^>]*encoding=/u.test(project.xml)) throw new EngineeringError('UNSUPPORTED_ENCODING', 'Change-set writing requires UTF-8 exports')
+  const cacheKey = `${limits.operations}:${limits.bytes}:${createHash('sha256').update(request).digest('hex')}`
+  const cached = preparedCache.get(project)
+  if (cached?.key === cacheKey) return { ...cached.result, prepared: 'cache' as const }
+  const operations = parseOperations(request, limits.operations, declaredTypeNames(project))
+  let xml = project.xml
+  const encoded = (text: string): readonly string[] => [...text.matchAll(/<EncodedData\b[^>]*>[\s\S]*?<\/EncodedData>/gu)].map(match => match[0])
+  const protectedBefore = encoded(project.xml)
+  for (const operation of operations) {
+    xml = applyOperation(xml, operation, { document: project.document })
+    if (Buffer.byteLength(xml, 'utf8') > limits.bytes) throw new EngineeringError('DRAFT_TOO_LARGE', 'Draft exceeds maxFileBytes')
+  }
+  if (xml === project.xml) throw new EngineeringError('NO_CHANGE', 'Change set does not alter the project')
+  if (JSON.stringify(encoded(xml)) !== JSON.stringify(protectedBefore)) throw new EngineeringError('PROTECTED_TARGET', 'Encoded definitions changed')
+  const document = loadL5x(xml)
+  const sha256 = createHash('sha256').update(xml).digest('hex')
+  const draft: ProjectSnapshot = { ...project, xml, document, sha256, bytes: Buffer.byteLength(xml, 'utf8') }
+  const result = { xml, operations, source_sha256: project.sha256, draft_sha256: sha256, diff: compareProjects(project, draft), checks: deltaChecks(project, draft), validation: { xml: 'passed', studio_import: 'not_run', studio_build: 'not_run', behavior: 'not_run' }, prepared: 'computed' as const }
+  preparedCache.set(project, { key: cacheKey, result })
+  return result
+}
+
+/** One changed data type as a Studio Data Type import component.
+ * @param project - Hash-verified baseline.
+ * @param request - Version-1 JSON change set holding one or more UDT operations.
+ * @returns Component L5X text plus the type-level difference; no file is written.
+ */
+export function prepareUdtComponent(project: ProjectSnapshot, request: string) {
+  if (!/<\?xml[^>]*encoding=["'](?:UTF-8|utf-8)["']/u.test(project.xml) && /<\?xml[^>]*encoding=/u.test(project.xml)) throw new EngineeringError('UNSUPPORTED_ENCODING', 'Component writing requires UTF-8 exports')
+  const operations = parseOperations(request, 100, declaredTypeNames(project))
+  const udtOperations = operations.filter(isUdtOperation)
+  if (udtOperations.length !== operations.length || udtOperations.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', 'A UDT component accepts only add_udt_member, set_udt_description and set_udt_member_description operations')
+  const target = udtOperations[0]!.udt
+  if (udtOperations.some(operation => operation.udt.toLowerCase() !== target.toLowerCase())) throw new EngineeringError('INVALID_CHANGE_SET', 'A UDT component changes exactly one data type')
+  let xml = project.xml
+  for (const operation of operations) xml = applyOperation(xml, operation, { document: project.document, allowUdtInstances: true })
+  const root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
+  const controller = uniqueRegion(root.children, 'Controller')
+  const dataTypes = uniqueRegion(controller.children, 'DataTypes')
+  const type = uniqueRegion(dataTypes.children, 'DataType', target)
+  const before = udtDetail(project.document, target)
+  const after = udtDetail(loadL5x(xml), target)
+  if (before === undefined || after === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `Data type ${target} not found`)
+  const component = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="${project.softwareRevision}" TargetName="${escape(target)}" TargetType="DataType" ContainsContext="false"><Controller Use="Context" Name="${escape(project.document.controller.name)}"><DataTypes>${xml.slice(type.start, type.end)}</DataTypes></Controller></RSLogix5000Content>\n`
+  return { xml: component, operations, udt: target, source_sha256: project.sha256,
+    component_sha256: createHash('sha256').update(component).digest('hex'),
+    changes: { before, after }, validation: { xml: 'passed', studio_import: 'not_run' as const } }
+}
+
+/** Stage a fully prepared change set into a new file, retaining proposal validation compatibility.
+ * @param ctx - Filesystem service.
+ * @param session - Calling chat's project/proposal records.
+ * @param project - Current source snapshot.
+ * @param request - Version-1 operations JSON.
+ * @param outputPath - New draft beside the source.
+ * @param expectedHash - Baseline hash reviewed during preparation.
+ * @param limits - Operation and byte limits.
+ * @param signal - Cancellation for filesystem operations.
+ * @returns Proposal identity, hash-bound changes and static validation; no SDK or controller operations.
+ */

@@ -83,6 +83,18 @@ export function optionalString(args: Readonly<Record<string, unknown>>, name: st
   return typeof value === 'string' && value !== '' ? value : undefined
 }
 
+/** An integer argument, or undefined when absent or not an integer. */
+export function optionalInteger(args: Readonly<Record<string, unknown>>, name: string): number | undefined {
+  const value = args[name]
+  return typeof value === 'number' && Number.isInteger(value) ? value : undefined
+}
+
+/** A number argument, or undefined when absent or not a finite number. */
+export function optionalNumber(args: Readonly<Record<string, unknown>>, name: string): number | undefined {
+  const value = args[name]
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
 /** The parameters object for a tool that takes no arguments but the project handle. */
 export function projectOnly(): Parameters {
   return object({ project_id: PROJECT_ID }, [])
