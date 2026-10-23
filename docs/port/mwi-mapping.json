@@ -1,0 +1,480 @@
+{
+  "source": {
+    "package": "dsh-tool-motionworks-iec",
+    "version": "0.7.0"
+  },
+  "targetRows": [
+    {
+      "id": "mwi-session",
+      "default": "on",
+      "purpose": "Find, stage, open and close the IDE project; report IDE state."
+    },
+    {
+      "id": "mwi-read",
+      "default": "on",
+      "purpose": "Read the live project model, code, help and review evidence."
+    },
+    {
+      "id": "mwi-verify",
+      "default": "on",
+      "purpose": "Compile, read diagnostics and verify a staged change."
+    },
+    {
+      "id": "mwi-edit",
+      "default": "off",
+      "purpose": "Stage edits and apply them to the staged project."
+    },
+    {
+      "id": "mwi-skill",
+      "default": "on",
+      "purpose": "The motionworks-iec guidance."
+    }
+  ],
+  "targetTools": [
+    {
+      "name": "mw_project_find",
+      "row": "mwi-session",
+      "intent": "List workspace projects and the staged copy state."
+    },
+    {
+      "name": "mw_ide_status",
+      "row": "mwi-session",
+      "intent": "Report IDE presence, project identity, active view, modals and compile state."
+    },
+    {
+      "name": "mw_ide_start",
+      "row": "mwi-session",
+      "intent": "Start or attach the IDE, resolving trial and wrapper preconditions."
+    },
+    {
+      "name": "mw_project_stage",
+      "row": "mwi-session",
+      "intent": "Copy a workspace project into the staging area and verify the copy."
+    },
+    {
+      "name": "mw_project_open",
+      "row": "mwi-session",
+      "intent": "Open the staged project; refuse a stale wrapper and repair it with consent."
+    },
+    {
+      "name": "mw_worksheet_open",
+      "row": "mwi-session",
+      "intent": "Open one code or variable worksheet by saved identity and verify the active view."
+    },
+    {
+      "name": "mw_project_close",
+      "row": "mwi-session",
+      "intent": "Close the IDE project with explicit consent."
+    },
+    {
+      "name": "mw_project_overview",
+      "row": "mwi-read",
+      "intent": "Project summary: languages, counts, tasks, warnings and coverage."
+    },
+    {
+      "name": "mw_list",
+      "row": "mwi-read",
+      "intent": "List POUs, variables, globals, types, tasks, libraries or blocks with filter and paging."
+    },
+    {
+      "name": "mw_get",
+      "row": "mwi-read",
+      "intent": "Read one POU body with declarations, one type, task, block interface or I/O map."
+    },
+    {
+      "name": "mw_search",
+      "row": "mwi-read",
+      "intent": "Find literal text across staged POU code."
+    },
+    {
+      "name": "mw_references",
+      "row": "mwi-read",
+      "intent": "Find where one symbol is read or written across POUs."
+    },
+    {
+      "name": "mw_review",
+      "row": "mwi-read",
+      "intent": "Static review: scope and type checks, bounds, unsupported constructs, graphical listing."
+    },
+    {
+      "name": "mw_help",
+      "row": "mwi-read",
+      "intent": "Search installed help and reviewed references; sync the reference index."
+    },
+    {
+      "name": "mw_compile",
+      "row": "mwi-verify",
+      "intent": "Run Make, Build or report compile state in one intent."
+    },
+    {
+      "name": "mw_diagnostics",
+      "row": "mwi-verify",
+      "intent": "Read the IDE error list and map exact text to documented causes."
+    },
+    {
+      "name": "mw_verify",
+      "row": "mwi-verify",
+      "intent": "Capture a baseline, compare saved/native state and verify a staged change."
+    },
+    {
+      "name": "mw_edit_code",
+      "row": "mwi-edit",
+      "intent": "Replace one ST or IL body using an expected body hash."
+    },
+    {
+      "name": "mw_edit_variables",
+      "row": "mwi-edit",
+      "intent": "Add, edit, delete or group one declaration through the native API."
+    },
+    {
+      "name": "mw_edit_structure",
+      "row": "mwi-edit",
+      "intent": "Create, copy, rename, delete, convert or task-assign a POU."
+    },
+    {
+      "name": "mw_insert_block",
+      "row": "mwi-edit",
+      "intent": "Insert one FB instance and its bound ST call."
+    },
+    {
+      "name": "mw_transfer_pou",
+      "row": "mwi-edit",
+      "intent": "Export one POU package and import it into the staged project."
+    },
+    {
+      "name": "mw_validate",
+      "row": "mwi-edit",
+      "intent": "Validate staged edits against the saved project before applying."
+    },
+    {
+      "name": "mw_apply",
+      "row": "mwi-edit",
+      "intent": "Write the staged edits through the IDE, save and sync back with consent."
+    }
+  ],
+  "legacy": [
+    {
+      "name": "mw_ide_pou_convert",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_ide_pou_package",
+      "disposition": "folded",
+      "target": "mw_transfer_pou"
+    },
+    {
+      "name": "mw_ide_graphical_listing",
+      "disposition": "folded",
+      "target": "mw_review"
+    },
+    {
+      "name": "mw_code_installed_help",
+      "disposition": "folded",
+      "target": "mw_help"
+    },
+    {
+      "name": "mw_ide_fb_insert",
+      "disposition": "folded",
+      "target": "mw_insert_block"
+    },
+    {
+      "name": "mw_code_block_interface",
+      "disposition": "folded",
+      "target": "mw_get"
+    },
+    {
+      "name": "mw_ide_code_change",
+      "disposition": "folded",
+      "target": "mw_edit_code"
+    },
+    {
+      "name": "mw_ide_pou_change",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_ide_task_change",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_ide_variable_change",
+      "disposition": "folded",
+      "target": "mw_edit_variables"
+    },
+    {
+      "name": "mw_ide_variable_group_change",
+      "disposition": "folded",
+      "target": "mw_edit_variables"
+    },
+    {
+      "name": "mw_ide_active_view",
+      "disposition": "folded",
+      "target": "mw_ide_status"
+    },
+    {
+      "name": "mw_ide_open_worksheet",
+      "disposition": "folded",
+      "target": "mw_worksheet_open"
+    },
+    {
+      "name": "mw_ide_variable_plan",
+      "disposition": "folded",
+      "target": "mw_validate"
+    },
+    {
+      "name": "mw_ide_variable_verify",
+      "disposition": "folded",
+      "target": "mw_verify"
+    },
+    {
+      "name": "mw_ide_edit_guide",
+      "disposition": "retired",
+      "reason": "The guidance moves into the SKILL.md body; a separate tool would duplicate it."
+    },
+    {
+      "name": "mw_ide_status",
+      "disposition": "kept",
+      "target": "mw_ide_status"
+    },
+    {
+      "name": "mw_ide_attach",
+      "disposition": "retired",
+      "reason": "Staging and opening replace direct attach so a real project tree is never opened for editing."
+    },
+    {
+      "name": "mw_project_find",
+      "disposition": "kept",
+      "target": "mw_project_find"
+    },
+    {
+      "name": "mw_ide_stage",
+      "disposition": "folded",
+      "target": "mw_project_stage"
+    },
+    {
+      "name": "mw_ide_open",
+      "disposition": "folded",
+      "target": "mw_project_open"
+    },
+    {
+      "name": "mw_ide_pous",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_ide_variables",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_ide_make",
+      "disposition": "folded",
+      "target": "mw_compile"
+    },
+    {
+      "name": "mw_ide_build",
+      "disposition": "folded",
+      "target": "mw_compile"
+    },
+    {
+      "name": "mw_ide_compile_state",
+      "disposition": "folded",
+      "target": "mw_ide_status"
+    },
+    {
+      "name": "mw_ide_save",
+      "disposition": "folded",
+      "target": "mw_apply"
+    },
+    {
+      "name": "mw_ide_errors",
+      "disposition": "folded",
+      "target": "mw_diagnostics"
+    },
+    {
+      "name": "mw_ide_start",
+      "disposition": "kept",
+      "target": "mw_ide_start"
+    },
+    {
+      "name": "mw_ide_trial",
+      "disposition": "delegated",
+      "to": "computer-use companion"
+    },
+    {
+      "name": "mw_ide_state",
+      "disposition": "folded",
+      "target": "mw_ide_status"
+    },
+    {
+      "name": "mw_ide_dialog",
+      "disposition": "delegated",
+      "to": "computer-use companion"
+    },
+    {
+      "name": "mw_ide_close",
+      "disposition": "folded",
+      "target": "mw_project_close"
+    },
+    {
+      "name": "mw_code_pous",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_types",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_library",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_reference",
+      "disposition": "folded",
+      "target": "mw_help"
+    },
+    {
+      "name": "mw_code_reference_sync",
+      "disposition": "folded",
+      "target": "mw_help"
+    },
+    {
+      "name": "mw_code_check_program",
+      "disposition": "folded",
+      "target": "mw_review"
+    },
+    {
+      "name": "mw_code_diagnose",
+      "disposition": "folded",
+      "target": "mw_diagnostics"
+    },
+    {
+      "name": "mw_code_pattern",
+      "disposition": "folded",
+      "target": "mw_help"
+    },
+    {
+      "name": "mw_code_manual",
+      "disposition": "folded",
+      "target": "mw_help"
+    },
+    {
+      "name": "mw_code_globals",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_verify_variables",
+      "disposition": "folded",
+      "target": "mw_verify"
+    },
+    {
+      "name": "mw_code_read_st",
+      "disposition": "folded",
+      "target": "mw_get"
+    },
+    {
+      "name": "mw_code_read_text",
+      "disposition": "folded",
+      "target": "mw_get"
+    },
+    {
+      "name": "mw_code_export_pou",
+      "disposition": "folded",
+      "target": "mw_get"
+    },
+    {
+      "name": "mw_code_eip_map",
+      "disposition": "folded",
+      "target": "mw_get"
+    },
+    {
+      "name": "mw_code_validate",
+      "disposition": "folded",
+      "target": "mw_review"
+    },
+    {
+      "name": "mw_workflow_check",
+      "disposition": "folded",
+      "target": "mw_project_overview"
+    },
+    {
+      "name": "mw_code_source_manifest",
+      "disposition": "folded",
+      "target": "mw_verify"
+    },
+    {
+      "name": "mw_ide_verify",
+      "disposition": "folded",
+      "target": "mw_verify"
+    },
+    {
+      "name": "mw_code_sync_back",
+      "disposition": "folded",
+      "target": "mw_apply"
+    },
+    {
+      "name": "mw_code_wrapper_binding",
+      "disposition": "folded",
+      "target": "mw_project_open"
+    },
+    {
+      "name": "mw_code_rebind_wrapper",
+      "disposition": "folded",
+      "target": "mw_project_open"
+    },
+    {
+      "name": "mw_code_task_create",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_code_task_delete",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_code_task_model",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_tasks",
+      "disposition": "folded",
+      "target": "mw_list"
+    },
+    {
+      "name": "mw_code_pou_assign",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_code_pou_unassign",
+      "disposition": "folded",
+      "target": "mw_edit_structure"
+    },
+    {
+      "name": "mw_code_unsupported",
+      "disposition": "folded",
+      "target": "mw_review"
+    },
+    {
+      "name": "mw_ide_screenshot",
+      "disposition": "delegated",
+      "to": "computer-use companion"
+    }
+  ],
+  "summary": {
+    "legacyTools": 63,
+    "targetTools": 24,
+    "kept": 3,
+    "folded": 55,
+    "retired": 2,
+    "delegated": 3
+  }
+}
