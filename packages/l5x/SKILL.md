@@ -57,7 +57,8 @@ The `l5x-studio` entry adds offline SDK work; it may be disabled. Call `studio_s
 - `verify_offline_l5x` imports a full L5X into a new offline ACD and builds it. Build needs project revision 37 or later; `probe: true` attempts a lower revision and reports the SDK error. A Studio-exported L5X builds; an L5X produced by `export_acd_to_l5x` may be refused by the SDK as "no changes".
 - `build_acd_from_draft` imports one changed RLL or ST routine into a new ACD copy, builds it and exports it. The baseline must be an L5X exported from that ACD in this chat, and neither file may change afterwards.
 - `studio_review_evidence` checks program, routine and rung or line names and verbatim quotes before you report findings.
-- Upload, mode change and download need the online entry and per-call human approval; they are not part of this surface yet.
+- `controller_approval_status` reports whether this session can ask a human. `capture_controller_snapshot`, `change_controller_mode` and `download_project` each require per-call human approval of the exact controller, route and target, and proceed only on `allowed-once`; `download_project` accepts only a `verification_id` from a passed build in this chat.
+- `go_online`, `read_controller_mode` and `read_live_tag` are read-only and need no approval. Never write controller data, force tags, toggle bits or edit online.
 
 ## Editing
 

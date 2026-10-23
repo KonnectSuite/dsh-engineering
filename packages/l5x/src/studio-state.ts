@@ -9,6 +9,21 @@
  */
 
 import type { ExecContext } from './core/tool.ts'
+import type { DownloadReview } from './engine/download-review.ts'
+
+/** One SDK build that passed and may be downloaded with its verification id. */
+export interface VerifiedBuild {
+  /** Built ACD path. */
+  readonly path: string
+  /** SHA-256 of the built ACD at verification time. */
+  readonly sha256: string
+  /** Baseline L5X the build was reviewed against. */
+  readonly baselinePath: string
+  /** Edited L5X the build imported. */
+  readonly sourcePath: string
+  /** Review recorded with the build, including both L5X hashes. */
+  readonly review: Pick<DownloadReview, 'baseline_sha256' | 'source_sha256'>
+}
 
 /** One L5X produced by `export_acd_to_l5x`, with the hashes that bind it. */
 export interface AcdExportRecord {
@@ -22,10 +37,12 @@ export interface AcdExportRecord {
   readonly l5xSha256: string
 }
 
-/** Exports, scoped to the chat that ran them. */
+/** Exports and verified builds, scoped to the chat that ran them. */
 export class StudioState {
   private readonly chats = new WeakMap<object, Map<string, AcdExportRecord>>()
   private readonly detached = new Map<string, AcdExportRecord>()
+  private readonly buildChats = new WeakMap<object, Map<string, VerifiedBuild>>()
+  private readonly detachedBuilds = new Map<string, VerifiedBuild>()
 
   /**
    * Record one export.
@@ -48,6 +65,28 @@ export class StudioState {
     return this.chatsOf(exec).get(l5xPath.toLowerCase())
   }
 
+  /**
+   * Remember one build that passed and may later be downloaded.
+   *
+   * @param exec - Calling context.
+   * @param id - Verification id returned to the caller.
+   * @param build - Build binding and its review.
+   */
+  addVerified(exec: ExecContext | undefined, id: string, build: VerifiedBuild): void {
+    this.buildsOf(exec).set(id, build)
+  }
+
+  /**
+   * The build behind one verification id, if this chat produced it.
+   *
+   * @param exec - Calling context.
+   * @param id - Verification id.
+   * @returns The verified build, or undefined.
+   */
+  verified(exec: ExecContext | undefined, id: string): VerifiedBuild | undefined {
+    return this.buildsOf(exec).get(id)
+  }
+
   /** The record map for one calling chat. */
   private chatsOf(exec: ExecContext | undefined): Map<string, AcdExportRecord> {
     const chat = exec?.chat
@@ -56,6 +95,17 @@ export class StudioState {
     if (existing !== undefined) return existing
     const created = new Map<string, AcdExportRecord>()
     this.chats.set(chat, created)
+    return created
+  }
+
+  /** The verified-build map for one calling chat. */
+  private buildsOf(exec: ExecContext | undefined): Map<string, VerifiedBuild> {
+    const chat = exec?.chat
+    if (chat === undefined) return this.detachedBuilds
+    const existing = this.buildChats.get(chat)
+    if (existing !== undefined) return existing
+    const created = new Map<string, VerifiedBuild>()
+    this.buildChats.set(chat, created)
     return created
   }
 }

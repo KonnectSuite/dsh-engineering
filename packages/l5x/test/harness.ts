@@ -31,10 +31,10 @@ export interface Harness {
  * Register the plugin with a filesystem that serves one export.
  *
  * @param source - Export bytes for every path, or one entry per resolved path.
- * @param options - Set `editing` or `studio` to mount those entries over the read entry's service.
+ * @param options - Set `editing` or `studio` to mount those entries over the read entry's service, and `approval` to provide an approval service.
  * @returns The registered definitions, written files, and a call helper.
  */
-export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean } = {}): Harness {
+export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
   const definitions: ToolDefinition[] = []
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
@@ -53,6 +53,13 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
     },
     provide(name: string, value: unknown) { services.set(name, value) },
     get(name: string) { return services.get(name) },
+  }
+  if (options.approval !== undefined) {
+    const outcome = options.approval.outcome ?? 'allowed-once'
+    services.set('approval', {
+      config: { policy: options.approval.policy },
+      async request() { return outcome },
+    })
   }
   apply(ctx, {})
   if (options.editing === true) applyEditing(ctx, {})

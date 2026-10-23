@@ -168,7 +168,7 @@ The `draft_*` rows in the table below are registered by the separate `l5x-editin
 
 Every tool that needs the local Logix Designer SDK lives here, including the supervised controller lifecycle.
 
-The pilot implements the offline half: `studio_sdk_status`, `studio_capabilities`, `export_acd_to_l5x`, `verify_offline_l5x`, `build_acd_from_draft` and `studio_review_evidence` (3,914 schema characters, off by default). The controller tools below remain unported.
+The pilot implements the offline half — `studio_sdk_status`, `studio_capabilities`, `export_acd_to_l5x`, `verify_offline_l5x`, `build_acd_from_draft`, `studio_review_evidence` — and the supervised controller tools: `controller_approval_status`, `capture_controller_snapshot`, `go_online`, `read_controller_mode`, `read_live_tag`, `change_controller_mode`, `download_project` (13 tools, 7,901 schema characters, off by default).
 
 | Tool | Intent | Notes |
 |---|---|---|
@@ -192,6 +192,8 @@ The pilot implements the offline half: `studio_sdk_status`, `studio_capabilities
 It is still the direct-ACD path worth preferring over a manual export/import round trip in Studio. The draft starts as L5X, but the result is a built ACD copy. `verify_offline_l5x` stays for whole-project L5X.
 
 Observed on 2026-10-23: a Studio-exported L5X built offline (`offline_build: passed`) on this machine. An L5X produced by `export_acd_to_l5x` was refused by the SDK on re-import with `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`, so exports remain usable for reading and provenance, while `verify_offline_l5x` should be given a Studio export or a draft export.
+
+Approval is a composition service (`approval`) with a session policy. `change_controller_mode`, `capture_controller_snapshot` and `download_project` refuse with `APPROVAL_UNAVAILABLE` before touching a controller when the policy is not `ask`, and proceed only on `allowed-once`. A download is accepted only with a `verification_id` this chat produced from a passed build, and only while the built ACD and both L5X hashes still match. The lifecycle tools need a real controller, so the port tests cover the gate and the provenance refusals rather than a live transfer.
 
 Why upload, online, mode change and download sit in this entry rather than their own: they are one supervised lifecycle. Splitting them would let a session approve a download it cannot produce, because the verification id comes from the build step.
 
@@ -390,14 +392,14 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 |---|---|
 | Model layer | The existing parser, copied unchanged into `src/model` |
 | Engines | The reference, dependency, tag-resolution and usage engines, copied into `src/engine` |
-| Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 6 offline SDK tools (3,914 characters, off by default) |
+| Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 13 tools, 7,901 characters, off by default |
 | Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 4.0 KB decision tree (budget 8 KB) |
 | Drafts | One operation per call, accumulated per chat and project; `draft_validate` prepares, `draft_apply` writes one new file and clears the draft |
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 52 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, draft accumulation, validation, application, overwrite refusal, draft handles, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION`, `NO_DRAFT`, SDK preflight, capabilities, an unchanged-routine refusal` |
+| Tests | 56 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, draft accumulation, validation, application, overwrite refusal, draft handles, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION`, `NO_DRAFT`, SDK preflight, capabilities, an unchanged-routine refusal, approval status, approval refusal, unverified download` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 
-Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio entry's offline half is ported; its controller lifecycle, the live entry and the client face remain.
+Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio entry is ported, including the supervised controller lifecycle; the live entry and the client face remain.

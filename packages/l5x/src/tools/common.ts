@@ -52,6 +52,9 @@ export function tool(spec: ToolSpec): ToolDefinition {
         ...(exec.signal === undefined ? {} : { signal: exec.signal }),
         ...(exec.agent?.session?.header?.cwd === undefined ? {} : { cwd: exec.agent.session.header.cwd }),
         ...(exec.agent?.session === undefined ? {} : { chat: exec.agent.session }),
+        ...(exec.callId === undefined ? {} : { callId: exec.callId }),
+        ...(exec.sessionId === undefined ? {} : { sessionId: exec.sessionId }),
+        ...(exec.agent === undefined ? {} : { agent: exec.agent }),
       }
       try {
         return await spec.run(args, context)

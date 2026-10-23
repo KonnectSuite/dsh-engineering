@@ -9,7 +9,7 @@
  * @module dsh-engineering-l5x/tools/studio
  */
 
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
@@ -134,6 +134,16 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat']),
         ]
         const eligible = build.offline_build === 'passed' && blockers.length === 0 && build.output_path !== null && build.output_sha256 !== null
+        const verificationId = eligible ? randomUUID() : null
+        if (verificationId !== null) {
+          state.addVerified(exec, verificationId, {
+            path: build.output_path as string,
+            sha256: build.output_sha256 as string,
+            baselinePath: baseline.path,
+            sourcePath: project.path,
+            review: { baseline_sha256: review.baseline_sha256, source_sha256: review.source_sha256 },
+          })
+        }
         return success(
           `Offline build ${build.offline_build}; ${blockers.length} blocker(s).`,
           {
@@ -145,6 +155,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
             safety_changed: review.safety_changed,
             blockers,
             download_ready: eligible,
+            verification_id: verificationId,
           },
           [],
           STUDIO_COVERAGE,
@@ -182,15 +193,33 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         const outputPath = await session.resolvePath(requiredString(args, 'output_path'), exec)
         const exportPath = await session.resolvePath(requiredString(args, 'result_export_path'), exec)
         const build = await editOfflineAcd(acdPath, draft, program, routine, outputPath, exportPath, exec.signal)
+        const review = reviewDownloadSource(baseline, draft)
+        const passed = build.offline_build === 'passed' && build.result_export_path !== null && build.output_path !== null && build.output_sha256 !== null
+        const eligible = passed && review.blockers.length === 0
+        const verificationId = eligible ? randomUUID() : null
+        if (verificationId !== null) {
+          state.addVerified(exec, verificationId, {
+            path: build.output_path as string,
+            sha256: build.output_sha256 as string,
+            baselinePath: baseline.path,
+            sourcePath: draft.path,
+            review: { baseline_sha256: review.baseline_sha256, source_sha256: review.source_sha256 },
+          })
+        }
         return success(
           `Offline ACD build ${build.offline_build}${build.failure_stage === null ? '' : ` at ${build.failure_stage}`}.`,
           {
             ...build,
-            download_ready: false,
+            change_count: review.change_count,
+            blockers: review.blockers,
+            download_ready: eligible,
+            verification_id: verificationId,
             controller_operation: 'none',
-            next_step: build.offline_build === 'passed' && build.result_export_path !== null
-              ? 'Open the result export to review it; download tools are not part of this entry yet.'
-              : 'Read the build log; the source ACD was preserved and a failed output is not verified.',
+            next_step: eligible
+              ? 'Download the built ACD with download_project and its verification_id after per-call approval.'
+              : passed
+                ? 'Read the review blockers; the build is not eligible for download.'
+                : 'Read the build log; the source ACD was preserved and a failed output is not verified.',
           },
           [],
           STUDIO_COVERAGE,

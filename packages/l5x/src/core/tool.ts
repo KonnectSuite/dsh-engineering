@@ -25,15 +25,23 @@ export interface ToolOutput {
 /** The execution context a tool receives from the registry. */
 export interface ToolExec {
   readonly signal?: AbortSignal
+  readonly callId?: unknown
+  readonly sessionId?: string
   readonly agent?: { readonly session?: { readonly header?: { readonly cwd?: string } } }
 }
 
-/** The context a tool body receives: cancellation, workspace, and chat identity. */
+/** The context a tool body receives: cancellation, workspace, chat identity and approval fields. */
 export interface ExecContext {
   readonly signal?: AbortSignal
   readonly cwd?: string
   /** The calling chat; handles are scoped to it. */
   readonly chat?: object
+  /** Registry call id, forwarded to the approval request. */
+  readonly callId?: unknown
+  /** Owning session id, used by session-owned jobs. */
+  readonly sessionId?: string
+  /** The calling agent, forwarded to the approval request. */
+  readonly agent?: unknown
 }
 
 /** A registered tool. */

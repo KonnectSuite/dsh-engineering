@@ -4,11 +4,11 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 ## Status
 
-**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, , the draft family as `l5x-editing` (off by default), and the offline SDK half as `l5x-studio` (off by default). The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
+**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, , the draft family as `l5x-editing` (off by default), and the SDK and supervised controller surface as `l5x-studio` (off by default). The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
 
 The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 
-The L5X port has started: `packages/l5x` holds the complete offline surface — eleven read tools from `open_project` through `compare_projects`, nine `draft_*` tools, six offline SDK tools, and the `rockwell-l5x` guidance — with described parameters, summary-first results and repairable failures. Its 52 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+The L5X port has started: `packages/l5x` holds the complete offline surface — eleven read tools from `open_project` through `compare_projects`, nine `draft_*` tools, thirteen SDK and controller tools, and the `rockwell-l5x` guidance — with described parameters, summary-first results and repairable failures. Its 56 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
 
 ## How the bundle composes
 

@@ -11,6 +11,7 @@
 import type { PluginContext } from './core/tool.ts'
 import { StudioState } from './studio-state.ts'
 import { studioTools } from './tools/studio.ts'
+import { controllerTools } from './tools/controller.ts'
 import type { ProjectSession } from './session.ts'
 import { PROJECTS_SERVICE } from './index.ts'
 
@@ -41,10 +42,12 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxFileBytes) || maxFileBytes <= 0) {
     throw new Error('l5x-studio: maxFileBytes must be a positive integer')
   }
-  for (const definition of studioTools(session, new StudioState())) {
+  const state = new StudioState()
+  for (const definition of [...studioTools(session, state), ...controllerTools(session, state, ctx)]) {
     ctx.tools.register(definition)
   }
 }
 
 export { StudioState } from './studio-state.ts'
 export { studioTools } from './tools/studio.ts'
+export { controllerTools } from './tools/controller.ts'
