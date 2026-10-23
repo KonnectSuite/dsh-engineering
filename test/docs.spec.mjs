@@ -60,7 +60,18 @@ test('the README policy table lists exactly the patch capabilities', () => {
 })
 
 test('every patched row id appears in the README', () => {
-  assert.ok(readme.includes(policy.id), `README omits row id ${policy.id}`)
+  for (const entry of patch) {
+    if (entry.id !== undefined) assert.ok(readme.includes(entry.id), `README omits row id ${entry.id}`)
+    for (const row of entry.insert ?? []) assert.ok(readme.includes(row.id), `README omits row id ${row.id}`)
+  }
+})
+
+test('every inserted package is a declared dependency', () => {
+  for (const entry of patch) {
+    for (const row of entry.insert ?? []) {
+      assert.ok(manifest.dependencies?.[row.name], `${row.name} is inserted but not declared in dependencies`)
+    }
+  }
 })
 
 test('the package version has a changelog heading', () => {

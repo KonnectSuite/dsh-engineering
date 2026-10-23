@@ -1,19 +1,23 @@
-# AryaAI engineering bundle - phase 1: tool exposure.
+# AryaAI engineering bundle.
 #
-# Additive by construction. This layer inserts no plugin rows and owns no id
-# another bundle already owns. It targets the existing `tool-capability-policy`
-# row and links each engineering product's tool namespace to the skill that
-# governs it, so the Skills page switch controls the guidance and the tools
-# together instead of leaving the tool schemas exposed after the skill is off.
+# Two layers live here.
 #
-# `onDemand` stays false. Arya measured bounded on-demand discovery against
-# eager exposure and kept eager exposure because discovery cost more turns than
-# the schema characters it saved. A phase-1 bundle must not change that global
-# behavior; the context gain comes from per-product switches and from trimming
-# the product schemas, not from hiding every tool behind tool_search.
+# 1. Tool exposure. Targets the existing `tool-capability-policy` row and links
+#    each engineering product's tool namespace to the skill that governs it, so
+#    the Skills page switch controls the guidance and the tools together instead
+#    of leaving the tool schemas exposed after the skill is off.
 #
-# Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
-# it here once a FactoryTalk Optix skill registers one.
+#    `onDemand` stays false. Arya measured bounded on-demand discovery against
+#    eager exposure and kept eager exposure because discovery cost more turns
+#    than the schema characters it saved. The context gain comes from per-product
+#    switches and from trimming the product schemas.
+#
+#    Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
+#    it here once a FactoryTalk Optix skill registers one.
+#
+# 2. The L5X pilot. Mounts the rebuilt offline read surface as a component of
+#    this bundle. The row id `l5x-read` is stable, so per-entry enable state
+#    survives upgrades even as the package behind it is rebuilt.
 - id: tool-capability-policy
   config:
     policyOnly: true
@@ -29,3 +33,6 @@
         - skill: motionworks-iec
           prefixes:
             - mw_
+- insert:
+    - id: l5x-read
+      name: dsh-engineering-l5x

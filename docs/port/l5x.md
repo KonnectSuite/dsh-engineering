@@ -372,7 +372,9 @@ These were open in the first draft and are settled here.
 
 ## 15. Implementation status
 
-The pilot lives in `packages/l5x` of this repository and is not mounted in any profile yet.
+The pilot lives in `packages/l5x` and the bundle mounts it as `l5x-read`; the composed config attributes the row to `dsh-engineering`. The dev profile disables the old `l5x-tools` and `l5x-skill` rows, so a transcript exercises the new surface without the old guidance.
+
+Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `project_overview`, `get_component`, `find_references`, `run_checks` and `compare_projects` exist in both, and duplicate tool names are a registry conflict. Compare surfaces in two profiles running the same tasks.
 
 | Item | State |
 |---|---|
@@ -385,15 +387,5 @@ The pilot lives in `packages/l5x` of this repository and is not mounted in any p
 | Tests | 34 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, checks, checks filters, comparison, revision floors, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNSUPPORTED_REVISION` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
-
-Mounting for a comparison: add the package to a profile dependency and insert one row in that profile's patch.
-
-```yaml
-- insert:
-    - id: l5x-read
-      name: dsh-engineering-l5x
-```
-
-Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `project_overview` and `get_component` exist in both, and duplicate tool names are a registry conflict. Compare surfaces in two profiles running the same tasks.
 
 Next tools on the same envelope: the offline read surface is complete. The reference cluster and the check/comparison pair are implemented; the draft family, the studio entry and the live entry remain.

@@ -6,19 +6,19 @@ import { load } from 'js-yaml'
 const source = readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const patch = load(source)
 const policy = patch[0]
+const inserted = patch[1]
 
-test('is exactly one id-targeted override', () => {
+test('is one id-targeted override followed by one insert block', () => {
   assert.ok(Array.isArray(patch))
-  assert.equal(patch.length, 1)
+  assert.equal(patch.length, 2)
   assert.equal(policy.id, 'tool-capability-policy')
-  assert.equal(policy.name, undefined, 'phase 1 must not insert a plugin row')
+  assert.equal(policy.name, undefined, 'the policy layer must not insert a plugin row')
   assert.equal(policy.insert, undefined)
-  assert.equal(policy.disabled, undefined)
+  assert.ok(Array.isArray(inserted.insert))
 })
 
-test('declares no inserted rows anywhere in the file', () => {
-  assert.doesNotMatch(source, /^\s*-\s*insert:/mu)
-  assert.doesNotMatch(source, /^\s{4,}name:/mu)
+test('inserts exactly the L5X pilot row', () => {
+  assert.deepEqual(inserted.insert, [{ id: 'l5x-read', name: 'dsh-engineering-l5x' }])
 })
 
 test('links each engineering prefix to a registered skill name', () => {

@@ -1,8 +1,8 @@
 /**
  * The offline read surface: open, look, and read one component.
  *
- * Every tool answers with the same document Ã¢â‚¬â€ `summary`, `data`, optional
- * `coverage`, and concrete `next` calls Ã¢â‚¬â€ and every expected failure answers
+ * Every tool answers with the same document — `summary`, `data`, optional
+ * `coverage`, and concrete `next` calls — and every expected failure answers
  * with a code, a message and a fix. The tool descriptions name the one intent
  * each tool serves; parameters carry their own meaning and an example.
  *

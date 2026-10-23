@@ -4,26 +4,27 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 ## Status
 
-**Phase 1 is functionally complete.** The bundle ships a single loader patch entry that links each engineering tool namespace to the skill that governs it. It inserts no plugin rows, so it can be added to a profile that already mounts the product plugins without duplicating a registration. The contract test and a composed-config dump verify it; the Skills-page toggle still needs a live smoke check (see Known gaps).
+**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as the `l5x-read` row. The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
 
-The product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
+The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 
-The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 34 tests pass. It is not mounted in a profile yet; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 34 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
 
 ## How the bundle composes
 
-Phase 1 adds one layer after `@deepseek-ai/dsh-web-app` and patches a row that layer already inserts:
+Phase 1 adds one layer after `@deepseek-ai/dsh-web-app`: it patches a row that layer already inserts, and mounts the L5X pilot as a component of this bundle.
 
 ```mermaid
 flowchart TB
   Profile["Profile bundle list"] --> Bundle["dsh-engineering"]
   Bundle -->|"id-targeted config override"| Policy["tool-capability-policy"]
+  Bundle -->|"insert"| Read["l5x-read<br/>offline read surface"]
   Policy -->|"l5x_* linked to"| L5X["rockwell-l5x skill"]
   Policy -->|"ftview_* linked to"| FTV["factorytalk-view skill"]
   Policy -->|"mw_* linked to"| MWI["motionworks-iec skill"]
 ```
 
-The composed config labels the row `# == @deepseek-ai/dsh-web-app, patched by dsh-engineering` and contains exactly one `tool-capability-policy` entry.
+The composed config labels the policy row `# == @deepseek-ai/dsh-web-app, patched by dsh-engineering`, contains exactly one `tool-capability-policy` entry, and carries the `l5x-read` row this bundle inserts.
 
 ## What the policy changes
 
@@ -70,7 +71,7 @@ sequenceDiagram
 ## What phase 1 does not do
 
 - It does not reduce the size of any tool schema.
-- It does not compose the product plugins; their rows still come from their own bundles.
+- It composes the L5X pilot only; the other product rows still come from their own bundles.
 - It does not fold the L5X ladder viewer into the L5X package.
 - It does not change a single product entry id or enable state.
 

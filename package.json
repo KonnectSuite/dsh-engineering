@@ -43,6 +43,9 @@
   "scripts": {
     "test": "node --test test/patch.spec.mjs test/docs.spec.mjs"
   },
+  "dependencies": {
+    "dsh-engineering-l5x": "workspace:*"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
     "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2"
