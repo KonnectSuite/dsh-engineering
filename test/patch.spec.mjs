@@ -30,6 +30,11 @@ test('inserts exactly the L5X pilot rows', () => {
     { id: 'ftview-edit', name: 'dsh-engineering-ftview/edit' },
     { id: 'ftview-studio', name: 'dsh-engineering-ftview/studio' },
     { id: 'ftview-viewer', name: 'dsh-engineering-ftview-viewer' },
+    { id: 'mwi-session', name: 'dsh-engineering-mwi' },
+    { id: 'mwi-read', name: 'dsh-engineering-mwi/read' },
+    { id: 'mwi-read-skill', name: 'dsh-engineering-mwi/skill' },
+    { id: 'mwi-verify', name: 'dsh-engineering-mwi/verify' },
+    { id: 'mwi-edit', name: 'dsh-engineering-mwi/edit', disabled: true },
   ])
 })
 

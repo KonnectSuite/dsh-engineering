@@ -34,6 +34,11 @@ survives upgrades even when the implementation behind a row changes.
 | `ftview-edit` | `dsh-engineering-ftview/edit` | on | Five tools that stage display and tag edits and apply them to a new folder |
 | `ftview-studio` | `dsh-engineering-ftview/studio` | on | Studio discovery, changed-file preflight and the manual import plan |
 | `ftview-viewer` | `dsh-engineering-ftview-viewer` | on | The ME display preview client face |
+| `mwi-session` | `dsh-engineering-mwi` | on | Seven session tools: find, stage, open, start, inspect, worksheet and close |
+| `mwi-read` | `dsh-engineering-mwi/read` | on | Seven saved-project read tools: overview, list, get, search, references, review and help |
+| `mwi-read-skill` | `dsh-engineering-mwi/skill` | on | The `motionworks-iec` guidance |
+| `mwi-verify` | `dsh-engineering-mwi/verify` | on | Three tools: compile, diagnostics and saved-source baselines |
+| `mwi-edit` | `dsh-engineering-mwi/edit` | off | Seven tools: code, declarations, structure, block insertion, POU packages, validation and apply |
 
 The heavy surfaces are separate rows on purpose: a read-only profile pays for the read tools and
 nothing else. The viewers are independent of the tools, so switching L5X tools off does not remove

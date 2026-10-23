@@ -26,6 +26,9 @@ importers:
       dsh-engineering-l5x-viewer:
         specifier: workspace:*
         version: link:packages/viewer
+      dsh-engineering-mwi:
+        specifier: workspace:*
+        version: link:packages/mwi
     devDependencies:
       js-yaml:
         specifier: ^4.1.0

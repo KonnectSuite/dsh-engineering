@@ -48,7 +48,31 @@
     "ftview_apply",
     "ftview_studio_status",
     "ftview_studio_preflight",
-    "ftview_studio_handoff"
+    "ftview_studio_handoff",
+    "mw_project_find",
+    "mw_ide_status",
+    "mw_project_stage",
+    "mw_project_open",
+    "mw_ide_start",
+    "mw_worksheet_open",
+    "mw_project_close",
+    "mw_project_overview",
+    "mw_list",
+    "mw_get",
+    "mw_search",
+    "mw_references",
+    "mw_review",
+    "mw_help",
+    "mw_compile",
+    "mw_diagnostics",
+    "mw_verify",
+    "mw_edit_code",
+    "mw_edit_variables",
+    "mw_edit_structure",
+    "mw_insert_block",
+    "mw_transfer_pou",
+    "mw_validate",
+    "mw_apply"
   ],
   "groups": [
     {
@@ -158,6 +182,54 @@
         "ftview_studio_status",
         "ftview_studio_preflight",
         "ftview_studio_handoff"
+      ]
+    },
+    {
+      "product": "MotionWorks IEC",
+      "group": "MWI session",
+      "tools": [
+        "mw_project_find",
+        "mw_ide_status",
+        "mw_project_stage",
+        "mw_project_open",
+        "mw_ide_start",
+        "mw_worksheet_open",
+        "mw_project_close"
+      ]
+    },
+    {
+      "product": "MotionWorks IEC",
+      "group": "MWI read",
+      "tools": [
+        "mw_project_overview",
+        "mw_list",
+        "mw_get",
+        "mw_search",
+        "mw_references",
+        "mw_review",
+        "mw_help"
+      ]
+    },
+    {
+      "product": "MotionWorks IEC",
+      "group": "MWI verify",
+      "tools": [
+        "mw_compile",
+        "mw_diagnostics",
+        "mw_verify"
+      ]
+    },
+    {
+      "product": "MotionWorks IEC",
+      "group": "MWI edit",
+      "tools": [
+        "mw_edit_code",
+        "mw_edit_variables",
+        "mw_edit_structure",
+        "mw_insert_block",
+        "mw_transfer_pou",
+        "mw_validate",
+        "mw_apply"
       ]
     }
   ]

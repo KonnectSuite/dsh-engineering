@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0] - 2026-10-23
+
+### Added
+
+- **MotionWorks IEC rows:** `mwi-session` (find, stage, open, start, status, worksheet, close), `mwi-read` (overview, list, get, search, references, review, help), `mwi-verify` (compile, diagnostics, saved-source baselines) and `mwi-edit` (code, declarations, structure, block insertion, POU packages, validation, apply), plus the `mwi-read-skill` guidance.
+- The redesigned surface is 24 tools over the proven 32-bit COM bridge and the Python saved-model engine. It is verified live against MotionWorks IEC 3 Pro 1.19: stage, start, worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU create/delete, block insertion and a POU package export/delete/import round trip.
+- The edit row is off by default. Edits write only the staged copy and verify unrelated saved and native state.
+
+### Changed
+
+- The bundle is now 73 tools. MotionWorks IEC mounts here instead of as a separate plugin.
+
 Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.1.2] - 2026-10-23

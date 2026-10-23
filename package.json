@@ -1,7 +1,7 @@
 {
   "name": "dsh-engineering",
-  "version": "0.1.2",
-  "description": "AryaAI engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X and FactoryTalk View plugins, with skill links for Optix, MotionWorks IEC and CAD.",
+  "version": "0.2.0",
+  "description": "AryaAI engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
   "keywords": [
     "dsh",
     "deepseek-harness",
@@ -49,7 +49,8 @@
     "dsh-engineering-ftview": "workspace:*",
     "dsh-engineering-ftview-viewer": "workspace:*",
     "dsh-engineering-l5x": "workspace:*",
-    "dsh-engineering-l5x-viewer": "workspace:*"
+    "dsh-engineering-l5x-viewer": "workspace:*",
+    "dsh-engineering-mwi": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

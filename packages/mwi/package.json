@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering-mwi",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "MotionWorks IEC 3 Pro IDE tools, redesigned for the engineering bundle.",
   "type": "module",
   "exports": {
@@ -31,9 +31,12 @@
   },
   "files": [
     "SKILL.md",
+    "README.md",
     "lib/**/*.js",
     "lib/**/*.d.ts",
-    "bridge/**"
+    "bridge/**",
+    "code/**",
+    "legacy/**"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

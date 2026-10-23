@@ -26,6 +26,10 @@ import { liveTools } from '../packages/l5x/src/tools/live.ts'
 import { ftviewTools } from '../packages/ftview/src/tools.ts'
 import { editTools } from '../packages/ftview/src/edit/tools.ts'
 import { studioTools as ftviewStudioTools } from '../packages/ftview/src/studio/tools.ts'
+import { sessionTools as mwiSessionTools } from '../packages/mwi/src/tools/session.ts'
+import { readTools as mwiReadTools } from '../packages/mwi/src/tools/read.ts'
+import { verifyTools as mwiVerifyTools } from '../packages/mwi/src/tools/verify.ts'
+import { editTools as mwiEditTools } from '../packages/mwi/src/tools/edit.ts'
 import type { Parameters } from '../packages/l5x/src/core/params.ts'
 import type { ToolDefinition } from '../packages/l5x/src/core/tool.ts'
 
@@ -39,13 +43,13 @@ export interface ToolRow {
 /** One section of the reference. */
 export interface ToolGroup {
   readonly group: string
-  readonly product: 'L5X' | 'FactoryTalk View'
+  readonly product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC'
   readonly blurb: string
   readonly tools: readonly ToolRow[]
 }
 
 /** Group metadata, in registration order. */
-const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View'; blurb: string }[] = [
+const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC'; blurb: string }[] = [
   { group: 'L5X read', product: 'L5X', blurb: 'Open a Studio 5000 L5X export and read its structure and components.' },
   { group: 'L5X references', product: 'L5X', blurb: 'Follow a symbol through exported logic without opening every routine.' },
   { group: 'L5X checks', product: 'L5X', blurb: 'Evidence-backed structural checks and export comparison.' },
@@ -56,6 +60,10 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View'; blu
   { group: 'FTView read', product: 'FactoryTalk View', blurb: 'Open a FactoryTalk View ME export and read displays and HMI tags.' },
   { group: 'FTView edit', product: 'FactoryTalk View', blurb: 'Stage display and tag edits. `ftview_apply` writes a new export folder and leaves the source untouched.' },
   { group: 'FTView Studio', product: 'FactoryTalk View', blurb: 'Plan the manual FactoryTalk View Studio import for changed displays.' },
+  { group: 'MWI session', product: 'MotionWorks IEC', blurb: 'Find and stage a workspace project, then start, inspect and close the IDE.' },
+  { group: 'MWI read', product: 'MotionWorks IEC', blurb: 'Read the saved project model, code, references, review evidence and installed help.' },
+  { group: 'MWI verify', product: 'MotionWorks IEC', blurb: 'Compile, read the IDE output panes and compare saved-source baselines.' },
+  { group: 'MWI edit', product: 'MotionWorks IEC', blurb: 'Off by default. Code, declarations, structure, block insertion and POU packages, each verified against saved and native state.' },
 ]
 
 const stub = {} as never
@@ -77,6 +85,10 @@ export function collectTools(): readonly ToolGroup[] {
     ['FTView read', ftviewTools(stub)],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],
+    ['MWI session', mwiSessionTools(stub)],
+    ['MWI read', mwiReadTools(stub)],
+    ['MWI verify', mwiVerifyTools(stub)],
+    ['MWI edit', mwiEditTools(stub)],
   ]
   const byGroup = new Map(source.map(([group, tools]) => [group, tools]))
   return GROUPS.map(meta => ({
