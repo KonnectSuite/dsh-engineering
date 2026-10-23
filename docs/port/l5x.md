@@ -126,13 +126,13 @@ flowchart LR
 | `l5x-studio` | SDK build, online session, supervised transfer | off | `sdk`, `allowControllerOperations` |
 | `l5x-live` | SDK-free EtherNet/IP polling and trends | off | `polling` |
 | `l5x-skill` | Decision tree and safety | on | — |
-| `l5x-client` | Trend card (the only face the old plugin registered) | independent | — |
+| `l5x-viewer` | Ladder viewer, folded in as its own package and client face | independent | — |
 
 The split follows mechanism and risk, not the product noun. Offline work needs neither Studio nor a controller. Studio work needs the local Logix Designer SDK and may transfer under approval. Polling needs neither Studio nor an ACD, and never writes.
 
 A session that only reads and drafts therefore pays for the offline schemas, not the whole product.
 
-The old plugin registered exactly one client face: the PLC trend card for `start_plc_trend`. Its `face.ts` and `Studio5000.tsx` (a Studio launcher with a two-rung ladder rail) were never imported by the client entry, so they rendered nothing and are not ported. A ladder viewer for L5X documents is new work, not a port; the FactoryTalk View display viewer belongs to the FTView port.
+The old plugin registered exactly one client face: the PLC trend card for `start_plc_trend`. Its `face.ts` and `Studio5000.tsx` (a Studio launcher with a two-rung ladder rail) were never imported by the client entry, so they rendered nothing. The real ladder viewer was the separate built-in `@deepseek-ai/dsh-client-ui-logix-project-viewer`; it is now folded into this bundle as `dsh-engineering-l5x-viewer` (row `l5x-viewer`, source copied and the built client artifact re-registered under the bundle name). The FactoryTalk View display viewer still belongs to the FTView port.
 
 The client entry never depends on `l5x-read`. Switching the tools off leaves the card mounted.
 
@@ -399,7 +399,7 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 | Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 13 tools, 7,901 characters, off by default. Live entry: 2 tools, 2,971 characters, off by default |
 | Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 6 KB decision tree (budget 8 KB) |
 | Drafts | One operation per call, accumulated per chat and project; `draft_validate` prepares, `draft_apply` writes one new file and clears the draft |
-| Client | `lib/client.js` closure-factory bundle (17.2 KB) registering the trend card for `start_plc_trend` |
+| Client | `lib/client.js` closure-factory bundle (17.2 KB) registering the trend card for `start_plc_trend`; viewer package `dsh-engineering-l5x-viewer` with its 126 KB client bundle rendering L5X ladders |
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |

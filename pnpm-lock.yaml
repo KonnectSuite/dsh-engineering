@@ -17,6 +17,9 @@ importers:
       dsh-engineering-l5x:
         specifier: workspace:*
         version: link:packages/l5x
+      dsh-engineering-l5x-viewer:
+        specifier: workspace:*
+        version: link:packages/viewer
     devDependencies:
       js-yaml:
         specifier: ^4.1.0
@@ -52,6 +55,15 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.12(@types/node@22.20.5)(vite@8.3.5(@types/node@22.20.5))
+
+  packages/viewer:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
 packages:
 

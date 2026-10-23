@@ -51,3 +51,6 @@
     - id: l5x-live
       name: dsh-engineering-l5x/live
       disabled: true
+    # The ladder viewer is the bundle's own client face, independent of the tools.
+    - id: l5x-viewer
+      name: dsh-engineering-l5x-viewer
