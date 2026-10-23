@@ -4,11 +4,11 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 ## Status
 
-**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as the `l5x-read` row. The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
+**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read` and its `rockwell-l5x` guidance as `l5x-read-skill`. The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
 
 The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 
-The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 34 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 41 tests pass. The dev profile mounts it as `l5x-read`; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
 
 ## How the bundle composes
 
@@ -19,12 +19,13 @@ flowchart TB
   Profile["Profile bundle list"] --> Bundle["dsh-engineering"]
   Bundle -->|"id-targeted config override"| Policy["tool-capability-policy"]
   Bundle -->|"insert"| Read["l5x-read<br/>offline read surface"]
+  Bundle -->|"insert"| Skill["l5x-read-skill<br/>rockwell-l5x guidance"]
   Policy -->|"l5x_* linked to"| L5X["rockwell-l5x skill"]
   Policy -->|"ftview_* linked to"| FTV["factorytalk-view skill"]
   Policy -->|"mw_* linked to"| MWI["motionworks-iec skill"]
 ```
 
-The composed config labels the policy row `# == @deepseek-ai/dsh-web-app, patched by dsh-engineering`, contains exactly one `tool-capability-policy` entry, and carries the `l5x-read` row this bundle inserts.
+The composed config labels the policy row `# == @deepseek-ai/dsh-web-app, patched by dsh-engineering`, contains exactly one `tool-capability-policy` entry, and carries the `l5x-read` and `l5x-read-skill` rows this bundle inserts.
 
 ## What the policy changes
 
@@ -120,11 +121,11 @@ Porting the products changes one package boundary at a time; the bundle becomes 
 
 ```mermaid
 flowchart LR
-  Bundle["dsh-engineering<br/>bundle + policy + skills"] --> L5X["l5x<br/>tools · skill · analysis · client"]
-  Bundle --> FTV["factorytalk-view<br/>tools · skill · client"]
+  Bundle["dsh-engineering<br/>bundle + policy + skills"] --> L5X["l5x<br/>tools Â· skill Â· analysis Â· client"]
+  Bundle --> FTV["factorytalk-view<br/>tools Â· skill Â· client"]
   Bundle --> OPT["factorytalk-optix<br/>tools"]
-  Bundle --> MWI["motionworks-iec<br/>tools · skill"]
-  Bundle --> CAD["cad<br/>drawings · tools · client"]
+  Bundle --> MWI["motionworks-iec<br/>tools Â· skill"]
+  Bundle --> CAD["cad<br/>drawings Â· tools Â· client"]
   Bundle --> CORE["core<br/>library, registers nothing"]
 ```
 

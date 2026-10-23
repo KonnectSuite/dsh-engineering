@@ -67,9 +67,11 @@ test('every patched row id appears in the README', () => {
 })
 
 test('every inserted package is a declared dependency', () => {
+  const packageOf = name => name.startsWith('@') ? name.split('/').slice(0, 2).join('/') : name.split('/')[0]
   for (const entry of patch) {
     for (const row of entry.insert ?? []) {
-      assert.ok(manifest.dependencies?.[row.name], `${row.name} is inserted but not declared in dependencies`)
+      const name = packageOf(row.name)
+      assert.ok(manifest.dependencies?.[name], `${row.name} is inserted but ${name} is not declared in dependencies`)
     }
   }
 })

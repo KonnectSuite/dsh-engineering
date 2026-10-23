@@ -7,10 +7,22 @@
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./skill": {
+      "types": "./lib/skill.d.ts",
+      "default": "./lib/skill.js"
+    },
+    "./package.json": "./package.json"
+  },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
   },
   "files": [
+    "SKILL.md",
     "lib/**/*.js",
     "lib/**/*.d.ts"
   ],

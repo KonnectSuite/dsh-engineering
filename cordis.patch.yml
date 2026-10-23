@@ -15,9 +15,9 @@
 #    Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
 #    it here once a FactoryTalk Optix skill registers one.
 #
-# 2. The L5X pilot. Mounts the rebuilt offline read surface as a component of
-#    this bundle. The row id `l5x-read` is stable, so per-entry enable state
-#    survives upgrades even as the package behind it is rebuilt.
+# 2. The L5X pilot. Mounts the rebuilt offline read surface and its guidance as
+#    components of this bundle. The row ids are stable, so per-entry enable
+#    state survives upgrades even as the package behind them is rebuilt.
 - id: tool-capability-policy
   config:
     policyOnly: true
@@ -36,3 +36,5 @@
 - insert:
     - id: l5x-read
       name: dsh-engineering-l5x
+    - id: l5x-read-skill
+      name: dsh-engineering-l5x/skill

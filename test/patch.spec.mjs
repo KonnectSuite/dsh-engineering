@@ -17,8 +17,11 @@ test('is one id-targeted override followed by one insert block', () => {
   assert.ok(Array.isArray(inserted.insert))
 })
 
-test('inserts exactly the L5X pilot row', () => {
-  assert.deepEqual(inserted.insert, [{ id: 'l5x-read', name: 'dsh-engineering-l5x' }])
+test('inserts exactly the L5X pilot rows', () => {
+  assert.deepEqual(inserted.insert, [
+    { id: 'l5x-read', name: 'dsh-engineering-l5x' },
+    { id: 'l5x-read-skill', name: 'dsh-engineering-l5x/skill' },
+  ])
 })
 
 test('links each engineering prefix to a registered skill name', () => {
