@@ -18,7 +18,11 @@
                     "./edit":  {
                                    "types":  "./lib/edit.d.ts",
                                    "default":  "./lib/edit.js"
-                               }
+                               },
+                    "./studio":  {
+                                     "types":  "./lib/studio.d.ts",
+                                     "default":  "./lib/studio.js"
+                                 }
                 },
     "engines":  {
                     "node":  "^22.19.0 || \u003e=24.0.0"

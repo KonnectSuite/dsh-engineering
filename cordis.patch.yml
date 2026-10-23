@@ -65,6 +65,9 @@
     - id: ftview-edit
       name: dsh-engineering-ftview/edit
       disabled: true
+    - id: ftview-studio
+      name: dsh-engineering-ftview/studio
+      disabled: true
     - id: ftview-viewer
       name: dsh-engineering-ftview-viewer
       disabled: true

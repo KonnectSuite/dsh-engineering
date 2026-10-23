@@ -29,7 +29,7 @@ export class ViewSession {
    * @param maxViews - Most export folders one chat retains.
    */
   constructor(
-    private readonly fs: FsService,
+    readonly fs: FsService,
     private readonly maxFiles: number,
     private readonly maxViews = 2,
   ) {}

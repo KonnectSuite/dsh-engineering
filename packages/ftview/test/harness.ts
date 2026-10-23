@@ -1,5 +1,6 @@
 import { apply, type ToolDefinition } from '../src/index.ts'
 import { apply as applyEdit } from '../src/edit.ts'
+import { apply as applyStudio } from '../src/studio.ts'
 
 /** The subset of the envelope a test asserts against. */
 export interface Envelope {
@@ -23,7 +24,7 @@ export interface Harness {
  * @param files - Absolute-style path to file text.
  * @returns The registered definitions and a call helper.
  */
-export function harness(files: ReadonlyMap<string, string>, options: { edit?: boolean } = {}): Harness {
+export function harness(files: ReadonlyMap<string, string>, options: { edit?: boolean; studio?: boolean } = {}): Harness {
   const definitions: ToolDefinition[] = []
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
@@ -61,6 +62,7 @@ export function harness(files: ReadonlyMap<string, string>, options: { edit?: bo
   }
   apply(ctx, {})
   if (options.edit === true) applyEdit(ctx, {})
+  if (options.studio === true) applyStudio(ctx, {})
   const byName = new Map(definitions.map(definition => [definition.name, definition]))
   return {
     definitions,
