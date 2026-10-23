@@ -1,0 +1,39 @@
+{
+  "name": "dsh-engineering-mwi",
+  "version": "0.1.0",
+  "description": "MotionWorks IEC 3 Pro IDE tools, redesigned for the engineering bundle.",
+  "type": "module",
+  "exports": {
+    "./skill": {
+      "types": "./lib/skill.d.ts",
+      "default": "./lib/skill.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "files": [
+    "SKILL.md",
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "bridge/**"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "license": "MIT",
+  "dsh": {
+    "component": true
+  }
+}
