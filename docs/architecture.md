@@ -50,15 +50,16 @@ mount instead of running degraded:
 | Entry | Injects |
 |---|---|
 | `dsh-engineering-l5x` | `tools`, `fs` |
-| `dsh-engineering-l5x/editing` | `tools`, `fs`, `l5xProjects` (provided by the read entry) |
-| `dsh-engineering-l5x/studio` | `tools`, `fs`, `l5xProjects` |
-| `dsh-engineering-l5x/live` | `tools`, `jobs` |
+| `dsh-engineering-l5x/editing` | `tools`, `l5xProjects` (provided by the read entry) |
+| `dsh-engineering-l5x/studio` | `tools`, `l5xProjects` |
+| `dsh-engineering-l5x/live` | `tools`, `l5xProjects` |
 | `dsh-engineering-l5x/skill` | `skills` |
 | `dsh-engineering-ftview` | `tools`, `fs` |
 | `dsh-engineering-ftview/edit` | `tools`, `fs`, `ftviewViews` (provided by the read entry) |
 | `dsh-engineering-ftview/studio` | `tools`, `fs`, `ftviewViews` |
 | `dsh-engineering-ftview/skill` | `skills` |
-| both viewers | `slots` (client only) |
+| `l5x` trend card | `slots`, `locale`, `remote` |
+| `l5x-viewer` | `slots`, `locale`, `documentPreviews`, `remote`, `remote.workspaceFiles` |
 
 The read entries provide their handle services (`l5xProjects`, `ftviewViews`) so a draft reuses the
 open export instead of reading it twice. A chat's handles are scoped to that chat.

@@ -26,7 +26,7 @@ survives upgrades even when the implementation behind a row changes.
 | `l5x-read` | `dsh-engineering-l5x` | on | Eleven offline tools: open, overview, list, read, search, references, trace, resolve, usage, checks, compare |
 | `l5x-read-skill` | `dsh-engineering-l5x/skill` | on | The `rockwell-l5x` guidance shown to the model |
 | `l5x-editing` | `dsh-engineering-l5x/editing` | off | Nine `draft_*` tools that stage edits and write one new L5X |
-| `l5x-studio` | `dsh-engineering-l5x/studio` | off | Six Logix Designer SDK tools: status, capabilities, export, verify, build, evidence |
+| `l5x-studio` | `dsh-engineering-l5x/studio` | off | Six Logix Designer SDK tools (status, capabilities, export, verify, build, evidence) and seven supervised controller tools |
 | `l5x-live` | `dsh-engineering-l5x/live` | off | Direct EtherNet/IP reads and the bounded PLC trend |
 | `l5x-viewer` | `dsh-engineering-l5x-viewer` | on | The ladder viewer client face |
 | `ftview-read` | `dsh-engineering-ftview` | on | Six read tools for a FactoryTalk View ME export |
