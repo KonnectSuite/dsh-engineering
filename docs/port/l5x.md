@@ -96,29 +96,33 @@ Successful results are pretty-printed JSON. They carry the answer and rarely the
 
 ## 5. Entry map
 
-The product splits into five entries. Only the first and the skill are on by default.
+The product splits into five entries: three tool sets, the skill, and the client. Only the offline tools and the skill are on by default.
 
 ```mermaid
 flowchart LR
   subgraph L5X["Studio 5000 L5X"]
     T["l5x-tools<br/>offline inspect and draft<br/>default on"]
-    L["l5x-live<br/>controller reads and transfer<br/>default off"]
-    S["l5x-sdk<br/>Studio SDK export and verify<br/>default off"]
+    ST["l5x-studio<br/>SDK build, online session, transfer<br/>default off"]
+    LV["l5x-live<br/>SDK-free EtherNet/IP polling<br/>default off"]
     K["l5x-skill<br/>guidance"]
     C["l5x-client<br/>ladder viewer and trend card<br/>independent"]
   end
   K -.->|capability link| T
-  K -.->|capability link| L
-  K -.->|capability link| S
+  K -.->|capability link| ST
+  K -.->|capability link| LV
 ```
 
 | Entry | Contents | Default | Config |
 |---|---|---|---|
-| `l5x-tools` | Offline reads, checks, drafts | on | `maxFileBytes`, `maxOperations`, `traceLimits` |
-| `l5x-live` | Controller reads, trends, snapshot, transfer | off | `polling`, `allowControllerOperations` |
-| `l5x-sdk` | ACD export, offline verify, import plan | off | `sdk` paths and timeouts |
+| `l5x-tools` | Offline reads, checks, drafts | on | `maxFileBytes`, `traceLimits` |
+| `l5x-studio` | SDK build, online session, supervised transfer | off | `sdk`, `allowControllerOperations` |
+| `l5x-live` | SDK-free EtherNet/IP polling and trends | off | `polling` |
 | `l5x-skill` | Decision tree and safety | on | — |
 | `l5x-client` | Ladder viewer, trend card | independent | — |
+
+The split follows mechanism and risk, not the product noun. Offline work needs neither Studio nor a controller. Studio work needs the local Logix Designer SDK and may transfer under approval. Polling needs neither Studio nor an ACD, and never writes.
+
+A session that only reads and drafts therefore pays for the offline schemas, not the whole product.
 
 The client entry never depends on `l5x-tools`. The viewer imports the isomorphic model from `./analysis`; the tools keep the Node I/O. Switching `l5x-tools` off leaves the viewer working.
 
@@ -133,7 +137,8 @@ The client entry never depends on `l5x-tools`. The viewer imports the isomorphic
 | `list_components` | Enumerate one kind | `kind`, `scope?`, `filter?`, `offset?`, `limit?` | rows with name, scope, type |
 | `get_component` | Read one component | `kind`, `name`, `scope?` | full component detail |
 | `search_logic` | Find logic text | `query`, `kind?` | rung/line matches with locations |
-| `trace` | References or dependencies | `symbol`, `mode`, `scope?`, `depth?` | readers/writers or upstream graph |
+| `find_references` | Where a symbol is read or written | `symbol`, `scope?`, `detail?` | occurrences with access, confidence, source |
+| `trace_dependencies` | What feeds a symbol | `symbol`, `depth?` | bounded upstream graph, explicit truncation |
 | `resolve_tag` | Resolve an address | `address` | alias chain, member, bit, subscript |
 | `usage_map` | Element/bit allocation | `tag`, `element?` | used/free bits |
 | `run_checks` | Engineering checks | `project_id?`, `baseline_id?`, `filters?` | findings with counts |
@@ -149,31 +154,50 @@ The client entry never depends on `l5x-tools`. The viewer imports the isomorphic
 | `draft_validate` | Validate accumulated drafts | `draft_id` | findings, stale check |
 | `draft_apply` | Write the draft | `draft_id`, `output_path` | written path, hash, report |
 
-### 6.2 `l5x-live` — opt-in
+### 6.2 `l5x-studio` — opt-in, SDK
+
+Every tool that needs the local Logix Designer SDK lives here, including the supervised controller lifecycle.
 
 | Tool | Intent | Notes |
 |---|---|---|
-| `controller_approval_status` | Can this session approve an operation | Unchanged |
-| `read_controller_mode` | Mode for an explicit controller | Unchanged |
-| `read_live_tags` | Read named scalars | Merges `read_live_tag` and `read_live_dint`; `tags` is an array of names, not JSON |
-| `poll_live_tags` | Timed sweeps | `tags` array, explicit `ip_address` and `slot` |
-| `start_plc_trend` | Background trend | Same arguments as polling |
-| `capture_controller_snapshot` | Upload an ACD | Per-call approval |
-| `change_controller_mode` | Program/Run/Test | Per-call approval |
-| `download_project` | Download a verified ACD | Per-call approval |
-| `read_project_comm_path` | Saved Linx path | Unchanged |
+| `studio_capabilities` | What this host can do | Before any Studio work; optional `project_id` checks the revision |
+| `studio_sdk_status` | Service, Linx, .NET, installed versions | Preflight |
+| `export_acd_to_l5x` | ACD to a new L5X | No controller contact |
+| `verify_offline_l5x` | Whole L5X to a new ACD, built | Build needs revision 37+; `probe` reports the refusal |
+| `build_acd_from_draft` | Draft routine to a new ACD, built and re-exported | Renamed from `edit_offline_acd` |
+| `studio_ide_import_plan` | Import plan for the visible IDE | Computer-use assisted |
+| `studio_review_evidence` | Verify source citations | Optional |
+| `controller_approval_status` | Whether this session can approve an operation | Approval policy |
+| `capture_controller_snapshot` | Upload an ACD from a controller | Per-call approval |
+| `go_online` | Open a session against a controller | Needs the matching uploaded ACD |
+| `read_controller_mode` | Read mode | Read-only |
+| `read_live_tag` | Read one scalar through the SDK session | `read_live_dint` merges here |
+| `change_controller_mode` | Program, Run or Test | Per-call approval |
+| `download_project` | Download a built ACD | Per-call approval; needs that build's verification id |
 
-`go_online` retires: read-only diagnostics are `read_live_tags`, and the SDK session adds state without adding capability. `sample_live_tags` retires into `poll_live_tags`.
+**Verdict on `edit_offline_acd`**, now `build_acd_from_draft`: it is real. It was verified locally on 2026-10-01 against a generated 5069-L320ER project and the Echo snapshot: import, build and readable preservation passed; the source ACD hash was unchanged; ~18–26 seconds per edit. It is also narrower than "edit an ACD": one existing RLL or ST routine, with new routines, tag changes, safety and protected targets refused.
 
-### 6.3 `l5x-sdk` — opt-in
+It is still the direct-ACD path worth preferring over a manual export/import round trip in Studio. The draft starts as L5X, but the result is a built ACD copy. `verify_offline_l5x` stays for whole-project L5X.
 
-`studio_sdk_status`, `export_acd_to_l5x`, `verify_offline_l5x`, `edit_offline_acd`, `studio_ide_import_plan`, `studio_review_evidence`.
+Why upload, online, mode change and download sit in this entry rather than their own: they are one supervised lifecycle. Splitting them would let a session approve a download it cannot produce, because the verification id comes from the build step.
 
-`edit_offline_acd` is the SDK's own edit path and stays separate from the draft family; the two must not both claim "edit".
+### 6.3 `l5x-live` — opt-in, no SDK
+
+| Tool | Intent | Notes |
+|---|---|---|
+| `poll_live_tags` | Timed sweeps over EtherNet/IP | `tags` array; explicit `ip_address` and `slot` |
+| `start_plc_trend` | Background trend from those samples | Job-owned; the chart reads the job stream |
+
+Two live mechanisms stay deliberately separate and differently named:
+
+- `read_live_tag` reads through the SDK session against the user's uploaded ACD, so the agent sees the same controller view as the user.
+- `poll_live_tags` reads declared scalars directly over EtherNet/IP with no Studio, no ACD and no SDK.
+
+Neither establishes that online logic matches the export. A model must not use one and claim the other's guarantees.
 
 ### 6.4 Retired names
 
-`find_references` → `trace(mode: references)`; `find_parsed_references` → `trace(mode: references, detail: parsed)` or absorbed; `trace_symbol` → `trace`; `trace_signal` → `trace(mode: dependencies)`; `analyze_project` → `project_overview(detail: coverage)`; `propose_change` → draft family (legacy path keeps it); `prepare_change_set`/`validate_change_set`/`apply_change_set` → `draft_*`; `read_live_tag`/`read_live_dint` → `read_live_tags`; `sample_live_tags` → `poll_live_tags`; `go_online` → retired.
+`find_parsed_references` → `find_references(detail: parsed)`; `trace_symbol` → `find_references`; `trace_signal` → `trace_dependencies`; `analyze_project` → `project_overview(detail: coverage)`; `propose_change` → draft family (legacy path keeps it); `prepare_change_set`/`validate_change_set`/`apply_change_set` → `draft_*`; `read_live_dint` → `read_live_tag`; `sample_live_tags` → `poll_live_tags`; `observe_logic` → retired, see §13; `edit_offline_acd` → `build_acd_from_draft`.
 
 ## 7. Contracts
 
@@ -249,7 +273,28 @@ sequenceDiagram
   A-->>M: path, hash, report
 ```
 
-A batch remains possible for scripts and tests through a separate tool, clearly marked as advanced.
+No batch tool ships in the default surface. Scripts and tests repeat `draft_*` calls. If a large multi-operation request recurs often enough to matter, a config-gated batch tool is added then, with its own schema budget — not pre-emptively.
+
+### 8.1 Supervised lifecycle
+
+Upload, edit, build, verify and download are one chain. The approval boundary sits at the two ends, and the build's verification id is what makes a download eligible.
+
+```mermaid
+sequenceDiagram
+  participant U as Engineer
+  participant H as Harness
+  participant C as Controller
+  U->>H: approve upload
+  H->>C: capture_controller_snapshot
+  C-->>H: ACD copy
+  H->>H: export_acd_to_l5x → baseline
+  H->>H: draft_* → draft_apply → reviewed L5X
+  H->>H: build_acd_from_draft → built ACD + verification id
+  U->>H: approve download
+  H->>C: download_project(verification_id)
+```
+
+Nothing in that chain may skip a step: a draft without a build has no verification id, and a build without an approval baseline is not download-eligible.
 
 ## 9. Skill and documentation
 
@@ -283,22 +328,25 @@ Unchanged and non-negotiable:
 | Errors | Every error code has a `fix`; unknown-name errors list candidates; test each refusal path |
 | Drafts | Accumulate, validate, apply, stale refusal, protected target refusal |
 | Parity | Legacy corpus unchanged |
-| Real composition | Boot a profile with only `l5x-tools`; assert no live or SDK schemas reach the model |
+| Real composition | Boot a profile with only `l5x-tools`; assert no `l5x-studio` or `l5x-live` schemas reach the model |
+| Supervised chain | A build without a baseline has no verification id; a download without a verification id refuses; approval denial fails closed |
 | Small model | 15 offline tasks against Qwen3.6 35B and DeepSeek; record success, invalid-argument rate, calls per task, wrong-tool rate |
 
 Acceptance for the small-model suite: no invalid-argument failures on well-formed tasks, and ≥ 90% first-attempt task success on the offline set.
 
-## 13. Open questions
+## 13. Decisions
 
-1. Does `trace` stay one tool with a `mode`, or split into `references` and `dependencies` if the merged schema confuses models?
-2. Is `observe_logic` a real intent or a debugging aid that should retire?
-3. Does the batch escape hatch exist at all, or do scripts call `draft_*` in a loop?
-4. How much of the SDK entry is actually used in practice? If `edit_offline_acd` is rare, it may retire.
+These were open in the first draft and are settled here.
+
+1. **References and dependencies are two tools, not one with a mode.** `find_references` answers "where is this used" (merged static and parsed evidence, `detail` selects depth); `trace_dependencies` answers "what feeds this". A `mode` enum hides the distinction behind a parameter a small model must learn; two names carry it.
+2. **`observe_logic` retires.** Its offline half is a watch plan that `get_component` and `find_references` already cover; its live half mixes an uploaded ACD, an exported L5X and optional sampling into one tool with a JSON-string tag list. Source-linked live observation is deferred as a possible future `l5x-studio` feature, not an offline tool.
+3. **No batch tool.** The draft family is one operation per call. The measured multi-operation case (72 operations) is rare and was a manual repair; a loop is acceptable, and a batch tool returns only if the workflow proves otherwise.
+4. **SDK scope is the supervised lifecycle.** `l5x-studio` owns build, online session and transfer. `edit_offline_acd` is real and stays, renamed `build_acd_from_draft`. Live polling does not need the SDK: `l5x-live` is SDK-free EtherNet/IP and cannot go online against the user's ACD.
 
 ## 14. Sequencing
 
-1. **Read surface** — `open_project` through `run_checks`, with parameters, results, and errors rebuilt. Keep old tools mounted beside the new ones in a dev profile and compare.
+1. **Read surface** — `open_project` through `run_checks`, with parameters, results, and errors rebuilt. Mount the new tools beside the current ones in a dev profile and compare transcripts on the same tasks.
 2. **Draft family** — replace the change-set JSON string; keep the old path behind a config flag until the small-model suite passes.
-3. **Live split** — move the controller tools into `l5x-live`, merge the duplicate reads.
-4. **SDK split** — move SDK tools into `l5x-sdk`.
-5. **Retire** — remove the superseded names, update the skill, publish the major version.
+3. **Entry split** — move SDK tools into `l5x-studio` and native polling into `l5x-live`, both off by default; verify the default profile no longer carries their schemas.
+4. **Retire** — remove the superseded names, rewrite the skill to the decision tree, publish the major version with an upgrade note.
+5. **Small-model gate** — the suite in §12 runs before the new surface becomes the default.
