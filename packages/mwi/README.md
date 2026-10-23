@@ -13,10 +13,12 @@ surface until the redesign flips in Phase 5. The migration design and phase orde
 | Row | Default | Tools | Status |
 |---|---|---|---|
 | `mwi-session` | on | 7 | implemented and live-verified |
-| `mwi-read` | on | 7 | next |
-| `mwi-verify` | on | 3 | planned |
+| `mwi-read` | on | 7 | implemented and live-verified |
+| `mwi-verify` | on | 3 | next |
 | `mwi-edit` | off | 7 | planned |
 | `mwi-skill` | on | the `motionworks-iec` guidance | implemented |
+
+Read tools: `mw_project_overview`, `mw_list`, `mw_get`, `mw_search`, `mw_references`, `mw_review`, `mw_help`.
 
 Session tools: `mw_project_find`, `mw_ide_status`, `mw_project_stage`, `mw_project_open`,
 `mw_ide_start`, `mw_worksheet_open`, `mw_project_close`.

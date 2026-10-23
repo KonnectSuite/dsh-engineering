@@ -53,7 +53,8 @@ The 55 folded tools do not disappear as capabilities; their behavior moves behin
 
 - Phase 0 complete: the package scaffold, shared core, typed bridge boundary, rewritten skill and contract tests.
 - Phase 1 complete and live-verified against MotionWorks IEC 3 Pro 1.19 on 2026-10-23: stage, start, status, worksheet and close ran against a copy of a real project in a temporary workspace. The trial prompt was answered, the staged project was open with `in_stage: true`, `Global_Variables` opened with unchanged modified state, and close reported `closed: true`.
-- Next: the `mwi-read` row over the engine's saved-model verbs and the bridge's live reads.
+- Phase 2 complete and live-verified on the same staged project: overview counts (1 POU, 76 globals, 201 types, 5 task rows), POU read, search, references, review with 0 blockers, and a reviewed-references help search all answered from the real saved model.
+- Next: the `mwi-verify` row (compile, diagnostics, verification).
 
 ## Target surface
 

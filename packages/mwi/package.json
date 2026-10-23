@@ -12,7 +12,11 @@
       "types": "./lib/skill.d.ts",
       "default": "./lib/skill.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./read": {
+      "types": "./lib/read.d.ts",
+      "default": "./lib/read.js"
+    }
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"

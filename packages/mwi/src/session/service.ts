@@ -16,6 +16,7 @@ import { CodeEngine } from '../core/code-engine.ts'
 import { MwiError } from '../core/errors.ts'
 import { PowerShellBridgeTransport } from '../core/ps-bridge.ts'
 import { StageService, type StageOptions, type StageRecord } from './stage.ts'
+import { ReadService } from '../read/service.ts'
 import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
 
 /** The bridge directory shipped with this package. */
@@ -51,6 +52,8 @@ export interface SessionRuntime {
   close(options: { userApproved: boolean; expectedProject?: string }): Promise<Record<string, unknown>>
   /** The stage record for a path, when it is staged. */
   stagedAt(path: string): StageRecord | undefined
+  /** Saved-project reads over the code engine. */
+  readonly reads: ReadService
 }
 
 /** A workspace runtime over the real bridge and engine. */
@@ -58,6 +61,8 @@ export class PowerShellSessionRuntime implements SessionRuntime {
   private readonly bridge: Bridge
   private readonly engine: CodeEngine
   private readonly stages: StageService
+  /** Saved-project reads. */
+  readonly reads: ReadService
 
   /**
    * @param workspace - Absolute workspace root.
@@ -70,6 +75,7 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     }))
     this.engine = new CodeEngine({ workspace, stageRoot: stageRootOf(workspace), codeDir: CODE_DIR })
     this.stages = new StageService(this.engine, workspace)
+    this.reads = new ReadService(this.engine)
   }
 
   /** @returns The bridge's status document. */
