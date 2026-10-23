@@ -170,11 +170,29 @@ export interface ExecContext {
   readonly chat?: object
 }
 
+/** One text block the transcript renders. */
+export interface TextBlock {
+  readonly type: 'text'
+  readonly text: string
+}
+
+/** The output declaration every registered tool carries. */
+export interface ToolOutput {
+  readonly schema: { readonly type: 'object'; readonly additionalProperties: boolean }
+  render(args: unknown, value: unknown): readonly TextBlock[]
+}
+
+/** Render one tool answer as JSON text for the transcript. */
+function jsonText(_args: unknown, value: unknown): readonly TextBlock[] {
+  return [{ type: 'text', text: JSON.stringify(value, null, 2) }]
+}
+
 /** One registered tool. */
 export interface ToolDefinition {
   readonly name: string
   readonly description: string
   readonly parameters: Parameters
+  readonly output: ToolOutput
   execute(args: Readonly<Record<string, unknown>>, exec: ExecContext): Promise<unknown>
 }
 
@@ -197,6 +215,7 @@ export function tool(spec: ToolSpec): ToolDefinition {
     name: spec.name,
     description: spec.description,
     parameters: spec.parameters,
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
     async execute(args, exec) {
       try {
         return await spec.run(args, exec)

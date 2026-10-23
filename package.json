@@ -44,10 +44,10 @@
     "test": "node --test test/patch.spec.mjs test/docs.spec.mjs"
   },
   "dependencies": {
-    "dsh-engineering-ftview": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.1.0/dsh-engineering-ftview-0.1.0.tgz",
-    "dsh-engineering-ftview-viewer": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.1.0/dsh-engineering-ftview-viewer-0.1.0.tgz",
-    "dsh-engineering-l5x": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.1.0/dsh-engineering-l5x-0.1.0.tgz",
-    "dsh-engineering-l5x-viewer": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.1.0/dsh-engineering-l5x-viewer-0.1.0.tgz"
+    "dsh-engineering-ftview": "workspace:*",
+    "dsh-engineering-ftview-viewer": "workspace:*",
+    "dsh-engineering-l5x": "workspace:*",
+    "dsh-engineering-l5x-viewer": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
