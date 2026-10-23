@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering-l5x-viewer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Offline Studio 5000 L5X project browser and ladder view, folded into the engineering bundle.",
   "type": "module",
   "main": "lib/index.js",

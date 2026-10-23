@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering-ftview",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FactoryTalk View ME export analysis, redesigned for the engineering bundle.",
   "type": "module",
   "main": "lib/index.js",

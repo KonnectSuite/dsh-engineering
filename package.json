@@ -1,6 +1,6 @@
 {
   "name": "dsh-engineering",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AryaAI engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View, FactoryTalk Optix, MotionWorks IEC and CAD plugins.",
   "keywords": [
     "dsh",
