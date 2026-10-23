@@ -4,6 +4,9 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+- Retire the old L5X plugin from the dev profile: `dsh-tool-l5x` is removed from its dependencies and its `l5x-tools` and `l5x-skill` patch rows are gone. The composed profile carries only this bundle's rows.
+- Verified live after the retirement: the session listed the eleven read tools and the new `rockwell-l5x` description, with no `l5x_*` tool and no old skill text.
+
 - Port the client face: the PLC trend card (`lib/client.js`, 17.2 KB closure-factory bundle) registered for `start_plc_trend`, with its locales, styles and trend model. The card mounts independently of every tool row.
 - Record that the old plugin's `face.ts` and `Studio5000.tsx` were dead code — never imported by its client entry — so the two-rung ladder rail is not a ported feature. A ladder viewer for L5X documents would be new work.
 - Add `dsh.client` metadata, a `tsdown.client.config.ts` bundle with the package name as its registration id, and the host build now emits both halves.

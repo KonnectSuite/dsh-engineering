@@ -4,7 +4,9 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 ## Status
 
-**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, , the draft family as `l5x-editing` (off by default), and the SDK and supervised controller surface as `l5x-studio` and the live reads as `l5x-live` (both off by default). The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
+The old L5X plugin is retired from the dev profile: the new bundle is the only L5X surface there, and a live session lists the eleven read tools with the new `rockwell-l5x` guidance and no `l5x_*` tool.
+
+**Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, the draft family as `l5x-editing` (off by default), and the SDK and supervised controller surface as `l5x-studio` and the live reads as `l5x-live` (both off by default). The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
 
 The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 

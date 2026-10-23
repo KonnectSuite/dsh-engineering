@@ -407,4 +407,6 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 
-Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio and live entries are ported, and the client trend card ships as its own bundle. The retirement of the old bundles remains.
+Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio and live entries are ported, the client trend card ships as its own bundle, and the old L5X plugin is retired from the dev profile. The installer flip and the installed-profile migration remain.
+
+The dev profile is retired: `dsh-tool-l5x` is removed from its dependencies, its `l5x-tools` and `l5x-skill` patch entries are gone, and the composed profile carries only this bundle's rows. A live session then listed the eleven read tools and the new `rockwell-l5x` description, with no `l5x_*` tool present.
