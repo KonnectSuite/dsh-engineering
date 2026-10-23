@@ -47,13 +47,24 @@ This surface reads and drafts. A draft writes only a new L5X file: it never over
 ## Revisions
 
 - Reading accepts any export revision 19 or later. Revisions outside the observed matrix open and report `verification: "untested_revision"`.
-- Reading never needs Studio 5000. Build, import and controller transfer are not part of this surface.
+- Reading never needs Studio 5000. The studio entry runs offline import and build; controller transfer is not part of this surface yet.
+
+## Studio
+
+The `l5x-studio` entry adds offline SDK work; it may be disabled. Call `studio_sdk_status` before using it.
+
+- `export_acd_to_l5x` writes one new full L5X from an ACD. No controller contact.
+- `verify_offline_l5x` imports a full L5X into a new offline ACD and builds it. Build needs project revision 37 or later; `probe: true` attempts a lower revision and reports the SDK error. A Studio-exported L5X builds; an L5X produced by `export_acd_to_l5x` may be refused by the SDK as "no changes".
+- `build_acd_from_draft` imports one changed RLL or ST routine into a new ACD copy, builds it and exports it. The baseline must be an L5X exported from that ACD in this chat, and neither file may change afterwards.
+- `studio_review_evidence` checks program, routine and rung or line names and verbatim quotes before you report findings.
+- Upload, mode change and download need the online entry and per-call human approval; they are not part of this surface yet.
+
 ## Editing
 
-Editing uses the draft_* family. It may be disabled in this profile; if a draft tool is unavailable, say editing is not enabled here rather than trying another tool.
+Editing uses the `draft_*` family. It may be disabled in this profile; if a draft tool is unavailable, say editing is not enabled here rather than trying another tool.
 
-- One operation per call: draft_rung, draft_st, draft_routine, draft_tag, draft_tag_description, draft_udt_member, draft_udt_description. Each returns the draft id and the operation count.
-- draft_validate prepares the accumulated draft against the project and returns its hash, diff summary and check findings. Read the findings before applying.
-- draft_apply writes the draft to ONE new .L5X path. It never overwrites an existing file.
-- After applying, reopen the written file with open_project to review it.
+- One operation per call: `draft_rung`, `draft_st`, `draft_routine`, `draft_tag`, `draft_tag_description`, `draft_udt_member`, `draft_udt_description`. Each returns the draft id and the operation count.
+- `draft_validate` prepares the accumulated draft against the project and returns its hash, diff summary and check findings. Read the findings before applying.
+- `draft_apply` writes the draft to ONE new `.L5X` path. It never overwrites an existing file.
+- After applying, reopen the written file with `open_project` to review it.
 - Drafts belong to this chat. Another chat starts with none, and an applied draft is cleared.

@@ -191,6 +191,20 @@ export class ProjectSession {
   }
 
   /**
+   * Resolve one path through the filesystem provider without reading it.
+   *
+   * @param requestedPath - Path as the caller supplied it.
+   * @param exec - Calling context: cancellation and workspace root.
+   * @returns The resolved path.
+   */
+  async resolvePath(requestedPath: string, exec?: ExecContext): Promise<string> {
+    return await this.fs.resolve(requestedPath, {
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
+    })
+  }
+
+  /**
    * Write one prepared draft to a new path, never overwriting.
    *
    * @param outputPath - Destination as the caller supplied it.

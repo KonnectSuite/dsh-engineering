@@ -20,6 +20,10 @@
       "types": "./lib/editing.d.ts",
       "default": "./lib/editing.js"
     },
+    "./studio": {
+      "types": "./lib/studio.d.ts",
+      "default": "./lib/studio.js"
+    },
     "./package.json": "./package.json"
   },
   "engines": {
@@ -27,6 +31,9 @@
   },
   "files": [
     "SKILL.md",
+    "studio-bridge/**/*.cs",
+    "studio-bridge/*.csproj",
+    "studio-bridge/NuGet.Config",
     "lib/**/*.js",
     "lib/**/*.d.ts"
   ],

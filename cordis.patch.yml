@@ -43,3 +43,7 @@
     - id: l5x-editing
       name: dsh-engineering-l5x/editing
       disabled: true
+    # The SDK entry needs Studio 5000 installed, so it stays off until asked for.
+    - id: l5x-studio
+      name: dsh-engineering-l5x/studio
+      disabled: true
