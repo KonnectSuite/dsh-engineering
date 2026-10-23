@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="SyntheticController" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <DataTypes>
+      <DataType Name="DriveType" Family="NoFamily"><Members><Member Name="RunCmd" DataType="BOOL"/></Members></DataType>
+    </DataTypes>
+    <Modules><Module Name="OutputCard" CatalogNumber="1756-OB16" ParentModule="Local" ParentModPortId="1" Major="1" Minor="0" Inhibited="false"><Ports><Port Id="1" Address="2" Type="Backplane" Upstream="false"/></Ports></Module></Modules>
+    <Tags>
+      <Tag Name="Drive" TagType="Base" DataType="DriveType"/>
+      <Tag Name="Start" TagType="Base" DataType="BOOL"/>
+      <Tag Name="RunAlias" TagType="Alias" AliasFor="Drive.RunCmd" DataType="BOOL"/>
+    </Tags>
+    <Programs>
+      <Program Name="Main" MainRoutineName="Ladder">
+        <Tags><Tag Name="Local" TagType="Base" DataType="BOOL"/></Tags>
+        <Routines>
+          <Routine Name="Ladder" Type="RLL"><RLLContent>
+            <Rung Number="0" Type="N"><Text><![CDATA[XIC(Start)OTE(RunAlias);]]></Text></Rung>
+          </RLLContent></Routine>
+          <Routine Name="Diagram" Type="FBD"><FBDContent><Sheet Number="0">
+            <IRef ID="1" Operand="Start"/><ORef ID="2" Operand="Drive.RunCmd"/><Wire FromID="1" ToID="2"/>
+          </Sheet></FBDContent></Routine>
+          <Routine Name="Chart" Type="SFC"><SFCContent><Sheet Number="0">
+            <Step ID="1" Operand="Local"/><Transition ID="2" Operand="Start"><Condition><STContent><Line Number="0"><![CDATA[Start]]></Line></STContent></Condition></Transition><DirectedLink FromID="1" ToID="2"/>
+          </Sheet></SFCContent></Routine>
+        </Routines>
+      </Program>
+    </Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+    <TagBasedAlarms><TagBasedAlarm Name="ExampleAlarm" Description="Synthetic alarm"/></TagBasedAlarms>
+  </Controller>
+</RSLogix5000Content>

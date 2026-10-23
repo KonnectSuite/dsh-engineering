@@ -69,6 +69,12 @@ A failure returns `{"error": "..."}`. The text is often precise (`UNKNOWN_PROJEC
 
 Successful results are pretty-printed JSON. They carry the answer and rarely the next step. The MCP returned a summary a model could read and act on; the port returns a document a model must interpret.
 
+### 2.7 No discovery surface
+
+The 43-tool surface has no tool that lists tags, UDTs, routines, AOIs or modules. `get_component` requires an exact name, and `project_overview` returns counts plus program and task names only. The listing tools — `get_tags`, `get_udts`, `get_routines`, `get_aois`, `list_modules` — exist only in the legacy twelve-tool API.
+
+A model that does not already know a tag name must guess it, search logic text, or read the file outside the conversation. The MCP exposed the inventory; the port dropped it and added analysis tools that assume the names are known.
+
 ## 3. Root causes, ranked
 
 1. **Ambiguous inventory.** Two or more tools answer the same question, so tool selection becomes a guess.
@@ -78,6 +84,7 @@ Successful results are pretty-printed JSON. They carry the answer and rarely the
 5. **No recovery path.** A wrong call produces a dead end rather than a correction.
 6. **Description bulk.** Nineteen percent of the schema budget is one operation contract repeated three times.
 7. **Everything is always loaded.** Live controller and SDK tools cost the same attention as reading a tag, even in a session that will never touch a controller.
+8. **The inventory is not exposed.** Tags, UDTs, routines and modules cannot be listed, so names are guessed; every guess is a failed call.
 
 ## 4. Design rules
 
@@ -350,3 +357,30 @@ These were open in the first draft and are settled here.
 3. **Entry split** — move SDK tools into `l5x-studio` and native polling into `l5x-live`, both off by default; verify the default profile no longer carries their schemas.
 4. **Retire** — remove the superseded names, rewrite the skill to the decision tree, publish the major version with an upgrade note.
 5. **Small-model gate** — the suite in §12 runs before the new surface becomes the default.
+
+## 15. Implementation status
+
+The pilot lives in `packages/l5x` of this repository and is not mounted in any profile yet.
+
+| Item | State |
+|---|---|
+| Model layer | The existing parser, copied unchanged into `src/model` |
+| Tools | `open_project`, `project_overview`, `list_components`, `get_component` |
+| Schema budget | 4 tools, 2,431 characters, 12 of 12 parameters described |
+| Result contract | `summary`, `data`, optional `coverage`, `next` |
+| Failure contract | `code`, `message`, `fix`, `candidates` |
+| Tests | 13 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT` |
+
+`list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
+
+Mounting for a comparison: add the package to a profile dependency and insert one row in that profile's patch.
+
+```yaml
+- insert:
+    - id: l5x-read
+      name: dsh-engineering-l5x
+```
+
+Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `project_overview` and `get_component` exist in both, and duplicate tool names are a registry conflict. Compare surfaces in two profiles running the same tasks.
+
+Next tools on the same envelope: `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects`.
