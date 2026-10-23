@@ -199,6 +199,8 @@ Why upload, online, mode change and download sit in this entry rather than their
 
 ### 6.3 `l5x-live` — opt-in, no SDK
 
+The pilot implements both tools: `poll_live_tags` and `start_plc_trend`, 2,971 schema characters, off by default. Reads use the package's polling worker and its own EtherNet/IP connection; the trend is a session-owned job.
+
 | Tool | Intent | Notes |
 |---|---|---|
 | `poll_live_tags` | Timed sweeps over EtherNet/IP | `tags` array; explicit `ip_address` and `slot` |
@@ -392,14 +394,14 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 |---|---|
 | Model layer | The existing parser, copied unchanged into `src/model` |
 | Engines | The reference, dependency, tag-resolution and usage engines, copied into `src/engine` |
-| Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 13 tools, 7,901 characters, off by default |
+| Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 13 tools, 7,901 characters, off by default. Live entry: 2 tools, 2,971 characters, off by default |
 | Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 4.0 KB decision tree (budget 8 KB) |
 | Drafts | One operation per call, accumulated per chat and project; `draft_validate` prepares, `draft_apply` writes one new file and clears the draft |
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 56 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, draft accumulation, validation, application, overwrite refusal, draft handles, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION`, `NO_DRAFT`, SDK preflight, capabilities, an unchanged-routine refusal, approval status, approval refusal, unverified download` |
+| Tests | 60 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, skill registration and body budget, draft accumulation, validation, application, overwrite refusal, draft handles, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION`, `NO_DRAFT`, SDK preflight, capabilities, an unchanged-routine refusal, approval status, approval refusal, unverified download, live registration, poll validation, a JSON-string refusal, the trend job refusal` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 
-Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio entry is ported, including the supervised controller lifecycle; the live entry and the client face remain.
+Next tools on the same envelope: the offline surface is complete, including drafting, which is mounted as its own entry because nine draft schemas cost 7,233 characters a read-only session would otherwise pay. The studio and live entries are ported. The client face and the retirement of the old bundles remain.

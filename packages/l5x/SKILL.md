@@ -37,6 +37,15 @@ This surface reads and drafts. A draft writes only a new L5X file: it never over
 - `run_checks` returns findings with a rule and severity. Filter with `severity` or `rule`, page with offset and limit. Findings are candidates for engineering review, never proof of a defect or of safety.
 - `compare_projects` diffs two open exports by component. Export timestamps and XML formatting are ignored by design.
 
+## Live reads
+
+The `l5x-live` entry reads declared scalar tags straight from a controller over EtherNet/IP, without Studio 5000, FactoryTalk Linx or the SDK. It may be disabled; if `poll_live_tags` is unavailable, say live reads are not enabled rather than trying another tool.
+
+- `poll_live_tags` takes an explicit IPv4 address, a CPU slot and 1 to 16 declared scalar tags (`BOOL`, `INT`, `DINT`, `REAL`), and returns timestamped sweeps, quality and the controller identity.
+- `start_plc_trend` samples the same way as a session-owned job the chart can follow; stop it through the job controls.
+- These are read-only. Never write controller data, force tags, toggle bits or edit online.
+- Report `live_logic_matches_export: "unverified"`: the read proves a value at a moment, not that the controller runs the exported logic, and sequential reads can miss transitions.
+
 ## Reporting
 
 - Every result carries `summary`, `data`, `coverage` and `next`. Read `coverage` before claiming the answer is complete.

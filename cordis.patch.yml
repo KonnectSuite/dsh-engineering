@@ -47,3 +47,7 @@
     - id: l5x-studio
       name: dsh-engineering-l5x/studio
       disabled: true
+    # Live reads need a controller address; the row is the switch.
+    - id: l5x-live
+      name: dsh-engineering-l5x/live
+      disabled: true

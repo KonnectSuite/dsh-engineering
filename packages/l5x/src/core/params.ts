@@ -17,6 +17,8 @@ export interface ParameterSchema {
   readonly default?: unknown
   readonly minimum?: number
   readonly maximum?: number
+  readonly minItems?: number
+  readonly maxItems?: number
   readonly properties?: Readonly<Record<string, ParameterSchema>>
   readonly required?: readonly string[]
   readonly additionalProperties?: boolean
@@ -40,6 +42,11 @@ export function choice(description: string, values: readonly string[], extra: Pa
 /** An array of one parameter type. */
 export function list(description: string, items: ParameterSchema, extra: Partial<ParameterSchema> = {}): ParameterSchema {
   return { type: 'array', description, items, ...extra }
+}
+
+/** One object element of an array parameter. */
+export function objectItem(description: string, properties: Readonly<Record<string, ParameterSchema>>, required: readonly string[] = []): ParameterSchema {
+  return { type: 'object', description, properties, required, additionalProperties: false }
 }
 
 /** The `parameters` object of one tool. */

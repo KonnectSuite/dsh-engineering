@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { apply, type ToolDefinition } from '../src/index.ts'
 import { apply as applyEditing } from '../src/editing.ts'
 import { apply as applyStudio } from '../src/studio.ts'
+import { apply as applyLive } from '../src/live.ts'
 
 /** The fixture export every test opens. */
 export const fixture = new URL('./fixtures/sample.l5x', import.meta.url)
@@ -31,10 +32,10 @@ export interface Harness {
  * Register the plugin with a filesystem that serves one export.
  *
  * @param source - Export bytes for every path, or one entry per resolved path.
- * @param options - Set `editing` or `studio` to mount those entries over the read entry's service, and `approval` to provide an approval service.
+ * @param options - Set `editing`, `studio` or `live` to mount those entries over the read entry's service, and `approval` to provide an approval service.
  * @returns The registered definitions, written files, and a call helper.
  */
-export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
+export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; live?: boolean; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
   const definitions: ToolDefinition[] = []
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
@@ -64,6 +65,7 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
   apply(ctx, {})
   if (options.editing === true) applyEditing(ctx, {})
   if (options.studio === true) applyStudio(ctx, {})
+  if (options.live === true) applyLive(ctx, {})
   const byName = new Map(definitions.map(definition => [definition.name, definition]))
   return {
     definitions,
