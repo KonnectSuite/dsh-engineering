@@ -4,6 +4,9 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 
 ## [Unreleased]
 
+- Document the composed layer, the skill-to-namespace policy, the measured tool exposure, the built-in target composition, the retirement list, and the replacement-map requirement for the flip.
+- Record the classification: AryaAI's product catalog lists this bundle as AryaAI-authored with market distribution, so the Plugins page groups it under AryaAI and not Community.
+
 ## [0.1.0]
 
 - Add the engineering bundle: a phase-1, additive loader layer that targets the existing `tool-capability-policy` row and links `l5x_*`, `ftview_*` and `mw_*` to the skills that govern them.
