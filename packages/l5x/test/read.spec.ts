@@ -1,54 +1,19 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { apply, type ToolDefinition } from '../src/index.ts'
-
-const fixture = new URL('./fixtures/sample.l5x', import.meta.url)
-const fixtureBytes = (): Uint8Array => new Uint8Array(readFileSync(fixture))
-
-interface Harness {
-  readonly definitions: readonly ToolDefinition[]
-  readonly call: (name: string, args?: Record<string, unknown>) => Promise<Envelope>
-}
-
-interface Envelope {
-  readonly summary?: string
-  readonly data?: Record<string, unknown>
-  readonly coverage?: { readonly complete: boolean; readonly unverified: readonly string[] }
-  readonly next?: readonly { readonly tool: string; readonly why: string }[]
-  readonly error?: { readonly code: string; readonly message: string; readonly fix: string; readonly candidates: readonly string[] }
-}
-
-/** Register the plugin over an in-memory filesystem serving one export. */
-function harness(bytes: () => Uint8Array = fixtureBytes): Harness {
-  const definitions: ToolDefinition[] = []
-  const ctx = {
-    tools: { register(definition: ToolDefinition) { definitions.push(definition) } },
-    fs: {
-      async resolve(path: string) { return path },
-      async stat() { return { type: 'file' } },
-      async readBytes() { return bytes() },
-    },
-  }
-  apply(ctx, {})
-  const byName = new Map(definitions.map(definition => [definition.name, definition]))
-  return {
-    definitions,
-    async call(name, args = {}) {
-      const definition = byName.get(name)
-      if (definition === undefined) throw new Error(`no tool ${name}`)
-      return await definition.execute(args, {}) as Envelope
-    },
-  }
-}
+import { fixtureBytes, harness } from './harness.ts'
 
 describe('registration', () => {
-  it('registers the four offline read tools', () => {
+  it('registers the offline tools in a stable order', () => {
     const { definitions } = harness()
     expect(definitions.map(definition => definition.name)).toEqual([
       'open_project',
       'project_overview',
       'list_components',
       'get_component',
+      'search_logic',
+      'find_references',
+      'trace_dependencies',
+      'resolve_tag',
+      'usage_map',
     ])
   })
 

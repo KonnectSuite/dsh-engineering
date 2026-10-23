@@ -1,8 +1,8 @@
 /**
  * The offline read surface: open, look, and read one component.
  *
- * Every tool answers with the same document — `summary`, `data`, optional
- * `coverage`, and concrete `next` calls — and every expected failure answers
+ * Every tool answers with the same document Ã¢â‚¬â€ `summary`, `data`, optional
+ * `coverage`, and concrete `next` calls Ã¢â‚¬â€ and every expected failure answers
  * with a code, a message and a fix. The tool descriptions name the one intent
  * each tool serves; parameters carry their own meaning and an example.
  *
@@ -11,11 +11,12 @@
 
 import type { L5xDocument, L5xTag } from '../model/index.ts'
 import { getAoi, getRoutine, getUdt, listAois, listModules, listRoutines, listTags } from '../model/index.ts'
-import { L5xError, errorEnvelope } from '../core/errors.ts'
+import { L5xError } from '../core/errors.ts'
 import { success, type NextStep } from '../core/result.ts'
-import { choice, integer, object, string, type Parameters } from '../core/params.ts'
-import { jsonText, type ToolDefinition } from '../core/tool.ts'
+import { choice, integer, object, string } from '../core/params.ts'
+import type { ToolDefinition } from '../core/tool.ts'
 import type { ProjectSession } from '../session.ts'
+import { COVERAGE, PROJECT_ID, integerArg, optionalString, requiredString, tool } from './common.ts'
 
 /** Component kinds the reader can list and open. */
 const KINDS = ['program', 'task', 'tag', 'udt', 'routine', 'aoi', 'module', 'alarm'] as const
@@ -27,52 +28,6 @@ interface ComponentRow {
   readonly [field: string]: unknown
 }
 
-/** What this surface cannot establish, stated once. */
-const COVERAGE = {
-  complete: false,
-  unverified: [
-    'FBD and SFC execution semantics',
-    'dynamic indices',
-    'runtime behavior',
-    'whether online logic matches the export',
-  ],
-} as const
-
-/** The handle every read can omit when one project is open. */
-const PROJECT_ID = string(
-  'Handle returned by open_project. Omit when exactly one project is open in this chat.',
-  {},
-)
-
-/** One tool body, before the shared envelope and error handling are attached. */
-interface ToolSpec {
-  readonly name: string
-  readonly description: string
-  readonly parameters: Parameters
-  run(args: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<unknown>
-}
-
-/**
- * Attach the canonical output declaration and the failure envelope.
- *
- * @param spec - Tool name, description, parameters and body.
- * @returns A registerable tool definition.
- */
-function tool(spec: ToolSpec): ToolDefinition {
-  return {
-    name: spec.name,
-    description: spec.description,
-    parameters: spec.parameters,
-    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
-    async execute(args, exec) {
-      try {
-        return await spec.run(args, exec.signal)
-      } catch (error) {
-        return errorEnvelope(error)
-      }
-    },
-  }
-}
 
 /**
  * The offline tools, bound to one chat's project store.
@@ -183,27 +138,6 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       },
     }),
   ]
-}
-
-/** Whole-number argument with a default. */
-function integerArg(args: Readonly<Record<string, unknown>>, name: string, fallback: number): number {
-  const value = args[name]
-  return typeof value === 'number' && Number.isInteger(value) ? value : fallback
-}
-
-/** A required string argument. */
-function requiredString(args: Readonly<Record<string, unknown>>, name: string): string {
-  const value = optionalString(args, name)
-  if (value === undefined) {
-    throw new L5xError('INVALID_ARGUMENT', `${name} is required.`, `Pass ${name} as a non-empty string.`)
-  }
-  return value
-}
-
-/** A string argument, or undefined when absent or empty. */
-function optionalString(args: Readonly<Record<string, unknown>>, name: string): string | undefined {
-  const value = args[name]
-  return typeof value === 'string' && value !== '' ? value : undefined
 }
 
 /** A required component kind. */

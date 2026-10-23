@@ -1,0 +1,113 @@
+import { describe, expect, it } from 'vitest'
+import { harness, type Harness } from './harness.ts'
+
+/** Open the fixture and return the harness. */
+async function opened(): Promise<Harness> {
+  const instance = harness()
+  const open = await instance.call('open_project', { path: 'sample.l5x' })
+  expect(open.error).toBeUndefined()
+  return instance
+}
+
+describe('search_logic', () => {
+  it('finds literal text in ladder and ST logic', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('search_logic', { query: 'Motor_1' })
+    expect(found.error).toBeUndefined()
+    expect(found.data?.total).toBeTypeOf('number')
+    expect(Number(found.data?.total)).toBeGreaterThan(0)
+    expect(found.summary).toMatch(/match/u)
+  })
+
+  it('answers zero matches without failing', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('search_logic', { query: 'NoSuchOperandAnywhere' })
+    expect(found.error).toBeUndefined()
+    expect(found.data?.total).toBe(0)
+    expect(found.summary).toContain('0 matches')
+  })
+
+  it('respects the limit and says when it truncated', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('search_logic', { query: 'OT', limit: 1 })
+    const matches = found.data?.matches as unknown[]
+    expect(matches.length).toBeLessThanOrEqual(1)
+    if (Number(found.data?.total) > 1) expect(found.data?.truncated).toBe(true)
+  })
+})
+
+describe('find_references', () => {
+  it('summarizes reads, writes and unknowns by access', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('find_references', { symbol: 'Motor_1' })
+    expect(found.error).toBeUndefined()
+    expect(Number(found.data?.total)).toBeGreaterThan(0)
+    expect(found.data?.by_access).toMatchObject({ read: expect.any(Number), write: expect.any(Number) })
+    expect(found.summary).toContain('references to Motor_1')
+  })
+
+  it('returns bounded evidence rows when asked', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('find_references', { symbol: 'Motor_1', detail: 'evidence', limit: 1 })
+    const rows = found.data?.evidence as { access?: string }[]
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.access).toBeTypeOf('string')
+  })
+
+  it('answers an unknown symbol with zero references, not an error', async () => {
+    const l5x = await opened()
+    const found = await l5x.call('find_references', { symbol: 'DoesNotExist' })
+    expect(found.error).toBeUndefined()
+    expect(found.data?.total).toBe(0)
+    expect(found.summary).toContain('0 references')
+  })
+})
+
+describe('trace_dependencies', () => {
+  it('returns a bounded graph and states that it is not runtime evidence', async () => {
+    const l5x = await opened()
+    const traced = await l5x.call('trace_dependencies', { symbol: 'Motor_1', depth: 2 })
+    expect(traced.error).toBeUndefined()
+    expect(Array.isArray(traced.data?.nodes)).toBe(true)
+    expect(Array.isArray(traced.data?.edges)).toBe(true)
+    expect(traced.coverage?.complete).toBe(false)
+    expect(traced.coverage?.unverified).toContain('runtime causality')
+  })
+})
+
+describe('resolve_tag', () => {
+  it('resolves a declared tag', async () => {
+    const l5x = await opened()
+    const resolved = await l5x.call('resolve_tag', { address: 'LineSpeed' })
+    expect(resolved.error).toBeUndefined()
+    expect(resolved.data?.resolved).toBe(true)
+    expect(resolved.summary).toContain('resolves')
+  })
+
+  it('answers an undeclared address with the reason', async () => {
+    const l5x = await opened()
+    const resolved = await l5x.call('resolve_tag', { address: 'Not_A_Tag' })
+    expect(resolved.error).toBeUndefined()
+    expect(resolved.data?.resolved).toBe(false)
+    expect(resolved.summary).toContain('does not resolve')
+  })
+})
+
+describe('usage_map', () => {
+  it('maps one declared tag and states its limits', async () => {
+    const l5x = await opened()
+    const mapped = await l5x.call('usage_map', { tag: 'FaultCount' })
+    expect(mapped.error).toBeUndefined()
+    expect(mapped.summary).toContain('FaultCount')
+    expect(Array.isArray(mapped.data?.indexes)).toBe(true)
+    expect(mapped.coverage?.unverified.join(' ')).toContain('dynamic indices')
+  })
+
+  it('refuses an undeclared tag with candidates and a fix', async () => {
+    const l5x = await opened()
+    const mapped = await l5x.call('usage_map', { tag: 'NoSuchTag' })
+    expect(mapped.error?.code).toBe('COMPONENT_NOT_FOUND')
+    expect(mapped.error?.fix).toContain('list_components')
+    expect(mapped.error?.candidates.length).toBeGreaterThan(0)
+  })
+})
