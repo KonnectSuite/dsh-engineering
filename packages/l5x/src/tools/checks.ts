@@ -80,10 +80,10 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         limit: integer('Maximum findings to return.', { minimum: 1, maximum: 100, default: 20 }),
         project_id: PROJECT_ID,
       }, []),
-      async run(args, signal) {
-        const project = await session.require(optionalString(args, 'project_id'), signal)
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
         const baselineId = optionalString(args, 'baseline_id')
-        const baseline = baselineId === undefined ? undefined : await session.require(baselineId, signal)
+        const baseline = baselineId === undefined ? undefined : await session.require(baselineId, exec)
         const result = runChecks(project, baseline) as ChecksResult
         const rule = optionalString(args, 'rule')
         const severity = optionalString(args, 'severity')
@@ -127,9 +127,9 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         offset: integer('Zero-based index of the first change to return.', { minimum: 0, default: 0 }),
         limit: integer('Maximum changes to return.', { minimum: 1, maximum: 100, default: 20 }),
       }, ['before_id', 'after_id']),
-      async run(args, signal) {
-        const before = await session.require(requiredString(args, 'before_id'), signal)
-        const after = await session.require(requiredString(args, 'after_id'), signal)
+      async run(args, exec) {
+        const before = await session.require(requiredString(args, 'before_id'), exec)
+        const after = await session.require(requiredString(args, 'after_id'), exec)
         const result = compareProjects(before, after) as CompareResult
         const offset = integerArg(args, 'offset', 0)
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)

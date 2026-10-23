@@ -6,17 +6,18 @@
  * every later call re-reads the file only to prove the document is still the
  * file's content.
  *
- * Handles are chat-scoped: a second chat starts with none open, which is why an
- * unknown handle names the handles this chat does have.
+ * Handles belong to the calling chat. A second chat starts with none open,
+ * which is why an unknown handle names the handles that chat does have.
  *
  * @module dsh-engineering-l5x/session
  */
 
 import { createHash, randomUUID } from 'node:crypto'
 import { L5xParseError, loadL5x, type L5xDocument } from './model/index.ts'
-import type { FsService } from './core/tool.ts'
+import type { ExecContext } from './core/tool.ts'
 import { L5xError } from './core/errors.ts'
 import { decodeExport } from './fs.ts'
+import type { FsService } from './core/tool.ts'
 
 /** How completely one export feature can be analyzed. */
 export type FeatureLevel = 'analyzed' | 'partial' | 'unsupported' | 'not_present'
@@ -66,9 +67,12 @@ export class EngineeringError extends L5xError {
 /** Most projects one chat retains before the oldest is dropped. */
 const MAX_PROJECTS = 4
 
-/** The parsed-document store for one chat. */
+/** The parsed-document store, keyed by chat. */
 export class ProjectSession {
-  private readonly projects = new Map<string, ProjectSnapshot>()
+  /** Projects per chat; the key is the calling session object. */
+  private readonly chats = new WeakMap<object, Map<string, ProjectSnapshot>>()
+  /** Projects for a call without a chat identity, which happens only in tests. */
+  private readonly detached = new Map<string, ProjectSnapshot>()
 
   /**
    * @param fs - Filesystem provider for the profile.
@@ -79,21 +83,25 @@ export class ProjectSession {
     private readonly maxFileBytes: number,
   ) {}
 
-  /** Handles open in this chat, in open order. */
-  ids(): readonly string[] {
-    return [...this.projects.keys()]
+  /**
+   * Handles open in the calling chat, in open order.
+   *
+   * @param exec - Calling context; its chat selects the handle set.
+   * @returns The handles that chat can pass to a read.
+   */
+  ids(exec?: ExecContext): readonly string[] {
+    return [...this.projectsOf(exec).keys()]
   }
 
   /**
-   * Read, parse and retain one export.
+   * Read, parse and retain one export for the calling chat.
    *
    * @param requestedPath - Path as the caller supplied it, absolute or relative to the session workspace.
-   * @param signal - Cancellation from the tool call.
-   * @param cwd - Session workspace root, so a relative path resolves where the reader expects.
+   * @param exec - Calling context: cancellation, workspace root, and chat identity.
    * @returns The retained project, including its handle.
    */
-  async open(requestedPath: string, signal?: AbortSignal, cwd?: string): Promise<ProjectSnapshot> {
-    const { bytes, target } = await this.readBytes(requestedPath, signal, cwd)
+  async open(requestedPath: string, exec?: ExecContext): Promise<ProjectSnapshot> {
+    const { bytes, target } = await this.readBytes(requestedPath, exec)
     const xml = decodeExport(bytes)
     if (/<!DOCTYPE\b|<!ENTITY\b/iu.test(xml)) {
       throw new L5xError(
@@ -138,10 +146,11 @@ export class ProjectSession {
       features: featureLevels(xml),
       openedAt: new Date().toISOString(),
     }
-    this.projects.set(project.id, project)
-    while (this.projects.size > MAX_PROJECTS) {
-      const oldest = this.projects.keys().next().value
-      if (oldest !== undefined) this.projects.delete(oldest)
+    const projects = this.projectsOf(exec)
+    projects.set(project.id, project)
+    while (projects.size > MAX_PROJECTS) {
+      const oldest = projects.keys().next().value
+      if (oldest !== undefined) projects.delete(oldest)
     }
     return project
   }
@@ -149,26 +158,27 @@ export class ProjectSession {
   /**
    * Resolve the project a read applies to and prove it is still current.
    *
-   * @param projectId - Explicit handle, or undefined to use the single open project.
-   * @param signal - Cancellation from the tool call.
+   * @param projectId - Explicit handle, or undefined to use the single open project in this chat.
+   * @param exec - Calling context: cancellation and chat identity.
    * @returns The open project.
    */
-  async require(projectId: string | undefined, signal?: AbortSignal): Promise<ProjectSnapshot> {
-    const ids = this.ids()
+  async require(projectId: string | undefined, exec?: ExecContext): Promise<ProjectSnapshot> {
+    const projects = this.projectsOf(exec)
+    const ids = [...projects.keys()]
     const project = projectId === undefined || projectId === ''
-      ? this.single(ids)
-      : this.projects.get(projectId)
+      ? this.single(ids, projects)
+      : projects.get(projectId)
     if (project === undefined) {
       throw new L5xError(
         'UNKNOWN_PROJECT',
-        `No project is open with project_id ${JSON.stringify(projectId)}.`,
+        `No project is open with project_id ${JSON.stringify(projectId)} in this chat.`,
         ids.length === 0
           ? 'Call open_project with the L5X path, then retry.'
-          : `Pass one of the open project ids: ${ids.join(', ')}.`,
+          : `Pass one of this chat's open project ids: ${ids.join(', ')}.`,
         ids,
       )
     }
-    const bytes = await this.fs.readBytes(project.path, signal, this.maxFileBytes)
+    const bytes = await this.fs.readBytes(project.path, exec?.signal, this.maxFileBytes)
     const sha256 = createHash('sha256').update(bytes).digest('hex')
     if (sha256 !== project.sha256) {
       throw new L5xError(
@@ -180,8 +190,19 @@ export class ProjectSession {
     return project
   }
 
-  /** The single open project, or the failure that explains how to choose one. */
-  private single(ids: readonly string[]): ProjectSnapshot {
+  /** The handle set for one calling chat. */
+  private projectsOf(exec?: ExecContext): Map<string, ProjectSnapshot> {
+    const chat = exec?.chat
+    if (chat === undefined) return this.detached
+    const existing = this.chats.get(chat)
+    if (existing !== undefined) return existing
+    const created = new Map<string, ProjectSnapshot>()
+    this.chats.set(chat, created)
+    return created
+  }
+
+  /** The single open project in one chat, or the failure that explains how to choose one. */
+  private single(ids: readonly string[], projects: Map<string, ProjectSnapshot>): ProjectSnapshot {
     const only = ids[0]
     if (only === undefined) {
       throw new L5xError(
@@ -194,15 +215,15 @@ export class ProjectSession {
       throw new L5xError(
         'AMBIGUOUS_PROJECT',
         `${ids.length} projects are open in this chat, so project_id is required.`,
-        `Pass one of the open project ids: ${ids.join(', ')}.`,
+        `Pass one of this chat's open project ids: ${ids.join(', ')}.`,
         ids,
       )
     }
-    return this.projects.get(only) as ProjectSnapshot
+    return projects.get(only) as ProjectSnapshot
   }
 
   /** Resolve, check and read one path through the filesystem provider. */
-  private async readBytes(requestedPath: string, signal?: AbortSignal, cwd?: string): Promise<{ bytes: Uint8Array; target: string }> {
+  private async readBytes(requestedPath: string, exec?: ExecContext): Promise<{ bytes: Uint8Array; target: string }> {
     if (requestedPath.trim() === '') {
       throw new L5xError(
         'INVALID_ARGUMENT',
@@ -211,10 +232,10 @@ export class ProjectSession {
       )
     }
     const target = await this.fs.resolve(requestedPath, {
-      ...(cwd === undefined ? {} : { cwd }),
-      ...(signal === undefined ? {} : { signal }),
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
     })
-    const info = await this.fs.stat(target, signal)
+    const info = await this.fs.stat(target, exec?.signal)
     if (info === undefined) {
       throw new L5xError(
         'FILE_NOT_FOUND',
@@ -229,7 +250,7 @@ export class ProjectSession {
         'Pass the path of one .L5X export, not a directory.',
       )
     }
-    return { bytes: await this.fs.readBytes(target, signal, this.maxFileBytes), target }
+    return { bytes: await this.fs.readBytes(target, exec?.signal, this.maxFileBytes), target }
   }
 }
 

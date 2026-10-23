@@ -28,6 +28,14 @@ export interface ToolExec {
   readonly agent?: { readonly session?: { readonly header?: { readonly cwd?: string } } }
 }
 
+/** The context a tool body receives: cancellation, workspace, and chat identity. */
+export interface ExecContext {
+  readonly signal?: AbortSignal
+  readonly cwd?: string
+  /** The calling chat; handles are scoped to it. */
+  readonly chat?: object
+}
+
 /** A registered tool. */
 export interface ToolDefinition {
   readonly name: string

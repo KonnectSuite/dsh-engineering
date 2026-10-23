@@ -256,9 +256,11 @@ Errors stay results rather than throws. `candidates` lists valid names for ambig
 
 ### 7.4 State
 
-- `project_id` is optional on every tool. Resolution order: explicit argument, the single open project, otherwise `UNKNOWN_PROJECT` with the fix.
+- `project_id` is optional on every tool. Resolution order: explicit argument, the single open project in this chat, otherwise `UNKNOWN_PROJECT` with the fix.
 - `draft_id` follows the same rule.
+- Handles belong to the chat that opened them: a second chat starts with none, and an unknown handle names only the handles that chat has.
 - A relative path resolves against the session workspace: the execution context supplies its cwd to the filesystem provider, so a name `list_components` or `glob` returned opens without an absolute path.
+- `trace_dependencies` accepts `AOI_Name::Member` and resolves it against `AOI::AOI_Name`; an unresolved symbol is refused with `UNRESOLVED_SYMBOL` and the scope fix rather than an empty graph.
 - Handles expire with the chat, as today.
 
 ## 8. Draft lifecycle
@@ -385,7 +387,7 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 34 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, checks, checks filters, comparison, revision floors, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNSUPPORTED_REVISION` |
+| Tests | 38 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, AOI-qualified tracing, tag resolution, usage map, checks, checks filters, comparison, chat isolation, revision floors, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNRESOLVED_SYMBOL`, `UNSUPPORTED_REVISION` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 

@@ -156,6 +156,20 @@ describe('revisions', () => {
   })
 })
 
+describe('chat isolation', () => {
+  it('keeps handles inside the chat that opened them', async () => {
+    const l5x = harness()
+    const chatA = {}
+    const chatB = {}
+    const opened = await l5x.call('open_project', { path: 'sample.l5x' }, { agent: { session: chatA } })
+    expect(opened.error).toBeUndefined()
+    const fromB = await l5x.call('project_overview', {}, { agent: { session: chatB } })
+    expect(fromB.error?.code).toBe('NO_PROJECT')
+    const fromA = await l5x.call('project_overview', {}, { agent: { session: chatA } })
+    expect(fromA.error).toBeUndefined()
+  })
+})
+
 describe('path resolution', () => {
   it('passes the session workspace to the filesystem for a relative path', async () => {
     const seen: unknown[] = []

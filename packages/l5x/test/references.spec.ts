@@ -73,6 +73,21 @@ describe('trace_dependencies', () => {
     expect(traced.coverage?.complete).toBe(false)
     expect(traced.coverage?.unverified).toContain('runtime causality')
   })
+
+  it('resolves an AOI-qualified symbol instead of reporting it missing', async () => {
+    const l5x = await opened()
+    const traced = await l5x.call('trace_dependencies', { symbol: 'Motor_Control::EnableOut', depth: 2 })
+    expect(traced.error).toBeUndefined()
+    expect(traced.data?.resolution).toMatchObject({ resolved: true })
+    expect(traced.summary).toContain('Motor_Control::EnableOut')
+  })
+
+  it('refuses an unresolved symbol with the scope fix', async () => {
+    const l5x = await opened()
+    const traced = await l5x.call('trace_dependencies', { symbol: 'No_Such_Member' })
+    expect(traced.error?.code).toBe('UNRESOLVED_SYMBOL')
+    expect(traced.error?.fix).toContain('AOI')
+  })
 })
 
 describe('resolve_tag', () => {

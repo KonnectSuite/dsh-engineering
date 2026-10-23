@@ -43,8 +43,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       parameters: object({
         path: string('Path to the .L5X export, absolute or relative to the workspace root. Example: "C:/Projects/Line/Line.L5X"'),
       }, ['path']),
-      async run(args, signal, cwd) {
-        const project = await session.open(requiredString(args, 'path'), signal, cwd)
+      async run(args, exec) {
+        const project = await session.open(requiredString(args, 'path'), exec)
         const document = project.document
         return success(
           `${document.controller.name}: ${document.programs.length} programs, ${document.tags.length} tags, ${document.routines.length} routines.`,
@@ -69,8 +69,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       name: 'project_overview',
       description: 'Structure and coverage of the open project: controller, revision, tasks, programs and component counts.',
       parameters: object({ project_id: PROJECT_ID }, []),
-      async run(args, signal) {
-        const project = await session.require(optionalString(args, 'project_id'), signal)
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
         const document = project.document
         return success(
           `${document.controller.name} (${document.controller.processorType}, revision ${revisionOf(document)}).`,
@@ -103,8 +103,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         limit: integer('Maximum rows to return.', { minimum: 1, maximum: 200, default: 50 }),
         project_id: PROJECT_ID,
       }, ['kind']),
-      async run(args, signal) {
-        const project = await session.require(optionalString(args, 'project_id'), signal)
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
         const kind = requiredKind(args)
         const filter = optionalString(args, 'filter') ?? ''
         const offset = integerArg(args, 'offset', 0)
@@ -127,8 +127,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         scope: string('Program name when the component is program-scoped.'),
         project_id: PROJECT_ID,
       }, ['kind', 'name']),
-      async run(args, signal) {
-        const project = await session.require(optionalString(args, 'project_id'), signal)
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
         const kind = requiredKind(args)
         const name = requiredString(args, 'name')
         const scope = optionalString(args, 'scope')

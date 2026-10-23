@@ -3,8 +3,8 @@
  * one tag's element usage.
  *
  * The old surface answered "where is this used" with five tools. This module
- * answers it with three names that state their intent — `find_references`,
- * `trace_dependencies`, `resolve_tag` — plus `usage_map` for element/bit
+ * answers it with three names that state their intent â€” `find_references`,
+ * `trace_dependencies`, `resolve_tag` â€” plus `usage_map` for element/bit
  * allocation, and `search_logic` for text that is not a symbol.
  *
  * @module dsh-engineering-l5x/tools/references
@@ -18,7 +18,7 @@ import { usageMap } from '../engine/usage.ts'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
-import type { ToolDefinition } from '../core/tool.ts'
+import type { ExecContext, ToolDefinition } from '../core/tool.ts'
 import type { ProjectSession, ProjectSnapshot } from '../session.ts'
 import { COVERAGE, PROJECT_ID, integerArg, optionalString, requiredString, tool } from './common.ts'
 
@@ -50,8 +50,8 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         limit: integer('Maximum matches to return.', { minimum: 1, maximum: 100, default: 20 }),
         project_id: PROJECT_ID,
       }, ['query']),
-      async run(args, signal) {
-        const project = await projectOf(session, args, signal)
+      async run(args, exec) {
+        const project = await projectOf(session, args, exec)
         const query = requiredString(args, 'query')
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
         const matches = logicMatches(project.document, query)
@@ -86,8 +86,8 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         limit: integer('Maximum evidence rows when detail is "evidence".', { minimum: 1, maximum: 100, default: 20 }),
         project_id: PROJECT_ID,
       }, ['symbol']),
-      async run(args, signal) {
-        const project = await projectOf(session, args, signal)
+      async run(args, exec) {
+        const project = await projectOf(session, args, exec)
         const symbol = requiredString(args, 'symbol')
         const scope = optionalString(args, 'scope')
         const detail = optionalString(args, 'detail') ?? 'summary'
@@ -129,16 +129,22 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
       name: 'trace_dependencies',
       description: 'Follow what feeds a symbol (upstream) or what it feeds (downstream) through parsed operands. Static evidence only; it does not establish runtime causality.',
       parameters: object({
-        symbol: string('Symbol to trace. Example: "Conveyor_Run".'),
-        scope: string('Program scope of the symbol. Omit for controller scope.'),
+        symbol: string('Symbol to trace. Example: "Conveyor_Run" or "AOI_EncoderScale::Out_FPM".'),
+        scope: string('Program or AOI name that declares the symbol. Omit for controller scope; an AOI::Member symbol resolves against that AOI automatically.'),
         direction: choice('Which way to follow the graph.', ['upstream', 'downstream'], { default: 'upstream' }),
         depth: integer('Maximum graph depth to follow. Default 3.', { minimum: 1, maximum: 6, default: 3 }),
         project_id: PROJECT_ID,
       }, ['symbol']),
-      async run(args, signal) {
-        const project = await projectOf(session, args, signal)
-        const symbol = requiredString(args, 'symbol')
-        const scope = optionalString(args, 'scope') ?? 'controller'
+      async run(args, exec) {
+        const project = await projectOf(session, args, exec)
+        const requested = requiredString(args, 'symbol')
+        const explicitScope = optionalString(args, 'scope')
+        const parts = requested.split('::')
+        const qualified = parts.length > 1 && parts[0] !== ''
+        const scope = explicitScope === undefined
+          ? (qualified ? normalizeScope(project.document, parts[0] as string) : 'controller')
+          : normalizeScope(project.document, explicitScope)
+        const symbol = qualified ? parts.slice(1).join('::') : requested
         const direction = optionalString(args, 'direction') === 'downstream' ? 'downstream' : 'upstream'
         const depth = Math.min(Math.max(integerArg(args, 'depth', 3), 1), 6)
         const graph = traceDependencies(project, symbol, scope, direction, {
@@ -147,6 +153,16 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           edges: 100,
           analysis: { references: 5000, edges: 5000 },
         })
+        const resolution = graph.resolution as { readonly resolved?: boolean; readonly reason?: string } | undefined
+        if (resolution !== undefined && resolution.resolved === false) {
+          const declarations = [...project.document.aois.map(aoi => aoi.name), ...project.document.programs.map(program => program.name)]
+          throw new L5xError(
+            'UNRESOLVED_SYMBOL',
+            `${requested} does not resolve in scope ${scope}: ${resolution.reason ?? 'not declared in this export'}.`,
+            'Pass scope with the declaring program or AOI. For an AOI member, write "AOI_Name::Member" or pass scope "AOI_Name" with the member name.',
+            declarations.slice(0, 5),
+          )
+        }
         const nodes = graph.nodes as readonly unknown[]
         const edges = graph.edges as readonly unknown[]
         const coverage: Coverage = {
@@ -159,11 +175,11 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           ],
         }
         return success(
-          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${symbol}${graph.truncated === true ? ' (truncated)' : ''}.`,
+          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${graph.truncated === true ? ' (truncated)' : ''}.`,
           graph,
           [
-            { tool: 'find_references', args: { symbol }, why: 'See every occurrence rather than the dependency graph.' },
-            { tool: 'usage_map', args: { tag: symbol, scope }, why: 'Map element and bit usage for this tag.' },
+            { tool: 'find_references', args: { symbol: requested }, why: 'See every occurrence rather than the dependency graph.' },
+            ...(requested.includes('::') ? [] : [{ tool: 'usage_map', args: { tag: requested, scope }, why: 'Map element and bit usage for this tag.' }]),
           ],
           coverage,
         )
@@ -177,8 +193,8 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         scope: string('Program scope for a local tag. Omit for controller scope.'),
         project_id: PROJECT_ID,
       }, ['address']),
-      async run(args, signal) {
-        const project = await projectOf(session, args, signal)
+      async run(args, exec) {
+        const project = await projectOf(session, args, exec)
         const address = requiredString(args, 'address')
         const resolution = resolveTag(project.document, optionalString(args, 'scope') ?? 'controller', address)
         const canonical = resolution.canonical
@@ -207,8 +223,8 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         scope: string('Declaring scope: "controller" or a program name. Defaults to controller.'),
         project_id: PROJECT_ID,
       }, ['tag']),
-      async run(args, signal) {
-        const project = await projectOf(session, args, signal)
+      async run(args, exec) {
+        const project = await projectOf(session, args, exec)
         const tag = requiredString(args, 'tag')
         const scope = optionalString(args, 'scope') ?? 'controller'
         const declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
@@ -245,8 +261,14 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
 }
 
 /** Resolve the calling project. */
-async function projectOf(session: ProjectSession, args: Readonly<Record<string, unknown>>, signal?: AbortSignal): Promise<ProjectSnapshot> {
-  return await session.require(optionalString(args, 'project_id'), signal)
+async function projectOf(session: ProjectSession, args: Readonly<Record<string, unknown>>, exec?: ExecContext): Promise<ProjectSnapshot> {
+  return await session.require(optionalString(args, 'project_id'), exec)
+}
+
+/** The declaration scope a symbol resolves against: an AOI name becomes `AOI::Name`. */
+function normalizeScope(document: L5xDocument, scope: string): string {
+  if (scope.startsWith('AOI::')) return scope
+  return document.aois.some(aoi => aoi.name === scope) ? `AOI::${scope}` : scope
 }
 
 /** Count evidence by access kind. */

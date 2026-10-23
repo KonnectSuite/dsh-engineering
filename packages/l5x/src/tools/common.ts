@@ -7,7 +7,7 @@
 
 import { L5xError, errorEnvelope } from '../core/errors.ts'
 import { object, string, type Parameters } from '../core/params.ts'
-import { jsonText, type ToolDefinition } from '../core/tool.ts'
+import { jsonText, type ExecContext, type ToolDefinition } from '../core/tool.ts'
 
 /** What this surface cannot establish, stated once. */
 export const COVERAGE = {
@@ -16,6 +16,7 @@ export const COVERAGE = {
     'FBD and SFC execution semantics',
     'dynamic indices',
     'runtime behavior',
+    'external HMI, produced/consumed and driver consumers are not visible',
     'whether online logic matches the export',
   ],
 } as const
@@ -31,7 +32,7 @@ export interface ToolSpec {
   readonly name: string
   readonly description: string
   readonly parameters: Parameters
-  run(args: Readonly<Record<string, unknown>>, signal?: AbortSignal, cwd?: string): Promise<unknown>
+  run(args: Readonly<Record<string, unknown>>, exec: ExecContext): Promise<unknown>
 }
 
 /**
@@ -47,8 +48,13 @@ export function tool(spec: ToolSpec): ToolDefinition {
     parameters: spec.parameters,
     output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
     async execute(args, exec) {
+      const context: ExecContext = {
+        ...(exec.signal === undefined ? {} : { signal: exec.signal }),
+        ...(exec.agent?.session?.header?.cwd === undefined ? {} : { cwd: exec.agent.session.header.cwd }),
+        ...(exec.agent?.session === undefined ? {} : { chat: exec.agent.session }),
+      }
       try {
-        return await spec.run(args, exec.signal, exec.agent?.session?.header?.cwd)
+        return await spec.run(args, context)
       } catch (error) {
         return errorEnvelope(error)
       }
