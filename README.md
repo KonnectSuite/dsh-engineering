@@ -8,7 +8,7 @@ One built-in engineering plugin for AryaAI: the Studio 5000, FactoryTalk View, F
 
 The product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 
-The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 31 tests pass. It is not mounted in a profile yet; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
+The L5X port has started: `packages/l5x` holds the complete offline read surface — eleven tools from `open_project` through `compare_projects` — with described parameters, summary-first results and repairable failures. Its 34 tests pass. It is not mounted in a profile yet; the [port specification](docs/port/l5x.md) carries the measurements and the rest of the plan.
 
 ## How the bundle composes
 

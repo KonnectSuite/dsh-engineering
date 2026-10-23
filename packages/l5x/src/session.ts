@@ -39,6 +39,8 @@ export interface ProjectSnapshot {
   readonly document: L5xDocument
   /** Studio software revision the export declares. */
   readonly softwareRevision: string
+  /** Whether this revision is in the parser's observed test matrix. */
+  readonly verification: 'observed_parse' | 'untested_revision'
   /** Export target type, `Controller` for a full project. */
   readonly targetType: string
   /** Whether the export is a whole controller or one component. */
@@ -111,6 +113,15 @@ export class ProjectSession {
     }
     const sha256 = createHash('sha256').update(bytes).digest('hex')
     const targetType = attribute(xml, 'TargetType')
+    const softwareRevision = attribute(xml, 'SoftwareRevision')
+    const major = Number.parseInt(softwareRevision, 10)
+    if (Number.isFinite(major) && major < 19) {
+      throw new L5xError(
+        'UNSUPPORTED_REVISION',
+        `Software revision ${softwareRevision} predates the revision-19 target this parser supports.`,
+        'Re-export the project from Studio 5000 revision 19 or later, then open that L5X.',
+      )
+    }
     const project: ProjectSnapshot = {
       id: randomUUID(),
       requestedPath,
@@ -119,7 +130,8 @@ export class ProjectSession {
       bytes: bytes.length,
       xml,
       document,
-      softwareRevision: attribute(xml, 'SoftwareRevision'),
+      softwareRevision,
+      verification: verificationOf(major),
       targetType,
       exportKind: targetType === 'Controller' ? 'controller' : 'component',
       features: featureLevels(xml),
@@ -221,6 +233,14 @@ export class ProjectSession {
 function attribute(xml: string, name: string): string {
   const root = /<RSLogix5000Content\b([^>]*)>/u.exec(xml)?.[1] ?? ''
   return new RegExp(`\\b${name}=["']([^"']*)["']`, 'u').exec(root)?.[1] ?? ''
+}
+
+/** Revisions the parser has been exercised against; anything else is still read, but flagged. */
+const OBSERVED_REVISIONS = new Set([19, 33, 34, 36, 37])
+
+/** Whether a revision is in the observed test matrix. */
+function verificationOf(major: number): 'observed_parse' | 'untested_revision' {
+  return OBSERVED_REVISIONS.has(major) ? 'observed_parse' : 'untested_revision'
 }
 
 /** Feature analysis level for one export. */

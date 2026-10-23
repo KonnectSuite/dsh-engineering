@@ -321,6 +321,18 @@ Unchanged and non-negotiable:
 
 ## 11. Compatibility
 
+### Export revisions
+
+- **Reading an L5X (this surface):** any export revision **19 or later**. Revisions 19, 33, 34, 36 and 37 are in the observed test matrix; any other revision still opens and reports `verification: "untested_revision"`, so the answer states the evidence behind it.
+- **Below revision 19:** refused with `UNSUPPORTED_REVISION` and the fix to re-export.
+- **Studio SDK open:** revision 31 or later.
+- **Studio SDK build:** revision 37 or later. A revision-36 project is opened by the 36.0 engine, which refuses Build with `Operation not supported on Logix Designer version 36.0`; a newer installed Studio does not raise that floor.
+- **ACD:** never parsed. It is exported to L5X first, which needs the SDK (revision 31+).
+
+In short: **37 is the build floor, not a read requirement.** The fixture the tests run against is revision 33, which is why a 33 export opens, lists and traces.
+
+### Tool surface
+
 - The legacy twelve-tool API remains behind `legacyTools: true` with its recorded parity corpus.
 - The new surface is a breaking change to tool names and parameters, carried by a major version and an upgrade note.
 - The skill, config keys, and client entry keep their ids.
@@ -370,7 +382,7 @@ The pilot lives in `packages/l5x` of this repository and is not mounted in any p
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |
-| Tests | 31 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, checks, checks filters, comparison, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT` |
+| Tests | 34 passing: registration, parameter descriptions, open, overview, listing, pagination, filtering, component reads, text search, reference summary and evidence, dependency graph, tag resolution, usage map, checks, checks filters, comparison, revision floors, `NO_PROJECT`, `UNKNOWN_PROJECT`, `COMPONENT_NOT_FOUND`, `STALE_EXPORT`, `UNSUPPORTED_REVISION` |
 
 `list_components` is what §2.7 says the current surface lacks: one paginated listing per component kind, with a filter and a next-page step.
 

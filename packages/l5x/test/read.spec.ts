@@ -124,6 +124,37 @@ describe('components', () => {
   })
 })
 
+describe('revisions', () => {
+  /** The fixture with its export revision replaced. */
+  function withRevision(revision: string): Uint8Array {
+    const text = new TextDecoder().decode(fixtureBytes())
+    expect(text).toContain('SoftwareRevision="33.00"')
+    return new TextEncoder().encode(text.replace('SoftwareRevision="33.00"', `SoftwareRevision="${revision}"`))
+  }
+
+  it('opens a revision below 37 and reports observed parsing', async () => {
+    const { call } = harness()
+    const opened = await call('open_project', { path: 'sample.l5x' })
+    expect(opened.error).toBeUndefined()
+    expect(opened.data?.export_revision).toBe('33.00')
+    expect(opened.data?.verification).toBe('observed_parse')
+  })
+
+  it('refuses an export older than revision 19', async () => {
+    const { call } = harness(() => withRevision('18.00'))
+    const opened = await call('open_project', { path: 'old.l5x' })
+    expect(opened.error?.code).toBe('UNSUPPORTED_REVISION')
+    expect(opened.error?.fix).toContain('revision 19')
+  })
+
+  it('reads an unobserved revision but flags it as untested', async () => {
+    const { call } = harness(() => withRevision('40.00'))
+    const opened = await call('open_project', { path: 'new.l5x' })
+    expect(opened.error).toBeUndefined()
+    expect(opened.data?.verification).toBe('untested_revision')
+  })
+})
+
 describe('staleness', () => {
   it('refuses a read after the export changes on disk', async () => {
     let bytes = fixtureBytes()
