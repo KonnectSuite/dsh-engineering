@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Bridge } from '../core/bridge.ts'
 import { CodeEngine } from '../core/code-engine.ts'
 import { MwiError } from '../core/errors.ts'
@@ -24,6 +24,8 @@ import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
 export const BRIDGE_DIR = fileURLToPath(new URL('../../bridge/', import.meta.url))
 /** The code engine directory shipped with this package. */
 export const CODE_DIR = fileURLToPath(new URL('../../code/', import.meta.url))
+/** Vendored proven mutation helpers. */
+export const LEGACY_DIR = fileURLToPath(new URL('../../legacy/', import.meta.url))
 
 /** One open worksheet request. */
 export interface WorksheetRequest {
@@ -61,6 +63,12 @@ export interface SessionRuntime {
   diagnostics(pane: string, limit: number): Promise<Record<string, unknown>>
   /** Capture or compare one saved-source baseline. */
   verify(mode: 'baseline' | 'compare', baselineId?: string): Promise<Record<string, unknown>>
+  /** Replace one ST/IL body through the native ChangeCodeWS path. */
+  editCode(input: { pou: string; changes?: readonly Record<string, unknown>[]; body?: string; expectedBody?: string; expectedHash?: string }): Promise<Record<string, unknown>>
+  /** Validate the current saved project before or after an edit. */
+  validate(options: { pou?: string; body?: string }): Promise<Record<string, unknown>>
+  /** Save the open staged project through the IDE. */
+  apply(): Promise<Record<string, unknown>>
 }
 
 /** A workspace runtime over the real bridge and engine. */
@@ -256,6 +264,95 @@ export class PowerShellSessionRuntime implements SessionRuntime {
       changed,
       compile_state: state,
       baseline_compile_state: baseline.compile_state,
+    }
+  }
+
+  /** Validate the current saved project. */
+  async validate(options: { pou?: string; body?: string }): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const workflow = await this.engine.run('workflow_check', { project: record.staged_directory }, 120_000)
+    const validate = await this.engine.run('validate', { project: record.staged_directory }, 120_000)
+    const review = options.pou === undefined && options.body === undefined
+      ? undefined
+      : await this.engine.run('check_program', {
+        project: record.staged_directory,
+        ...(options.pou === undefined ? {} : { pou: options.pou }),
+        ...(options.body === undefined ? {} : { body: options.body }),
+      }, 180_000)
+    const state = await this.bridge.run('compile_state', {}, 30_000).catch(() => null)
+    const blockers = (workflow.blockers as readonly unknown[] | undefined) ?? []
+    const validation = validate.result as { errors?: readonly unknown[] } | undefined
+    return {
+      project: record.staged_directory,
+      blockers,
+      validation_errors: validation?.errors ?? [],
+      workflow,
+      validate,
+      ...(review === undefined ? {} : { review }),
+      compile_state: state,
+      ready: blockers.length === 0 && (validation?.errors?.length ?? 0) === 0,
+    }
+  }
+
+  /** Save the open staged project through the IDE. */
+  async apply(): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const saved = await this.bridge.run('save', {}, 60_000) as Record<string, unknown>
+    const state = await this.bridge.run('compile_state', {}, 30_000).catch(() => null)
+    return { project: record.staged_directory, saved, compile_state: state }
+  }
+
+  /** Replace one ST/IL body through the proven native ChangeCodeWS path. */
+  async editCode(input: { pou: string; changes?: readonly Record<string, unknown>[]; body?: string; expectedBody?: string; expectedHash?: string }): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const helpers = await import(pathToFileURL(join(LEGACY_DIR, 'native-code.js')).href) as {
+      nativeCodeChange: (args: Record<string, unknown>, deps: Record<string, unknown>) => Promise<Record<string, unknown>>
+    }
+    const project = record.staged_directory
+    const evidenceDirectory = join(this.workspace, '.motionworks', 'verification')
+    const inputDirectory = join(this.workspace, '.motionworks', 'native-input')
+    mkdirSync(evidenceDirectory, { recursive: true })
+    const evidence = join(evidenceDirectory, `native-code-${randomUUID()}.json`)
+    const args: Record<string, unknown> = { project, pou: input.pou, baseline_saved: true }
+    if (input.changes !== undefined) {
+      args.changes = input.changes
+      if (input.expectedHash !== undefined) args.expected_body_sha256 = input.expectedHash
+    } else {
+      args.code = input.body
+      args.expected_body = input.expectedBody
+    }
+    try {
+      const result = await helpers.nativeCodeChange(args, {
+        status: async () => await this.bridge.run('compile_state'),
+        saved: async () => await this.engine.run('structure_snapshot', { project }),
+        snapshot: async () => await this.bridge.run('structure_snapshot'),
+        read: async () => await this.engine.run('read_text', { project, pou: input.pou }),
+        document: async () => {
+          const code = await this.engine.run('worksheet_target', { project, pou: input.pou, kind: 'code' })
+          const variables = await this.engine.run('worksheet_target', { project, pou: input.pou, kind: 'variables' })
+          const urn = String(variables.urn ?? '')
+          return { ...code, variable_worksheet: urn.split('.').at(-1) }
+        },
+        declarations: async () => await this.bridge.run('variable_snapshot', { pou: input.pou }),
+        prepare: async (text: string, language: string) => {
+          mkdirSync(inputDirectory, { recursive: true })
+          const path = join(inputDirectory, `${randomUUID()}.${language}`)
+          writeFileSync(path, text, { encoding: 'ascii', flag: 'wx' })
+          return { code_import_path: path }
+        },
+        retain: async (plan: unknown) => {
+          writeFileSync(evidence, JSON.stringify({ phase: 'plan_retained', ...(plan as Record<string, unknown>) }, null, 2), { encoding: 'utf8', flag: 'wx' })
+        },
+        mutate: async (request: Record<string, unknown>) => await this.bridge.run('code_mutate', { ...request, project }, 60_000),
+      })
+      writeFileSync(evidence, JSON.stringify({ phase: 'result', ...result }, null, 2), 'utf8')
+      return result
+    } catch (error) {
+      throw new MwiError(
+        'EDIT_REFUSED',
+        `${(error as Error).message}; evidence at ${evidence}`,
+        'Read the refusal, correct the request, and retry. Do not repeat an unverified edit.',
+      )
     }
   }
 
