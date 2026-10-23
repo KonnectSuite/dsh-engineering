@@ -156,6 +156,8 @@ The flip therefore needs a replacement map — old bundle name to `dsh-engineeri
 
 ## Roadmap
 
+The L5X port is specified in [docs/port/l5x.md](docs/port/l5x.md): the measured failures of the current 43-tool surface, the target entry split, the draft lifecycle, and the small-model acceptance test.
+
 1. **Phase 1 (done):** exposure policy, no product code moved.
 2. **Pilot:** port L5X into `packages/l5x`, move its rows into this bundle, split parsing into an isomorphic model shared by the tools and the viewer, and fold the ladder viewer into the client face.
 3. **Port:** FactoryTalk View, then Optix, then MotionWorks, each keeping its entry ids.
@@ -169,6 +171,7 @@ The flip therefore needs a replacement map — old bundle name to `dsh-engineeri
 - Not listed in Plugin Market; the listing is part of the built-in flip.
 - No suite release; the package is 0.1.0 and exists as a development link only.
 - The Skills-page toggle has not been exercised in a live session. The composed config and the upstream policy tests cover the wiring; the UI switch is the remaining smoke check.
+- The shipped L5X surface is not reliable for small models. [The port specification](docs/port/l5x.md) records the measurements and the replacement design.
 
 ## Compatibility and rollback
 
