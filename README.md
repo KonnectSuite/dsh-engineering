@@ -12,9 +12,9 @@ The bundle currently owns two products:
 - **FactoryTalk View ME** — export reading, structural checks and comparison, staged display and HMI
   tag editing, a manual Studio handoff, and a display preview.
 
-FactoryTalk Optix, MotionWorks IEC and CAD mount as independent plugins outside this repository.
-The policy links their namespaces to their skills so the same switch model applies; the bundle does
-not port them.
+FactoryTalk Optix and CAD mount as independent plugins outside this repository. MotionWorks IEC is
+migrating into the bundle; until that flip, its standalone plugin mounts alongside it. The policy
+links `optix_*` and `mw_*` to their skills so the same switch model applies.
 
 ## Components
 
@@ -142,17 +142,17 @@ session.
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [Port designs](docs/port/l5x.md) | The L5X port decisions and measurements |
 | [FTView port design](docs/port/ftview.md) | The FactoryTalk View port decisions |
+| [MotionWorks IEC port](docs/port/mwi.md) | The MWI migration design, phases and inventory |
 | [Packaging](docs/port/packaging.md) | How the bundle is packed and pinned |
 | [Retirement](docs/port/retirement.md) | What "gone" means for a retired plugin |
 | [Changelog](CHANGELOG.md) | Released and unreleased changes |
 
 ## Known gaps
 
-- AryaAI 0.12.14 installs bundle 0.1.1. In that build the `rockwell-l5x` switch linked only the
-  `l5x_` prefix, so the unprefixed L5X tools stayed visible when the skill was off. Version 0.1.2
-  links the exact names; the next installer carries it.
-- FactoryTalk Optix, MotionWorks IEC and CAD are not ported into this repository. Their plugins mount
-  independently, and Optix has no skill to link yet.
+- MotionWorks IEC is migrating into this bundle; the standalone plugin still mounts until the port
+  flips. The design and phase order are in [the port plan](docs/port/mwi.md).
+- FactoryTalk Optix and CAD are not ported into this repository. Their plugins mount independently,
+  and Optix has no skill to link yet.
 - FactoryTalk View Studio work is a manual handoff: the bundle plans the import and checks changed
   files but does not import them.
 - Live reads and SDK builds cannot establish that online logic matches the export; every result says

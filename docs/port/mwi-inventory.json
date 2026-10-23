@@ -1,0 +1,792 @@
+{
+  "source": {
+    "package": "dsh-tool-motionworks-iec",
+    "version": "0.7.0"
+  },
+  "measuredAt": "2026-10-23T20:51:57.010Z",
+  "schemaCharacters": 58008,
+  "tools": [
+    {
+      "name": "mw_ide_pou_convert",
+      "family": "ide",
+      "description": "Convert one exact writable saved ST, LD or FBD POU in place to FBD or LD through native Pou.Convert. Needs baseline_saved:true, conversion_reviewed:true and the exact expected_body_sha256 from mw_code_pous. Replaces the source language, so review the loss of original layout and comments and prefer an isolated POU copy for generation. Runs a fresh native Build before conversion and a graphical Build and listing after it. Requires preserved native declaration flags/groups, libraries, POU type, saved declarations and every unrelated source, task, global and translation. Any failure stops the run without retry. Does not prove canvas geometry, individual pin wiring or machine behavior.",
+      "parameters": [
+        "project",
+        "pou",
+        "language",
+        "expected_body_sha256",
+        "baseline_saved",
+        "conversion_reviewed"
+      ],
+      "required": [
+        "project",
+        "pou",
+        "language",
+        "expected_body_sha256",
+        "baseline_saved",
+        "conversion_reviewed"
+      ]
+    },
+    {
+      "name": "mw_ide_pou_package",
+      "family": "ide",
+      "description": "Export one writable ST, LD or FBD POU through the native IDE to a new private workspace package, or import that exact untouched package into its original staged project with its POU name absent. Export returns a session-bound package_token; import needs it and dependencies_reviewed:true. Receipts expire when this plugin process reloads and are consumed before one import attempt. Refuses arbitrary packages, path arguments, overwrites, changed libraries, missing or mismatched externals, stale baselines, and altered packages. Verifies the full graph, code and declarations, native flags/groups, and unrelated sources, tasks, globals and translations. No binary rewriting, desktop input, task assignment or controller action. Import preserves completed phases on failure; inspect evidence and never retry blindly. Finish intended imports with a fresh Build/Make.",
+      "parameters": [
+        "project",
+        "operation",
+        "baseline_saved",
+        "pou",
+        "package_token",
+        "dependencies_reviewed"
+      ],
+      "required": [
+        "project",
+        "operation",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_graphical_listing",
+      "family": "ide",
+      "description": "Inspect one exact saved LD or FBD POU through its compiler-generated networks. Runs a fresh native Build and needs baseline_saved:true with a clean native saved state. Checks full source/declaration/task/translation preservation and matching listing, declaration, worksheet and source-map identities, then returns bounded raw instructions with declaration symbol annotations and artifact hashes. FB pin names and directions need an exact compiler dependency type matching the saved instance, complete declaration ordinals and fresh dependency artifacts from that Build. Private fields and unknown compiler tokens stay unresolved. Does not decode or write GB files, open or focus the editor, verify canvas placement or wiring, or command a controller. A failed or unverified Build, or a changed baseline, stops inspection without retry.",
+      "parameters": [
+        "project",
+        "pou",
+        "baseline_saved",
+        "start",
+        "limit"
+      ],
+      "required": [
+        "project",
+        "pou",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_code_installed_help",
+      "family": "code",
+      "description": "Read or search actual installed English MotionWorks CHM help as inert text. Omit module to list installed archives; then use an exact module to list topics, search words, or read one exact topic. Provides archive and topic hashes and native help links, caches text in this session workspace, and never opens help or edits the IDE. Use it for shortcut, editor, toolbox and programming semantics instead of guessing keys or signatures. Images may contain diagrams or key symbols omitted from text. Installed help is source evidence, not proof of live operation or controller and library compatibility. Refuses absent or ambiguous roots, unknown modules and cache integrity changes.",
+      "parameters": [
+        "module",
+        "query",
+        "topic",
+        "limit"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_fb_insert",
+      "family": "ide",
+      "description": "Insert ONE new FB instance and ST call using installed declarations or a verified compiled contract. Prefer expected_body_sha256 from mw_code_pous, else exact expected_body. Needs a saved baseline and explicit pin bindings. before anchors at an exact line boundary, offset is the alternative; omit both to append. Rejects hidden or non-FB blocks, unknown or duplicate pins, missing in-out pins, instance collisions and direct-variable type mismatches. Outputs and in-outs need existing direct local or external variables; inputs take single expressions. compiler_verified:true runs a fresh Build/Make with full native/source/library checks for a protected library the compiler already resolved. Adds the instance through the guarded native variable API, then imports and verifies code over native DDE. A partial failure reports completed phases and never retries. No graphical insertion or controller action. Then require verification.accepted and a fresh Build/Make.",
+      "parameters": [
+        "project",
+        "pou",
+        "block",
+        "library",
+        "instance",
+        "expected_body",
+        "expected_body_sha256",
+        "baseline_saved",
+        "compiler_verified",
+        "group",
+        "before",
+        "offset",
+        "bindings"
+      ],
+      "required": [
+        "project",
+        "pou",
+        "block",
+        "instance",
+        "baseline_saved",
+        "bindings"
+      ]
+    },
+    {
+      "name": "mw_code_block_interface",
+      "family": "code",
+      "description": "List bound project, toolbox or firmware blocks, or read one exact block interface with pin names, declared types and input/output/in-out directions. Matches saved references against live IDE library paths and reads native firmware .PT tables or project and library declarations with source/registry hashes; it never infers directions from compiled identifier names. Protected user-library worksheets default to diagnostic cache declarations with insertion_eligible:false. refresh_compiler:true with baseline_saved:true verifies the uniquely bound compiled contract through a fresh Build/Make and full preservation checks; that mode may authorize insertion but does not decode protected worksheets or prove cache freshness. Omit name for the catalog; pass library to resolve duplicates. IEC and eCLR implicit references are identified separately, and the controller firmware profile still needs verification. Read-only unless refresh_compiler is set.",
+      "parameters": [
+        "project",
+        "name",
+        "library",
+        "refresh_compiler",
+        "baseline_saved"
+      ],
+      "required": [
+        "project"
+      ]
+    },
+    {
+      "name": "mw_ide_code_change",
+      "family": "ide",
+      "description": "Edit an existing writable ST or IL worksheet through the native ChangeCodeWS API. Use expected_body_sha256 from mw_code_pous with small exact changes [{find,replace,count?}] (count defaults to 1; ambiguous or missing matches refuse before import), or exact expected_body plus complete code - never both forms. Changes apply sequentially to the independently read saved body. Needs a reconciled saved baseline and printable ASCII code. Imports once, saves, then verifies code including comments, unchanged declarations and native flags, tasks, globals and other POUs. Compact result unless detailed_result:true. No mouse input, clipboard, disk editing or automatic retry. Check verification.accepted, then Build/Make. Graphical body editing is unsupported.",
+      "parameters": [
+        "project",
+        "pou",
+        "baseline_saved",
+        "expected_body",
+        "code",
+        "expected_body_sha256",
+        "changes",
+        "detailed_result"
+      ],
+      "required": [
+        "project",
+        "pou",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_pou_change",
+      "family": "ide",
+      "description": "Native COM POU create, copy, rename or delete with complete saved/native inventories and unrelated source/translation checks. Creates blank PROGRAM, FUNCTION_BLOCK or FUNCTION (explicit simple return_type) in ST (default), IL, FBD or LD; graphical defaults must match the independently observed native empty body. Copy and rename use new_name and keep the source language. Rename and delete need references_reviewed including graphical and indirect calls; delete also needs user_approved. Refuses detected ST, declaration or task references and read-only POUs. Does not prove graphical body editing or wiring. Reconcile and save first, then Build/Make. No mouse input, disk-source editing, download or automatic retry.",
+      "parameters": [
+        "project",
+        "operation",
+        "name",
+        "baseline_saved",
+        "user_approved",
+        "new_name",
+        "pou_type",
+        "language",
+        "return_type",
+        "references_reviewed"
+      ],
+      "required": [
+        "project",
+        "operation",
+        "name",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_task_change",
+      "family": "ide",
+      "description": "Native COM task create, edit, delete, assign or unassign with full saved and native structural and source checks. Edit imports a generated settings file through Task.ImportSettingsFile, preserving all existing fields; settings_changes keys must already exist in the saved task, and task names are limited to 7 characters. Assignment requires PROGRAM and optionally an exact instance name. Unassignment requires the exact instance and user_approved; deletion requires approval and an empty task. Reconcile and save first, then Build/Make. No download or automatic retry.",
+      "parameters": [
+        "project",
+        "operation",
+        "name",
+        "baseline_saved",
+        "user_approved",
+        "kind",
+        "pou",
+        "instance",
+        "settings_changes"
+      ],
+      "required": [
+        "project",
+        "operation",
+        "name",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_variable_change",
+      "family": "ide",
+      "description": "Add, edit or delete ONE declaration through the native MotionWorks COM API by exact POU or resource, without grid input or worksheet navigation. Needs reconciled saved edits: it compares the complete live and saved baseline before changing and verifies all saved declarations afterward. Uses the selected existing writable group; externals need the matching global name and type. Edit accepts the complete desired seven-field declaration and optional explicit boolean flags (retain, pdd, opc, disabled, not_on_plc, redundant); omitted flags stay unchanged. Delete needs explicit approval and reference review. Does not download, compile automatically, move groups, or repair and retry partial failures.",
+      "parameters": [
+        "project",
+        "pou",
+        "operation",
+        "baseline_saved",
+        "name",
+        "declaration",
+        "flags",
+        "user_approved",
+        "references_reviewed",
+        "rename_reviewed",
+        "detailed_result"
+      ],
+      "required": [
+        "project",
+        "operation",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_variable_group_change",
+      "family": "ide",
+      "description": "Create, rename or delete an empty local or global declaration group through the native IDE API. Omit pou for resource globals. Requires exact saved and native declaration alignment and preserves every target declaration and flag, POU code, task, library and unrelated saved stream. Rename changes group labels and member metadata; it does not rename or move variables. Delete requires user_approved:true, no members, and another remaining group. Refuses read-only or ambiguous groups, name collisions, stale source and native baselines, and unsaved state. Retains full before/after evidence and renders a compact result; finish intended changes with a fresh Build/Make. On an unverified action, inspect evidence and current state without an automatic retry.",
+      "parameters": [
+        "project",
+        "pou",
+        "operation",
+        "name",
+        "new_name",
+        "baseline_saved",
+        "user_approved"
+      ],
+      "required": [
+        "project",
+        "operation",
+        "name",
+        "baseline_saved"
+      ]
+    },
+    {
+      "name": "mw_ide_active_view",
+      "family": "ide",
+      "description": "Read the exact active worksheet logical name from the live IDE. Use it after native navigation instead of trusting a clipped tab or a guessed tree row. Does not open, focus, edit or save a worksheet. No active editor returns an explicit error field, never a guessed target.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_open_worksheet",
+      "family": "ide",
+      "description": "Open the exact saved POU code or variables worksheet, or resource globals, through native COM using the internal document URN from PROJECT.TRE. inspect_only:true checks the current editor without opening it, for use after an unsettled request instead of repeating navigation. Verifies the active logical name, unchanged modified state, and two responsive frames. COM view metadata alone is not editor readiness, and keyboard_focus_verified stays false: check editor focus through the connected computer tool before keys or text. Native declaration and code APIs need no editor focus. No mouse input, save, edit, compile or download. Code requires a POU; omit POU only for globals. An unsettled navigation returns accepted=false with action_performed=true. Never repeat navigation automatically.",
+      "parameters": [
+        "project",
+        "kind",
+        "pou",
+        "inspect_only"
+      ],
+      "required": [
+        "project",
+        "kind"
+      ]
+    },
+    {
+      "name": "mw_ide_variable_plan",
+      "family": "ide",
+      "description": "Prepare ONE native variable addition: verify the exact open stage and variable worksheet, retain the complete saved baseline internally, reject duplicate names and addresses and overlength identifiers, and return explicit Create Variable Set dialog values plus a verification token. READ-ONLY PLANNING: it does not insert or send keys. Reconcile and save unsaved worksheet edits first. Never allocate an IO address from arithmetic alone.",
+      "parameters": [
+        "project",
+        "pou",
+        "baseline_saved",
+        "declaration"
+      ],
+      "required": [
+        "project",
+        "baseline_saved",
+        "declaration"
+      ]
+    },
+    {
+      "name": "mw_ide_variable_verify",
+      "family": "ide",
+      "description": "After a native Create Variable Set and Save All, verify the entire saved worksheet using the retained plan token, with no need to resend hundreds of declarations. Detects missing additions, unrelated renames and group, type or address changes, and extra rows. No Save and no input; it is not a keyboard interlock. accepted:true is declaration agreement only, not compiler or machine acceptance.",
+      "parameters": [
+        "token"
+      ],
+      "required": [
+        "token"
+      ]
+    },
+    {
+      "name": "mw_ide_edit_guide",
+      "family": "ide",
+      "description": "IDE-first editing and engineering checklists. Read-only: it does not type or edit anything. Use engineering before designing motion logic and read docs/ENGINEERING_WORKFLOW.md. Use the connected computer tool for observed editor actions, and never report a checklist as completed work.",
+      "parameters": [
+        "operation"
+      ],
+      "required": [
+        "operation"
+      ]
+    },
+    {
+      "name": "mw_ide_status",
+      "family": "ide",
+      "description": "Detect the running MotionWorks IEC 3 Pro IDE and report its automation version, window handle, and whether a project is open in it. Inspect this first, then confirm the active project against mw_project_find: every other mw_ide_* tool needs a live IDE, and this says whether one exists.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_attach",
+      "family": "ide",
+      "description": "Select the exact workspace .mwt, make and verify a complete backup, then use those same project files in place. If the IDE is closed, start it and open this project; if it is already open, continue without reopening. Refuses another active project, linked paths, or a changed active project. Obtain user approval for this backup before calling.",
+      "parameters": [
+        "project",
+        "baseline_saved",
+        "backup_approved"
+      ],
+      "required": [
+        "project",
+        "backup_approved"
+      ]
+    },
+    {
+      "name": "mw_project_find",
+      "family": "project",
+      "description": "Find MotionWorks projects INSIDE THE WORKSPACE. Select the intended .mwt and pass it to mw_ide_attach after first-backup approval. A MotionWorks project is a .mwt file beside its expanded directory. If there are no projects it says so and tells you to ask the user for the files - that is the intended behaviour, not a failure. Do not go looking elsewhere on the machine; a project outside the workspace is not one the task asked for. The search is bounded to 5 levels, skipping hidden and build directories.",
+      "parameters": [
+        "root"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_stage",
+      "family": "ide",
+      "description": "Copy a MotionWorks project into this plugin's staging area so it opens without touching the original. Accepts a project folder or its .mwt, and copies the .mwt plus its sibling expanded directory; the source is never modified, moved or deleted. The source MUST be inside the workspace, with no override; a project elsewhere is refused. Call mw_project_find first, and if it finds nothing, stop and ask the user. reference:true reads another program without staging or opening it. The copied .mwt is rewritten to name the staged directory. Existing stages need replace_existing:true after reviewing the replacement; the old folder, wrapper and identity are kept in a hashed backup. Prefer continuing an existing verified stage; never restage to repair an attach error.",
+      "parameters": [
+        "source",
+        "replace_existing"
+      ],
+      "required": [
+        "source"
+      ]
+    },
+    {
+      "name": "mw_ide_open",
+      "family": "ide",
+      "description": "Open a backed-up workspace project inside the running MotionWorks IDE. Use mw_ide_attach to select and back up a workspace project first. If another project is already open, ask the user whether the agent may save and close it, then pass user_approved=true and its exact path as expected_project; a changed project is refused. After the IDE loads, the project it actually has open is compared with the path that was requested. A mismatched project is left open and the call fails. Success means the selected workspace project is active.",
+      "parameters": [
+        "path",
+        "user_approved",
+        "expected_project"
+      ],
+      "required": [
+        "path"
+      ]
+    },
+    {
+      "name": "mw_ide_pous",
+      "family": "ide",
+      "description": "List the POUs of the project open in the IDE, read from the IDE's live object model (not from files). Language codes: 1=IL, 2=ST, 3=FBD, 4=LD, 5=SFC, 6=MSFC, 7=FFLD.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_variables",
+      "family": "ide",
+      "description": "Read the live variable model of the project open in the IDE: name, data type, section, group, description, initial value, IEC address and six native flags (retain, pdd, opc, disabled, not_on_plc, redundant) per declaration, with group read_only state. Optionally restrict to one POU. This is the IDE's own model, so it needs no knowledge of the on-disk container format.",
+      "parameters": [
+        "pou"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_make",
+      "family": "ide",
+      "description": "Run Make in the IDE (ActiveProject.Compile(1) = adeCtMake) and report the verdict. Make links the already-built parts; prefer mw_ide_build after a code change, because a plain Make can reuse stale symbol data.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_build",
+      "family": "ide",
+      "description": "Run Compile(2), which is Build, not Rebuild. Completion requires an observed pending-to-compiled transition; otherwise it reports unverified. Use the observed IDE menu for Rebuild; the API is unsupported on the tested IDE.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_compile_state",
+      "family": "ide",
+      "description": "Report whether the open project is COMPILED and whether it has MODIFIED since, without building anything. Cheap and side-effect free, so it is the right check before deciding whether a build is needed, and after a build whose verdict looks surprising. is_modified=true with is_compiled=true means there are edits that have not been compiled yet.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_save",
+      "family": "ide",
+      "description": "Save the verified staged project already open in the IDE through ActiveProject.Save. No offline source writes. Useful after visible editor changes and native task assignment. Reports elapsed_s and the modified and compiled flags; read saved Structured Text and declarations back to prove the intended worksheets persisted. Do not assume this equals File > Save All on every IDE version. Requires a running IDE and refuses an unverified project.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_ide_errors",
+      "family": "ide",
+      "description": "Read the IDE compiler messages as text: the API returns a verdict but never the messages, so this reads the Message Window list through MSAA. Panes: Errors (default), Warnings, Build, Infos, PLC Errors, Print, Statistics, SCC. Needs one visible list of nonzero area; a hidden Message Window is exposed through its native menu command. A minimized frame refuses before pane activation and names the frame to restore; do not repeat the read until state changes. Unknown panes, ambiguous controls and unreadable rows refuse. An empty pane is not by itself a clean build: the compile state is read too, and an empty pane on an uncompiled project reports unverified. screenshot:true also captures the pane; limit raises the cap.",
+      "parameters": [
+        "pane",
+        "limit",
+        "screenshot"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_start",
+      "family": "ide",
+      "description": "Start MotionWorks IEC visibly with the verified workspace project wrapper. Resolves the exact native Use Trial prompt during initial startup or an already-running blocked startup; do not launch a second IDE. Source edits happen inside the open IDE. Inspect mw_ide_status afterward, then continue the selected workspace project if it is already open, or use mw_ide_open when no project is open. If MotionWorks restores another project it is left open until the user approves saving and closing it.",
+      "parameters": [
+        "exe",
+        "project"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_trial",
+      "family": "ide",
+      "description": "Check for and optionally answer the MotionWorks licence or trial dialog. An unlicensed build shows a modal dialog (\"Use Trial\" / \"Activate Online\" / \"Activate by Phone\") BEFORE the IDE creates any window of its own, and until it is answered the IDE has no project services, so every OpenProject fails with \"Internal error\". mw_ide_start checks it even when a blocked IDE frame exists. Selects only mwctVerify-owned dialogs and the exact Use Trial control, using native UI Automation Invoke or a posted native button command if Invoke is unavailable, and verifies closure. Never retry an ambiguous action or start another IDE while the existing process is waiting.",
+      "parameters": [
+        "attempt"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_state",
+      "family": "ide",
+      "description": "Report what the IDE is actually doing now, including modal dialogs the automation API cannot see. Call this after every mw_ide_* step. While a dialog is up the COM API returns nothing useful - IsProjectOpen reports false or throws - so \"no project open\" or a bare failure must NOT be read as \"the IDE closed\". Reports minimized or visible frame state separately from blocked; a minimized IDE must be deliberately restored before diagnostics, because not-blocked does not prove a visible frame. Returns whether the IDE is blocked, and for each dialog its exact message text and button labels read with WM_GETTEXT, so they are exact rather than an OCR guess. screenshot:true also captures the IDE when a dialog has no readable text, such as the .NET licence dialog.",
+      "parameters": [
+        "screenshot"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_dialog",
+      "family": "ide",
+      "description": "Answer a modal dialog that MotionWorks is waiting on. The IDE asks questions (defragment this project?, load a project that was not closed cleanly?, licence notices) in standard Win32 dialogs, and while one is up the automation API is silent, which is what makes a healthy IDE look closed. Name the button to press (\"Yes\", \"No\", \"OK\", ...) and it is clicked with BM_CLICK, with no synthetic input. mw_ide_open already answers the safe recurring ones by itself; this is for anything else. Only ever relevant to a STAGED COPY: the plugin never opens your original project, so answering \"Yes, load anyway\" cannot endanger real work.",
+      "parameters": [
+        "button",
+        "handle",
+        "button_id"
+      ],
+      "required": [
+        "button"
+      ]
+    },
+    {
+      "name": "mw_ide_close",
+      "family": "ide",
+      "description": "Close MotionWorks IEC gracefully for an explicitly approved persistence test or recovery. Normal code editing happens inside the open IDE, so closing is not a prerequisite. Ask the user whether the agent may save and close MotionWorks first, then pass user_approved=true and the exact open project path as expected_project. If the project changed, the close is refused.",
+      "parameters": [
+        "user_approved",
+        "expected_project"
+      ],
+      "required": [
+        "user_approved"
+      ]
+    },
+    {
+      "name": "mw_code_pous",
+      "family": "code",
+      "description": "List the POUs of a staged project with each one's language and body stream, read straight from the project files, including body_sha256 for exact conversion preconditions. has_st_body identifies readable ST text; graphical bodies use native IDE operations. Defaults to the staged project. Pass reference:true with a project path to read a different program, including one outside the workspace, without staging or opening it.",
+      "parameters": [
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_types",
+      "family": "code",
+      "description": "Read the project's user-defined data types (UDTs) from DT/Tyllist.typ - the member names and types needed to write correct Structured Text. Omit name to list every type the project defines, matching the file's own NDTE header; pass name for one type in full, with members, types and array bounds. Types used by POUs but absent from the list come from an installed LIBRARY rather than the project and are reported as not defined here - they are not missing, they are elsewhere.",
+      "parameters": [
+        "name",
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_library",
+      "family": "code",
+      "description": "Read the library side of the project: which blocks it uses, and what one block offers. Omit name to list every block the dependency manifest names, with kind and what it calls. Pass name for one block, read from its compiled .NET assembly. The identifier list does NOT record input/output DIRECTION, so read the declaration in the native function-block definition or mw_code_reference; a caller declaration alone does not establish pin direction. Compiler temporaries (__temp_1..50, s1..s7) are filtered out rather than reported as part of the interface.",
+      "parameters": [
+        "name",
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_reference",
+      "family": "code",
+      "description": "Search reviewed Yaskawa programming references with document ID, revision, section and physical PDF page links. Works offline with curated guidance; synchronized official PDFs add full-page search. Omit query to list sources and topics; pass block for one reviewed FB interface. Historical signatures are advisory until the installed versions match.",
+      "parameters": [
+        "query",
+        "source_id",
+        "block",
+        "limit"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_reference_sync",
+      "family": "code",
+      "description": "Download and index allowlisted official Yaskawa PDFs inside this workspace under .motionworks/references. No project files are transmitted. Requires network access and pypdf in the plugin Python runtime. Verifies reviewed PDF hashes before using versioned page citations, and changed vendor editions require catalog review. Curated references remain usable if downloads are unavailable.",
+      "parameters": [
+        "source_ids"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_check_program",
+      "family": "code",
+      "description": "Source-linked programming review: external and global scope and types, integer bounds, named function-block pin direction and types, and task-binding candidates. Pass pou and body to check proposed ST before writing; omit them to review existing ST POUs. installed_interfaces:true resolves exact native-bound installed declarations, and unresolved or ambiguous interfaces do not fall back to historical signatures. Read-only by default. For ONE protected block selected in interface_libraries, refresh_compiler:true with baseline_saved:true runs a fresh native Build/Make with complete source/native/library checks, then reviews against that compiled contract; it does not decode protected source or prove installed-cache freshness. Project-defined interfaces take precedence.",
+      "parameters": [
+        "project",
+        "pou",
+        "body",
+        "installed_interfaces",
+        "refresh_compiler",
+        "baseline_saved",
+        "interface_libraries"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_diagnose",
+      "family": "code",
+      "description": "Map exact compiler or runtime diagnostic text to documented candidate causes, read-only checks and versioned Yaskawa references. Separates compiler, runtime and IDE-state problems. Does not invent a root cause or clear alarms; unknown messages are reported unmatched.",
+      "parameters": [
+        "message"
+      ],
+      "required": [
+        "message"
+      ]
+    },
+    {
+      "name": "mw_code_pattern",
+      "family": "code",
+      "description": "Retrieve original, source-linked ST patterns for startup initialization, request-edge handling, cyclic sequencing and Enable/Valid position feedback. Returns declarations, body, assumptions and adaptation checks. Does not write or execute the example. Omit name to list patterns.",
+      "parameters": [
+        "name"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_manual",
+      "family": "code",
+      "description": "Search installed MotionWorks PDF text and reviewed, versioned Yaskawa references. Omit term to list available manuals, CHM archive filenames and the reviewed catalog. Use mw_code_installed_help for actual installed CHM topic text. Installed legacy PDF extraction is heuristic and carries no verified revision or page citations; prefer mw_code_reference for source-linked programming guidance. Full PDF search requires mw_code_reference_sync, while curated guidance works offline.",
+      "parameters": [
+        "term",
+        "name",
+        "limit"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_globals",
+      "family": "code",
+      "description": "List the project VAR_GLOBAL declarations - the tags every POU can see, with type, group, IEC address, initial value and description. Read this BEFORE writing code that references a shared tag, and after a native IDE Save All to confirm the global landed. Each consuming POU needs a matching VAR_EXTERNAL declaration. The automation API exposes NO project-level variable collection - project.Variables, project.Globals and project.VariableGroups are all absent or empty - so the live variable model cannot show globals at all; this reads the resource declaration stream instead.",
+      "parameters": [
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_verify_variables",
+      "family": "code",
+      "description": "After a native IDE Save, compare a POU or global worksheet against the COMPLETE planned final declaration list (baseline plus authorized changes). Detects overwritten existing names, renamed groups, missing or extra rows, and type, usage, address, init or description changes. Read-only; it cannot stop generic keyboard input and cannot certify unsaved cells or compiler acceptance. Omit pou for globals. Do not build or claim success on accepted:false.",
+      "parameters": [
+        "project",
+        "pou",
+        "expected_variables"
+      ],
+      "required": [
+        "expected_variables"
+      ]
+    },
+    {
+      "name": "mw_code_read_st",
+      "family": "code",
+      "description": "Read one POU's Structured Text body, restoring native comments, plus its variable declarations, so the agent sees the code it is about to change. Pass reference:true and a project path to read a POU from another program, including one outside the workspace; that read does not stage, open or modify it.",
+      "parameters": [
+        "pou",
+        "project",
+        "reference"
+      ],
+      "required": [
+        "pou"
+      ]
+    },
+    {
+      "name": "mw_code_read_text",
+      "family": "code",
+      "description": "Read one supported ST or IL POU body, restoring native comments, plus its variable declarations, so the agent sees the code it is about to change. Pass reference:true and a project path to read a POU from another program, including one outside the workspace; that read does not stage, open or modify it.",
+      "parameters": [
+        "pou",
+        "project",
+        "reference"
+      ],
+      "required": [
+        "pou"
+      ]
+    },
+    {
+      "name": "mw_code_export_pou",
+      "family": "code",
+      "description": "Export one POU to a readable file: its Structured Text body followed by its declarations, with the POU name, language and source path in a short header. This is the practical form of \"export\" for this IDE - the automation API also advertises plc_open_xml_export and iec_61131-3_file_export, but those providers take no arguments and are driven by IDE dialogs only, so they cannot be called headlessly. Use it to hand a POU to the user, keep a copy before rewriting, or diff two versions. The inverse is the native IDE editors and import dialogs; this readable export is not an import format.",
+      "parameters": [
+        "pou",
+        "project",
+        "path"
+      ],
+      "required": [
+        "pou"
+      ]
+    },
+    {
+      "name": "mw_code_eip_map",
+      "family": "code",
+      "description": "Summarize the EtherNet/IP assembly map: the size each assembly DECLARES, how many words the project actually USES, and how many are left, so \"is there room for another status value?\" is one call instead of a reconstruction. Two sources hold the two halves: the L5X module definition gives the declared size (PrimCxnInputSize/PrimCxnOutputSize), and the project's own %I/%Q addresses give the used range; pass both or either. The assembly is treated as a window from the lowest address in each direction, so addresses belonging to another module's area are reported separately. next_free_word_address is arithmetic over what was read, NOT a claim the peer program leaves it free. Read-only.",
+      "parameters": [
+        "l5x",
+        "project",
+        "module_name"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_validate",
+      "family": "code",
+      "description": "Read-only offline validation of native containers, paired declarations and grids, handles, rows, addresses and project-tree IDs and counts. Reports format refusals as errors. This is not an IDE build verdict.",
+      "parameters": [
+        "project"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_workflow_check",
+      "family": "workflow",
+      "description": "Read-only readiness report for an explicit staged or directly attached workspace project. Reports native validation, wrapper binding, source hashes, blockers and the next safe action. Does not repair, overwrite, start the IDE or download.",
+      "parameters": [
+        "project"
+      ],
+      "required": [
+        "project"
+      ]
+    },
+    {
+      "name": "mw_code_source_manifest",
+      "family": "code",
+      "description": "Read-only native source stream hashes for before/after and persistence comparisons. Excludes generated compiler output. A DLL constant or IsCompiled flag is not proof these sources were compiled or downloaded.",
+      "parameters": [
+        "project"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_verify",
+      "family": "ide",
+      "description": "Read-only mode capture_baseline records complete saved, native and library state after baseline_saved:true; compare_baseline needs the returned baseline_id and compares the same workspace and project. Neither baseline mode builds, saves, navigates or edits source, and preservation excludes compiler output and root IDE bookkeeping - it is not compile or runtime acceptance. Default acceptance mode, after native Save All and a read-back, verifies the exact open authorized workspace project: validation, manifests, fresh Build, Make, messages and Save. With consent it closes and reopens, compares persistence, then repeats fresh Build/Make and integrity checks. Never force-closes, repairs files, downloads or commands motion. A cached Make is not a fresh Build.",
+      "parameters": [
+        "project",
+        "mode",
+        "baseline_saved",
+        "baseline_id",
+        "close_reopen",
+        "user_approved"
+      ],
+      "required": [
+        "project"
+      ]
+    },
+    {
+      "name": "mw_code_sync_back",
+      "family": "code",
+      "description": "Copy the STAGED edit back to the real project it was staged from, in the release loop: edit in IDE, Save All, read back, fresh Build/Make, approved reopen and recompile, then separately authorized source-only promotion. Do not restage over edits. Carries SOURCE ONLY - POU containers, declaration and grid streams, the project tree, the type list and resource files. It does NOT carry the .mwt wrapper, whose stored path is bound to the stage, nor compiler output or scratch files. The destination is the source directory mw_ide_stage recorded, refused unless that recording proves it is inside the workspace. Every file is verified by sha256 after the copy, so a non-empty failures list means the release is NOT synced. dry_run defaults to true.",
+      "parameters": [
+        "project",
+        "dry_run"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_wrapper_binding",
+      "family": "code",
+      "description": "Read-only: how a staged project's .mwt wrapper is bound, and whether it is STALE. mw_ide_open refuses a wrapper whose stored path is not the staged directory, and that refusal can appear after native project metadata changes. Re-staging to clear it is the wrong remedy, because it overwrites the stage and takes the new POU with it; this reports which wrapper is stale and whether re-binding is enough before anything tries to open it. Omit project to check every staged project.",
+      "parameters": [
+        "project"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_rebind_wrapper",
+      "family": "code",
+      "description": "Point a staged .mwt back at its staged directory, IN PLACE, so mw_ide_open accepts it. This is the remedy for a wrapper reported stale by mw_code_wrapper_binding, and the alternative to re-staging, which would overwrite the staged project and take any POU created since with it. Idempotent and cheap when already bound: an already-bound wrapper reports would_change=false with an unchanged file digest, so it is safe to call unconditionally rather than working out whether it is needed. dry_run defaults to true.",
+      "parameters": [
+        "mwt",
+        "directory",
+        "dry_run"
+      ],
+      "required": [
+        "mwt"
+      ]
+    },
+    {
+      "name": "mw_code_task_create",
+      "family": "code",
+      "description": "Create a task through the IDE's own object model - resource.Tasks.Create(name, cycle) then Save() - so the IDE writes the project tree itself and nothing here edits a file. The counterpart of mw_code_pou_assign: assign puts a program INTO a task, this makes the task to put it in. The task survives the save, appears to mw_code_tasks (which reads the tree) and mw_code_task_model (which reads COM), and persists across close and reopen. kind is the task's Type as the IDE reports it - DEFAULT for the background task, CYCLIC for the periodic ones, SYSTEM for Start. A task starts with no programs assigned. dry_run defaults to true.",
+      "parameters": [
+        "name",
+        "kind",
+        "dry_run"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "mw_code_task_delete",
+      "family": "code",
+      "description": "Delete a task through the IDE's own object model - Task.Delete() then Save(). Refuses while programs are still assigned to it, and names them, because deleting a task that is running code should be deliberate. Unassign first with mw_code_pou_unassign, or use the IDE POU delete command to remove the programs themselves. dry_run defaults to true.",
+      "parameters": [
+        "name",
+        "dry_run"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "mw_code_task_model",
+      "family": "code",
+      "description": "Read every task and its assigned programs through the IDE's own COM object model - a second source of truth beside mw_code_tasks, which reads PROJECT.TRE. The tree is what the IDE wrote at the last save; this is what the IDE holds in memory now, so when the two agree the assignment is both made and saved. Each task reports its name, its cycle (DEFAULT, CYCLIC, SYSTEM) and every program instance with its instance name, program type and logical name. Use it to confirm an assignment made by mw_ide_task_change. Read-only.",
+      "parameters": [],
+      "required": []
+    },
+    {
+      "name": "mw_code_tasks",
+      "family": "code",
+      "description": "Read exact saved task ownership: PROGRAM instance names, resolved program types and native execution order, configuration and resource identity, cycle kind and task settings (interval, priority, watchdog). Validates PROJECT.TRE against LIST.POU and matching SET files; source hashes and changed-during-read guards accompany the result. unassigned lists PROGRAM types without direct saved task instances, not unmatched instance names. Indirect calls and unsaved or live state need separate review. Saved ownership is not runtime execution proof.",
+      "parameters": [
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_code_pou_assign",
+      "family": "code",
+      "description": "Assign a program to a task so it actually RUNS and is compile-checked. An unassigned POU may be inert: nothing calls it, and a clean build says nothing about whether it is correct. Goes through the IDE's own object model - task.ProgramInstances.Create then Save() - so the IDE writes the project tree itself and nothing here edits a file. The IDE also VALIDATES: an existing instance reports \"ProgramInstance already exists\" and an unknown program type reports \"Unknown Program type\". Task names come from mw_code_tasks (Start, FastTsk, MedTsk, SlowTsk, BG). Confirm from the tree side with mw_code_tasks and from the COM side with mw_code_task_model. dry_run defaults to true.",
+      "parameters": [
+        "task",
+        "pou",
+        "instance",
+        "type",
+        "dry_run"
+      ],
+      "required": [
+        "task",
+        "pou"
+      ]
+    },
+    {
+      "name": "mw_code_pou_unassign",
+      "family": "code",
+      "description": "Remove a program's assignment from a task through the IDE's own object model - ProgramInstances.Delete() then Save() - so the IDE writes the project tree itself and nothing here edits a file. The program itself is NOT deleted; it stays in Logical POUs and simply stops running. Compare with the IDE POU delete command, which removes the POU. dry_run defaults to true.",
+      "parameters": [
+        "task",
+        "pou",
+        "dry_run"
+      ],
+      "required": [
+        "task",
+        "pou"
+      ]
+    },
+    {
+      "name": "mw_code_unsupported",
+      "family": "code",
+      "description": "Inspect offline-reader limitations for graphical LD and FBD and for compressed declaration streams. These limits do not prohibit native IDE editing; use mw_ide_edit_guide and the companion computer tool.",
+      "parameters": [
+        "project",
+        "reference"
+      ],
+      "required": []
+    },
+    {
+      "name": "mw_ide_screenshot",
+      "family": "ide",
+      "description": "Capture the MotionWorks IDE window to a PNG and return its path, so you can see what the IDE is showing - a dialog, the Project Tree, or the Message Window error list. Capture preserves foreground and keyboard focus; minimized windows and an unverified screen fallback are refused. Owned inline dialogs may require a companion screenshot. Set capture_cursor:true after a deliberate hover to render the actual cursor glyph only when it is over the IDE; cursor or focus drift refuses capture. The rendered glyph and coordinates are observation, not connection acceptance. Read the returned path with the image-reading tool.",
+      "parameters": [
+        "capture_cursor"
+      ],
+      "required": []
+    }
+  ]
+}
