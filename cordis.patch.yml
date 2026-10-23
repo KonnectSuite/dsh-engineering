@@ -1,0 +1,31 @@
+# AryaAI engineering bundle - phase 1: tool exposure.
+#
+# Additive by construction. This layer inserts no plugin rows and owns no id
+# another bundle already owns. It targets the existing `tool-capability-policy`
+# row and links each engineering product's tool namespace to the skill that
+# governs it, so the Skills page switch controls the guidance and the tools
+# together instead of leaving the tool schemas exposed after the skill is off.
+#
+# `onDemand` stays false. Arya measured bounded on-demand discovery against
+# eager exposure and kept eager exposure because discovery cost more turns than
+# the schema characters it saved. A phase-1 bundle must not change that global
+# behavior; the context gain comes from per-product switches and from trimming
+# the product schemas, not from hiding every tool behind tool_search.
+#
+# Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
+# it here once a FactoryTalk Optix skill registers one.
+- id: tool-capability-policy
+  config:
+    policyOnly: true
+    toolPolicy:
+      onDemand: false
+      capabilities:
+        - skill: rockwell-l5x
+          prefixes:
+            - l5x_
+        - skill: factorytalk-view
+          prefixes:
+            - ftview_
+        - skill: motionworks-iec
+          prefixes:
+            - mw_
