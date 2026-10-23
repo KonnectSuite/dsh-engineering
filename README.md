@@ -38,6 +38,18 @@ Before this bundle, a skill switch changed only the guidance; the tool schemas s
 
 That makes the skill the single per-product switch: off means guidance and tools together. The tools entry remains separately disableable for an operator who wants the schemas gone while keeping the guidance, but the link means it cannot expose tools whose skill is off.
 
+The switch differs per product, because not every product carries a skill or a viewer:
+
+| Product | Switch that clears its context | What stays mounted |
+|---|---|---|
+| Studio 5000 L5X | `rockwell-l5x` skill | ladder viewer, PLC trend card |
+| FactoryTalk View ME | `factorytalk-view` skill | display renderer |
+| MotionWorks IEC | `motionworks-iec` skill | — |
+| FactoryTalk Optix | `optix-tools` row | — |
+| CAD | `tool-cad` row | drawings service, DXF viewer |
+
+The CAD row is the tools entry rather than a skill because the viewer needs `cad-drawings` and the SVG controller mounted to render a sheet; only the four schemas cost context.
+
 ```mermaid
 sequenceDiagram
   participant U as User
