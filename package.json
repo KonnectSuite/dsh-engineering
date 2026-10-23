@@ -45,7 +45,8 @@
   },
   "dependencies": {
     "dsh-engineering-l5x": "workspace:*",
-    "dsh-engineering-l5x-viewer": "workspace:*"
+    "dsh-engineering-l5x-viewer": "workspace:*",
+    "dsh-engineering-ftview": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

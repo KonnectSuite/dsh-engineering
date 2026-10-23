@@ -54,3 +54,11 @@
     # The ladder viewer is the bundle's own client face, independent of the tools.
     - id: l5x-viewer
       name: dsh-engineering-l5x-viewer
+    # FactoryTalk View ME read surface. Kept off until the old FTView plugin is retired,
+    # because both register the factorytalk-view skill.
+    - id: ftview-read
+      name: dsh-engineering-ftview
+      disabled: true
+    - id: ftview-read-skill
+      name: dsh-engineering-ftview/skill
+      disabled: true
