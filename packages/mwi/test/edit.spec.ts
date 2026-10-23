@@ -25,6 +25,10 @@ function fakeRuntime(overrides: Partial<SessionRuntime> = {}): SessionRuntime {
     async diagnostics() { return {} },
     async verify() { return {} },
     async editCode() { return { verification: { accepted: true, errors: [] }, pou: 'Main' } },
+    async editVariable() { return { operation: 'add', verification: { accepted: true, errors: [] } } },
+    async editStructure() { return { scope: 'pou', operation: 'create', verification: { accepted: true, errors: [] } } },
+    async insertBlock() { return { verification: { accepted: true, errors: [], warnings: [] }, completed_phases: ['instance_declared', 'call_inserted'] } },
+    async transferPou() { return { accepted: true, operation: 'export', package_token: 't-1' } },
     async validate() { return { ready: true, blockers: [], validation_errors: [] } },
     async apply() { return { saved: true } },
     ...overrides,
@@ -40,7 +44,7 @@ async function call(runtime: SessionRuntime, name: string, args: Record<string, 
 
 describe('edit tools', () => {
   it('registers the implemented edit intents', () => {
-    expect(editTools(fakeRuntime()).map(tool => tool.name)).toEqual(['mw_edit_code', 'mw_validate', 'mw_apply'])
+    expect(editTools(fakeRuntime()).map(tool => tool.name)).toEqual(['mw_edit_code', 'mw_edit_variables', 'mw_edit_structure', 'mw_insert_block', 'mw_transfer_pou', 'mw_validate', 'mw_apply'])
   })
 
   it('delegates an exact change with the body hash', async () => {
@@ -74,6 +78,56 @@ describe('edit tools', () => {
     expect(mixed.error).toMatchObject({ code: 'INVALID_ARGUMENT' })
     const noHash = await call(fakeRuntime(), 'mw_edit_code', { pou: 'Main', changes: [{ find: 'a', replace: 'b' }] })
     expect(noHash.error).toMatchObject({ code: 'INVALID_ARGUMENT' })
+  })
+
+  it('builds a complete declaration for a variable add', async () => {
+    let received: Record<string, unknown> | undefined
+    const runtime = fakeRuntime({
+      async editVariable(input) { received = input as Record<string, unknown>; return { verification: { accepted: true, errors: [] } } },
+    })
+    const result = await call(runtime, 'mw_edit_variables', {
+      operation: 'add',
+      pou: 'Main',
+      declaration: { name: 'Speed', type: 'INT', section: 'VAR' },
+      flags: { retain: true },
+    })
+    expect(received).toMatchObject({ operation: 'add', pou: 'Main', declaration: { name: 'Speed', type: 'INT', section: 'VAR', group: null, address: null }, flags: { retain: true } })
+    expect(result.summary).toContain('verified')
+  })
+
+  it('passes task settings and approval for a structure change', async () => {
+    let received: Record<string, unknown> | undefined
+    const runtime = fakeRuntime({
+      async editStructure(input) { received = input as Record<string, unknown>; return { verification: { accepted: false, errors: ['Task settings differ from plan'] } } },
+    })
+    const result = await call(runtime, 'mw_edit_structure', {
+      scope: 'task', operation: 'edit', name: 'FastTsk', settings: { INTERVAL: 'T#8ms' }, user_approved: true,
+    })
+    expect(received).toMatchObject({ scope: 'task', operation: 'edit', settings_changes: { INTERVAL: 'T#8ms' }, user_approved: true })
+    expect(result.summary).toContain('did not verify')
+  })
+
+  it('turns pin pairs into a binding map for insertion', async () => {
+    let received: Record<string, unknown> | undefined
+    const runtime = fakeRuntime({
+      async insertBlock(input) { received = input as Record<string, unknown>; return { verification: { accepted: true, errors: [] } } },
+    })
+    const result = await call(runtime, 'mw_insert_block', {
+      pou: 'Main', block: 'R_TRIG', instance: 'Trig1', expected_body_sha256: 'a'.repeat(64),
+      bindings: [{ pin: 'CLK', value: 'Start' }, { pin: 'Q', value: 'Ready' }],
+    })
+    expect(received).toMatchObject({ pou: 'Main', block: 'R_TRIG', instance: 'Trig1', bindings: { CLK: 'Start', Q: 'Ready' } })
+    expect(result.summary).toContain('Inserted Trig1')
+  })
+
+  it('exports a POU and reports the token path', async () => {
+    const result = await call(fakeRuntime(), 'mw_transfer_pou', { operation: 'export', pou: 'Main' })
+    expect(result.summary).toContain('Exported Main')
+  })
+
+  it('requires a token before an import', async () => {
+    const result = await call(fakeRuntime(), 'mw_transfer_pou', { operation: 'import' })
+    expect(result.error).toMatchObject({ code: 'INVALID_ARGUMENT' })
   })
 
   it('reports validation blockers and points at review', async () => {

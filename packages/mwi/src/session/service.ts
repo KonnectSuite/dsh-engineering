@@ -10,13 +10,14 @@
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Bridge } from '../core/bridge.ts'
 import { CodeEngine } from '../core/code-engine.ts'
 import { MwiError } from '../core/errors.ts'
 import { PowerShellBridgeTransport } from '../core/ps-bridge.ts'
 import { StageService, type StageOptions, type StageRecord } from './stage.ts'
+import { compareVariables } from '../edit/compare.ts'
 import { ReadService } from '../read/service.ts'
 import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
 
@@ -69,6 +70,59 @@ export interface SessionRuntime {
   validate(options: { pou?: string; body?: string }): Promise<Record<string, unknown>>
   /** Save the open staged project through the IDE. */
   apply(): Promise<Record<string, unknown>>
+  /** Insert one FB instance and its ST call into a POU. */
+  insertBlock(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>>
+  /** Export one POU to a workspace package, or import it into this project. */
+  transferPou(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>>
+
+  /** Add, edit or delete one native declaration. */
+  editVariable(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>>
+  /** Create, copy, rename, delete or assign one POU or task. */
+  editStructure(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>>
+  /** Insert one FB instance and its ST call into a POU. */
+  insertBlock(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>>
+}
+
+/** One file in a native POU package. */
+interface PackageFile { readonly path: string; readonly bytes: number; readonly sha256: string }
+
+/** One export receipt, bound to this runtime and project. */
+interface PackageReceipt {
+  readonly saved: Record<string, unknown>
+  readonly native: Record<string, unknown>
+  readonly pou: Record<string, unknown>
+  readonly meta: Record<string, unknown>
+  readonly manifest: readonly PackageFile[]
+  readonly result: Record<string, unknown>
+  readonly directory: string
+  readonly project: string
+  readonly workspace: string
+  readonly evidence_path: string
+  used: boolean
+}
+
+/** Hash every file in a native package, refusing links and oversized trees. */
+function nativePackageManifest(directory: string, workspace: string): readonly PackageFile[] {
+  const files: PackageFile[] = []
+  let bytes = 0
+  const visit = (folder: string): void => {
+    if (!isInside(workspace, folder)) throw new MwiError('REFUSED', 'The package directory escapes the workspace.', 'Export into the workspace stage.')
+    for (const entry of readdirSync(folder, { withFileTypes: true })) {
+      const path = join(folder, entry.name)
+      if (entry.isSymbolicLink() || !isInside(workspace, path)) throw new MwiError('REFUSED', 'The package contains a link.', 'Re-export the package; links are refused.')
+      if (entry.isDirectory()) {
+        visit(path)
+        continue
+      }
+      if (!entry.isFile()) throw new MwiError('REFUSED', 'The package contains an unsupported item.', 'Re-export the package.')
+      const content = readFileSync(path)
+      bytes += content.length
+      if (files.length >= 100 || bytes > 64 * 1024 * 1024) throw new MwiError('REFUSED', 'The package exceeds the supported size.', 'Export a smaller POU.')
+      files.push({ path: path.slice(directory.length + 1).replaceAll('\\', '/'), bytes: content.length, sha256: createHash('sha256').update(content).digest('hex') })
+    }
+  }
+  visit(directory)
+  return files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)
 }
 
 /** A workspace runtime over the real bridge and engine. */
@@ -78,6 +132,8 @@ export class PowerShellSessionRuntime implements SessionRuntime {
   private readonly stages: StageService
   /** Saved-project reads. */
   readonly reads: ReadService
+  /** Live POU-package receipts, bound to this runtime. */
+  private readonly packages = new Map<string, PackageReceipt>()
 
   /**
    * @param workspace - Absolute workspace root.
@@ -264,6 +320,200 @@ export class PowerShellSessionRuntime implements SessionRuntime {
       changed,
       compile_state: state,
       baseline_compile_state: baseline.compile_state,
+    }
+  }
+
+
+  /** Export one POU to a workspace package, or import it into this project. */
+  async transferPou(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const helpers = await import(pathToFileURL(join(LEGACY_DIR, 'pou-package.js')).href) as {
+      exportPouPackage: (args: Record<string, unknown>, deps: Record<string, unknown>) => Promise<Record<string, unknown>>
+      importPouPackage: (args: Record<string, unknown>, receipt: PackageReceipt, deps: Record<string, unknown>) => Promise<Record<string, unknown>>
+    }
+    const workspace = this.workspace
+    const project = record.staged_directory
+    const evidenceDirectory = join(workspace, '.motionworks', 'verification')
+    mkdirSync(evidenceDirectory, { recursive: true })
+    const evidence = join(evidenceDirectory, `pou-package-${randomUUID()}.json`)
+    if (input.operation === 'export') {
+      const directory = join(workspace, '.motionworks', `pk-${randomUUID().slice(0, 8)}`)
+      mkdirSync(directory)
+      const deps = {
+        status: async () => await this.bridge.run('compile_state'),
+        saved: async () => await this.engine.run('structure_snapshot', { project }),
+        snapshot: async () => await this.bridge.run('pou_package_snapshot', {}, 120_000),
+        manifest: async () => nativePackageManifest(directory, workspace),
+        consume: async () => undefined,
+        mutate: async (request: Record<string, unknown>) => await this.bridge.run('pou_package_mutate', { ...request, project, package_directory: directory }, 120_000),
+      }
+      try {
+        const exported = await helpers.exportPouPackage({ project, pou: input.pou, baseline_saved: true }, deps) as {
+          saved: Record<string, unknown>
+          native: Record<string, unknown>
+          pou: Record<string, unknown>
+          meta: Record<string, unknown>
+          manifest: readonly PackageFile[]
+          result: Record<string, unknown>
+        }
+        const token = randomUUID()
+        const receipt: PackageReceipt = {
+          ...exported, directory, project, workspace, evidence_path: evidence, used: false,
+        }
+        this.packages.set(token, receipt)
+        writeFileSync(evidence, JSON.stringify({ operation: 'export', token, receipt }, null, 2), 'utf8')
+        return {
+          accepted: true,
+          operation: 'export',
+          package_token: token,
+          package_directory: directory,
+          file_count: exported.manifest.length,
+          evidence_path: evidence,
+        }
+      } catch (error) {
+        throw new MwiError('EDIT_REFUSED', `${(error as Error).message}; evidence at ${evidence}`, 'Inspect the partial package before another attempt.')
+      }
+    }
+    const token = typeof input.package_token === 'string' ? input.package_token : ''
+    const receipt = this.packages.get(token)
+    if (receipt === undefined || receipt.workspace !== workspace || receipt.project !== project) {
+      throw new MwiError('PACKAGE_TOKEN_UNKNOWN', 'No live export receipt matches this token, workspace and project.', 'Export the POU again; tokens do not survive a plugin reload.')
+    }
+    if (input.dependencies_reviewed !== true) {
+      throw new MwiError('APPROVAL_REQUIRED', 'Importing needs dependencies_reviewed:true.', 'Review the package externals, then retry with the flag.')
+    }
+    const deps = {
+      status: async () => await this.bridge.run('compile_state'),
+      saved: async () => await this.engine.run('structure_snapshot', { project }),
+      snapshot: async () => await this.bridge.run('pou_package_snapshot', {}, 120_000),
+      manifest: async () => nativePackageManifest(receipt.directory, workspace),
+      consume: async () => {
+        receipt.used = true
+        writeFileSync(evidence, JSON.stringify({ operation: 'import', token, phase: 'token_consumed', receipt }, null, 2), 'utf8')
+      },
+      mutate: async (request: Record<string, unknown>) => await this.bridge.run('pou_package_mutate', { ...request, project, package_directory: receipt.directory }, 120_000),
+    }
+    try {
+      const imported = await helpers.importPouPackage({ project, baseline_saved: true, dependencies_reviewed: true }, receipt, deps)
+      writeFileSync(evidence, JSON.stringify({ operation: 'import', token, ...imported }, null, 2), 'utf8')
+      return { ...imported, evidence_path: evidence }
+    } catch (error) {
+      throw new MwiError('EDIT_REFUSED', `${(error as Error).message}; evidence at ${evidence}`, 'Inspect the retained receipt and current project; do not retry a consumed token.')
+    }
+  }
+
+  /** Insert one FB instance and its ST call into a POU. */
+  async insertBlock(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const helpers = await import(pathToFileURL(join(LEGACY_DIR, 'fb-insertion.js')).href) as {
+      fbInsertionPlan: (args: Record<string, unknown>, block: Record<string, unknown>, read: Record<string, unknown>) => {
+        declaration: Record<string, unknown>
+        code: string
+        call: string
+        warnings: string[]
+      }
+    }
+    const project = record.staged_directory
+    const state = await this.bridge.run('compile_state') as { is_modified?: boolean }
+    if (state.is_modified !== false) {
+      throw new MwiError('EDIT_REFUSED', 'The native project has unsaved changes.', 'Save or reconcile the IDE, then retry.')
+    }
+    const libraries = await this.bridge.run('library_snapshot') as { libraries?: readonly Record<string, unknown>[] }
+    const block = await this.engine.run('block_interface', {
+      project,
+      native_libraries: libraries.libraries ?? [],
+      name: input.block,
+      ...(typeof input.library === 'string' ? { library: input.library } : {}),
+    }, 120_000) as Record<string, unknown>
+    const read = await this.engine.run('read_st', { project, pou: input.pou }, 60_000) as Record<string, unknown>
+    const plan = helpers.fbInsertionPlan({ ...input, project, baseline_saved: true }, block, read)
+    const variable = await this.editVariable({
+      pou: input.pou,
+      operation: 'add',
+      declaration: plan.declaration,
+      ...(typeof input.group === 'string' ? {} : { group: 'Default' }),
+    }) as { verification?: { accepted?: boolean; errors?: readonly string[] } }
+    if (variable.verification?.accepted !== true) {
+      throw new MwiError('EDIT_REFUSED', `The instance declaration did not verify: ${variable.verification?.errors?.join('; ') ?? 'unknown'}.`, 'Inspect the declaration evidence before another attempt.')
+    }
+    const code = await this.editCode({
+      pou: String(input.pou),
+      expectedBody: typeof read.body === 'string' ? read.body : '',
+      body: plan.code,
+    }) as { verification?: { accepted?: boolean; errors?: readonly string[] }; body?: string }
+    const accepted = code.verification?.accepted === true
+    return {
+      verification: { accepted, errors: code.verification?.errors ?? [], warnings: plan.warnings },
+      instance: input.instance,
+      call: plan.call,
+      completed_phases: accepted ? ['instance_declared', 'call_inserted'] : ['instance_declared'],
+      body: code.body,
+      evidence: { variable, block },
+    }
+  }
+
+  /** Add, edit or delete one native declaration. */
+  async editVariable(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const helpers = await import(pathToFileURL(join(LEGACY_DIR, 'native-variables.js')).href) as {
+      nativeVariableChange: (args: Record<string, unknown>, deps: Record<string, unknown>) => Promise<Record<string, unknown>>
+    }
+    const project = record.staged_directory
+    const pou = typeof input.pou === 'string' ? input.pou : undefined
+    const evidenceDirectory = join(this.workspace, '.motionworks', 'verification')
+    mkdirSync(evidenceDirectory, { recursive: true })
+    const evidence = join(evidenceDirectory, `native-variable-${randomUUID()}.json`)
+    const args = { ...input, project, baseline_saved: true }
+    try {
+      const result = await helpers.nativeVariableChange(args, {
+        status: async () => await this.bridge.run('compile_state'),
+        saved: async () => await this.engine.run(pou === undefined ? 'globals' : 'read_st', { project, ...(pou === undefined ? {} : { pou }) }),
+        snapshotSaved: async () => await this.bridge.run('variable_snapshot', { ...(pou === undefined ? {} : { pou }), require_saved: true }),
+        mutate: async (request: Record<string, unknown>) => await this.bridge.run('variable_mutate', { ...request, project }, 60_000),
+        compare: compareVariables,
+        globals: async () => await this.engine.run('globals', { project }),
+      })
+      writeFileSync(evidence, JSON.stringify({ args, ...result }, null, 2), { encoding: 'utf8', flag: 'wx' })
+      return { ...result, evidence_path: evidence }
+    } catch (error) {
+      throw new MwiError('EDIT_REFUSED', `${(error as Error).message}; evidence at ${evidence}`, 'Read the refusal, correct the request, and retry. Do not repeat an unverified edit.')
+    }
+  }
+
+  /** Create, copy, rename, delete or assign one POU or task. */
+  async editStructure(input: Readonly<Record<string, unknown>>): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const helpers = await import(pathToFileURL(join(LEGACY_DIR, 'native-structure.js')).href) as {
+      nativeStructureChange: (scope: string, args: Record<string, unknown>, deps: Record<string, unknown>) => Promise<Record<string, unknown>>
+    }
+    const project = record.staged_directory
+    const scope = input.scope === 'task' ? 'task' : 'pou'
+    const args = { ...input, project, baseline_saved: true }
+    delete (args as Record<string, unknown>).scope
+    const evidenceDirectory = join(this.workspace, '.motionworks', 'verification')
+    const inputDirectory = join(this.workspace, '.motionworks', 'native-input')
+    mkdirSync(evidenceDirectory, { recursive: true })
+    const evidence = join(evidenceDirectory, `native-structure-${randomUUID()}.json`)
+    try {
+      const result = await helpers.nativeStructureChange(scope, args, {
+        status: async () => await this.bridge.run('compile_state'),
+        saved: async () => await this.engine.run('structure_snapshot', { project }),
+        snapshot: async () => await this.bridge.run('structure_snapshot'),
+        mutate: async (request: Record<string, unknown>) => await this.bridge.run('structure_mutate', { ...request, project }, 60_000),
+        retainPlan: async (plan: unknown) => {
+          writeFileSync(evidence, JSON.stringify({ phase: 'plan_retained', ...(plan as Record<string, unknown>) }, null, 2), { encoding: 'utf8', flag: 'wx' })
+        },
+        prepareSettings: async (settingsText: string) => {
+          mkdirSync(inputDirectory, { recursive: true })
+          const path = join(inputDirectory, `${randomUUID()}.SET`)
+          writeFileSync(path, settingsText, { encoding: 'ascii', flag: 'wx' })
+          return { settings_import_path: path }
+        },
+      })
+      writeFileSync(evidence, JSON.stringify({ phase: 'result', ...result }, null, 2), 'utf8')
+      return { ...result, evidence_path: evidence }
+    } catch (error) {
+      throw new MwiError('EDIT_REFUSED', `${(error as Error).message}; evidence at ${evidence}`, 'Read the refusal, correct the request, and retry. Do not repeat an unverified edit.')
     }
   }
 

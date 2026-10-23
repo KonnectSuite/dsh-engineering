@@ -48,6 +48,11 @@ export function list(description: string, items: ParameterSchema, extra: Partial
   return { type: 'array', description, items, ...extra }
 }
 
+/** A fixed-property object parameter. */
+export function record(description: string, properties: Readonly<Record<string, ParameterSchema>>, required: readonly string[] = []): ParameterSchema {
+  return { type: 'object', description, properties, required, additionalProperties: false }
+}
+
 /** One object element of an array parameter. */
 export function objectItem(description: string, properties: Readonly<Record<string, ParameterSchema>>, required: readonly string[] = []): ParameterSchema {
   return { type: 'object', description, properties, required, additionalProperties: false }

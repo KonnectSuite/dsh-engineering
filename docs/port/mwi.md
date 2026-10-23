@@ -55,8 +55,8 @@ The 55 folded tools do not disappear as capabilities; their behavior moves behin
 - Phase 1 complete and live-verified against MotionWorks IEC 3 Pro 1.19 on 2026-10-23: stage, start, status, worksheet and close ran against a copy of a real project in a temporary workspace. The trial prompt was answered, the staged project was open with `in_stage: true`, `Global_Variables` opened with unchanged modified state, and close reported `closed: true`.
 - Phase 2 complete and live-verified on the same staged project: overview counts (1 POU, 76 globals, 201 types, 5 task rows), POU read, search, references, review with 0 blockers, and a reviewed-references help search all answered from the real saved model.
 - Phase 3 complete and live-verified on the same staged project: compile state, a Build refusal with the vendor's exact task message, the Errors pane, a saved-source baseline, a matched comparison, and a graceful close.
-- Phase 4 started: `mw_edit_code` replaced the empty `Initialize` body on the staged project through the native ChangeCodeWS path; verification accepted, the saved body read back the new code, and the IDE closed cleanly. `mw_validate` and `mw_apply` are implemented; variables, structure, block insertion and POU transfer remain.
-- Next: finish the edit row, then flip and retire.
+- Phase 4 complete and live-verified on the staged project: code replacement, a verified local declaration add, POU creation and deletion, an inserted `R_TRIG` declaration and call, a POU package export/delete/import round trip, validation with no blockers, and a save through the IDE. All seven edit intents answer with accepted native verification.
+- Next: Phase 5, flipping the rows into the bundle and retiring the legacy plugin.
 
 ## Target surface
 
