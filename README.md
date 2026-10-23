@@ -166,3 +166,5 @@ pnpm test
 ```
 
 The test parses `cordis.patch.yml` and enforces the phase-1 invariants: one id-targeted override, no inserted rows, a known skill for every prefix, each prefix owned once, and eager exposure preserved.
+
+A second suite, `test/docs.spec.mjs`, enforces that the documentation still describes the patch: the README policy table must list exactly the skills and prefixes declared in `cordis.patch.yml`, the documented unlinked namespace must stay unlinked, the row id must appear in the README, the package version must have a changelog heading, and the English and Chinese locales must declare the same keys. Both drift cases — a deleted policy row and a renamed prefix — were reproduced and observed to fail before the file was restored.
