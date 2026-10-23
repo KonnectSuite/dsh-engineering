@@ -54,7 +54,8 @@ switch for this product.
 | Skill | `factorytalk-view`, registered from `SKILL.md` |
 | Tests | 12 passing: registration, parameter descriptions, open, list, get, not-found candidates, find, check, compare, skill registration and body budget |
 | Mounted in dev | rows inserted but disabled until the old plugin retires |
-| Not ported | editing drafts, Studio apply/verify, display-preview client bundle |
+| Display preview | `packages/ftview-viewer` (`dsh-engineering-ftview-viewer`), the old 36 KB closure bundle re-registered under the bundle name; row `ftview-viewer`, disabled until retirement |
+| Not ported | editing drafts, Studio apply/verify |
 
 ## Next
 

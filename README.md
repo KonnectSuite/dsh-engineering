@@ -8,7 +8,7 @@ The old L5X plugin is retired from the dev profile: the new bundle is the only L
 
 **Phase 1 is complete, and phase 2 has started.** The bundle links each engineering tool namespace to the skill that governs it, and mounts the first rebuilt product: the L5X offline read surface as `l5x-read`, its `rockwell-l5x` guidance as `l5x-read-skill`, the draft family as `l5x-editing` (off by default), and the SDK and supervised controller surface as `l5x-studio` the live reads as `l5x-live` (both off by default), and the ladder viewer as `l5x-viewer`. The contract tests and a composed-config dump verify both layers; the Skills-page toggle still needs a live smoke check (see Known gaps).
 
-The FactoryTalk View ME read surface is ported next: `ftview-read` and `ftview-read-skill` are in the bundle, inserted disabled until the old FTView plugin retires. The [FTView port design](docs/port/ftview.md) records the decisions.
+The FactoryTalk View ME read surface is ported next: `ftview-read` and `ftview-read-skill` are in the bundle, inserted disabled until the old FTView plugin retires, and its display preview is `ftview-viewer`. The [FTView port design](docs/port/ftview.md) records the decisions.
 
 The other product plugins still mount independently. Porting them into this repository, flipping the bundle to installer distribution, and retiring the standalone packages are the phases below, not something this release does.
 

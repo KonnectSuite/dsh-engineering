@@ -62,3 +62,6 @@
     - id: ftview-read-skill
       name: dsh-engineering-ftview/skill
       disabled: true
+    - id: ftview-viewer
+      name: dsh-engineering-ftview-viewer
+      disabled: true

@@ -27,6 +27,7 @@ test('inserts exactly the L5X pilot rows', () => {
     { id: 'l5x-viewer', name: 'dsh-engineering-l5x-viewer' },
     { id: 'ftview-read', name: 'dsh-engineering-ftview', disabled: true },
     { id: 'ftview-read-skill', name: 'dsh-engineering-ftview/skill', disabled: true },
+    { id: 'ftview-viewer', name: 'dsh-engineering-ftview-viewer', disabled: true },
   ])
 })
 
