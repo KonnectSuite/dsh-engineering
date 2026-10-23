@@ -8,8 +8,9 @@
  * @module dsh-engineering-mwi/session/service
  */
 
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import { Bridge } from '../core/bridge.ts'
 import { CodeEngine } from '../core/code-engine.ts'
@@ -54,6 +55,12 @@ export interface SessionRuntime {
   stagedAt(path: string): StageRecord | undefined
   /** Saved-project reads over the code engine. */
   readonly reads: ReadService
+  /** Run Make, Build or read compile state for the open staged project. */
+  compile(mode: 'make' | 'build' | 'state'): Promise<Record<string, unknown>>
+  /** Read one IDE output pane, with the compile verdict when available. */
+  diagnostics(pane: string, limit: number): Promise<Record<string, unknown>>
+  /** Capture or compare one saved-source baseline. */
+  verify(mode: 'baseline' | 'compare', baselineId?: string): Promise<Record<string, unknown>>
 }
 
 /** A workspace runtime over the real bridge and engine. */
@@ -175,6 +182,94 @@ export class PowerShellSessionRuntime implements SessionRuntime {
   /** @returns The stage record for a path. */
   stagedAt(path: string): StageRecord | undefined {
     return this.stages.stagedAt(path)
+  }
+
+  /** @returns The bridge's compile result. */
+  async compile(mode: 'make' | 'build' | 'state'): Promise<Record<string, unknown>> {
+    await this.openStagedRecord()
+    if (mode === 'state') return await this.bridge.run('compile_state', {}) as Record<string, unknown>
+    try {
+      return await this.bridge.run(mode, {}, 400_000) as Record<string, unknown>
+    } catch (error) {
+      if (error instanceof MwiError && error.code === 'BRIDGE_FAILED') {
+        throw new MwiError('COMPILE_FAILED', error.message, 'Read mw_diagnostics for the exact message, fix the reported task or source, then compile again.')
+      }
+      throw error
+    }
+  }
+
+  /** @returns The output pane and the compile verdict when readable. */
+  async diagnostics(pane: string, limit: number): Promise<Record<string, unknown>> {
+    const read = await this.bridge.run('read_output', { pane, limit }, 60_000) as Record<string, unknown>
+    const state = await this.bridge.run('compile_state', {}, 30_000).catch(() => null) as Record<string, unknown> | null
+    return { ...read, compile_state: state }
+  }
+
+  /** @returns A baseline receipt or a comparison against one. */
+  async verify(mode: 'baseline' | 'compare', baselineId?: string): Promise<Record<string, unknown>> {
+    const record = await this.openStagedRecord()
+    const manifest = await this.engine.run('source_manifest', { project: record.staged_directory }) as {
+      source_digest?: string
+      files?: Record<string, string>
+    }
+    const state = await this.bridge.run('compile_state', {}, 30_000).catch(() => null) as Record<string, unknown> | null
+    const directory = join(this.workspace, '.motionworks', 'verification')
+    if (mode === 'baseline') {
+      const id = randomUUID()
+      mkdirSync(directory, { recursive: true })
+      const baseline = {
+        id,
+        project: record.staged_directory,
+        source_digest: manifest.source_digest,
+        files: manifest.files,
+        compile_state: state,
+        captured_at: new Date().toISOString(),
+      }
+      writeFileSync(join(directory, `${id}.json`), JSON.stringify(baseline, null, 2))
+      return { baseline_id: id, project: record.staged_directory, source_digest: manifest.source_digest, compile_state: state, baseline_path: join(directory, `${id}.json`) }
+    }
+    if (baselineId === undefined || baselineId === '') {
+      throw new MwiError('BASELINE_REQUIRED', 'Comparing needs the baseline_id returned by a baseline capture.', 'Call mw_verify mode baseline, then compare with that id.')
+    }
+    let baseline: { project?: string; source_digest?: string; files?: Record<string, string>; compile_state?: unknown }
+    try {
+      baseline = JSON.parse(readFileSync(join(directory, `${baselineId}.json`), 'utf8')) as typeof baseline
+    } catch {
+      throw new MwiError('BASELINE_NOT_FOUND', `No baseline ${baselineId} exists in this workspace.`, 'Capture a new baseline and compare against that id.')
+    }
+    if (baseline.project === undefined || resolve(baseline.project) !== resolve(record.staged_directory)) {
+      throw new MwiError('BASELINE_PROJECT_MISMATCH', 'The baseline belongs to another project.', 'Capture a baseline for the open project and compare that id.')
+    }
+    const before = baseline.files ?? {}
+    const after = manifest.files ?? {}
+    const added = Object.keys(after).filter(file => before[file] === undefined)
+    const removed = Object.keys(before).filter(file => after[file] === undefined)
+    const changed = Object.keys(after).filter(file => before[file] !== undefined && before[file] !== after[file])
+    return {
+      baseline_id: baselineId,
+      project: record.staged_directory,
+      matched: baseline.source_digest === manifest.source_digest,
+      source_digest: manifest.source_digest,
+      baseline_source_digest: baseline.source_digest,
+      added,
+      removed,
+      changed,
+      compile_state: state,
+      baseline_compile_state: baseline.compile_state,
+    }
+  }
+
+  /** The open project must be a proven stage; every compile and verify depends on it. */
+  private async openStagedRecord(): Promise<StageRecord> {
+    const status = await this.status()
+    if (status.is_project_open !== true || typeof status.active_project !== 'string') {
+      throw new MwiError('NO_PROJECT', 'No project is open in the IDE.', 'Open a staged project with mw_project_open before compiling.')
+    }
+    const record = this.stages.stagedAt(status.active_project)
+    if (record === undefined) {
+      throw new MwiError('NOT_STAGED', `The open project is not a proven stage: ${status.active_project}.`, 'Open a staged project; the verify row never compiles a workspace original.')
+    }
+    return record
   }
 
   /** The only staged project, or a refusal that explains the choice. */

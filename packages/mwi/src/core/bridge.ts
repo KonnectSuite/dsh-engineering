@@ -65,12 +65,13 @@ export class Bridge {
    *
    * @param operation - Operation name.
    * @param args - Operation arguments.
+   * @param timeoutMs - Operation budget; defaults to the client budget.
    * @param signal - Cancellation owned by the caller.
    * @returns The operation result.
    * @throws MwiError when the operation fails or the bridge refuses it.
    */
-  async run(operation: string, args: Readonly<Record<string, unknown>> = {}, signal?: AbortSignal): Promise<unknown> {
-    const response = await this.transport.send({ operation, arguments: args }, this.timeoutMs, signal)
+  async run(operation: string, args: Readonly<Record<string, unknown>> = {}, timeoutMs = this.timeoutMs, signal?: AbortSignal): Promise<unknown> {
+    const response = await this.transport.send({ operation, arguments: args }, timeoutMs, signal)
     if (!response.ok) {
       throw new MwiError(
         response.error?.code ?? 'BRIDGE_FAILED',

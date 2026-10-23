@@ -16,6 +16,10 @@
     "./read": {
       "types": "./lib/read.d.ts",
       "default": "./lib/read.js"
+    },
+    "./verify": {
+      "types": "./lib/verify.d.ts",
+      "default": "./lib/verify.js"
     }
   },
   "engines": {
