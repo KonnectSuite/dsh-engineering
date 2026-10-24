@@ -35,6 +35,7 @@ test('inserts exactly the L5X pilot rows', () => {
     { id: 'mwi-read-skill', name: 'dsh-engineering-mwi/skill' },
     { id: 'mwi-verify', name: 'dsh-engineering-mwi/verify' },
     { id: 'mwi-edit', name: 'dsh-engineering-mwi/edit', disabled: true },
+    { id: 'optix', name: '@deepseek-ai/dsh-tool-ft-optix' },
   ])
 })
 

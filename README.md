@@ -39,6 +39,7 @@ survives upgrades even when the implementation behind a row changes.
 | `mwi-read-skill` | `dsh-engineering-mwi/skill` | on | The `motionworks-iec` guidance |
 | `mwi-verify` | `dsh-engineering-mwi/verify` | on | Three tools: compile, diagnostics and saved-source baselines |
 | `mwi-edit` | `dsh-engineering-mwi/edit` | off | Seven tools: code, declarations, structure, block insertion, POU packages, validation and apply |
+| `optix` | `@deepseek-ai/dsh-tool-ft-optix` | on | FactoryTalk Optix Studio discovery, live authoring, preview and OCR |
 
 The heavy surfaces are separate rows on purpose: a read-only profile pays for the read tools and
 nothing else. The viewers are independent of the tools, so switching L5X tools off does not remove
