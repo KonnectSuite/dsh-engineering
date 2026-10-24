@@ -15,7 +15,7 @@ import { defineConfig, type UserConfig } from 'tsdown'
  */
 
 /** Bundle id (package name): the module-table registration key. */
-const ID = 'dsh-engineering-l5x'
+const ID = '@aryacode/dsh-engineering-l5x'
 
 /** Specifiers the shell seeds into the module table. */
 const MODULE_TABLE = [

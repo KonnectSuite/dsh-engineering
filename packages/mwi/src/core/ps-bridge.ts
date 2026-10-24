@@ -60,7 +60,7 @@ export class PowerShellBridgeTransport implements BridgeTransport {
    * @param options - Bridge location and workspace authorization.
    */
   constructor(private readonly options: PowerShellBridgeOptions) {
-    this.ipcDir = options.ipcDir ?? join(tmpdir(), 'dsh-engineering-mwi', `${process.pid}-${randomUUID()}`)
+    this.ipcDir = options.ipcDir ?? join(tmpdir(), '@aryacode/dsh-engineering-mwi', `${process.pid}-${randomUUID()}`)
     this.requestPath = join(this.ipcDir, 'req.json')
     this.responsePath = join(this.ipcDir, 'res.json')
     this.startupMs = options.startupMs ?? 12_000

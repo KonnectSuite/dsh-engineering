@@ -44,7 +44,7 @@ resetting the user's enabled state.
 | `mwi-read-skill` | `dsh-engineering-mwi/skill` | on |
 | `mwi-verify` | `dsh-engineering-mwi/verify` | on |
 | `mwi-edit` | `dsh-engineering-mwi/edit` | off |
-| `optix` | `@deepseek-ai/dsh-tool-ft-optix` | on |
+| `optix` | `@aryacode/dsh-tool-ft-optix` | on |
 
 Rows are split by cost, not by product alone. The L5X read surface is eager; drafts, SDK builds and
 live reads are opt-in because each adds schemas a read-only profile never uses. FactoryTalk View is
@@ -70,7 +70,7 @@ mount instead of running degraded:
 | `dsh-engineering-mwi/verify` | `tools` |
 | `dsh-engineering-mwi/edit` | `tools` |
 | `dsh-engineering-mwi/skill` | `skills` |
-| `@deepseek-ai/dsh-tool-ft-optix` | `tools` |
+| `@aryacode/dsh-tool-ft-optix` | `tools` |
 | `l5x` trend card | `slots`, `locale`, `remote` |
 | `l5x-viewer` | `slots`, `locale`, `documentPreviews`, `remote`, `remote.workspaceFiles` |
 

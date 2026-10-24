@@ -61,7 +61,7 @@ export function apply(ctx: SkillContext): void {
     content,
     path: skillPath,
     source: 'custom',
-    provider: 'dsh-engineering-ftview',
+    provider: '@aryacode/dsh-engineering-ftview',
     invocation: { modelInvocable: true, userInvocable: true },
   })
 }

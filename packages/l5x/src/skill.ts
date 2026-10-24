@@ -62,7 +62,7 @@ export function apply(ctx: SkillContext): void {
     content,
     path: skillPath,
     source: 'custom',
-    provider: 'dsh-engineering-l5x',
+    provider: '@aryacode/dsh-engineering-l5x',
     invocation: { modelInvocable: true, userInvocable: true },
   })
 }

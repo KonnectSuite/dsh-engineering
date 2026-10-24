@@ -12,7 +12,7 @@ Seven tarballs make up a release:
 | `dsh-engineering-ftview` | FactoryTalk View read, editing and studio entries |
 | `dsh-engineering-ftview-viewer` | the folded FTView display preview client face |
 | `dsh-engineering-mwi` | MotionWorks IEC session, read, verify and edit entries, the COM bridge and the saved-model engine |
-| `@deepseek-ai/dsh-tool-ft-optix` | FactoryTalk Optix Studio discovery, live authoring, preview and OCR |
+| `@aryacode/dsh-tool-ft-optix` | FactoryTalk Optix Studio discovery, live authoring, preview and OCR |
 
 ## Where they are hosted
 

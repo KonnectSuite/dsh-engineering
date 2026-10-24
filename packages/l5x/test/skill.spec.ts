@@ -32,7 +32,7 @@ describe('rockwell-l5x skill', () => {
     expect(registrations).toHaveLength(1)
     const [skill] = registrations
     expect(skill?.name).toBe('rockwell-l5x')
-    expect(skill?.provider).toBe('dsh-engineering-l5x')
+    expect(skill?.provider).toBe('@aryacode/dsh-engineering-l5x')
     expect(skill?.source).toBe('custom')
     expect(skill?.invocation).toEqual({ modelInvocable: true, userInvocable: true })
     expect(skill?.path.endsWith('SKILL.md')).toBe(true)

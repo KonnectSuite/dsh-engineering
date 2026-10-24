@@ -74,7 +74,7 @@ export function apply(ctx: SkillContext): void {
     content,
     path: skillPath,
     source: 'custom',
-    provider: 'dsh-engineering-mwi',
+    provider: '@aryacode/dsh-engineering-mwi',
     invocation: { modelInvocable: true, userInvocable: true },
   })
 }
