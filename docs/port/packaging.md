@@ -2,7 +2,7 @@
 
 ## Artifacts
 
-Six tarballs make up a release:
+Seven tarballs make up a release:
 
 | Package | Role |
 |---|---|
@@ -12,6 +12,7 @@ Six tarballs make up a release:
 | `dsh-engineering-ftview` | FactoryTalk View read, editing and studio entries |
 | `dsh-engineering-ftview-viewer` | the folded FTView display preview client face |
 | `dsh-engineering-mwi` | MotionWorks IEC session, read, verify and edit entries, the COM bridge and the saved-model engine |
+| `@deepseek-ai/dsh-tool-ft-optix` | FactoryTalk Optix Studio discovery, live authoring, preview and OCR |
 
 ## Where they are hosted
 
@@ -20,7 +21,7 @@ fetchable. Releases are published on the public site repository
 `KonnectSuite/KonnectSuite.github.io` under the tag `plugins-v<version>`, which
 serves the assets without authentication.
 
-The bundle declares its five component packages as **URL dependencies** pointing
+The bundle declares its six component packages as **URL dependencies** pointing
 at those assets:
 
 ```
