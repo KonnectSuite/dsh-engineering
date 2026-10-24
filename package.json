@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "dsh-engineering",
   "version": "0.3.0",
   "description": "AryaAI engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
@@ -41,7 +41,7 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check"
   },
