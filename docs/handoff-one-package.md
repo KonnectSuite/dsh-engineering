@@ -1,8 +1,8 @@
 # Handoff — collapsing the engineering bundle to one package
 
 **Status:** **done** — phase 2 landed in 0.4.0 · branch `refactor/one-package` still **not merged** to
-`main` · 0.4.0 is **live in the market catalogue** (GitHub release asset) and **staged on npm** — the
-npm version needs approval at npmjs.com → Staged Packages before `latest` moves
+`main` · 0.4.0 is **live on npm (`latest`) and live in the market catalogue** · the branch is pushed,
+not merged
 
 Read this before touching the repository. It records what was decided and why, so the next session
 does not rediscover the constraints.
@@ -54,7 +54,7 @@ packages in `dependencies`. A bundle plus component dependencies is not the goal
 | 2 — merge both client faces into one bundle | ✅ done in 0.4.0 (`scripts/build-client.mjs`) |
 | 3 — tests | ✅ 24/24 (`pnpm test`), including `test/client-face.spec.mjs` |
 | assemble + pack | ✅ 284 entries, 685 kB, `lib/client.js` present |
-| 4 — publish | ✅ 0.4.0 live in the market catalogue; npm holds it in staging until approved |
+| 4 — publish | ✅ 0.4.0 live on npm (`latest`) and in the market catalogue |
 
 Manifest of the packed 0.4.0 tarball:
 
@@ -320,8 +320,7 @@ State of the wider product, in case the next session is picked up cold:
 
 ## 9. Open decisions for the user
 
-1. Approve `0.4.0` in npmjs.com → Staged Packages (the publish is staged, so `latest` is still
-   `0.3.0`), then merge `refactor/one-package` → `main` (npm currently does not match `main`)
+1. Merge `refactor/one-package` → `main` (npm currently does not match `main`)
 2. Unarchive `KonnectSuite/dsh-tool-factorytalk-view` — its output ships in the bundle but the repo is
    read-only, so the FTView face cannot be fixed at origin
 3. `@deepseek-ai/dsh-tool-ft-optix` is fetched from a GitHub release tarball rather than the registry:
