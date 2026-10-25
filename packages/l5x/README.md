@@ -7,7 +7,7 @@ Studio 5000 L5X tools for the `dsh-engineering` bundle. Four loader entries shar
 | `dsh-engineering-l5x` | 11 offline read and reference tools | Node |
 | `dsh-engineering-l5x/editing` | 9 `draft_*` tools | the read entry |
 | `dsh-engineering-l5x/studio` | 6 Logix Designer SDK tools and 7 supervised controller tools | Studio 5000, Logix Designer SDK, FactoryTalk Linx |
-| `dsh-engineering-l5x/live` | `poll_live_tags`, `start_plc_trend` | a reachable controller |
+| `dsh-engineering-l5x/live` | 7 EtherNet/IP tools: `poll_live_tags`, `read_live_tags`, `read_controller_clock`, `discover_controllers`, `start_plc_trend`, and the approval-gated `write_live_tag`, `write_controller_clock` | a reachable controller for reads; the row's `allowWrites` plus human approval for writes |
 
 The `rockwell-l5x` guidance ships as the separate `dsh-engineering-l5x/skill` entry, and the PLC
 trend card ships as the client face (`dsh.client`).
@@ -40,9 +40,31 @@ operation is an upload, mode change or download; those require per-call human ap
 
 ## Live
 
-`poll_live_tags` and `start_plc_trend` read declared scalar tags over EtherNet/IP without Studio,
-Linx, an ACD or the SDK. They are read-only and report that live logic matching the export is
-unverified.
+Reads need no approval and no Studio, Linx, ACD or SDK:
+
+| Tool | What it does |
+|---|---|
+| `poll_live_tags` | Timed sweeps of 1–16 declared scalar tags, with quality and controller identity |
+| `read_live_tags` | Up to 64 declared scalars in **one** request (CIP tag group) |
+| `read_controller_clock` | Identity plus the wall clock beside the workstation clock and their offset (L8x) |
+| `discover_controllers` | Bounded UDP broadcast discovery of EtherNet/IP devices on the LAN |
+| `start_plc_trend` | Session-owned trend job the chart follows without a model call per sample |
+
+Two writes exist and are **supervised**, not merely available:
+
+| Tool | What it changes |
+|---|---|
+| `write_live_tag` | One declared scalar, then read back over CIP |
+| `write_controller_clock` | The controller wall clock (L8x), then read back |
+
+A write needs the row's `allowWrites` switch **and** a human approving that exact operation: with
+`allowWrites` on and a `never` policy the tool refuses with `APPROVAL_UNAVAILABLE` before opening a
+socket, and a declined prompt is `APPROVAL_DENIED`. Each write is validated against the open export
+(declared, non-alias, no array dimensions, `ExternalAccess` not `None`, value inside the declared
+type and range) and a readback that differs fails with `WRITE_NOT_VERIFIED`.
+
+Every read reports that live logic matching the export is unverified, and sequential reads can miss
+transitions between sweeps.
 
 ## Configuration
 
@@ -51,7 +73,7 @@ unverified.
 | read | `maxFileBytes` | 64 MiB |
 | editing | `maxFileBytes`, `maxDraftOperations` | 64 MiB, 200 |
 | studio | `maxFileBytes` | 64 MiB |
-| live | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples` | true, 50 ms, 200 ms, 16, 1200 |
+| live | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples`, `allowWrites`, `maxBatchTags`, `allowedAddresses` | true, 50 ms, 200 ms, 16, 1200, false, 64, empty |
 
 ## Develop
 

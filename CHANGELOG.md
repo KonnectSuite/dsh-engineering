@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.4.7] - 2026-10-25
+
+### Fixed
+
+- **`allowWrites` could not be reached from the L5X row.** The composite entry mounted the live entry
+  with no config, so the write switch had no path from the Plugins page. `entries/l5x.js` now declares
+  `allowWrites` and `allowedAddresses` and forwards both into the live entry; the write tools still
+  refuse without per-call approval.
+
+### Documentation
+
+- README: the safety section states the two keys a live write takes, the tool groups list all seven
+  EtherNet/IP tools, and the L5X count is 40 (84 with Optix).
+- `docs/examples.md`: a live section covering batch reads, discovery, the controller clock, the trend,
+  and a supervised write with the exact fields the reader must see and the refusals they may hit.
+- `docs/architecture.md`: a new EtherNet/IP section — the two workers, the transaction engine's deadline
+  and decoding, and the four gates that stand between a write request and a controller.
+- `docs/port/l5x.md`: the live surface is recorded as seven tools with the driver call each one uses, and
+  the unused capability (CIP subscriptions, UDT `Structure` reads) is named.
+- `packages/l5x/README.md`: read and write tool tables, and the full live configuration row.
+
 ## [0.4.6] - 2026-10-25
 
 ### Added

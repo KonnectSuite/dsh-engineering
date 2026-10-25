@@ -176,6 +176,9 @@ even when the implementation behind a row is replaced.
 - **Controller changes need a human.** Upload, mode change and download require per-call approval and
   a session policy that permits asking. The tools refuse before contacting a controller when approval
   is unavailable, and a download accepts only a verification id produced by a passed build.
+- **Live writes take two keys.** `write_live_tag` and `write_controller_clock` need the row's
+  `allowWrites` switch *and* approval for that exact write; the tag is validated against the export
+  first and the result is the value the controller reads back (`WRITE_NOT_VERIFIED` if it differs).
 - **No hidden vendor execution.** The FactoryTalk View Studio handoff returns a manual import plan; it
   does not run a vendor utility.
 - **Coverage is stated.** Every result names what it cannot establish, including whether online logic

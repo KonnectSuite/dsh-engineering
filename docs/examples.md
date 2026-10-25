@@ -171,12 +171,13 @@ A download accepts only a `verification_id` produced by a passed build in this c
 download_project({ "verification_id": "v-1", "ip_address": "192.168.1.10" })
 ```
 
-Never write controller data, force tags, toggle bits or edit online. Those operations are not part of
-this surface.
+This SDK entry never writes controller data, forces tags, toggles bits or edits online. The only write
+path in the bundle is the live surface below, and it is supervised.
 
-## 5. Live reads and a trend
+## 5. Live EtherNet/IP: reads, discovery, clock and supervised writes
 
-The `l5x-live` row reads declared scalar tags directly over EtherNet/IP, with no Studio, Linx or ACD.
+The L5X row's `live` option mounts the EtherNet/IP surface, which talks to the controller directly with
+no Studio, Linx or ACD. Reads need no approval.
 
 ```
 poll_live_tags({
@@ -189,8 +190,33 @@ poll_live_tags({
 })
 ```
 
-The result carries timestamped sweeps, quality and the controller identity. For a chart, start a
-bounded session-owned job:
+The result carries timestamped sweeps, quality and the controller identity.
+
+For a one-shot snapshot, read many tags in **one** request instead of one connection per tag:
+
+```
+read_live_tags({
+  "ip_address": "192.168.1.10",
+  "slot": 0,
+  "tags": ["Line_Run", "Part_Count", "Speed_SP", "Reject_Total"]
+})
+```
+
+When the address is unknown, discover the controllers on the subnet (bounded broadcast; a routed or
+filtered network returns nothing):
+
+```
+discover_controllers({ "duration_seconds": 3 })
+```
+
+Before a download, compare the controller clock with the workstation clock (L8x only; other models
+report `clock_supported: false` rather than a guess):
+
+```
+read_controller_clock({ "ip_address": "192.168.1.10", "slot": 0 })
+```
+
+For a chart, start a bounded session-owned job:
 
 ```
 start_plc_trend({
@@ -206,6 +232,40 @@ start_plc_trend({
 The trend job is stopped through the job controls. Report
 `live_logic_matches_export: "unverified"`: a read proves a value at a moment, not that the controller
 runs the exported logic, and sequential reads can miss transitions.
+
+### Supervised writes
+
+A write is the only place this bundle changes a running machine, and it takes two independent keys: the
+row's `allowWrites` switch, and a human approving that exact write.
+
+```
+write_live_tag({
+  "project_id": "p-1",
+  "ip_address": "192.168.1.10",
+  "slot": 0,
+  "name": "LineSpeed",
+  "value": 42.5
+})
+```
+
+What the reader must see in the result:
+
+- `approved: "allowed-once"` — this exact operation, once;
+- `previous_value` and `readback` — what the controller held and what it now returns;
+- `verified: true` — the readback matched the request. A mismatch fails the call with
+  `WRITE_NOT_VERIFIED` instead of reporting success.
+
+Refusals are explicit and happen before the socket opens: `WRITES_DISABLED` (row switch off),
+`APPROVAL_UNAVAILABLE` (session policy is not `ask`), `APPROVAL_DENIED` (human declined),
+`UNSUPPORTED_WRITE_TAG` (not a declared non-alias scalar, or `ExternalAccess: None`) and
+`INVALID_WRITE` (value outside the declared type or range).
+
+```
+write_controller_clock({ "ip_address": "192.168.1.10", "slot": 0, "time": "2026-10-25T09:30:00Z" })
+```
+
+Say plainly that a verified write proves the tag value, not the process outcome: the logic may act on it
+on the next scan, and what it does is not established by the transaction.
 
 ## 6. Read a FactoryTalk View ME export
 

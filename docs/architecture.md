@@ -112,7 +112,7 @@ Every host entry accepts a validated config from the profile or a patch:
 | `l5x-read` | `maxFileBytes` | 64 MiB |
 | `l5x-editing` | `maxFileBytes`, `maxDraftOperations` | 64 MiB, 200 |
 | `l5x-studio` | `maxFileBytes` | 64 MiB |
-| `l5x-live` | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples`, `allowWrites`, `maxBatchTags` | true, 50 ms, 200 ms, 16, 1200, false, 64 |
+| `l5x` → live | `live`, `allowWrites`, `allowedAddresses`; then the live entry's `enabled`, intervals, `maxTags`, `maxSamples`, `maxBatchTags` | false, false, empty; true, 50 ms, 200 ms, 16, 1200, 64 |
 | `ftview-read` | `maxFiles` | 2000 |
 | `ftview-edit` | `maxDraftOperations` | 100 |
 | `ftview-studio` | `searchRoots` | the two Rockwell Programs folders |
@@ -127,6 +127,29 @@ Example override in a profile patch:
 
 The controller tools take no separate config; approval policy comes from the session, and the
 entry's availability comes from the row.
+
+## EtherNet/IP surface
+
+The L5X row's `live` option mounts one entry (`vendor/l5x/lib/live.js`) that owns every direct controller
+path. Two workers keep a controller problem off the host:
+
+- `poll-worker.mjs` streams sweeps for `poll_live_tags` and the trend job.
+- `cip-worker.mjs` runs one transaction per worker — batch read, clock, write, clock write, discovery —
+  and emits exactly one reply. `lib/engine/cip-transaction.ts` owns the deadline, the concurrency bound
+  and strict decoding of every reply, so a hung socket is terminated and a malformed reply cannot be
+  read as a value.
+
+Reads are approval-free. Writes exist only in this entry and are supervised twice over:
+
+| Gate | Where | Result when it fails |
+|---|---|---|
+| `allowWrites` row config | `entries/l5x.js` forwards it into the live entry | `WRITES_DISABLED` |
+| Per-call human approval | `requireHumanApproval` (the same seam `download_project` uses) | `APPROVAL_UNAVAILABLE` / `APPROVAL_DENIED` |
+| Declaration and value validation | `engine/cip-request.ts`, before any socket | `UNSUPPORTED_WRITE_TAG` / `INVALID_WRITE` |
+| Readback comparison | the tool, after the write | `WRITE_NOT_VERIFIED` |
+
+`allowedAddresses` narrows every direct path to an explicit IPv4 allowlist. The driver's `write_cip`
+escape hatch and `TagGroup` writes are unused by design: a raw CIP write would bypass all four gates.
 
 ## Client faces
 

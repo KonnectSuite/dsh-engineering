@@ -201,17 +201,26 @@ Why upload, online, mode change and download sit in this entry rather than their
 
 ### 6.3 `l5x-live` — opt-in, no SDK
 
-The pilot implements both tools: `poll_live_tags` and `start_plc_trend`, 2,971 schema characters, off by default. Reads use the package's polling worker and its own EtherNet/IP connection; the trend is a session-owned job.
+The surface now covers the driver, not just one corner of it: seven tools, off by default with the row's `live` option. Reads use a polling worker; one-shot transactions use a second worker so a hung socket cannot hold the host. The trend is a session-owned job.
 
 | Tool | Intent | Notes |
 |---|---|---|
 | `poll_live_tags` | Timed sweeps over EtherNet/IP | `tags` array; explicit `ip_address` and `slot` |
+| `read_live_tags` | Batch read, up to 64 scalars | `readTagGroup`: one request instead of one per tag |
+| `read_controller_clock` | Identity and wall clock | `readWallClock`; non-L8x reports `supported: false` |
+| `discover_controllers` | LAN discovery | `Browser` (UDP broadcast), bounded 1–15 s |
 | `start_plc_trend` | Background trend from those samples | Job-owned; the chart reads the job stream |
+| `write_live_tag` | One scalar write, then read back | `writeTag` + `readTag`; row `allowWrites` **and** per-call approval |
+| `write_controller_clock` | Wall-clock set, then read back | `writeWallClock`; same two keys |
+
+Writes are validated against the export before any socket opens (declared, non-alias, no dimensions, `ExternalAccess` not `None`, value inside the declared type and range) and a readback that differs fails the call with `WRITE_NOT_VERIFIED`. The library's `write_cip` escape hatch and `TagGroup` writes are deliberately unused: a raw CIP write bypasses every check this bundle makes.
 
 Two live mechanisms stay deliberately separate and differently named:
 
 - `read_live_tag` reads through the SDK session against the user's uploaded ACD, so the agent sees the same controller view as the user.
 - `poll_live_tags` reads declared scalars directly over EtherNet/IP with no Studio, no ACD and no SDK.
+
+Both directions of the direct path are covered now: reads (`poll_live_tags`, `read_live_tags`, `read_controller_clock`, `discover_controllers`, `start_plc_trend`) and the two supervised writes. CIP subscriptions and UDT `Structure` reads are the remaining unused capability of the driver.
 
 Neither establishes that online logic matches the export. A model must not use one and claim the other's guarantees.
 
