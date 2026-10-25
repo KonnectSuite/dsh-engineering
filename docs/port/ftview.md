@@ -54,7 +54,7 @@ switch for this product.
 | Skill | `factorytalk-view`, registered from `SKILL.md` |
 | Tests | 26 passing: 12 read/skill, 8 editing, 6 Studio (registration, discovery with and without an install, changed-file preflight, unsafe-name blocker, handoff plan) |
 | Mounted in dev | rows inserted but disabled until the old plugin retires |
-| Display preview | `packages/ftview-viewer`, the old 36 KB closure bundle re-registered under the bundle name; since 0.3.1 its factory is folded into `@aryacode/dsh-engineering`'s own `lib/client.js`, mounted by the shared `viewers` row |
+| Display preview | `packages/ftview-viewer`, the old 36 KB closure bundle re-registered under the bundle name; since 0.4.0 its factory is folded into `@aryacode/dsh-engineering`'s own `lib/client.js`, mounted by the shared `viewers` row |
 | Editing | `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` — 3,101 schema characters, row disabled until retirement |
 | Studio | `ftview-studio`: `ftview_studio_status`, `ftview_studio_preflight`, `ftview_studio_handoff` — 1,427 schema characters. Discovery, naming/parse preflight and the manual import plan; **no vendor execution**. |
 | Not ported by decision | `SEAddComponent.exe` automation: the old apply ran it behind a capability probe that needs a licensed Studio install, which this machine does not have; executing it unverified would be a false claim of support. |
@@ -65,5 +65,5 @@ switch for this product.
    validated as drafts and written to new export copies.
 2. Studio entry: preflight and apply behind the approval seam.
 3. Display-preview client face, folded in like the ladder viewer — done, and both faces now share the
-   bundle's one client bundle (0.3.1).
+   bundle's one client bundle (0.4.0).
 4. Retire `dsh-tool-factorytalk-view` and enable these rows.

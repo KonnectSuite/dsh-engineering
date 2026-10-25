@@ -1,12 +1,13 @@
 # Handoff — collapsing the engineering bundle to one package
 
-**Status:** **done** — phase 2 landed in 0.3.1 · branch `refactor/one-package` still **not merged** to
-`main` · the package is packed and verified locally, **not yet published**
+**Status:** **done** — phase 2 landed in 0.4.0 · branch `refactor/one-package` still **not merged** to
+`main` · 0.4.0 is **live in the market catalogue** (GitHub release asset) and **staged on npm** — the
+npm version needs approval at npmjs.com → Staged Packages before `latest` moves
 
 Read this before touching the repository. It records what was decided and why, so the next session
 does not rediscover the constraints.
 
-> **Outcome (0.3.1).** Phase 2 was completed by *wrapping the two committed face bundles* rather than
+> **Outcome (0.4.0).** Phase 2 was completed by *wrapping the two committed face bundles* rather than
 > rebuilding either from source. `scripts/build-client.mjs` slices each face's factory body out of
 > `packages/viewer/lib/client.js` and `packages/ftview-viewer/lib/client.js` and emits one
 > `lib/client.js` that registers under `@aryacode/dsh-engineering` and runs both faces, each in its
@@ -50,28 +51,28 @@ packages in `dependencies`. A bundle plus component dependencies is not the goal
 | Phase | State |
 |---|---|
 | 1 — vendor the server components into one package | ✅ done |
-| 2 — merge both client faces into one bundle | ✅ done in 0.3.1 (`scripts/build-client.mjs`) |
+| 2 — merge both client faces into one bundle | ✅ done in 0.4.0 (`scripts/build-client.mjs`) |
 | 3 — tests | ✅ 24/24 (`pnpm test`), including `test/client-face.spec.mjs` |
 | assemble + pack | ✅ 284 entries, 685 kB, `lib/client.js` present |
-| 4 — publish | ⏳ 0.3.0 live; **0.3.1 packed but not published** |
+| 4 — publish | ✅ 0.4.0 live in the market catalogue; npm holds it in staging until approved |
 
-Manifest of the packed 0.3.1 tarball:
+Manifest of the packed 0.4.0 tarball:
 
 ```
-@aryacode/dsh-engineering@0.3.1    284 files   685 kB packed
+@aryacode/dsh-engineering@0.4.0    284 files   685 kB packed
 dependencies:
   @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
 files: cordis.patch.yml, lib/client.js, lib/index.js, vendor/**, locale/**
 ```
 
-The 0.3.0 registry manifest, for contrast — the two viewer dependencies are what 0.3.1 removed:
+The 0.3.0 registry manifest, for contrast — the two viewer dependencies are what 0.4.0 removed:
 
 ```
 @aryacode/dsh-engineering@0.3.0    281 files   2.1 MB unpacked
 dependencies:
   @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
-  @aryacode/dsh-engineering-l5x-viewer      = 0.1.2   ← gone in 0.3.1
-  @aryacode/dsh-engineering-ftview-viewer   = 0.1.2   ← gone in 0.3.1
+  @aryacode/dsh-engineering-l5x-viewer      = 0.1.2   ← gone in 0.4.0
+  @aryacode/dsh-engineering-ftview-viewer   = 0.1.2   ← gone in 0.4.0
 ```
 
 `dsh-engineering-l5x`, `-ftview` and `-mwi` are **vendored** into `vendor/` and are no longer
@@ -111,7 +112,7 @@ So the FTView face will not be re-authored from source. It must be **wrapped**.
 
 ## 4. The remaining task
 
-> **Superseded.** 0.3.1 shipped the merged face by wrapping the two committed bundles instead of
+> **Superseded.** 0.4.0 shipped the merged face by wrapping the two committed bundles instead of
 > writing a tsdown client config; see the outcome note at the top for why. The steps below are kept as
 > the plan as it stood, and §5–§8 as the constraints that still hold.
 
@@ -189,7 +190,7 @@ half is being merged. Re-read §5.6 before assuming otherwise.
 2. `pnpm assemble && pnpm pack` → confirm `lib/client.js` is in the tarball
 3. **Install and look at the app**: the ladder preview *and* the FTView display preview must both
    render. A missing face presents as a plugin that loaded and drew nothing — no error anywhere.
-4. Only then: publish `0.3.1`, confirm `dependencies` has **no** `@aryacode/` entries
+4. Only then: publish `0.4.0`, confirm `dependencies` has **no** `@aryacode/` entries
 5. Then deprecate `-l5x`, `-ftview`, `-mwi`, `-l5x-viewer`, `-ftview-viewer`
 
 ## 5. Constraints and traps learned the hard way
@@ -319,14 +320,14 @@ State of the wider product, in case the next session is picked up cold:
 
 ## 9. Open decisions for the user
 
-1. Publish `0.3.1` (packed and verified locally, not published) and merge `refactor/one-package` →
-   `main` (npm currently does not match `main`)
+1. Approve `0.4.0` in npmjs.com → Staged Packages (the publish is staged, so `latest` is still
+   `0.3.0`), then merge `refactor/one-package` → `main` (npm currently does not match `main`)
 2. Unarchive `KonnectSuite/dsh-tool-factorytalk-view` — its output ships in the bundle but the repo is
    read-only, so the FTView face cannot be fixed at origin
 3. `@deepseek-ai/dsh-tool-ft-optix` is fetched from a GitHub release tarball rather than the registry:
    it cannot be updated by semver and breaks if that asset moves
 4. Deprecate the stale `0.0.0-stage` versions that sit on all six packages, and the retired
-   `-l5x-viewer` / `-ftview-viewer` packages that 0.3.1 no longer depends on
+   `-l5x-viewer` / `-ftview-viewer` packages that 0.4.0 no longer depends on
 5. **The l5x trend card is still dark.** Its bundle is `vendor/l5x/lib/client.js`, but the rows name
    `@aryacode/dsh-engineering/l5x` — a subpath, which `exactPackageSpecifier` rejects, so the Shell
    never scans that package for a client bundle. Either fold the card into `lib/client.js` as a third

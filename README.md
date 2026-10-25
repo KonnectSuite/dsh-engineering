@@ -101,7 +101,7 @@ Where each surface actually stands, based on what has been exercised.
 
 | Version | What landed |
 |---|---|
-| **0.3.1** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
+| **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
 | **0.3.0** | FactoryTalk Optix becomes a bundle component; 79 tools total |
 | **0.2.0** | MotionWorks IEC ports into the bundle — 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
 | **0.1.2** | Harness filesystem contract fixed across L5X and FactoryTalk View; every L5X tool linked to its capability by name; generated tool reference, examples and architecture docs |

@@ -399,7 +399,7 @@ Do not mount it beside `dsh-tool-l5x` in the same profile. `open_project`, `proj
 | Tools | Read entry: `open_project`, `project_overview`, `list_components`, `get_component`, `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map`, `run_checks`, `compare_projects` (8,107 schema characters). Editing entry: 9 `draft_*` tools (7,233 characters, off by default). Studio entry: 13 tools, 7,901 characters, off by default. Live entry: 2 tools, 2,971 characters, off by default |
 | Skill | `rockwell-l5x`, registered by `dsh-engineering-l5x/skill` from a 6 KB decision tree (budget 8 KB) |
 | Drafts | One operation per call, accumulated per chat and project; `draft_validate` prepares, `draft_apply` writes one new file and clears the draft |
-| Client | The PLC trend card (17.2 KB closure-factory bundle) for `start_plc_trend`, plus the ladder viewer's 126 KB bundle; since 0.3.1 both previews share the bundle's own `lib/client.js` instead of separate viewer packages |
+| Client | The PLC trend card (17.2 KB closure-factory bundle) for `start_plc_trend`, plus the ladder viewer's 126 KB bundle; since 0.4.0 both previews share the bundle's own `lib/client.js` instead of separate viewer packages |
 | Schema budget | 11 tools, 7,994 characters, 41 of 41 parameters described |
 | Result contract | `summary`, `data`, optional `coverage`, `next` |
 | Failure contract | `code`, `message`, `fix`, `candidates` |

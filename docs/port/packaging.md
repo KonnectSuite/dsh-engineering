@@ -1,6 +1,6 @@
 # Packaging and release
 
-> **Distribution status.** AryaCode installs plugins from the registry. Since 0.3.1
+> **Distribution status.** AryaCode installs plugins from the registry. Since 0.4.0
 > `@aryacode/dsh-engineering` is **one self-contained package**: the three host components are
 > vendored into `vendor/`, both previews ship as its own `lib/client.js`, and its only dependency is
 > the Optix component's release tarball. A profile installs one package and toggles rows inside it.
@@ -51,7 +51,7 @@ fetchable. Releases are published on the public site repository
 `KonnectSuite/KonnectSuite.github.io` under the tag `plugins-v<version>`, which
 serves the assets without authentication.
 
-Before 0.3.1, the bundle declared its six component packages as **URL dependencies** pointing
+Before 0.4.0, the bundle declared its six component packages as **URL dependencies** pointing
 at those assets:
 
 ```
@@ -114,7 +114,7 @@ published six component tarballs before the components were vendored.
 
 ## Verification performed
 
-Checked on the 0.3.1 package before publishing:
+Checked on the 0.4.0 package before publishing:
 
 - `pnpm pack` produced one tarball carrying `lib/client.js` (both faces), `lib/index.js`,
   `cordis.patch.yml`, `vendor/*/SKILL.md`, `vendor/l5x/studio-bridge/*.csproj` and
