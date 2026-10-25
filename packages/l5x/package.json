@@ -35,6 +35,7 @@
   "files": [
     "SKILL.md",
     "poll-worker.mjs",
+    "cip-worker.mjs",
     "studio-bridge/**/*.cs",
     "studio-bridge/*.csproj",
     "studio-bridge/NuGet.Config",

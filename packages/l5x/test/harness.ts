@@ -35,7 +35,7 @@ export interface Harness {
  * @param options - Set `editing`, `studio` or `live` to mount those entries over the read entry's service, and `approval` to provide an approval service.
  * @returns The registered definitions, written files, and a call helper.
  */
-export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; live?: boolean; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
+export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; live?: boolean | { allowWrites?: boolean }; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
   const definitions: ToolDefinition[] = []
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
@@ -66,6 +66,7 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
   if (options.editing === true) applyEditing(ctx, {})
   if (options.studio === true) applyStudio(ctx, {})
   if (options.live === true) applyLive(ctx, {})
+  else if (typeof options.live === 'object') applyLive(ctx, options.live)
   const byName = new Map(definitions.map(definition => [definition.name, definition]))
   return {
     definitions,

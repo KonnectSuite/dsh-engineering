@@ -112,7 +112,7 @@ Every host entry accepts a validated config from the profile or a patch:
 | `l5x-read` | `maxFileBytes` | 64 MiB |
 | `l5x-editing` | `maxFileBytes`, `maxDraftOperations` | 64 MiB, 200 |
 | `l5x-studio` | `maxFileBytes` | 64 MiB |
-| `l5x-live` | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples` | true, 50 ms, 200 ms, 16, 1200 |
+| `l5x-live` | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples`, `allowWrites`, `maxBatchTags` | true, 50 ms, 200 ms, 16, 1200, false, 64 |
 | `ftview-read` | `maxFiles` | 2000 |
 | `ftview-edit` | `maxDraftOperations` | 100 |
 | `ftview-studio` | `searchRoots` | the two Rockwell Programs folders |

@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.4.6] - 2026-10-25
+
+### Added
+
+The EtherNet/IP surface now uses the driver rather than one corner of it. Five new tools, all under the
+L5X product row's `live` switch:
+
+- `read_live_tags` — up to 64 declared scalars in **one** request (CIP tag group) instead of one
+  connection-and-read per tag.
+- `read_controller_clock` — controller identity plus the wall clock beside the workstation clock and the
+  offset between them; reports "unsupported" on non-L8x models instead of guessing.
+- `discover_controllers` — bounded UDP broadcast discovery: address, product, revision, serial, status.
+  Needs no address and no export.
+- `write_live_tag` — one declared scalar, **approval-gated**, then read back over CIP so the result is
+  the controller's own value.
+- `write_controller_clock` — set the wall clock (L8x), approval-gated, read back.
+
+### Safety
+
+- Writes need **two** independent switches: the row's new `allowWrites` config (off by default) **and** a
+  human approving that exact operation. With `allowWrites` on and a `never` approval policy the tool
+  refuses with `APPROVAL_UNAVAILABLE`; a declined prompt is `APPROVAL_DENIED`. Nothing reaches a
+  controller before both pass.
+- Every write validates against the open export first: declared, not an alias, no array dimensions,
+  `ExternalAccess` not `None`, value inside the declared type and range (BOOL boolean; INT/DINT integer
+  within range; REAL finite).
+- A write whose readback differs from the requested value fails with `WRITE_NOT_VERIFIED` rather than
+  reporting success.
+- `test/live.spec.ts` covers the gating: switch off, policy `never`, declined prompt, wrong value type,
+  and a UDT tag refused as non-scalar — 70 tests in the package.
+
 ## [0.4.5] - 2026-10-25
 
 ### Changed

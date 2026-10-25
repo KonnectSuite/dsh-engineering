@@ -33,7 +33,7 @@ async function vendor(name) {
   // `templates`, `locale` and `icon.svg` belong to the Optix tree; the rest are
   // the three L5X/FTView/MotionWorks layouts. A missing entry is skipped, so one
   // list serves every component.
-  for (const entry of ['lib', 'SKILL.md', 'README.md', 'studio-bridge', 'bridge', 'code', 'legacy', 'poll-worker.mjs', 'templates', 'locale', 'icon.svg']) {
+  for (const entry of ['lib', 'SKILL.md', 'README.md', 'studio-bridge', 'bridge', 'code', 'legacy', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'locale', 'icon.svg']) {
     await cp(join(from, entry), join(to, entry), { recursive: true, filter: s => !s.endsWith('.ts') || s.endsWith('.d.ts') }).catch(() => {})
   }
 }

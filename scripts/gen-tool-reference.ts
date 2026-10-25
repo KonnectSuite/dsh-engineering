@@ -81,7 +81,7 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X drafts', draftTools(stub, stub, 100, 1 << 30)],
     ['L5X Studio SDK', l5xStudioTools(stub, stub)],
     ['L5X controller', controllerTools(stub, stub, stub)],
-    ['L5X live', liveTools(stub, stub, stub)],
+    ['L5X live', liveTools(stub, stub, stub, { transactions: stub, allowWrites: false, maxBatchTags: 64 })],
     ['FTView read', ftviewTools(stub)],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],

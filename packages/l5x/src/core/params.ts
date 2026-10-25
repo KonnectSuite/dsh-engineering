@@ -10,7 +10,7 @@
 
 /** One JSON Schema property, with the description that is mandatory here. */
 export interface ParameterSchema {
-  readonly type: 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object'
+  readonly type: 'string' | 'integer' | 'number' | 'boolean' | 'array' | 'object' | readonly ('string' | 'integer' | 'number' | 'boolean')[]
   readonly description: string
   readonly enum?: readonly string[]
   readonly items?: ParameterSchema
@@ -37,6 +37,11 @@ export function integer(description: string, extra: Partial<ParameterSchema> = {
 /** A string parameter restricted to a known set. */
 export function choice(description: string, values: readonly string[], extra: Partial<ParameterSchema> = {}): ParameterSchema {
   return { type: 'string', description, enum: values, ...extra }
+}
+
+/** A boolean-or-number parameter, for a value whose real type comes from the project. */
+export function scalar(description: string, extra: Partial<ParameterSchema> = {}): ParameterSchema {
+  return { type: ['boolean', 'number'], description, ...extra }
 }
 
 /** An array of one parameter type. */

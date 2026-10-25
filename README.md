@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 79 tools · 5 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 84 tools · 5 rows · 4 products · MIT
 
 ---
 
@@ -21,7 +21,8 @@ the row, off by default, so a read-only profile pays for the read tools and noth
 |---|---|---|---|
 | `l5x` | `editing` | off | the nine `draft_*` schemas |
 | `l5x` | `studio` | off | the Logix Designer SDK and supervised controller schemas |
-| `l5x` | `live` | off | the EtherNet/IP polling and trend schemas |
+| `l5x` | `live` | off | the EtherNet/IP read, batch, discovery, clock and trend schemas |
+| `l5x` | `allowWrites` | off | the two approval-gated writes (tag, wall clock) |
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
 | `mwi` | `edit` | off | the seven MotionWorks edit schemas |
 
@@ -33,7 +34,7 @@ bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 35 | read on; edit, Studio, live **off** | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **Studio 5000 L5X** | 40 | read on; edit, Studio, live **off** | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 14 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | session, read, verify on; edit **off** | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 6 | on | Optix Studio installed |
@@ -41,7 +42,7 @@ bundle.
 Tool groups, by product:
 
 - **L5X** — 11 read (`open_project` … `compare_projects`), 9 staged drafts (`draft_*`), 6 Logix
-  Designer SDK, 7 supervised controller, 2 live EtherNet/IP
+  Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
 - **FactoryTalk View** — 6 read, 5 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 staged edits
 - **Optix** — 6 tools, unlinked to a skill until one exists
@@ -55,7 +56,7 @@ down:
 
 | Row | Mounts | Config options (default) |
 |---|---|---|
-| `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live | `editing` (off), `studio` (off), `live` (off) |
+| `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (off), `studio` (off), `live` (off), `allowWrites` (off) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `edit` (off) |
 | `viewers` | ladder + ME display previews | — |
@@ -86,19 +87,20 @@ Where each surface actually stands, based on what has been exercised.
 - Logix Designer SDK: a real ACD exported to a 3.0 MB L5X against SDK v37
 - Supervised controller access — upload, mode change and download behind per-call approval, with
   downloads accepting only a verification id produced by a passed build
-- Live EtherNet/IP reads and a bounded PLC trend
+- Live EtherNet/IP: polling, one-request batch reads of up to 64 tags, controller identity and clock, LAN discovery, and a bounded trend
+- Supervised live writes: `write_live_tag` and `write_controller_clock` need the row's `allowWrites` switch **and** per-call human approval, and report the value the controller reads back
 - FactoryTalk View ME: export reads, structural checks, comparison, staged display and HMI tag edits
 - MotionWorks IEC: verified live against 3 Pro 1.19 — stage, start, worksheet, close, saved-project
   reads, compile diagnostics, code replacement, declaration add, POU create/delete, block insertion
   and a POU package export/delete/import round trip
 - Ladder viewer and FactoryTalk View display preview
 
-**Deliberately off by default** — enabled per profile: `l5x-editing`, `l5x-studio`, `l5x-live`,
+**Deliberately off by default** — enabled per profile: `l5x-editing`, `l5x-studio`, `l5x-live`, `allowWrites`,
 `mwi-edit`. A read-only profile should not pay for nine draft schemas or a controller surface.
 
 **Known limits** — stated in the bundle, not hidden:
 
-- Live reads and SDK builds cannot establish that online logic matches the export; every result says
+- Live reads, SDK builds and live writes cannot establish that online logic matches the export; every result says
   so in `coverage`
 - FBD/SFC semantics are not exercised
 - FactoryTalk View Studio work is a **manual handoff**: the bundle plans the import and preflights
@@ -113,6 +115,7 @@ Where each surface actually stands, based on what has been exercised.
 |---|---|
 | **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |
 | **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
+| **0.4.6** | Full EtherNet/IP surface: batch reads, discovery, controller clock, and approval-gated tag and clock writes; 84 tools |
 | **0.3.0** | FactoryTalk Optix becomes a bundle component; 79 tools total |
 | **0.2.0** | MotionWorks IEC ports into the bundle — 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
 | **0.1.2** | Harness filesystem contract fixed across L5X and FactoryTalk View; every L5X tool linked to its capability by name; generated tool reference, examples and architecture docs |

@@ -34,6 +34,11 @@
     "change_controller_mode",
     "download_project",
     "poll_live_tags",
+    "read_live_tags",
+    "read_controller_clock",
+    "discover_controllers",
+    "write_live_tag",
+    "write_controller_clock",
     "start_plc_trend",
     "ftview_open",
     "ftview_list",
@@ -149,6 +154,11 @@
       "group": "L5X live",
       "tools": [
         "poll_live_tags",
+        "read_live_tags",
+        "read_controller_clock",
+        "discover_controllers",
+        "write_live_tag",
+        "write_controller_clock",
         "start_plc_trend"
       ]
     },

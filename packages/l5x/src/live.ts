@@ -11,6 +11,7 @@
 import { fileURLToPath } from 'node:url'
 import type { PluginContext } from './core/tool.ts'
 import { DirectPolling } from './engine/direct-polling.ts'
+import { CipTransactions } from './engine/cip-transaction.ts'
 import { liveTools } from './tools/live.ts'
 import type { ProjectSession } from './session.ts'
 import { PROJECTS_SERVICE } from './index.ts'
@@ -41,6 +42,10 @@ export interface Config {
   maxConcurrent?: number
   /** Optional IPv4 allowlist; empty permits any explicit address. */
   allowedAddresses?: string[]
+  /** Permit one-shot writes (tag and wall clock). Each write still needs human approval. Defaults to false. */
+  allowWrites?: boolean
+  /** Largest accepted batch read. Defaults to 64. */
+  maxBatchTags?: number
   /** Chart redraw interval, independent of reads. Defaults to 250 ms. */
   displayRefreshMs?: number
   /** Most points retained per chart. Defaults to 1200. */
@@ -71,10 +76,20 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
     displayRefreshMs: config.displayRefreshMs ?? 250,
     displayMaxSamples: config.displayMaxSamples ?? 1200,
   })
+  const transactions = new CipTransactions(fileURLToPath(new URL('../cip-worker.mjs', import.meta.url)), {
+    timeout: config.requestTimeoutMs ?? 3000,
+    maxConcurrent: config.maxConcurrent ?? 2,
+  })
   const effect = (ctx as PluginContext & { effect?<T>(fn: () => T): void }).effect
-  effect?.(() => () => { void polling.dispose() })
-  for (const definition of liveTools(session, polling, ctx)) ctx.tools.register(definition)
+  effect?.(() => () => { void polling.dispose(); void transactions.dispose() })
+  const extensions = {
+    transactions,
+    allowWrites: config.allowWrites === true,
+    maxBatchTags: config.maxBatchTags ?? 64,
+  }
+  for (const definition of liveTools(session, polling, ctx, extensions)) ctx.tools.register(definition)
 }
 
 export { DirectPolling } from './engine/direct-polling.ts'
+export { CipTransactions } from './engine/cip-transaction.ts'
 export { liveTools } from './tools/live.ts'
