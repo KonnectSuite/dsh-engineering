@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.5] - 2026-10-25
+
+### Changed
+
+- **FactoryTalk Optix is vendored, so `dependencies` carries no plugin at all.** The Optix tree
+  (`lib/`, `bridge/StudioMCPBridge.cs`, `templates/`, `locale/`, `icon.svg`) now lives in
+  `packages/optix` and ships under `vendor/optix`; the `optix` row names
+  `@aryacode/dsh-engineering/optix`. `@aryacode/dsh-tool-ft-optix` is gone from the manifest, which
+  leaves one plugin to install and no component package to publish, keep in sync, or retire.
+- The last dependency that remains is Optix's own runtime library, `playwright-core@1.61.1`, declared
+  as a plain registry dependency.
+
+One plugin now covers all four products: 5 rows, 79 tools, both previews, no component packages.
+
 ## [0.4.4] - 2026-10-25
 
 ### Changed

@@ -65,7 +65,7 @@ test('every vendored component dependency is declared here', () => {
   // component's own libraries. Vendoring drops the component manifest, so the
   // bundle has to carry those dependencies: a missing one surfaces at mount as
   // ERR_MODULE_NOT_FOUND and the row fails to import.
-  for (const component of ['l5x', 'ftview', 'mwi']) {
+  for (const component of ['l5x', 'ftview', 'mwi', 'optix']) {
     const componentManifest = JSON.parse(read(`packages/${component}/package.json`))
     for (const [name, range] of Object.entries(componentManifest.dependencies ?? {})) {
       assert.equal(manifest.dependencies?.[name], range,

@@ -14,11 +14,12 @@ import { fileURLToPath } from 'node:url'
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const VENDOR = join(ROOT, 'vendor')
 
-/** Component packages, in build order. */
+/** Component packages, in build order. Optix arrives built (no source of ours). */
 export const COMPONENTS = [
   "l5x",
   "ftview",
-  "mwi"
+  "mwi",
+  "optix"
 ]
 
 /** Copy one component's built tree into the vendored layout. */
@@ -29,7 +30,10 @@ async function vendor(name) {
   if (built === undefined) throw new Error(`${name}: build it first (pnpm --filter @aryacode/dsh-engineering-${name} build)`)
   await rm(to, { recursive: true, force: true })
   await mkdir(to, { recursive: true })
-  for (const entry of ['lib', 'SKILL.md', 'README.md', 'studio-bridge', 'bridge', 'code', 'legacy', 'poll-worker.mjs']) {
+  // `templates`, `locale` and `icon.svg` belong to the Optix tree; the rest are
+  // the three L5X/FTView/MotionWorks layouts. A missing entry is skipped, so one
+  // list serves every component.
+  for (const entry of ['lib', 'SKILL.md', 'README.md', 'studio-bridge', 'bridge', 'code', 'legacy', 'poll-worker.mjs', 'templates', 'locale', 'icon.svg']) {
     await cp(join(from, entry), join(to, entry), { recursive: true, filter: s => !s.endsWith('.ts') || s.endsWith('.d.ts') }).catch(() => {})
   }
 }

@@ -37,6 +37,7 @@
     # context, so this row is independent of every product row above.
     - id: viewers
       name: '@aryacode/dsh-engineering'
-    # FactoryTalk Optix stays a separate package, mounted as a component row.
+    # FactoryTalk Optix: vendored like the other three products, so one install
+    # carries every surface and no component package is a dependency.
     - id: optix
-      name: '@aryacode/dsh-tool-ft-optix'
+      name: '@aryacode/dsh-engineering/optix'

@@ -34,7 +34,7 @@ test('is one row per product plus the two component rows', () => {
     { id: 'ftview', name: '@aryacode/dsh-engineering/ftview' },
     { id: 'mwi', name: '@aryacode/dsh-engineering/mwi' },
     { id: 'viewers', name: '@aryacode/dsh-engineering' },
-    { id: 'optix', name: '@aryacode/dsh-tool-ft-optix' },
+    { id: 'optix', name: '@aryacode/dsh-engineering/optix' },
   ])
 })
 

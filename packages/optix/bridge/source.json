@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/asqi-carter/ftx-mcp",
+  "commit": "c36163ea88e79efc56d4df10eb337b44969fa922",
+  "path": "studio-bridge/StudioMCPBridge.cs",
+  "sha256": "6310701237425a62e06a25b77937247720aecda7d2aa5a9633737ac861a7a6dd",
+  "lineEndings": "LF",
+  "license": "MIT",
+  "localChanges": [],
+  "purpose": "Design-time bridge loaded inside FactoryTalk Optix Studio; the native Node plugin does not run the upstream MCP or Python services."
+}

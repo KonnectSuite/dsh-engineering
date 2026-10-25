@@ -1,0 +1,3 @@
+- insert:
+    - id: tool-ft-optix
+      name: '@aryacode/dsh-tool-ft-optix'

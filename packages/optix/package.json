@@ -1,0 +1,19 @@
+{
+  "name": "@aryacode/dsh-engineering-optix",
+  "version": "0.2.1-rc.3",
+  "description": "FactoryTalk Optix Studio authoring, vendored into the engineering bundle. Prebuilt tree: lib/, bridge/, templates/ and locale/ are shipped as they were published; the bundle mounts lib/index.js.",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/**/*",
+    "bridge/**/*",
+    "templates/**/*",
+    "locale/**/*",
+    "icon.svg"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "playwright-core": "1.61.1"
+  }
+}
