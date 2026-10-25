@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 79 tools · 16 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 79 tools · 5 rows · 4 products · MIT
 
 ---
 
@@ -14,17 +14,18 @@ A general assistant pays for every tool schema on every request. An automation e
 surfaces — reading a 3 MB L5X, comparing two projects, staging ladder edits, talking to a controller —
 but only one or two of them at a time.
 
-This bundle splits those surfaces into independently switchable rows. The expensive ones are off by
-default, so a read-only profile pays for the read tools and nothing else:
+This bundle splits those surfaces into one row per product. The expensive surfaces are a switch inside
+the row, off by default, so a read-only profile pays for the read tools and nothing else:
 
-| Row | Default | What a disabled row removes |
-|---|---|---|
-| `l5x-editing` | off | the nine `draft_*` schemas |
-| `l5x-studio` | off | the Logix Designer SDK and supervised controller schemas |
-| `l5x-live` | off | the EtherNet/IP polling and trend schemas |
-| `mwi-edit` | off | the seven MotionWorks edit schemas |
+| Product row | Config option | Default | What turning it on adds |
+|---|---|---|---|
+| `l5x` | `editing` | off | the nine `draft_*` schemas |
+| `l5x` | `studio` | off | the Logix Designer SDK and supervised controller schemas |
+| `l5x` | `live` | off | the EtherNet/IP polling and trend schemas |
+| `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
+| `mwi` | `edit` | off | the seven MotionWorks edit schemas |
 
-The previews are independent of the tools — switching L5X tools off does not remove the ladder viewer.
+The previews are independent of the tools — switching a product off does not remove the ladder viewer.
 Both previews mount from **one** row (`viewers`), because a package registers exactly one browser
 bundle.
 
@@ -47,21 +48,23 @@ Tool groups, by product:
 
 ## Switches
 
-A row is a plugin. Disabling it in the profile (or on the Plugins page) unmounts that plugin and its
-tool schemas stop being sent; the guidance skill keeps its own row so reading guidance and reading
-tools switch separately.
+A row is a plugin. Disabling it in the profile (or on the Plugins page) unmounts that product and its
+tool schemas stop being sent. Each product's optional surfaces are config on the same row, so the
+cheap decision — is this product on at all — takes one switch, and the fine decision lives one level
+down:
 
-| Row | Surface | Default | Why the default |
-|---|---|---|---|
-| `l5x-read`, `l5x-read-skill` | offline reads, checks, comparison + guidance | on | cheap and safe |
-| `l5x-editing` | nine staged `draft_*` tools | **off** | a read-only profile should not pay for them |
-| `l5x-studio` | Logix Designer SDK and supervised controller | **off** | needs Studio 5000 installed |
-| `l5x-live` | EtherNet/IP polling and trends | **off** | needs a controller address |
-| `viewers` | ladder + ME display previews | on | adds no model context |
-| `ftview-read`, `ftview-read-skill`, `ftview-edit`, `ftview-studio` | FactoryTalk View ME read, edits, Studio handoff | on | small enough to default on |
-| `mwi-session`, `mwi-read`, `mwi-read-skill`, `mwi-verify` | MotionWorks IEC session, reads, verify + guidance | on | — |
-| `mwi-edit` | seven staged MotionWorks edits | **off** | the largest schemas in the bundle |
-| `optix` | FactoryTalk Optix Studio authoring | on | separate component package |
+| Row | Mounts | Config options (default) |
+|---|---|---|
+| `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live | `editing` (off), `studio` (off), `live` (off) |
+| `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
+| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `edit` (off) |
+| `viewers` | ladder + ME display previews | — |
+| `optix` | FactoryTalk Optix Studio authoring | — |
+
+**Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
+containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
+switches"*), so a group switch is a shell feature, not a bundle one. Five product rows with config is
+what a bundle can do on its own — no harness change to carry across DSH upgrades.
 
 **No capability policy.** Earlier releases also carried a per-skill tool filter (`policyOnly` /
 `toolPolicy`) that gated tools by skill state. That filter is an AryaAI harness feature and is **not
@@ -108,6 +111,7 @@ Where each surface actually stands, based on what has been exercised.
 
 | Version | What landed |
 |---|---|
+| **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |
 | **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
 | **0.3.0** | FactoryTalk Optix becomes a bundle component; 79 tools total |
 | **0.2.0** | MotionWorks IEC ports into the bundle — 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
@@ -142,38 +146,23 @@ another bundle owns.
 ```mermaid
 flowchart TB
   Profile["Profile bundle list"] --> Bundle["@aryacode/dsh-engineering"]
-  Bundle -->|insert| L5XRead["l5x-read (on)"]
-  L5XRead --> L5XSkill["l5x-read-skill (on)"]
-  Bundle -->|insert| L5XEdit["l5x-editing (off)"]
-  Bundle -->|insert| L5XStudio["l5x-studio (off)"]
-  Bundle -->|insert| L5XLive["l5x-live (off)"]
+  Bundle -->|insert| L5X["l5x (on) — read + guidance; editing / studio / live off"]
+  Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
+  Bundle -->|insert| MWI["mwi (on) — session, read, verify; edit off"]
   Bundle -->|insert| Viewers["viewers (on) — ladder + ME display previews"]
-  Bundle -->|insert| FTV["ftview-read / edit / studio (on)"]
-  Bundle -->|insert| MWI["mwi-session / read / verify (on), edit (off)"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
 
 Row ids are stable. Profiles and patches address these ids, so per-row enable state survives upgrades
 even when the implementation behind a row is replaced.
 
-| Row id | Package entry | Default |
+| Row id | Package entry | Config options |
 |---|---|---|
-| `l5x-read` | `dsh-engineering-l5x` | on |
-| `l5x-read-skill` | `dsh-engineering-l5x/skill` | on |
-| `l5x-editing` | `dsh-engineering-l5x/editing` | off |
-| `l5x-studio` | `dsh-engineering-l5x/studio` | off |
-| `l5x-live` | `dsh-engineering-l5x/live` | off |
-| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | on |
-| `ftview-read` | `dsh-engineering-ftview` | on |
-| `ftview-read-skill` | `dsh-engineering-ftview/skill` | on |
-| `ftview-edit` | `dsh-engineering-ftview/edit` | on |
-| `ftview-studio` | `dsh-engineering-ftview/studio` | on |
-| `mwi-session` | `dsh-engineering-mwi` | on |
-| `mwi-read` | `dsh-engineering-mwi/read` | on |
-| `mwi-read-skill` | `dsh-engineering-mwi/skill` | on |
-| `mwi-verify` | `dsh-engineering-mwi/verify` | on |
-| `mwi-edit` | `dsh-engineering-mwi/edit` | off |
-| `optix` | `@aryacode/dsh-tool-ft-optix` | on |
+| `l5x` | `dsh-engineering-l5x` | `editing` off · `studio` off · `live` off |
+| `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
+| `mwi` | `dsh-engineering-mwi` | `edit` off |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
+| `optix` | `@aryacode/dsh-tool-ft-optix` | — |
 
 ## Safety
 

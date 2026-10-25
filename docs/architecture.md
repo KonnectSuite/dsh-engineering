@@ -26,39 +26,41 @@ dependencies — their built bundles are folded into `lib/client.js`.
 
 ## Row model
 
-The patch inserts sixteen rows with stable ids. Ids are the contract: a profile, a patch or the
-Plugins page addresses a row by id, so the implementation behind a row can be rebuilt without
-resetting the user's enabled state.
+The patch inserts five rows with stable ids. Ids are the contract: a profile, a patch or the Plugins
+page addresses a row by id, so the implementation behind a row can be rebuilt without resetting the
+user's enabled state.
 
-| id | package entry | default |
-|---|---|---|
-| `l5x-read` | `dsh-engineering-l5x` | on |
-| `l5x-read-skill` | `dsh-engineering-l5x/skill` | on |
-| `l5x-editing` | `dsh-engineering-l5x/editing` | off |
-| `l5x-studio` | `dsh-engineering-l5x/studio` | off |
-| `l5x-live` | `dsh-engineering-l5x/live` | off |
-| `viewers` | `@aryacode/dsh-engineering` (its own client face) | on |
-| `ftview-read` | `dsh-engineering-ftview` | on |
-| `ftview-read-skill` | `dsh-engineering-ftview/skill` | on |
-| `ftview-edit` | `dsh-engineering-ftview/edit` | on |
-| `ftview-studio` | `dsh-engineering-ftview/studio` | on |
-| `mwi-session` | `dsh-engineering-mwi` | on |
-| `mwi-read` | `dsh-engineering-mwi/read` | on |
-| `mwi-read-skill` | `dsh-engineering-mwi/skill` | on |
-| `mwi-verify` | `dsh-engineering-mwi/verify` | on |
-| `mwi-edit` | `dsh-engineering-mwi/edit` | off |
-| `optix` | `@aryacode/dsh-tool-ft-optix` | on |
+| id | package entry | mounts | config (default) |
+|---|---|---|---|
+| `l5x` | `entries/l5x.js` | read, `rockwell-l5x` guidance; optionally drafts, SDK, live | `editing` off, `studio` off, `live` off |
+| `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
+| `mwi` | `entries/mwi.js` | session, read, verify, guidance; optionally edits | `edit` off |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
+| `optix` | `@aryacode/dsh-tool-ft-optix` | Optix Studio authoring | — |
 
-Rows are split by cost, not by product alone. The L5X read surface is eager; drafts, SDK builds and
-live reads are opt-in because each adds schemas a read-only profile never uses. FactoryTalk View is
-small enough that its read, edit and Studio entries default on. MotionWorks IEC keeps session, read
-and verify eager and its seven edit tools opt-in, because those schemas are the largest in the bundle.
+A product row is an `entries/*.js` composite: it mounts the vendored parts (`ctx.plugin(part)`) so the
+Plugins page shows one switch per product, and exposes the optional parts as its `Config` schema, which
+the page renders as the row's config form. The defaults are the old per-row defaults, unchanged.
+
+**Why not `cordis:group`.** The patch format supports group rows (`name: cordis:group`, `group: true`,
+children in `config`), but the Plugins page does not render them: it skips them outright
+(`plugin-manager/src/index.ts`, *"Group rows are containers without a plugin inventory entry; their
+children carry the switches"*), and the config schema couples `group: true` with `disabled: true`.
+Group switches are therefore a shell feature; collapsing rows is the bundle-side equivalent.
+
+Rows are still split by cost: the L5X read surface is eager, while drafts, SDK builds and live reads
+are opt-in because each adds schemas a read-only profile never uses. FactoryTalk View is small enough
+that its edits and Studio handoff default on. MotionWorks IEC keeps session, read and verify eager and
+its seven edit tools opt-in, because those schemas are the largest in the bundle.
 
 Each plugin defines `inject`, so a row that needs a service the profile does not provide fails to
 mount instead of running degraded:
 
 | Entry | Injects |
 |---|---|
+| `entries/l5x` (row `l5x`) | `tools`, `fs` |
+| `entries/ftview` (row `ftview`) | `tools`, `fs` |
+| `entries/mwi` (row `mwi`) | `tools` |
 | `dsh-engineering-l5x` | `tools`, `fs` |
 | `dsh-engineering-l5x/editing` | `tools`, `l5xProjects` (provided by the read entry) |
 | `dsh-engineering-l5x/studio` | `tools`, `l5xProjects` |

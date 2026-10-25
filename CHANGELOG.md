@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.4] - 2026-10-25
+
+### Changed
+
+- **One row per product instead of one per surface.** The Plugins page now lists five rows — `l5x`,
+  `ftview`, `mwi`, `viewers`, `optix` — instead of sixteen. Each product row mounts its whole surface,
+  so one switch turns a product off instead of four.
+- **The optional surfaces are the row's config.** `entries/l5x.js` mounts read + guidance and takes
+  `editing`, `studio` and `live` (all off by default); `entries/ftview.js` takes `edit` and `studio`
+  (both on); `entries/mwi.js` takes `edit` (off). The defaults are unchanged — a read-only profile
+  still pays only for the read surfaces — but the toggle now lives with the product it belongs to.
+- Row ids change from `l5x-read` / `ftview-edit` / `mwi-verify` to `l5x` / `ftview` / `mwi`, so a
+  profile's per-row enable state resets once on upgrade. The product-level defaults are identical.
+- Legacy subpath exports are kept (`./l5x/read`, `./ftview/edit`, `./mwi/verify`, …) so a profile
+  patch that still names one of them keeps working.
+
+### Note
+
+The grouping is plugin-side by choice: `cordis:group` exists in the patch format, but the Plugins
+page skips group rows (`plugin-manager/src/index.ts`: "Group rows are containers … their children
+carry the switches"), so a group switch is a shell feature rather than a bundle one. Collapsing the
+row list is what a bundle can do on its own, without a harness change to maintain across DSH
+upgrades.
+
 ## [0.4.3] - 2026-10-25
 
 ### Fixed

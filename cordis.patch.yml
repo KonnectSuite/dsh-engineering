@@ -1,67 +1,42 @@
 # AryaCode engineering bundle.
 #
-# One layer lives here: the product rows. Each row mounts one surface of the
-# bundle, and the row is the switch — disabling `l5x-editing`, `l5x-studio`,
-# `l5x-live` or `mwi-edit` unloads that plugin, so its tool schemas never reach
-# the request. Row ids are stable, so per-entry enable state survives upgrades
-# even as the package behind a row is rebuilt.
+# Five product rows, one switch each. A row mounts a product's whole surface —
+# its read tools, its guidance and its optional parts — so the Plugins page
+# shows a product per row instead of a surface per row.
+#
+# The optional parts are the row's config, not separate rows:
+#
+#   l5x    → editing, studio, live   (all off by default)
+#   ftview → edit, studio            (both on by default)
+#   mwi    → edit                    (off by default)
+#
+# That keeps the context decision with the product it belongs to: a read-only
+# profile pays for the read surface, and the expensive schemas are one switch
+# inside the row instead of four more toggles in the list.
 #
 # The patch only ever inserts. It must never target a row another bundle owns:
 # a profile without that row makes composition fail ("patch: entry ... not
-# found"), and in 0.4.0/0.4.1 that is exactly why the bundle could not be
-# installed.
+# found"), which is why 0.4.0 and 0.4.1 could not be installed.
 #
-# The per-skill tool filter (`policyOnly` / `toolPolicy` / `capabilities`) is an
-# AryaAI harness feature. The AryaCode line's `@deepseek-ai/dsh-tool-skill` has
-# no such config, so a capability layer here would either fail composition or be
-# rejected by the plugin's schema. Rows are the switch in this product; when
-# that filter ships here, it belongs in a bundle mount of its own.
+# There is no per-skill tool filter here (`policyOnly` / `toolPolicy`): that is
+# an AryaAI harness feature and the AryaCode line's `@deepseek-ai/dsh-tool-skill`
+# has no such config. The row is the switch.
 - insert:
-    - id: l5x-read
+    - id: l5x
       name: '@aryacode/dsh-engineering/l5x'
-    - id: l5x-read-skill
-      name: '@aryacode/dsh-engineering/l5x/skill'
-    # Editing is its own entry so a read-only profile does not pay for nine
-    # draft schemas. It consumes the read entry's project service.
-    - id: l5x-editing
-      name: '@aryacode/dsh-engineering/l5x/editing'
-      disabled: true
-    # The SDK entry needs Studio 5000 installed, so it stays off until asked for.
-    - id: l5x-studio
-      name: '@aryacode/dsh-engineering/l5x/studio'
-      disabled: true
-    # Live reads need a controller address; the row is the switch.
-    - id: l5x-live
-      name: '@aryacode/dsh-engineering/l5x/live'
-      disabled: true
+    # FactoryTalk View ME: read, edits and the Studio handoff. Small enough that
+    # everything is on; the row's config can drop the edits or the handoff.
+    - id: ftview
+      name: '@aryacode/dsh-engineering/ftview'
+    # MotionWorks IEC: session, reads, verify and guidance on; edits opt-in.
+    - id: mwi
+      name: '@aryacode/dsh-engineering/mwi'
     # Both previews (the L5X ladder viewer and the FactoryTalk View ME display
     # preview) are this bundle's own client face. A package registers exactly one
-    # browser bundle, so one row mounts both; switching the L5X or FTView *tools*
-    # off leaves this row alone, because a client face adds no model context.
+    # browser bundle, so one row mounts both; a client face adds no model
+    # context, so this row is independent of every product row above.
     - id: viewers
       name: '@aryacode/dsh-engineering'
-    # FactoryTalk View ME: read, edit and Studio entries plus the display
-    # preview. The old plugin is retired, so these mount by default.
-    - id: ftview-read
-      name: '@aryacode/dsh-engineering/ftview'
-    - id: ftview-read-skill
-      name: '@aryacode/dsh-engineering/ftview/skill'
-    - id: ftview-edit
-      name: '@aryacode/dsh-engineering/ftview/edit'
-    - id: ftview-studio
-      name: '@aryacode/dsh-engineering/ftview/studio'
-    # MotionWorks IEC: the redesigned rows. Editing is off by default, like L5X.
-    - id: mwi-session
-      name: '@aryacode/dsh-engineering/mwi'
-    - id: mwi-read
-      name: '@aryacode/dsh-engineering/mwi/read'
-    - id: mwi-read-skill
-      name: '@aryacode/dsh-engineering/mwi/skill'
-    - id: mwi-verify
-      name: '@aryacode/dsh-engineering/mwi/verify'
-    - id: mwi-edit
-      name: '@aryacode/dsh-engineering/mwi/edit'
-      disabled: true
     # FactoryTalk Optix stays a separate package, mounted as a component row.
     - id: optix
       name: '@aryacode/dsh-tool-ft-optix'
