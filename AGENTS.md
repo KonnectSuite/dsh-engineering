@@ -72,7 +72,7 @@ This repository owns the engineering bundle, its rows, and the engineering produ
 ## Change policy (binding)
 
 - **Never change the installed AryaCode.** `%LOCALAPPDATA%\Programs\AryaCode` (payload, `app.asar`, runtime) and `~/.aryacode` (profiles, `node_modules`, `userData`) are the user's live product. Read them; do not write to them, patch them, or edit a profile's `package.json` to work around a bug. Do not stop, uninstall, or launch a second instance against that profile.
-- **Every change here is a release.** Change the repo, verify, bump the version, `pnpm test`, `pnpm pack`, publish to npm, publish the market release and the `catalog` branch. Published versions are immutable — never repack or overwrite one.
+- **Every change here is a release.** Change the repo, verify, bump the version, `pnpm test`, `pnpm pack`, `pnpm publish`, tag `vX.Y.Z`, then record that version in the market catalog with `publish-arya-release.mjs --npm <version>` and push the `catalog` branch. npm is the artefact host — the catalog points at `registry.npmjs.org`, so no GitHub release asset is created. Published versions are immutable — never repack or overwrite one.
 - **Test on Dev AryaCode**, `%LOCALAPPDATA%\AryaCode-dev\home`, never on the installed instance: install the tarball there, compose the profile, then boot.
 - **Harness fixes are not this repository's.** If a change requires editing the shell or a `@deepseek-ai` package, it belongs in `KonnectSuite/AryaCode`, verified on Dev AryaCode, and shipped as a harness patch release — not as a local edit here or in the installed app.
 - **No in-place rescue.** If a fix seems to need touching the installed copy, that is the signal the change belongs upstream. Say so and take the release path.

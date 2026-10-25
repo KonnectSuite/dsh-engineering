@@ -18,18 +18,33 @@ pnpm install
 pnpm --filter @aryacode/dsh-engineering-l5x build
 pnpm --filter @aryacode/dsh-engineering-ftview build
 pnpm --filter @aryacode/dsh-engineering-mwi build
-pnpm test                     # including the client face: id, both faces, drift
+pnpm test                     # patch, docs, tool reference, dependencies, client face
 pnpm build:client             # lib/client.js from both committed face bundles
-pnpm assemble                 # vendor/ from the three built components
-pnpm pack                     # one tarball: cordis.patch.yml, lib/, vendor/, locale/
+pnpm assemble                 # vendor/ from the four component trees
+pnpm pack                     # one tarball: cordis.patch.yml, entries/, lib/, vendor/, locale/
 
-npm view @aryacode/dsh-engineering@<version> dependencies   # one entry: the Optix tarball
+pnpm publish --no-git-checks --access public     # npm is the artefact host
+npm view @aryacode/dsh-engineering@<version> dependencies   # four libraries, no plugin
+
+# then, in the dsh-arya-market clone: record the version the registry now serves
+node scripts/publish-arya-catalog.mjs --pull
+node scripts/publish-arya-release.mjs --source KonnectSuite/dsh-engineering --npm <version>
+node scripts/publish-arya-catalog.mjs --push
+
+git tag -a v<version> -m "Engineering bundle <version>"      # provenance, in this repo
+git push origin main --tags
 ```
 
 `prepack` runs `build:client` and `assemble`, so a packed tarball cannot carry a stale client bundle
-or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`, `lib/index.js`,
-`vendor/*/SKILL.md`, `vendor/l5x/studio-bridge/*.csproj` and `vendor/mwi/code/engine/**` must all be
-present.
+or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`, `entries/*.js`,
+`vendor/optix/lib/index.js`, `vendor/l5x/cip-worker.mjs`, `vendor/l5x/studio-bridge/*.csproj` and
+`vendor/mwi/code/engine/**` must all be present.
+
+**One host for every entry.** The catalog points at `registry.npmjs.org` tarballs; the market repo
+holds the catalog JSON and nothing else. A GitHub release asset is not part of this flow — the
+`--tarball` mode of `publish-arya-release.mjs` still exists for packages that cannot be published to
+the registry, but no Arya entry uses it. Because npm publishing is staged, publish first and record the
+catalog entry after the version is visible in `npm view`.
 
 ## History: seven tarballs before 0.3.0
 
