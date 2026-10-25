@@ -120,4 +120,4 @@
       disabled: true
     # FactoryTalk Optix stays a separate package, mounted as a component row.
     - id: optix
-      name: '@deepseek-ai/dsh-tool-ft-optix'
+      name: '@aryacode/dsh-tool-ft-optix'

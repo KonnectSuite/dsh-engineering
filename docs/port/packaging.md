@@ -3,9 +3,10 @@
 > **Distribution status.** AryaCode installs plugins from the registry. Since 0.4.0
 > `@aryacode/dsh-engineering` is **one self-contained package**: the three host components are
 > vendored into `vendor/`, both previews ship as its own `lib/client.js`, and its only dependency is
-> the Optix component's release tarball. A profile installs one package and toggles rows inside it.
-> Publish with **`pnpm publish`** — `npm publish` cannot rewrite `workspace:*` specs and fails — then
-> verify the published `dependencies` carry real versions, never `workspace:*`.
+> the Optix component from the registry, as a plain version range. A profile installs one package and
+> toggles rows inside it. Publish with **`pnpm publish`** — `npm publish` cannot rewrite `workspace:*`
+> specs and fails — then verify the published `dependencies` carry real versions, never `workspace:*`
+> and never a URL.
 >
 > The sections below describe the installer-pinned multi-tarball layout that AryaCode replaced; they
 > remain as the record of how the bundle was packed before it moved to the registry.

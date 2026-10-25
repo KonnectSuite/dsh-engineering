@@ -169,8 +169,8 @@ mounted.
 
 ## Distribution
 
-The bundle is packed as one self-contained tarball; the only dependency is the Optix component,
-fetched from its GitHub release tarball:
+The bundle is packed as one self-contained tarball; its one dependency is the Optix component from the
+registry (`@aryacode/dsh-tool-ft-optix`, a plain version range):
 
 ```
 dsh-engineering-<version>.tgz

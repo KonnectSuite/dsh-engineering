@@ -76,6 +76,19 @@ test('every inserted package is a declared dependency', () => {
   }
 })
 
+test('every dependency resolves from a registry', () => {
+  // A URL, git, or workspace spec here lands in a *subdependency* of whatever
+  // bundle a profile installs, and pnpm refuses those outright
+  // (ERR_PNPM_EXOTIC_SUBDEP). 0.4.0 shipped an Optix tarball URL and every
+  // market install failed, so this is a test, not a convention.
+  for (const section of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+    for (const [name, spec] of Object.entries(manifest[section] ?? {})) {
+      assert.doesNotMatch(spec, /^(?:https?|git|file|link|workspace):/u,
+        `${section}.${name} is ${spec}; it must be a registry version range`)
+    }
+  }
+})
+
 test('the package version has a changelog heading', () => {
   assert.match(changelog, new RegExp(`^## \\[${manifest.version.replaceAll('.', '\\.')}\\]`, 'mu'),
     `CHANGELOG.md has no [${manifest.version}] heading`)

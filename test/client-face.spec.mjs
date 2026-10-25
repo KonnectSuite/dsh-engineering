@@ -153,7 +153,9 @@ test('apply mounts the ladder preview and the ME display preview', () => {
 })
 
 test('no engineering component is a dependency any more', () => {
-  const components = Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@aryacode/'))
+  // `@aryacode/dsh-tool-ft-optix` is a legitimate dependency; the retired
+  // components all sat under the `@aryacode/dsh-engineering-` prefix.
+  const components = Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@aryacode/dsh-engineering-'))
   assert.deepEqual(components, [], 'the bundle must not depend on its own retired component packages')
   for (const face of FACES) {
     assert.ok(!(manifest.dependencies ?? {})[face.packageName],

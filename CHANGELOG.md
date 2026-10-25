@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.1] - 2026-10-25
+
+### Fixed
+
+- **The bundle could not be installed.** `dependencies` pointed at the Optix component through a GitHub
+  release tarball, and pnpm refuses a URL inside any subdependency:
+  `ERR_PNPM_EXOTIC_SUBDEP ... when blockExoticSubdeps is enabled`, which is the default. Every install
+  from the market or the registry failed this way. The dependency is now the registry range
+  `@aryacode/dsh-tool-ft-optix@0.2.1-rc.3`, which is the same build (its `lib/index.js` is
+  byte-identical to the tarball's), so nothing in the bundle changes except that it installs.
+- The `optix` row names that package too. The row previously kept the old `@deepseek-ai/` name while
+  the dependency was renamed, which would have left the row unable to mount even once the install
+  succeeded.
+- `test/docs.spec.mjs` now fails when any dependency, optional dependency or peer is a URL, git, file,
+  link or workspace spec, so the tarball spec cannot come back quietly.
+
 ## [0.4.0] - 2026-10-25
 
 ### Changed

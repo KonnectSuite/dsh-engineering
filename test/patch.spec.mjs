@@ -34,7 +34,7 @@ test('inserts exactly the bundle rows', () => {
     { id: 'mwi-read-skill', name: '@aryacode/dsh-engineering/mwi/skill' },
     { id: 'mwi-verify', name: '@aryacode/dsh-engineering/mwi/verify' },
     { id: 'mwi-edit', name: '@aryacode/dsh-engineering/mwi/edit', disabled: true },
-    { id: 'optix', name: '@deepseek-ai/dsh-tool-ft-optix' },
+    { id: 'optix', name: '@aryacode/dsh-tool-ft-optix' },
   ])
 })
 

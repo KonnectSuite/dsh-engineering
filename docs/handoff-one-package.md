@@ -56,21 +56,25 @@ packages in `dependencies`. A bundle plus component dependencies is not the goal
 | assemble + pack | ✅ 284 entries, 685 kB, `lib/client.js` present |
 | 4 — publish | ✅ 0.4.0 live on npm (`latest`) and in the market catalogue |
 
-Manifest of the packed 0.4.0 tarball:
+Manifest of the packed 0.4.1 tarball:
 
 ```
-@aryacode/dsh-engineering@0.4.0    284 files   685 kB packed
+@aryacode/dsh-engineering@0.4.1    284 files   685 kB packed
 dependencies:
-  @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
+  @aryacode/dsh-tool-ft-optix            = 0.2.1-rc.3   (registry)
 files: cordis.patch.yml, lib/client.js, lib/index.js, vendor/**, locale/**
 ```
+
+0.4.0 shipped the same code but pointed that dependency at a GitHub release tarball, which pnpm refuses
+inside a subdependency (`ERR_PNPM_EXOTIC_SUBDEP`) — every market install failed. 0.4.1 uses the
+registry range, so no profile needs `blockExoticSubdeps: false`.
 
 The 0.3.0 registry manifest, for contrast — the two viewer dependencies are what 0.4.0 removed:
 
 ```
 @aryacode/dsh-engineering@0.3.0    281 files   2.1 MB unpacked
 dependencies:
-  @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
+  @aryacode/dsh-tool-ft-optix            = <github release tarball>
   @aryacode/dsh-engineering-l5x-viewer      = 0.1.2   ← gone in 0.4.0
   @aryacode/dsh-engineering-ftview-viewer   = 0.1.2   ← gone in 0.4.0
 ```
@@ -250,9 +254,13 @@ See §3. Do not assume two faces can share a package without a merged factory.
 
 ### 5.7 The Optix row
 
-`cordis.patch.yml` previously named `@aryacode/dsh-tool-ft-optix`, but the dependency is
-`@deepseek-ai/dsh-tool-ft-optix` (a GitHub release tarball). It is fixed — rows must name packages
-that actually exist, or the row silently fails to mount.
+The row and the dependency must name the same package, or the row silently fails to mount — and a URL
+in `dependencies` is rejected by pnpm as an *exotic subdependency*, which fails the whole install for
+any profile with `blockExoticSubdeps` on (the default). Both cost a release: the row once named
+`@deepseek-ai/dsh-tool-ft-optix` while the package was published under `@aryacode`, and 0.4.0 pointed
+the dependency at a GitHub release tarball, so every market install died with
+`ERR_PNPM_EXOTIC_SUBDEP`. In 0.4.1 the row and the dependency are both `@aryacode/dsh-tool-ft-optix`
+at registry range `0.2.1-rc.3`. Do not reintroduce a tarball or git spec here.
 
 ### 5.8 `onDemand` stays `false`
 
@@ -323,8 +331,10 @@ State of the wider product, in case the next session is picked up cold:
 1. Merge `refactor/one-package` → `main` (npm currently does not match `main`)
 2. Unarchive `KonnectSuite/dsh-tool-factorytalk-view` — its output ships in the bundle but the repo is
    read-only, so the FTView face cannot be fixed at origin
-3. `@deepseek-ai/dsh-tool-ft-optix` is fetched from a GitHub release tarball rather than the registry:
-   it cannot be updated by semver and breaks if that asset moves
+3. Optix still arrives as a dependency rather than as a vendored component. It is a registry range now,
+   so semver updates work, but a profile on a registry that does not mirror `@aryacode` cannot install
+   the bundle. Vendor it (copy the tree into `vendor/optix`, plus `playwright-core`, its only
+   dependency) to remove the last dependency.
 4. Deprecate the stale `0.0.0-stage` versions that sit on all six packages, and the retired
    `-l5x-viewer` / `-ftview-viewer` packages that 0.4.0 no longer depends on
 5. **The l5x trend card is still dark.** Its bundle is `vendor/l5x/lib/client.js`, but the rows name
