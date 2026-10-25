@@ -8,21 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@aryacode/dsh-engineering-ftview':
-        specifier: workspace:*
-        version: link:packages/ftview
-      '@aryacode/dsh-engineering-ftview-viewer':
-        specifier: workspace:*
-        version: link:packages/ftview-viewer
-      '@aryacode/dsh-engineering-l5x':
-        specifier: workspace:*
-        version: link:packages/l5x
-      '@aryacode/dsh-engineering-l5x-viewer':
-        specifier: workspace:*
-        version: link:packages/viewer
-      '@aryacode/dsh-engineering-mwi':
-        specifier: workspace:*
-        version: link:packages/mwi
       '@deepseek-ai/cordis':
         specifier: ~4.0.4
         version: 4.0.5

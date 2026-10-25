@@ -74,48 +74,48 @@
             - mw_
 - insert:
     - id: l5x-read
-      name: '@aryacode/dsh-engineering-l5x'
+      name: '@aryacode/dsh-engineering/l5x'
     - id: l5x-read-skill
-      name: '@aryacode/dsh-engineering-l5x/skill'
+      name: '@aryacode/dsh-engineering/l5x/skill'
     # Editing is its own entry so a read-only profile does not pay for nine
     # draft schemas. It consumes the read entry's project service.
     - id: l5x-editing
-      name: '@aryacode/dsh-engineering-l5x/editing'
+      name: '@aryacode/dsh-engineering/l5x/editing'
       disabled: true
     # The SDK entry needs Studio 5000 installed, so it stays off until asked for.
     - id: l5x-studio
-      name: '@aryacode/dsh-engineering-l5x/studio'
+      name: '@aryacode/dsh-engineering/l5x/studio'
       disabled: true
     # Live reads need a controller address; the row is the switch.
     - id: l5x-live
-      name: '@aryacode/dsh-engineering-l5x/live'
+      name: '@aryacode/dsh-engineering/l5x/live'
       disabled: true
     # The ladder viewer is the bundle's own client face, independent of the tools.
     - id: l5x-viewer
-      name: '@aryacode/dsh-engineering-l5x-viewer'
+      name: '@aryacode/dsh-engineering/l5x-viewer'
     # FactoryTalk View ME: read, edit and Studio entries plus the display
     # preview. The old plugin is retired, so these mount by default.
     - id: ftview-read
-      name: '@aryacode/dsh-engineering-ftview'
+      name: '@aryacode/dsh-engineering/ftview'
     - id: ftview-read-skill
-      name: '@aryacode/dsh-engineering-ftview/skill'
+      name: '@aryacode/dsh-engineering/ftview/skill'
     - id: ftview-edit
-      name: '@aryacode/dsh-engineering-ftview/edit'
+      name: '@aryacode/dsh-engineering/ftview/edit'
     - id: ftview-studio
-      name: '@aryacode/dsh-engineering-ftview/studio'
+      name: '@aryacode/dsh-engineering/ftview/studio'
     - id: ftview-viewer
-      name: '@aryacode/dsh-engineering-ftview-viewer'
+      name: '@aryacode/dsh-engineering/ftview-viewer'
     # MotionWorks IEC: the redesigned rows. Editing is off by default, like L5X.
     - id: mwi-session
-      name: '@aryacode/dsh-engineering-mwi'
+      name: '@aryacode/dsh-engineering/mwi'
     - id: mwi-read
-      name: '@aryacode/dsh-engineering-mwi/read'
+      name: '@aryacode/dsh-engineering/mwi/read'
     - id: mwi-read-skill
-      name: '@aryacode/dsh-engineering-mwi/skill'
+      name: '@aryacode/dsh-engineering/mwi/skill'
     - id: mwi-verify
-      name: '@aryacode/dsh-engineering-mwi/verify'
+      name: '@aryacode/dsh-engineering/mwi/verify'
     - id: mwi-edit
-      name: '@aryacode/dsh-engineering-mwi/edit'
+      name: '@aryacode/dsh-engineering/mwi/edit'
       disabled: true
     # FactoryTalk Optix stays a separate package, mounted as a component row.
     - id: optix

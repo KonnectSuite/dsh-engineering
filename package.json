@@ -31,6 +31,7 @@
   "files": [
     "cordis.patch.yml",
     "locale/*.json",
+    "vendor/**/*",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
@@ -43,14 +44,11 @@
   "scripts": {
     "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
-    "docs:check": "tsx scripts/gen-tool-reference.ts --check"
+    "docs:check": "tsx scripts/gen-tool-reference.ts --check",
+    "assemble": "node scripts/assemble.mjs",
+    "prepack": "node scripts/assemble.mjs"
   },
   "dependencies": {
-    "@aryacode/dsh-engineering-ftview": "workspace:*",
-    "@aryacode/dsh-engineering-ftview-viewer": "workspace:*",
-    "@aryacode/dsh-engineering-l5x": "workspace:*",
-    "@aryacode/dsh-engineering-l5x-viewer": "workspace:*",
-    "@aryacode/dsh-engineering-mwi": "workspace:*",
     "@deepseek-ai/dsh-tool-ft-optix": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.3.0/deepseek-ai-dsh-tool-ft-optix-0.2.1-rc.3.tgz"
   },
   "peerDependencies": {
@@ -60,5 +58,22 @@
   "devDependencies": {
     "js-yaml": "^4.1.0",
     "tsx": "^4.23.15"
+  },
+  "exports": {
+    ".": "./cordis.patch.yml",
+    "./l5x": "./vendor/l5x/lib/index.js",
+    "./l5x/skill": "./vendor/l5x/lib/skill.js",
+    "./l5x/editing": "./vendor/l5x/lib/editing.js",
+    "./l5x/live": "./vendor/l5x/lib/live.js",
+    "./l5x/studio": "./vendor/l5x/lib/studio.js",
+    "./ftview": "./vendor/ftview/lib/index.js",
+    "./ftview/skill": "./vendor/ftview/lib/skill.js",
+    "./ftview/edit": "./vendor/ftview/lib/edit.js",
+    "./ftview/studio": "./vendor/ftview/lib/studio.js",
+    "./mwi": "./vendor/mwi/lib/index.js",
+    "./mwi/read": "./vendor/mwi/lib/read.js",
+    "./mwi/skill": "./vendor/mwi/lib/skill.js",
+    "./mwi/verify": "./vendor/mwi/lib/verify.js",
+    "./mwi/edit": "./vendor/mwi/lib/edit.js"
   }
 }

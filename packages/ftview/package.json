@@ -51,5 +51,6 @@
   "license": "MIT",
   "dsh": {
     "component": true
-  }
+  },
+  "private": true
 }
