@@ -7,7 +7,7 @@ The [README](../README.md) owns the product overview; this page owns the interna
 
 ```
 package.json              bundle manifest: dsh.bundle.patch, dsh.client, dependencies, peer range
-cordis.patch.yml          the loader layer: one policy override + the inserted rows
+cordis.patch.yml          the loader layer: the inserted rows (inserts only)
 lib/index.js              host half: an entry that registers nothing (see "Client faces")
 lib/client.js             the bundle's one browser half: ladder + ME display previews (generated)
 scripts/build-client.mjs  builds lib/client.js from the two committed face bundles
@@ -80,38 +80,26 @@ mount instead of running degraded:
 The read entries provide their handle services (`l5xProjects`, `ftviewViews`) so a draft reuses the
 open export instead of reading it twice. A chat's handles are scoped to that chat.
 
-## Tool-exposure policy
+## Switches
 
-The patch targets the existing `tool-capability-policy` row instead of inserting a second one:
+A row is a plugin, so a disabled row is an unloaded plugin and its tool schemas leave the request. That
+is the whole switch mechanism in this product line, and it is why the expensive surfaces are their own
+rows: `l5x-editing`, `l5x-studio`, `l5x-live` and `mwi-edit` are off by default, so a read-only profile
+never pays for them.
 
-```yaml
-- id: tool-capability-policy
-  config:
-    policyOnly: true
-    toolPolicy:
-      onDemand: false
-      capabilities:
-        - skill: rockwell-l5x
-          tools: [ ...35 exact L5X tool names... ]
-          prefixes: [l5x_]
-        - skill: factorytalk-view
-          prefixes: [ftview_]
-        - skill: motionworks-iec
-          prefixes: [mw_]
-```
+The patch **only inserts**. An entry that targets another bundle's row (`- id: something-else`) is a
+hard failure when that row is absent — `dsh: [...] patch: entry "..." not found` — and the bundle then
+refuses to apply. 0.4.0 and 0.4.1 shipped exactly that and were uninstallable; `test/patch.spec.mjs`
+now rejects any non-insert entry.
 
-The policy matches a registered tool by exact name or by prefix. The rebuilt L5X tools use
-descriptive names (`open_project`, `draft_apply`, …), which is why the capability lists them
-exactly; `l5x_` remains linked for any future prefixed tool. The FactoryTalk View and MotionWorks
-tools are already prefixed.
+**No capability policy.** Earlier releases carried a per-skill tool filter (`policyOnly`, `toolPolicy`,
+`capabilities`) inherited from AryaAI. That filter lives in AryaAI's fork of
+`@deepseek-ai/dsh-tool-skill`; the AryaCode line's copy has no such config, so the layer could only ever
+be skipped (older harness) or fail composition (current harness). If the filter ships here, it belongs
+in its own bundle mount, not in this patch.
 
-`policyOnly: true` means the policy row does not register tools of its own; it only filters the
-registry. `onDemand: false` preserves the product-wide eager exposure: a tool that is on is visible
-without a discovery call.
-
-The generated inventory (`docs/reference/tools.json`) is the machine-readable list of registered
-tools. `test/tool-reference.spec.mjs` fails when a tool is not governed by a capability, when a
-capability names an unknown tool, or when the reference is stale.
+The generated inventory (`docs/reference/tools.json`) is the machine-readable list of registered tools.
+`test/tool-reference.spec.mjs` fails when the committed reference is stale.
 
 ## Configuration
 
@@ -174,7 +162,7 @@ registry (`@aryacode/dsh-tool-ft-optix`, a plain version range):
 
 ```
 dsh-engineering-<version>.tgz
-  ├── cordis.patch.yml        the rows and the tool policy
+  ├── cordis.patch.yml        the rows (inserts only)
   ├── lib/client.js           both previews, one registration
   ├── lib/index.js            the host half the `viewers` row mounts
   └── vendor/{l5x,ftview,mwi} the vendored components and their assets
@@ -192,7 +180,7 @@ it partially.
 ## Verification
 
 ```sh
-pnpm test          # patch invariants, docs agreement, tool reference, policy coverage, client face
+pnpm test          # patch invariants, docs agreement, tool reference, client face
 pnpm build:client  # regenerate lib/client.js from the committed face bundles
 pnpm docs:tools    # regenerate docs/reference/tools.md and tools.json
 pnpm docs:check    # fail when the generated reference is stale
@@ -200,7 +188,7 @@ pnpm docs:check    # fail when the generated reference is stale
 
 `test/patch.spec.mjs` parses `cordis.patch.yml` and asserts the exact inserted rows, the skill and
 prefix wiring, and that eager exposure is preserved. `test/docs.spec.mjs` fails when the README
-policy table, row ids or changelog heading drift from the patch or manifest.
+switches section, row ids or changelog heading drift from the patch or manifest.
 `test/client-face.spec.mjs` fails when the committed `lib/client.js` is stale, when its registration
 id stops matching the package name, when a face stops materializing, or when `apply` stops mounting
 either preview.

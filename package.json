@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.4.1",
+  "version": "0.4.3",
   "description": "AryaCode engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
   "keywords": [
     "dsh",
@@ -63,7 +63,10 @@
     "prepack": "node scripts/build-client.mjs && node scripts/assemble.mjs"
   },
   "dependencies": {
-    "@aryacode/dsh-tool-ft-optix": "0.2.1-rc.3"
+    "@aryacode/dsh-tool-ft-optix": "0.2.1-rc.3",
+    "fast-xml-parser": "5.11.1",
+    "fast-xml-validator": "1.4.2",
+    "st-ethernet-ip": "2.7.5"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

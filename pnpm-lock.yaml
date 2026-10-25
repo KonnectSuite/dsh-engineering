@@ -17,6 +17,15 @@ importers:
       '@deepseek-ai/dsh-tool-skill':
         specifier: ^0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-agent@0.2.0-rc.2(d65a2cf9df8246b9a638c606e3efa59b))(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-skill@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-llm@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5))))
+      fast-xml-parser:
+        specifier: 5.11.1
+        version: 5.11.1
+      fast-xml-validator:
+        specifier: 1.4.2
+        version: 1.4.2
+      st-ethernet-ip:
+        specifier: 2.7.5
+        version: 2.7.5
     devDependencies:
       js-yaml:
         specifier: ^4.1.0

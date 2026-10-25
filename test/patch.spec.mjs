@@ -5,16 +5,27 @@ import { load } from 'js-yaml'
 
 const source = readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8')
 const patch = load(source)
-const policy = patch[0]
-const inserted = patch[1]
+const inserted = patch[0]
 
-test('is one id-targeted override followed by one insert block', () => {
+test('is one insert block and nothing else', () => {
   assert.ok(Array.isArray(patch))
-  assert.equal(patch.length, 2)
-  assert.equal(policy.id, 'tool-capability-policy')
-  assert.equal(policy.name, undefined, 'the policy layer must not insert a plugin row')
-  assert.equal(policy.insert, undefined)
+  assert.equal(patch.length, 1)
   assert.ok(Array.isArray(inserted.insert))
+})
+
+test('never targets a row another bundle owns', () => {
+  // An id-targeted patch entry requires that row to already exist in the
+  // composed tree. When it does not, composition fails with
+  // `patch: entry "..." not found` and the bundle refuses to apply — which is
+  // what made 0.4.0 and 0.4.1 uninstallable. This bundle only ever inserts its
+  // own rows.
+  for (const entry of patch) {
+    assert.equal(entry.id, undefined, `patch entry targets row "${entry.id}"; it must insert instead`)
+    assert.ok(Array.isArray(entry.insert), 'every patch entry must be an insert block')
+    for (const row of entry.insert) {
+      assert.ok(typeof row.id === 'string' && row.id !== '' && typeof row.name === 'string')
+    }
+  }
 })
 
 test('inserts exactly the bundle rows', () => {
@@ -47,29 +58,8 @@ test('mounts the one client face through the bundle package itself', () => {
   }
 })
 
-test('links each engineering prefix to a registered skill name', () => {
-  const capabilities = policy.config.toolPolicy.capabilities
-  assert.ok(Array.isArray(capabilities))
-  for (const capability of capabilities) {
-    assert.match(capability.skill, /^[a-z0-9][a-z0-9-]*$/u)
-    assert.ok(capability.prefixes.length > 0, `${capability.skill} links no tools`)
-  }
-  assert.deepEqual(
-    capabilities.map(capability => capability.skill),
-    ['rockwell-l5x', 'factorytalk-view', 'motionworks-iec'],
-  )
-  assert.deepEqual(
-    capabilities.flatMap(capability => capability.prefixes),
-    ['l5x_', 'ftview_', 'mw_'],
-  )
-})
-
-test('does not claim one prefix twice', () => {
-  const prefixes = policy.config.toolPolicy.capabilities.flatMap(capability => capability.prefixes)
-  assert.equal(new Set(prefixes).size, prefixes.length)
-})
-
-test('keeps eager exposure and the policy-only mount', () => {
-  assert.equal(policy.config.toolPolicy.onDemand, false)
-  assert.equal(policy.config.policyOnly, true)
+test('keeps the expensive surfaces off by default', () => {
+  const off = inserted.insert.filter(row => row.disabled === true).map(row => row.id)
+  assert.deepEqual(off, ['l5x-editing', 'l5x-studio', 'l5x-live', 'mwi-edit'],
+    'a read-only profile must not pay for draft, SDK, live or MotionWorks edit schemas')
 })

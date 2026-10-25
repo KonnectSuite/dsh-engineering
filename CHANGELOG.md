@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.4.3] - 2026-10-25
+
+### Fixed
+
+- **The vendored rows could not import their own libraries.** The trees under `vendor/` are the
+  components' own code, and that code imports `fast-xml-parser`, `fast-xml-validator` and
+  `st-ethernet-ip` — but vendoring drops the component manifests, and the bundle declared none of them.
+  At mount the loader reported `ERR_MODULE_NOT_FOUND` and every L5X and FactoryTalk View row failed to
+  import, taking its tools with them. The bundle now declares all three at the versions the components
+  pin, and `test/docs.spec.mjs` fails when a component dependency is not declared here.
+
+## [0.4.2] - 2026-10-25
+
+### Fixed
+
+- **The bundle now installs and mounts in AryaCode.** 0.4.1 fixed the pnpm error, but the install still
+  failed one step later, when the profile tried to apply the bundle: the patch's first entry targeted
+  the `tool-capability-policy` row, and no such row exists in an AryaCode profile, so composition threw
+  `dsh: [@aryacode/dsh-engineering] patch: entry "tool-capability-policy" not found` and the plugin
+  manager rolled the install back — which is what the market card reported as *Cannot install*.
+
+### Removed
+
+- **The per-skill tool filter.** `policyOnly` / `toolPolicy` / `capabilities` are an AryaAI harness
+  feature: AryaAI's fork of `@deepseek-ai/dsh-tool-skill` implements them, and the AryaCode line's copy
+  of the same package does not. In this product the layer never filtered anything — an older harness
+  skipped the missing row with a warning, the current one treats it as fatal. Rows are the switch:
+  disabling `l5x-editing`, `l5x-studio`, `l5x-live` or `mwi-edit` unmounts that plugin and removes its
+  tool schemas from the request, which is the same context saving by a mechanism this harness has.
+- The patch is now **inserts only**, and `test/patch.spec.mjs` fails if any entry targets a row another
+  bundle owns.
+
 ## [0.4.1] - 2026-10-25
 
 ### Fixed

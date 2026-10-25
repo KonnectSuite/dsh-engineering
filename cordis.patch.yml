@@ -1,77 +1,21 @@
 # AryaCode engineering bundle.
 #
-# Two layers live here.
+# One layer lives here: the product rows. Each row mounts one surface of the
+# bundle, and the row is the switch — disabling `l5x-editing`, `l5x-studio`,
+# `l5x-live` or `mwi-edit` unloads that plugin, so its tool schemas never reach
+# the request. Row ids are stable, so per-entry enable state survives upgrades
+# even as the package behind a row is rebuilt.
 #
-# 1. Tool exposure. Targets the existing `tool-capability-policy` row and links
-#    each engineering product's tool namespace to the skill that governs it, so
-#    the Skills page switch controls the guidance and the tools together instead
-#    of leaving the tool schemas exposed after the skill is off.
+# The patch only ever inserts. It must never target a row another bundle owns:
+# a profile without that row makes composition fail ("patch: entry ... not
+# found"), and in 0.4.0/0.4.1 that is exactly why the bundle could not be
+# installed.
 #
-#    `onDemand` stays false. Arya measured bounded on-demand discovery against
-#    eager exposure and kept eager exposure because discovery cost more turns
-#    than the schema characters it saved. The context gain comes from per-product
-#    switches and from trimming the product schemas.
-#
-#    Optix has no skill yet, so `optix_*` stays unlinked and always visible. Link
-#    it here once a FactoryTalk Optix skill registers one.
-#
-# 2. The product rows. Mounts the rebuilt L5X and FactoryTalk View surfaces and
-#    their guidance as components of this bundle. The row ids are stable, so per-entry enable
-#    state survives upgrades even as the package behind them is rebuilt.
-- id: tool-capability-policy
-  config:
-    policyOnly: true
-    toolPolicy:
-      onDemand: false
-      capabilities:
-        - skill: rockwell-l5x
-          # The rebuilt L5X tools keep descriptive names (open_project,
-          # draft_apply, ...). This exact list is what the skill switch
-          # governs; `l5x_` stays linked for any prefixed tool added later.
-          tools:
-            - open_project
-            - project_overview
-            - list_components
-            - get_component
-            - search_logic
-            - find_references
-            - trace_dependencies
-            - resolve_tag
-            - usage_map
-            - run_checks
-            - compare_projects
-            - draft_rung
-            - draft_st
-            - draft_routine
-            - draft_tag
-            - draft_tag_description
-            - draft_udt_member
-            - draft_udt_description
-            - draft_validate
-            - draft_apply
-            - studio_sdk_status
-            - studio_capabilities
-            - export_acd_to_l5x
-            - verify_offline_l5x
-            - build_acd_from_draft
-            - studio_review_evidence
-            - controller_approval_status
-            - capture_controller_snapshot
-            - go_online
-            - read_controller_mode
-            - read_live_tag
-            - change_controller_mode
-            - download_project
-            - poll_live_tags
-            - start_plc_trend
-          prefixes:
-            - l5x_
-        - skill: factorytalk-view
-          prefixes:
-            - ftview_
-        - skill: motionworks-iec
-          prefixes:
-            - mw_
+# The per-skill tool filter (`policyOnly` / `toolPolicy` / `capabilities`) is an
+# AryaAI harness feature. The AryaCode line's `@deepseek-ai/dsh-tool-skill` has
+# no such config, so a capability layer here would either fail composition or be
+# rejected by the plugin's schema. Rows are the switch in this product; when
+# that filter ships here, it belongs in a bundle mount of its own.
 - insert:
     - id: l5x-read
       name: '@aryacode/dsh-engineering/l5x'

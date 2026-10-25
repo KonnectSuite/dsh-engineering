@@ -10,52 +10,23 @@ const readme = read('README.md')
 const changelog = read('CHANGELOG.md')
 
 const locales = ['en', 'zh'].map(name => ({ name, value: JSON.parse(read(`locale/${name}.json`)) }))
-const policy = patch[0]
+const inserted = patch[0]
 
 const keys = (value, prefix = '') => Object.entries(value).flatMap(([key, child]) => {
   const path = prefix === '' ? key : `${prefix}.${key}`
   return child !== null && typeof child === 'object' ? keys(child, path) : [path]
 })
 
-/**
- * Read the README's policy table as data: one row per skill, with the tool
- * prefixes that skill governs. Section headings are level two; the table is
- * the first one under "What the policy changes".
- * @returns {{skill: string, prefixes: string[]}[]} rows of the policy table.
- */
-function policyTable() {
-  const section = readme.split(/^## /mu).find(part => part.startsWith('What the policy changes'))
-  assert.ok(section, 'README has no "What the policy changes" section')
-  const rows = section.split(/\r?\n/u)
-    .filter(line => line.trimStart().startsWith('|'))
-    .map(line => line.split('|').slice(1, -1).map(cell => cell.trim()))
-    .filter(cells => cells.length >= 2 && cells[0] !== 'Skill' && !cells[0].startsWith('-'))
-    .map(cells => ({
-      skill: cells[0].replaceAll('`', ''),
-      prefixes: [...cells[1].matchAll(/`([a-z0-9_]+)\*?`/gu)].map(match => match[1]),
-    }))
-    .filter(row => row.prefixes.length > 0)
-  assert.ok(rows.length > 0, 'README policy table has no skill rows')
-  return rows
-}
-
 test('the declared bundle patch exists', () => {
   assert.ok(manifest.dsh?.bundle?.patch, 'package.json declares no dsh.bundle.patch')
   assert.ok(existsSync(new URL(`../${manifest.dsh.bundle.patch}`, import.meta.url)))
 })
 
-test('the README policy table lists exactly the patch capabilities', () => {
-  const table = policyTable()
-  const linked = table.filter(row => row.skill !== '—')
-  const unlinked = table.filter(row => row.skill === '—')
-  assert.deepEqual(linked.map(row => row.skill), policy.config.toolPolicy.capabilities.map(row => row.skill),
-    'README policy table skills disagree with cordis.patch.yml')
-  assert.deepEqual(linked.flatMap(row => row.prefixes).sort(),
-    policy.config.toolPolicy.capabilities.flatMap(row => row.prefixes).sort(),
-    'README policy table prefixes disagree with cordis.patch.yml')
-  const patched = policy.config.toolPolicy.capabilities.flatMap(row => row.prefixes)
-  for (const prefix of unlinked.flatMap(row => row.prefixes)) {
-    assert.ok(!patched.includes(prefix), `README documents ${prefix} as unlinked but the patch links it`)
+test('the README documents the row switches', () => {
+  const section = readme.split(/^## /mu).find(part => part.startsWith('Switches'))
+  assert.ok(section, 'README has no "Switches" section')
+  for (const row of inserted.insert.filter(row => row.disabled === true)) {
+    assert.ok(section.includes(row.id), `README does not explain that ${row.id} is off by default`)
   }
 })
 
@@ -85,6 +56,20 @@ test('every dependency resolves from a registry', () => {
     for (const [name, spec] of Object.entries(manifest[section] ?? {})) {
       assert.doesNotMatch(spec, /^(?:https?|git|file|link|workspace):/u,
         `${section}.${name} is ${spec}; it must be a registry version range`)
+    }
+  }
+})
+
+test('every vendored component dependency is declared here', () => {
+  // `vendor/<component>` is the component's own code, and it imports the
+  // component's own libraries. Vendoring drops the component manifest, so the
+  // bundle has to carry those dependencies: a missing one surfaces at mount as
+  // ERR_MODULE_NOT_FOUND and the row fails to import.
+  for (const component of ['l5x', 'ftview', 'mwi']) {
+    const componentManifest = JSON.parse(read(`packages/${component}/package.json`))
+    for (const [name, range] of Object.entries(componentManifest.dependencies ?? {})) {
+      assert.equal(manifest.dependencies?.[name], range,
+        `${component} imports ${name}@${range}, but the bundle does not declare it`)
     }
   }
 })
