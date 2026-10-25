@@ -3,3 +3,8 @@ node_modules/
 *.log
 packages/*/lib/
 vendor/
+
+# Optix is the one component with no source in this repository: the tree under
+# packages/optix is the published build, so its lib/ is the source of truth and
+# must be tracked. The other components' lib/ is output of `pnpm build`.
+!packages/optix/lib/
