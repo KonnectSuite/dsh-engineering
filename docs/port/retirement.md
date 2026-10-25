@@ -13,9 +13,9 @@ shipping the package, so the Plugins page still listed the retired plugin as "Bu
 Remove **all** of the following, in the same change:
 
 1. **Product catalogue** — `PRODUCT_PLUGINS` in
-   `AryaAI/packages/boot/app-boot/src/product-plugins.ts`. Removing the entry stops new
+   `AryaCode/packages/boot/app-boot/src/product-plugins.ts`. Removing the entry stops new
    profiles selecting it; it does nothing else.
-2. **Installation dependency** — `apps/cli/package.json` in AryaAI. This manifest is what
+2. **Installation dependency** — `apps/cli/package.json` in AryaCode. This manifest is what
    the installer packages, so a dependency left here keeps the plugin installed, listed,
    and shipped even while nothing selects it.
 3. **Authored-plugin inventory** — `scripts/release/arya-plugins.json`. While the entry

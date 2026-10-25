@@ -36,7 +36,7 @@ const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(r
 export function findPython(): string {
   if (process.env.MW_PYTHON) return process.env.MW_PYTHON
   const candidates = [
-    join(process.env.LOCALAPPDATA ?? '', 'Programs', 'AryaAI', 'resources', 'runtime', 'primary-runtime', 'dependencies', 'python', 'python.exe'),
+    join(process.env.LOCALAPPDATA ?? '', 'Programs', 'AryaCode', 'resources', 'runtime', 'primary-runtime', 'dependencies', 'python', 'python.exe'),
     join(process.env.USERPROFILE ?? '', '.cache', 'codex-runtimes', 'codex-primary-runtime', 'dependencies', 'python', 'python.exe'),
   ]
   for (const candidate of candidates) {

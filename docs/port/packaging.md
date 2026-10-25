@@ -1,5 +1,13 @@
 # Packaging and release
 
+> **Distribution status.** AryaCode installs plugins from the registry, not from the installer. The
+> bundle is a meta-package whose `dependencies` pin the component versions, so it must be published
+> with **`pnpm publish`** — `npm publish` cannot rewrite `workspace:*` specs and fails. Publish the
+> component packages before the bundle, then verify the published `dependencies` carry real versions
+> (`0.1.2`, `0.2.0`, …) and never `workspace:*`.
+>
+> The sections below describe the installer-pinned layout that AryaCode replaced; they remain as the
+> record of how the bundle was packed before it moved to the registry.
 ## Artifacts
 
 Seven tarballs make up a release:
@@ -31,7 +39,7 @@ https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins
 pnpm calls these "exotic" subdependencies. Installing the bundle therefore
 requires `blockExoticSubdeps: false`:
 
-- the AryaAI workspace sets it in `pnpm-workspace.yaml`, because `apps/cli`
+- the AryaCode workspace sets it in `pnpm-workspace.yaml`, because `apps/cli`
   depends on the packed bundle;
 - new profile templates set it in `PROFILE_PNPM_WORKSPACE`, documented in
   `packages/boot/app-boot/src/profile.ts`.
@@ -69,7 +77,7 @@ patch is the only composition surface.
 3. Pin the bundle into the installer:
 
    ```sh
-   # AryaAI checkout
+   # AryaCode checkout
    pnpm run release:sync-installer-plugins
    pnpm install
    ```
@@ -86,4 +94,4 @@ patch is the only composition surface.
 - A freshly initialized Web profile lists `dsh-engineering` in
   `dsh.profile.bundles` and `dsh --dump-config` composes every engineering row
   under `# == dsh-engineering`.
-- `product-plugins.spec.ts` and `profile.spec.ts` pass in AryaAI (53 tests).
+- `product-plugins.spec.ts` and `profile.spec.ts` pass in AryaCode (53 tests).

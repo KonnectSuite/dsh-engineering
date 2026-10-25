@@ -159,7 +159,7 @@ dsh-engineering-<version>.tgz
   └── dsh-engineering-ftview-viewer-<version>.tgz
 ```
 
-AryaAI's installer pins the bundle tarball and installs it into the application payload; the
+AryaCode's installer pins the bundle tarball and installs it into the application payload; the
 component tarballs are fetched from the published release URLs recorded in the bundle manifest.
 The release procedure is in [packaging](port/packaging.md).
 

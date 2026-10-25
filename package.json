@@ -1,7 +1,7 @@
 {
   "name": "@aryacode/dsh-engineering",
   "version": "0.3.0",
-  "description": "AryaAI engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
+  "description": "AryaCode engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
   "keywords": [
     "dsh",
     "deepseek-harness",

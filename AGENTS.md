@@ -67,4 +67,4 @@ pnpm docs:check    # fail when the generated reference is stale
 
 ## Scope
 
-This repository owns the engineering bundle, its policy layer, and the engineering product packages. AryaAI owns the product catalog, the installer payload, and the profile migrations that make this bundle built-in.
+This repository owns the engineering bundle, its policy layer, and the engineering product packages. AryaCode owns the product catalog, the installer payload, and the profile migrations that make this bundle built-in.

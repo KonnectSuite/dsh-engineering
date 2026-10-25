@@ -9,7 +9,7 @@ the `l5x-viewer` row. The viewer is independent of the L5X tools rows: switching
 
 ## Provenance
 
-The client source was carried over from the retired AryaAI ladder viewer
+The client source was carried over from the retired AryaCode ladder viewer
 (`packages/client/ui-logix-project-viewer`). Its built closure-factory artifact is vendored at
 `lib/client.js` with the module-loader banner id rewritten to `dsh-engineering-l5x-viewer`, so the
 bundle's client module system serves it under this package name. The source is kept for maintenance.
@@ -17,11 +17,11 @@ bundle's client module system serves it under this package name. The source is k
 ## Rebuilding the client
 
 This repository does not build the client: it needs the harness client packages, the CSS-module
-transform and the module-table externals that AryaAI's `packages/client/tsdown.client.ts` provides.
-Until that build is ported, regenerate `lib/client.js` in the AryaAI workspace and rewrite the
+transform and the module-table externals that AryaCode's `packages/client/tsdown.client.ts` provides.
+Until that build is ported, regenerate `lib/client.js` in the AryaCode workspace and rewrite the
 banner id.
 
 ## Tests
 
-The viewer's own suite (registration, model, body rendering, inspection) lives with the AryaAI source;
+The viewer's own suite (registration, model, body rendering, inspection) lives with the AryaCode source;
 this package does not duplicate it.
