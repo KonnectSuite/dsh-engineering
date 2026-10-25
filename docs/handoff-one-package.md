@@ -1,8 +1,8 @@
 # Handoff — collapsing the engineering bundle to one package
 
-**Status:** **done** — phase 2 landed in 0.4.0 · branch `refactor/one-package` still **not merged** to
-`main` · 0.4.0 is **live on npm (`latest`) and live in the market catalogue** · the branch is pushed,
-not merged
+**Status:** **done and merged** — phase 2 landed in 0.4.0, the bundle went on to 0.4.7 (one row per
+product, Optix vendored, the full EtherNet/IP surface) and `refactor/one-package` is merged to `main`.
+`main`, npm and the market catalogue now name the same code.
 
 Read this before touching the repository. It records what was decided and why, so the next session
 does not rediscover the constraints.
