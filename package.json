@@ -49,7 +49,9 @@
     "prepack": "node scripts/assemble.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-tool-ft-optix": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.3.0/deepseek-ai-dsh-tool-ft-optix-0.2.1-rc.3.tgz"
+    "@deepseek-ai/dsh-tool-ft-optix": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.3.0/deepseek-ai-dsh-tool-ft-optix-0.2.1-rc.3.tgz",
+    "@aryacode/dsh-engineering-l5x-viewer": "0.1.2",
+    "@aryacode/dsh-engineering-ftview-viewer": "0.1.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
