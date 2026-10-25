@@ -5,7 +5,7 @@ MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per c
 switch per product — so the switch removes tool schemas from the request instead of leaving them
 visible after the guidance is off.
 
-`@aryacode/dsh-engineering` · 79 tools · 17 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 79 tools · 16 rows · 4 products · MIT
 
 ---
 
@@ -24,8 +24,9 @@ the skill that governs it. Turning a product off removes **both** its guidance a
 | `rockwell-l5x` skill **off** | neither |
 
 The heavy surfaces are separate rows on purpose. A read-only profile pays for the read tools and
-nothing else, and the viewers are independent of the tools — switching L5X tools off does not remove
-the ladder viewer.
+nothing else, and the previews are independent of the tools — switching L5X tools off does not remove
+the ladder viewer. Both previews mount from **one** row (`viewers`), because a package registers
+exactly one browser bundle.
 
 ## What it supports
 
@@ -100,14 +101,15 @@ Where each surface actually stands, based on what has been exercised.
 
 | Version | What landed |
 |---|---|
+| **0.3.1** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
 | **0.3.0** | FactoryTalk Optix becomes a bundle component; 79 tools total |
 | **0.2.0** | MotionWorks IEC ports into the bundle — 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
 | **0.1.2** | Harness filesystem contract fixed across L5X and FactoryTalk View; every L5X tool linked to its capability by name; generated tool reference, examples and architecture docs |
 
 ## Install
 
-The bundle is a meta-package: it mounts its components by row id and carries the tool-exposure policy.
-Installing a component on its own gives you tools **without** the policy.
+The bundle carries its components (`vendor/`), its own browser face (both previews) and the
+tool-exposure policy. Installing a component on its own gives you tools **without** the policy.
 
 ```sh
 # in the AryaCode profile
@@ -139,8 +141,8 @@ flowchart TB
   Bundle -->|insert| L5XEdit["l5x-editing (off)"]
   Bundle -->|insert| L5XStudio["l5x-studio (off)"]
   Bundle -->|insert| L5XLive["l5x-live (off)"]
-  Bundle -->|insert| L5XViewer["l5x-viewer (on)"]
-  Bundle -->|insert| FTV["ftview-read / edit / studio / viewer (on)"]
+  Bundle -->|insert| Viewers["viewers (on) — ladder + ME display previews"]
+  Bundle -->|insert| FTV["ftview-read / edit / studio (on)"]
   Bundle -->|insert| MWI["mwi-session / read / verify (on), edit (off)"]
   Bundle -->|insert| Optix["optix (on)"]
   Policy -->|"rockwell-l5x governs 35 tools"| L5XRead
@@ -158,12 +160,11 @@ even when the implementation behind a row is replaced.
 | `l5x-editing` | `dsh-engineering-l5x/editing` | off |
 | `l5x-studio` | `dsh-engineering-l5x/studio` | off |
 | `l5x-live` | `dsh-engineering-l5x/live` | off |
-| `l5x-viewer` | `dsh-engineering-l5x-viewer` | on |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | on |
 | `ftview-read` | `dsh-engineering-ftview` | on |
 | `ftview-read-skill` | `dsh-engineering-ftview/skill` | on |
 | `ftview-edit` | `dsh-engineering-ftview/edit` | on |
 | `ftview-studio` | `dsh-engineering-ftview/studio` | on |
-| `ftview-viewer` | `dsh-engineering-ftview-viewer` | on |
 | `mwi-session` | `dsh-engineering-mwi` | on |
 | `mwi-read` | `dsh-engineering-mwi/read` | on |
 | `mwi-read-skill` | `dsh-engineering-mwi/skill` | on |
@@ -216,7 +217,8 @@ even when the implementation behind a row is replaced.
 
 ```sh
 pnpm install
-pnpm test          # patch, docs, tool-reference and manifest checks
+pnpm build:client  # regenerate lib/client.js from the committed face bundles
+pnpm test          # patch, docs, tool-reference, manifest and client-face checks
 pnpm docs:tools    # regenerate the tool reference from the registered definitions
 pnpm docs:check    # fail if the committed reference has drifted
 ```

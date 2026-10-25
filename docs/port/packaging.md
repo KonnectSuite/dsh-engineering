@@ -1,16 +1,38 @@
 # Packaging and release
 
-> **Distribution status.** AryaCode installs plugins from the registry, not from the installer. The
-> bundle is a meta-package whose `dependencies` pin the component versions, so it must be published
-> with **`pnpm publish`** — `npm publish` cannot rewrite `workspace:*` specs and fails. Publish the
-> component packages before the bundle, then verify the published `dependencies` carry real versions
-> (`0.1.2`, `0.2.0`, …) and never `workspace:*`.
+> **Distribution status.** AryaCode installs plugins from the registry. Since 0.3.1
+> `@aryacode/dsh-engineering` is **one self-contained package**: the three host components are
+> vendored into `vendor/`, both previews ship as its own `lib/client.js`, and its only dependency is
+> the Optix component's release tarball. A profile installs one package and toggles rows inside it.
+> Publish with **`pnpm publish`** — `npm publish` cannot rewrite `workspace:*` specs and fails — then
+> verify the published `dependencies` carry real versions, never `workspace:*`.
 >
-> The sections below describe the installer-pinned layout that AryaCode replaced; they remain as the
-> record of how the bundle was packed before it moved to the registry.
-## Artifacts
+> The sections below describe the installer-pinned multi-tarball layout that AryaCode replaced; they
+> remain as the record of how the bundle was packed before it moved to the registry.
 
-Seven tarballs make up a release:
+## Current release
+
+```sh
+pnpm install
+pnpm --filter @aryacode/dsh-engineering-l5x build
+pnpm --filter @aryacode/dsh-engineering-ftview build
+pnpm --filter @aryacode/dsh-engineering-mwi build
+pnpm test                     # including the client face: id, both faces, drift
+pnpm build:client             # lib/client.js from both committed face bundles
+pnpm assemble                 # vendor/ from the three built components
+pnpm pack                     # one tarball: cordis.patch.yml, lib/, vendor/, locale/
+
+npm view @aryacode/dsh-engineering@<version> dependencies   # one entry: the Optix tarball
+```
+
+`prepack` runs `build:client` and `assemble`, so a packed tarball cannot carry a stale client bundle
+or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`, `lib/index.js`,
+`vendor/*/SKILL.md`, `vendor/l5x/studio-bridge/*.csproj` and `vendor/mwi/code/engine/**` must all be
+present.
+
+## History: seven tarballs before 0.3.0
+
+Seven tarballs made up a release:
 
 | Package | Role |
 |---|---|
@@ -29,7 +51,7 @@ fetchable. Releases are published on the public site repository
 `KonnectSuite/KonnectSuite.github.io` under the tag `plugins-v<version>`, which
 serves the assets without authentication.
 
-The bundle declares its six component packages as **URL dependencies** pointing
+Before 0.3.1, the bundle declared its six component packages as **URL dependencies** pointing
 at those assets:
 
 ```
@@ -46,13 +68,17 @@ requires `blockExoticSubdeps: false`:
 
 ## Component packages
 
-The four package assets are parts of the bundle, not separately managed plugins.
+The component packages are parts of the bundle, not separately managed plugins — vendored into
+`vendor/` since 0.3.0, and previously separate tarballs.
 Each declares `"dsh": { "component": true }`, and the Harness plugin inventory omits
 such packages, so the Plugins page lists the Engineering bundle alone rather than
 its components. A component also carries no product entry of its own; the bundle
 patch is the only composition surface.
 
 ## Release steps
+
+The steps in this section are the **pre-0.3.0 record**; use "Current release" above. They built and
+published six component tarballs before the components were vendored.
 
 1. Build and pack:
 
@@ -88,9 +114,21 @@ patch is the only composition surface.
 
 ## Verification performed
 
+Checked on the 0.3.1 package before publishing:
+
+- `pnpm pack` produced one tarball carrying `lib/client.js` (both faces), `lib/index.js`,
+  `cordis.patch.yml`, `vendor/*/SKILL.md`, `vendor/l5x/studio-bridge/*.csproj` and
+  `vendor/mwi/code/engine/**`.
+- `test/client-face.spec.mjs` materialized the registered factory and mounted both previews against a
+  recording client context — the check that catches a face which loads and draws nothing.
+- `dsh.client.inject` on the package equals the union of the two retired viewers' lists.
+- `dependencies` carries no `@aryacode/*` entry; the Optix tarball is the only one.
+
+Recorded from the pre-0.3.0 multi-tarball layout:
+
 - A clean profile with `nodeLinker: hoisted` installed the bundle from its
-  tarball and resolved all five packages at top level; `SKILL.md` and both
-  `lib/client.js` files were present.
+  tarball and resolved all five packages at top level; `SKILL.md` and all component bundles were
+  present.
 - A freshly initialized Web profile lists `dsh-engineering` in
   `dsh.profile.bundles` and `dsh --dump-config` composes every engineering row
   under `# == dsh-engineering`.

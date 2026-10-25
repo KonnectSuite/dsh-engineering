@@ -90,9 +90,12 @@
     - id: l5x-live
       name: '@aryacode/dsh-engineering/l5x/live'
       disabled: true
-    # The ladder viewer is the bundle's own client face, independent of the tools.
-    - id: l5x-viewer
-      name: '@aryacode/dsh-engineering/l5x-viewer'
+    # Both previews (the L5X ladder viewer and the FactoryTalk View ME display
+    # preview) are this bundle's own client face. A package registers exactly one
+    # browser bundle, so one row mounts both; switching the L5X or FTView *tools*
+    # off leaves this row alone, because a client face adds no model context.
+    - id: viewers
+      name: '@aryacode/dsh-engineering'
     # FactoryTalk View ME: read, edit and Studio entries plus the display
     # preview. The old plugin is retired, so these mount by default.
     - id: ftview-read
@@ -103,8 +106,6 @@
       name: '@aryacode/dsh-engineering/ftview/edit'
     - id: ftview-studio
       name: '@aryacode/dsh-engineering/ftview/studio'
-    - id: ftview-viewer
-      name: '@aryacode/dsh-engineering/ftview-viewer'
     # MotionWorks IEC: the redesigned rows. Editing is off by default, like L5X.
     - id: mwi-session
       name: '@aryacode/dsh-engineering/mwi'

@@ -17,19 +17,18 @@ test('is one id-targeted override followed by one insert block', () => {
   assert.ok(Array.isArray(inserted.insert))
 })
 
-test('inserts exactly the L5X pilot rows', () => {
+test('inserts exactly the bundle rows', () => {
   assert.deepEqual(inserted.insert, [
     { id: 'l5x-read', name: '@aryacode/dsh-engineering/l5x' },
     { id: 'l5x-read-skill', name: '@aryacode/dsh-engineering/l5x/skill' },
     { id: 'l5x-editing', name: '@aryacode/dsh-engineering/l5x/editing', disabled: true },
     { id: 'l5x-studio', name: '@aryacode/dsh-engineering/l5x/studio', disabled: true },
     { id: 'l5x-live', name: '@aryacode/dsh-engineering/l5x/live', disabled: true },
-    { id: 'l5x-viewer', name: '@aryacode/dsh-engineering/l5x-viewer' },
+    { id: 'viewers', name: '@aryacode/dsh-engineering' },
     { id: 'ftview-read', name: '@aryacode/dsh-engineering/ftview' },
     { id: 'ftview-read-skill', name: '@aryacode/dsh-engineering/ftview/skill' },
     { id: 'ftview-edit', name: '@aryacode/dsh-engineering/ftview/edit' },
     { id: 'ftview-studio', name: '@aryacode/dsh-engineering/ftview/studio' },
-    { id: 'ftview-viewer', name: '@aryacode/dsh-engineering/ftview-viewer' },
     { id: 'mwi-session', name: '@aryacode/dsh-engineering/mwi' },
     { id: 'mwi-read', name: '@aryacode/dsh-engineering/mwi/read' },
     { id: 'mwi-read-skill', name: '@aryacode/dsh-engineering/mwi/skill' },
@@ -37,6 +36,15 @@ test('inserts exactly the L5X pilot rows', () => {
     { id: 'mwi-edit', name: '@aryacode/dsh-engineering/mwi/edit', disabled: true },
     { id: 'optix', name: '@deepseek-ai/dsh-tool-ft-optix' },
   ])
+})
+
+test('mounts the one client face through the bundle package itself', () => {
+  const clientRows = inserted.insert.filter(row => row.name === '@aryacode/dsh-engineering')
+  assert.equal(clientRows.length, 1, 'a package registers one client bundle, so it needs exactly one mounted row')
+  for (const row of inserted.insert) {
+    assert.ok(!/-(l5x|ftview)-viewer$/u.test(row.name),
+      `${row.name} names a retired viewer package; both faces ship in @aryacode/dsh-engineering`)
+  }
 })
 
 test('links each engineering prefix to a registered skill name', () => {

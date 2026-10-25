@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "AryaCode engineering bundle: one install surface and one tool-exposure policy for the Studio 5000 L5X, FactoryTalk View and MotionWorks IEC plugins, with skill links for Optix and CAD.",
   "keywords": [
     "dsh",
@@ -30,6 +30,7 @@
   },
   "files": [
     "cordis.patch.yml",
+    "lib/**/*",
     "locale/*.json",
     "vendor/**/*",
     "README.md",
@@ -39,19 +40,30 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-api-workspace-files",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check",
+    "build:client": "node scripts/build-client.mjs",
     "assemble": "node scripts/assemble.mjs",
-    "prepack": "node scripts/assemble.mjs"
+    "prepack": "node scripts/build-client.mjs && node scripts/assemble.mjs"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-tool-ft-optix": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.3.0/deepseek-ai-dsh-tool-ft-optix-0.2.1-rc.3.tgz",
-    "@aryacode/dsh-engineering-l5x-viewer": "0.1.2",
-    "@aryacode/dsh-engineering-ftview-viewer": "0.1.2"
+    "@deepseek-ai/dsh-tool-ft-optix": "https://github.com/KonnectSuite/KonnectSuite.github.io/releases/download/plugins-v0.3.0/deepseek-ai-dsh-tool-ft-optix-0.2.1-rc.3.tgz"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
@@ -62,7 +74,12 @@
     "tsx": "^4.23.15"
   },
   "exports": {
-    ".": "./cordis.patch.yml",
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json",
     "./l5x": "./vendor/l5x/lib/index.js",
     "./l5x/skill": "./vendor/l5x/lib/skill.js",
     "./l5x/editing": "./vendor/l5x/lib/editing.js",

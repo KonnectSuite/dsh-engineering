@@ -1,10 +1,36 @@
 # Handoff — collapsing the engineering bundle to one package
 
-**Status:** phase 4 published (`@aryacode/dsh-engineering@0.3.0` is live) · phase 2 (single client
-bundle) is the only work left · branch `refactor/one-package` is **not merged** to `main`
+**Status:** **done** — phase 2 landed in 0.3.1 · branch `refactor/one-package` still **not merged** to
+`main` · the package is packed and verified locally, **not yet published**
 
 Read this before touching the repository. It records what was decided and why, so the next session
 does not rediscover the constraints.
+
+> **Outcome (0.3.1).** Phase 2 was completed by *wrapping the two committed face bundles* rather than
+> rebuilding either from source. `scripts/build-client.mjs` slices each face's factory body out of
+> `packages/viewer/lib/client.js` and `packages/ftview-viewer/lib/client.js` and emits one
+> `lib/client.js` that registers under `@aryacode/dsh-engineering` and runs both faces, each in its
+> own closure; the merged plugin exports the union of both faces' `inject` lists. The plan below
+> proposed recompiling the ladder viewer from `src/` with tsdown — that was rejected because the
+> ladder face needs the Shell's `\0dsh-css:` CSS-modules pipeline (lightningcss hashing + tagged style
+> injection), which this repository does not carry, and because the FTView face has no source to
+> compile at all. Wrapping artifacts keeps both faces byte-identical to what shipped, needs no
+> bundler, no react and no new dependency.
+>
+> Two consequences the plan did not anticipate:
+>
+> 1. `@aryacode/dsh-engineering/l5x-viewer` and `…/ftview-viewer` **do** have to change. The Shell
+>    classifies a client row by `exactPackageSpecifier`, which rejects any subpath, so those row names
+>    never produced a client entry — even in 0.3.0, with the viewer packages installed. The two rows
+>    collapse into one `viewers` row naming the bundle root.
+> 2. The bundle needs a **host half** (`lib/index.js`, `exports["."]`) because a row must mount
+>    successfully before the Shell scans that package for a client bundle. `exports["."]` therefore
+>    stops being the patch file; the patch is reached through `dsh.bundle.patch`.
+>
+> Verification now lives in `test/client-face.spec.mjs`: registration id equals the package name, the
+> factory materializes, `apply` mounts both previews, `lib/client.js` is not stale, and no
+> `@aryacode/*` dependency remains.
+
 
 ---
 
@@ -24,19 +50,28 @@ packages in `dependencies`. A bundle plus component dependencies is not the goal
 | Phase | State |
 |---|---|
 | 1 — vendor the server components into one package | ✅ done |
-| 2 — merge both client faces into one bundle | ❌ **remaining** |
-| 3 — tests | ✅ 16/16 (`pnpm test`) |
-| assemble + pack | ✅ 281 entries, 661 kB, assets verified |
-| 4 — publish | ✅ `0.3.0` live on npm |
+| 2 — merge both client faces into one bundle | ✅ done in 0.3.1 (`scripts/build-client.mjs`) |
+| 3 — tests | ✅ 24/24 (`pnpm test`), including `test/client-face.spec.mjs` |
+| assemble + pack | ✅ 284 entries, 685 kB, `lib/client.js` present |
+| 4 — publish | ⏳ 0.3.0 live; **0.3.1 packed but not published** |
 
-Published manifest (verified from the registry):
+Manifest of the packed 0.3.1 tarball:
+
+```
+@aryacode/dsh-engineering@0.3.1    284 files   685 kB packed
+dependencies:
+  @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
+files: cordis.patch.yml, lib/client.js, lib/index.js, vendor/**, locale/**
+```
+
+The 0.3.0 registry manifest, for contrast — the two viewer dependencies are what 0.3.1 removed:
 
 ```
 @aryacode/dsh-engineering@0.3.0    281 files   2.1 MB unpacked
 dependencies:
   @deepseek-ai/dsh-tool-ft-optix            = <github release tarball>
-  @aryacode/dsh-engineering-l5x-viewer      = 0.1.2   ← must go
-  @aryacode/dsh-engineering-ftview-viewer   = 0.1.2   ← must go
+  @aryacode/dsh-engineering-l5x-viewer      = 0.1.2   ← gone in 0.3.1
+  @aryacode/dsh-engineering-ftview-viewer   = 0.1.2   ← gone in 0.3.1
 ```
 
 `dsh-engineering-l5x`, `-ftview` and `-mwi` are **vendored** into `vendor/` and are no longer
@@ -75,6 +110,10 @@ Established this session, do not re-investigate:
 So the FTView face will not be re-authored from source. It must be **wrapped**.
 
 ## 4. The remaining task
+
+> **Superseded.** 0.3.1 shipped the merged face by wrapping the two committed bundles instead of
+> writing a tsdown client config; see the outcome note at the top for why. The steps below are kept as
+> the plan as it stood, and §5–§8 as the constraints that still hold.
 
 ### 4.1 Inspect the factory
 
@@ -230,12 +269,13 @@ packages/dsh-engineering/          ← the published package (no source of its o
   vendor/                            gitignored build output
 packages/l5x/                      ← vendored; source of 35 tools
   src/{index,skill,editing,live,studio}.ts
-  tsdown.client.config.ts            the client-bundle config to copy
+  tsdown.client.config.ts            the l5x trend-card client build (not reused by the merged face)
   studio-bridge/
 packages/ftview/                   ← vendored; 14 tools
 packages/mwi/                      ← vendored; 24 tools, bridge/ + code/
-packages/viewer/                   ← ladder viewer: HAS source (6 files in src/client/)
-packages/ftview-viewer/            ← FTView preview: NO source, only lib/client.js
+packages/viewer/                   ← ladder face: source in src/client/ + the committed lib/client.js
+packages/ftview-viewer/            ← ME display face: NO source, only lib/client.js
+scripts/build-client.mjs           ← folds both face factories into lib/client.js
 ```
 
 Build order for a release:
@@ -245,19 +285,22 @@ pnpm install
 pnpm --filter @aryacode/dsh-engineering-l5x build
 pnpm --filter @aryacode/dsh-engineering-ftview build
 pnpm --filter @aryacode/dsh-engineering-mwi build
-pnpm test          # 16 checks
+pnpm test          # 24 checks
+pnpm build:client  # lib/client.js from both committed face bundles
 pnpm assemble      # vendors the three trees
-pnpm pack          # inspect: SKILL.md, studio-bridge, bridge, code all present
+pnpm pack          # prepack runs build:client + assemble; inspect the tarball
 ```
 
 ## 7. Verification checklist before publishing anything
 
-- [ ] `pnpm test` → 16 pass, 0 fail
-- [ ] `pnpm pack` tarball contains `vendor/*/SKILL.md`, `vendor/l5x/studio-bridge/*.csproj`,
-      `vendor/mwi/code/engine/**`
-- [ ] `lib/client.js` present and registers under `@aryacode/dsh-engineering`
-- [ ] `dependencies` has no `@aryacode/` entries
-- [ ] **Both client faces render in the running app** — not just "no error"
+- [x] `pnpm test` → 24 pass, 0 fail
+- [x] `pnpm pack` tarball contains `lib/client.js`, `vendor/*/SKILL.md`,
+      `vendor/l5x/studio-bridge/*.csproj`, `vendor/mwi/code/engine/**`
+- [x] `lib/client.js` present, registers under `@aryacode/dsh-engineering`, and its factory mounts
+      both faces against a recording client context (`test/client-face.spec.mjs`)
+- [x] `dependencies` has no `@aryacode/` entries
+- [ ] **Both client faces render in the running app** — not just "no error". Needs the tarball
+      installed into a profile and an L5X plus an ME export opened; do it before publishing.
 - [ ] After approval: `npm view … versions` lists the new version and `dependencies` shows real ranges
 
 ## 8. Beyond this task
@@ -276,9 +319,15 @@ State of the wider product, in case the next session is picked up cold:
 
 ## 9. Open decisions for the user
 
-1. Merge `refactor/one-package` → `main` (npm currently does not match `main`)
+1. Publish `0.3.1` (packed and verified locally, not published) and merge `refactor/one-package` →
+   `main` (npm currently does not match `main`)
 2. Unarchive `KonnectSuite/dsh-tool-factorytalk-view` — its output ships in the bundle but the repo is
    read-only, so the FTView face cannot be fixed at origin
 3. `@deepseek-ai/dsh-tool-ft-optix` is fetched from a GitHub release tarball rather than the registry:
    it cannot be updated by semver and breaks if that asset moves
-4. Deprecate the stale `0.0.0-stage` versions that sit on all six packages
+4. Deprecate the stale `0.0.0-stage` versions that sit on all six packages, and the retired
+   `-l5x-viewer` / `-ftview-viewer` packages that 0.3.1 no longer depends on
+5. **The l5x trend card is still dark.** Its bundle is `vendor/l5x/lib/client.js`, but the rows name
+   `@aryacode/dsh-engineering/l5x` — a subpath, which `exactPackageSpecifier` rejects, so the Shell
+   never scans that package for a client bundle. Either fold the card into `lib/client.js` as a third
+   face (append it to `FACES` in `scripts/build-client.mjs`) or accept that it is gone.
