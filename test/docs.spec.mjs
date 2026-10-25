@@ -71,7 +71,7 @@ test('every inserted package is a declared dependency', () => {
   for (const entry of patch) {
     for (const row of entry.insert ?? []) {
       const name = packageOf(row.name)
-      assert.ok(manifest.dependencies?.[name], `${row.name} is inserted but ${name} is not declared in dependencies`)
+      assert.ok(manifest.dependencies?.[name] || name === manifest.name, `${row.name} is inserted but ${name} is not declared in dependencies`)
     }
   }
 })

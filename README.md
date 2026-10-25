@@ -44,7 +44,7 @@ Tool groups, by product:
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 staged edits
 - **Optix** — 6 tools, unlinked to a skill until one exists
 
-## Skills and tools
+## What the policy changes
 
 Each skill governs a product's tools. The capability policy is per-tool, not per-prefix, because the
 rebuilt tools use descriptive names.
