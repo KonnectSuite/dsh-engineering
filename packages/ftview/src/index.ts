@@ -10,6 +10,7 @@
 import { stringFs, type PluginContext } from './core.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
+import { vendorTools } from './vendor-tools.ts'
 
 /** Plugin name in a composition. */
 export const name = 'ftview-read'
@@ -39,10 +40,11 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   }
   const session = new ViewSession(stringFs(ctx.fs), maxFiles)
   ctx.provide?.(VIEWS_SERVICE, session)
-  for (const definition of ftviewTools(session)) ctx.tools.register(definition)
+  for (const definition of [...ftviewTools(session), ...vendorTools(stringFs(ctx.fs))]) ctx.tools.register(definition)
 }
 
 export { ViewSession } from './session.ts'
 export { ftviewTools } from './tools.ts'
+export { vendorTools } from './vendor-tools.ts'
 export { EngineeringError } from './core.ts'
 export type { Coverage, NextStep, Success, ToolDefinition } from './core.ts'

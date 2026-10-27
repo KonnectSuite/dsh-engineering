@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.8.0] - 2026-10-27
+
+### Added
+
+- **FactoryTalk View ME authoring.** The surface no longer only edits an export someone handed over:
+  - `ftview_apps` lists the ME applications installed on the host through the vendor export server
+    (74 applications were listed on the commissioning host).
+  - `ftview_export` exports one application to a NEW folder through `MEExportSvr` — no Studio window,
+    no project change. Proven end to end: 19 files and 13 displays for `Carpenter_EPS_Laminator001`.
+  - `ftview_draft_display_create`, `ftview_draft_object_add`, `ftview_draft_object_set`,
+    `ftview_draft_object_delete` and `ftview_draft_object_order` author displays and objects against a
+    source-positioned tree that keeps nesting (groups), connections and states.
+  - **Vendor-schema validation.** Every changed display is validated against the installed
+    `Gfx-ME*.xsd` through .NET before it can be applied; `ftview_apply` refuses a document the schema
+    rejects (`SCHEMA_INVALID`). All 13 real displays in the Laminator export validate with zero errors.
+  - `ftview_apply` now writes `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the vendor's own
+    one-step import list for Studio's Batch Import.
+  - `ftview_verify_import` re-exports the application through the vendor engine and compares it object
+    by object with the draft, listing differing attributes and missing/extra objects.
+
+### Documentation
+
+- `packages/ftview/SKILL.md`: an Authoring section (apps → export → author → validate) and an Import
+  and verify section that states plainly which steps remain Studio and ME Transfer Utility.
+- README: 97 tools, FactoryTalk View ME 22, and the 0.8.0 milestone.
 ## [0.7.0] - 2026-10-27
 
 ### Added

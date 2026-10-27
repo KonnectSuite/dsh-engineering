@@ -61,7 +61,7 @@ describe('registration', () => {
   it('registers the six read intents in a stable order', () => {
     const { definitions } = harness(exportFiles())
     expect(definitions.map(definition => definition.name)).toEqual([
-      'ftview_open', 'ftview_list', 'ftview_get', 'ftview_find', 'ftview_check', 'ftview_compare',
+      'ftview_open', 'ftview_list', 'ftview_get', 'ftview_find', 'ftview_check', 'ftview_compare', 'ftview_apps', 'ftview_export',
     ])
   })
 

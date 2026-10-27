@@ -10,6 +10,7 @@
 
 import { EngineeringError } from '../core.ts'
 import { splitCsv } from '../model.ts'
+import { decodeEntities, findNamed, firstChildOfType, insertChild, parseDisplayTree, removeNode, renderElement, setAttribute as setNodeAttribute, type DisplayNode, type DisplayTree } from '../display-tree.ts'
 
 /** Set one attribute on a display or one of its named objects. */
 export interface DisplaySetOperation {
@@ -36,7 +37,57 @@ export interface TagUpsertOperation {
 }
 
 /** One staged edit. */
-export type EditOperation = DisplaySetOperation | DisplayAddOperation | TagUpsertOperation
+export type EditOperation = DisplaySetOperation | DisplayAddOperation | TagUpsertOperation | DisplayCreateOperation | ObjectAddOperation | ObjectSetOperation | ObjectDeleteOperation | ObjectOrderOperation
+
+/** Create a new display file from a schema-valid skeleton. */
+export interface DisplayCreateOperation {
+  readonly kind: 'display_create'
+  readonly file: string
+  readonly name: string
+  readonly width: number
+  readonly height: number
+  readonly displayType?: string
+  readonly backColor?: string
+  readonly displayNumber?: number
+}
+
+/** Add one object to a display, optionally inside a named group. */
+export interface ObjectAddOperation {
+  readonly kind: 'object_add'
+  readonly file: string
+  readonly type: string
+  readonly name: string
+  readonly attributes: Readonly<Record<string, string>>
+  readonly parent?: string
+  readonly index?: number
+  readonly connections?: Readonly<Record<string, string>>
+  readonly caption?: string
+}
+
+/** Change attributes, caption or connections on an existing object. */
+export interface ObjectSetOperation {
+  readonly kind: 'object_set'
+  readonly file: string
+  readonly object: string
+  readonly attributes: Readonly<Record<string, string>>
+  readonly caption?: string
+  readonly connections?: Readonly<Record<string, string>>
+}
+
+/** Remove one object from a display. */
+export interface ObjectDeleteOperation {
+  readonly kind: 'object_delete'
+  readonly file: string
+  readonly object: string
+}
+
+/** Move one object within its siblings, changing z-order. */
+export interface ObjectOrderOperation {
+  readonly kind: 'object_order'
+  readonly file: string
+  readonly object: string
+  readonly index: number
+}
 
 /** Escape one XML attribute value. */
 export function escapeAttribute(value: string): string {
@@ -158,4 +209,183 @@ export function upsertTag(csv: string, tag: TagUpsertOperation): string {
   if (lines.length > 0 && lines[lines.length - 1] === '') lines.splice(lines.length - 1, 0, cells.map(encodeCell).join(';'))
   else lines.push(cells.map(encodeCell).join(';'))
   return lines.join(eol)
+}
+
+/** Elements that are parts of an object, never objects themselves. */
+const RESERVED = new Set(['gfx', 'display', 'displaySettings', 'connections', 'connection', 'states', 'state', 'caption', 'imageSettings', 'animations', 'parameters', 'parameter', 'font', 'color'])
+
+/** Depth of one node below the root. */
+function depthOf(root: DisplayNode, target: DisplayNode): number {
+  let found = -1
+  const walkNode = (node: DisplayNode, depth: number): void => {
+    if (found >= 0) return
+    if (node === target) { found = depth; return }
+    for (const child of node.children) walkNode(child, depth + 1)
+  }
+  walkNode(root, 0)
+  return found
+}
+
+/** Parent of one node, or undefined for the root. */
+function parentOf(root: DisplayNode, target: DisplayNode): DisplayNode | undefined {
+  let found: DisplayNode | undefined
+  const walkNode = (node: DisplayNode): void => {
+    if (found !== undefined) return
+    for (const child of node.children) {
+      if (child === target) { found = node; return }
+      walkNode(child)
+    }
+  }
+  walkNode(root)
+  return found
+}
+
+/** Validate an object name and element type before writing anything. */
+function assertObjectStyle(type: string, name: string): void {
+  if (!/^[A-Za-z_][\w.:-]*$/u.test(type)) throw new EngineeringError('INVALID_OBJECT_TYPE', `${JSON.stringify(type)} is not an XML element name.`, 'Pass the object element name as the export writes it, for example "momentaryButton".')
+  if (RESERVED.has(type)) throw new EngineeringError('INVALID_OBJECT_TYPE', `${type} is part of a display, not an object type.`, 'Pass an object element such as "text", "panel", "momentaryButton" or "numericDisplay".')
+  if (!/^[A-Za-z_][\w .-]{0,79}$/u.test(name)) throw new EngineeringError('INVALID_OBJECT_NAME', `${JSON.stringify(name)} is not an object name.`, 'Use letters, digits, spaces, dots, underscores or dashes, at most 80 characters.')
+}
+
+/** A `<connections>` block at one depth. */
+function connectionsXml(connections: Readonly<Record<string, string>>, depth: number): string {
+  const lines = Object.entries(connections).map(([name, expression]) => {
+    if (!/^[A-Za-z_][\w.:-]*$/u.test(name)) throw new EngineeringError('INVALID_CONNECTION', `${JSON.stringify(name)} is not a connection name.`, 'Pass the connection as the export writes it, for example "Value" or "Visibility".')
+    return `${'    '.repeat(depth + 1)}<connection name="${escapeAttribute(name)}" expression="${escapeAttribute(expression)}"/>\n`
+  })
+  return `${'    '.repeat(depth)}<connections>\n${lines.join('')}${'    '.repeat(depth)}</connections>\n`
+}
+
+/**
+ * Build a new display document from a schema-valid skeleton.
+ *
+ * @param op - Display identity and size.
+ * @returns Whole XML text.
+ */
+export function createDisplay(op: DisplayCreateOperation): string {
+  const settings: Record<string, string> = {}
+  if (op.displayType !== undefined) settings.displayType = op.displayType
+  settings.width = String(op.width)
+  settings.height = String(op.height)
+  if (op.backColor !== undefined) settings.backColor = op.backColor
+  if (op.displayNumber !== undefined) settings.displayNumber = String(op.displayNumber)
+  const attributes = Object.entries(settings).map(([name, value]) => ` ${name}="${escapeAttribute(value)}"`).join('')
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">\n    <displaySettings${attributes}/>\n</gfx>\n`
+}
+
+/**
+ * Add one object to a display.
+ *
+ * @param xml - Display XML.
+ * @param op - Object type, name, geometry and connections.
+ * @returns The modified XML.
+ */
+export function addObject(xml: string, op: ObjectAddOperation): string {
+  assertObjectStyle(op.type, op.name)
+  const tree = parseDisplayTree(xml)
+  if (op.parent !== undefined) {
+    const parent = findNamed(tree.root, op.parent)
+    if (parent === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.parent)} in this display.`, 'Call ftview_get to see the object names, then add inside an existing group.')
+    const depth = depthOf(tree.root, parent)
+    const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
+    const innerConnections = op.connections === undefined ? '' : connectionsXml(op.connections, depth + 1)
+    const element = renderElement(op.type, attributes, innerConnections === '' ? undefined : innerConnections, depth + 1)
+    return insertChild(tree, parent, element, op.index)
+  }
+  const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
+  if (op.caption !== undefined && attributes.caption === undefined) attributes.caption = escapeAttribute(op.caption)
+  const innerConnections = op.connections === undefined ? '' : connectionsXml(op.connections, 1)
+  const element = renderElement(op.type, attributes, innerConnections === '' ? undefined : innerConnections, 1)
+  return insertChild(tree, tree.root, element, op.index)
+}
+
+/**
+ * Change attributes and connections on an existing object.
+ *
+ * @param xml - Display XML.
+ * @param op - Target object and the changes.
+ * @returns The modified XML.
+ */
+export function setObject(xml: string, op: ObjectSetOperation): string {
+  let current = xml
+  for (const [name, value] of Object.entries(op.attributes)) {
+    if (!/^[A-Za-z_][\w.:-]*$/u.test(name)) throw new EngineeringError('INVALID_ATTRIBUTE', `${JSON.stringify(name)} is not an XML attribute name.`, 'Pass a plain attribute name such as "visible" or "left".')
+    const tree = parseDisplayTree(current)
+    const node = findNamed(tree.root, op.object)
+    if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+    current = setNodeAttribute(tree, node, name, value)
+  }
+  if (op.caption !== undefined) {
+    if (op.caption.length > 2000) throw new EngineeringError('INVALID_CAPTION', 'A caption is limited to 2000 characters.', 'Shorten the caption.')
+    const tree = parseDisplayTree(current)
+    const node = findNamed(tree.root, op.object)
+    if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+    current = setNodeAttribute(tree, node, 'caption', op.caption)
+  }
+  if (op.connections !== undefined) {
+    for (const name of Object.keys(op.connections)) {
+      if (!/^[A-Za-z_][\w.:-]*$/u.test(name)) throw new EngineeringError('INVALID_CONNECTION', `${JSON.stringify(name)} is not a connection name.`, 'Pass the connection name as the export writes it.')
+      const tree = parseDisplayTree(current)
+      const node = findNamed(tree.root, op.object)
+      if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+      const expression = op.connections[name] as string
+      let block = firstChildOfType(node, 'connections')
+      if (block === undefined) {
+        const depth = depthOf(tree.root, node)
+        const inserted = insertChild(tree, node, connectionsXml({ [name]: expression }, depth + 1))
+        current = inserted
+        continue
+      }
+      const existing = block.children.find(child => child.type === 'connection' && decodeEntities(child.attributes.name ?? '') === name)
+      if (existing !== undefined) {
+        const existingTree = parseDisplayTree(current)
+        const existingBlock = findNamed(existingTree.root, op.object)
+        if (existingBlock === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+        const connection = existingBlock.children.find(child => child.type === 'connections')?.children.find(child => child.type === 'connection' && decodeEntities(child.attributes.name ?? '') === name)
+        if (connection === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `Connection ${JSON.stringify(name)} disappeared while editing.`, 'Reopen the display and retry.')
+        current = setNodeAttribute(existingTree, connection, 'expression', expression)
+      } else {
+        const depth = depthOf(tree.root, block)
+        current = insertChild(tree, block, `${'    '.repeat(depth + 1)}<connection name="${escapeAttribute(name)}" expression="${escapeAttribute(expression)}"/>\n`)
+      }
+    }
+  }
+  return current
+}
+
+/**
+ * Remove one object.
+ *
+ * @param xml - Display XML.
+ * @param op - Target object.
+ * @returns The modified XML.
+ */
+export function deleteObject(xml: string, op: ObjectDeleteOperation): string {
+  const tree = parseDisplayTree(xml)
+  const node = findNamed(tree.root, op.object)
+  if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+  return removeNode(tree, node)
+}
+
+/**
+ * Move one object within its siblings.
+ *
+ * @param xml - Display XML.
+ * @param op - Target object and the new index.
+ * @returns The modified XML.
+ */
+export function orderObject(xml: string, op: ObjectOrderOperation): string {
+  const tree = parseDisplayTree(xml)
+  const node = findNamed(tree.root, op.object)
+  if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
+  const parent = parentOf(tree.root, node)
+  if (parent === undefined) throw new EngineeringError('UNSUPPORTED_TARGET', 'The display root cannot be reordered.', 'Target an object inside the display.')
+  const element = xml.slice(node.start, node.end)
+  const without = removeNode(tree, node)
+  const next = parseDisplayTree(without)
+  const target = op.object
+  const parentName = parent.type === tree.root.type ? undefined : decodeEntities(parent.attributes.name ?? '')
+  const container = parentName === undefined ? next.root : findNamed(next.root, parentName)
+  if (container === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `The parent of ${JSON.stringify(target)} disappeared while reordering.`, 'Reopen the display and retry.')
+  return insertChild(next, container, element, op.index)
 }

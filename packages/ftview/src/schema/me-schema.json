@@ -1,0 +1,3257 @@
+{
+ "schema": "Gfx-ME17",
+ "generated": "2026-10-27T14:34:23.868Z",
+ "source": {
+  "file": "Gfx-ME17.xsd",
+  "bytes": 224252,
+  "sha256": "516a301c715b8431860a046d72add3c196793314355e6328aeae9979002043e6"
+ },
+ "root": {
+  "gfx": null
+ },
+ "types": {
+  "groupType": {
+   "name": "groupType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "linearGaugeFontPropertiesType": {
+   "name": "linearGaugeFontPropertiesType",
+   "children": [],
+   "attributes": {
+    "name": {
+     "required": false
+    },
+    "color": {
+     "required": false
+    }
+   }
+  },
+  "objectBaseType": {
+   "name": "objectBaseType",
+   "children": [],
+   "attributes": {}
+  },
+  "parameterType": {
+   "name": "parameterType",
+   "children": [],
+   "attributes": {
+    "name": {
+     "required": true
+    },
+    "value": {
+     "required": false
+    },
+    "description": {
+     "required": false
+    }
+   }
+  },
+  "parametersType": {
+   "name": "parametersType",
+   "children": [
+    {
+     "name": "parameter",
+     "type": "parameterType",
+     "min": 1,
+     "max": 1000
+    }
+   ],
+   "attributes": {}
+  },
+  "basicDrawingObjectType": {
+   "name": "basicDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicRotationDrawingObjectType": {
+   "name": "basicRotationDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicPathDrawingObjectType": {
+   "name": "basicPathDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicPolygonDrawingObjectType": {
+   "name": "basicPolygonDrawingObjectType",
+   "children": [],
+   "attributes": {
+    "path": {
+     "required": false
+    }
+   }
+  },
+  "basicPolyPolygonDrawingObjectType": {
+   "name": "basicPolyPolygonDrawingObjectType",
+   "children": [
+    {
+     "name": "innerPolygon",
+     "type": "innerPolygonType",
+     "min": 1,
+     "max": -1
+    }
+   ],
+   "attributes": {}
+  },
+  "basicLineDrawingObjectType": {
+   "name": "basicLineDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicAngleDrawingObjectType": {
+   "name": "basicAngleDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "rotationElementType": {
+   "name": "rotationElementType",
+   "children": [],
+   "attributes": {}
+  },
+  "transformType": {
+   "name": "transformType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicRoundedRectangleDrawingObjectType": {
+   "name": "basicRoundedRectangleDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicTextDrawingObjectType": {
+   "name": "basicTextDrawingObjectType",
+   "children": [],
+   "attributes": {}
+  },
+  "imageDrawingObjectType": {
+   "name": "imageDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityAndLocationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "panelDrawingObjectType": {
+   "name": "panelDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "innerPolygonType": {
+   "name": "innerPolygonType",
+   "children": [],
+   "attributes": {}
+  },
+  "pushButtonValueType": {
+   "name": "pushButtonValueType",
+   "children": [
+    {
+     "name": "states",
+     "type": "pushButtonBaseStatesValuesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "pushButtonBaseStatesValuesType": {
+   "name": "pushButtonBaseStatesValuesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "pushButtonBaseStateValueType",
+     "min": 1,
+     "max": 3
+    }
+   ],
+   "attributes": {}
+  },
+  "pushButtonBaseStateValueType": {
+   "name": "pushButtonBaseStateValueType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    },
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "momentaryButtonType": {
+   "name": "momentaryButtonType",
+   "children": [
+    {
+     "name": "states",
+     "type": "pushButtonBaseStatesValuesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "maintainedButtonType": {
+   "name": "maintainedButtonType",
+   "children": [
+    {
+     "name": "states",
+     "type": "pushButtonBaseStatesValuesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "latchedButtonType": {
+   "name": "latchedButtonType",
+   "children": [
+    {
+     "name": "states",
+     "type": "pushButtonBaseStatesValuesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "multistateButtonType": {
+   "name": "multistateButtonType",
+   "children": [
+    {
+     "name": "states",
+     "type": "multistateButtonBaseStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "setLastStateId": {
+     "required": false
+    },
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "multistateButtonBaseStatesType": {
+   "name": "multistateButtonBaseStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "multistateButtonBaseStateType",
+     "min": 1,
+     "max": 256
+    }
+   ],
+   "attributes": {}
+  },
+  "multistateButtonBaseStateType": {
+   "name": "multistateButtonBaseStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    },
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "interlockedButtonType": {
+   "name": "interlockedButtonType",
+   "children": [
+    {
+     "name": "states",
+     "type": "interlockedButtonBaseStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "currentStateId": {
+     "required": false
+    }
+   }
+  },
+  "interlockedButtonBaseStatesType": {
+   "name": "interlockedButtonBaseStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "interlockedButtonBaseStateType",
+     "min": 1,
+     "max": 2
+    }
+   ],
+   "attributes": {}
+  },
+  "interlockedButtonBaseStateType": {
+   "name": "interlockedButtonBaseStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "rampButtonType": {
+   "name": "rampButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "rampType": {
+     "required": false,
+     "values": [
+      "up",
+      "down"
+     ]
+    }
+   }
+  },
+  "keyButtonType": {
+   "name": "keyButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "timedKeyButtonType": {
+   "name": "timedKeyButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "multistateIndicatorType": {
+   "name": "multistateIndicatorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "basicStates2001Type",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "symbolIndicatorImageType": {
+   "name": "symbolIndicatorImageType",
+   "children": [],
+   "attributes": {}
+  },
+  "symbolIndicatorStateType": {
+   "name": "symbolIndicatorStateType",
+   "children": [
+    {
+     "name": "imageSettings",
+     "type": "symbolIndicatorImageType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    }
+   }
+  },
+  "symbolIndicatorStatesType": {
+   "name": "symbolIndicatorStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "symbolIndicatorStateType",
+     "min": 1,
+     "max": 2001
+    }
+   ],
+   "attributes": {}
+  },
+  "symbolIndicatorType": {
+   "name": "symbolIndicatorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "symbolIndicatorStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "listIndicatorCaptionType": {
+   "name": "listIndicatorCaptionType",
+   "children": [],
+   "attributes": {
+    "alignment": {
+     "required": false,
+     "values": [
+      "left",
+      "center",
+      "right"
+     ]
+    }
+   }
+  },
+  "listIndicatorStateType": {
+   "name": "listIndicatorStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "listIndicatorCaptionType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    },
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "listIndicatorStatesType": {
+   "name": "listIndicatorStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "listIndicatorStateType",
+     "min": 1,
+     "max": 255
+    }
+   ],
+   "attributes": {}
+  },
+  "listIndicatorType": {
+   "name": "listIndicatorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "listIndicatorStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "setLastStateId": {
+     "required": false
+    }
+   }
+  },
+  "thresholdType": {
+   "name": "thresholdType",
+   "children": [],
+   "attributes": {}
+  },
+  "barGraphType": {
+   "name": "barGraphType",
+   "children": [
+    {
+     "name": "threshold",
+     "type": "thresholdType",
+     "min": 0,
+     "max": 2
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "fillDirection": {
+     "required": false,
+     "values": [
+      "bottomToTop",
+      "topToBottom",
+      "leftToRight",
+      "rightToLeft"
+     ]
+    }
+   }
+  },
+  "gaugeType": {
+   "name": "gaugeType",
+   "children": [
+    {
+     "name": "threshold",
+     "type": "thresholdType",
+     "min": 0,
+     "max": 2
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "digitsAfterDecimalPoint": {
+     "required": false
+    }
+   }
+  },
+  "scaleType": {
+   "name": "scaleType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "linearGaugeType": {
+   "name": "linearGaugeType",
+   "children": [
+    {
+     "name": "font",
+     "type": "linearGaugeFontPropertiesType",
+     "min": 0,
+     "max": 3
+    },
+    {
+     "name": "threshold",
+     "type": "linearGaugeThresholdType",
+     "min": 0,
+     "max": 4
+    },
+    {
+     "name": "controlLimit",
+     "type": "linearGaugeControlLimitType",
+     "min": 0,
+     "max": 4
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "valueLength": {
+     "required": false
+    },
+    "valueDigitsAfterDecimalPoint": {
+     "required": false
+    },
+    "legendLength": {
+     "required": false
+    },
+    "legendDigitsAfterDecimalPoint": {
+     "required": false
+    }
+   }
+  },
+  "controlListSelectorCaptionType": {
+   "name": "controlListSelectorCaptionType",
+   "children": [],
+   "attributes": {
+    "alignment": {
+     "required": false,
+     "values": [
+      "left",
+      "center",
+      "right"
+     ]
+    }
+   }
+  },
+  "controlListSelectorStateType": {
+   "name": "controlListSelectorStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "controlListSelectorCaptionType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    },
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "controlListSelectorStatesType": {
+   "name": "controlListSelectorStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "controlListSelectorStateType",
+     "min": 1,
+     "max": 255
+    }
+   ],
+   "attributes": {}
+  },
+  "controlListSelectorType": {
+   "name": "controlListSelectorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "controlListSelectorStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "setLastStateId": {
+     "required": false
+    }
+   }
+  },
+  "pilotedControlListSelectorStateType": {
+   "name": "pilotedControlListSelectorStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "controlListSelectorCaptionType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    },
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "pilotedControlListSelectorStatesType": {
+   "name": "pilotedControlListSelectorStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "pilotedControlListSelectorStateType",
+     "min": 1,
+     "max": 255
+    }
+   ],
+   "attributes": {}
+  },
+  "pilotedControlListSelectorType": {
+   "name": "pilotedControlListSelectorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "pilotedControlListSelectorStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "setLastStateId": {
+     "required": false
+    }
+   }
+  },
+  "localMessageDisplayType": {
+   "name": "localMessageDisplayType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "timeAndDateDisplayType": {
+   "name": "timeAndDateDisplayType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "displayListSelectorCaptionType": {
+   "name": "displayListSelectorCaptionType",
+   "children": [],
+   "attributes": {
+    "caption": {
+     "required": false
+    },
+    "alignment": {
+     "required": false,
+     "values": [
+      "left",
+      "center",
+      "right"
+     ]
+    }
+   }
+  },
+  "displayListSelectorStateType": {
+   "name": "displayListSelectorStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "displayListSelectorCaptionType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "stateId": {
+     "required": true
+    }
+   }
+  },
+  "displayListSelectorStatesType": {
+   "name": "displayListSelectorStatesType",
+   "children": [
+    {
+     "name": "state",
+     "type": "displayListSelectorStateType",
+     "min": 1,
+     "max": 255
+    }
+   ],
+   "attributes": {}
+  },
+  "displayListSelectorType": {
+   "name": "displayListSelectorType",
+   "children": [
+    {
+     "name": "states",
+     "type": "displayListSelectorStatesType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "setLastStateId": {
+     "required": false
+    }
+   }
+  },
+  "activeXObjectType": {
+   "name": "activeXObjectType",
+   "children": [
+    {
+     "name": "data",
+     "type": "activeXDataType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "activeXDataType": {
+   "name": "activeXDataType",
+   "children": [],
+   "attributes": {
+    "progId": {
+     "required": true
+    },
+    "fileName": {
+     "required": true
+    },
+    "fileVersion": {
+     "required": true
+    },
+    "typeLibrary": {
+     "required": true
+    },
+    "typeLibVersion": {
+     "required": true
+    }
+   }
+  },
+  "activeXPropertiesType": {
+   "name": "activeXPropertiesType",
+   "children": [
+    {
+     "name": "property",
+     "type": "activeXPropertyType",
+     "min": 1,
+     "max": -1
+    }
+   ],
+   "attributes": {}
+  },
+  "activeXPropertyType": {
+   "name": "activeXPropertyType",
+   "children": [],
+   "attributes": {}
+  },
+  "drawingObjectType": {
+   "name": "drawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "rotationDrawingObjectType": {
+   "name": "rotationDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "lineDrawingObjectType": {
+   "name": "lineDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "roundedRectangleDrawingObjectType": {
+   "name": "roundedRectangleDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllButRotMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "angleDrawingObjectType": {
+   "name": "angleDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "pathDrawingObjectType": {
+   "name": "pathDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "polygonDrawingObjectType": {
+   "name": "polygonDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "path": {
+     "required": false
+    }
+   }
+  },
+  "polyPolygonDrawingObjectType": {
+   "name": "polyPolygonDrawingObjectType",
+   "children": [
+    {
+     "name": "innerPolygon",
+     "type": "innerPolygonType",
+     "min": 1,
+     "max": -1
+    },
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "textDrawingObjectType": {
+   "name": "textDrawingObjectType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsAllMEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "numericDisplayType": {
+   "name": "numericDisplayType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "stringDisplayType": {
+   "name": "stringDisplayType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "numericInputEnableType": {
+   "name": "numericInputEnableType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "numericInputCursorPointType": {
+   "name": "numericInputCursorPointType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "stringInputEnableType": {
+   "name": "stringInputEnableType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "gotoButtonType": {
+   "name": "gotoButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "closeButtonType": {
+   "name": "closeButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "pveSimpleButtonType": {
+   "name": "pveSimpleButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "gotoConfigureButtonType": {
+   "name": "gotoConfigureButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "GenericButtonType": {
+   "name": "GenericButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "simpleButtonType": {
+   "name": "simpleButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "logoutButtonType": {
+   "name": "logoutButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "loginButtonType": {
+   "name": "loginButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "passwordButtonType": {
+   "name": "passwordButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "clearAlarmHistButtonType": {
+   "name": "clearAlarmHistButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "ackAllAlarmButtonType": {
+   "name": "ackAllAlarmButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "linkedButtonType": {
+   "name": "linkedButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "HMIServiceLinkedButtonType": {
+   "name": "HMIServiceLinkedButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "HMIServiceButtonType": {
+   "name": "HMIServiceButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "macroButtonType": {
+   "name": "macroButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "languageSwitchButtonType": {
+   "name": "languageSwitchButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "printAlarmHistoryType": {
+   "name": "printAlarmHistoryType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "printAlarmStatusType": {
+   "name": "printAlarmStatusType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "recipePlusButtonType": {
+   "name": "recipePlusButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "recipePlusSelectorType": {
+   "name": "recipePlusSelectorType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "headerTextRecipe": {
+     "required": false
+    },
+    "headerTextUnit": {
+     "required": false
+    },
+    "widthRecipe": {
+     "required": false
+    },
+    "widthUnit": {
+     "required": false
+    }
+   }
+  },
+  "recipePlusTableType": {
+   "name": "recipePlusTableType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "viewOnly": {
+     "required": false
+    },
+    "displayIngredientName": {
+     "required": false
+    },
+    "displayCurrentValue": {
+     "required": false
+    },
+    "displayRecipeValue": {
+     "required": false
+    },
+    "displayCompareStatus": {
+     "required": false
+    },
+    "displayTagName": {
+     "required": false
+    },
+    "headerTextIngredientName": {
+     "required": false
+    },
+    "headerTextCurrentValue": {
+     "required": false
+    },
+    "headerTextRecipeValue": {
+     "required": false
+    },
+    "headerTextCompareStatus": {
+     "required": false
+    },
+    "headerTextTagName": {
+     "required": false
+    },
+    "widthIngredientName": {
+     "required": false
+    },
+    "widthCurrentValue": {
+     "required": false
+    },
+    "widthRecipeValue": {
+     "required": false
+    },
+    "widthCompareStatus": {
+     "required": false
+    },
+    "widthTagName": {
+     "required": false
+    }
+   }
+  },
+  "alarmListType": {
+   "name": "alarmListType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "displayAckSymbol": {
+     "required": false
+    },
+    "displayActiveSymbol": {
+     "required": false
+    },
+    "displayActiveAckedAlarms": {
+     "required": false
+    },
+    "displayActiveUnackedAlarms": {
+     "required": false
+    },
+    "displayInactiveAckedAlarms": {
+     "required": false
+    },
+    "displayInactiveUnackedAlarms": {
+     "required": false
+    },
+    "activeAckedBlink": {
+     "required": false
+    },
+    "activeUnackedBlink": {
+     "required": false
+    },
+    "inactiveAckedBlink": {
+     "required": false
+    },
+    "inactiveUnackedBlink": {
+     "required": false
+    },
+    "activeAckedUseAlarmColors": {
+     "required": false
+    },
+    "activeUnackedUseAlarmColors": {
+     "required": false
+    },
+    "inactiveAckedUseAlarmColors": {
+     "required": false
+    },
+    "inactiveUnackedUseAlarmColors": {
+     "required": false
+    },
+    "activeAckedBackColor": {
+     "required": false
+    },
+    "activeUnackedBackColor": {
+     "required": false
+    },
+    "inactiveAckedBackColor": {
+     "required": false
+    },
+    "inactiveUnackedBackColor": {
+     "required": false
+    },
+    "activeAckedForeColor": {
+     "required": false
+    },
+    "activeUnackedForeColor": {
+     "required": false
+    },
+    "inactiveAckedForeColor": {
+     "required": false
+    },
+    "inactiveUnackedForeColor": {
+     "required": false
+    }
+   }
+  },
+  "alarmBannerType": {
+   "name": "alarmBannerType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "alarmStatusListType": {
+   "name": "alarmStatusListType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "displayAccumulatedTime": {
+     "required": false
+    },
+    "displayAlarmQuantity": {
+     "required": false
+    },
+    "displayAlarmState": {
+     "required": false
+    },
+    "displayMessage": {
+     "required": false
+    },
+    "displayTriggerLabel": {
+     "required": false
+    },
+    "displayTriggerValue": {
+     "required": false
+    },
+    "headerTextAccumulatedTime": {
+     "required": false
+    },
+    "headerTextAlarmQuantity": {
+     "required": false
+    },
+    "headerTextAlarmState": {
+     "required": false
+    },
+    "headerTextMessage": {
+     "required": false
+    },
+    "headerTextTriggerLabel": {
+     "required": false
+    },
+    "headerTextTriggerValue": {
+     "required": false
+    },
+    "widthAccumulatedTime": {
+     "required": false
+    },
+    "widthAlarmQuantity": {
+     "required": false
+    },
+    "widthAlarmState": {
+     "required": false
+    },
+    "widthMessage": {
+     "required": false
+    },
+    "widthTriggerLabel": {
+     "required": false
+    },
+    "widthTriggerValue": {
+     "required": false
+    }
+   }
+  },
+  "auditTrailListType": {
+   "name": "auditTrailListType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "connections",
+     "type": "connectionsType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "clearAuditTrailButtonType": {
+   "name": "clearAuditTrailButtonType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "auditTrailDetailType": {
+   "name": "auditTrailDetailType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "diagnosticsListType": {
+   "name": "diagnosticsListType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "messageDisplayType": {
+   "name": "messageDisplayType",
+   "children": [
+    {
+     "name": "animations",
+     "type": "animationsVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "parameters",
+     "type": "parametersType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "displaySettingsType": {
+   "name": "displaySettingsType",
+   "children": [],
+   "attributes": {
+    "width": {
+     "required": false
+    },
+    "height": {
+     "required": false
+    },
+    "displayType": {
+     "required": false,
+     "values": [
+      "replace",
+      "onTop"
+     ]
+    }
+   }
+  },
+  "basicCaptionType": {
+   "name": "basicCaptionType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicImageType": {
+   "name": "basicImageType",
+   "children": [],
+   "attributes": {}
+  },
+  "basicStateType": {
+   "name": "basicStateType",
+   "children": [
+    {
+     "name": "caption",
+     "type": "basicCaptionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "imageSettings",
+     "type": "basicImageType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {
+    "value": {
+     "required": false
+    }
+   }
+  },
+  "basicStates2001Type": {
+   "name": "basicStates2001Type",
+   "children": [
+    {
+     "name": "state",
+     "type": "basicStateType",
+     "min": 1,
+     "max": 2001
+    }
+   ],
+   "attributes": {}
+  },
+  "connectionType": {
+   "name": "connectionType",
+   "children": [],
+   "attributes": {
+    "name": {
+     "required": true
+    },
+    "expression": {
+     "required": true
+    },
+    "optionalExpression": {
+     "required": false
+    }
+   }
+  },
+  "connectionsType": {
+   "name": "connectionsType",
+   "children": [
+    {
+     "name": "connection",
+     "type": "connectionType",
+     "min": 1,
+     "max": -1
+    }
+   ],
+   "attributes": {}
+  },
+  "basicDisplaySettingsType": {
+   "name": "basicDisplaySettingsType",
+   "children": [],
+   "attributes": {
+    "width": {
+     "required": false
+    },
+    "height": {
+     "required": false
+    }
+   }
+  },
+  "animationsVisibilityAndLocationType": {
+   "name": "animationsVisibilityAndLocationType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsVisibilityType": {
+   "name": "animationsVisibilityType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsAllMEType": {
+   "name": "animationsAllMEType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateRotation",
+     "type": "animateRotationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateWidth",
+     "type": "animateWidthType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHeight",
+     "type": "animateHeightType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalSlider",
+     "type": "animateHorizontalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalSlider",
+     "type": "animateVerticalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateFill",
+     "type": "animateFillType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateColor",
+     "type": "animateColorType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHyperlink",
+     "type": "animateHyperlinkType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsAllButRotMEType": {
+   "name": "animationsAllButRotMEType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateWidth",
+     "type": "animateWidthType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHeight",
+     "type": "animateHeightType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalSlider",
+     "type": "animateHorizontalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalSlider",
+     "type": "animateVerticalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateFill",
+     "type": "animateFillType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateColor",
+     "type": "animateColorType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHyperlink",
+     "type": "animateHyperlinkType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsAllSEType": {
+   "name": "animationsAllSEType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateRotation",
+     "type": "animateRotationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateWidth",
+     "type": "animateWidthType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHeight",
+     "type": "animateHeightType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalSlider",
+     "type": "animateHorizontalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalSlider",
+     "type": "animateVerticalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateFill",
+     "type": "animateFillType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateTouch",
+     "type": "animateTouchSEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateColor",
+     "type": "animateColorType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHyperlink",
+     "type": "animateHyperlinkType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsAllButColorFillSEType": {
+   "name": "animationsAllButColorFillSEType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateRotation",
+     "type": "animateRotationType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateWidth",
+     "type": "animateWidthType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHeight",
+     "type": "animateHeightType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalSlider",
+     "type": "animateHorizontalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalSlider",
+     "type": "animateVerticalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateTouch",
+     "type": "animateTouchSEType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHyperlink",
+     "type": "animateHyperlinkType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animationsSEButtonType": {
+   "name": "animationsSEButtonType",
+   "children": [
+    {
+     "name": "animateVisibility",
+     "type": "animateVisibilityType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateWidth",
+     "type": "animateWidthType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHeight",
+     "type": "animateHeightType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalPosition",
+     "type": "animateHorizontalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalPosition",
+     "type": "animateVerticalPositionType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHorizontalSlider",
+     "type": "animateHorizontalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateVerticalSlider",
+     "type": "animateVerticalSliderType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateColor",
+     "type": "animateColorType",
+     "min": 0,
+     "max": 1
+    },
+    {
+     "name": "animateHyperlink",
+     "type": "animateHyperlinkType",
+     "min": 0,
+     "max": 1
+    }
+   ],
+   "attributes": {}
+  },
+  "animateVisibilityType": {
+   "name": "animateVisibilityType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateRotationType": {
+   "name": "animateRotationType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateWidthType": {
+   "name": "animateWidthType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    },
+    "anchor": {
+     "required": false,
+     "values": [
+      "left",
+      "center",
+      "right"
+     ]
+    }
+   }
+  },
+  "animateHeightType": {
+   "name": "animateHeightType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    },
+    "anchor": {
+     "required": false,
+     "values": [
+      "top",
+      "middle",
+      "bottom"
+     ]
+    }
+   }
+  },
+  "animateHorizontalPositionType": {
+   "name": "animateHorizontalPositionType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateVerticalPositionType": {
+   "name": "animateVerticalPositionType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateHorizontalSliderType": {
+   "name": "animateHorizontalSliderType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateVerticalSliderType": {
+   "name": "animateVerticalSliderType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateFillType": {
+   "name": "animateFillType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    },
+    "fillDirection": {
+     "required": false,
+     "values": [
+      "left",
+      "right",
+      "up",
+      "down"
+     ]
+    }
+   }
+  },
+  "animateTouchSEType": {
+   "name": "animateTouchSEType",
+   "children": [],
+   "attributes": {}
+  },
+  "animateColorType": {
+   "name": "animateColorType",
+   "children": [
+    {
+     "name": "color",
+     "type": "animateColorEntryType",
+     "min": 2,
+     "max": 16
+    }
+   ],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateHyperlinkType": {
+   "name": "animateHyperlinkType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "animateColorEntryType": {
+   "name": "animateColorEntryType",
+   "children": [],
+   "attributes": {
+    "value": {
+     "required": false
+    }
+   }
+  },
+  "basicAnimateType": {
+   "name": "basicAnimateType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "expressionRangeAnimateType": {
+   "name": "expressionRangeAnimateType",
+   "children": [],
+   "attributes": {
+    "expression": {
+     "required": false
+    }
+   }
+  },
+  "defaultExpressionRangeType": {
+   "name": "defaultExpressionRangeType",
+   "children": [],
+   "attributes": {}
+  },
+  "constantExpressionRangeType": {
+   "name": "constantExpressionRangeType",
+   "children": [],
+   "attributes": {
+    "min": {
+     "required": false
+    },
+    "max": {
+     "required": false
+    }
+   }
+  },
+  "readFromTagExpressionRangeType": {
+   "name": "readFromTagExpressionRangeType",
+   "children": [],
+   "attributes": {
+    "minTag": {
+     "required": false
+    },
+    "maxTag": {
+     "required": false
+    }
+   }
+  },
+  "linearGaugeThresholdType": {
+   "name": "linearGaugeThresholdType",
+   "children": [],
+   "attributes": {
+    "name": {
+     "required": false
+    },
+    "enable": {
+     "required": false
+    },
+    "value": {
+     "required": false
+    },
+    "blink": {
+     "required": false
+    },
+    "activeColor": {
+     "required": false
+    },
+    "inactiveColor": {
+     "required": false
+    }
+   }
+  },
+  "linearGaugeControlLimitType": {
+   "name": "linearGaugeControlLimitType",
+   "children": [],
+   "attributes": {
+    "name": {
+     "required": false
+    },
+    "enable": {
+     "required": false
+    },
+    "value": {
+     "required": false
+    }
+   }
+  }
+ },
+ "coverage": "Element names, attribute names, required attributes and enumerated values. Sequence order and occurrence counts are not enforced; Studio is the authority for those."
+}

@@ -25,6 +25,7 @@ import { studioTools as l5xStudioTools } from '../packages/l5x/src/tools/studio.
 import { controllerTools } from '../packages/l5x/src/tools/controller.ts'
 import { liveTools } from '../packages/l5x/src/tools/live.ts'
 import { ftviewTools } from '../packages/ftview/src/tools.ts'
+import { vendorTools } from '../packages/ftview/src/vendor-tools.ts'
 import { editTools } from '../packages/ftview/src/edit/tools.ts'
 import { studioTools as ftviewStudioTools } from '../packages/ftview/src/studio/tools.ts'
 import { sessionTools as mwiSessionTools } from '../packages/mwi/src/tools/session.ts'
@@ -85,7 +86,7 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X Studio SDK', l5xStudioTools(stub, stub)],
     ['L5X controller', controllerTools(stub, stub, stub)],
     ['L5X live', liveTools(stub, stub, stub, { transactions: stub, allowWrites: false, maxBatchTags: 64 })],
-    ['FTView read', ftviewTools(stub)],
+    ['FTView read', [...ftviewTools(stub), ...vendorTools(stub)]],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],
     ['MWI session', mwiSessionTools(stub)],

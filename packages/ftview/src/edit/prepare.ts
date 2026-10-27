@@ -12,7 +12,8 @@ import { createHash } from 'node:crypto'
 import { EngineeringError, type Coverage, type FsService } from '../core.ts'
 import { findingsOf, type Finding } from '../checks.ts'
 import { parseDisplay, parseTagCsv, type Application, type DisplayFile, type TagRow } from '../model.ts'
-import { renameDisplay, setAttribute, upsertTag, type EditOperation } from './operations.ts'
+import { addObject, createDisplay, deleteObject, orderObject, renameDisplay, setAttribute, setObject, upsertTag, type EditOperation } from './operations.ts'
+import { validateSchema, type SchemaValidation } from '../schema.ts'
 
 /** One prepared edit set. */
 export interface PreparedEdit {
@@ -26,6 +27,8 @@ export interface PreparedEdit {
   readonly findings: readonly Finding[]
   /** Stable hash over the source hashes and the operations. */
   readonly hash: string
+  /** Vendor-schema validation of the changed and added displays. */
+  readonly schema: SchemaValidation
 }
 
 /** Coverage for anything derived from an export. */
@@ -81,6 +84,31 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
       }
       const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)
       texts.set(operation.file, setAttribute(current, operation.object, operation.attribute, operation.value))
+      continue
+    }
+    if (operation.kind === 'display_create') {
+      if (displayNames.has(operation.name) || added.includes(operation.file)) {
+        throw new EngineeringError('COMPONENT_EXISTS', `A display named ${JSON.stringify(operation.name)} already exists in this export or draft.`, 'Pass a new display name.')
+      }
+      if (app.files.some(file => file.file.toLowerCase() === operation.file.toLowerCase())) {
+        throw new EngineeringError('COMPONENT_EXISTS', `The export already has a file ${operation.file}.`, 'Pass a different file path.')
+      }
+      texts.set(operation.file, createDisplay(operation))
+      added.push(operation.file)
+      displayNames.add(operation.name)
+      continue
+    }
+    if (operation.kind === 'object_add' || operation.kind === 'object_set' || operation.kind === 'object_delete' || operation.kind === 'object_order') {
+      const known = displayByFile.has(operation.file) || added.includes(operation.file)
+      if (!known) {
+        throw new EngineeringError('COMPONENT_NOT_FOUND', `The draft targets ${operation.file}, which this export no longer contains.`, 'Reopen the export and stage the edit again.')
+      }
+      const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)
+      const next = operation.kind === 'object_add' ? addObject(current, operation)
+        : operation.kind === 'object_set' ? setObject(current, operation)
+          : operation.kind === 'object_delete' ? deleteObject(current, operation)
+            : orderObject(current, operation)
+      texts.set(operation.file, next)
       continue
     }
     if (operation.kind === 'display_add') {
@@ -141,12 +169,20 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
     return !changedFiles.has(file)
   })
   const findings = findingsOf({ displays, tags, tagErrors, diagnostics })
+  // Validate only the documents this draft writes: the unchanged ones were
+  // already read by the session, and re-validating 18 displays per call would
+  // make every edit pay for the whole export.
+  const changedDisplays = [...texts]
+    .filter(([file]) => /\.xml$/iu.test(file) && !/batchimport/iu.test(file))
+    .map(([file, text]) => ({ file, xml: text }))
+  const schema = await validateSchema(changedDisplays)
   const hashInput = app.files.map(file => `${file.file}:${file.sha256}`).join('\n') + '\n' + JSON.stringify(operations)
   return {
     texts,
     added,
     changed: [...app.files.map(file => file.file), ...added],
     findings,
+    schema,
     hash: createHash('sha256').update(hashInput).digest('hex'),
   }
 }

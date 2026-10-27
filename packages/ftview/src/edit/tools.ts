@@ -8,12 +8,16 @@
  * @module dsh-engineering-ftview/edit/tools
  */
 
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition } from '../core.ts'
 import type { ViewSession } from '../session.ts'
 import type { EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
 import type { EditOperation } from './operations.ts'
+import { exportApplication } from '../vendor.ts'
+import { allMatched, verifyDisplays } from '../handoff.ts'
 
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
@@ -35,6 +39,37 @@ function nextValidate(draftId: string): readonly NextStep[] {
 /** Count duplicate named objects in one display. */
 function objectCount(display: { objects: readonly { name?: string }[] }, name: string): number {
   return display.objects.filter(object => object.name === name).length
+}
+
+/** One display by name, with a repairable failure. */
+function displayOf(view: { app: { displays: readonly { name: string; file: string; objects: readonly { name?: string }[] }[] } }, name: string) {
+  const display = view.app.displays.find(candidate => candidate.name === name)
+  if (display === undefined) {
+    throw new EngineeringError('COMPONENT_NOT_FOUND', `No display is named ${JSON.stringify(name)} in this export.`, 'Call ftview_list with kind "display" to see the display names.', view.app.displays.slice(0, 5).map(candidate => candidate.name))
+  }
+  return display
+}
+
+/** Parse one JSON object argument into string attributes. */
+function jsonObject(value: unknown, name: string): Record<string, string> {
+  if (value === undefined) return {}
+  if (typeof value !== 'string') throw new EngineeringError('INVALID_ARGUMENT', `${name} must be a JSON object string.`, `Pass ${name} as a JSON object, for example {"height":"40"}.`)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', `${name} is not valid JSON.`, `Pass ${name} as a JSON object, for example {"height":"40"}.`)
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new EngineeringError('INVALID_ARGUMENT', `${name} must be a JSON object.`, `Pass ${name} as a JSON object, for example {"height":"40"}.`)
+  }
+  const result: Record<string, string> = {}
+  for (const [key, entry] of Object.entries(parsed as Record<string, unknown>)) {
+    if (typeof entry === 'number' || typeof entry === 'boolean') result[key] = String(entry)
+    else if (typeof entry === 'string') result[key] = entry
+    else throw new EngineeringError('INVALID_ARGUMENT', `${name}.${key} must be a string, number or boolean.`, 'Pass scalar values only.')
+  }
+  return result
 }
 
 /**
@@ -147,8 +182,147 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_display_create',
+      description: 'Stage a brand-new display with a schema-valid skeleton. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        name: string('New display name, unique in the export. Example: "Arya Overview".'),
+        width: integer('Display width in pixels. Example: 800.', { minimum: 1, maximum: 16384 }),
+        height: integer('Display height in pixels. Example: 600.', { minimum: 1, maximum: 16384 }),
+        display_type: string('Optional display type as Studio writes it, for example "replace" or "onTop".'),
+        back_color: string('Optional background colour. Example: "#C6C6C6".'),
+        display_number: integer('Optional display number.', { minimum: 0 }),
+        file: string('Optional export-relative file path. Defaults to "Displays/<name>.xml".'),
+      }, ['name', 'width', 'height']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'name')
+        if (view.app.displays.some(display => display.name === name)) {
+          throw new EngineeringError('COMPONENT_EXISTS', `A display named ${JSON.stringify(name)} already exists in this export.`, 'Pass a new display name.')
+        }
+        const displayType = optionalString(args, 'display_type')
+        const backColor = optionalString(args, 'back_color')
+        const displayNumber = optionalInteger(args, 'display_number')
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'display_create',
+          file: optionalString(args, 'file') ?? `Displays/${name}.xml`,
+          name,
+          width: optionalInteger(args, 'width') ?? 800,
+          height: optionalInteger(args, 'height') ?? 600,
+          ...(displayType === undefined ? {} : { displayType }),
+          ...(backColor === undefined ? {} : { backColor }),
+          ...(displayNumber === undefined ? {} : { displayNumber }),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_object_add',
+      description: 'Stage one new object inside a display: geometry, attributes and tag connections. Validated against the vendor schema on ftview_validate. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        type: string('Object element type as the export writes it, e.g. "momentaryButton", "text", "panel", "numericDisplay", "gotoButton".'),
+        name: string('New object name, unique inside the display.'),
+        attributes_json: string('Object attributes as a JSON object, e.g. {"height":"50","width":"120","left":"20","top":"40"}.'),
+        caption: string('Optional caption text (text objects and buttons).'),
+        connections_json: string('Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}.'),
+        parent: string('Optional group name to add inside. Omit to add at the display root.'),
+        index: integer('Optional position among siblings, for z-order.', { minimum: 0 }),
+      }, ['display', 'type', 'name']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const display = displayOf(view, requiredString(args, 'display'))
+        const attributes = { ...jsonObject(args.attributes_json, 'attributes_json') }
+        const caption = optionalString(args, 'caption')
+        if (caption !== undefined) attributes.caption = caption
+        const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
+        const parent = optionalString(args, 'parent')
+        const index = optionalInteger(args, 'index')
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'object_add',
+          file: display.file,
+          type: requiredString(args, 'type'),
+          name: requiredString(args, 'name'),
+          attributes,
+          ...(parent === undefined ? {} : { parent }),
+          ...(index === undefined ? {} : { index }),
+          ...(Object.keys(connections).length === 0 ? {} : { connections }),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_object_set',
+      description: 'Stage attribute, caption or connection changes on one existing object. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        object: string('Object name inside the display.'),
+        attributes_json: string('Attributes to set as a JSON object, e.g. {"visible":"0","left":"30"}.'),
+        caption: string('Optional new caption text.'),
+        connections_json: string('Connections to set as a JSON object, e.g. {"Value":"SystemRunning"}.'),
+      }, ['display', 'object']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const display = displayOf(view, requiredString(args, 'display'))
+        const object = requiredString(args, 'object')
+
+        const attributes = jsonObject(args.attributes_json, 'attributes_json')
+        const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
+        const caption = optionalString(args, 'caption')
+        if (Object.keys(attributes).length === 0 && Object.keys(connections).length === 0 && caption === undefined) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'No change was requested.', 'Pass attributes_json, connections_json or caption.')
+        }
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'object_set',
+          file: display.file,
+          object,
+          attributes,
+          ...(caption === undefined ? {} : { caption }),
+          ...(Object.keys(connections).length === 0 ? {} : { connections }),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_object_delete',
+      description: 'Stage the removal of one object from a display. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        object: string('Object name to remove.'),
+      }, ['display', 'object']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const display = displayOf(view, requiredString(args, 'display'))
+        const object = requiredString(args, 'object')
+
+        const { draft } = stage(exec, optionalString(args, 'view_id'), { kind: 'object_delete', file: display.file, object })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_object_order',
+      description: 'Stage a z-order move for one object among its siblings. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        object: string('Object name to move.'),
+        index: integer('New position among the object siblings, 0 = back.', { minimum: 0 }),
+      }, ['display', 'object', 'index']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const display = displayOf(view, requiredString(args, 'display'))
+        const object = requiredString(args, 'object')
+
+        const { draft } = stage(exec, optionalString(args, 'view_id'), { kind: 'object_order', file: display.file, object, index: optionalInteger(args, 'index') ?? 0 })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
       name: 'ftview_validate',
-      description: 'Prepare the staged edits: apply them to a re-parsed copy, report the changed files and the new structural findings. Writes nothing.',
+      description: 'Prepare the staged edits: apply them to a re-parsed copy, validate the changed displays against the installed Gfx-ME schema, and report the changed files and findings. Writes nothing.',
       parameters: object({ draft_id: DRAFT_ID }, []),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
@@ -156,8 +330,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
         const byRule: Record<string, number> = {}
         for (const finding of prepared.findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
+        const schemaErrors = prepared.schema.findings.filter(finding => finding.error)
         return success(
-          `${draft.operations.length} operation(s); ${prepared.texts.size} file(s) change; ${prepared.findings.length} finding(s).`,
+          `${draft.operations.length} operation(s); ${prepared.texts.size} file(s) change; ${prepared.findings.length} finding(s); schema ${prepared.schema.ran ? `ran (${schemaErrors.length} error(s))` : 'unavailable'}.`,
           {
             draft_id: draft.id,
             draft_sha256: prepared.hash,
@@ -165,8 +340,43 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             added: prepared.added,
             findings: prepared.findings,
             by_rule: byRule,
+            schema: prepared.schema,
           },
           [{ tool: 'ftview_apply', args: { draft_id: draft.id }, why: 'Write the prepared export to a new folder.' }],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_verify_import',
+      description: 'Export the application again through the vendor engine and compare it object by object with the staged draft, proving whether the import landed. Writes only a temporary export folder.',
+      parameters: object({
+        view_id: VIEW_ID,
+        draft_id: DRAFT_ID,
+        application: string('Application name as ftview_apps lists it. The same application the package was imported into.'),
+      }, ['application']),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        const view = session.require(draft.viewId, exec)
+        const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
+        const expected = new Map([...prepared.texts].filter(([file]) => /\.xml$/iu.test(file) && !/batchimport/iu.test(file)))
+        if (expected.size === 0) {
+          throw new EngineeringError('NOTHING_TO_VERIFY', 'This draft changes no display, so there is nothing to compare.', 'Stage a display edit first, import it in Studio, then run this again.')
+        }
+        const root = join(tmpdir(), `ftview-verify-${randomUUID()}`)
+        const exported = await exportApplication(requiredString(args, 'application'), root)
+        if (exported.error !== undefined) {
+          throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Close the application in Studio if it is open, then retry.')
+        }
+        const results = await verifyDisplays(fs, root, expected)
+        const matched = results.filter(result => result.matched).length
+        const differences = results.flatMap(result => result.differences.map(difference => ({ file: result.file, ...difference })))
+        return success(
+          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}. Export kept at ${root}.`,
+          { application: requiredString(args, 'application'), export_root: root, displays: results, differences, matched: allMatched(results) },
+          matched === results.length
+            ? [{ tool: 'ftview_draft_display_create', why: 'Author the next screen against the verified export.' }]
+            : [{ tool: 'ftview_validate', args: { draft_id: draft.id }, why: 'Re-read the draft findings before correcting the difference.' }],
           EDIT_COVERAGE,
         )
       },
@@ -182,6 +392,15 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
         const view = session.require(draft.viewId, exec)
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
+        const schemaErrors = prepared.schema.findings.filter(finding => finding.error)
+        if (schemaErrors.length > 0) {
+          throw new EngineeringError(
+            'SCHEMA_INVALID',
+            `${schemaErrors.length} schema error(s); nothing was written. First: ${schemaErrors[0]?.file}: ${schemaErrors[0]?.message}`,
+            'Fix the offending attributes or elements and run ftview_validate again; apply refuses a document the vendor schema rejects.',
+            schemaErrors.slice(0, 5).map(finding => `${finding.file}: ${finding.message}`),
+          )
+        }
         const outputRoot = await fs.resolve(requiredString(args, 'output_root'), {
           ...(exec.cwd === undefined ? {} : { cwd: exec.cwd }),
           ...(exec.signal === undefined ? {} : { signal: exec.signal }),
@@ -209,11 +428,44 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           await fs.writeText(`${outputRoot}/${file}`, text, { kind: 'createIfAbsent' }, exec.signal)
           written += 1
         }
+        // The vendor's own import file: Studio's Batch Import reads this list
+        // from the Displays folder. Writing it here is what turns a folder of
+        // XML into a one-step import.
+        const changedDisplays = [...prepared.texts.keys()]
+          .filter(file => /^Displays\/.+\.xml$/iu.test(file) && !/batchimport/iu.test(file))
+        let manifest: string | undefined
+        if (changedDisplays.length > 0) {
+          const entries = changedDisplays
+            .map(file => `    <import importFile="${file.replace(/^Displays\//u, '').replaceAll('&', '&amp;').replaceAll('"', '&quot;')}"/>`)
+            .join('\n')
+          manifest = `Displays/BatchImport_${view.app.name}.xml`
+          await fs.writeText(`${outputRoot}/${manifest}`, `<?xml version="1.0" encoding="UTF-8"?>\n<gfxImport>\n${entries}\n</gfxImport>\n`, { kind: 'createIfAbsent' }, exec.signal)
+          written += 1
+          const steps = [
+            `# Import ${view.app.name}`,
+            '',
+            `Open FactoryTalk View Studio → Application Manager, open **${view.app.name}**, and import the displays listed in \`Displays/BatchImport_${view.app.name}.xml\` (${changedDisplays.length} file(s)).`,
+            '',
+            'Then:',
+            '1. Verify each display opens without warnings.',
+            '2. Create the runtime application (`.mer`).',
+            '3. Run `ftview_verify_import` with the draft id to prove the import matches this draft.',
+            '',
+            'Changed displays:',
+            ...changedDisplays.map(file => `- ${file}`),
+            '',
+          ].join('\n')
+          await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal)
+          written += 1
+        }
         drafts.remove(exec, draft.id)
         return success(
-          `Wrote ${written} file(s) to ${outputRoot}.`,
-          { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()] },
-          [{ tool: 'ftview_open', args: { root: outputRoot }, why: 'Reopen the written export and check it.' }],
+          `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}.`,
+          { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), schema: prepared.schema },
+          [
+            { tool: 'ftview_open', args: { root: outputRoot }, why: 'Reopen the written export and check it.' },
+            { tool: 'ftview_verify_import', args: { application: view.app.name }, why: 'After Studio imports it, prove the import matches this draft.' },
+          ],
           APPLY_COVERAGE,
         )
       },

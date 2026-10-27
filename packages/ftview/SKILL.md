@@ -65,11 +65,40 @@ unavailable, say editing is not enabled here rather than trying another tool.
 - `ftview_draft_display_add` stages a new display by copying an existing display file.
 - `ftview_draft_tag_upsert` stages one HMI tag description/type change or a new tag row.
 - One operation per call. Each returns the draft id and the operation count; nothing is written yet.
-- `ftview_validate` applies the staged edits to a re-parsed copy and reports the changed files.
-- `ftview_apply` writes a NEW export folder. It never modifies the source.
+- `ftview_validate` applies the staged edits to a re-parsed copy, checks the changed displays against
+  the installed `Gfx-ME*.xsd` and reports the changed files. `ftview_apply` refuses to write when the
+  vendor schema rejects a document.
+- `ftview_apply` writes a NEW export folder, plus `Displays/BatchImport_<app>.xml` and `IMPORT.md` so
+  Studio's Batch Import has the exact list of changed displays. It never modifies the source.
 
-After applying, reopen the written folder with `ftview_open` and compare it with the source using
-`ftview_compare`.
+## Authoring
+
+Start from the application, not from a folder someone emailed:
+
+1. `ftview_apps` lists the ME applications installed on this host.
+2. `ftview_export` writes one to a NEW folder through the vendor export server. No Studio window is
+   needed and the application is not modified.
+3. `ftview_open` that folder, then author against it:
+   - `ftview_draft_display_create` for a new display;
+   - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
+     `gotoButton`, …) with geometry, caption and tag connections;
+   - `ftview_draft_object_set`, `ftview_draft_object_delete`, `ftview_draft_object_order` for existing
+     objects.
+4. `ftview_validate` must show `schema.ran: true` with no schema errors before you apply. `schema.ran:
+   false` means the host has no Studio schema and validation did not run; say so instead of claiming
+   validity.
+
+## Import and verify
+
+`ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
+
+1. A human opens the application in FactoryTalk View Studio and imports the displays listed in the
+   manifest.
+2. `ftview_verify_import` exports the application again and compares it object by object with the
+   draft. `matched: true` for every display is the only proof the import landed; anything else lists
+   the differing attributes and objects.
+3. Creating the runtime application (`.mer`) and downloading it to the terminal remain Studio and
+   ME Transfer Utility steps. No tool here creates a `.mer` or contacts a PanelView.
 
 ## Studio
 
