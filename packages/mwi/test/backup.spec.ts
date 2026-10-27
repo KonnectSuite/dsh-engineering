@@ -7,7 +7,8 @@
  * refuse a real project unless an identity record names a backup under exactly
  * `.motionworks/attached/backups`. These tests pin the shape they verify.
  */
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync, copyFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -52,7 +53,32 @@ describe('pre-edit backups', () => {
       backup_manifest: record.manifest,
     })
     expect(identity.backup_manifest_sha256).toMatch(/^[a-f0-9]{64}$/u)
-    expect(String(identity.backup)).toContain(join('.motionworks', 'attached', 'backups'))
+    expect(String(identity.backup)).toContain(join('backups', 'motionworks', 'Line'))
+    expect(String(identity.backup)).toMatch(/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}/u)
+  })
+
+  it('keeps a pre-0.4.21 record whose backup lives under .motionworks valid', () => {
+    const workspace = project()
+    const legacy = join(workspace, '.motionworks', 'attached', 'backups', 'old-id')
+    mkdirSync(join(legacy, 'Line'), { recursive: true })
+    copyFileSync(join(workspace, 'Line.mwt'), join(legacy, 'Line.mwt'))
+    copyFileSync(join(workspace, 'Line', 'Main.st'), join(legacy, 'Line', 'Main.st'))
+    const manifest = join(legacy, 'backup-manifest.json')
+    writeFileSync(manifest, JSON.stringify({ files: [
+      { path: 'Line.mwt', sha256: 'x' },
+      { path: 'Line/Main.st', sha256: 'x' },
+    ] }))
+    const record = {
+      mode: 'direct', workspace, mwt: join(workspace, 'Line.mwt'), directory: join(workspace, 'Line'),
+      session_id: null, backup: legacy, backup_manifest: manifest,
+      backup_manifest_sha256: createHash('sha256').update(readFileSync(manifest)).digest('hex'),
+      attached_at: '2026-10-01T00:00:00.000Z',
+    }
+    mkdirSync(join(workspace, '.motionworks', 'attached', 'records'), { recursive: true })
+    writeFileSync(join(workspace, '.motionworks', 'attached', 'records', 'old-id.json'), JSON.stringify(record))
+    expect(findBackup(workspace, join(workspace, 'Line'))).toMatchObject({ backup: legacy })
+    // The valid legacy record is reused, not replaced by a new copy.
+    expect(ensureBackup(workspace, join(workspace, 'Line')).backup).toBe(legacy)
   })
 
   it('reuses a valid backup instead of taking a second one', () => {

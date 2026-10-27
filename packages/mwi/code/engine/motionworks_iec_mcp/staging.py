@@ -149,9 +149,13 @@ def assert_direct_attached(project_root: Path | str) -> Path:
                 continue
             backup = Path(record["backup"]).resolve()
             manifest = Path(record["backup_manifest"]).resolve()
-            backup_root = workspace / ".motionworks" / "attached" / "backups"
+            # One workspace backup tree for every engineering product:
+            # <workspace>/backups/<product>/<subject>/<stamp>. Records written
+            # before 0.4.21 point at .motionworks/attached/backups and stay valid.
+            backup_root = workspace / "backups" / "motionworks"
+            legacy_root = workspace / ".motionworks" / "attached" / "backups"
             if (Path(record["workspace"]).resolve() != workspace
-                    or not _inside(backup, backup_root)
+                    or not (_inside(backup, backup_root) or _inside(backup, legacy_root))
                     or not _inside(manifest, backup)
                     or not manifest.is_file()
                     or hashlib.sha256(manifest.read_bytes()).hexdigest() != record["backup_manifest_sha256"]

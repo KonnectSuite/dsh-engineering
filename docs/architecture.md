@@ -196,6 +196,40 @@ dsh-engineering-<version>.tgz
 No `@aryacode/*` package is a dependency, so a profile installs one thing and toggles rows inside it.
 The release procedure is in [packaging](port/packaging.md).
 
+## Backups
+
+Every product backs up into one workspace tree, so a backup means the same place in every skill:
+
+```
+<workspace>/backups/<product>/<subject>/<UTC stamp>/
+    backup-manifest.json      every copied file: relative path + SHA-256
+    <the copy>
+```
+
+| Product | Folder | Subject | Taken |
+|---|---|---|---|
+| MotionWorks IEC | `motionworks` | project name | on `mw_project_open`, once per project, and before an edit that finds none |
+| Studio 5000 | `l5x` | project name | on request; drafts and SDK builds already write new files |
+| FactoryTalk View | `ftview` | export folder name | on request; `ftview_apply` already writes a new folder |
+| FactoryTalk Optix | `optix` | project name | on request, as a manual Studio export into that folder |
+
+The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, … ] }`, the same shape
+MotionWorks writes; a restore re-hashes each file before using the copy.
+
+MotionWorks is the one product whose backup is a *contract*: its identity record under
+`<workspace>/.motionworks/attached/records/` names the copy, and the shipped bridge
+(`Get-DirectIdentity`) and the read-only engine (`assert_direct_attached`) refuse a real project without
+it. Both guards accept a record written before 0.4.21 that points at the old
+`.motionworks/attached/backups` root, so existing workspaces keep working without a migration.
+
+Optix has no skill and no file tooling in this bundle — its tree is the prebuilt component — so its row
+has the location but not an automated action; a backup there is a Studio project export copied into the
+same tree.
+
+Never write `<workspace>/_backups` or the pre-0.4.21 `<workspace>/backups/<project>/<stamp>/` layout.
+They are read-only history: `_backups` predates this bundle, and the `<project>` layout was MotionWorks
+0.4.13–0.4.20.
+
 ## Compatibility
 
 The bundle is pinned to the DSH `0.2.x` line: `@deepseek-ai/dsh-tool-skill` `^0.2.0-rc.2` and

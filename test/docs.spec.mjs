@@ -84,3 +84,22 @@ test('the locale files agree on keys', () => {
   assert.deepEqual(keys(chinese.value).sort(), keys(english.value).sort(),
     'locale/en.json and locale/zh.json declare different keys')
 })
+
+test('every engineering skill names the one backup tree', () => {
+  // One place for every product's backup is the promise; a skill that describes
+  // its own location is a skill the agent will follow somewhere else.
+  const tree = '<workspace>/backups/<product>/<subject>/<UTC stamp>/'
+  const products = { l5x: '`l5x` product', ftview: '`ftview` product', mwi: '`motionworks` product' }
+  for (const [folder, marker] of Object.entries(products)) {
+    const text = read(`packages/${folder}/SKILL.md`)
+    assert.ok(text.includes(tree), `${folder} SKILL.md does not show the shared backup tree`)
+    assert.ok(text.includes('backup-manifest.json'), `${folder} SKILL.md does not name the manifest`)
+    assert.ok(text.includes('_backups'), `${folder} SKILL.md does not warn off the legacy folder`)
+    assert.ok(text.includes(marker), `${folder} SKILL.md does not name its own product folder`)
+  }
+  const architecture = read('docs/architecture.md')
+  assert.ok(architecture.includes(tree), 'docs/architecture.md does not show the shared backup tree')
+  for (const folder of ['motionworks', 'l5x', 'ftview', 'optix']) {
+    assert.ok(architecture.includes(`\`${folder}\``), `docs/architecture.md omits the ${folder} backup folder`)
+  }
+})

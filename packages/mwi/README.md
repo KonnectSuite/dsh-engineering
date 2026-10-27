@@ -2,14 +2,16 @@
 
 MotionWorks IEC 3 Pro tools, redesigned for the `dsh-engineering` bundle. The product edits the
 **real workspace project**: `mw_project_open` writes one complete hash-verified backup under
-`<workspace>/.motionworks/attached/` first, then drives the running IDE through the existing 32-bit
-COM bridge. A project the IDE already has open is attached (backup recorded) instead of reloaded, so
-unsaved editor changes survive. `mw_project_stage` remains as an optional sandbox.
+`<workspace>/backups/motionworks/<project>/<stamp>/` first, then drives the running IDE through the
+existing 32-bit COM bridge. A project the IDE already has open is attached (backup recorded) instead of
+reloaded, so unsaved editor changes survive. `mw_project_stage` remains as an optional sandbox.
 
-The backup layout is a contract, not a convention: the shipped bridge (`Get-DirectIdentity`) and the
-read-only engine (`assert_direct_attached`) refuse a real project unless an identity record names a
-backup under `.motionworks/attached/backups` with a manifest whose SHA-256 matches. Writing the copy
-anywhere else is what made every direct open fail.
+`<workspace>/backups/<product>/<subject>/<stamp>/` is the one tree every engineering product writes
+under, so a backup is one place whichever surface the user is in. MotionWorks is the product whose
+backup is also a contract: the shipped bridge (`Get-DirectIdentity`) and the read-only engine
+(`assert_direct_attached`) refuse a real project unless an identity record names a copy in that tree,
+with a manifest whose SHA-256 matches. Records written before 0.4.21 that point at
+`.motionworks/attached/backups` stay valid.
 
 ## Rows
 
@@ -33,7 +35,7 @@ Edit tools: `mw_edit_code`, `mw_edit_variables`, `mw_edit_structure`, `mw_insert
 
 Verified against MotionWorks IEC 3 Pro 1.19 with a copy of a real project in a temporary workspace:
 
-1. `open` writes `.motionworks/attached/backups/<id>/` with `backup-manifest.json` and
+1. `open` writes `backups/motionworks/<project>/<stamp>/` with `backup-manifest.json` and
    `.motionworks/attached/records/<id>.json`, verified before the IDE is asked to open anything, and
    reuses that backup on later attaches.
 2. A project already open in the IDE is attached without an `OpenProject` call: `mw_project_open`

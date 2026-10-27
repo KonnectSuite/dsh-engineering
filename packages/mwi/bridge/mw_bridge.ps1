@@ -1019,7 +1019,11 @@ function Get-DirectIdentity([string]$path) {
         try { $raw = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json }
         catch { continue }
         if ([string]$raw.mode -cne 'direct' -or -not (Test-SameProject ([string]$raw.mwt) $path)) { continue }
-        $backupRoot = Normalize-MwPath (Join-Path $script:WorkspaceRoot '.motionworks\attached\backups')
+        # One workspace backup tree for every engineering product:
+        # <workspace>\backups\<product>\<subject>\<stamp>. Records written before
+        # 0.4.21 point at .motionworks\attached\backups and stay valid.
+        $backupRoot = Normalize-MwPath (Join-Path $script:WorkspaceRoot 'backups\motionworks')
+        $legacyRoot = Normalize-MwPath (Join-Path $script:WorkspaceRoot '.motionworks\attached\backups')
         $backup = Normalize-MwPath ([string]$raw.backup)
         $manifestPath = Normalize-MwPath ([string]$raw.backup_manifest)
         if (-not (Test-InsideWorkspace $backup) -or -not (Test-InsideWorkspace $manifestPath)) { return $null }
@@ -1029,7 +1033,8 @@ function Get-DirectIdentity([string]$path) {
             -not (Test-SameProject ([string]$raw.directory) $path) -or
             -not (Test-Path -LiteralPath ([string]$raw.mwt)) -or
             -not (Test-Path -LiteralPath ([string]$raw.directory)) -or
-            -not $backup.StartsWith($backupRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
+            -not ($backup.StartsWith($backupRoot + '\', [StringComparison]::OrdinalIgnoreCase) -or
+                $backup.StartsWith($legacyRoot + '\', [StringComparison]::OrdinalIgnoreCase)) -or
             -not $manifestPath.StartsWith($backup + '\', [StringComparison]::OrdinalIgnoreCase) -or
             -not (Test-Path -LiteralPath ([string]$raw.backup_manifest))) { return $null }
         if ((Get-MwSha256 ([string]$raw.backup_manifest)) -ine [string]$raw.backup_manifest_sha256) { return $null }

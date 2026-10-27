@@ -13,6 +13,23 @@ A staged edit is written to a NEW export folder; the source is never modified. T
 a manual import for a human; it does not drive Studio, contact a terminal, or decode MER or MED
 databases.
 
+## Backups
+
+Every engineering product backs up into the same tree, so a backup means one place whichever surface
+you are in:
+
+```
+<workspace>/backups/<product>/<subject>/<UTC stamp>/
+    backup-manifest.json      every copied file: relative path + SHA-256
+    <the copy>
+```
+
+FactoryTalk View is the `ftview` product: the copy is the whole export folder (display XML plus the tag
+CSV), one stamp per backup. `ftview_apply` already writes a new folder, so this is a backup on request
+("back up this export"). Build it as a copy plus `backup-manifest.json` listing every file's relative
+path and SHA-256. `<workspace>/_backups` and `<workspace>/backups/<project>/…` are older layouts: never
+write there, and leave what is there alone.
+
 ## Start
 
 1. Call `ftview_open` with the export folder. Keep the returned `view_id`.

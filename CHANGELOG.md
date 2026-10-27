@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.4.21] - 2026-10-27
+
+### Changed
+
+- **One backup tree for every engineering product.** Backups land in
+  `<workspace>/backups/<product>/<subject>/<UTC stamp>/` with a `backup-manifest.json` naming every
+  copied file and its SHA-256: `motionworks` for the `.mwt` and its expanded folder, `l5x` for the ACD
+  or L5X, `ftview` for an export folder, `optix` for a Studio project export. Studio 5000 and
+  FactoryTalk View take one on request (their writes already produce a new file or folder); Optix has
+  the location but no automated action here, because its tree is the prebuilt component. Every skill
+  states the same tree and a test fails when one drifts. `<workspace>/_backups` and the pre-0.4.21
+  `<workspace>/backups/<project>/<stamp>/` layout are read-only history and are never written.
+- **MotionWorks moves its copies into that tree.** `mw_project_open` writes
+  `backups/motionworks/<project>/<stamp>/`, and both the bridge (`Get-DirectIdentity`) and the engine
+  (`assert_direct_attached`) accept a record that points at the old `.motionworks/attached/backups`
+  root, so an existing workspace keeps its verified backup with no migration and no second copy.
+
+### Fixed
+
+- **`pnpm pack` can no longer ship a stale component.** `scripts/assemble.mjs` refuses a component
+  whose `lib/` is older than its `src/`, and the release procedure builds the components before
+  packing. That is how the 0.4.20 market tarball came to carry the 0.4.16 MotionWorks build under a
+  0.4.20 version.
+
 ## [0.4.20] - 2026-10-27
 
 ### Fixed

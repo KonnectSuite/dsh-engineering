@@ -9,11 +9,24 @@ whenToUse: The user has MotionWorks IEC 3 Pro open or asks for work in it — a 
 ## Boundary
 
 This surface edits the **real workspace project**. `mw_project_open` takes one complete, hash-verified
-backup under `<workspace>/.motionworks/attached/` before the IDE opens the project, and reuses that
+backup under `<workspace>/backups/motionworks/` before the IDE opens the project, and reuses that
 backup for later attaches. A project the IDE already has open is attached — the backup is written and
 the project is **not** reloaded, so unsaved editor changes survive. `mw_project_stage` remains
 available as an optional sandbox when you want the IDE to open a copy instead. Nothing here downloads
 to a controller or commands motion.
+
+Every engineering product backs up into the same tree, so a backup means one place whichever surface
+you are in:
+
+```
+<workspace>/backups/<product>/<subject>/<UTC stamp>/
+    backup-manifest.json      every copied file: relative path + SHA-256
+    <the copy>
+```
+
+MotionWorks is the `motionworks` product and the copy holds the project's `.mwt` beside its expanded
+folder. The open already takes it; do not take a second one. `<workspace>/_backups` and
+`<workspace>/backups/<project>/…` are older layouts: never write there, and leave what is there alone.
 
 The native IDE API is the editing path. Desktop input belongs to the computer-use companion and is a
 fallback for operations without a native call, never a substitute for a refused native one.

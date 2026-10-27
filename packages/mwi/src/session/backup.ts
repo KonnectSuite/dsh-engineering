@@ -3,13 +3,18 @@
  *
  * Editing happens on the real workspace project. The first write takes one
  * complete, hash-verified copy under
- * `<workspace>/.motionworks/attached/backups/<id>`, writes a manifest beside it
- * and records the project identity in `<workspace>/.motionworks/attached/records`.
+ * `<workspace>/backups/motionworks/<project>/<UTC stamp>`, writes a manifest
+ * beside it and records the project identity in
+ * `<workspace>/.motionworks/attached/records`.
  *
- * That layout is the contract the shipped bridge (`Get-DirectIdentity`) and the
- * read-only engine (`assert_direct_attached`) already verify before they open,
- * read or write a real project. A copy anywhere else is not evidence: those
- * guards refuse the open, so the tools must write exactly this shape.
+ * `<workspace>/backups/<product>/…` is the one backup tree every engineering
+ * product writes under, so "back up this project" means the same place whichever
+ * product is in front of you. MotionWorks keeps its identity records private
+ * under `.motionworks`, and both the shipped bridge (`Get-DirectIdentity`) and
+ * the read-only engine (`assert_direct_attached`) verify a record before they
+ * open, read or write a real project. A copy outside that tree is not evidence:
+ * those guards refuse it, so the tools must write exactly this shape. Records
+ * written before 0.4.21 that point at `.motionworks/attached/backups` stay valid.
  *
  * @module dsh-engineering-mwi/session/backup
  */
@@ -59,8 +64,23 @@ interface AttachmentRecord {
   attached_at: string
 }
 
-/** The shared backup root of one workspace. */
+/**
+ * The workspace backup root every engineering product writes under:
+ * `<workspace>/backups/<product>/<subject>/<UTC stamp>/`.
+ *
+ * MotionWorks is the `motionworks` product. Keeping the copies in one visible
+ * tree is what makes "back up this project" mean the same place for every
+ * product; the identity records stay product-private under `.motionworks`.
+ */
 export function backupRootOf(workspace: string): string {
+  return join(workspace, 'backups', 'motionworks')
+}
+
+/**
+ * The pre-0.4.21 backup root. Records written by earlier builds point here and
+ * stay valid: a shipped record is evidence, so it is accepted, never rewritten.
+ */
+export function legacyBackupRootOf(workspace: string): string {
   return join(workspace, '.motionworks', 'attached', 'backups')
 }
 
@@ -105,7 +125,10 @@ function valid(workspace: string, record: AttachmentRecord): boolean {
     if (!same(record.workspace, workspace)) return false
     if (!isInside(workspace, record.mwt) || !isInside(workspace, record.directory)) return false
     if (!same(record.directory, record.mwt.slice(0, -4))) return false
-    if (!isInside(backupRootOf(workspace), record.backup) || !isInside(record.backup, record.backup_manifest)) return false
+    const root = backupRootOf(workspace)
+    const legacy = legacyBackupRootOf(workspace)
+    if (!isInside(root, record.backup) && !isInside(legacy, record.backup)) return false
+    if (!isInside(record.backup, record.backup_manifest)) return false
     if (!existsSync(record.mwt) || !existsSync(record.directory) || !existsSync(record.backup_manifest)) return false
     if (digest(record.backup_manifest) !== record.backup_manifest_sha256) return false
     const manifest = JSON.parse(readFileSync(record.backup_manifest, 'utf8')) as { files?: unknown }
@@ -214,7 +237,9 @@ export function ensureBackup(workspace: string, path: string): BackupRecord {
   }
 
   const id = randomUUID()
-  const target = join(backupRootOf(workspace), id)
+  const name = basename(mwt, '.mwt')
+  const stamp = new Date().toISOString().replace(/[:.]/gu, '-')
+  const target = join(backupRootOf(workspace), name, stamp)
   const files: BackupFile[] = []
   const sources: string[] = [mwt]
   tree(directory, sources)

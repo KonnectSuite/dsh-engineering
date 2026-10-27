@@ -180,7 +180,13 @@ even when the implementation behind a row is replaced.
 - **Edits write new files.** `draft_apply` writes one new L5X beside the source and refuses to
   overwrite; `ftview_apply` writes a new export folder and leaves the source untouched. MotionWorks
   edits write the real workspace project, after one complete backup under
-  `<workspace>/.motionworks/attached/`, and verify unrelated saved and native state.
+  `<workspace>/backups/motionworks/`, and verify unrelated saved and native state.
+- **One backup tree.** Every product backs up into
+  `<workspace>/backups/<product>/<subject>/<UTC stamp>/` with a `backup-manifest.json` naming each
+  copied file and its SHA-256, so "back up this project" means the same place in every skill.
+  MotionWorks takes its backup on open; L5X, FactoryTalk View and Optix take one on request and before
+  an in-place change. `<workspace>/_backups` and `<workspace>/backups/<project>/…` are older layouts
+  and are never written.
 - **Controller changes need a human.** Upload, mode change and download require per-call approval and
   a session policy that permits asking. The tools refuse before contacting a controller when approval
   is unavailable, and a download accepts only a verification id produced by a passed build.

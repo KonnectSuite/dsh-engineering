@@ -10,6 +10,23 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 
 This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into Studio, connects to a controller, changes mode, or writes runtime data.
 
+## Backups
+
+Every engineering product backs up into the same tree, so a backup means one place whichever surface
+you are in:
+
+```
+<workspace>/backups/<product>/<subject>/<UTC stamp>/
+    backup-manifest.json      every copied file: relative path + SHA-256
+    <the copy>
+```
+
+Studio 5000 is the `l5x` product: the copy holds the `.ACD` being worked on, or the `.L5X` export when
+that is the source of truth, one stamp per backup. Drafts and SDK builds already write new files, so
+this is a backup on request ("back up this project"). Build it as a copy plus
+`backup-manifest.json` listing every file's relative path and SHA-256. `<workspace>/_backups` and
+`<workspace>/backups/<project>/…` are older layouts: never write there, and leave what is there alone.
+
 ## Start
 
 1. Call `open_project` with the export path. Keep the returned `project_id`.
