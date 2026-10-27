@@ -238,6 +238,7 @@ even when the implementation behind a row is replaced.
 | Document | Owns |
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
+| [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Examples](docs/examples.md) | End-to-end sessions per product |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
@@ -256,7 +257,13 @@ pnpm build:client  # regenerate lib/client.js from the committed face bundles
 pnpm test          # patch, docs, tool-reference, manifest and client-face checks
 pnpm docs:tools    # regenerate the tool reference from the registered definitions
 pnpm docs:check    # fail if the committed reference has drifted
+python scripts/gen-diagrams.py   # regenerate docs/diagrams/*.svg and *.png
+python scripts/gen-handbook.py   # rebuild the PDF, DOCX and HTML handbook from those figures
 ```
+
+The diagrams and the handbook are generated, not hand-drawn: layout lives in
+`scripts/gen-diagrams.py` and the prose in `scripts/gen-handbook.py`, so a changed workflow is one edit
+and one regeneration. Both need Pillow; the handbook also needs python-docx and reportlab.
 
 Tests run through `tsx` so they can read the TypeScript tool factories. A registered tool that no
 skill governs fails the suite — the policy is a test, not a convention.

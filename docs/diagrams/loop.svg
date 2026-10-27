@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="320" viewBox="0 0 1240 320" font-family="Segoe UI, Arial, sans-serif">
+<rect width="1240" height="320" fill="#ffffff"/>
+<text x="48" y="58" font-size="26" font-weight="600" fill="#1f2933">The loop every product follows</text>
+<text x="48" y="88" font-size="15" fill="#52606d">Read first, act in a copy, prove it with the vendor engine, then hand off the step only a person can do.</text>
+<rect x="40" y="120" width="200" height="100" rx="12" fill="#fff6e6" stroke="#b7791f" stroke-width="2"/>
+<text x="140" y="167" text-anchor="middle" font-size="17" font-weight="600" fill="#1f2933">1. Point at the work</text>
+<text x="140" y="189" text-anchor="middle" font-size="13" fill="#52606d">export, project or application</text>
+<rect x="280" y="120" width="200" height="100" rx="12" fill="#eef4fb" stroke="#2f6fb3" stroke-width="2"/>
+<text x="380" y="167" text-anchor="middle" font-size="17" font-weight="600" fill="#1f2933">2. Read</text>
+<text x="380" y="189" text-anchor="middle" font-size="13" fill="#52606d">overview, references, checks</text>
+<rect x="520" y="120" width="200" height="100" rx="12" fill="#eef4fb" stroke="#2f6fb3" stroke-width="2"/>
+<text x="620" y="167" text-anchor="middle" font-size="17" font-weight="600" fill="#1f2933">3. Act in a copy</text>
+<text x="620" y="189" text-anchor="middle" font-size="13" fill="#52606d">draft, validate, apply new</text>
+<rect x="760" y="120" width="200" height="100" rx="12" fill="#e9f6ee" stroke="#2f855a" stroke-width="2"/>
+<text x="860" y="167" text-anchor="middle" font-size="17" font-weight="600" fill="#1f2933">4. Verify</text>
+<text x="860" y="189" text-anchor="middle" font-size="13" fill="#52606d">re-read or vendor engine</text>
+<rect x="1000" y="120" width="200" height="100" rx="12" fill="#fff6e6" stroke="#b7791f" stroke-width="2"/>
+<text x="1100" y="167" text-anchor="middle" font-size="17" font-weight="600" fill="#1f2933">5. Hand off</text>
+<text x="1100" y="189" text-anchor="middle" font-size="13" fill="#52606d">import, build, download</text>
+<line x1="240" y1="170" x2="280" y2="170" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="480" y1="170" x2="520" y2="170" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="720" y1="170" x2="760" y2="170" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="960" y1="170" x2="1000" y2="170" stroke="#9aa5b1" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="48" y="270" width="16" height="16" rx="4" fill="#eef4fb" stroke="#2f6fb3" stroke-width="2"/><text x="72" y="283" font-size="13" fill="#52606d">agent step, no UI</text>
+<rect x="248" y="270" width="16" height="16" rx="4" fill="#fff6e6" stroke="#b7791f" stroke-width="2"/><text x="272" y="283" font-size="13" fill="#52606d">human step in vendor software</text>
+<rect x="552" y="270" width="16" height="16" rx="4" fill="#e9f6ee" stroke="#2f855a" stroke-width="2"/><text x="576" y="283" font-size="13" fill="#52606d">proof step: re-read or vendor engine</text>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9aa5b1"/></marker></defs>
+</svg>

@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.3] - 2026-10-27
+
+### Documentation
+
+- **A workflow handbook, generated from one source.** `docs/handbook/Engineering-Handbook.pdf` (7 pages),
+  an editable `.docx` and a printable `.html` cover the four products: what each row needs, the shared
+  read → act → verify → hand-off loop, what the agent does, what stays human, and a "what proves what"
+  table.
+- **Six workflow diagrams** in `docs/diagrams/` (SVG masters and PNG): the shared loop and one per
+  product, with agent steps, human steps and proof steps visually distinguished. They are embedded in
+  `docs/getting-started.md` and in the handbook.
+- The diagrams and handbook are **generated**, not hand-drawn: `scripts/gen-diagrams.py` owns the layout
+  and `scripts/gen-handbook.py` the prose, so a changed workflow is one edit and one regeneration.
+- README: the handbook in the documentation table and the generators in the Development commands.
 ## [0.8.2] - 2026-10-27
 
 ### Documentation

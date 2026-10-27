@@ -37,6 +37,8 @@ If the answer is "I do not have tools for that", the row is disabled or the bund
 
 ## 3. The loop every product follows
 
+![The five-step loop every product follows](diagrams/loop-figure.png)
+
 1. **Point at the work.** A workspace folder with the export, project or ACD, or an application name for
    FactoryTalk View ME.
 2. **Read before writing.** Overview, structure, references, checks. The agent should quote what it read.
@@ -51,6 +53,8 @@ If the answer is "I do not have tools for that", the row is disabled or the bund
 
 ### Studio 5000 L5X
 
+![Studio 5000 L5X workflow](diagrams/l5x-figure.png)
+
 > Open `C:\Projects\Line\Line.L5X`, give me the overview and run the checks.
 
 Then, for a change:
@@ -62,6 +66,8 @@ it, validates the whole draft, and applies to a new `.L5X`. With Studio 5000 and
 for a build; with a controller, ask for a supervised download.
 
 ### FactoryTalk View ME
+
+![FactoryTalk View ME workflow](diagrams/ftview-figure.png)
 
 > List the ME applications. Export `Carpenter_EPS_Laminator001` to `C:\Exports\Laminator` and open it.
 
@@ -80,6 +86,8 @@ The agent exports through the vendor engine (no Studio window needed), authors a
 
 ### MotionWorks IEC
 
+![MotionWorks IEC workflow](diagrams/mwi-figure.png)
+
 > Find the MotionWorks projects in this workspace.
 
 > Open `BottomCutterS5.mwt` and show me the tasks and POUs.
@@ -90,6 +98,8 @@ The agent starts the IDE, takes a backup under `backups/motionworks/`, edits the
 and reads the diagnostics.
 
 ### FactoryTalk Optix
+
+![FactoryTalk Optix workflow](diagrams/optix-figure.png)
 
 > What Optix project is loaded? Give me the map.
 
