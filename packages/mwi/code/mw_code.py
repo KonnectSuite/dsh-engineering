@@ -78,7 +78,10 @@ def verb_structure_snapshot(req):
 
 def verb_block_interface(req):
     from motionworks_iec_mcp.block_interfaces import inspect
-    return _ok(**inspect(Path(req['project']),req['native_libraries'],req.get('name'),req.get('library')))
+    # The inventory is optional at this boundary: a read with no live IDE answers
+    # from the project's own registry, and a saved vendor reference it cannot match
+    # is reported as that, instead of a KeyError the caller cannot act on.
+    return _ok(**inspect(Path(req['project']),req.get('native_libraries') or [],req.get('name'),req.get('library')))
 
 def verb_installed_help(req):
     from motionworks_iec_mcp.installed_help import search

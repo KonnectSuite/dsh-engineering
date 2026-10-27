@@ -95,6 +95,7 @@
     <Tags>
       <Tag Name="MainTimer" TagType="Base" DataType="TIMER" Radix="NullType" Constant="false" ExternalAccess="Read/Write" Description="Main cycle timer" />
       <Tag Name="StartPB" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="Start pushbutton input" />
+      <Tag Name="StartPB_Field" TagType="Alias" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" AliasFor="StartPB" Description="Panel field alias of StartPB" />
       <Tag Name="StopPB" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="Stop pushbutton input" />
       <Tag Name="SystemRunning" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="System is running" />
       <Tag Name="FaultActive" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="Any fault is active" />

@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto'
 import { readdir } from 'node:fs/promises'
 import { XMLParser } from 'fast-xml-parser'
-import { EngineeringError, type DirEntry, type FsService } from './core.ts'
+import { EngineeringError, type DirEntry, type FsService, type FsTarget } from './core.ts'
 
 /** One row of the HMI tag CSV, keyed by its canonical columns. */
 export interface TagRow {
@@ -65,8 +65,28 @@ export interface TagCsv {
 /** Attribute prefix the XML parser uses. */
 const ATTRIBUTE = '@_'
 
-/** Split one semicolon-separated CSV line, honouring double quotes. */
+/**
+ * Pick the field separator of one line.
+ *
+ * A Studio ME tag export is comma-separated and uses a leading `;` as a comment
+ * prefix; older/semicolon exports exist too. Splitting on a fixed `;` turned every
+ * real row into one cell, so a genuine export parsed as zero tags.
+ */
+function delimiterOf(line: string): ',' | ';' {
+  let commas = 0
+  let semicolons = 0
+  let quoted = false
+  for (const character of line) {
+    if (character === '"') quoted = !quoted
+    else if (!quoted && character === ',') commas += 1
+    else if (!quoted && character === ';') semicolons += 1
+  }
+  return commas >= semicolons ? ',' : ';'
+}
+
+/** Split one CSV line, honouring double quotes and the line's own separator. */
 export function splitCsv(line: string): string[] {
+  const delimiter = delimiterOf(line)
   const cells: string[] = []
   let current = ''
   let quoted = false
@@ -85,7 +105,7 @@ export function splitCsv(line: string): string[] {
       }
     } else if (character === '"') {
       quoted = true
-    } else if (character === ';') {
+    } else if (character === delimiter) {
       cells.push(current)
       current = ''
     } else {
@@ -96,8 +116,11 @@ export function splitCsv(line: string): string[] {
   return cells
 }
 
-/** Decode bytes as UTF-8, dropping a byte-order mark. */
+/** Decode bytes as UTF-8 or UTF-16, dropping a byte-order mark. */
 function decode(bytes: Uint8Array): string {
+  // Studio writes most exports as UTF-8, but some generated files (BatchImport) are
+  // UTF-16LE. Decoding those as UTF-8 produced a root element of "\0g\0f\0x".
+  if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes.subarray(2))
   const text = new TextDecoder('utf-8').decode(bytes)
   return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
 }
@@ -105,24 +128,35 @@ function decode(bytes: Uint8Array): string {
 /**
  * Parse the HMI tag CSV.
  *
+ * The ME export writes an optional header first, then a `###002` version line, then
+ * `;` comment/section lines and the data rows. Earlier builds assumed the header
+ * followed the version line and treated `;Folders Section` as the header, so a real
+ * export parsed as zero tags.
+ *
  * @param text - Whole CSV file.
  * @returns Rows plus structural errors; a file with no `###002` marker yields no rows.
  */
 export function parseTagCsv(text: string): TagCsv {
   const lines = text.split(/\r?\n/)
+  const isComment = (line: string): boolean => line.trimStart().startsWith(';')
   const versionLine = lines.findIndex(line => line.includes('###002'))
   if (versionLine < 0) {
     return { rows: [], errors: ['Unsupported tag CSV: the `###002` version line is missing.'] }
   }
-  const headerIndex = lines.findIndex((line, index) => index > versionLine && line.trim() !== '')
+  const headerCells = (line: string): string[] => splitCsv(line).map((cell, index) => {
+    const trimmed = cell.trim()
+    return index === 0 ? trimmed.replace(/^;/u, '').trim() : trimmed
+  })
+  // Prefer a real header before the version line; fall back to the first non-comment
+  // line after it for files that put the header last.
+  const before = lines.slice(0, versionLine).findIndex(line => headerCells(line).includes('Tag Name'))
+  const after = lines.findIndex((line, index) => index > versionLine && line.trim() !== '' && !isComment(line) && headerCells(line).includes('Tag Name'))
+  const headerIndex = before >= 0 ? before : after
   if (headerIndex < 0) {
-    return { rows: [], errors: ['Unsupported tag CSV: no header row follows the version line.'] }
+    return { rows: [], errors: ['Unsupported tag CSV: no header row with a `Tag Name` column was found.'] }
   }
-  const header = splitCsv(lines[headerIndex] as string).map(cell => cell.trim())
+  const header = headerCells(lines[headerIndex] as string)
   const nameIndex = header.indexOf('Tag Name')
-  if (nameIndex < 0) {
-    return { rows: [], errors: ['Unsupported tag CSV: the header has no `Tag Name` column.'] }
-  }
   const descriptionIndex = header.indexOf('Tag Description')
   const typeIndex = header.indexOf('Tag Type')
   const rows: TagRow[] = []
@@ -130,10 +164,13 @@ export function parseTagCsv(text: string): TagCsv {
   const seen = new Set<string>()
   for (let index = headerIndex + 1; index < lines.length; index += 1) {
     const line = lines[index] as string
-    if (line.trim() === '') continue
+    if (line.trim() === '' || isComment(line)) continue
+    if (index < versionLine) continue
     const cells = splitCsv(line)
-    if (cells.length < header.length) {
-      errors.push(`Row ${index + 1}: expected ${header.length} columns, found ${cells.length}.`)
+    // Studio omits trailing empty columns, so a data row is legitimately shorter
+    // than the header; only a longer row is malformed.
+    if (cells.length > header.length) {
+      errors.push(`Row ${index + 1}: expected at most ${header.length} columns, found ${cells.length}.`)
       continue
     }
     const raw: Record<string, string> = {}
@@ -207,7 +244,9 @@ export function parseDisplay(file: string, text: string): DisplayFile {
     const rootKey = Object.keys(parsed).find(key => !key.startsWith('?'))
     if (rootKey === undefined) return { file, name: fallbackName, objects: [], parseError: 'The file has no root element.' }
     const rootNode = parsed[rootKey]
-    if (!/display/iu.test(rootKey)) {
+    // ME display files use <gfx> (Gfx-ME17.xsd) in a Studio export; some hand-made
+    // or older files use a <display> root. Both are display files.
+    if (!/display/iu.test(rootKey) && !/^gfx$/iu.test(rootKey)) {
       return { file, name: fallbackName, objects: [], parseError: `Root element ${rootKey} is not an ME display.` }
     }
     const root = (rootNode ?? {}) as Record<string, unknown>
@@ -277,14 +316,18 @@ async function walk(
  * @param maxFiles - Largest number of display/tag files accepted.
  * @returns The scanned application.
  */
-export async function scanApplication(fs: FsService, root: string, signal: AbortSignal | undefined, maxFiles: number): Promise<Application> {
+export async function scanApplication(fs: FsService, root: string | FsTarget, signal: AbortSignal | undefined, maxFiles: number): Promise<Application> {
+  // The host's `fs.resolve` returns an FsTarget, while the walk below composes
+  // string paths for `listDir`/`readBytes`. Normalise once here: passing the target
+  // straight into the walker crashed every open on a host that returns one.
+  const base = typeof root === 'string' ? root : root.displayPath
   const displays: DisplayFile[] = []
   const tags: TagRow[] = []
   const tagFiles: string[] = []
   const tagErrors: string[] = []
   const diagnostics: string[] = []
   const files: ScannedFile[] = []
-  await walk(fs, root, '', signal, async (file, absolute) => {
+  await walk(fs, base, '', signal, async (file, absolute) => {
     const bytes = await fs.readBytes(absolute, signal, 32 * 1024 * 1024)
     const text = decode(bytes)
     files.push({ file, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })
@@ -306,6 +349,6 @@ export async function scanApplication(fs: FsService, root: string, signal: Abort
     }
     displays.push(display)
   }, { count: 0, max: maxFiles })
-  const name = root.replace(/[\\/]$/u, '').split(/[\\/]/u).pop() ?? root
-  return { root, name, displays, tags, tagFiles, tagErrors, diagnostics, files }
+  const name = base.replace(/[\\/]$/u, '').split(/[\\/]/u).pop() ?? base
+  return { root: base, name, displays, tags, tagFiles, tagErrors, diagnostics, files }
 }

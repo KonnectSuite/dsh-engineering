@@ -115,6 +115,17 @@ describe('write gating', () => {
     const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'Motor_1', value: 1 })
     expect(result.error?.code).toBe('UNSUPPORTED_WRITE_TAG')
   })
+
+  it('refuses a write to an alias and names the tag to write instead', async () => {
+    // Reads resolve aliases; a write must name the declared operand so the
+    // controller changes exactly one known tag.
+    const l5x = await opened({ allowWrites: true, approval: { policy: 'ask' } })
+    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'StartPB_Field', program: 'MainProgram', value: true })
+    expect(result.error?.code).toBe('UNSUPPORTED_WRITE_TAG')
+    expect(result.error?.message).toContain('alias')
+    expect(result.error?.message).toContain('write the tag it points at')
+    expect(result.error?.fix).toContain('Read aliases freely')
+  })
 })
 
 describe('discovery bounds', () => {

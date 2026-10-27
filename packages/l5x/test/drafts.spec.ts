@@ -34,6 +34,16 @@ describe('draft accumulation', () => {
     expect(missing.error?.code).toBe('INVALID_ARGUMENT')
     expect(missing.error?.fix).toContain('rung number')
   })
+
+  it('accepts a scalar tag with no initial value', async () => {
+    // Studio gives every scalar a typed default (0 / FALSE). Requiring `value`
+    // rejected the ordinary "declare a REAL" operation in a live session.
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'hmi_StagedThickness', data_type: 'REAL', description: 'Staged thickness (in)' })
+    const validated = await l5x.call('draft_validate', {})
+    expect(validated.error).toBeUndefined()
+    expect(validated.data?.operation_count).toBe(1)
+  })
 })
 
 describe('validate and apply', () => {

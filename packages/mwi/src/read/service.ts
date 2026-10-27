@@ -39,8 +39,16 @@ export const GET_KINDS = ['pou', 'type', 'task', 'block', 'eip'] as const
 export class ReadService {
   /**
    * @param engine - Code engine over the project files.
+   * @param nativeLibraries - Live IDE library inventory, when the host has one.
+   *   A block interface is decoded against the installed libraries as well as the
+   *   saved project, so without it a vendor block cannot be resolved. Reads stay
+   *   usable without an IDE: the provider returns nothing and the engine answers
+   *   for the project's own registry alone.
    */
-  constructor(private readonly engine: ReadEngine) {}
+  constructor(
+    private readonly engine: ReadEngine,
+    private readonly nativeLibraries?: () => Promise<readonly Record<string, unknown>[]>,
+  ) {}
 
   /** Confirm the engine can read one project. */
   async workflow(project: ProjectRef): Promise<EngineResult> {
@@ -85,9 +93,14 @@ export class ReadService {
       return { ...text, project: project.directory, ...digest }
     }
     if (kind === 'block') {
+      // The engine compares the saved library references with the installed
+      // inventory, so a missing inventory is a refusal, not a crash: pass what the
+      // host could observe (nothing when the IDE is closed).
+      const native = this.nativeLibraries === undefined ? [] : await this.nativeLibraries().catch(() => [])
       return await this.engine.run('block_interface', {
         project: project.directory,
         name,
+        native_libraries: native,
         ...(library === undefined ? {} : { library }),
       }, 60_000)
     }

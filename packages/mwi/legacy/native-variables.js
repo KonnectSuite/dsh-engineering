@@ -39,7 +39,15 @@ export async function nativeVariableChange(args,{status,saved,snapshot,snapshotS
   const live=snapshotSaved?combined:await snapshot();
   const nativeRows=savedProjection(live.variables);
   const aligned=compare(before.variables,nativeRows);
-  if(!aligned.accepted)throw new Error('Live declarations disagree with saved baseline; no native action performed');
+  // Name the difference. A bare "disagree" left four live attempts with nothing to
+  // act on: the caller cannot tell a description trim from a missing declaration.
+  const detail=a=>[
+    ...(a.missing?.length?['missing '+a.missing.slice(0,5).join(', ')]:[]),
+    ...(a.unexpected?.length?['unexpected '+a.unexpected.slice(0,5).join(', ')]:[]),
+    ...(a.changed??[]).slice(0,5).map(c=>`${c.name} differs in ${c.fields.join('/')} (live ${JSON.stringify(c.expected)} vs saved ${JSON.stringify(c.saved)})`),
+    ...(a.errors??[]).slice(0,3),
+  ].join('; ');
+  if(!aligned.accepted)throw new Error('Live declarations disagree with saved baseline; no native action performed'+(detail(aligned)?': '+detail(aligned):''));
   const plan=variableChangePlan(before.variables,args,live.groups.map(g=>g.name));
   if(args.declaration?.section==='VAR_EXTERNAL') {
     const global=await globals();

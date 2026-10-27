@@ -110,4 +110,20 @@ describe('read tools', () => {
     const result = await call(root, new ReadService(engine()), 'mw_list', { kind: 'pou', project: 'Missing' })
     expect(result.error).toMatchObject({ code: 'PROJECT_NOT_FOUND' })
   })
+
+  it('passes the live library inventory to a block interface read, and survives its absence', async () => {
+    // The engine compares saved library references with the installed inventory,
+    // so a missing inventory must be an empty list, never a missing argument.
+    let seen: Record<string, unknown> | undefined
+    const recording = engine({ block_interface: (request: Record<string, unknown>) => { seen = request; return { ok: true, name: request.name, pins: [] } } })
+    const root = workspace()
+    const withIde = new ReadService(recording, async () => [{ name: 'IEC', full_name: 'C:\\Libs\\IEC.mwt' }])
+    await call(root, withIde, 'mw_get', { kind: 'block', name: 'TON' })
+    expect(seen?.native_libraries).toEqual([{ name: 'IEC', full_name: 'C:\\Libs\\IEC.mwt' }])
+
+    const withoutIde = new ReadService(recording, async () => { throw new Error('IDE closed') })
+    const result = await call(root, withoutIde, 'mw_get', { kind: 'block', name: 'TON' })
+    expect(result.error).toBeUndefined()
+    expect(seen?.native_libraries).toEqual([])
+  })
 })

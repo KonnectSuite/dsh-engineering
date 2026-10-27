@@ -139,9 +139,11 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       if (!scalar && row.value !== undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'A declared-type tag takes Studio default values; omit value')
       if (dimensions !== undefined && row.value !== undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'An array tag takes Studio default element values; omit value')
       if (dimensions === undefined && scalar) {
-        if (row.value === undefined) throw new EngineeringError('INVALID_CHANGE_SET', 'value is required for a scalar tag; omit value for an array or declared-type tag')
-        if (!fitsScalar(dataType, row.value)) throw new EngineeringError('INVALID_CHANGE_SET', `value ${String(row.value)} does not fit ${dataType}; BOOL accepts 0/1 and integer types accept their signed/unsigned range`)
-        return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), data_type: dataType, value: row.value as number, description: text(row, 'description'), ...(access === undefined ? {} : { external_access: access }) }
+        // A Logix scalar defaults to its type's zero. Requiring `value` here made
+        // the ordinary "declare a REAL" operation invalid, which is what failed
+        // two add_tag operations in a live session.
+        if (row.value !== undefined && !fitsScalar(dataType, row.value)) throw new EngineeringError('INVALID_CHANGE_SET', `value ${String(row.value)} does not fit ${dataType}; BOOL accepts 0/1 and integer types accept their signed/unsigned range`)
+        return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), data_type: dataType, ...(row.value === undefined ? {} : { value: row.value as number }), description: text(row, 'description'), ...(access === undefined ? {} : { external_access: access }) }
       }
       return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), data_type: dataType, ...(dimensions === undefined ? {} : { dimensions }), description: text(row, 'description'), ...(access === undefined ? {} : { external_access: access }) }
     }

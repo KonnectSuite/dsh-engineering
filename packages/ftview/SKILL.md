@@ -13,6 +13,12 @@ A staged edit is written to a NEW export folder; the source is never modified. T
 a manual import for a human; it does not drive Studio, contact a terminal, or decode MER or MED
 databases.
 
+Both export shapes are read: the Studio ME export (`<gfx>` displays, `Gfx-ME17.xsd`, a comma-delimited
+`Tags/*.csv` with its header before the `###002` line and `;` comment rows) and the older
+`<display>`-root files. Staged attribute edits were built for the `<display>` shape; on a `<gfx>`
+export, read and verify with this surface and make the change in Studio, or confirm the edit applied
+before relying on it.
+
 ## Backups
 
 Every engineering product backs up into the same tree, so a backup means one place whichever surface

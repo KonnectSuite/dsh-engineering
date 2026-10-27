@@ -1,5 +1,5 @@
 import type { ProjectSnapshot } from '../session.ts'
-import { evidenceOf, type Evidence } from './analysis.ts'
+import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
 import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 
@@ -86,6 +86,16 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   const unresolved = new Map<string, Evidence[]>()
   for (const ref of references) {
     if (ref.resolved !== undefined || ref.access === 'call' || ref.access === 'unknown') continue
+    // A member of a module-defined or otherwise opaque type (`Drive_MCFG.CommFLT`,
+    // `Axis_MAH.PC`) is not in the export's DataTypes, so this model cannot prove
+    // it. The base tag is declared, the member is not decodable: that is a coverage
+    // limit, not an unresolved reference, and reporting it drowned the real findings
+    // — 315 of them on one project that compiles. `S:`/`R:` system flags are the
+    // same case: defined by the controller, absent from the export.
+    const base = ref.symbol.split('.')[0] ?? ref.symbol
+    const systemFlag = /^[SR]:/iu.test(ref.symbol)
+    const baseDeclared = systemFlag ? undefined : resolveSymbol(doc, ref.scope, base)
+    if (baseDeclared !== undefined) continue
     const key = `${ref.scope}::${ref.symbol}`
     unresolved.set(key, [...unresolved.get(key) ?? [], ref])
   }

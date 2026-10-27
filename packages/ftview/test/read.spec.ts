@@ -1,5 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
+import { parseDisplay, parseTagCsv } from '../src/model.ts'
+
+/**
+ * The shape Studio actually exports: a comma-delimited header first, then the
+ * `###002` line, `;` comment/section rows, quoted data rows, and trailing empty
+ * columns omitted.
+ */
+const STUDIO_CSV = [
+  '\uFEFF;Tag Type, Tag Name, Tag Description, Read Only, Data Source, Native Type, Address',
+  ';###002 - THIS LINE CONTAINS VERSION INFORMATION. DO NOT REMOVE!!!',
+  '',
+  ';Folders Section (Must define folders before tags)',
+  '',
+  ';Tag Section',
+  '"D","ABPower",,"F","D","BOOL","::[Laminator]In_ABPower_IsOn"',
+  '"A","AddRoll_SP_Adder","Roll adder","F","D","REAL","::[Laminator]hmi_AdderSP"',
+  '',
+].join('\n')
+
+/** A real Studio display: <gfx> root, objects nested under it. */
+const STUDIO_DISPLAY = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<gfx xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+  '  <displaySettings width="1280" height="1024"/>',
+  '  <panel name="Panel17" left="402" top="292"/>',
+  '  <group name="Group21"><momentaryButton name="MomentaryPushButton6"/></group>',
+  '</gfx>',
+].join('\n')
 
 /** A six-column tag CSV with one duplicate name. */
 const CSV = [
@@ -86,6 +114,22 @@ describe('open and read', () => {
     const kinds = (found.data?.matches as { kind: string }[]).map(match => match.kind)
     expect(kinds).toContain('object')
     expect(kinds).toContain('tag')
+  })
+})
+
+describe('Studio export formats', () => {
+  it('parses the comma-delimited tag CSV with a leading header and short rows', () => {
+    const csv = parseTagCsv(STUDIO_CSV)
+    expect(csv.errors).toEqual([])
+    expect(csv.rows.map(row => row.name)).toEqual(['ABPower', 'AddRoll_SP_Adder'])
+    expect(csv.rows[1]?.description).toBe('Roll adder')
+  })
+
+  it('parses a <gfx> display and keeps its objects', () => {
+    const display = parseDisplay('Displays/Main Screen.xml', STUDIO_DISPLAY)
+    expect(display.parseError).toBeUndefined()
+    expect(display.name).toBe('Main Screen')
+    expect(display.objects.map(object => object.type)).toEqual(expect.arrayContaining(['panel', 'group', 'momentaryButton']))
   })
 })
 

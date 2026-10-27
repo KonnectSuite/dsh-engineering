@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { copyFile, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, extname, join, resolve } from 'node:path'
+import { basename, dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { documentRoot, firstChild, optionalAttribute, parseXml } from '../model/xml.ts'
@@ -147,17 +147,35 @@ export async function exportAcdToL5x(acdPath: string, outputPath: string, signal
   if (!existsSync(dirname(output))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Output directory does not exist')
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   await ensureBridge(availability, signal)
-  const result = await runBridge([bridgeDll, 'export-l5x', source, output], 240_000, signal)
-  if (result.code !== 0 || !result.output.includes('EXPORTED_L5X_SUCCEEDED')) throw new EngineeringError('L5X_EXPORT_FAILED', result.output)
+  let result = await runBridge([bridgeDll, 'export-l5x', source, output], 240_000, signal)
+  // A project open in Studio 5000 holds an exclusive handle on its ACD, and the
+  // SDK opens the file itself, so the ordinary case - the project the user is
+  // working on - failed with "being used by another process". Exporting reads a
+  // snapshot: copy the ACD and open the copy. Nothing is written to the original.
+  let scratch: string | undefined
+  if ((result.code !== 0 || !result.output.includes('EXPORTED_L5X_SUCCEEDED')) && /being used by another process|could not open file/iu.test(result.output)) {
+    const scratchDir = join(tmpdir(), `arya-l5x-export-${process.pid}-${Date.now()}`)
+    await mkdir(scratchDir, { recursive: true })
+    scratch = join(scratchDir, basename(source))
+    await copyFile(source, scratch)
+    if (createHash('sha256').update(await readFile(scratch)).digest('hex') !== sourceHash) {
+      throw new EngineeringError('ACD_CHANGED', 'The ACD changed while it was being copied; save or close it in Studio 5000 and retry')
+    }
+    result = await runBridge([bridgeDll, 'export-l5x', scratch, output], 240_000, signal)
+  }
+  if (result.code !== 0 || !result.output.includes('EXPORTED_L5X_SUCCEEDED')) {
+    throw new EngineeringError('L5X_EXPORT_FAILED', result.output, 'Close the project in Studio 5000, or retry: a locked ACD is exported from a private copy.')
+  }
   if (createHash('sha256').update(await readFile(source)).digest('hex') !== sourceHash)
     throw new EngineeringError('ACD_CHANGED', 'Source ACD changed during export; reopen and export an unchanged source copy')
+  if (scratch !== undefined) await rm(dirname(scratch), { recursive: true, force: true }).catch(() => {})
   const bytes = await readFile(output)
   if (bytes.length === 0 || !bytes.toString('utf8', 0, Math.min(bytes.length, 2048)).includes('<RSLogix5000Content')) {
     throw new EngineeringError('L5X_EXPORT_INVALID', 'SDK export did not produce a recognizable L5X file')
   }
   return { source_acd: source, source_sha256: sourceHash, output_path: output, output_bytes: bytes.length,
     output_sha256: createHash('sha256').update(bytes).digest('hex'), exported_at: new Date().toISOString(),
-    controller_operation: 'none', studio_review: 'required' }
+    ...(scratch === undefined ? {} : { exported_from_copy: true }), controller_operation: 'none', studio_review: 'required' }
 }
 
 function checkProject(project: ProjectSnapshot, availability: SdkStatus): void {

@@ -2,6 +2,7 @@ import type { L5xDocument, L5xRoutine, L5xTag } from '../model/types.ts'
 import { controllerElementOf } from '../model/parse.ts'
 import { elementChildren, firstChild, type XmlElement } from '../model/xml.ts'
 import { memberOf } from './details.ts'
+import { resolveTag } from './tag-resolution.ts'
 import type { ProjectSnapshot } from '../session.ts'
 
 export type Access = 'read' | 'write' | 'read_write' | 'call' | 'unknown'
@@ -95,8 +96,24 @@ function tableOf(document: L5xDocument): SymbolTable {
   return table
 }
 
-/** Resolve only declarations proven by the export. Never guess an absent member. */
+/**
+ * Resolve a written symbol to a canonical declaration.
+ *
+ * The fast path walks the declaration and alias tables. It stops where the
+ * operand behind an alias is not a declared `<Tag>` — module I/O such as
+ * `FanFold_StraightCut_AENTR:2:I.7` — which is common in a real project: those
+ * references are proven by the export, not missing. Fall back to the canonical
+ * resolver (the one behind `resolve_tag`) before declaring a symbol unresolved.
+ */
 export function resolveSymbol(document: L5xDocument, scope: string, symbol: string): string | undefined {
+  const direct = resolveSymbolDirect(document, scope, symbol)
+  if (direct !== undefined) return direct
+  const resolution = resolveTag(document, scope, symbol)
+  return resolution.resolved ? resolution.canonical : undefined
+}
+
+/** Resolve only declarations proven by the export. Never guess an absent member. */
+function resolveSymbolDirect(document: L5xDocument, scope: string, symbol: string): string | undefined {
   const table = tableOf(document)
   const aoi = document.aois.find(entry => entry.name === scope)
   const parts = symbol.replace(/\[[^\]]+\]/gu, '').split('.')
@@ -107,6 +124,7 @@ export function resolveSymbol(document: L5xDocument, scope: string, symbol: stri
   }
   let tag = table.tags.get(tagKey(scope, base)) ?? table.tags.get(tagKey('controller', base))
   if (tag === undefined) return undefined
+  const declared = tag
   let resolvedBase = tag.name
   const seen = new Set<string>()
   while (tag !== undefined) {
@@ -119,7 +137,11 @@ export function resolveSymbol(document: L5xDocument, scope: string, symbol: stri
     const aliasBase = alias.split('.')[0]
     if (aliasBase === undefined) break
     tag = table.tags.get(tagKey(tag.scope, aliasBase)) ?? table.tags.get(tagKey('controller', aliasBase))
-    if (tag === undefined) return undefined
+    // A module I/O operand (`Local:1:I.Data[0].5`) is not a declared <Tag>: the
+    // export proves the alias, not the operand behind it. Resolving to the alias
+    // is what stops 315 real references being reported as unresolved, while
+    // resolveTag still canonicalises the operand for callers that ask to resolve.
+    if (tag === undefined) return `${declared.scope}::${declared.name}${parts.length > 0 ? `.${parts.join('.')}` : ''}`
   }
   const path = [...resolvedBase.split('.').slice(1), ...parts]
   if (path.length > 0) {
@@ -127,7 +149,10 @@ export function resolveSymbol(document: L5xDocument, scope: string, symbol: stri
     for (const [index, part] of path.entries()) {
       if (/^\d+$/u.test(part)) {
         // `Alarm[8].12` is bit 12 of an integer element; nothing may follow it.
-        if (index !== path.length - 1 || !INTEGER_TYPES.has(type?.toUpperCase() ?? '')) return undefined
+        // Module I/O data carries no builtin DataType in the export, so an empty
+        // type with a trailing numeric part is still a bit of that module data.
+        const known = type === undefined || type === '' ? undefined : type.toUpperCase()
+        if (index !== path.length - 1 || (known !== undefined && !INTEGER_TYPES.has(known))) return undefined
         type = 'BOOL'
         continue
       }

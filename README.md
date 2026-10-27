@@ -91,7 +91,9 @@ Where each surface actually stands, based on what has been exercised.
   downloads accepting only a verification id produced by a passed build
 - Live EtherNet/IP: polling, one-request batch reads of up to 64 tags, controller identity and clock, LAN discovery, and a bounded trend
 - Supervised live writes: `write_live_tag` and `write_controller_clock` need the row's `allowWrites` switch **and** per-call human approval, and report the value the controller reads back
-- FactoryTalk View ME: export reads, structural checks, comparison, staged display and HMI tag edits
+- FactoryTalk View ME: export reads, structural checks, comparison, staged display and HMI tag edits;
+  reads verified on a real Studio export (`<gfx>` displays and the comma-delimited tag CSV —
+  18 displays, 361 tags, no parse errors)
 - MotionWorks IEC: verified live against 3 Pro 1.19 — direct open with a verified pre-edit backup
   under `.motionworks/attached`, attach-without-reload to a project the IDE already has open, start,
   worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU
@@ -118,6 +120,7 @@ the lean profile is the one that turns them off.
 
 | Version | What landed |
 |---|---|
+| **0.5.0** | Commissioned on real files: FactoryTalk View reads genuine Studio exports (`<gfx>` displays, comma CSVs, UTF-16) instead of reporting zero; L5X alias resolution cuts 315 false "unresolved reference" findings to 16 on a 1279-tag project; `add_tag` no longer demands a value; a locked ACD exports from a copy |
 | **0.4.17** | MotionWorks edits the real project again: the pre-edit backup is written where the bridge and engine verify it, an already-open project is attached instead of reloaded, and `mw_get` returns the body hash the edit takes |
 | **0.4.15** | Every tool surface ships on by default; the row Configure pages switch them off |
 | **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |

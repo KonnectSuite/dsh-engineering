@@ -4,6 +4,7 @@ import { isIPv4 } from 'node:net'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { aliasesOf } from './configuration.ts'
 import { findReferences } from './analysis.ts'
+import { resolveTag } from './tag-resolution.ts'
 import { controllerElementOf } from '../model/parse.ts'
 import { elementChildren, firstChild } from '../model/xml.ts'
 import type { LogicSample } from './observations.ts'
@@ -76,14 +77,19 @@ export function pollingRequest(project: ProjectSnapshot, input: Readonly<Record<
     const tagContainer = container === undefined ? undefined : firstChild(container, 'Tags')
     const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === entry.name)
     const dimensions = declaration?.attrs.Dimensions ?? declaration?.attrs.Dimension ?? ''
-    if (!declared || aliasesOf(project.document).has(`${scope}::${declared.name}`)
-      || !['BOOL', 'INT', 'DINT', 'REAL'].includes(declared.dataType)
-      || dimensions !== '' && dimensions !== '0' || declaration?.attrs.ExternalAccess === 'None')
-      throw new EngineeringError('UNSUPPORTED_POLL_TAG', 'Select a declared non-alias scalar BOOL, INT, DINT, or REAL')
+    // A poll is a read: an alias is a normal operand, and ExternalAccess only
+    // stops writes. Refusing aliases made every module-point BOOL unmonitorable.
+    let type = ['BOOL', 'INT', 'DINT', 'REAL'].includes(declared?.dataType ?? '') ? declared?.dataType ?? '' : ''
+    if (type === '' && declared !== undefined) {
+      const resolution = resolveTag(project.document, scope, declared.name)
+      if (resolution.resolved && resolution.data_type !== undefined && ['BOOL', 'INT', 'DINT', 'REAL'].includes(resolution.data_type)) type = resolution.data_type
+    }
+    if (!declared || type === '' || (dimensions !== '' && dimensions !== '0'))
+      throw new EngineeringError('UNSUPPORTED_POLL_TAG', 'Select a declared scalar BOOL, INT, DINT, or REAL (aliases are read through; arrays are refused)')
     const key = `${scope}::${declared.name}`.toLowerCase()
     if (seen.has(key)) throw new EngineeringError('INVALID_POLL', 'Duplicate watch tag')
     seen.add(key)
-    return { name: declared.name, ...(scope === 'controller' ? {} : { program: scope }), data_type: declared.dataType as PollTag['data_type'] }
+    return { name: declared.name, ...(scope === 'controller' ? {} : { program: scope }), data_type: type as PollTag['data_type'] }
   })
   const request: PollRequest = { ip, slot, tags, samples, interval, timeout: config.requestTimeoutMs }
   return { request, evidence: tags.map(tag => ({ tag: tag.name, scope: tag.program ?? 'controller',

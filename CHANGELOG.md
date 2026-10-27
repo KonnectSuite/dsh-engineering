@@ -1,5 +1,83 @@
 # Changelog
 
+## [0.5.0] - 2026-10-27
+
+Commissioned against the Laminator fixtures: a real Studio 5000 ACD exported to a 5.4 MB L5X, a
+real FactoryTalk View ME export, and two MotionWorks projects.
+
+### Fixed — FactoryTalk View could not read a real Studio export
+
+`ftview_open` reported **0 displays and 0 tags** for a genuine ME export. Five independent causes:
+
+- **The tag CSV delimiter was hard-coded to `;`** while Studio exports are comma-separated and use a
+  leading `;` only as a comment prefix, so every data row parsed as one cell. The separator is now
+  detected per line with quote awareness.
+- **The header was assumed to follow the `###002` line.** A real export writes the header first, then
+  `###002`, then `;Folders Section` / `;Tag Section` comments, and the parser took the first comment
+  for the header. It now finds a `Tag Name` header on either side of the version line.
+- **Short rows were rejected.** Studio omits trailing empty columns, so 29-column headers come with
+  23-column rows. Only over-long rows are errors now.
+- **`<gfx>` displays were refused.** ME display XML is `<gfx>` (Gfx-ME17.xsd), not `<display>`.
+- **UTF-16 files were decoded as UTF-8**, producing a root element of `\0g\0f\0x`; BOM sniffing now
+  selects UTF-16LE.
+
+Also normalised the host contract: `scanApplication` accepts the `FsTarget` that `fs.resolve`
+returns instead of calling string methods on it.
+
+Verified on `Laminator/HMI/Main`: **18 displays, 361 tags, 0 parse errors** (was 0 and 0). Reading a
+`<gfx>` export is supported; the staged edit tools were built for the `<display>` shape and are not
+verified to rewrite `<gfx>` objects.
+
+### Fixed — Studio 5000 checks drowned real findings in false positives
+
+`run_checks` on the Laminator export produced 562 findings, 315 of them "unresolved reference", on a
+project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresent` →
+`FanFold_StraightCut_AENTR:2:I.7`): aliases carry no `DataType`, their targets are not declared
+`<Tag>`s, and the fast resolver stopped instead of falling back to the canonical one.
+
+- `resolveSymbol` now falls back to `resolveTag`, and an empty type with a trailing numeric part
+  resolves as a bit.
+- A member of a module-defined or opaque type (`Drive_MCFG.CommFLT`, `Axis_MAH.PC`) and `S:`/`R:`
+  system flags are reported as coverage limits, not unresolved references.
+
+**562 → 264 findings; unresolved 315 → 16**, with the unused-tag and multiple-write findings intact.
+
+### Fixed — Studio 5000 edits
+
+- **`add_tag` required a value for a scalar tag.** Studio defaults scalars to zero, so declaring a
+  plain REAL was impossible without inventing a value; `value` is now optional and still validated
+  when supplied.
+- **Live reads refused aliases.** `read_live_tags` and `poll_live_tags` ran the write rule, so
+  ordinary module-point BOOLs were rejected as "not a writable declared scalar". Reads and polls now
+  take an alias's type from the canonical resolver; writes still refuse an alias and name the tag to
+  write instead.
+- **`export_acd_to_l5x` failed when Studio had the ACD open.** The SDK opens the file itself, so the
+  normal case — the project the user is working on — failed with "being used by another process". The
+  export now copies the ACD and opens the copy, with the source hash re-checked before and after.
+
+Verified end to end on the Laminator export: `draft_tag` (REAL, no value) plus a rung replacement
+validated and applied to a 5,391,840-byte L5X.
+
+### Fixed — MotionWorks IEC
+
+- **`mw_get kind="block"` crashed with `KeyError: 'native_libraries'`.** The block interface is decoded
+  against the installed libraries as well as the saved project; the read service now supplies the live
+  inventory and falls back to the project's own registry when no IDE answers.
+- **`mw_edit_variables` refused with "Live declarations disagree with saved baseline"** and nothing
+  else. The refusal now names the missing, unexpected and changed declarations with their live and
+  saved values.
+
+Verified on both Laminator projects through the shipped engine: attach into
+`backups/motionworks/<project>/<stamp>/`, then `workflow_check`, `pous`, `read_text`, `validate`,
+`tasks`, `types`, `globals` and `library` all succeed (8 POUs, 5 tasks, ~170 globals, 297 types,
+23 blocks each).
+
+### Documentation
+
+- `docs/optix-netlogic.md`: how the FactoryTalk Optix NetLogic cheat sheet should be carried — a
+  pinned snapshot, a generated index, and one `optix_netlogic` retrieval tool, with the risk flags and
+  disclaimers the repository itself requires.
+
 ## [0.4.22] - 2026-10-27
 
 ### Fixed
