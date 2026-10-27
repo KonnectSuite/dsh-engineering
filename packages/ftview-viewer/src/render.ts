@@ -228,6 +228,7 @@ function renderObject(node: XmlNode, depth: number, options: RenderOptions): str
  */
 export function renderDisplay(source: string, options: RenderOptions = {}): string {
   const display = parseXml(source)
+  if (display.tag !== 'gfx' && display.tag !== 'display') throw new Error(`not a FactoryTalk View display: root element is <${display.tag}>`)
   const settings = child(display, 'displaySettings')
   const width = settings === undefined ? numberAttribute(display, 'width', 640) : numberAttribute(settings, 'width', numberAttribute(display, 'width', 640))
   const height = settings === undefined ? numberAttribute(display, 'height', 480) : numberAttribute(settings, 'height', numberAttribute(display, 'height', 480))

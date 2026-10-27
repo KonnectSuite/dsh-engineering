@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.10.2] - 2026-10-27
+
+### Changed
+
+- **The display preview now runs the new renderer.** The client face is bundled from `packages/ftview-viewer/face/face.ts`
+  against `src/render.ts`; the old closure bundle is kept as `lib/client-legacy.js`. The panel draws the SVG the
+  renderer produces, shows the display size and object count, offers Fit/100%, and reports an invalid file instead
+  of an empty tab.
+- Preview id aligned with the bundle's contract (`dsh-engineering-ftview-viewer/display`), locale namespace
+  `factorytalkView`.
+- Tests: face registration, body rendering through the renderer, invalid-file handling, and bundle shape
+  (70 bundle tests in total with the renderer suite).
+
+### Known gaps
+
+- `barGraph`, `gauge`, `trend` and `listSelector` still draw as plain faces; live values and navigation are not wired yet.
 ## [0.10.1] - 2026-10-27
 
 ### Added
