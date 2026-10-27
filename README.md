@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 84 tools · 5 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 85 tools · 5 rows · 4 products · MIT
 
 ---
 
@@ -39,7 +39,7 @@ bundle.
 | **Studio 5000 L5X** | 40 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 14 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **FactoryTalk Optix** | 10 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 
 Tool groups, by product:
 
@@ -47,7 +47,7 @@ Tool groups, by product:
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
 - **FactoryTalk View** — 6 read, 5 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
-- **Optix** — 6 tools, unlinked to a skill until one exists
+- **Optix** — 10 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the 9 bridge tools need Studio
 
 ## Switches
 
@@ -62,7 +62,7 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
-| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty) |
+| `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
@@ -112,7 +112,7 @@ the lean profile is the one that turns them off.
 - FBD/SFC semantics are not exercised
 - FactoryTalk View Studio work is a **manual handoff**: the bundle plans the import and preflights
   changed files, it does not import
-- Optix has no skill yet; its tools follow the `optix` row config and the Studio bridge
+- Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
 
 **Not in this repository** — CAD mounts as an independent plugin.
 
@@ -175,7 +175,7 @@ even when the implementation behind a row is replaced.
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` on |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
-| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on |
+| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on · `netlogic` on |
 
 ## Safety
 

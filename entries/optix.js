@@ -11,6 +11,7 @@
 import z from '@deepseek-ai/schemastery'
 import { dirname, join } from 'node:path'
 import * as optix from '../vendor/optix/lib/index.js'
+import * as netlogic from './netlogic.js'
 import { flag, list, text } from './config.js'
 
 export const name = 'engineering-optix'
@@ -53,6 +54,9 @@ export const Config = z.object({
   ocrTessdataDirectory: z.string().default('').volatile().description(
     'Folder holding the .traineddata files. Empty derives tessdata beside tesseract.exe.',
   ),
+  netlogic: z.boolean().default(true).volatile().description(
+    'Register the pinned NetLogic cheat-sheet reader (optix_netlogic) and the FactoryTalk Optix skill. Off removes one tool and its guidance.',
+  ),
   requestTimeoutMs: z.natural().min(1).max(2147483647).default(20000),
   maxResponseBytes: z.natural().min(1).default(2000000),
   maxBatchOps: z.natural().min(1).default(40),
@@ -93,12 +97,21 @@ export function apply(ctx, config = {}) {
     }
   }
   let mounted
+  let netlogicMounted
   // Volatile-only config changes are committed into the live references and
   // emit `loader/volatile-update` instead of re-running apply(). The prebuilt
   // plugin reads its options once, so remount it to pick up a switch change.
   const sync = () => {
     if (mounted !== undefined) void mounted.dispose()
     mounted = ctx.plugin(optix, options())
+    // The NetLogic reader is this repository's own entry: it is a separate plugin
+    // so the row's `netlogic` switch can drop one tool and its guidance without
+    // touching the prebuilt engine.
+    if (netlogicMounted !== undefined) {
+      void netlogicMounted.dispose()
+      netlogicMounted = undefined
+    }
+    if (flag(config.netlogic)) netlogicMounted = ctx.plugin(netlogic)
   }
   sync()
   ctx.on('loader/volatile-update', sync)

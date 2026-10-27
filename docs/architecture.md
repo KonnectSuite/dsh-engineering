@@ -36,7 +36,7 @@ user's enabled state.
 | `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
 | `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `edit` on |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
-| `optix` | `entries/optix.js` | Optix Studio reads, authoring and preview | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on |
+| `optix` | `entries/optix.js` | Optix Studio reads, authoring, preview and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on, `netlogic` on |
 
 A product row is an `entries/*.js` composite: it mounts the vendored parts (`ctx.plugin(part)`) so the
 Plugins page shows one switch per product, and exposes the optional parts as its `Config` schema, which

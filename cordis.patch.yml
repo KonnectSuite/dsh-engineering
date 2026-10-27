@@ -9,7 +9,7 @@
 #   l5x    → editing, studio, live, allowWrites   (all on by default)
 #   ftview → edit, studio                          (both on by default)
 #   mwi    → edit                                  (on by default)
-#   optix  → authoring, destructive, invoke, preview (all on by default)
+#   optix  → authoring, destructive, invoke, preview, netlogic (all on by default)
 #
 # Every surface ships on so a fresh install can use the full plugin. Turn one
 # off from the row's Configure page when the profile is read-only or the request

@@ -1,0 +1,12 @@
+{
+  "repository": "FactoryTalk-Optix/NetLogic_CheatSheet",
+  "commit": "5e65254104bbbc49c1f4f7adde4c6f1e3e2b470f",
+  "fetched_at": "2026-10-27T13:28:12.646Z",
+  "pages": 51,
+  "readme_sha256": "1d204199c6c4e69f0a737d8550260c311458cccb744292f6dd8e542500e9e3fa",
+  "risks": {
+    "normal": 48,
+    "advanced": 0,
+    "unsupported": 3
+  }
+}

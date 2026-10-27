@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.6.0] - 2026-10-27
+
+### Added
+
+- **FactoryTalk Optix NetLogic reference.** The bundle vendors a pinned snapshot of Rockwell's
+  [NetLogic cheat sheet](https://github.com/FactoryTalk-Optix/NetLogic_CheatSheet) (51 pages, commit
+  `5e652541`) and exposes it as one tool instead of dumping C# into the prompt:
+  `optix_netlogic` with no arguments returns the contents, a `query` ranks pages by title, topic and
+  symbol before body text, and a `slug` returns that page verbatim. Every page result carries its
+  `risk` (`normal`, `advanced` or `unsupported`, with the repository's own Advanced section marked
+  unsupported), the upstream commit, a source URL and the upstream disclaimer that the snippets may use
+  non-public APIs and must not be used in production as-is.
+- **A FactoryTalk Optix skill.** The row previously had tools and no guidance; `factorytalk-optix` now
+  names the surface, the NetLogic reader and its risk rule, and the report-before-claiming boundary.
+- The `optix` row gains a `netlogic` switch (on by default). Off removes one tool and the guidance
+  without touching the prebuilt engine.
+- `scripts/sync-netlogic.mjs` is the only writer of the snapshot: it pins a commit, copies
+  `pages/*.md`, and generates `index.json` plus `SOURCE.json` (commit, page count, risk counts).
+  `pnpm netlogic:sync` refreshes it; `test/netlogic.spec.mjs` fails when the index and the pages drift.
+
 ## [0.5.0] - 2026-10-27
 
 Commissioned against the Laminator fixtures: a real Studio 5000 ACD exported to a 5.4 MB L5X, a
