@@ -3,6 +3,9 @@ node_modules/
 *.log
 packages/*/lib/
 vendor/
+__pycache__/
+*.pyc
+/mwi-manual.mts
 
 # Optix is the one component with no source in this repository: the tree under
 # packages/optix is the published build, so its lib/ is the source of truth and

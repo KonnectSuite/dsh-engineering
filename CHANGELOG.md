@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.20] - 2026-10-27
+
+### Fixed
+
+- **The bundle no longer ships Python bytecode.** `__pycache__` and `*.pyc` from the MotionWorks
+  engine are ignored and excluded, so the tarball contains only the sources the plugin runs.
+
 ## [0.4.19] - 2026-10-27
 
 ### Fixed
