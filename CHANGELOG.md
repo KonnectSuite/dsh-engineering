@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.2] - 2026-10-27
+
+### Fixed
+
+- **The `engineering-standards` skill was missing from the catalog.** 0.9.1 mounted it by calling the skills
+  service from inside the resources row's `apply()`, which only works if that service already exists at that
+  row's turn — it mounts before the Optix row, so the skill was silently skipped (the tools still loaded).
+  The skill is now its own plugin with `inject: ['skills']`, the same pattern the product skills use, so the
+  host activates it when the service is up regardless of row order. A test asserts the injection list and
+  registration.
 ## [0.9.1] - 2026-10-27
 
 ### Fixed

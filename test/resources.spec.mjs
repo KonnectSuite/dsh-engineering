@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildCorpus, checkCurrent } from '../scripts/gen-resources.mjs'
 import { referenceTool } from '../packages/resources/src/tools.ts'
+import * as skill from '../packages/resources/src/skill.ts'
 
 test('the committed corpus index is current', () => {
   const result = checkCurrent()
@@ -54,4 +55,13 @@ test('an unknown page returns a repairable failure', async () => {
 test('the contents lists every domain', async () => {
   const contents = await referenceTool.execute({})
   assert.deepEqual(contents.data.domains, ['iec', 'rockwell', 'yaskawa', 'view', 'optix', 'craft'])
+})
+
+test('the standards skill mounts through the skills service', () => {
+  assert.deepEqual(skill.inject, ['skills'])
+  const registered = []
+  assert.equal(skill.registerSkill({ register: definition => registered.push(definition) }), true)
+  assert.equal(registered.length, 1)
+  assert.equal(registered[0].name, 'engineering-standards')
+  assert.ok(registered[0].content.length > 200, 'the skill body is read from SKILL.md')
 })
