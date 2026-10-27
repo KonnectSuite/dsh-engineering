@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { Bridge, assertSupportedPlatform, type BridgeResponse, type BridgeTransport } from '../src/core/bridge.ts'
+import { engineFailure } from '../src/core/code-engine.ts'
 import { MwiError } from '../src/core/errors.ts'
 import { boolean, choice, integer, list, object, string } from '../src/core/params.ts'
 import { jsonText, requiredString, tool, type ToolSpec } from '../src/core/tool.ts'
@@ -90,5 +91,18 @@ describe('bridge contract', () => {
 
   it('refuses a non-Windows host before any IDE call', () => {
     expect(() => assertSupportedPlatform('linux')).toThrow(/Windows/u)
+  })
+})
+
+describe('engine refusal translation', () => {
+  it('points a staging refusal at mw_project_open, not at staging', () => {
+    const error = engineFailure("REFUSED: check_mwt project 'C:/ws/Line.mwt' is outside the staging root 'C:/ws/.motionworks/stage'.")
+    expect(error.code).toBe('NOT_ATTACHED')
+    expect(error.fix).toContain('mw_project_open')
+    expect(error.fix).toContain('optional sandbox')
+  })
+
+  it('keeps an unrelated refusal as an engine refusal', () => {
+    expect(engineFailure('ValueError: cannot parse the wrapper').code).toBe('ENGINE_REFUSED')
   })
 })

@@ -23,6 +23,11 @@
   returned the body but no hash, so the hash had to be found elsewhere or guessed and the edit failed
   with "Saved code differs from expected_body/hash". `mw_get` now returns the `text_body_sha256` of
   exactly the body it returns.
+- **A read before the open still pointed at staging.** The engine guard's refusal text belongs to the
+  retired staging flow and told the caller to stage a copy, which is what sent an agent back into
+  staging after it had been removed from the workflow. The engine boundary now translates that
+  refusal into `NOT_ATTACHED` with the fix "call `mw_project_open` first"; every other refusal keeps
+  its own text.
 
 ### Documentation
 

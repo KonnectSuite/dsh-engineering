@@ -45,6 +45,32 @@ export function findPython(): string {
   return 'python'
 }
 
+/**
+ * Translate one engine refusal into the failure the caller should act on.
+ *
+ * The engine guard is shared with the retired staging flow, so its refusal says
+ * "stage a copy". In this bundle a real workspace project is opened directly, and
+ * the identity record that an open writes is exactly what the guard accepts: point
+ * at the open instead of letting the caller loop back into staging.
+ *
+ * @param message - The refusal text the engine wrote.
+ * @returns The error to throw.
+ */
+export function engineFailure(message: string): MwiError {
+  if (/outside the staging root/iu.test(message)) {
+    return new MwiError(
+      'NOT_ATTACHED',
+      message,
+      'Call mw_project_open with this project first: it writes the verified attachment record the engine guard requires. mw_project_stage is only an optional sandbox.',
+    )
+  }
+  return new MwiError(
+    'ENGINE_REFUSED',
+    message,
+    'Read the message, correct the request, and retry. Do not retry the same invalid request.',
+  )
+}
+
 /** The typed engine client. */
 export class CodeEngine {
   private readonly python: string
@@ -103,11 +129,7 @@ export class CodeEngine {
         if (existsSync(responsePath)) {
           const payload = await this.readResponse(responsePath)
           if (payload.ok === false) {
-            throw new MwiError(
-              'ENGINE_REFUSED',
-              typeof payload.error === 'string' ? payload.error : `The MotionWorks engine refused ${verb}.`,
-              'Read the message, correct the request, and retry. Do not retry the same invalid request.',
-            )
+            throw engineFailure(typeof payload.error === 'string' ? payload.error : `The MotionWorks engine refused ${verb}.`)
           }
           return payload
         }
