@@ -37,10 +37,16 @@ export const CLIENT_ID = '@aryacode/dsh-engineering'
 /** Trailing source-map comment the face builds append. */
 const SOURCE_MAP_TRAILER = /(?:\r?\n)?\/\/# sourceMappingURL=[^\r\n]*(?:\r?\n)?$/
 
-/** The two faces, in the order their `apply` functions run. */
+/**
+ * The faces, in the order their `apply` functions run. A face without
+ * `packageName` has no retired component package behind it; the settings face
+ * is written directly in `scripts/faces/settings.js` because it has no JSX
+ * build of its own.
+ */
 export const FACES = [
   { name: 'ladder', file: 'packages/viewer/lib/client.js', packageName: '@aryacode/dsh-engineering-l5x-viewer' },
   { name: 'ftview', file: 'packages/ftview-viewer/lib/client.js', packageName: '@aryacode/dsh-engineering-ftview-viewer' },
+  { name: 'settings', file: 'scripts/faces/settings.js' },
 ]
 
 /**
@@ -89,6 +95,9 @@ export function renderClient() {
     const extracted = factoryBodyOf(face)
     return { ...face, ...extracted }
   })
+  const declarations = faces
+    .map(face => `    const ${face.name} = (() => {\n${face.body}\n    })()`)
+    .join('\n')
   const calls = faces.map(face => `        ${face.name}.apply(ctx)`).join('\n')
   const checks = faces
     .map(face => `      typeof ${face.name}.apply !== 'function'`)
@@ -110,12 +119,7 @@ window.__ModuleLoader__.load({
   factory: (require) => {
     // One closure per face: both bodies declare their own React binding,
     // document-preview id, stylesheet text and helpers.
-    const ${faces[0].name} = (() => {
-${faces[0].body}
-    })()
-    const ${faces[1].name} = (() => {
-${faces[1].body}
-    })()
+${declarations}
 
     if (
 ${checks}

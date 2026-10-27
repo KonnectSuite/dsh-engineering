@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.8] - 2026-10-26
+
+### Fixed
+
+- **The product rows had no settings page.** The bundle's client half never registered a
+  `plugins.row.config` entry, so the Plugins page showed no Configure control for `l5x`, `ftview` or
+  `mwi`, and the switches the README documents were unreachable without editing the profile patch by
+  hand. `scripts/faces/settings.js` now registers one page per row: L5X editing, the Studio 5000 SDK,
+  live EtherNet/IP and the two live writes; FactoryTalk View ME edits and the Studio handoff;
+  MotionWorks IEC edits. Values are staged and saved through the row's own configuration form, and the
+  defaults are unchanged.
+
 ## [0.4.7] - 2026-10-25
 
 ### Fixed

@@ -101,7 +101,7 @@ function fakeContext() {
   return { ctx, registrations }
 }
 
-test('lib/client.js is the current build of both committed faces', () => {
+test('lib/client.js is the current build of every committed face', () => {
   assert.equal(read('lib/client.js'), renderClient(),
     'lib/client.js is stale: run pnpm build:client after changing a face bundle')
 })
@@ -123,7 +123,7 @@ test('the artifact registers exactly one bundle, under the package name', () => 
   assert.equal(typeof registration.factory, 'function')
 })
 
-test('the factory materializes both faces and merges their declared services', () => {
+test('the factory materializes every face and merges their declared services', () => {
   const [registration] = loadBundle().registrations
   const plugin = registration.factory(stubModule)
   assert.equal(typeof plugin.apply, 'function', 'the loader applies the module exports; apply must exist')
@@ -135,7 +135,7 @@ test('the factory materializes both faces and merges their declared services', (
   assert.equal(new Set(plugin.inject).size, plugin.inject.length, 'inject repeats a service name')
 })
 
-test('apply mounts the ladder preview and the ME display preview', () => {
+test('apply mounts the ladder preview, the ME display preview and the row settings pages', () => {
   const [registration] = loadBundle().registrations
   const plugin = registration.factory(stubModule)
   const { ctx, registrations } = fakeContext()
@@ -147,6 +147,9 @@ test('apply mounts the ladder preview and the ME display preview', () => {
     'locale:factorytalkView',
     'slot:sidebar.right.tab.document#' + LADDER_PREVIEW_ID,
     `slot:sidebar.right.tab.document#${FTVIEW_PREVIEW_ID}`,
+    'slot:plugins.row.config#@aryacode/dsh-engineering#l5x',
+    'slot:plugins.row.config#@aryacode/dsh-engineering#ftview',
+    'slot:plugins.row.config#@aryacode/dsh-engineering#mwi',
   ]) {
     assert.ok(registrations.includes(expected), `apply did not register ${expected} (got ${registrations.join(', ')})`)
   }
@@ -158,6 +161,7 @@ test('no engineering component is a dependency any more', () => {
   const components = Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@aryacode/dsh-engineering-'))
   assert.deepEqual(components, [], 'the bundle must not depend on its own retired component packages')
   for (const face of FACES) {
+    if (face.packageName === undefined) continue
     assert.ok(!(manifest.dependencies ?? {})[face.packageName],
       `${face.packageName} is still a dependency; the ${face.name} face ships inside this package`)
   }
@@ -167,6 +171,7 @@ test('the declared client-face inject list is the union of the retired viewers',
   const declared = [...manifest.dsh.client.inject]
   const union = []
   for (const face of FACES) {
+    if (face.packageName === undefined) continue
     const retired = JSON.parse(read(`${face.file.replace(/\/lib\/client\.js$/u, '')}/package.json`))
     for (const name of retired.dsh.client.inject) if (!union.includes(name)) union.push(name)
   }

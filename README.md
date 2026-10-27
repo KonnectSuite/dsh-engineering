@@ -95,8 +95,9 @@ Where each surface actually stands, based on what has been exercised.
   and a POU package export/delete/import round trip
 - Ladder viewer and FactoryTalk View display preview
 
-**Deliberately off by default** — enabled per profile: `l5x-editing`, `l5x-studio`, `l5x-live`, `allowWrites`,
-`mwi-edit`. A read-only profile should not pay for nine draft schemas or a controller surface.
+**Deliberately off by default** — switched on from the row's Configure page in Plugins: `l5x-editing`,
+`l5x-studio`, `l5x-live`, `allowWrites`, `mwi-edit`. A read-only profile should not pay for nine draft
+schemas or a controller surface.
 
 **Known limits** — stated in the bundle, not hidden:
 
