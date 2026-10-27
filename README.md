@@ -60,7 +60,7 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (off) |
 | `viewers` | ladder + ME display previews | — |
-| `optix` | FactoryTalk Optix Studio authoring | — |
+| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (off), `allowDestructive` (off), `allowInvoke` (off), `preview` (off), `allowPreviewInput` (off), `cdpUrl`, `previewUrl` |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
@@ -166,7 +166,7 @@ even when the implementation behind a row is replaced.
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` off |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
-| `optix` | `@aryacode/dsh-tool-ft-optix` | — |
+| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` off · `allowDestructive` off · `allowInvoke` off · `preview` off |
 
 ## Safety
 

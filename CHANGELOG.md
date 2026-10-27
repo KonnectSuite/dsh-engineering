@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.14] - 2026-10-27
+
+### Added
+
+- **FactoryTalk Optix has a Configure page.** The `optix` row now mounts through
+  `entries/optix.js`, which owns a volatile config schema and hands the prebuilt
+  `@aryacode/dsh-tool-ft-optix` plugin plain options. Configure can set the Studio
+  bridge origins and token, live authoring, destructive operations, exported-method
+  invocation, the emulator preview and preview input. Live authoring stays off by
+  default; reads work as soon as a project with the Studio bridge is open.
 ## [0.4.13] - 2026-10-27
 
 ### Changed
