@@ -7,6 +7,7 @@
 import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from './core.ts'
 import type { DisplayFile, TagRow } from './model.ts'
 import { findingsOf } from './checks.ts'
+import { liveMapOf } from './live.ts'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -233,6 +234,42 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
             truncated: changedFiles.length > limit,
           },
           [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_live_map',
+      description: 'Map the export’s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.',
+      parameters: object({
+        view_id: VIEW_ID,
+        limit: integer('Most tag rows to return. Defaults to 40.', { minimum: 1, maximum: 500 }),
+        live_only: string('Pass "true" to return only controller-backed tags.'),
+      }, []),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const map = liveMapOf(view.app)
+        const limit = optionalInteger(args, 'limit') ?? 40
+        const liveOnly = optionalString(args, 'live_only') === 'true'
+        const rows = (liveOnly ? map.tags.filter(tag => tag.live) : map.tags).slice(0, limit)
+        const summary = `${map.totals.live} of ${map.totals.all} tag(s) name a controller tag; ${map.totals.memory} are memory, ${map.totals.direct} use a direct address; topics: ${map.topics.join(', ') || 'none'}.`
+        return success(
+          summary,
+          {
+            application: map.application,
+            totals: map.totals,
+            topics: map.topics,
+            devices: map.devices,
+            tags: rows,
+            truncated: rows.length < (liveOnly ? map.tags.filter(tag => tag.live).length : map.tags.length),
+          },
+          [
+            {
+              tool: 'ftview_live_map',
+              args: { view_id: optionalString(args, 'view_id') ?? '', live_only: 'true' },
+              why: 'A live preview reads these controller tags over EtherNet/IP once a route is configured; memory tags are shown as not-live rather than made up.',
+            },
+          ],
           COVERAGE,
         )
       },

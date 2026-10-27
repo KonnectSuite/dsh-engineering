@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.10.0] - 2026-10-27
+
+### Added
+
+- **`ftview_live_map`.** Maps every HMI tag in the export to the controller tag named in the CSV `Address`
+  column (`::[topic]tag`), and reports coverage. It answers the question a live viewer depends on without
+  contacting a controller and without inventing a value: on the Carpenter Laminator application **293 of 295
+  tags are controller-backed** (topic `Laminator`), the other two are HMI memory.
+- **Image assets are exported.** The vendor export engine does not copy bitmaps, so image objects could never
+  render. `ftview_export` now copies the store's `Images/` tree into the export, and warns only when a display
+  actually references an image and the store has none.
+
+### Changed
+
+- FactoryTalk View read surface: 6 → 7 tools; bundle total 99 → 100.
+
+### Known gaps
+
+- The live *values* route and the new viewer are not in this release. The mapping and assets they depend on are.
 ## [0.9.3] - 2026-10-27
 
 ### Fixed

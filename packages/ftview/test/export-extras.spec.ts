@@ -54,6 +54,25 @@ describe('project store extras', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
+  it('copies the bitmaps the displays reference', () => {
+    const { root, app, folder, destination } = store({ alarms: true, tags: true, olderThanDatabase: false })
+    mkdirSync(join(folder, 'Images'), { recursive: true })
+    writeFileSync(join(folder, 'Images', 'logo.bmp'), 'bmp')
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.copied).toContain('Images/logo.bmp')
+    expect(result.warnings).toEqual([])
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('warns only when a display actually references an image', () => {
+    const { root, app, destination } = store({ alarms: true, tags: true, olderThanDatabase: false })
+    mkdirSync(join(destination, 'Displays'), { recursive: true })
+    writeFileSync(join(destination, 'Displays', 'Main.xml'), '<display><image imageName="logo"/></display>')
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.warnings.join(' ')).toContain('cannot render')
+    rmSync(root, { recursive: true, force: true })
+  })
+
   it('reports a missing project store instead of pretending', () => {
     const root = join(tmpdir(), `ftview-store-${randomUUID()}`)
     mkdirSync(root, { recursive: true })

@@ -12,7 +12,7 @@
  */
 
 import { spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** CLSID of the ME export server (`MEExport.exe`). */
@@ -234,6 +234,39 @@ export function copyProjectExtras(application: string, destination: string, docu
     if (warning !== undefined) warnings.push(warning)
   } else {
     warnings.push('No tag CSV in the application store, so tags were not exported. Export the tag database from Studio once.')
+  }
+  // Display objects can reference bitmaps by name, and the export engine does not
+  // copy them: without this folder every image object draws as an empty box.
+  const images = join(source, 'Images')
+  if (existsSync(images) && statSync(images).isDirectory()) {
+    const target = join(destination, 'Images')
+    mkdirSync(target, { recursive: true })
+    const copy = (directory: string, prefix: string): void => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+        if (entry.isDirectory()) copy(join(directory, entry.name), relative)
+        else {
+          copyFileSync(join(directory, entry.name), join(destination, 'Images', relative))
+          copied.push(`Images/${relative}`)
+        }
+      }
+    }
+    copy(images, '')
+  } else {
+    // Only a display that actually references an image makes the missing folder a
+    // problem; warning on every application without bitmaps would be noise.
+    const displays = join(destination, 'Displays')
+    const referencesImage = existsSync(displays) && readdirSync(displays).some(file => {
+      if (!/\.xml$/iu.test(file)) return false
+      try {
+        return /<image[\s>]/iu.test(readFileSync(join(displays, file), 'utf8'))
+      } catch {
+        return false
+      }
+    })
+    if (referencesImage) {
+      warnings.push('The exported displays reference images, but the application store has no Images folder, so those objects cannot render. Add the bitmaps in Studio or attach a folder that has them.')
+    }
   }
   return { copied, warnings }
 }
