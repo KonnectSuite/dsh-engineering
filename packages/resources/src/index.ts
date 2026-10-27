@@ -63,30 +63,41 @@ export interface ProfilesService {
  * @param config - Row configuration.
  */
 export function apply(ctx: { tools: { register(definition: unknown): void }; get?: (name: string) => unknown; provide?: (name: string, value: unknown) => void; logger?: { warn?(message: string): void } }, config: Config = {}): void {
-  const getService = (service: string): unknown => (typeof ctx.get === 'function' ? ctx.get(service) : undefined)
-  if (config.reference !== false) {
-    for (const definition of resourceTools(getService)) ctx.tools.register(definition)
-  }
-  ctx.provide?.(PROFILES_SERVICE, { get: getProfile } satisfies ProfilesService)
-  const path = skillPath()
-  const skills = getService('skills') as { register?(definition: unknown): void } | undefined
-  if (path === undefined || skills?.register === undefined) {
-    try {
-      ctx.logger?.warn?.('engineering-resources: the engineering-standards skill was not registered; the tools are available.')
-    } catch {
-      // A logger that refuses must not turn a missing skill into a crash.
+  // A reference row must never be able to stop the application from booting:
+  // in 0.9.0 a row id that collided with a harness service did exactly that.
+  // Anything that goes wrong here is reported and skipped.
+  try {
+    const getService = (service: string): unknown => (typeof ctx.get === 'function' ? ctx.get(service) : undefined)
+    if (config.reference !== false) {
+      for (const definition of resourceTools(getService)) ctx.tools.register(definition)
     }
-    return
+    ctx.provide?.(PROFILES_SERVICE, { get: getProfile } satisfies ProfilesService)
+    const path = skillPath()
+    const skills = getService('skills') as { register?(definition: unknown): void } | undefined
+    if (path === undefined || skills?.register === undefined) {
+      try {
+        ctx.logger?.warn?.('engineering-resources: the engineering-standards skill was not registered; the tools are available.')
+      } catch {
+        // A logger that refuses must not turn a missing skill into a crash.
+      }
+      return
+    }
+    const content = readFileSync(path, 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
+    skills.register({
+      ...SKILL,
+      content,
+      path,
+      source: 'custom',
+      provider: '@aryacode/dsh-engineering',
+      invocation: { modelInvocable: true, userInvocable: true },
+    })
+  } catch (error) {
+    try {
+      ctx.logger?.warn?.(`engineering-resources: the row did not mount: ${error instanceof Error ? error.message : String(error)}`)
+    } catch {
+      // Nothing left to report to.
+    }
   }
-  const content = readFileSync(path, 'utf8').replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
-  skills.register({
-    ...SKILL,
-    content,
-    path,
-    source: 'custom',
-    provider: '@aryacode/dsh-engineering',
-    invocation: { modelInvocable: true, userInvocable: true },
-  })
 }
 
 export { getProfile } from './store.ts'

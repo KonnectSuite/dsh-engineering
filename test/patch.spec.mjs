@@ -34,7 +34,7 @@ test('is one row per product plus the component rows', () => {
     { id: 'ftview', name: '@aryacode/dsh-engineering/ftview' },
     { id: 'mwi', name: '@aryacode/dsh-engineering/mwi' },
     { id: 'viewers', name: '@aryacode/dsh-engineering' },
-    { id: 'resources', name: '@aryacode/dsh-engineering/resources' },
+    { id: 'engineering-resources', name: '@aryacode/dsh-engineering/resources' },
     { id: 'optix', name: '@aryacode/dsh-engineering/optix' },
   ])
 })
@@ -53,5 +53,13 @@ test('the product entries it names exist and declare a config form', () => {
     const text = readFileSync(new URL(`../entries/${entry}.js`, import.meta.url), 'utf8')
     assert.match(text, /export const Config = z\.object\(/u, `entries/${entry}.js declares no Config schema`)
     assert.match(text, /export function apply\(ctx, config = \{\}\)/u, `entries/${entry}.js has no apply(ctx, config)`)
+  }
+})
+
+test('row ids cannot shadow a harness service name', () => {
+  const reserved = new Set(['resources', 'tools', 'skills', 'fs', 'approval', 'session', 'storage', 'workspace', 'http'])
+  for (const row of inserted.insert) {
+    assert.ok(!reserved.has(row.id), `${row.id} would shadow the harness service of the same name`)
+    assert.match(row.id, /^(l5x|ftview|mwi|optix|viewers|engineering-[a-z-]+)$/u, `${row.id} is not a namespaced row id`)
   }
 })

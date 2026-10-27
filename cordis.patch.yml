@@ -42,7 +42,7 @@
     # Rockwell, Yaskawa, HMI and craft rules), a house-style profile read from the
     # open project, and the engineering-standards skill that says to read both
     # before authoring. Disable it in a lean profile; it adds no product row.
-    - id: resources
+    - id: engineering-resources
       name: '@aryacode/dsh-engineering/resources'
 
     # FactoryTalk Optix: vendored like the other three products, so one install

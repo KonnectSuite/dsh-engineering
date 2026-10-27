@@ -25,8 +25,8 @@
         "CRAFT-COMMENT-03"
       ],
       "words": 114,
-      "bytes": 979,
-      "sha256": "5b3f6937217131651e6c6be71a8898077ca1bf9224c0ca7f95067cbe777b3a29"
+      "bytes": 950,
+      "sha256": "e06718799b0d63da30427ce626127979ffcf37ff355ec63360651317c093657e"
     },
     {
       "id": "craft-debounce-and-filtering",
@@ -50,8 +50,8 @@
         "CRAFT-FILTER-02"
       ],
       "words": 101,
-      "bytes": 886,
-      "sha256": "7c5de59514214814fa56a666641b199f4136daac6abf737b2fa98f701a081b7b"
+      "bytes": 857,
+      "sha256": "1394c29be10d3651bbf5f2273116cc9306097f33b4b983b495121c25dd534756"
     },
     {
       "id": "craft-fault-handling",
@@ -77,8 +77,8 @@
         "CRAFT-FAULT-03"
       ],
       "words": 134,
-      "bytes": 1057,
-      "sha256": "99286dce9a4d0fd394975d701e99a406062a124f47580987afb03b6d4598b270"
+      "bytes": 1025,
+      "sha256": "b3a278eb040adee652f55c6b16eef243e70ed8abf4b831c46a99d91240109be9"
     },
     {
       "id": "craft-naming",
@@ -104,8 +104,8 @@
         "CRAFT-NAME-03"
       ],
       "words": 117,
-      "bytes": 1045,
-      "sha256": "2cf522a7758e11e522b46300da2ee56fe9f9fb55999042cc1c1abdfad8cef5d7"
+      "bytes": 1015,
+      "sha256": "50d35835ddc2a445b15dee90465eb26fd472941785c8d8e13ee0f28d3bccd052"
     },
     {
       "id": "craft-review-checklist",
@@ -131,8 +131,8 @@
         "CRAFT-REVIEW-02"
       ],
       "words": 103,
-      "bytes": 914,
-      "sha256": "dcf743eed32bd1253364657d43844a96d709f29afe334a4ec5cfc0e92f1cf42c"
+      "bytes": 885,
+      "sha256": "fa7bb33d3350972edbfc011ddae10312b1d605c317b3c345b393ce4669625392"
     },
     {
       "id": "craft-units-and-ranges",
@@ -158,8 +158,8 @@
         "CRAFT-UNIT-03"
       ],
       "words": 113,
-      "bytes": 971,
-      "sha256": "bb98e0e0f61eeb937941e7fad70067b5bdd6d93540ad3da5dc7fb75398395506"
+      "bytes": 939,
+      "sha256": "c08d6cf6e901445357df5601742a1fdc779c900a03805e0b8be40252e33bc992"
     },
     {
       "id": "iec-ld-fbd-equivalence",
@@ -184,8 +184,8 @@
         "IEC-LANG-02"
       ],
       "words": 128,
-      "bytes": 1089,
-      "sha256": "7fcd85dec9967b5f70cae8d9f6ca9f9e551ee23b0d74694c55ce263bd91c79e8"
+      "bytes": 1058,
+      "sha256": "09f623022dc470acd0f40aa473e75bebbc733a7f30d0ee7733d9553ec09d6469"
     },
     {
       "id": "iec-sequences-and-sfc",
@@ -210,8 +210,8 @@
         "IEC-SEQ-03"
       ],
       "words": 147,
-      "bytes": 1141,
-      "sha256": "5bf422e7dbcf3dd5506b8f005c3992cde6556a113f7ebccefc27055bdd6c6209"
+      "bytes": 1109,
+      "sha256": "864a20fe28cc31f4afa574092e9340de27f13dd071a908cf503bf0ad576ffc52"
     },
     {
       "id": "iec-st-structure",
@@ -237,8 +237,8 @@
         "IEC-ST-03"
       ],
       "words": 156,
-      "bytes": 1281,
-      "sha256": "05f3eacfaf047d3d334c20932ed9c12da8cacd04a2e1cd49d1ca0884101aa8a3"
+      "bytes": 1248,
+      "sha256": "ddb172598ef61303cfca7839da5e77a3cdc645459f7c605abdf04e25b44cdf21"
     },
     {
       "id": "iec-state-machines",
@@ -263,8 +263,8 @@
         "IEC-SM-03"
       ],
       "words": 159,
-      "bytes": 1254,
-      "sha256": "98f05c3dd302d73db539698c7f7bd7d7d66e0750da97ec0149a28bef14be4285"
+      "bytes": 1221,
+      "sha256": "9bcbc625380974b4af686216a6b69339d3d72a236072d38e6acd76ca999ac57d"
     },
     {
       "id": "iec-task-model",
@@ -289,8 +289,8 @@
         "IEC-TASK-03"
       ],
       "words": 143,
-      "bytes": 1084,
-      "sha256": "4373d0a2937699bc268f633ac4f65da647f8370aa1e1605ac1244dfffe6c7c7f"
+      "bytes": 1053,
+      "sha256": "32e5aac730dc25c8fd0d29cd7c6911e9b7109974091b60f8739ef9a445d49ea8"
     },
     {
       "id": "iec-types-and-scaling",
@@ -316,8 +316,8 @@
         "IEC-TYPE-03"
       ],
       "words": 138,
-      "bytes": 1097,
-      "sha256": "530b2f0159338901c672f6f53b45ea643d042388d4871eb8ae96b387684a3b61"
+      "bytes": 1065,
+      "sha256": "fcd9c1517662f572bd446213b9b265f603cfa9e5ae5bf9eab708edad4a259c2c"
     },
     {
       "id": "optix-alarms-and-trends",
@@ -340,8 +340,8 @@
         "OPTIX-ALM-02"
       ],
       "words": 102,
-      "bytes": 931,
-      "sha256": "010491cd13cdea9f74a06f7a25c81aa7e3970e852a608a81b9f338a4e5bfe489"
+      "bytes": 901,
+      "sha256": "bffd53f4cd10c07a225f34b59346ddf4a66f5863c6b1aa92bab5780f7e75260e"
     },
     {
       "id": "optix-bindings-and-expressions",
@@ -365,8 +365,8 @@
         "OPTIX-BIND-03"
       ],
       "words": 120,
-      "bytes": 1040,
-      "sha256": "c3565912e29a62257648e6ef4ceff61abb67f04fcbe97c6f87b50603949926a8"
+      "bytes": 1010,
+      "sha256": "de1bb831b9b67b191e70a16fe8327a464c29cd907f1740a25e74407e5f95056f"
     },
     {
       "id": "optix-netlogic-usage",
@@ -388,8 +388,8 @@
         "OPTIX-NL-02"
       ],
       "words": 111,
-      "bytes": 934,
-      "sha256": "378eacb84628dbc3599ce8e689f052275cc77ed17e75ed5f074138468391628b"
+      "bytes": 905,
+      "sha256": "9b61fd2a83f374c48215972602c33303b51201f7bbce8f096ed336e7cf26bcd9"
     },
     {
       "id": "optix-ui-structure",
@@ -412,8 +412,8 @@
         "OPTIX-UI-02"
       ],
       "words": 96,
-      "bytes": 888,
-      "sha256": "aec855c8e9495e5cf87fe564511d0361a727f1f0eae4a36c887ed583c39acb50"
+      "bytes": 859,
+      "sha256": "678a9bdd921a2d93ac273ef05f81cfaad6be999ac4978d7ed78bdb74753dd625"
     },
     {
       "id": "rockwell-aoi-and-udt",
@@ -437,8 +437,8 @@
         "ROCK-AOI-03"
       ],
       "words": 155,
-      "bytes": 1188,
-      "sha256": "efed4ef60e372189d1b45424f491f8314419a550abd028258c03c69b3dd8f945"
+      "bytes": 1156,
+      "sha256": "5362b68c0f81e627fff313634a59b6ebc7c5245f8255c1d00129c002d7c71e0a"
     },
     {
       "id": "rockwell-fault-and-alarm-words",
@@ -463,8 +463,8 @@
         "ROCK-ALM-03"
       ],
       "words": 133,
-      "bytes": 1054,
-      "sha256": "092195dc54105fa3c93e4b2cdd15a8a2a3f05fed423c365f809948bf25ccb859"
+      "bytes": 1023,
+      "sha256": "b53b04517a15a83ed0431b7feac2d8aad940da1b8e4c089e89027e1d46b71a8c"
     },
     {
       "id": "rockwell-hmi-handshake",
@@ -489,8 +489,8 @@
         "ROCK-HMI-03"
       ],
       "words": 154,
-      "bytes": 1129,
-      "sha256": "8828a712083e9c7f61421ba20d57e77c3da25115a212b0a5845609a5508e6a97"
+      "bytes": 1096,
+      "sha256": "5314e3714b19345a54f143d265ca557ac67679450478d70fcca1a421ae522aa5"
     },
     {
       "id": "rockwell-program-structure",
@@ -514,8 +514,8 @@
         "ROCK-STRUCT-03"
       ],
       "words": 155,
-      "bytes": 1201,
-      "sha256": "7b1f041b39a89a71bb147f4f808b2137db1e2078f9d22d87d58434113c862f4e"
+      "bytes": 1169,
+      "sha256": "42adfb1ac9f412b8fc8cb6dd029bc34bdaddaed74f18120c8c1a5effc687a0fd"
     },
     {
       "id": "rockwell-safety-boundaries",
@@ -537,8 +537,8 @@
         "ROCK-SAFE-02"
       ],
       "words": 133,
-      "bytes": 1059,
-      "sha256": "68bd8c779d714a1714707ea72368cf5d6ddc5e1896c293d95e0d329217e79d6b"
+      "bytes": 1028,
+      "sha256": "c1912a240427255e8d3bca4580d353fe694a5be9050ad99c775c196752e193a5"
     },
     {
       "id": "rockwell-tag-naming",
@@ -562,8 +562,8 @@
         "ROCK-NAME-03"
       ],
       "words": 137,
-      "bytes": 1167,
-      "sha256": "9297115ad5bf06cd76e63340aa6b252b588179dea275419c91cf0c3f98eeebff"
+      "bytes": 1134,
+      "sha256": "1bb7771a4f1446533e388f14d05d9394b05b4b6acbf6856e86553ff9ac27cd63"
     },
     {
       "id": "view-alarm-presentation",
@@ -588,8 +588,8 @@
         "VIEW-ALM-03"
       ],
       "words": 135,
-      "bytes": 1083,
-      "sha256": "d71da64ce546b711ba74a7a0f361adc6a0213000e830ae8078c5a1bbc8444e20"
+      "bytes": 1051,
+      "sha256": "b9ca8bc469dbd4b7aefba6fe1bd7f0f5c1ce15ca9ffb29b103b5defd0090cc18"
     },
     {
       "id": "view-colour-and-contrast",
@@ -614,8 +614,8 @@
         "VIEW-COLOR-03"
       ],
       "words": 141,
-      "bytes": 1106,
-      "sha256": "25212505328692ec99e84a0d56ce1495f0a14ccb5c14748a19adf29277516599"
+      "bytes": 1075,
+      "sha256": "a09cf5d76eabe1c4692b5e7306006a4901673a46938af3a352fabb08546ebc70"
     },
     {
       "id": "view-faceplates",
@@ -641,8 +641,8 @@
         "VIEW-FACE-03"
       ],
       "words": 124,
-      "bytes": 1099,
-      "sha256": "c379e73c5113da771dea42c65a2787da3be4b463b72c7a44e000e484dc2cf967"
+      "bytes": 1067,
+      "sha256": "12006c7e22bf4d808091f11db1c257d055e40bf750618131fc3af95789df18a7"
     },
     {
       "id": "view-hpm-01",
@@ -667,8 +667,8 @@
         "VIEW-HPM-03"
       ],
       "words": 155,
-      "bytes": 1164,
-      "sha256": "ebcd0cbb9e04b217eaafd6cbd17c7ca50042db0bca831b68f119d8a0fb4cf8a3"
+      "bytes": 1131,
+      "sha256": "2073a919373d10a9c04b1f2572ea58179b65ef76852ca327de62363a96d8e45a"
     },
     {
       "id": "view-navigation",
@@ -692,8 +692,8 @@
         "VIEW-NAV-03"
       ],
       "words": 129,
-      "bytes": 1016,
-      "sha256": "f9e33b3b1f0f735496fc2b0d294e703d6928629136343515d4e33b4addafed4d"
+      "bytes": 985,
+      "sha256": "576e37e8055836bef16104f5ef9f1ddba4e95edf696c0669cae068f0b34804d7"
     },
     {
       "id": "view-popup-patterns",
@@ -718,8 +718,8 @@
         "VIEW-POP-03"
       ],
       "words": 130,
-      "bytes": 1042,
-      "sha256": "4c3157abeb94fa3c531901df375578bd7e5168efd52ee20318c094bbc3260737"
+      "bytes": 1011,
+      "sha256": "81ca1134b41d87c6a7d825d92dbcce3e014b3a0a98a578f80645fd214c00ccc2"
     },
     {
       "id": "view-screen-hierarchy",
@@ -744,8 +744,8 @@
         "VIEW-HIER-03"
       ],
       "words": 122,
-      "bytes": 1014,
-      "sha256": "1f830cfdeb1a1b468fdcc1ff485aad0d165f43eb990555c3f4c144f9738e21d2"
+      "bytes": 983,
+      "sha256": "71e48de3b3e2eb978c68be6729a157e38fda8df3ee8369b4692e6e28020d349a"
     },
     {
       "id": "yaskawa-cam-and-gear",
@@ -768,8 +768,8 @@
         "YAS-CAM-02"
       ],
       "words": 126,
-      "bytes": 1016,
-      "sha256": "c7daa56057c8b782def3b13fbeedaa256d175b7fb0bea9935ee8112e0ac2c038"
+      "bytes": 985,
+      "sha256": "45d919e1c010ed5f98c5042b1e506560432037bdc01c952816461a21c87c9a86"
     },
     {
       "id": "yaskawa-error-handling",
@@ -793,8 +793,8 @@
         "YAS-ERR-03"
       ],
       "words": 122,
-      "bytes": 996,
-      "sha256": "08b39eaa828dfc364b1a168c1e905965157dd4aa545431b7020cd7f646d2de49"
+      "bytes": 965,
+      "sha256": "8676451ede7683bb5e73b6c4ce124f5aeb1b0e1957268fadd091b8db3f7c44d0"
     },
     {
       "id": "yaskawa-motion-function-blocks",
@@ -818,8 +818,8 @@
         "YAS-MOT-03"
       ],
       "words": 132,
-      "bytes": 1073,
-      "sha256": "eecf653a91588ca5457ce41d2e4559b3db28c3d734c6968f200fdc3743750198"
+      "bytes": 1041,
+      "sha256": "90799f994b10aecd90788f727a9740e24a86b9b83c308462fde22014be9d972f"
     },
     {
       "id": "yaskawa-pou-organisation",
@@ -842,8 +842,8 @@
         "YAS-POU-02"
       ],
       "words": 116,
-      "bytes": 988,
-      "sha256": "23c919d18f74c52ab204a4950a62b79bad5f1e983ca62a4481536487cd045f1c"
+      "bytes": 959,
+      "sha256": "117af5ee253e5323ebcc128f1af5b8366e7e2d55b36593da1e993fcfb1a92a32"
     },
     {
       "id": "yaskawa-task-rates",
@@ -866,8 +866,8 @@
         "YAS-TASK-02"
       ],
       "words": 105,
-      "bytes": 891,
-      "sha256": "e923c78d13a324df515e83df52283a52c01b1399425f797e90bdeb1dae3c149a"
+      "bytes": 861,
+      "sha256": "23d25e59e7deed006fb0090f4299dfaa6f374b9efce66e95685fa99b47a8640f"
     }
   ]
 }

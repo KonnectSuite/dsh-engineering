@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.9.1] - 2026-10-27
+
+### Fixed
+
+- **0.9.0 could stop AryaCode from booting.** The new row was inserted with `id: resources`, and `resources`
+  is the name of a harness service other entries wait for; inserting a row under that id displaced the
+  provider, so the boot reported `44 entries did not activate` and the application had to start with plugins
+  disabled. The row is now `engineering-resources` (namespaced like every other non-product row), and a test
+  rejects any future row id that matches a harness service name.
+- **The resources row can no longer break a boot even if it fails.** Its `apply()` wraps registration and
+  skill mounting in a guard that reports and continues; a reference surface must never be load-bearing.
+- **The corpus is now actually shipped.** The assembler copied only `lib/` and `SKILL.md`, so the vendored
+  package had no `corpus/`, `index.json` or `SOURCE.json` and `engineering_reference` would have failed at
+  the first call. `scripts/assemble.mjs` now copies those files, and the packed artifact is checked for them.
 ## [0.9.0] - 2026-10-27
 
 ### Added

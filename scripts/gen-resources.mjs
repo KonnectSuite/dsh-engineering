@@ -47,7 +47,9 @@ export function parseFrontMatter(text) {
       fields[key] = value
     }
   }
-  return { fields, body: match[2] }
+  // Line endings are a checkout detail, not content: hash the normalised body so
+  // an index built on Windows is current on a Linux CI checkout too.
+  return { fields, body: match[2].replace(/\r\n/gu, '\n') }
 }
 
 /** One page as the index and validator see it. */
