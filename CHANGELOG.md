@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.9] - 2026-10-26
+
+### Fixed
+
+- Republished the row settings pages with the client half's declared service list taken from every
+  bundled face rather than the two viewer faces. Same pages and same defaults as 0.4.8; this build is
+  the installable one.
+
 ## [0.4.8] - 2026-10-26
 
 ### Fixed

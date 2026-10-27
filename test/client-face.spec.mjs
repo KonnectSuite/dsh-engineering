@@ -4,7 +4,7 @@
  * A client bundle registers under its package name, and the shell only scans
  * packages a row mounts, so "the faces are in the bundle" means three things
  * that are easy to lose independently: the artifact registers the bundle's own
- * name, it carries *both* faces, and the row that mounts it names the package
+ * name, it carries every face, and the row that mounts it names the package
  * root. A mistake in any of them presents as a plugin that loaded and drew
  * nothing, with no error anywhere - which is why every one of them is a test.
  */
