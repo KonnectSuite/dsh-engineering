@@ -1,6 +1,0 @@
-﻿p="entries/mwi.js"; s=open(p,encoding="utf-8").read()
-s=s.replace("workspace: z.string().default('').description(", "workspace: z.string().default('').volatile().description(")
-s=s.replace("export function apply(ctx, config = {}) {\n  configureWorkspace(config.workspace)\n", "export function apply(ctx, config = {}) {\n")
-s=s.replace("  const sync = () => {\n    const wanted = flag(config.edit)", "  const sync = () => {\n    configureWorkspace(config.workspace)\n    const wanted = flag(config.edit)")
-open(p,"w",encoding="utf-8",newline="\n").write(s)
-print("ok")
