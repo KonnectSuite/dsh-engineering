@@ -1,0 +1,873 @@
+{
+  "corpus": 1,
+  "pages": [
+    {
+      "id": "craft-comments-and-intent",
+      "title": "Comments that explain why",
+      "domain": "craft",
+      "level": "intro",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "comments",
+        "intent"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview",
+        "mwi",
+        "optix"
+      ],
+      "rules": [
+        "CRAFT-COMMENT-01",
+        "CRAFT-COMMENT-02",
+        "CRAFT-COMMENT-03"
+      ],
+      "words": 114,
+      "bytes": 979,
+      "sha256": "5b3f6937217131651e6c6be71a8898077ca1bf9224c0ca7f95067cbe777b3a29"
+    },
+    {
+      "id": "craft-debounce-and-filtering",
+      "title": "Debounce, hysteresis and filtering",
+      "domain": "craft",
+      "level": "practitioner",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "filter",
+        "debounce",
+        "hysteresis"
+      ],
+      "applies_to": [
+        "l5x",
+        "mwi"
+      ],
+      "rules": [
+        "CRAFT-FILTER-01",
+        "CRAFT-FILTER-02"
+      ],
+      "words": 101,
+      "bytes": 886,
+      "sha256": "7c5de59514214814fa56a666641b199f4136daac6abf737b2fa98f701a081b7b"
+    },
+    {
+      "id": "craft-fault-handling",
+      "title": "Faults: detect, latch, annunciate, reset",
+      "domain": "craft",
+      "level": "practitioner",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "faults",
+        "reset",
+        "diagnostics"
+      ],
+      "applies_to": [
+        "l5x",
+        "mwi",
+        "optix"
+      ],
+      "rules": [
+        "CRAFT-FAULT-01",
+        "CRAFT-FAULT-02",
+        "CRAFT-FAULT-03"
+      ],
+      "words": 134,
+      "bytes": 1057,
+      "sha256": "99286dce9a4d0fd394975d701e99a406062a124f47580987afb03b6d4598b270"
+    },
+    {
+      "id": "craft-naming",
+      "title": "Naming that survives the project",
+      "domain": "craft",
+      "level": "intro",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "naming",
+        "readability"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview",
+        "mwi",
+        "optix"
+      ],
+      "rules": [
+        "CRAFT-NAME-01",
+        "CRAFT-NAME-02",
+        "CRAFT-NAME-03"
+      ],
+      "words": 117,
+      "bytes": 1045,
+      "sha256": "2cf522a7758e11e522b46300da2ee56fe9f9fb55999042cc1c1abdfad8cef5d7"
+    },
+    {
+      "id": "craft-review-checklist",
+      "title": "Pre-handover review checklist",
+      "domain": "craft",
+      "level": "practitioner",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "review",
+        "handover",
+        "checklist"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview",
+        "mwi",
+        "optix"
+      ],
+      "rules": [
+        "CRAFT-REVIEW-01",
+        "CRAFT-REVIEW-02"
+      ],
+      "words": 103,
+      "bytes": 914,
+      "sha256": "dcf743eed32bd1253364657d43844a96d709f29afe334a4ec5cfc0e92f1cf42c"
+    },
+    {
+      "id": "craft-units-and-ranges",
+      "title": "Units, ranges and engineering values",
+      "domain": "craft",
+      "level": "intro",
+      "basis": [
+        "field practice"
+      ],
+      "tags": [
+        "units",
+        "range",
+        "scaling"
+      ],
+      "applies_to": [
+        "l5x",
+        "mwi",
+        "optix"
+      ],
+      "rules": [
+        "CRAFT-UNIT-01",
+        "CRAFT-UNIT-02",
+        "CRAFT-UNIT-03"
+      ],
+      "words": 113,
+      "bytes": 971,
+      "sha256": "bb98e0e0f61eeb937941e7fad70067b5bdd6d93540ad3da5dc7fb75398395506"
+    },
+    {
+      "id": "iec-ld-fbd-equivalence",
+      "title": "Ladder, FBD and ST: same logic, different reading",
+      "domain": "iec",
+      "level": "intro",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "ladder",
+        "fbd",
+        "st",
+        "translation"
+      ],
+      "applies_to": [
+        "l5x",
+        "mwi"
+      ],
+      "rules": [
+        "IEC-LANG-01",
+        "IEC-LANG-02"
+      ],
+      "words": 128,
+      "bytes": 1089,
+      "sha256": "7fcd85dec9967b5f70cae8d9f6ca9f9e551ee23b0d74694c55ce263bd91c79e8"
+    },
+    {
+      "id": "iec-sequences-and-sfc",
+      "title": "Sequences, steps and timeouts",
+      "domain": "iec",
+      "level": "practitioner",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "sequence",
+        "sfc",
+        "step"
+      ],
+      "applies_to": [
+        "mwi",
+        "l5x"
+      ],
+      "rules": [
+        "IEC-SEQ-01",
+        "IEC-SEQ-02",
+        "IEC-SEQ-03"
+      ],
+      "words": 147,
+      "bytes": 1141,
+      "sha256": "5bf422e7dbcf3dd5506b8f005c3992cde6556a113f7ebccefc27055bdd6c6209"
+    },
+    {
+      "id": "iec-st-structure",
+      "title": "Structured Text that reads like a specification",
+      "domain": "iec",
+      "level": "practitioner",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "st",
+        "structure",
+        "declarations"
+      ],
+      "applies_to": [
+        "mwi",
+        "optix",
+        "l5x"
+      ],
+      "rules": [
+        "IEC-ST-01",
+        "IEC-ST-02",
+        "IEC-ST-03"
+      ],
+      "words": 156,
+      "bytes": 1281,
+      "sha256": "05f3eacfaf047d3d334c20932ed9c12da8cacd04a2e1cd49d1ca0884101aa8a3"
+    },
+    {
+      "id": "iec-state-machines",
+      "title": "State machines that fail predictably",
+      "domain": "iec",
+      "level": "practitioner",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "state-machine",
+        "case",
+        "sequence"
+      ],
+      "applies_to": [
+        "mwi",
+        "l5x"
+      ],
+      "rules": [
+        "IEC-SM-01",
+        "IEC-SM-02",
+        "IEC-SM-03"
+      ],
+      "words": 159,
+      "bytes": 1254,
+      "sha256": "98f05c3dd302d73db539698c7f7bd7d7d66e0750da97ec0149a28bef14be4285"
+    },
+    {
+      "id": "iec-task-model",
+      "title": "Tasks, scan time and determinism",
+      "domain": "iec",
+      "level": "specialist",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "task",
+        "scan",
+        "watchdog"
+      ],
+      "applies_to": [
+        "mwi",
+        "l5x"
+      ],
+      "rules": [
+        "IEC-TASK-01",
+        "IEC-TASK-02",
+        "IEC-TASK-03"
+      ],
+      "words": 143,
+      "bytes": 1084,
+      "sha256": "4373d0a2937699bc268f633ac4f65da647f8370aa1e1605ac1244dfffe6c7c7f"
+    },
+    {
+      "id": "iec-types-and-scaling",
+      "title": "Types, ranges and scaling without surprises",
+      "domain": "iec",
+      "level": "practitioner",
+      "basis": [
+        "IEC 61131-3"
+      ],
+      "tags": [
+        "types",
+        "scaling",
+        "real"
+      ],
+      "applies_to": [
+        "mwi",
+        "l5x",
+        "optix"
+      ],
+      "rules": [
+        "IEC-TYPE-01",
+        "IEC-TYPE-02",
+        "IEC-TYPE-03"
+      ],
+      "words": 138,
+      "bytes": 1097,
+      "sha256": "530b2f0159338901c672f6f53b45ea643d042388d4871eb8ae96b387684a3b61"
+    },
+    {
+      "id": "optix-alarms-and-trends",
+      "title": "Alarms and trends in Optix",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk Optix",
+        "ISA-18.2"
+      ],
+      "tags": [
+        "alarms",
+        "trends"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-ALM-01",
+        "OPTIX-ALM-02"
+      ],
+      "words": 102,
+      "bytes": 931,
+      "sha256": "010491cd13cdea9f74a06f7a25c81aa7e3970e852a608a81b9f338a4e5bfe489"
+    },
+    {
+      "id": "optix-bindings-and-expressions",
+      "title": "Bindings and expressions",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk Optix"
+      ],
+      "tags": [
+        "bindings",
+        "expressions",
+        "converters"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-BIND-01",
+        "OPTIX-BIND-02",
+        "OPTIX-BIND-03"
+      ],
+      "words": 120,
+      "bytes": 1040,
+      "sha256": "c3565912e29a62257648e6ef4ceff61abb67f04fcbe97c6f87b50603949926a8"
+    },
+    {
+      "id": "optix-netlogic-usage",
+      "title": "When to use NetLogic",
+      "domain": "optix",
+      "level": "specialist",
+      "basis": [
+        "FactoryTalk Optix"
+      ],
+      "tags": [
+        "netlogic",
+        "csharp"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-NL-01",
+        "OPTIX-NL-02"
+      ],
+      "words": 111,
+      "bytes": 934,
+      "sha256": "378eacb84628dbc3599ce8e689f052275cc77ed17e75ed5f074138468391628b"
+    },
+    {
+      "id": "optix-ui-structure",
+      "title": "Optix screens and reusable types",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk Optix"
+      ],
+      "tags": [
+        "screens",
+        "types",
+        "objects"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-UI-01",
+        "OPTIX-UI-02"
+      ],
+      "words": 96,
+      "bytes": 888,
+      "sha256": "aec855c8e9495e5cf87fe564511d0361a727f1f0eae4a36c887ed583c39acb50"
+    },
+    {
+      "id": "rockwell-aoi-and-udt",
+      "title": "AOIs and UDTs: reuse without hidden coupling",
+      "domain": "rockwell",
+      "level": "specialist",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "aoi",
+        "udt",
+        "reuse"
+      ],
+      "applies_to": [
+        "l5x"
+      ],
+      "rules": [
+        "ROCK-AOI-01",
+        "ROCK-AOI-02",
+        "ROCK-AOI-03"
+      ],
+      "words": 155,
+      "bytes": 1188,
+      "sha256": "efed4ef60e372189d1b45424f491f8314419a550abd028258c03c69b3dd8f945"
+    },
+    {
+      "id": "rockwell-fault-and-alarm-words",
+      "title": "Fault and alarm words",
+      "domain": "rockwell",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "alarms",
+        "faults",
+        "words"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview"
+      ],
+      "rules": [
+        "ROCK-ALM-01",
+        "ROCK-ALM-02",
+        "ROCK-ALM-03"
+      ],
+      "words": 133,
+      "bytes": 1054,
+      "sha256": "092195dc54105fa3c93e4b2cdd15a8a2a3f05fed423c365f809948bf25ccb859"
+    },
+    {
+      "id": "rockwell-hmi-handshake",
+      "title": "The PLC–HMI handshake",
+      "domain": "rockwell",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "hmi",
+        "handshake",
+        "comms"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview"
+      ],
+      "rules": [
+        "ROCK-HMI-01",
+        "ROCK-HMI-02",
+        "ROCK-HMI-03"
+      ],
+      "words": 154,
+      "bytes": 1129,
+      "sha256": "8828a712083e9c7f61421ba20d57e77c3da25115a212b0a5845609a5508e6a97"
+    },
+    {
+      "id": "rockwell-program-structure",
+      "title": "Logix program structure that scales",
+      "domain": "rockwell",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "program",
+        "routine",
+        "aoi"
+      ],
+      "applies_to": [
+        "l5x"
+      ],
+      "rules": [
+        "ROCK-STRUCT-01",
+        "ROCK-STRUCT-02",
+        "ROCK-STRUCT-03"
+      ],
+      "words": 155,
+      "bytes": 1201,
+      "sha256": "7b1f041b39a89a71bb147f4f808b2137db1e2078f9d22d87d58434113c862f4e"
+    },
+    {
+      "id": "rockwell-safety-boundaries",
+      "title": "Where safety does not belong",
+      "domain": "rockwell",
+      "level": "specialist",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "safety",
+        "boundaries"
+      ],
+      "applies_to": [
+        "l5x"
+      ],
+      "rules": [
+        "ROCK-SAFE-01",
+        "ROCK-SAFE-02"
+      ],
+      "words": 133,
+      "bytes": 1059,
+      "sha256": "68bd8c779d714a1714707ea72368cf5d6ddc5e1896c293d95e0d329217e79d6b"
+    },
+    {
+      "id": "rockwell-tag-naming",
+      "title": "Tag names that carry meaning",
+      "domain": "rockwell",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell"
+      ],
+      "tags": [
+        "naming",
+        "tags"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview"
+      ],
+      "rules": [
+        "ROCK-NAME-01",
+        "ROCK-NAME-02",
+        "ROCK-NAME-03"
+      ],
+      "words": 137,
+      "bytes": 1167,
+      "sha256": "9297115ad5bf06cd76e63340aa6b252b588179dea275419c91cf0c3f98eeebff"
+    },
+    {
+      "id": "view-alarm-presentation",
+      "title": "Alarm presentation the operator can use",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-18.2"
+      ],
+      "tags": [
+        "alarms",
+        "banner",
+        "priority"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-ALM-01",
+        "VIEW-ALM-02",
+        "VIEW-ALM-03"
+      ],
+      "words": 135,
+      "bytes": 1083,
+      "sha256": "d71da64ce546b711ba74a7a0f361adc6a0213000e830ae8078c5a1bbc8444e20"
+    },
+    {
+      "id": "view-colour-and-contrast",
+      "title": "Colour, contrast and meaning",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "colour",
+        "contrast",
+        "accessibility"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-COLOR-01",
+        "VIEW-COLOR-02",
+        "VIEW-COLOR-03"
+      ],
+      "words": 141,
+      "bytes": 1106,
+      "sha256": "25212505328692ec99e84a0d56ce1495f0a14ccb5c14748a19adf29277516599"
+    },
+    {
+      "id": "view-faceplates",
+      "title": "Faceplates and reusable screen objects",
+      "domain": "view",
+      "level": "specialist",
+      "basis": [
+        "ISA-101",
+        "Rockwell"
+      ],
+      "tags": [
+        "faceplate",
+        "reuse",
+        "objects"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-FACE-01",
+        "VIEW-FACE-02",
+        "VIEW-FACE-03"
+      ],
+      "words": 124,
+      "bytes": 1099,
+      "sha256": "c379e73c5113da771dea42c65a2787da3be4b463b72c7a44e000e484dc2cf967"
+    },
+    {
+      "id": "view-hpm-01",
+      "title": "High-performance HMI: what changes on a plant floor",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "hmi",
+        "hierarchy",
+        "overview"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-HPM-01",
+        "VIEW-HPM-02",
+        "VIEW-HPM-03"
+      ],
+      "words": 155,
+      "bytes": 1164,
+      "sha256": "ebcd0cbb9e04b217eaafd6cbd17c7ca50042db0bca831b68f119d8a0fb4cf8a3"
+    },
+    {
+      "id": "view-navigation",
+      "title": "Navigation that never traps the operator",
+      "domain": "view",
+      "level": "intro",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "navigation",
+        "screens"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-NAV-01",
+        "VIEW-NAV-02",
+        "VIEW-NAV-03"
+      ],
+      "words": 129,
+      "bytes": 1016,
+      "sha256": "f9e33b3b1f0f735496fc2b0d294e703d6928629136343515d4e33b4addafed4d"
+    },
+    {
+      "id": "view-popup-patterns",
+      "title": "Popups and dialogs",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "popup",
+        "dialog",
+        "modal"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-POP-01",
+        "VIEW-POP-02",
+        "VIEW-POP-03"
+      ],
+      "words": 130,
+      "bytes": 1042,
+      "sha256": "4c3157abeb94fa3c531901df375578bd7e5168efd52ee20318c094bbc3260737"
+    },
+    {
+      "id": "view-screen-hierarchy",
+      "title": "Screen hierarchy and count",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "hierarchy",
+        "screens",
+        "structure"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-HIER-01",
+        "VIEW-HIER-02",
+        "VIEW-HIER-03"
+      ],
+      "words": 122,
+      "bytes": 1014,
+      "sha256": "1f830cfdeb1a1b468fdcc1ff485aad0d165f43eb990555c3f4c144f9738e21d2"
+    },
+    {
+      "id": "yaskawa-cam-and-gear",
+      "title": "Cams, gears and registration",
+      "domain": "yaskawa",
+      "level": "specialist",
+      "basis": [
+        "Yaskawa"
+      ],
+      "tags": [
+        "cam",
+        "gear",
+        "registration"
+      ],
+      "applies_to": [
+        "mwi"
+      ],
+      "rules": [
+        "YAS-CAM-01",
+        "YAS-CAM-02"
+      ],
+      "words": 126,
+      "bytes": 1016,
+      "sha256": "c7daa56057c8b782def3b13fbeedaa256d175b7fb0bea9935ee8112e0ac2c038"
+    },
+    {
+      "id": "yaskawa-error-handling",
+      "title": "Errors, acknowledgements and retries",
+      "domain": "yaskawa",
+      "level": "practitioner",
+      "basis": [
+        "Yaskawa"
+      ],
+      "tags": [
+        "error",
+        "reset",
+        "retry"
+      ],
+      "applies_to": [
+        "mwi"
+      ],
+      "rules": [
+        "YAS-ERR-01",
+        "YAS-ERR-02",
+        "YAS-ERR-03"
+      ],
+      "words": 122,
+      "bytes": 996,
+      "sha256": "08b39eaa828dfc364b1a168c1e905965157dd4aa545431b7020cd7f646d2de49"
+    },
+    {
+      "id": "yaskawa-motion-function-blocks",
+      "title": "Motion function blocks: execute, done, error",
+      "domain": "yaskawa",
+      "level": "specialist",
+      "basis": [
+        "Yaskawa"
+      ],
+      "tags": [
+        "motion",
+        "fb",
+        "execute"
+      ],
+      "applies_to": [
+        "mwi"
+      ],
+      "rules": [
+        "YAS-MOT-01",
+        "YAS-MOT-02",
+        "YAS-MOT-03"
+      ],
+      "words": 132,
+      "bytes": 1073,
+      "sha256": "eecf653a91588ca5457ce41d2e4559b3db28c3d734c6968f200fdc3743750198"
+    },
+    {
+      "id": "yaskawa-pou-organisation",
+      "title": "Organising a MotionWorks IEC project",
+      "domain": "yaskawa",
+      "level": "practitioner",
+      "basis": [
+        "Yaskawa"
+      ],
+      "tags": [
+        "pou",
+        "organisation",
+        "program"
+      ],
+      "applies_to": [
+        "mwi"
+      ],
+      "rules": [
+        "YAS-POU-01",
+        "YAS-POU-02"
+      ],
+      "words": 116,
+      "bytes": 988,
+      "sha256": "23c919d18f74c52ab204a4950a62b79bad5f1e983ca62a4481536487cd045f1c"
+    },
+    {
+      "id": "yaskawa-task-rates",
+      "title": "Task rates and motion determinism",
+      "domain": "yaskawa",
+      "level": "specialist",
+      "basis": [
+        "Yaskawa"
+      ],
+      "tags": [
+        "task",
+        "rate",
+        "jitter"
+      ],
+      "applies_to": [
+        "mwi"
+      ],
+      "rules": [
+        "YAS-TASK-01",
+        "YAS-TASK-02"
+      ],
+      "words": 105,
+      "bytes": 891,
+      "sha256": "e923c78d13a324df515e83df52283a52c01b1399425f797e90bdeb1dae3c149a"
+    }
+  ]
+}

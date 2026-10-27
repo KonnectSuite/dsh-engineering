@@ -38,6 +38,13 @@
     # context, so this row is independent of every product row above.
     - id: viewers
       name: '@aryacode/dsh-engineering'
+    # Cross-product engineering resources: a local standards corpus (IEC 61131-3,
+    # Rockwell, Yaskawa, HMI and craft rules), a house-style profile read from the
+    # open project, and the engineering-standards skill that says to read both
+    # before authoring. Disable it in a lean profile; it adds no product row.
+    - id: resources
+      name: '@aryacode/dsh-engineering/resources'
+
     # FactoryTalk Optix: vendored like the other three products, so one install
     # carries every surface and no component package is a dependency.
     - id: optix

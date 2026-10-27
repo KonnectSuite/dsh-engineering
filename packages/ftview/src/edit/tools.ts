@@ -81,15 +81,15 @@ function jsonObject(value: unknown, name: string): Record<string, string> {
  * @param maxOperations - Inclusive operations per draft.
  * @returns Tool definitions in registration order.
  */
-export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number): readonly ToolDefinition[] {
+export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown): readonly ToolDefinition[] {
   /** Resolve the view and append one operation. */
   const stage = (exec: ExecContext | undefined, viewId: string | undefined, operation: EditOperation) => {
     const view = session.require(viewId, exec)
     return { view, draft: drafts.append(exec, view.id, operation, maxOperations) }
   }
-  const staged = (draft: { readonly id: string; readonly operations: readonly unknown[] }, operation: EditOperation) => success(
+  const staged = (draft: { readonly id: string; readonly operations: readonly unknown[] }, operation: EditOperation, profileId?: string) => success(
     `Draft ${draft.id}: ${draft.operations.length} ${draft.operations.length === 1 ? 'operation' : 'operations'}.`,
-    { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation },
+    { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation, ...(profileId === undefined ? {} : { profile_applied: profileId }) },
     nextValidate(draft.id),
     EDIT_COVERAGE,
   )
@@ -193,6 +193,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         back_color: string('Optional background colour. Example: "#C6C6C6".'),
         display_number: integer('Optional display number.', { minimum: 0 }),
         file: string('Optional export-relative file path. Defaults to "Displays/<name>.xml".'),
+        profile_id: string('Optional house-style profile from engineering_profile; its background colour is used when back_color is absent.'),
       }, ['name', 'width', 'height']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
@@ -201,7 +202,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           throw new EngineeringError('COMPONENT_EXISTS', `A display named ${JSON.stringify(name)} already exists in this export.`, 'Pass a new display name.')
         }
         const displayType = optionalString(args, 'display_type')
-        const backColor = optionalString(args, 'back_color')
+        const profileId = optionalString(args, 'profile_id')
+        const profile = profileId === undefined ? undefined : profileOf?.(profileId) as { hmi?: { palette?: { value: string }[] } } | undefined
+        const backColor = optionalString(args, 'back_color') ?? profile?.hmi?.palette?.[0]?.value
         const displayNumber = optionalInteger(args, 'display_number')
         const { draft } = stage(exec, optionalString(args, 'view_id'), {
           kind: 'display_create',
@@ -213,7 +216,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           ...(backColor === undefined ? {} : { backColor }),
           ...(displayNumber === undefined ? {} : { displayNumber }),
         })
-        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation, profileId)
       },
     }),
     tool({
@@ -229,11 +232,29 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         connections_json: string('Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}.'),
         parent: string('Optional group name to add inside. Omit to add at the display root.'),
         index: integer('Optional position among siblings, for z-order.', { minimum: 0 }),
+        profile_id: string('Optional house-style profile from engineering_profile; its button geometry and font are used when the attributes omit them.'),
       }, ['display', 'type', 'name']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
         const display = displayOf(view, requiredString(args, 'display'))
+        const type = requiredString(args, 'type')
         const attributes = { ...jsonObject(args.attributes_json, 'attributes_json') }
+        const profileId = optionalString(args, 'profile_id')
+        const profile = profileId === undefined ? undefined : profileOf?.(profileId) as {
+          hmi?: { button?: { value: string }[]; fonts?: { value: string }[] }
+        } | undefined
+        if (profile !== undefined) {
+          const cluster = profile.hmi?.button?.[0]?.value
+          if (/button$/iu.test(type) && cluster !== undefined && attributes.width === undefined && attributes.height === undefined) {
+            const [width, height] = cluster.split('x')
+            if (width !== undefined && height !== undefined) {
+              attributes.width = width
+              attributes.height = height
+            }
+          }
+          const font = profile.hmi?.fonts?.[0]?.value
+          if (font !== undefined && attributes.fontFamily === undefined && (/text$/iu.test(type) || /button$/iu.test(type))) attributes.fontFamily = font
+        }
         const caption = optionalString(args, 'caption')
         if (caption !== undefined) attributes.caption = caption
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
@@ -242,14 +263,14 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const { draft } = stage(exec, optionalString(args, 'view_id'), {
           kind: 'object_add',
           file: display.file,
-          type: requiredString(args, 'type'),
+          type,
           name: requiredString(args, 'name'),
           attributes,
           ...(parent === undefined ? {} : { parent }),
           ...(index === undefined ? {} : { index }),
           ...(Object.keys(connections).length === 0 ? {} : { connections }),
         })
-        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation, profileId)
       },
     }),
     tool({

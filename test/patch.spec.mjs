@@ -28,12 +28,13 @@ test('never targets a row another bundle owns', () => {
   }
 })
 
-test('is one row per product plus the two component rows', () => {
+test('is one row per product plus the component rows', () => {
   assert.deepEqual(inserted.insert, [
     { id: 'l5x', name: '@aryacode/dsh-engineering/l5x' },
     { id: 'ftview', name: '@aryacode/dsh-engineering/ftview' },
     { id: 'mwi', name: '@aryacode/dsh-engineering/mwi' },
     { id: 'viewers', name: '@aryacode/dsh-engineering' },
+    { id: 'resources', name: '@aryacode/dsh-engineering/resources' },
     { id: 'optix', name: '@aryacode/dsh-engineering/optix' },
   ])
 })

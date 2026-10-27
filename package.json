@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.8.4",
+  "version": "0.9.0",
   "description": "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
   "keywords": [
     "dsh",
@@ -56,10 +56,12 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
+    "resources:build": "node scripts/resources.mjs",
+    "resources:check": "node scripts/resources.mjs --check",
     "build:client": "node scripts/build-client.mjs",
     "assemble": "node scripts/assemble.mjs",
     "prepack": "node scripts/build-client.mjs && node scripts/assemble.mjs"
@@ -102,6 +104,7 @@
     "./mwi/read": "./vendor/mwi/lib/read.js",
     "./mwi/skill": "./vendor/mwi/lib/skill.js",
     "./mwi/verify": "./vendor/mwi/lib/verify.js",
-    "./mwi/edit": "./vendor/mwi/lib/edit.js"
+    "./mwi/edit": "./vendor/mwi/lib/edit.js",
+    "./resources": "./entries/resources.js"
   }
 }

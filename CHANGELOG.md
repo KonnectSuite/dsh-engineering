@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.9.0] - 2026-10-27
+
+### Added
+
+- **Model-agnostic engineering resources: a local standards corpus.** 34 authored pages across six domains
+  (IEC 61131-3, Rockwell, Yaskawa, FactoryTalk View/HMI, Optix, craft) with front-matter provenance and 100+
+  rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, …). `engineering_reference` lists the contents, ranks pages for a
+  query and returns one page with its rules; search is deterministic and needs no network, embedding model or
+  tokenizer. `scripts/gen-resources.mjs` validates every page (fields, domains, id/file agreement, rule
+  uniqueness, size and word budgets) and generates `index.json`/`SOURCE.json`; `pnpm resources:check` fails on
+  a stale index.
+- **House-style profiles.** `engineering_profile` reads the conventions of the open project — L5X tag prefixes
+  and case, seal-in and latch forms, comment density; FactoryTalk View palette, fonts, button geometry,
+  navigation and popups — with counts, evidence and a `low`/`medium`/`high` confidence. A profile is evidence,
+  not authority, and the tool says which project and SHA-256 it came from.
+- **Generation follows the profile.** `ftview_draft_display_create` applies the profile's background colour and
+  `ftview_draft_object_add` its button geometry and font when the caller omits them, reporting
+  `profile_applied`.
+- **New `resources` row and the `engineering-standards` skill.** The row mounts the two tools and the skill
+  that tells a model to read the relevant page and the project profile before authoring. Tools 97 → 99, rows
+  5 → 6.
+- `docs/resources.md` documents the corpus, its provenance, the index commands and the profile schema.
+
+### Known limits
+
+- `engineering_review` (rule-based draft review) and MWI/Optix profile extraction are planned for 0.9.1; the
+  corpus already applies to those products and the product validation still judges the result.
 ## [0.8.4] - 2026-10-27
 
 ### Added

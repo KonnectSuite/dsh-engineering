@@ -1,0 +1,42 @@
+{
+  "name": "@aryacode/dsh-engineering-resources",
+  "version": "0.1.0",
+  "description": "Model-agnostic engineering standards corpus, house-style profiles and rule-based review for the AryaCode engineering bundle.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "files": [
+    "SKILL.md",
+    "LICENSE-CONTENT.md",
+    "corpus/**/*.md",
+    "index.json",
+    "SOURCE.json",
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "license": "MIT",
+  "dsh": {
+    "component": true
+  },
+  "private": true
+}

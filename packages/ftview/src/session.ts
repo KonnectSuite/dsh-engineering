@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto'
 import { EngineeringError, type ExecContext, type FsService } from './core.ts'
 import { scanApplication, type Application } from './model.ts'
+import { styleProfileOf, type FtviewStyleProfile } from './style.ts'
 
 /** One opened export folder. */
 export interface OpenView {
@@ -70,6 +71,17 @@ export class ViewSession {
       if (oldest !== undefined) views.delete(oldest)
     }
     return view
+  }
+
+  /**
+   * Read the house style of one open export.
+   *
+   * @param viewId - Explicit handle, or undefined to use the chat's only view.
+   * @param exec - Calling context.
+   * @returns The visual profile of the export.
+   */
+  styleProfile(viewId: string | undefined, exec?: ExecContext): FtviewStyleProfile {
+    return styleProfileOf(this.require(viewId, exec).app)
   }
 
   /**

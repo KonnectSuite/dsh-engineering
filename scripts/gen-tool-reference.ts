@@ -25,6 +25,7 @@ import { studioTools as l5xStudioTools } from '../packages/l5x/src/tools/studio.
 import { controllerTools } from '../packages/l5x/src/tools/controller.ts'
 import { liveTools } from '../packages/l5x/src/tools/live.ts'
 import { ftviewTools } from '../packages/ftview/src/tools.ts'
+import { resourceTools } from '../packages/resources/src/tools.ts'
 import { vendorTools } from '../packages/ftview/src/vendor-tools.ts'
 import { editTools } from '../packages/ftview/src/edit/tools.ts'
 import { studioTools as ftviewStudioTools } from '../packages/ftview/src/studio/tools.ts'
@@ -45,13 +46,13 @@ export interface ToolRow {
 /** One section of the reference. */
 export interface ToolGroup {
   readonly group: string
-  readonly product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC'
+  readonly product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'Engineering resources'
   readonly blurb: string
   readonly tools: readonly ToolRow[]
 }
 
 /** Group metadata, in registration order. */
-const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC'; blurb: string }[] = [
+const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'Engineering resources'; blurb: string }[] = [
   { group: 'L5X read', product: 'L5X', blurb: 'Open a Studio 5000 L5X export and read its structure and components.' },
   { group: 'L5X references', product: 'L5X', blurb: 'Follow a symbol through exported logic without opening every routine.' },
   { group: 'L5X checks', product: 'L5X', blurb: 'Evidence-backed structural checks and export comparison.' },
@@ -60,6 +61,7 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'M
   { group: 'L5X Studio SDK', product: 'L5X', blurb: 'Logix Designer SDK: export, verify, build and evidence review. Requires Studio 5000 and the SDK service.' },
   { group: 'L5X controller', product: 'L5X', blurb: 'Supervised controller access. Upload, mode changes and downloads require per-call human approval.' },
   { group: 'L5X live', product: 'L5X', blurb: 'Direct EtherNet/IP reads with no Studio, FactoryTalk Linx or ACD snapshot.' },
+  { group: 'Engineering resources', product: 'Engineering resources', blurb: 'The local standards corpus and the house-style profile read from the open project. No network, no model calls.' },
   { group: 'FTView read', product: 'FactoryTalk View', blurb: 'Open a FactoryTalk View ME export and read displays and HMI tags.' },
   { group: 'FTView edit', product: 'FactoryTalk View', blurb: 'Stage display and tag edits. `ftview_apply` writes a new export folder and leaves the source untouched.' },
   { group: 'FTView Studio', product: 'FactoryTalk View', blurb: 'Plan the manual FactoryTalk View Studio import for changed displays.' },
@@ -86,6 +88,7 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X Studio SDK', l5xStudioTools(stub, stub)],
     ['L5X controller', controllerTools(stub, stub, stub)],
     ['L5X live', liveTools(stub, stub, stub, { transactions: stub, allowWrites: false, maxBatchTags: 64 })],
+    ['Engineering resources', resourceTools(() => undefined)],
     ['FTView read', [...ftviewTools(stub), ...vendorTools(stub)]],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],

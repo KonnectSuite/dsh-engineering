@@ -44,6 +44,8 @@
     "write_live_tag",
     "write_controller_clock",
     "start_plc_trend",
+    "engineering_reference",
+    "engineering_profile",
     "ftview_open",
     "ftview_list",
     "ftview_get",
@@ -182,6 +184,14 @@
         "write_live_tag",
         "write_controller_clock",
         "start_plc_trend"
+      ]
+    },
+    {
+      "product": "Engineering resources",
+      "group": "Engineering resources",
+      "tools": [
+        "engineering_reference",
+        "engineering_profile"
       ]
     },
     {

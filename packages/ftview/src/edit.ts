@@ -41,7 +41,8 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxDraftOperations) || maxDraftOperations <= 0) {
     throw new Error('ftview-edit: maxDraftOperations must be a positive integer')
   }
-  for (const definition of editTools(session, new EditDrafts(), stringFs(ctx.fs), maxDraftOperations)) ctx.tools.register(definition)
+  const profiles = ctx.get?.('engineeringProfiles') as { get(id: string): unknown } | undefined
+  for (const definition of editTools(session, new EditDrafts(), stringFs(ctx.fs), maxDraftOperations, profiles?.get.bind(profiles))) ctx.tools.register(definition)
 }
 
 export { EditDrafts } from './edit/drafts.ts'

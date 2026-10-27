@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 97 tools · 5 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 99 tools · 6 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -43,6 +43,7 @@ bundle.
 | **FactoryTalk View ME** | 22 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 10 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 
 Tool groups, by product:
 
@@ -51,6 +52,9 @@ Tool groups, by product:
 - **FactoryTalk View** — 6 read, 5 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 10 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the 9 bridge tools need Studio
+- **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
+  local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
+  open project's own naming, idioms and HMI palette, with evidence and a confidence level
 
 ## Switches
 
@@ -65,6 +69,7 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
+| `resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
@@ -238,6 +243,7 @@ even when the implementation behind a row is replaced.
 | Document | Owns |
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
+| [Engineering resources](docs/resources.md) | The 34-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Examples](docs/examples.md) | End-to-end sessions per product |

@@ -14,6 +14,7 @@
 
 import { createHash, randomUUID } from 'node:crypto'
 import { L5xParseError, loadL5x, type L5xDocument } from './model/index.ts'
+import { styleProfileOf, type L5xStyleProfile } from './engine/style.ts'
 import type { ExecContext } from './core/tool.ts'
 import { L5xError } from './core/errors.ts'
 import { decodeExport } from './fs.ts'
@@ -191,6 +192,17 @@ export class ProjectSession {
       )
     }
     return project
+  }
+
+  /**
+   * Read the house style of one open project.
+   *
+   * @param projectId - Explicit handle, or undefined for the chat's only project.
+   * @param exec - Calling context.
+   * @returns The profile in the shared resources schema.
+   */
+  async styleProfile(projectId: string | undefined, exec?: ExecContext): Promise<L5xStyleProfile> {
+    return styleProfileOf(await this.require(projectId, exec))
   }
 
   /**

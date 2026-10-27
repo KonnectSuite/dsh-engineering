@@ -19,6 +19,7 @@ export const COMPONENTS = [
   "l5x",
   "ftview",
   "mwi",
+  "resources",
   "optix"
 ]
 
