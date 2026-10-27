@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.18] - 2026-10-27
+
+### Fixed
+
+- **MotionWorks edits no longer demand a body hash the caller had to guess.** `mw_edit_code` with
+  `changes` hashes the body it is about to patch when `expected_body_sha256` is omitted; the backup
+  and exact find/replace still guard the write, and a supplied hash is still honored.
+- **A stale stage no longer makes the direct workflow ambiguous.** When a project has a verified
+  pre-edit backup, `singleStage()` now prefers that project over old `.motionworks/stage` copies.
+
 ## [0.4.17] - 2026-10-27
 
 ### Fixed

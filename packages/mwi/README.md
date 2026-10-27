@@ -48,9 +48,9 @@ The staged flow (`stage` then `open` the copy) still works when a sandbox is wan
 
 ## What the guarded read proves
 
-`mw_get` for a POU returns the `text_body_sha256` of the exact body it returns. That is the hash the
-edit preconditions compare, so the documented edit flow — read, then edit with the returned hash —
-works without looking anywhere else for a digest.
+`mw_get` for a POU returns the `text_body_sha256` of the exact body it returns. Passing it to
+`mw_edit_code` is optional: when it is omitted, the tool hashes the current saved body itself, so the
+documented read-then-edit flow works either way.
 
 The identity check confirms the manifest digest and that every recorded member exists. Per-file hashes
 are recorded for a restore and for the copy-time check; they are not recomputed on every guarded call.

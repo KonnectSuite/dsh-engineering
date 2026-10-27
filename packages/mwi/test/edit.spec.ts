@@ -73,11 +73,17 @@ describe('edit tools', () => {
     expect(result.next?.[0]?.tool).toBe('mw_verify')
   })
 
-  it('refuses a mixed or incomplete request before calling the IDE', async () => {
+  it('refuses a mixed request, but accepts changes without a hash', async () => {
     const mixed = await call(fakeRuntime(), 'mw_edit_code', { pou: 'Main', changes: [{ find: 'a', replace: 'b' }], body: 'x := 1;', expected_body_sha256: 'a'.repeat(64) })
     expect(mixed.error).toMatchObject({ code: 'INVALID_ARGUMENT' })
-    const noHash = await call(fakeRuntime(), 'mw_edit_code', { pou: 'Main', changes: [{ find: 'a', replace: 'b' }] })
-    expect(noHash.error).toMatchObject({ code: 'INVALID_ARGUMENT' })
+    let received: Record<string, unknown> | undefined
+    const runtime = fakeRuntime({
+      async editCode(input) { received = input as Record<string, unknown>; return { verification: { accepted: true, errors: [] } } },
+    })
+    const noHash = await call(runtime, 'mw_edit_code', { pou: 'Main', changes: [{ find: 'a', replace: 'b' }] })
+    expect(noHash.error).toBeUndefined()
+    expect(received).toMatchObject({ pou: 'Main' })
+    expect(received?.expectedHash).toBeUndefined()
   })
 
   it('builds a complete declaration for a variable add', async () => {

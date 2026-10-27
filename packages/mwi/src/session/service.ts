@@ -633,9 +633,19 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     mkdirSync(evidenceDirectory, { recursive: true })
     const evidence = join(evidenceDirectory, `native-code-${randomUUID()}.json`)
     const args: Record<string, unknown> = { project, pou: input.pou, baseline_saved: true }
+    let expectedHash = input.expectedHash
+    if (input.changes !== undefined && expectedHash === undefined) {
+      // The hash guards the exact find/replace against a stale body. The caller no
+      // longer has to carry it: hash the body this edit is about to patch.
+      const read = await this.engine.run('read_text', { project, pou: input.pou }) as { body?: unknown; body_error?: unknown }
+      if (typeof read.body !== 'string' || read.body.length === 0) {
+        throw new MwiError('EDIT_REFUSED', `Cannot read ${input.pou} to hash it: ${String(read.body_error ?? 'empty body')}.`, 'Read the POU with mw_get, then retry the edit.')
+      }
+      expectedHash = createHash('sha256').update(read.body).digest('hex')
+    }
     if (input.changes !== undefined) {
       args.changes = input.changes
-      if (input.expectedHash !== undefined) args.expected_body_sha256 = input.expectedHash
+      if (expectedHash !== undefined) args.expected_body_sha256 = expectedHash
     } else {
       args.code = input.body
       args.expected_body = input.expectedBody
@@ -704,7 +714,8 @@ export class PowerShellSessionRuntime implements SessionRuntime {
       // No stage directory.
     }
     const attached = listBackups(this.workspace).map(record => record.mwt)
-    const candidates = stages.length > 0 ? stages : attached
+    // Direct editing is the default: a proven backup wins over a stale stage copy.
+    const candidates = attached.length > 0 ? attached : stages
     if (candidates.length === 0) {
       throw new MwiError('NO_PROJECT', 'No project is staged or backed up in this workspace.', 'Call mw_project_find, then mw_project_open with the workspace .mwt.')
     }

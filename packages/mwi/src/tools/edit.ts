@@ -59,19 +59,18 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
         if (hasChanges === hasBody) {
           throw new MwiError(
             'INVALID_ARGUMENT',
-            'Supply either changes with expected_body_sha256, or body with expected_body.',
+            'Supply either changes, or body with expected_body.',
             'Use changes for a small exact patch, or body for a full replacement; do not mix them.',
           )
-        }
-        if (hasChanges && typeof args.expected_body_sha256 !== 'string') {
-          throw new MwiError('INVALID_ARGUMENT', 'Changes need expected_body_sha256.', 'Read the POU with mw_get and pass its text_body_sha256.')
         }
         if (hasBody && typeof args.expected_body !== 'string') {
           throw new MwiError('INVALID_ARGUMENT', 'A complete body needs expected_body.', 'Read the POU with mw_get and pass its current body.')
         }
         const result = await runtimeOf(workspace).editCode({
           pou,
-          ...(hasChanges ? { changes, expectedHash: String(args.expected_body_sha256) } : { body: String(args.body), expectedBody: String(args.expected_body) }),
+          ...(hasChanges
+            ? { changes, ...(typeof args.expected_body_sha256 === 'string' ? { expectedHash: args.expected_body_sha256 } : {}) }
+            : { body: String(args.body), expectedBody: String(args.expected_body) }),
         })
         const verification = result.verification as { accepted?: boolean; errors?: readonly string[] } | undefined
         const accepted = verification?.accepted === true

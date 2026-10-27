@@ -59,9 +59,9 @@ A compile verdict is the vendor engine's. It does not prove runtime behavior or 
 
 Only with the edit row enabled. One operation per call:
 
-- `mw_edit_code` replaces one ST or IL body, guarded by an expected body hash. Read the body with
-  `mw_get` (or `mw_read_text`) and pass the `text_body_sha256` that read returns; the guard compares
-  the hash of exactly that body, so a hash taken from anywhere else is a guess.
+- `mw_edit_code` replaces one ST or IL body, guarded by the body it is about to patch. Pass
+  `text_body_sha256` from `mw_get` when you have it; otherwise the tool hashes the current saved
+  body itself before applying the exact find/replace.
 - `mw_edit_variables` adds, edits, deletes or groups one declaration through the native API.
 - `mw_edit_structure` creates, copies, renames, deletes, converts or task-assigns a POU.
 - `mw_insert_block` inserts one FB instance and its bound ST call.
