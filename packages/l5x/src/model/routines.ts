@@ -177,7 +177,12 @@ function decodeLines(routine: XmlElement): readonly string[] {
 function decodeRung(rung: XmlElement): L5xRung {
   const textElement = firstChild(rung, 'Text')
   const text = textElement === undefined ? '' : (nodeText(textElement) ?? '').trim()
-  const comment = optionalAttribute(rung, 'Comment', '')
+  // Current exports write the comment as a <Comment> child (CDATA); older ones
+  // used the attribute. Reading only the attribute dropped 572 real comments in
+  // one project, which is what a documentation pass needs most.
+  const commentElement = firstChild(rung, 'Comment')
+  const fromChild = commentElement === undefined ? undefined : nodeText(commentElement)
+  const comment = (fromChild ?? optionalAttribute(rung, 'Comment', '')).trim()
   const number = Number.parseInt(attribute(rung, 'Number'), 10)
   if (comment === '') return { number, text }
   return { number, comment, text }

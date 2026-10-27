@@ -13,7 +13,7 @@ describe('studio registration', () => {
   it('mounts the offline SDK tools and the controller tools after the read surface', () => {
     const { definitions } = studioHarness()
     const names = definitions.map(definition => definition.name)
-    expect(names.slice(11)).toEqual([
+    expect(names.slice(13)).toEqual([
       'studio_sdk_status',
       'studio_capabilities',
       'export_acd_to_l5x',

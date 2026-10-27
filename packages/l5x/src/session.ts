@@ -209,6 +209,48 @@ export class ProjectSession {
   }
 
   /**
+   * Whether one path already exists.
+   *
+   * @param requestedPath - Path as the caller supplied it.
+   * @param exec - Calling context: cancellation and workspace root.
+   * @returns True when the provider reports a file or folder there.
+   */
+  async exists(requestedPath: string, exec?: ExecContext): Promise<boolean> {
+    const target = await this.fs.resolve(requestedPath, {
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
+    })
+    return (await this.fs.stat(target, exec?.signal)) !== undefined
+  }
+
+  /**
+   * Write one text file at an exact path, without the `.L5X` restriction.
+   *
+   * Used by the documentation bundle: the provider creates missing parent
+   * folders, so a new `output_root` needs no separate mkdir.
+   *
+   * @param requestedPath - Destination as the caller supplied it.
+   * @param text - File contents.
+   * @param exec - Calling context: cancellation and workspace root.
+   * @returns The resolved destination.
+   */
+  async writeTextAt(requestedPath: string, text: string, exec?: ExecContext): Promise<string> {
+    if (this.fs.writeText === undefined) {
+      throw new L5xError(
+        'OUTPUT_UNAVAILABLE',
+        'The filesystem provider in this profile cannot write files.',
+        'Use a profile whose filesystem provider allows writes.',
+      )
+    }
+    const target = await this.fs.resolve(requestedPath, {
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
+    })
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal)
+    return target.displayPath
+  }
+
+  /**
    * Write one prepared draft to a new path, never overwriting.
    *
    * @param outputPath - Destination as the caller supplied it.

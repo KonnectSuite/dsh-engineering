@@ -11,7 +11,11 @@
     "usage_map",
     "run_checks",
     "compare_projects",
+    "list_instructions",
+    "document_project",
     "draft_rung",
+    "draft_rung_comment",
+    "compose_rung",
     "draft_st",
     "draft_routine",
     "draft_tag",
@@ -111,9 +115,19 @@
     },
     {
       "product": "L5X",
+      "group": "L5X documentation",
+      "tools": [
+        "list_instructions",
+        "document_project"
+      ]
+    },
+    {
+      "product": "L5X",
       "group": "L5X drafts",
       "tools": [
         "draft_rung",
+        "draft_rung_comment",
+        "compose_rung",
         "draft_st",
         "draft_routine",
         "draft_tag",

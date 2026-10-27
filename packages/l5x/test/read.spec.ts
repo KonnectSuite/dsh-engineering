@@ -17,6 +17,8 @@ describe('registration', () => {
       'usage_map',
       'run_checks',
       'compare_projects',
+      'list_instructions',
+      'document_project',
     ])
   })
 

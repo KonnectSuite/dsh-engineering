@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 85 tools · 5 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 89 tools · 5 rows · 4 products · MIT
 
 ---
 
@@ -36,14 +36,14 @@ bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 40 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **Studio 5000 L5X** | 44 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 14 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 10 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 
 Tool groups, by product:
 
-- **L5X** — 11 read (`open_project` … `compare_projects`), 9 staged drafts (`draft_*`), 6 Logix
+- **L5X** — 13 read (`open_project` … `document_project`), 11 staged drafts (`draft_*`, `compose_rung`), 6 Logix
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
 - **FactoryTalk View** — 6 read, 5 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
@@ -120,6 +120,7 @@ the lean profile is the one that turns them off.
 
 | Version | What landed |
 |---|---|
+| **0.7.0** | Ladder generation that cannot emit invalid NeutralText: an instruction catalog, a pattern/tree composer that resolves and type-checks every operand, rung comments read and written, and a documentation bundle (`document_project`) with the Studio tags-and-comments CSV |
 | **0.5.0** | Commissioned on real files: FactoryTalk View reads genuine Studio exports (`<gfx>` displays, comma CSVs, UTF-16) instead of reporting zero; L5X alias resolution cuts 315 false "unresolved reference" findings to 16 on a 1279-tag project; `add_tag` no longer demands a value; a locked ACD exports from a copy |
 | **0.4.17** | MotionWorks edits the real project again: the pre-edit backup is written where the bridge and engine verify it, an already-open project is attached instead of reloaded, and `mw_get` returns the body hash the edit takes |
 | **0.4.15** | Every tool surface ships on by default; the row Configure pages switch them off |

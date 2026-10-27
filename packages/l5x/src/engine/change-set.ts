@@ -9,9 +9,10 @@ import { typeInstances, typeIndex, udtDetail } from './details.ts'
 import { uniqueRegion, xmlRegions, type XmlRegion } from './xml-regions.ts'
 
 type Operation =
-  | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string }
+  | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly comment?: string }
   | { readonly operation: 'delete_rung'; readonly program: string; readonly routine: string; readonly rung: number }
-  | { readonly operation: 'insert_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly before_rung?: number }
+  | { readonly operation: 'insert_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly before_rung?: number; readonly comment?: string }
+  | { readonly operation: 'set_rung_comment'; readonly program: string; readonly routine: string; readonly rung: number; readonly comment: string }
   | { readonly operation: 'replace_st'; readonly program: string; readonly routine: string; readonly code: string }
   | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST'; readonly code: string }
   | { readonly operation: 'add_tag'; readonly scope: string; readonly name: string; readonly data_type: string; readonly value?: number; readonly dimensions?: string; readonly external_access?: string; readonly description: string }
@@ -23,12 +24,13 @@ type Operation =
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Operation names accepted by a version-1 change set. */
-const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
+const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
 /** Compact contract returned with validation errors and embedded in tool descriptions. */
 export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
-replace_rung {program,routine,rung,text}
-insert_rung {program,routine,rung,text,before_rung?}
+replace_rung {program,routine,rung,text,comment?}
+insert_rung {program,routine,rung,text,before_rung?,comment?}
 delete_rung {program,routine,rung}
+set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
 add_routine {program,name,language:"RLL"|"ST",code}
 add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
@@ -113,14 +115,18 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
     case 'replace_rung':
     case 'insert_rung':
     case 'delete_rung': {
-      fields(row, row.operation === 'delete_rung' ? ['operation', 'program', 'routine', 'rung'] : row.operation === 'insert_rung' ? ['operation', 'program', 'routine', 'rung', 'text', 'before_rung'] : ['operation', 'program', 'routine', 'rung', 'text'])
+      fields(row, row.operation === 'delete_rung' ? ['operation', 'program', 'routine', 'rung'] : row.operation === 'insert_rung' ? ['operation', 'program', 'routine', 'rung', 'text', 'before_rung', 'comment'] : ['operation', 'program', 'routine', 'rung', 'text', 'comment'])
       const selected = { program: identifier(row, 'program'), routine: identifier(row, 'routine'), rung: integer(row, 'rung') }
       if (row.operation === 'delete_rung') return { operation: row.operation, ...selected }
       const source = text(row, 'text')
       if (parseLadder(source).issues.length > 0) throw new EngineeringError('INVALID_LADDER', 'Rung contains malformed or unsupported NeutralText structure')
-      if (row.operation === 'replace_rung') return { operation: row.operation, ...selected, text: source }
-      return { operation: row.operation, ...selected, text: source, ...(row.before_rung === undefined ? {} : { before_rung: integer(row, 'before_rung') }) }
+      const comment = row.comment === undefined ? {} : { comment: text(row, 'comment') }
+      if (row.operation === 'replace_rung') return { operation: row.operation, ...selected, text: source, ...comment }
+      return { operation: row.operation, ...selected, text: source, ...comment, ...(row.before_rung === undefined ? {} : { before_rung: integer(row, 'before_rung') }) }
     }
+    case 'set_rung_comment':
+      fields(row, ['operation', 'program', 'routine', 'rung', 'comment'])
+      return { operation: row.operation, program: identifier(row, 'program'), routine: identifier(row, 'routine'), rung: integer(row, 'rung'), comment: text(row, 'comment') }
     case 'replace_st':
       fields(row, ['operation', 'program', 'routine', 'code'])
       return { operation: row.operation, program: identifier(row, 'program'), routine: identifier(row, 'routine'), code: text(row, 'code') }
@@ -292,7 +298,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   const targets = rungs.filter(rung => Number(rung.attributes.Number) === operation.rung)
   if (operation.operation === 'insert_rung') {
     if (targets.length !== 0) throw new EngineeringError('NAME_COLLISION', 'Rung number already exists; no automatic renumbering is performed')
-    const newRung = `<Rung Number="${operation.rung}" Type="N"><Text>${cdata(operation.text)}</Text></Rung>`
+    const newRung = `<Rung Number="${operation.rung}" Type="N">${commentXml(operation.comment)}<Text>${cdata(operation.text)}</Text></Rung>`
     if (operation.before_rung === undefined) return insert(xml, content, newRung)
     const before = rungs.filter(rung => Number(rung.attributes.Number) === operation.before_rung)
     if (before.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Insertion target rung is absent or ambiguous')
@@ -301,8 +307,31 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   if (targets.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Selected rung is absent or ambiguous')
   const target = targets[0]!
   if (operation.operation === 'delete_rung') return replace(xml, target.start, target.end, '')
+  if (operation.operation === 'set_rung_comment') {
+    return replace(xml, target.start, target.end, rungWith(target, retainedText(xml, target), operation.comment))
+  }
+  if (operation.comment !== undefined) {
+    return replace(xml, target.start, target.end, rungWith(target, `<Text>${cdata(operation.text)}</Text>`, operation.comment))
+  }
   const contentText = uniqueRegion(target.children, 'Text')
   return replace(xml, contentText.start, contentText.end, `<Text>${cdata(operation.text)}</Text>`)
+}
+
+/** A comment element, or nothing when the comment is cleared. */
+function commentXml(comment: string | undefined): string {
+  return comment === undefined || comment === '' ? '' : `<Comment>${cdata(comment)}</Comment>`
+}
+
+/** The rung's existing `<Text>` element, verbatim, for a comment-only edit. */
+function retainedText(xml: string, rung: XmlRegion): string {
+  const text = rung.children.find(child => child.kind === 'Text')
+  return text === undefined ? '<Text><![CDATA[]]></Text>' : xml.slice(text.start, text.end)
+}
+
+/** Rebuild one rung element with a comment and a text element. */
+function rungWith(rung: XmlRegion, text: string, comment: string | undefined): string {
+  const type = rung.attributes.Type ?? 'N'
+  return `<Rung Number="${rung.attributes.Number}" Type="${type}">${commentXml(comment)}${text}</Rung>`
 }
 
 /** Every type name a change may reference: scalars plus declared types. */

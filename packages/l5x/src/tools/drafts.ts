@@ -10,6 +10,7 @@
  */
 
 import { prepareChangeSet } from '../engine/change-set.ts'
+import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
@@ -31,6 +32,29 @@ const DRAFT_COVERAGE: Coverage = {
 /** The version-1 request the change-set engine accepts. */
 function requestOf(draft: Draft): string {
   return JSON.stringify({ version: 1, operations: draft.operations })
+}
+
+/** What a composed rung does not prove. */
+const COMPOSED_COVERAGE: Coverage = {
+  complete: false,
+  unverified: [
+    'compiled behaviour: the composer validates instruction names, operand counts and operand types only',
+    'Studio 5000 import and build are not performed by this surface',
+    'runtime behavior',
+  ],
+}
+
+/** Parse one JSON-object argument, refusing anything else. */
+function jsonObject(value: string | undefined, name: string): Record<string, unknown> {
+  if (value === undefined) return {}
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw invalid(name, `${name} is not valid JSON.`, `Pass a JSON object, for example {"start":"Start"}.`)
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw invalid(name, `${name} must be a JSON object.`, 'Pass a JSON object.')
+  return parsed as Record<string, unknown>
 }
 
 /** The success document every append answers with. */
@@ -55,7 +79,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
   return [
     tool({
       name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. Nothing is written until draft_apply.',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. Optionally carries the rung comment. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
@@ -63,6 +87,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         rung: integer('Rung number the operation targets. Required for replace and delete; for insert it is the new rung number.', { minimum: 0 }),
         text: string('NeutralText for replace or insert. Omit for delete. Example: "XIC(Start)OTE(Run);"'),
         before_rung: integer('For insert only: insert before this rung number instead of after rung.', { minimum: 0 }),
+        comment: string('Optional rung comment, written above the rung in Studio. Omit to leave an existing comment unchanged.'),
         project_id: PROJECT_ID,
       }, ['program', 'routine', 'mode']),
       async run(args, exec) {
@@ -73,20 +98,107 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const text = optionalString(args, 'text')
         const rung = optionalInteger(args, 'rung')
         const before = optionalInteger(args, 'before_rung')
+        const comment = args.comment === undefined ? undefined : String(args.comment)
         let operation: DraftOperation
         if (mode === 'delete') {
           if (rung === undefined) throw invalid('rung', 'Required when mode is delete.', 'Pass the rung number to remove.')
           operation = { operation: 'delete_rung', program, routine, rung }
         } else if (mode === 'replace') {
           if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is replace.', 'Pass the rung number and its new NeutralText.')
-          operation = { operation: 'replace_rung', program, routine, rung, text }
+          operation = { operation: 'replace_rung', program, routine, rung, text, ...(comment === undefined ? {} : { comment }) }
         } else if (mode === 'insert') {
           if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is insert.', 'Pass the new rung number and its NeutralText.')
-          operation = { operation: 'insert_rung', program, routine, rung, text, ...(before === undefined ? {} : { before_rung: before }) }
+          operation = { operation: 'insert_rung', program, routine, rung, text, ...(before === undefined ? {} : { before_rung: before }), ...(comment === undefined ? {} : { comment }) }
         } else {
           throw invalid('mode', `Unknown mode ${JSON.stringify(mode)}.`, 'Pass one of: replace, insert, delete.')
         }
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+      },
+    }),
+    tool({
+      name: 'draft_rung_comment',
+      description: 'Append one rung-comment change to the chat draft. Sets or clears the comment Studio shows above a rung; the logic is untouched. Nothing is written until draft_apply.',
+      parameters: object({
+        program: string('Program that owns the routine. Example: "MainProgram".'),
+        routine: string('Ladder routine the rung belongs to. Example: "MainRoutine".'),
+        rung: integer('Rung number whose comment changes.', { minimum: 0 }),
+        comment: string('New comment text. Pass an empty string to clear an existing comment.'),
+        project_id: PROJECT_ID,
+      }, ['program', 'routine', 'rung', 'comment']),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const operation: DraftOperation = {
+          operation: 'set_rung_comment',
+          program: requiredString(args, 'program'),
+          routine: requiredString(args, 'routine'),
+          rung: optionalInteger(args, 'rung') ?? 0,
+          comment: typeof args.comment === 'string' ? args.comment : '',
+        }
+        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+      },
+    }),
+    tool({
+      name: 'compose_rung',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export, and optionally stage it in the draft. Never emits text that fails the ladder parser.',
+      parameters: object({
+        pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
+        spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}.'),
+        arguments_json: string('Pattern arguments as JSON, for example {"start":"Start","stop":"Stop","run":"Run"}.'),
+        program: string('Program to stage into. Omit to return the composed text only.'),
+        routine: string('Routine to stage into. Required with program.'),
+        mode: choice('insert adds a rung; replace rewrites one.', ['insert', 'replace']),
+        rung: integer('Rung number for a staged operation. For a two-rung pattern, the second uses rung + 1.', { minimum: 0 }),
+        before_rung: integer('For insert: insert before this rung number instead of after rung.', { minimum: 0 }),
+        comment: string('Optional rung comment for the staged rung.'),
+        draft_id: string('Draft handle to append to. Omit when exactly one draft exists in this chat.'),
+        project_id: PROJECT_ID,
+      }, []),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const pattern = optionalString(args, 'pattern')
+        const specJson = optionalString(args, 'spec_json')
+        if ((pattern === undefined) === (specJson === undefined)) {
+          throw invalid('pattern or spec_json', 'Pass exactly one of a named pattern or a composition tree.', 'Use pattern + arguments_json for a common shape, or spec_json for explicit logic.')
+        }
+        let composed: { rungs: readonly ComposedRung[]; pattern?: string }
+        if (pattern !== undefined) {
+          if (!(PATTERNS as readonly string[]).includes(pattern)) throw invalid('pattern', `Unknown pattern ${JSON.stringify(pattern)}.`, `Pass one of: ${PATTERNS.join(', ')}.`)
+          composed = composePattern(project, pattern as PatternName, jsonObject(typeof args.arguments_json === 'string' ? args.arguments_json : undefined, 'arguments_json'))
+        } else {
+          const spec = jsonObject(specJson, 'spec_json')
+          composed = { rungs: [composeRung(project, spec as unknown as LadderNodeSpec)] }
+        }
+        const program = optionalString(args, 'program')
+        const routine = optionalString(args, 'routine')
+        const mode = optionalString(args, 'mode')
+        const rung = optionalInteger(args, 'rung')
+        const staged = program !== undefined || routine !== undefined || mode !== undefined || rung !== undefined
+        if (!staged) {
+          return success(
+            `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}; pass program and routine to stage it.`,
+            { pattern: composed.pattern, rungs: composed.rungs },
+            [{ tool: 'compose_rung', args: { spec_json: '{"series":[]}' }, why: 'Adjust the structure, or stage this text with draft_rung.' }],
+            COMPOSED_COVERAGE,
+          )
+        }
+        if (program === undefined || routine === undefined || mode === undefined || rung === undefined) {
+          throw invalid('program, routine, mode and rung', 'Staging needs all four.', 'Pass program, routine, mode and rung together, or none of them.')
+        }
+        if (composed.rungs.length > 1 && mode === 'replace') throw invalid('mode', 'A two-rung pattern cannot replace one rung.', 'Use mode insert, or compose a single rung.')
+        let draft: Draft | undefined
+        for (const [index, composedRung] of composed.rungs.entries()) {
+          const operation: DraftOperation = mode === 'replace'
+            ? { operation: 'replace_rung', program, routine, rung, text: composedRung.neutral_text, ...(typeof args.comment === 'string' ? { comment: args.comment } : {}) }
+            : { operation: 'insert_rung', program, routine, rung: rung + index, text: composedRung.neutral_text, ...(index === 0 && args.before_rung !== undefined ? { before_rung: optionalInteger(args, 'before_rung') } : {}), ...(typeof args.comment === 'string' ? { comment: args.comment } : {}) }
+          draft = drafts.append(exec, project.id, operation, maxOperations)
+        }
+        const stagedDraft = draft as Draft
+        return success(
+          `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
+          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, pattern: composed.pattern, rungs: composed.rungs },
+          [{ tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' }],
+          COMPOSED_COVERAGE,
+        )
       },
     }),
     tool({

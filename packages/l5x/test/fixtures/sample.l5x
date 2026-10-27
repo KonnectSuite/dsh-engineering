@@ -160,6 +160,7 @@
       <Routine Name="MotorControl" Type="RLL" Description="VFD motor control with speed ramping">
         <RLLContent>
           <Rung Number="0" Type="N" Comment="Start VFD when Motor_1 run command is active and no VFD fault">
+            <Comment><![CDATA[Child-element comment, the shape current Studio exports write.]]></Comment>
             <Text><![CDATA[XIC(Motor_1.RunCommand) XIO(VFD_Fault) OTE(VFD_Running) ;]]></Text>
           </Rung>
           <Rung Number="1" Type="N" Comment="Speed ramp timer - wait 2 seconds before applying full speed">

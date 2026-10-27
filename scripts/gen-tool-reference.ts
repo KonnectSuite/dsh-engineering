@@ -19,6 +19,7 @@ import { dirname, join } from 'node:path'
 import { readTools } from '../packages/l5x/src/tools/read.ts'
 import { referenceTools } from '../packages/l5x/src/tools/references.ts'
 import { checkTools } from '../packages/l5x/src/tools/checks.ts'
+import { documentTools } from '../packages/l5x/src/tools/document.ts'
 import { draftTools } from '../packages/l5x/src/tools/drafts.ts'
 import { studioTools as l5xStudioTools } from '../packages/l5x/src/tools/studio.ts'
 import { controllerTools } from '../packages/l5x/src/tools/controller.ts'
@@ -53,6 +54,7 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'M
   { group: 'L5X read', product: 'L5X', blurb: 'Open a Studio 5000 L5X export and read its structure and components.' },
   { group: 'L5X references', product: 'L5X', blurb: 'Follow a symbol through exported logic without opening every routine.' },
   { group: 'L5X checks', product: 'L5X', blurb: 'Evidence-backed structural checks and export comparison.' },
+  { group: 'L5X documentation', product: 'L5X', blurb: 'The instruction catalog the composer validates, and the handover bundle written to a new folder.' },
   { group: 'L5X drafts', product: 'L5X', blurb: 'Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source and never overwrites it.' },
   { group: 'L5X Studio SDK', product: 'L5X', blurb: 'Logix Designer SDK: export, verify, build and evidence review. Requires Studio 5000 and the SDK service.' },
   { group: 'L5X controller', product: 'L5X', blurb: 'Supervised controller access. Upload, mode changes and downloads require per-call human approval.' },
@@ -78,6 +80,7 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X read', readTools(stub)],
     ['L5X references', referenceTools(stub)],
     ['L5X checks', checkTools(stub)],
+    ['L5X documentation', documentTools(stub)],
     ['L5X drafts', draftTools(stub, stub, 100, 1 << 30)],
     ['L5X Studio SDK', l5xStudioTools(stub, stub)],
     ['L5X controller', controllerTools(stub, stub, stub)],

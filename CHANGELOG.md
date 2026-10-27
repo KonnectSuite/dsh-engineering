@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.7.0] - 2026-10-27
+
+### Added
+
+- **Ladder generation that cannot emit invalid NeutralText.** Three pieces:
+  - `list_instructions` — the instruction catalog the composer validates: mnemonic, category, summary
+    and operand slots with their kinds (BOOL, NUMBER, TIMER, …), filterable. 41 instructions, covering
+    every mnemonic the Laminator project uses (45 distinct across 860 rungs).
+  - `compose_rung` — builds one rung from a structure tree (`spec_json`) or a named pattern
+    (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves every operand against the
+    export (including unqualified program tags and aliases), type-checks each slot, emits the export's
+    own bracket style, and re-parses its output with the same parser `draft_rung` uses. Unknown
+    instructions name the nearest catalog entries; a wrong operand count, a non-BOOL contact, a
+    non-numeric value slot, an undeclared tag or an undeclared AOI is refused before anything is staged.
+    Passing `program`, `routine`, `mode` and `rung` stages the rung in the draft; `fault_latch` stages
+    its two rungs consecutively.
+- **Rung comments are read and written.** The model read the `Comment` **attribute** only, so a real
+  Studio export's 572 child `<Comment>` elements were invisible. `decodeRung` now supports both shapes,
+  `draft_rung` accepts a `comment`, and `draft_rung_comment` sets or clears one on an existing rung.
+  CDATA terminators in a comment round-trip through the existing escaping.
+- **Documentation dimension.** `document_project` writes a handover bundle into a NEW folder and never
+  touches the export: `PROJECT.md` (controller, revision, tasks, programs, counts), `io.md`/`io.csv`,
+  `tags.csv` and `tags-studio.csv` (the `Tag Name,Description` shape Studio's Tags and Comments import
+  expects), and `rungs/<program>.md` with each rung's number, comment, NeutralText, instructions and
+  resolved tags. Filters: `include`, `programs`, `routines`, `rungs_per_file`.
+
+### Documentation
+
+- `packages/l5x/SKILL.md`: a Generate section (catalog → compose → validate → apply) and a
+  Documentation section (bundle contents, the comment round trip, what the bundle cannot prove).
+- README: 89 tools, L5X 44, and the 0.7.0 milestone.
+
 ## [0.6.0] - 2026-10-27
 
 ### Added
