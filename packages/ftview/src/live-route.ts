@@ -125,3 +125,36 @@ export async function liveRoute(url: URL, deps: LiveRouteDeps = {}): Promise<Liv
     },
   }
 }
+
+/** One display file answer. */
+export interface DisplayAnswer {
+  readonly status: number
+  readonly body: string
+  readonly contentType: string
+}
+
+/**
+ * Read one display file from an export, for preview navigation.
+ *
+ * The name is restricted to a display-file name so the route cannot reach
+ * outside `Displays/`.
+ *
+ * @param url - Request URL with `root` and `name`.
+ * @returns The XML, or a short error.
+ */
+export function displayRoute(url: URL): DisplayAnswer {
+  const root = url.searchParams.get('root') ?? ''
+  const name = url.searchParams.get('name') ?? ''
+  if (!/^[A-Za-z0-9 _().-]{1,120}$/u.test(name)) {
+    return { status: 400, body: JSON.stringify({ error: 'name must be a display file name' }), contentType: 'application/json' }
+  }
+  const file = join(root, 'Displays', `${name}.xml`)
+  if (!existsSync(file)) {
+    return { status: 404, body: JSON.stringify({ error: `no display named ${name}` }), contentType: 'application/json' }
+  }
+  try {
+    return { status: 200, body: readFileSync(file, 'utf8'), contentType: 'application/xml; charset=utf-8' }
+  } catch (error) {
+    return { status: 500, body: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), contentType: 'application/json' }
+  }
+}

@@ -357,8 +357,13 @@ function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): 
 
   const own = shape === '' ? '' : shape
   const nested = node.children.filter(candidate => OBJECTS.has(candidate.tag))
-  if (nested.length === 0) return own
-  return own + `<g transform="translate(${left},${top})">${nested.map(candidate => renderObject(candidate, depth + 1, options)).join('')}</g>`
+  const content = own + (nested.length === 0 ? '' : `<g transform="translate(${left},${top})">${nested.map(candidate => renderObject(candidate, depth + 1, options)).join('')}</g>`)
+  if (content === '') return ''
+  // Identity for hit-testing and inspection: the preview maps a click back to the
+  // object that produced the drawing without re-parsing coordinates.
+  const name = attribute(node, 'name')
+  const identity = `data-ftv-type="${escapeXml(node.tag)}"${name === undefined ? '' : ` data-ftv-name="${escapeXml(name)}"`}`
+  return `<g ${identity}>${content}</g>`
 }
 
 /**

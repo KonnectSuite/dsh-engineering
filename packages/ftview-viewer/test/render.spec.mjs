@@ -42,6 +42,8 @@ test('renders background, captions, groups and state colours', () => {
   assert.match(svg, />Start</u)
   assert.match(svg, /fill="#b0b0b0"/u)
   assert.match(svg, /translate\(100,100\)/u)
+  assert.match(svg, /data-ftv-type="momentaryButton"/u)
+  assert.match(svg, /data-ftv-name="Start"/u)
 })
 
 test('draws an image from the export by default and a placeholder when it cannot resolve', () => {

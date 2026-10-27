@@ -11,7 +11,7 @@ import { stringFs, type PluginContext } from './core.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
 import { vendorTools } from './vendor-tools.ts'
-import { liveRoute } from './live-route.ts'
+import { displayRoute, liveRoute } from './live-route.ts'
 
 /** Plugin name in a composition. */
 export const name = 'ftview-read'
@@ -56,24 +56,43 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
       }) => void) => void
     }
     host.inject?.(['webServer'], scope => {
-      const register = (): unknown => scope.webServer?.register({
-        kind: 'exact',
-        path: '/engineering/ftview/live',
-        handler: async (request: { method?: string; url?: string }, response: {
-          writeHead(status: number, headers: Record<string, string>): void
-          end(body?: string): void
-        }) => {
-          if (request.method !== 'GET') {
-            response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
-            response.end(JSON.stringify({ error: 'GET only' }))
-            return
-          }
-          const answer = await liveRoute(new URL(request.url ?? '/', 'http://localhost'), { allowedAddresses: config.allowedAddresses })
-          response.writeHead(answer.status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
-          response.end(JSON.stringify(answer.body))
-        },
-      })
-      return scope.effect?.(register, 'ftview-live: route') ?? register()
+      const register = (): void => {
+        scope.webServer?.register({
+          kind: 'exact',
+          path: '/engineering/ftview/live',
+          handler: async (request: { method?: string; url?: string }, response: {
+            writeHead(status: number, headers: Record<string, string>): void
+            end(body?: string): void
+          }) => {
+            if (request.method !== 'GET') {
+              response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
+              response.end(JSON.stringify({ error: 'GET only' }))
+              return
+            }
+            const answer = await liveRoute(new URL(request.url ?? '/', 'http://localhost'), { allowedAddresses: config.allowedAddresses })
+            response.writeHead(answer.status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+            response.end(JSON.stringify(answer.body))
+          },
+        })
+        scope.webServer?.register({
+          kind: 'exact',
+          path: '/engineering/ftview/display',
+          handler: (request: { method?: string; url?: string }, response: {
+            writeHead(status: number, headers: Record<string, string>): void
+            end(body?: string): void
+          }) => {
+            if (request.method !== 'GET') {
+              response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
+              response.end(JSON.stringify({ error: 'GET only' }))
+              return
+            }
+            const answer = displayRoute(new URL(request.url ?? '/', 'http://localhost'))
+            response.writeHead(answer.status, { 'content-type': answer.contentType, 'cache-control': 'no-store' })
+            response.end(answer.body)
+          },
+        })
+      }
+      return scope.effect?.(register, 'ftview-live: routes') ?? register()
     })
   }
 }

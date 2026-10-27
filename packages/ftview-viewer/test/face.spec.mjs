@@ -12,6 +12,8 @@ const React = {
   useMemo: factory => factory(),
   useState: value => [value, () => {}],
   useEffect: () => {},
+  useCallback: callback => callback,
+  useRef: () => ({ current: null }),
 }
 
 /** Load the face registration out of the built bundle. */

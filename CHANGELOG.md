@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.7] - 2026-10-27
+
+### Added
+
+- **Interactive preview.** Every rendered object now carries its type and name, so a click opens an inspector with the
+  object’s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
+- **Navigation.** Double-clicking a `gotoButton` (or using the inspector) loads its target display through the new
+  `GET /engineering/ftview/display?root=&name=` route, with a **← Back** history. The route accepts display file names
+  only and refuses traversal.
+- **PNG export** of the current view from the toolbar.
+
+### Known gaps
+
+- Side-by-side compare of two versions of a display is not in this release; the rest of phase 4 is.
 ## [0.10.6] - 2026-10-27
 
 ### Added

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { liveRoute } from '../src/live-route.ts'
+import { liveRoute, displayRoute } from '../src/live-route.ts'
 import type { LiveRead } from '../src/live-read.ts'
 
 /** One export folder with a tag CSV that maps RUN to a controller tag. */
@@ -59,6 +59,20 @@ describe('the live route', () => {
     })
     expect(answer.status).toBe(502)
     expect(JSON.stringify(answer.body)).toContain('connection refused')
+    rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('the display file route', () => {
+  it('returns a display by name and refuses traversal', () => {
+    const root = exportFolder()
+    mkdirSync(join(root, 'Displays'), { recursive: true })
+    writeFileSync(join(root, 'Displays', 'Main Screen.xml'), '<gfx/>')
+    const found = displayRoute(new URL(`http://x/display?root=${encodeURIComponent(root)}&name=Main%20Screen`))
+    expect(found.status).toBe(200)
+    expect(found.body).toContain('<gfx')
+    expect(displayRoute(new URL(`http://x/display?root=${encodeURIComponent(root)}&name=Absent`)).status).toBe(404)
+    expect(displayRoute(new URL(`http://x/display?root=${encodeURIComponent(root)}&name=../secret`)).status).toBe(400)
     rmSync(root, { recursive: true, force: true })
   })
 })

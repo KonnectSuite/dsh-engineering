@@ -39,6 +39,9 @@ __export(face_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(face_exports);
+var React2 = __toESM(require("react"), 1);
+
+// packages/ftview-viewer/face/display.ts
 var React = __toESM(require("react"), 1);
 
 // packages/ftview-viewer/src/xml.ts
@@ -98,9 +101,9 @@ function parseXml(source) {
     if (match[5] !== "/") stack.push(node);
   }
   if (stack.length !== 1) throw new Error(`unclosed <${stack[stack.length - 1]?.tag ?? ""}> in display XML`);
-  const document = root.children[0];
-  if (document === void 0) throw new Error("empty display XML");
-  return document;
+  const document2 = root.children[0];
+  if (document2 === void 0) throw new Error("empty display XML");
+  return document2;
 }
 function child(node, tag) {
   return node.children.find((candidate) => candidate.tag === tag);
@@ -489,8 +492,11 @@ function renderObject(rawNode, depth, options) {
   })();
   const own = shape === "" ? "" : shape;
   const nested = node.children.filter((candidate) => OBJECTS.has(candidate.tag));
-  if (nested.length === 0) return own;
-  return own + `<g transform="translate(${left},${top})">${nested.map((candidate) => renderObject(candidate, depth + 1, options)).join("")}</g>`;
+  const content = own + (nested.length === 0 ? "" : `<g transform="translate(${left},${top})">${nested.map((candidate) => renderObject(candidate, depth + 1, options)).join("")}</g>`);
+  if (content === "") return "";
+  const name = attribute(node, "name");
+  const identity = `data-ftv-type="${escapeXml(node.tag)}"${name === void 0 ? "" : ` data-ftv-name="${escapeXml(name)}"`}`;
+  return `<g ${identity}>${content}</g>`;
 }
 function renderDisplay(source, options = {}) {
   const display = parseXml(source);
@@ -503,6 +509,269 @@ function renderDisplay(source, options = {}) {
   const objects = container.children.filter((candidate) => OBJECTS.has(candidate.tag));
   const body = objects.map((object) => renderObject(object, 0, options)).join("");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${background}"/>${body}</svg>`;
+}
+
+// packages/ftview-viewer/face/display.ts
+var h = React.createElement;
+function decodeSource(data) {
+  if (typeof data === "string") return data;
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  return new TextDecoder("utf-8").decode(bytes);
+}
+function exportRootOf(address) {
+  if (address === void 0 || address === "") return void 0;
+  const match = /^(.*?)[\\/]Displays[\\/][^\\/]+$/u.exec(address);
+  return match?.[1];
+}
+function referencedTags(node, out) {
+  for (const value of Object.values(node.attributes)) {
+    for (const match of value.matchAll(/\{([^}]+)\}/gu)) out.add((match[1] ?? "").trim());
+    const name = value.trim();
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) out.add(name);
+  }
+  for (const child2 of node.children) referencedTags(child2, out);
+  return out;
+}
+function indexObjects(display) {
+  const index = /* @__PURE__ */ new Map();
+  const walk = (node) => {
+    const name = attribute(node, "name");
+    if (name !== void 0 && !index.has(name)) {
+      const states = node.children.find((child2) => child2.tag === "states");
+      const connections = node.children.find((child2) => child2.tag === "connections");
+      index.set(name, {
+        name,
+        type: node.tag,
+        attributes: node.attributes,
+        connections: (connections?.children ?? []).map((connection) => ({
+          name: attribute(connection, "name"),
+          expression: attribute(connection, "expression")
+        })),
+        states: states?.children.length ?? 0
+      });
+    }
+    for (const child2 of node.children) walk(child2);
+  };
+  walk(display);
+  return index;
+}
+function downloadPng(container, name) {
+  const svg = container?.querySelector("svg");
+  if (svg === null || svg === void 0) return;
+  const size = /width="(\d+)" height="(\d+)"/u.exec(svg.outerHTML);
+  const width = Number(size?.[1] ?? 1280);
+  const height = Number(size?.[2] ?? 1024);
+  const blob = new Blob([svg.outerHTML], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const image = new Image();
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext("2d")?.drawImage(image, 0, 0);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((result) => {
+      if (result === null) return;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(result);
+      link.download = `${name || "display"}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1e3);
+    }, "image/png");
+  };
+  image.src = url;
+}
+function Display(props) {
+  const { source, t, address } = props;
+  const root = exportRootOf(address);
+  const [xml, setXml] = React.useState(source);
+  const [displayName, setDisplayName] = React.useState("");
+  const [history, setHistory] = React.useState([]);
+  const [selected, setSelected] = React.useState(void 0);
+  const [fit, setFit] = React.useState(true);
+  const [live, setLive] = React.useState(false);
+  const [liveValues, setLiveValues] = React.useState({});
+  const [liveNotice, setLiveNotice] = React.useState("");
+  const container = React.useRef(null);
+  const parsed = React.useMemo(() => {
+    try {
+      const display = parseXml(xml);
+      return { display, index: indexObjects(display), tags: [...referencedTags(display, /* @__PURE__ */ new Set())], error: "" };
+    } catch (error) {
+      return { display: void 0, index: /* @__PURE__ */ new Map(), tags: [], error: error instanceof Error ? error.message : String(error) };
+    }
+  }, [xml]);
+  React.useEffect(() => {
+    if (!live || root === void 0) return void 0;
+    let cancelled = false;
+    const stored = (() => {
+      try {
+        const raw = window.localStorage.getItem("ftview.live.controller");
+        if (raw === null) return void 0;
+        const value = JSON.parse(raw);
+        return typeof value.ip === "string" ? { ip: value.ip, slot: typeof value.slot === "number" ? value.slot : 0 } : void 0;
+      } catch {
+        return void 0;
+      }
+    })();
+    const controller = stored ?? { ip: window.prompt("Controller IPv4 address") ?? "", slot: 0 };
+    if (controller.ip === "") {
+      setLive(false);
+      return void 0;
+    }
+    try {
+      window.localStorage.setItem("ftview.live.controller", JSON.stringify(controller));
+    } catch {
+    }
+    const tick = async () => {
+      const query = `root=${encodeURIComponent(root)}&ip=${encodeURIComponent(controller.ip)}&slot=${controller.slot}&tags=${encodeURIComponent(parsed.tags.join(","))}`;
+      try {
+        const response = await fetch(`/engineering/ftview/live?${query}`, { cache: "no-store" });
+        const body = await response.json();
+        if (cancelled) return;
+        if (!response.ok) {
+          setLiveNotice(body.error ?? `live read failed (${response.status})`);
+          return;
+        }
+        const values = {};
+        let good = 0;
+        let bad = 0;
+        for (const [hmi, entry] of Object.entries(body.values ?? {})) {
+          if (entry.quality === "good" && entry.value !== void 0) {
+            values[hmi] = entry.value;
+            good += 1;
+          } else bad += 1;
+        }
+        setLiveValues(values);
+        setLiveNotice(`${good} live${bad > 0 ? `, ${bad} failed` : ""}${(body.not_live?.length ?? 0) > 0 ? `, ${body.not_live.length} not live` : ""}`);
+      } catch (error) {
+        if (!cancelled) setLiveNotice(error instanceof Error ? error.message : String(error));
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => {
+      void tick();
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [live, root, parsed.tags]);
+  const rendered = React.useMemo(() => {
+    try {
+      return { svg: renderDisplay(xml, { tagValues: liveValues }), count: parsed.index.size, error: "" };
+    } catch (error) {
+      return { svg: "", count: 0, error: error instanceof Error ? error.message : String(error) };
+    }
+  }, [xml, liveValues, parsed.index.size]);
+  const navigate = React.useCallback(async (target) => {
+    if (root === void 0 || target === "") return;
+    try {
+      const response = await fetch(`/engineering/ftview/display?root=${encodeURIComponent(root)}&name=${encodeURIComponent(target)}`, { cache: "no-store" });
+      if (!response.ok) {
+        setLiveNotice(`cannot open ${target} (${response.status})`);
+        return;
+      }
+      const text = await response.text();
+      setHistory((entries) => [...entries, { name: displayName, xml }]);
+      setXml(text);
+      setDisplayName(target);
+      setSelected(void 0);
+      setLiveNotice("");
+    } catch (error) {
+      setLiveNotice(error instanceof Error ? error.message : String(error));
+    }
+  }, [root, xml, displayName]);
+  const back = () => {
+    const previous = history[history.length - 1];
+    if (previous === void 0) return;
+    setHistory((entries) => entries.slice(0, -1));
+    setXml(previous.xml);
+    setDisplayName(previous.name);
+    setSelected(void 0);
+  };
+  if (rendered.error !== "") {
+    return h(
+      "div",
+      { style: { padding: 16, font: "13px system-ui", color: "#a00" } },
+      h("p", null, t("invalid")),
+      h("pre", { style: { whiteSpace: "pre-wrap", color: "#666" } }, rendered.error)
+    );
+  }
+  const size = /width="(\d+)" height="(\d+)"/u.exec(rendered.svg);
+  const width = Number(size?.[1] ?? 0);
+  const height = Number(size?.[2] ?? 0);
+  const chosen = selected === void 0 ? void 0 : parsed.index.get(selected);
+  return h(
+    "div",
+    { style: { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 } },
+    h(
+      "div",
+      { style: { display: "flex", alignItems: "center", gap: 8, padding: "4px 8px", fontSize: 11, borderBottom: "1px solid rgba(128,128,128,.25)", flex: "none", opacity: 0.85 } },
+      displayName === "" ? null : h("span", { style: { fontWeight: 600 } }, displayName),
+      h("span", null, `${width}\xD7${height}`),
+      h("span", null, `${rendered.count} ${t("objects")}`),
+      h(
+        "span",
+        { style: { marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" } },
+        live && liveNotice !== "" ? h("span", { style: { opacity: 0.7 } }, liveNotice) : null,
+        history.length > 0 ? h("button", { type: "button", onClick: back, style: { font: "inherit" } }, "\u2190 Back") : null,
+        h("button", { type: "button", onClick: () => downloadPng(container.current, displayName), style: { font: "inherit" } }, "PNG"),
+        h("button", { type: "button", disabled: root === void 0, title: root === void 0 ? "Open the export folder, not a single file" : `${parsed.tags.length} tag(s) bound`, onClick: () => setLive(!live), style: { font: "inherit", fontWeight: live ? 600 : 400 } }, live ? "Live on" : "Live"),
+        h("button", { type: "button", onClick: () => setFit(true), style: { font: "inherit" } }, t("fit")),
+        h("button", { type: "button", onClick: () => setFit(false), style: { font: "inherit" } }, t("actual"))
+      )
+    ),
+    h(
+      "div",
+      { style: { flex: 1, minHeight: 0, display: "flex" } },
+      h(
+        "div",
+        {
+          ref: container,
+          onClick: (event) => {
+            const element = event.target.closest("[data-ftv-name]");
+            setSelected(element?.getAttribute("data-ftv-name") ?? void 0);
+          },
+          onDoubleClick: (event) => {
+            const element = event.target.closest("[data-ftv-type]");
+            if (element?.getAttribute("data-ftv-type") !== "gotoButton") return;
+            const name = element.getAttribute("data-ftv-name") ?? "";
+            const object = parsed.index.get(name);
+            const target = object === void 0 ? void 0 : attribute({ tag: "gotoButton", attributes: object.attributes, children: [], text: "" }, "display");
+            if (target !== void 0) void navigate(target);
+          },
+          style: { flex: 1, minWidth: 0, overflow: "auto", background: "#202020", padding: 8 }
+        },
+        h("div", {
+          style: fit ? { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } : { width, height },
+          dangerouslySetInnerHTML: { __html: rendered.svg }
+        })
+      ),
+      chosen === void 0 ? null : h(
+        "div",
+        { style: { width: 260, flex: "none", borderLeft: "1px solid rgba(128,128,128,.25)", overflow: "auto", padding: 8, fontSize: 11 } },
+        h(
+          "div",
+          { style: { display: "flex", alignItems: "center", gap: 6 } },
+          h("strong", null, chosen.type),
+          h("span", { style: { opacity: 0.6 } }, chosen.name),
+          h("button", { type: "button", onClick: () => setSelected(void 0), style: { marginLeft: "auto", font: "inherit" } }, "\xD7")
+        ),
+        chosen.type === "gotoButton" && attribute({ tag: "gotoButton", attributes: chosen.attributes, children: [], text: "" }, "display") !== void 0 ? h("button", { type: "button", onClick: () => {
+          const target = attribute({ tag: "gotoButton", attributes: chosen.attributes, children: [], text: "" }, "display");
+          if (target !== void 0) void navigate(target);
+        }, style: { font: "inherit", margin: "6px 0" } }, "Open display") : null,
+        h(
+          "table",
+          { style: { borderCollapse: "collapse", width: "100%" } },
+          h("tbody", null, Object.entries(chosen.attributes).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => h("tr", { key }, h("td", { style: { opacity: 0.6, paddingRight: 6, verticalAlign: "top" } }, key), h("td", null, value))))
+        ),
+        chosen.connections.length === 0 ? null : h("div", null, h("strong", null, "Connections"), chosen.connections.map((connection, index) => h("div", { key: index }, `${connection.name ?? "?"} \u2190 ${connection.expression ?? "?"}`))),
+        h("div", { style: { opacity: 0.6, marginTop: 4 } }, `${chosen.states} state(s)`)
+      )
+    )
+  );
 }
 
 // packages/ftview-viewer/face/face.ts
@@ -522,183 +791,20 @@ var zh = {
   objects: "\u4E2A\u5BF9\u8C61",
   invalid: "\u8BE5\u6587\u4EF6\u4E0D\u662F FactoryTalk View \u753B\u9762\u5BFC\u51FA\u3002"
 };
-var h = React.createElement;
-function decodeSource(data) {
-  if (typeof data === "string") return data;
-  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
-  return new TextDecoder("utf-8").decode(bytes);
-}
-function objectCount(source) {
-  try {
-    const display = parseXml(source);
-    return display.children.filter((child2) => child2.tag !== "displaySettings").length;
-  } catch {
-    return 0;
-  }
-}
-function referencedTags(source) {
-  const tags = /* @__PURE__ */ new Set();
-  const walk = (node) => {
-    for (const value of Object.values(node.attributes)) {
-      for (const match of value.matchAll(/\{([^}]+)\}/gu)) tags.add((match[1] ?? "").trim());
-      const name = value.trim();
-      if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) tags.add(name);
-    }
-    for (const child2 of node.children) walk(child2);
-  };
-  try {
-    walk(parseXml(source));
-  } catch {
-    return [];
-  }
-  return [...tags].filter((tag) => tag !== "").slice(0, 64);
-}
-function exportRootOf(address) {
-  if (address === void 0 || address === "") return void 0;
-  const match = /^(.*?)[\\/]Displays[\\/][^\\/]+$/u.exec(address);
-  return match?.[1];
-}
-function Display(props) {
-  const { source, t, address } = props;
-  const root = exportRootOf(address);
-  const [fit, setFit] = React.useState(true);
-  const [live, setLive] = React.useState(false);
-  const [liveValues, setLiveValues] = React.useState({});
-  const [liveNotice, setLiveNotice] = React.useState("");
-  const tags = React.useMemo(() => referencedTags(source), [source]);
-  React.useEffect(() => {
-    if (!live || root === void 0) return void 0;
-    let cancelled = false;
-    const stored = (() => {
-      try {
-        const raw = window.localStorage.getItem("ftview.live.controller");
-        if (raw === null) return void 0;
-        const parsed = JSON.parse(raw);
-        return typeof parsed.ip === "string" ? { ip: parsed.ip, slot: typeof parsed.slot === "number" ? parsed.slot : 0 } : void 0;
-      } catch {
-        return void 0;
-      }
-    })();
-    const controller = stored ?? { ip: window.prompt("Controller IPv4 address") ?? "", slot: 0 };
-    if (controller.ip === "") {
-      setLive(false);
-      return void 0;
-    }
-    try {
-      window.localStorage.setItem("ftview.live.controller", JSON.stringify(controller));
-    } catch {
-    }
-    const tick = async () => {
-      const query = `root=${encodeURIComponent(root)}&ip=${encodeURIComponent(controller.ip)}&slot=${controller.slot}&tags=${encodeURIComponent(tags.join(","))}`;
-      try {
-        const response = await fetch(`/engineering/ftview/live?${query}`, { cache: "no-store" });
-        const body = await response.json();
-        if (cancelled) return;
-        if (!response.ok) {
-          setLiveNotice(body.error ?? `live read failed (${response.status})`);
-          return;
-        }
-        const values = {};
-        let good = 0;
-        let bad = 0;
-        for (const [hmi, entry] of Object.entries(body.values ?? {})) {
-          if (entry.quality === "good" && entry.value !== void 0) {
-            values[hmi] = entry.value;
-            good += 1;
-          } else bad += 1;
-        }
-        setLiveValues(values);
-        setLiveNotice(`${good} live${bad > 0 ? `, ${bad} failed` : ""}${(body.not_live?.length ?? 0) > 0 ? `, ${body.not_live?.length ?? 0} not live` : ""}`);
-      } catch (error) {
-        if (!cancelled) setLiveNotice(error instanceof Error ? error.message : String(error));
-      }
-    };
-    void tick();
-    const timer = window.setInterval(() => {
-      void tick();
-    }, 500);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
-  }, [live, root, tags]);
-  const rendered = React.useMemo(() => {
-    try {
-      return { svg: renderDisplay(source, { tagValues: liveValues }), count: objectCount(source), error: "" };
-    } catch (error) {
-      return { svg: "", count: 0, error: error instanceof Error ? error.message : String(error) };
-    }
-  }, [source, liveValues]);
-  if (rendered.error !== "") {
-    return h(
-      "div",
-      { style: { padding: 16, font: "13px system-ui", color: "#a00" } },
-      h("p", null, t("invalid")),
-      h("pre", { style: { whiteSpace: "pre-wrap", color: "#666" } }, rendered.error)
-    );
-  }
-  const size = /width="(\d+)" height="(\d+)"/u.exec(rendered.svg);
-  const width = Number(size?.[1] ?? 0);
-  const height = Number(size?.[2] ?? 0);
-  return h(
-    "div",
-    { style: { display: "flex", flexDirection: "column", height: "100%", minHeight: 0 } },
-    h(
-      "div",
-      {
-        style: {
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "4px 8px",
-          fontSize: 11,
-          borderBottom: "1px solid rgba(128,128,128,.25)",
-          flex: "none",
-          opacity: 0.85
-        }
-      },
-      h("span", null, `${width}\xD7${height}`),
-      h("span", null, `${rendered.count} ${t("objects")}`),
-      h(
-        "span",
-        { style: { marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" } },
-        live && liveNotice !== "" ? h("span", { style: { opacity: 0.7 } }, liveNotice) : null,
-        h("button", {
-          type: "button",
-          disabled: root === void 0,
-          title: root === void 0 ? "Open the export folder, not a single file" : `${tags.length} tag(s) bound`,
-          onClick: () => setLive(!live),
-          style: { font: "inherit", fontWeight: live ? 600 : 400 }
-        }, live ? "Live on" : "Live"),
-        h("button", { type: "button", onClick: () => setFit(true), style: { font: "inherit" } }, t("fit")),
-        h("button", { type: "button", onClick: () => setFit(false), style: { font: "inherit" } }, t("actual"))
-      )
-    ),
-    h(
-      "div",
-      { style: { flex: 1, minHeight: 0, overflow: "auto", background: "#202020", padding: 8 } },
-      h("div", {
-        style: fit ? { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } : { width, height },
-        // The renderer returns a complete SVG document; no untrusted input reaches
-        // this string beyond the display file the user opened.
-        dangerouslySetInnerHTML: { __html: rendered.svg }
-      })
-    )
-  );
-}
+var h2 = React2.createElement;
 function Body(props) {
   const { content, t } = props;
-  const source = React.useMemo(() => {
+  const source = React2.useMemo(() => {
     if (content === void 0 || content.kind !== "bytes" || content.data === void 0) return null;
     return decodeSource(content.data);
   }, [content]);
   if (source === null) return null;
-  return h(Display, { source, address: props.resourceAddress, t: typeof t === "function" ? t : (key) => key });
+  return h2(Display, { source, address: props.resourceAddress, t: typeof t === "function" ? t : (key) => key });
 }
 function fileViewer(t) {
   return function FtViewFile(props) {
     if (typeof props.content !== "string") return null;
-    return h(Display, { source: props.content, t, address: typeof props.path === "string" ? props.path : void 0 });
+    return h2(Display, { source: props.content, t, address: typeof props.path === "string" ? props.path : void 0 });
   };
 }
 var inject = ["slots", "locale", "documentPreviews"];
