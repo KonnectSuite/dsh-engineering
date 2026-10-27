@@ -76,7 +76,11 @@ window.__ModuleLoader__.load({
       }
 
       const current = draft === null ? value : draft
-      const dirty = spec.fields.some(field => Boolean(current[field.key]) !== Boolean(value[field.key]))
+      const isText = field => field.type === 'text'
+      const same = (field, left, right) => (isText(field)
+        ? String(left ?? '') === String(right ?? '')
+        : Boolean(left) === Boolean(right))
+      const dirty = spec.fields.some(field => !same(field, current[field.key], value[field.key]))
       const writable = state.writable === true
       const setField = (key, next) => {
         setDraft({ ...current, [key]: next })
@@ -90,7 +94,7 @@ window.__ModuleLoader__.load({
           const ops = spec.fields.map(field => ({
             op: 'set',
             path: [field.key],
-            value: Boolean(current[field.key]),
+            value: isText(field) ? String(current[field.key] ?? '') : Boolean(current[field.key]),
           }))
           const owner = live === undefined ? form : live
           const accepted = await owner.mutate(ops, state.revision)
@@ -113,13 +117,32 @@ window.__ModuleLoader__.load({
             key: field.key,
             style: { display: 'grid', gap: '3px' },
           },
-          React.createElement(Checkbox, {
-            checked: Boolean(current[field.key]),
-            onChange: next => { setField(field.key, next) },
-            label: field.label,
-            disabled: !writable || saving,
-          }),
-          React.createElement('span', { style: { ...hint, marginLeft: '26px' } }, field.description)))),
+          isText(field)
+            ? React.createElement('label', { style: { display: 'grid', gap: '5px' } },
+              React.createElement('span', { style: { fontSize: '13px', fontWeight: 600 } }, field.label),
+              React.createElement('input', {
+                type: 'text',
+                value: String(current[field.key] ?? ''),
+                disabled: !writable || saving,
+                onChange: event => { setField(field.key, event.target.value) },
+                placeholder: field.placeholder ?? '',
+                style: {
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--dsw-alias-border, #d4d4d8)',
+                  background: 'transparent',
+                  color: 'inherit',
+                  fontSize: '13px',
+                  fontFamily: 'inherit',
+                },
+              }))
+            : React.createElement(Checkbox, {
+              checked: Boolean(current[field.key]),
+              onChange: next => { setField(field.key, next) },
+              label: field.label,
+              disabled: !writable || saving,
+            }),
+          React.createElement('span', { style: { ...hint, marginLeft: isText(field) ? '0' : '26px' } }, field.description)))),
         React.createElement('div', { style: { display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' } },
           React.createElement(Button, {
             variant: 'primary',
@@ -186,8 +209,15 @@ window.__ModuleLoader__.load({
     const MWI = {
       id: 'mwi',
       summary: 'MotionWorks IEC edits are off by default; session, reads and verification are always on.',
-      intro: 'Session, reads and verification stay on. Editing is the largest schema set in the bundle, so it is opt-in.',
+      intro: 'Session, reads and verification stay on. Set the workspace once so the tools find the projects, then turn on editing when you need it.',
       fields: [
+        {
+          key: 'workspace',
+          type: 'text',
+          label: 'Workspace root',
+          placeholder: 'C:\\Users\\you\\Documents\\Projects',
+          description: 'Absolute folder that contains the MotionWorks projects. Leave empty to use the session directory or the mwi.workspace marker in the profile.',
+        },
         {
           key: 'edit',
           label: 'Editing — seven staged tools',

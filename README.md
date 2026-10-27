@@ -58,7 +58,7 @@ down:
 |---|---|---|
 | `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (off), `studio` (off), `live` (off), `allowWrites` (off) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
-| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `edit` (off) |
+| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (off) |
 | `viewers` | ladder + ME display previews | — |
 | `optix` | FactoryTalk Optix Studio authoring | — |
 

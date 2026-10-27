@@ -10,6 +10,7 @@ import * as read from '../vendor/ftview/lib/index.js'
 import * as skill from '../vendor/ftview/lib/skill.js'
 import * as edit from '../vendor/ftview/lib/edit.js'
 import * as studio from '../vendor/ftview/lib/studio.js'
+import { flag } from './config.js'
 
 export const name = 'engineering-ftview'
 /** Union of the parts' requirements: the read entry owns the view service. */
@@ -32,6 +33,6 @@ export const Config = z.object({
 export function apply(ctx, config = {}) {
   ctx.plugin(read)
   ctx.plugin(skill)
-  if (config.edit !== false) ctx.plugin(edit)
-  if (config.studio !== false) ctx.plugin(studio)
+  if (flag(config.edit, true)) ctx.plugin(edit)
+  if (flag(config.studio, true)) ctx.plugin(studio)
 }

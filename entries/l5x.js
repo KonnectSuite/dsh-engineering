@@ -17,6 +17,7 @@ import * as skill from '../vendor/l5x/lib/skill.js'
 import * as editing from '../vendor/l5x/lib/editing.js'
 import * as studio from '../vendor/l5x/lib/studio.js'
 import * as live from '../vendor/l5x/lib/live.js'
+import { flag, list } from './config.js'
 
 export const name = 'engineering-l5x'
 /** Union of the parts' requirements: the read entry owns the project service. */
@@ -48,13 +49,44 @@ export const Config = z.object({
 export function apply(ctx, config = {}) {
   ctx.plugin(read)
   ctx.plugin(skill)
-  if (config.editing === true) ctx.plugin(editing)
-  if (config.studio === true) ctx.plugin(studio)
-  if (config.live === true) {
-    const addresses = Array.isArray(config.allowedAddresses) ? config.allowedAddresses : []
-    ctx.plugin(live, {
-      allowWrites: config.allowWrites === true,
-      ...(addresses.length === 0 ? {} : { allowedAddresses: addresses }),
-    })
+  // Volatile-only config changes never re-run apply(): the loader commits the
+  // new values and emits loader/volatile-update. Remount the optional surfaces
+  // from that event so a switch flipped in the row page takes effect at once.
+  let editingFiber
+  let studioFiber
+  let liveFiber
+  let liveSignature = ''
+  const sync = () => {
+    const wantEditing = flag(config.editing)
+    if (wantEditing && editingFiber === undefined) editingFiber = ctx.plugin(editing)
+    else if (!wantEditing && editingFiber !== undefined) {
+      void editingFiber.dispose()
+      editingFiber = undefined
+    }
+
+    const wantStudio = flag(config.studio)
+    if (wantStudio && studioFiber === undefined) studioFiber = ctx.plugin(studio)
+    else if (!wantStudio && studioFiber !== undefined) {
+      void studioFiber.dispose()
+      studioFiber = undefined
+    }
+
+    const wantLive = flag(config.live)
+    const addresses = list(config.allowedAddresses)
+    const signature = wantLive ? JSON.stringify([flag(config.allowWrites), addresses]) : ''
+    if (wantLive && (liveFiber === undefined || signature !== liveSignature)) {
+      if (liveFiber !== undefined) void liveFiber.dispose()
+      liveFiber = ctx.plugin(live, {
+        allowWrites: flag(config.allowWrites),
+        ...(addresses.length === 0 ? {} : { allowedAddresses: addresses }),
+      })
+      liveSignature = signature
+    } else if (!wantLive && liveFiber !== undefined) {
+      void liveFiber.dispose()
+      liveFiber = undefined
+      liveSignature = ''
+    }
   }
+  sync()
+  ctx.on('loader/volatile-update', sync)
 }

@@ -7,11 +7,40 @@
  * @module dsh-engineering-mwi/session/workspace
  */
 
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { join, resolve, sep } from 'node:path'
 
 /** Directories never scanned for projects. */
 const SKIP = new Set(['node_modules', '.git', 'stage', 'backups', '_backups', '__pycache__', 'chm_out', 'help_extract', '.dsh'])
+
+/** Workspace root set from the row's config, when one is configured. */
+let configured: string | undefined
+
+/**
+ * Set the workspace root from the product row's config.
+ *
+ * The host does not always pass the session cwd to tool calls (it is undefined
+ * in the current desktop build), so the row carries the workspace explicitly.
+ * An empty string clears it and falls back to the marker / process directory.
+ *
+ * @param root - Absolute workspace root, or an empty string.
+ */
+export function configureWorkspace(root: string | undefined): void {
+  const value = typeof root === 'string' ? root.trim() : ''
+  configured = value === '' ? undefined : resolve(value)
+}
+
+/** Read the documented `mwi.workspace` marker from the profile directory. */
+function recordedWorkspace(): string | undefined {
+  try {
+    const marker = join(process.env.DSH_PROFILE_DIR ?? '', 'mwi.workspace')
+    if (!existsSync(marker)) return undefined
+    const recorded = readFileSync(marker, 'utf8').replace(/^\uFEFF/u, '').trim()
+    return recorded === '' ? undefined : resolve(recorded)
+  } catch {
+    return undefined
+  }
+}
 
 /** One MotionWorks project found in the workspace. */
 export interface FoundProject {
@@ -32,7 +61,8 @@ export interface FoundProject {
  * @returns The absolute workspace root.
  */
 export function workspaceOf(cwd: string | undefined): string {
-  return resolve(cwd ?? process.cwd())
+  if (typeof cwd === 'string' && cwd.trim() !== '') return resolve(cwd)
+  return configured ?? recordedWorkspace() ?? resolve(process.cwd())
 }
 
 /**
@@ -70,8 +100,17 @@ export function findProjects(workspace: string, options: { filter?: string; limi
   const filter = options.filter?.toLowerCase()
   const stage = stageRootOf(workspace)
   const found: FoundProject[] = []
+  const seen = new Set<string>()
   const walk = (directory: string, depth: number): void => {
     if (found.length >= limit || depth > 6) return
+    let real: string
+    try {
+      real = realpathSync(directory)
+    } catch {
+      return
+    }
+    if (seen.has(real)) return
+    seen.add(real)
     let entries
     try {
       entries = readdirSync(directory, { withFileTypes: true })
@@ -81,7 +120,15 @@ export function findProjects(workspace: string, options: { filter?: string; limi
     for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
       if (found.length >= limit) return
       const absolute = join(directory, entry.name)
-      if (entry.isDirectory()) {
+      let isDirectory = entry.isDirectory()
+      if (!isDirectory && entry.isSymbolicLink()) {
+        try {
+          isDirectory = statSync(absolute).isDirectory()
+        } catch {
+          isDirectory = false
+        }
+      }
+      if (isDirectory) {
         if (SKIP.has(entry.name) || isInside(stage, absolute)) continue
         walk(absolute, depth + 1)
         continue
