@@ -23,19 +23,19 @@ export const name = 'engineering-l5x'
 export const inject = ['tools', 'fs']
 
 export const Config = z.object({
-  editing: z.boolean().default(false).description(
+  editing: z.boolean().default(false).volatile().description(
     'Nine staged draft tools (draft_rung, draft_apply, ...). Off by default: a read-only profile should not pay for these schemas.',
   ),
-  studio: z.boolean().default(false).description(
+  studio: z.boolean().default(false).volatile().description(
     'Logix Designer SDK and supervised controller tools. Needs Studio 5000 with the SDK service installed.',
   ),
-  live: z.boolean().default(false).description(
+  live: z.boolean().default(false).volatile().description(
     'EtherNet/IP surface: polling, batch reads, discovery, controller clock and trends. Needs a reachable controller address.',
   ),
-  allowWrites: z.boolean().default(false).description(
+  allowWrites: z.boolean().default(false).volatile().description(
     'Permit the two live write tools (tag, wall clock). Each write still needs human approval for that exact operation, and only applies while live is on.',
   ),
-  allowedAddresses: z.array(z.string()).default([]).description(
+  allowedAddresses: z.array(z.string()).default([]).volatile().description(
     'Optional IPv4 allowlist for live reads, writes and discovery. Empty permits any explicit address.',
   ),
 })

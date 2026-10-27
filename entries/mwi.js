@@ -17,7 +17,7 @@ export const name = 'engineering-mwi'
 export const inject = ['tools']
 
 export const Config = z.object({
-  edit: z.boolean().default(false).description(
+  edit: z.boolean().default(false).volatile().description(
     'Seven staged edit tools (code, declarations, structure, blocks, POU packages). Off by default: the largest schemas in the bundle.',
   ),
 })

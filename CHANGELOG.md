@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.10] - 2026-10-26
+
+### Fixed
+
+- **The row settings page sat on "Loading configuration…".** The Plugins page snapshots a row's
+  configuration form once when it opens and does not subscribe to it, so a form that was still
+  loading at that moment never produced the switches. The page now reads the live form from the
+  client `configForms` service, whose `get` starts the one describe fetch, and subscribes to it;
+  the switches appear when the settings settle, and a row with no configuration says so instead of
+  loading forever.
+- **The row switches were not served to Settings at all.** The config fields were plain
+  `z.boolean()` values, and the settings domain only publishes fields marked `.volatile()`; the
+  rows therefore had no settings namespace for the page to bind to. `editing`, `studio`, `live`,
+  `allowWrites`, `allowedAddresses`, `ftview.edit`/`studio` and `mwi.edit` are now volatile, so the
+  Configure page edits the running row instead of remounting it.
+
 ## [0.4.9] - 2026-10-26
 
 ### Fixed

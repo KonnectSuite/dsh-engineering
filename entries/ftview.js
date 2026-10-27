@@ -16,10 +16,10 @@ export const name = 'engineering-ftview'
 export const inject = ['tools', 'fs']
 
 export const Config = z.object({
-  edit: z.boolean().default(true).description(
+  edit: z.boolean().default(true).volatile().description(
     'Staged display and HMI-tag edits, validated then written to a new export folder.',
   ),
-  studio: z.boolean().default(true).description(
+  studio: z.boolean().default(true).volatile().description(
     'FactoryTalk View Studio discovery and the manual import plan. Runs no vendor utility.',
   ),
 })
