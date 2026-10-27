@@ -1,0 +1,127 @@
+/**
+ * The live-values route for the display preview.
+ *
+ * `GET /engineering/ftview/live?root=<export>&ip=<controller>&slot=<n>&tags=A,B`
+ *
+ * The export folder is read to map each HMI tag to its controller tag (the same
+ * `Address` column `ftview_live_map` reports). Only those controller tags are
+ * read; an HMI memory tag is reported as not-live instead of being given a
+ * value. The route is read-only and needs an explicit controller address and
+ * slot on every request.
+ *
+ * @module dsh-engineering-ftview/live-route
+ */
+
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { isIPv4 } from 'node:net'
+import { join } from 'node:path'
+import { liveMapOf } from './live.ts'
+import { TAG_NAME, readFromController, type LiveReader, type LiveValue } from './live-read.ts'
+import { parseTagCsv } from './model.ts'
+
+/** What the route needs to answer. */
+export interface LiveRouteDeps {
+  /** Performs the controller read; injectable for tests. */
+  readonly read?: LiveReader
+  /** Most HMI tags one request may ask for. Defaults to 64. */
+  readonly maxTags?: number
+  /** Optional IPv4 allowlist; empty permits any explicit address. */
+  readonly allowedAddresses?: readonly string[]
+}
+
+/** One route answer. */
+export interface LiveRouteAnswer {
+  readonly status: number
+  readonly body: Readonly<Record<string, unknown>>
+}
+
+/** Read the tag CSV from an export folder and map it. */
+function mapOfExport(root: string) {
+  const tagsFolder = join(root, 'Tags')
+  if (!existsSync(tagsFolder)) return undefined
+  const csv = readdirSync(tagsFolder).find(file => /\.csv$/iu.test(file))
+  if (csv === undefined) return undefined
+  const parsed = parseTagCsv(readFileSync(join(tagsFolder, csv), 'utf8'))
+  return liveMapOf({
+    root,
+    name: 'live',
+    displays: [],
+    tags: parsed.rows,
+    tagFiles: [csv],
+    tagErrors: parsed.errors,
+    diagnostics: [],
+    files: [],
+  })
+}
+
+/**
+ * Answer one live-values request.
+ *
+ * @param url - The request URL, query included.
+ * @param deps - Reader and limits.
+ * @returns Status and JSON body.
+ */
+export async function liveRoute(url: URL, deps: LiveRouteDeps = {}): Promise<LiveRouteAnswer> {
+  const query = url.searchParams
+  const root = query.get('root') ?? ''
+  const ip = query.get('ip') ?? ''
+  const slot = Number.parseInt(query.get('slot') ?? '0', 10)
+  const requested = (query.get('tags') ?? '').split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+  const maxTags = deps.maxTags ?? 64
+  if (!isIPv4(ip)) return { status: 400, body: { error: 'ip must be an IPv4 address' } }
+  if (!Number.isInteger(slot) || slot < 0 || slot > 31) return { status: 400, body: { error: 'slot must be 0..31' } }
+  if (requested.length === 0) return { status: 400, body: { error: 'tags must name at least one HMI tag' } }
+  if (requested.length > maxTags) return { status: 400, body: { error: `at most ${maxTags} tags per request` } }
+  if (requested.some(tag => !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(tag))) return { status: 400, body: { error: 'tag names must be identifiers' } }
+  if (deps.allowedAddresses !== undefined && deps.allowedAddresses.length > 0 && !deps.allowedAddresses.includes(ip)) {
+    return { status: 403, body: { error: `${ip} is not in the configured address allowlist` } }
+  }
+  const map = mapOfExport(root)
+  if (map === undefined) return { status: 400, body: { error: 'the export has no Tags folder' } }
+
+  const byHmi = new Map(map.tags.map(tag => [tag.hmi, tag]))
+  const controllerTags = new Set<string>()
+  const notLive: { hmi: string; reason: string }[] = []
+  for (const hmi of requested) {
+    const tag = byHmi.get(hmi)
+    if (tag === undefined) {
+      notLive.push({ hmi, reason: 'not declared by the export' })
+      continue
+    }
+    if (!tag.live || tag.plcTag === undefined) {
+      notLive.push({ hmi, reason: tag.reason ?? 'not controller-backed' })
+      continue
+    }
+    controllerTags.add(tag.plcTag)
+  }
+  for (const tag of controllerTags) {
+    if (!TAG_NAME.test(tag)) return { status: 400, body: { error: `controller tag ${tag} is not a valid name` } }
+  }
+
+  let read
+  try {
+    read = await (deps.read ?? readFromController)(ip, slot, [...controllerTags], 3000)
+  } catch (error) {
+    return { status: 502, body: { error: error instanceof Error ? error.message : String(error), read_at: new Date().toISOString() } }
+  }
+
+  const values: Record<string, LiveValue & { controller_tag?: string }> = {}
+  for (const hmi of requested) {
+    const tag = byHmi.get(hmi)
+    if (tag === undefined || !tag.live || tag.plcTag === undefined) continue
+    const result = read.values[tag.plcTag]
+    values[hmi] = result === undefined
+      ? { quality: 'bad', error: 'the controller returned no value', controller_tag: tag.plcTag }
+      : { ...result, controller_tag: tag.plcTag }
+  }
+  return {
+    status: 200,
+    body: {
+      values,
+      not_live: notLive,
+      controller: read.controller,
+      read_at: read.read_at,
+      tags_read: [...controllerTags],
+    },
+  }
+}

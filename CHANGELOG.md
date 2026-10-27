@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.5] - 2026-10-27
+
+### Added
+
+- **Live values in the preview.** `GET /engineering/ftview/live?root=<export>&ip=<controller>&slot=<n>&tags=A,B` maps each
+  requested HMI tag through the export's own `Address` column and reads the controller tags over EtherNet/IP with the
+  driver the L5X live row uses. It is read-only, needs an explicit IPv4 address and slot, honours an optional allowlist,
+  and reports a memory tag as `not_live` rather than inventing a value.
+- The preview's toolbar has a **Live** toggle: it asks for the controller address once, stores it locally, polls the
+  route every 500 ms, feeds the values into the renderer (so animations, bars and numeric fields move) and shows
+  `N live, M failed, K not live`.
+
+### Known gaps
+
+- The route is served only when the host provides a web server; a CLI host keeps the tool surface without live values.
+- Live reads have not been exercised against a controller in this round; the transport is the same driver the L5X live
+  row already uses, and the route is unit-tested with an injected reader.
 ## [0.10.4] - 2026-10-27
 
 ### Added

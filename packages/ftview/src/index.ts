@@ -11,6 +11,7 @@ import { stringFs, type PluginContext } from './core.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
 import { vendorTools } from './vendor-tools.ts'
+import { liveRoute } from './live-route.ts'
 
 /** Plugin name in a composition. */
 export const name = 'ftview-read'
@@ -25,6 +26,10 @@ export const VIEWS_SERVICE = 'ftviewViews'
 export interface Config {
   /** Most display and tag files one open may scan. Defaults to 2000. */
   maxFiles?: number
+  /** Serve the live-values route a preview can poll. Defaults to true. */
+  live?: boolean
+  /** Optional IPv4 allowlist for live reads; empty permits any explicit address. */
+  allowedAddresses?: string[]
 }
 
 /**
@@ -41,6 +46,36 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   const session = new ViewSession(stringFs(ctx.fs), maxFiles)
   ctx.provide?.(VIEWS_SERVICE, session)
   for (const definition of [...ftviewTools(session), ...vendorTools(stringFs(ctx.fs))]) ctx.tools.register(definition)
+  if (config.live !== false) {
+    // The route is mounted only when the host offers a web server; a CLI host
+    // without one keeps the tool surface and simply has no live preview.
+    const host = ctx as unknown as {
+      inject?: (services: string[], callback: (scope: {
+        webServer?: { register(route: unknown): unknown }
+        effect?: (callback: () => unknown, label?: string) => unknown
+      }) => void) => void
+    }
+    host.inject?.(['webServer'], scope => {
+      const register = (): unknown => scope.webServer?.register({
+        kind: 'exact',
+        path: '/engineering/ftview/live',
+        handler: async (request: { method?: string; url?: string }, response: {
+          writeHead(status: number, headers: Record<string, string>): void
+          end(body?: string): void
+        }) => {
+          if (request.method !== 'GET') {
+            response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
+            response.end(JSON.stringify({ error: 'GET only' }))
+            return
+          }
+          const answer = await liveRoute(new URL(request.url ?? '/', 'http://localhost'), { allowedAddresses: config.allowedAddresses })
+          response.writeHead(answer.status, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+          response.end(JSON.stringify(answer.body))
+        },
+      })
+      return scope.effect?.(register, 'ftview-live: route') ?? register()
+    })
+  }
 }
 
 export { ViewSession } from './session.ts'

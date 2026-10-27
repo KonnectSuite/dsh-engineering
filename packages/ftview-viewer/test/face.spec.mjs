@@ -11,6 +11,7 @@ const React = {
   createElement: (type, props, ...children) => ({ type, props: { ...(props ?? {}), children } }),
   useMemo: factory => factory(),
   useState: value => [value, () => {}],
+  useEffect: () => {},
 }
 
 /** Load the face registration out of the built bundle. */

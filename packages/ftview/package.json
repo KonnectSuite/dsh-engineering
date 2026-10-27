@@ -38,7 +38,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "fast-xml-parser": "5.11.1"
+    "fast-xml-parser": "5.11.1",
+    "st-ethernet-ip": "2.7.5"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4"

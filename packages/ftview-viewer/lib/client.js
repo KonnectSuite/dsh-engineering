@@ -536,16 +536,99 @@ function objectCount(source) {
     return 0;
   }
 }
+function referencedTags(source) {
+  const tags = /* @__PURE__ */ new Set();
+  const walk = (node) => {
+    for (const value of Object.values(node.attributes)) {
+      for (const match of value.matchAll(/\{([^}]+)\}/gu)) tags.add((match[1] ?? "").trim());
+      const name = value.trim();
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) tags.add(name);
+    }
+    for (const child2 of node.children) walk(child2);
+  };
+  try {
+    walk(parseXml(source));
+  } catch {
+    return [];
+  }
+  return [...tags].filter((tag) => tag !== "").slice(0, 64);
+}
+function exportRootOf(address) {
+  if (address === void 0 || address === "") return void 0;
+  const match = /^(.*?)[\\/]Displays[\\/][^\\/]+$/u.exec(address);
+  return match?.[1];
+}
 function Display(props) {
-  const { source, t } = props;
+  const { source, t, address } = props;
+  const root = exportRootOf(address);
+  const [fit, setFit] = React.useState(true);
+  const [live, setLive] = React.useState(false);
+  const [liveValues, setLiveValues] = React.useState({});
+  const [liveNotice, setLiveNotice] = React.useState("");
+  const tags = React.useMemo(() => referencedTags(source), [source]);
+  React.useEffect(() => {
+    if (!live || root === void 0) return void 0;
+    let cancelled = false;
+    const stored = (() => {
+      try {
+        const raw = window.localStorage.getItem("ftview.live.controller");
+        if (raw === null) return void 0;
+        const parsed = JSON.parse(raw);
+        return typeof parsed.ip === "string" ? { ip: parsed.ip, slot: typeof parsed.slot === "number" ? parsed.slot : 0 } : void 0;
+      } catch {
+        return void 0;
+      }
+    })();
+    const controller = stored ?? { ip: window.prompt("Controller IPv4 address") ?? "", slot: 0 };
+    if (controller.ip === "") {
+      setLive(false);
+      return void 0;
+    }
+    try {
+      window.localStorage.setItem("ftview.live.controller", JSON.stringify(controller));
+    } catch {
+    }
+    const tick = async () => {
+      const query = `root=${encodeURIComponent(root)}&ip=${encodeURIComponent(controller.ip)}&slot=${controller.slot}&tags=${encodeURIComponent(tags.join(","))}`;
+      try {
+        const response = await fetch(`/engineering/ftview/live?${query}`, { cache: "no-store" });
+        const body = await response.json();
+        if (cancelled) return;
+        if (!response.ok) {
+          setLiveNotice(body.error ?? `live read failed (${response.status})`);
+          return;
+        }
+        const values = {};
+        let good = 0;
+        let bad = 0;
+        for (const [hmi, entry] of Object.entries(body.values ?? {})) {
+          if (entry.quality === "good" && entry.value !== void 0) {
+            values[hmi] = entry.value;
+            good += 1;
+          } else bad += 1;
+        }
+        setLiveValues(values);
+        setLiveNotice(`${good} live${bad > 0 ? `, ${bad} failed` : ""}${(body.not_live?.length ?? 0) > 0 ? `, ${body.not_live?.length ?? 0} not live` : ""}`);
+      } catch (error) {
+        if (!cancelled) setLiveNotice(error instanceof Error ? error.message : String(error));
+      }
+    };
+    void tick();
+    const timer = window.setInterval(() => {
+      void tick();
+    }, 500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [live, root, tags]);
   const rendered = React.useMemo(() => {
     try {
-      return { svg: renderDisplay(source), count: objectCount(source), error: "" };
+      return { svg: renderDisplay(source, { tagValues: liveValues }), count: objectCount(source), error: "" };
     } catch (error) {
       return { svg: "", count: 0, error: error instanceof Error ? error.message : String(error) };
     }
-  }, [source]);
-  const [fit, setFit] = React.useState(true);
+  }, [source, liveValues]);
   if (rendered.error !== "") {
     return h(
       "div",
@@ -578,7 +661,15 @@ function Display(props) {
       h("span", null, `${rendered.count} ${t("objects")}`),
       h(
         "span",
-        { style: { marginLeft: "auto", display: "flex", gap: 4 } },
+        { style: { marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" } },
+        live && liveNotice !== "" ? h("span", { style: { opacity: 0.7 } }, liveNotice) : null,
+        h("button", {
+          type: "button",
+          disabled: root === void 0,
+          title: root === void 0 ? "Open the export folder, not a single file" : `${tags.length} tag(s) bound`,
+          onClick: () => setLive(!live),
+          style: { font: "inherit", fontWeight: live ? 600 : 400 }
+        }, live ? "Live on" : "Live"),
         h("button", { type: "button", onClick: () => setFit(true), style: { font: "inherit" } }, t("fit")),
         h("button", { type: "button", onClick: () => setFit(false), style: { font: "inherit" } }, t("actual"))
       )
@@ -602,12 +693,12 @@ function Body(props) {
     return decodeSource(content.data);
   }, [content]);
   if (source === null) return null;
-  return h(Display, { source, t: typeof t === "function" ? t : (key) => key });
+  return h(Display, { source, address: props.resourceAddress, t: typeof t === "function" ? t : (key) => key });
 }
 function fileViewer(t) {
   return function FtViewFile(props) {
     if (typeof props.content !== "string") return null;
-    return h(Display, { source: props.content, t });
+    return h(Display, { source: props.content, t, address: typeof props.path === "string" ? props.path : void 0 });
   };
 }
 var inject = ["slots", "locale", "documentPreviews"];

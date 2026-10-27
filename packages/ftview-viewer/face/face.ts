@@ -59,17 +59,105 @@ function objectCount(source: string): number {
 }
 
 /** The display surface. */
-function Display(props: { source: string; t: (key: string) => string }): React.ReactElement {
-  const { source, t } = props
+/** Every HMI tag a display binds, in document order. */
+function referencedTags(source: string): string[] {
+  const tags = new Set<string>()
+  const walk = (node: { attributes: Record<string, string>; children: readonly unknown[] }): void => {
+    for (const value of Object.values(node.attributes)) {
+      for (const match of value.matchAll(/\{([^}]+)\}/gu)) tags.add((match[1] ?? '').trim())
+      const name = value.trim()
+      if (/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) tags.add(name)
+    }
+    for (const child of node.children) walk(child as { attributes: Record<string, string>; children: readonly unknown[] })
+  }
+  try {
+    walk(parseXml(source))
+  } catch {
+    return []
+  }
+  return [...tags].filter(tag => tag !== '').slice(0, 64)
+}
+
+/** The export folder a display path belongs to. */
+function exportRootOf(address: string | undefined): string | undefined {
+  if (address === undefined || address === '') return undefined
+  const match = /^(.*?)[\\/]Displays[\\/][^\\/]+$/u.exec(address)
+  return match?.[1]
+}
+
+function Display(props: { source: string; t: (key: string) => string; address?: string }): React.ReactElement {
+  const { source, t, address } = props
+  const root = exportRootOf(address)
+  const [fit, setFit] = React.useState(true)
+  const [live, setLive] = React.useState(false)
+  const [liveValues, setLiveValues] = React.useState<Record<string, number | string | boolean>>({})
+  const [liveNotice, setLiveNotice] = React.useState('')
+  const tags = React.useMemo(() => referencedTags(source), [source])
+
+  React.useEffect(() => {
+    if (!live || root === undefined) return undefined
+    let cancelled = false
+    const stored = ((): { ip: string; slot: number } | undefined => {
+      try {
+        const raw = window.localStorage.getItem('ftview.live.controller')
+        if (raw === null) return undefined
+        const parsed = JSON.parse(raw) as { ip?: string; slot?: number }
+        return typeof parsed.ip === 'string' ? { ip: parsed.ip, slot: typeof parsed.slot === 'number' ? parsed.slot : 0 } : undefined
+      } catch {
+        return undefined
+      }
+    })()
+    const controller = stored ?? { ip: window.prompt('Controller IPv4 address') ?? '', slot: 0 }
+    if (controller.ip === '') {
+      setLive(false)
+      return undefined
+    }
+    try {
+      window.localStorage.setItem('ftview.live.controller', JSON.stringify(controller))
+    } catch {
+      // A blocked storage key must not disable live mode.
+    }
+    const tick = async (): Promise<void> => {
+      const query = `root=${encodeURIComponent(root)}&ip=${encodeURIComponent(controller.ip)}&slot=${controller.slot}&tags=${encodeURIComponent(tags.join(','))}`
+      try {
+        const response = await fetch(`/engineering/ftview/live?${query}`, { cache: 'no-store' })
+        const body = await response.json() as { values?: Record<string, { value?: number | string | boolean; quality?: string }>; not_live?: unknown[]; error?: string }
+        if (cancelled) return
+        if (!response.ok) {
+          setLiveNotice(body.error ?? `live read failed (${response.status})`)
+          return
+        }
+        const values: Record<string, number | string | boolean> = {}
+        let good = 0
+        let bad = 0
+        for (const [hmi, entry] of Object.entries(body.values ?? {})) {
+          if (entry.quality === 'good' && entry.value !== undefined) {
+            values[hmi] = entry.value
+            good += 1
+          } else bad += 1
+        }
+        setLiveValues(values)
+        setLiveNotice(`${good} live${bad > 0 ? `, ${bad} failed` : ''}${(body.not_live?.length ?? 0) > 0 ? `, ${body.not_live?.length ?? 0} not live` : ''}`)
+      } catch (error) {
+        if (!cancelled) setLiveNotice(error instanceof Error ? error.message : String(error))
+      }
+    }
+    void tick()
+    const timer = window.setInterval(() => { void tick() }, 500)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [live, root, tags])
+
   // A render failure must be visible, not an empty tab.
   const rendered = React.useMemo(() => {
     try {
-      return { svg: renderDisplay(source), count: objectCount(source), error: '' }
+      return { svg: renderDisplay(source, { tagValues: liveValues }), count: objectCount(source), error: '' }
     } catch (error) {
       return { svg: '', count: 0, error: error instanceof Error ? error.message : String(error) }
     }
-  }, [source])
-  const [fit, setFit] = React.useState(true)
+  }, [source, liveValues])
   if (rendered.error !== '') {
     return h('div', { style: { padding: 16, font: '13px system-ui', color: '#a00' } },
       h('p', null, t('invalid')),
@@ -87,7 +175,15 @@ function Display(props: { source: string; t: (key: string) => string }): React.R
     },
       h('span', null, `${width}×${height}`),
       h('span', null, `${rendered.count} ${t('objects')}`),
-      h('span', { style: { marginLeft: 'auto', display: 'flex', gap: 4 } },
+      h('span', { style: { marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' } },
+        live && liveNotice !== '' ? h('span', { style: { opacity: 0.7 } }, liveNotice) : null,
+        h('button', {
+          type: 'button',
+          disabled: root === undefined,
+          title: root === undefined ? 'Open the export folder, not a single file' : `${tags.length} tag(s) bound`,
+          onClick: () => setLive(!live),
+          style: { font: 'inherit', fontWeight: live ? 600 : 400 },
+        }, live ? 'Live on' : 'Live'),
         h('button', { type: 'button', onClick: () => setFit(true), style: { font: 'inherit' } }, t('fit')),
         h('button', { type: 'button', onClick: () => setFit(false), style: { font: 'inherit' } }, t('actual')))),
     h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto', background: '#202020', padding: 8 } },
@@ -109,14 +205,14 @@ function Body(props: { content?: { kind?: string; data?: Uint8Array }; resourceA
     return decodeSource(content.data)
   }, [content])
   if (source === null) return null
-  return h(Display, { source, t: typeof t === 'function' ? t : (key: string) => key })
+  return h(Display, { source, address: props.resourceAddress, t: typeof t === 'function' ? t : (key: string) => key })
 }
 
 /** The better-sidebar file viewer component: text in, display out. */
 function fileViewer(t: (key: string) => string): (props: { content?: unknown }) => React.ReactElement | null {
   return function FtViewFile(props) {
     if (typeof props.content !== 'string') return null
-    return h(Display, { source: props.content, t })
+    return h(Display, { source: props.content, t, address: typeof props.path === 'string' ? props.path : undefined })
   }
 }
 

@@ -42,6 +42,9 @@ importers:
       fast-xml-parser:
         specifier: 5.11.1
         version: 5.11.1
+      st-ethernet-ip:
+        specifier: 2.7.5
+        version: 2.7.5
     devDependencies:
       '@types/node':
         specifier: ^22.20.0
