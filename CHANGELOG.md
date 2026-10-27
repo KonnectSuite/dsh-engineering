@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.22] - 2026-10-27
+
+### Fixed
+
+- **No Python bytecode in the tarball, again.** 0.4.21 shipped three `__pycache__/*.pyc` files
+  because a `py_compile` guard check ran in the checkout before packing, and `assemble.mjs` copied
+  `code/` wholesale. They were inert — the interpreter ignores a `.pyc` whose source no longer matches
+  — but a stale `staging.cpython-312.pyc` beside a changed guard is exactly the ambiguity this
+  release line must not carry. `assemble.mjs` now excludes `__pycache__` and `*.pyc` at copy time, so
+  the outcome no longer depends on someone remembering to delete them.
+
 ## [0.4.21] - 2026-10-27
 
 ### Changed
