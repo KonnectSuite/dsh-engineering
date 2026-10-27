@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.10.6] - 2026-10-27
+
+### Added
+
+- **`ftview_object_types`.** Catalogs the object types the open export actually uses: how many of each, every attribute
+  seen with its usage count and up to three example values, and example names. Ask for one `type` to get its attribute
+  table — the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
+- **`ftview_design_check`.** Rule-based findings from the `view` corpus: touch targets under 44 px (`VIEW-HPM-02`),
+  controls with no base caption (`VIEW-HPM-01`), text contrast below 4.5:1 (`VIEW-COLOR-01`) and displays no
+  `gotoButton` reaches (`VIEW-NAV-01`). Every finding names its rule and its evidence.
+
+### Changed
+
+- FactoryTalk View read surface: 7 → 9 tools; bundle total 100 → 102.
 ## [0.10.5] - 2026-10-27
 
 ### Added

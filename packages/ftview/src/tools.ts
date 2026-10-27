@@ -8,6 +8,8 @@ import { EngineeringError, choice, integer, object, optionalInteger, optionalStr
 import type { DisplayFile, TagRow } from './model.ts'
 import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
+import { observeObjects } from './catalog.ts'
+import { designFindings } from './design.ts'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -233,6 +235,59 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
             files_changed: changedFiles.slice(0, limit),
             truncated: changedFiles.length > limit,
           },
+          [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_object_types',
+      description: 'Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
+      parameters: object({
+        view_id: VIEW_ID,
+        type: string('Optional exact element type, e.g. "momentaryButton", to list its attributes.'),
+        limit: integer('Most types to return. Defaults to 20.', { minimum: 1, maximum: 200 }),
+      }, []),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const catalog = observeObjects(view.app)
+        const wanted = optionalString(args, 'type')
+        const limit = optionalInteger(args, 'limit') ?? 20
+        if (wanted !== undefined) {
+          const entry = catalog.find(candidate => candidate.type === wanted)
+          if (entry === undefined) {
+            throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${wanted} objects are present in this export.`, 'Call ftview_object_types without a type to see what the export uses.')
+          }
+          return success(
+            `${entry.type}: ${entry.used} object(s); ${entry.attributes.length} attribute(s).`,
+            { type: entry.type, used: entry.used, names: entry.names, attributes: entry.attributes },
+            [],
+            COVERAGE,
+          )
+        }
+        return success(
+          `${catalog.length} object type(s) observed; top: ${catalog.slice(0, 5).map(entry => `${entry.type} (${entry.used})`).join(', ')}.`,
+          { types: catalog.slice(0, limit), truncated: catalog.length > limit },
+          [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_design_check',
+      description: 'Rule-based HMI design checks from the engineering corpus: touch targets (VIEW-HPM-02), missing captions (VIEW-HPM-01), text contrast (VIEW-COLOR-01) and reachability (VIEW-NAV-01).',
+      parameters: object({
+        view_id: VIEW_ID,
+        limit: integer('Most findings to return. Defaults to 40.', { minimum: 1, maximum: 200 }),
+      }, []),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const limit = optionalInteger(args, 'limit') ?? 40
+        const findings = designFindings(view.app)
+        const count = (severity: string): number => findings.filter(finding => finding.severity === severity).length
+        return success(
+          `${findings.length} design finding(s): ${count('error')} error, ${count('warning')} warning, ${count('info')} info.`,
+          { findings: findings.slice(0, limit), truncated: findings.length > limit },
           [],
           COVERAGE,
         )

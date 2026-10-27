@@ -52,6 +52,8 @@
     "ftview_find",
     "ftview_check",
     "ftview_compare",
+    "ftview_object_types",
+    "ftview_design_check",
     "ftview_live_map",
     "ftview_apps",
     "ftview_export",
@@ -205,6 +207,8 @@
         "ftview_find",
         "ftview_check",
         "ftview_compare",
+        "ftview_object_types",
+        "ftview_design_check",
         "ftview_live_map",
         "ftview_apps",
         "ftview_export"
