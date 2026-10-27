@@ -165,8 +165,8 @@ window.__ModuleLoader__.load({
 
     const L5X = {
       id: 'l5x',
-      summary: 'L5X editing, Studio 5000 SDK access and live EtherNet/IP reads are off by default; turn on only what this machine uses.',
-      intro: 'The read surface is always on. Each switch below adds tool schemas to every request, so leave off what you do not use.',
+      summary: 'L5X editing, Studio 5000 SDK access and live EtherNet/IP reads are on by default; turn off what this machine does not use.',
+      intro: 'The read surface is always on. Each switch below adds tool schemas to every request, so turn off what you do not use.',
       fields: [
         {
           key: 'editing',
@@ -211,8 +211,8 @@ window.__ModuleLoader__.load({
 
     const MWI = {
       id: 'mwi',
-      summary: 'MotionWorks IEC edits are off by default; session, reads and verification are always on.',
-      intro: 'Session, reads and verification stay on. Set the workspace once so the tools find the projects, then turn on editing when you need it.',
+      summary: 'MotionWorks IEC edits are on by default; session, reads and verification are always on.',
+      intro: 'Session, reads and verification stay on. Set the workspace once so the tools find the projects; turn editing off only for a read-only profile.',
       fields: [
         {
           key: 'workspace',
@@ -231,8 +231,8 @@ window.__ModuleLoader__.load({
 
     const OPTIX = {
       id: 'optix',
-      summary: 'FactoryTalk Optix reads are always on; live authoring, destructive edits, method invocation and the emulator preview are off by default.',
-      intro: 'The Studio bridge runs inside FactoryTalk Optix Studio. Reads work once a project with the bridge is open; turn on only the authoring surfaces this machine uses.',
+      summary: 'FactoryTalk Optix reads and authoring are on by default; turn off what this machine does not use.',
+      intro: 'The Studio bridge runs inside FactoryTalk Optix Studio. Reads work once a project with the bridge is open; turn off the authoring surfaces this machine does not use.',
       fields: [
         {
           key: 'bridgeUrls',
@@ -285,7 +285,7 @@ window.__ModuleLoader__.load({
         {
           key: 'allowPreviewInput',
           label: 'Allow preview pointer and keyboard input',
-          description: 'Input can change runtime values in the emulator. Leave off unless a test needs it.',
+          description: 'Input can change runtime values in the emulator. It ships on; turn it off when a test must not move the emulator.',
         },
       ],
     }

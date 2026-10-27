@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.15] - 2026-10-27
+
+### Changed
+
+- **Every tool surface ships on.** A fresh install no longer hides the expensive
+  halves: L5X gets `editing`, `studio`, `live` and `allowWrites`; MotionWorks IEC
+  gets `edit`; FactoryTalk Optix gets live authoring, destructive operations,
+  exported-method invocation, the emulator preview and preview input. The defaults
+  live in each row's `Config` schema, so the Configure page shows them on and a
+  read-only profile can still switch them off.
+- Docs, row descriptions and the generated tool reference now describe the
+  on-by-default behaviour. `docs/architecture.md`, `README.md`, `cordis.patch.yml`
+  and the settings page copy were updated with the schemas.
+
 ## [0.4.14] - 2026-10-27
 
 ### Added
@@ -8,8 +22,8 @@
   `entries/optix.js`, which owns a volatile config schema and hands the prebuilt
   `@aryacode/dsh-tool-ft-optix` plugin plain options. Configure can set the Studio
   bridge origins and token, live authoring, destructive operations, exported-method
-  invocation, the emulator preview and preview input. Live authoring stays off by
-  default; reads work as soon as a project with the Studio bridge is open.
+  invocation, the emulator preview and preview input. Live authoring is on by default from 0.4.15; the Configure page can
+  switch it off. Reads work as soon as a project with the Studio bridge is open.
 ## [0.4.13] - 2026-10-27
 
 ### Changed

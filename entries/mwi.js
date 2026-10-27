@@ -2,8 +2,8 @@
  * The MotionWorks IEC product row: one switch for the session, read, verify and
  * edit surfaces plus the skill.
  *
- * Editing is the largest schema set in the bundle, so it stays off until the
- * row's config form turns it on.
+ * Editing is the largest schema set in the bundle; it ships on by default and
+ * the row's config form can switch it off for a read-only profile.
  */
 import z from '@deepseek-ai/schemastery'
 import * as session from '../vendor/mwi/lib/index.js'
@@ -22,8 +22,8 @@ export const Config = z.object({
   workspace: z.string().default('').volatile().description(
     'Absolute workspace root for MotionWorks projects. Empty uses the session directory when the host passes one, then the mwi.workspace marker in the profile.',
   ),
-  edit: z.boolean().default(false).volatile().description(
-    'Seven staged edit tools (code, declarations, structure, blocks, POU packages). Off by default: the largest schemas in the bundle.',
+  edit: z.boolean().default(true).volatile().description(
+    'Seven staged edit tools (code, declarations, structure, blocks, POU packages). On by default; switch it off to drop the largest schemas in the bundle.',
   ),
 })
 

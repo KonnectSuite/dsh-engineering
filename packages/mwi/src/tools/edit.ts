@@ -1,7 +1,7 @@
 /**
  * The edit row: replace code, edit declarations, change structure and apply.
  *
- * Editing is off by default. Every tool writes the open project (the real files
+ * Editing is on by default; a read-only profile can switch it off. Every tool writes the open project (the real files
  * for a workspace project, with a verified backup already taken) and the proven
  * native helpers verify that unrelated saved and native state did not change.
  *

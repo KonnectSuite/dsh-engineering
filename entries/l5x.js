@@ -3,7 +3,7 @@
  *
  * The parts are the vendored entries; this module mounts them, so the Plugins
  * page shows one row per product instead of one per surface. The expensive
- * surfaces stay off by default and are switched from this row's config form,
+ * surfaces are on by default and can be switched off from this row's config form,
  * which is the same decision the old separate rows encoded — just reachable
  * from the product row instead of from the list.
  *
@@ -24,16 +24,16 @@ export const name = 'engineering-l5x'
 export const inject = ['tools', 'fs']
 
 export const Config = z.object({
-  editing: z.boolean().default(false).volatile().description(
-    'Nine staged draft tools (draft_rung, draft_apply, ...). Off by default: a read-only profile should not pay for these schemas.',
+  editing: z.boolean().default(true).volatile().description(
+    'Nine staged draft tools (draft_rung, draft_apply, ...). On by default; a read-only profile can switch it off to drop these schemas.',
   ),
-  studio: z.boolean().default(false).volatile().description(
+  studio: z.boolean().default(true).volatile().description(
     'Logix Designer SDK and supervised controller tools. Needs Studio 5000 with the SDK service installed.',
   ),
-  live: z.boolean().default(false).volatile().description(
+  live: z.boolean().default(true).volatile().description(
     'EtherNet/IP surface: polling, batch reads, discovery, controller clock and trends. Needs a reachable controller address.',
   ),
-  allowWrites: z.boolean().default(false).volatile().description(
+  allowWrites: z.boolean().default(true).volatile().description(
     'Permit the two live write tools (tag, wall clock). Each write still needs human approval for that exact operation, and only applies while live is on.',
   ),
   allowedAddresses: z.array(z.string()).default([]).volatile().description(

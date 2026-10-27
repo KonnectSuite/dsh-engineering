@@ -14,17 +14,19 @@ A general assistant pays for every tool schema on every request. An automation e
 surfaces — reading a 3 MB L5X, comparing two projects, staging ladder edits, talking to a controller —
 but only one or two of them at a time.
 
-This bundle splits those surfaces into one row per product. The expensive surfaces are a switch inside
-the row, off by default, so a read-only profile pays for the read tools and nothing else:
+This bundle splits those surfaces into one row per product. The expensive surfaces are switches inside
+the row. They ship on by default so a fresh install can use every tool; switch off what a
+read-only or low-context profile does not need:
 
 | Product row | Config option | Default | What turning it on adds |
 |---|---|---|---|
-| `l5x` | `editing` | off | the nine `draft_*` schemas |
-| `l5x` | `studio` | off | the Logix Designer SDK and supervised controller schemas |
-| `l5x` | `live` | off | the EtherNet/IP read, batch, discovery, clock and trend schemas |
-| `l5x` | `allowWrites` | off | the two approval-gated writes (tag, wall clock) |
+| `l5x` | `editing` | on | the nine `draft_*` schemas |
+| `l5x` | `studio` | on | the Logix Designer SDK and supervised controller schemas |
+| `l5x` | `live` | on | the EtherNet/IP read, batch, discovery, clock and trend schemas |
+| `l5x` | `allowWrites` | on | the two approval-gated writes (tag, wall clock) |
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
-| `mwi` | `edit` | off | the seven MotionWorks edit schemas |
+| `mwi` | `edit` | on | the seven MotionWorks edit schemas |
+| `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` | on | Studio authoring, destructive ops, method invocation and emulator preview |
 
 The previews are independent of the tools — switching a product off does not remove the ladder viewer.
 Both previews mount from **one** row (`viewers`), because a package registers exactly one browser
@@ -34,10 +36,10 @@ bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 40 | read on; edit, Studio, live **off** | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **Studio 5000 L5X** | 40 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 14 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
-| **MotionWorks IEC** | 24 | session, read, verify on; edit **off** | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 6 | on | Optix Studio installed |
+| **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
+| **FactoryTalk Optix** | 6 | all on | Optix Studio installed |
 
 Tool groups, by product:
 
@@ -56,11 +58,11 @@ down:
 
 | Row | Mounts | Config options (default) |
 |---|---|---|
-| `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (off), `studio` (off), `live` (off), `allowWrites` (off) |
+| `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (on), `studio` (on), `live` (on), `allowWrites` (on) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
-| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (off) |
+| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
-| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (off), `allowDestructive` (off), `allowInvoke` (off), `preview` (off), `allowPreviewInput` (off), `cdpUrl`, `previewUrl` |
+| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl` |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
@@ -95,9 +97,10 @@ Where each surface actually stands, based on what has been exercised.
   and a POU package export/delete/import round trip
 - Ladder viewer and FactoryTalk View display preview
 
-**Deliberately off by default** — switched on from the row's Configure page in Plugins: `l5x-editing`,
-`l5x-studio`, `l5x-live`, `allowWrites`, `mwi-edit`. A read-only profile should not pay for nine draft
-schemas or a controller surface.
+**On by default** — every tool surface mounts on a fresh install. Switch one off from the row's
+Configure page in Plugins (`l5x` editing/Studio/live/allowWrites, `mwi` edit, `optix` authoring/preview)
+when the profile is read-only or the request budget is tight. Tool schemas are sent on every request, so
+the lean profile is the one that turns them off.
 
 **Known limits** — stated in the bundle, not hidden:
 
@@ -106,7 +109,7 @@ schemas or a controller surface.
 - FBD/SFC semantics are not exercised
 - FactoryTalk View Studio work is a **manual handoff**: the bundle plans the import and preflights
   changed files, it does not import
-- Optix has no skill, so its 6 tools cannot be switched off
+- Optix has no skill yet; its tools follow the `optix` row config and the Studio bridge
 
 **Not in this repository** — CAD mounts as an independent plugin.
 
@@ -114,6 +117,7 @@ schemas or a controller surface.
 
 | Version | What landed |
 |---|---|
+| **0.4.15** | Every tool surface ships on by default; the row Configure pages switch them off |
 | **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |
 | **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
 | **0.4.6** | Full EtherNet/IP surface: batch reads, discovery, controller clock, and approval-gated tag and clock writes; 84 tools |

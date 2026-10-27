@@ -6,13 +6,14 @@
 #
 # The optional parts are the row's config, not separate rows:
 #
-#   l5x    → editing, studio, live   (all off by default)
-#   ftview → edit, studio            (both on by default)
-#   mwi    → edit                    (off by default)
+#   l5x    → editing, studio, live, allowWrites   (all on by default)
+#   ftview → edit, studio                          (both on by default)
+#   mwi    → edit                                  (on by default)
+#   optix  → authoring, destructive, invoke, preview (all on by default)
 #
-# That keeps the context decision with the product it belongs to: a read-only
-# profile pays for the read surface, and the expensive schemas are one switch
-# inside the row instead of four more toggles in the list.
+# Every surface ships on so a fresh install can use the full plugin. Turn one
+# off from the row's Configure page when the profile is read-only or the request
+# budget is tight; the schemas are sent on every request.
 #
 # The patch only ever inserts. It must never target a row another bundle owns:
 # a profile without that row makes composition fail ("patch: entry ... not

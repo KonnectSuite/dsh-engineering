@@ -1,7 +1,7 @@
 /**
  * The `mwi-edit` entry: staged edits, validation and apply.
  *
- * Off by default. The row writes only the staged project and verifies that
+ * On by default; a read-only profile can switch it off. The row writes only the staged project and verifies that
  * unrelated saved and native state did not change.
  *
  * @module dsh-engineering-mwi/edit

@@ -801,7 +801,7 @@ Capture a baseline of the saved project source and compile state, or compare the
 
 ### MWI edit
 
-Off by default. Code, declarations, structure, block insertion and POU packages, each verified against saved and native state.
+On by default. Code, declarations, structure, block insertion and POU packages, each verified against saved and native state.
 
 #### `mw_edit_code`
 

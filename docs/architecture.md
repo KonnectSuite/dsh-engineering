@@ -32,15 +32,16 @@ user's enabled state.
 
 | id | package entry | mounts | config (default) |
 |---|---|---|---|
-| `l5x` | `entries/l5x.js` | read, `rockwell-l5x` guidance; optionally drafts, SDK, live | `editing` off, `studio` off, `live` off |
+| `l5x` | `entries/l5x.js` | read, `rockwell-l5x` guidance, drafts, SDK, live | `editing` on, `studio` on, `live` on, `allowWrites` on |
 | `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
-| `mwi` | `entries/mwi.js` | session, read, verify, guidance; optionally edits | `edit` off |
+| `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `edit` on |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
-| `optix` | `@aryacode/dsh-tool-ft-optix` | Optix Studio authoring | — |
+| `optix` | `entries/optix.js` | Optix Studio reads, authoring and preview | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on |
 
 A product row is an `entries/*.js` composite: it mounts the vendored parts (`ctx.plugin(part)`) so the
 Plugins page shows one switch per product, and exposes the optional parts as its `Config` schema, which
-the page renders as the row's config form. The defaults are the old per-row defaults, unchanged.
+the page renders as the row's config form. Every optional surface defaults on; the config form turns
+off what a profile does not need.
 
 **Why not `cordis:group`.** The patch format supports group rows (`name: cordis:group`, `group: true`,
 children in `config`), but the Plugins page does not render them: it skips them outright
@@ -85,9 +86,8 @@ open export instead of reading it twice. A chat's handles are scoped to that cha
 ## Switches
 
 A row is a plugin, so a disabled row is an unloaded plugin and its tool schemas leave the request. That
-is the whole switch mechanism in this product line, and it is why the expensive surfaces are their own
-rows: `l5x-editing`, `l5x-studio`, `l5x-live` and `mwi-edit` are off by default, so a read-only profile
-never pays for them.
+is the whole switch mechanism in this product line. The optional surfaces ship on by default, and the
+row's config form can turn them off, so a read-only or low-context profile does not pay for them.
 
 The patch **only inserts**. An entry that targets another bundle's row (`- id: something-else`) is a
 hard failure when that row is absent — `dsh: [...] patch: entry "..." not found` — and the bundle then

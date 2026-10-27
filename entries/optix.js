@@ -5,8 +5,8 @@
  * the Plugins page can render it, resolves the volatile references the settings
  * page writes, and hands the prebuilt plugin a plain options object.
  *
- * Live authoring is off by default: the prebuilt plugin registers the read
- * tools either way, but every write is refused until `allowWrites` is on.
+ * Authoring ships on by default. The prebuilt plugin registers the tools, and
+ * each capability can be switched off from the row's config form.
  */
 import z from '@deepseek-ai/schemastery'
 import * as optix from '../vendor/optix/lib/index.js'
@@ -22,16 +22,16 @@ export const Config = z.object({
   bridgeToken: z.string().default('').volatile().description(
     'Bearer token configured on the Studio bridge, if it requires one.',
   ),
-  allowWrites: z.boolean().default(false).volatile().description(
+  allowWrites: z.boolean().default(true).volatile().description(
     'Live authoring through optix_edit and optix_action. Dry-run validation works without it.',
   ),
-  allowDestructive: z.boolean().default(false).volatile().description(
+  allowDestructive: z.boolean().default(true).volatile().description(
     'Delete, move, reorder, retype, replace and convert operations.',
   ),
-  allowInvoke: z.boolean().default(false).volatile().description(
+  allowInvoke: z.boolean().default(true).volatile().description(
     'Invoke exported methods on a session-safe bridge build.',
   ),
-  preview: z.boolean().default(false).volatile().description(
+  preview: z.boolean().default(true).volatile().description(
     'Register the direct-CDP preview and screenshot tools. Needs the emulator browser open.',
   ),
   cdpUrl: z.string().default('http://127.0.0.1:9223').volatile().description(
@@ -40,7 +40,7 @@ export const Config = z.object({
   previewUrl: z.string().default('http://127.0.0.1:8081/').volatile().description(
     'Already-open emulator tab, matched by exact origin, path and query.',
   ),
-  allowPreviewInput: z.boolean().default(false).volatile().description(
+  allowPreviewInput: z.boolean().default(true).volatile().description(
     'Pointer and keyboard input into the emulator preview. Input can change runtime values.',
   ),
   requestTimeoutMs: z.natural().min(1).max(2147483647).default(20000),

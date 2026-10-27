@@ -63,7 +63,7 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'M
   { group: 'MWI session', product: 'MotionWorks IEC', blurb: 'Find and stage a workspace project, then start, inspect and close the IDE.' },
   { group: 'MWI read', product: 'MotionWorks IEC', blurb: 'Read the saved project model, code, references, review evidence and installed help.' },
   { group: 'MWI verify', product: 'MotionWorks IEC', blurb: 'Compile, read the IDE output panes and compare saved-source baselines.' },
-  { group: 'MWI edit', product: 'MotionWorks IEC', blurb: 'Off by default. Code, declarations, structure, block insertion and POU packages, each verified against saved and native state.' },
+  { group: 'MWI edit', product: 'MotionWorks IEC', blurb: 'On by default. Code, declarations, structure, block insertion and POU packages, each verified against saved and native state.' },
 ]
 
 const stub = {} as never
