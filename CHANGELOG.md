@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.19] - 2026-10-27
+
+### Fixed
+
+- **Reads without a project name find the attached project.** `mw_get`, `mw_help` and `mw_search`
+  resolve the single project with a verified pre-edit backup when no `project` is passed, so the
+  direct workflow no longer fails with `NO_PROJECT`. A leftover `.motionworks/stage` copy no longer
+  shadows that project, and two attached projects are reported as `AMBIGUOUS_PROJECT` with both names.
+
 ## [0.4.18] - 2026-10-27
 
 ### Fixed

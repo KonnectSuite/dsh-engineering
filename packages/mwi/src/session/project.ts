@@ -10,6 +10,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import { MwiError } from '../core/errors.ts'
+import { listBackups } from './backup.ts'
 import { isInside, stageRootOf } from './workspace.ts'
 
 /** One project a read can address. */
@@ -48,10 +49,21 @@ export function resolveProject(workspace: string, requested: string): ProjectRef
 /**
  * Resolve the project a call means when it names none.
  *
+ * An attached direct project wins over a stale staged copy: the direct
+ * workflow has no stage, and a leftover stage must not make the call ambiguous.
+ *
  * @param workspace - Absolute workspace root.
- * @returns The single staged project.
+ * @returns The single attached or staged project.
  */
 export function defaultProject(workspace: string): ProjectRef {
+  const attached = listBackups(workspace)
+  if (attached.length === 1) {
+    return resolveProject(workspace, attached[0]!.mwt)
+  }
+  if (attached.length > 1) {
+    throw new MwiError('AMBIGUOUS_PROJECT', `${attached.length} projects have a pre-edit backup.`, 'Pass project: the project directory or .mwt.', attached.map(record => record.name))
+  }
+
   let names: string[] = []
   try {
     names = readdirSync(stageRootOf(workspace)).filter(name => name.toLowerCase().endsWith('.mwt'))
@@ -59,7 +71,7 @@ export function defaultProject(workspace: string): ProjectRef {
     names = []
   }
   if (names.length === 0) {
-    throw new MwiError('NO_PROJECT', 'No project is staged in this workspace.', 'Call mw_project_find, then mw_project_stage, or pass project explicitly.')
+    throw new MwiError('NO_PROJECT', 'No project is open, backed up or staged in this workspace.', 'Call mw_project_find, then mw_project_open with the workspace .mwt.')
   }
   if (names.length > 1) {
     throw new MwiError('AMBIGUOUS_PROJECT', `${names.length} projects are staged.`, 'Pass project: the project directory or .mwt.', names.map(name => name.replace(/\.mwt$/iu, '')))
