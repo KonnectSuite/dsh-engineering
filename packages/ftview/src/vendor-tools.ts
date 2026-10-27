@@ -74,7 +74,7 @@ export function vendorTools(fs: FsService): readonly ToolDefinition[] {
         }
         const files = exported.value?.files ?? []
         const warnings = exported.value?.warnings ?? []
-        const displays = files.filter(file => /\/Displays\/.+\.xml$/iu.test(file) && !/batchimport/iu.test(file))
+        const displays = files.filter(file => /^Displays\/.+\.xml$/iu.test(file) && !/batchimport/iu.test(file))
         const manifests = files.filter(file => /batchimport/iu.test(file))
         const alarms = files.filter(file => /^Alarms\//iu.test(file))
         const tags = files.filter(file => /^Tags\/.+\.csv$/iu.test(file))

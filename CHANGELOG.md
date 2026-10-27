@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.9.3] - 2026-10-27
+
+### Fixed
+
+- **`ftview_export` reported `0 display(s)` for a successful export.** The display count used a pattern that
+  required a leading slash, but export paths are relative (`Displays/Main Screen.xml`), so every export said
+  zero displays even when it wrote thirteen. The count now matches the paths the tool actually returns.
+- **The tags and alarms warning now says what it means.** The copied `Alarms/Alarms.xml` and
+  `Tags/<application>.csv` are snapshots Studio last wrote when those components were exported from their
+  editors — not fresh data. The warning states that, and that the application export in Studio is what
+  refreshes them. There is no supported headless export for either component; this is the honest boundary.
 ## [0.9.2] - 2026-10-27
 
 ### Fixed

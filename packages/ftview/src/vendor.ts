@@ -184,7 +184,7 @@ function freshness(file: string, relative: string, database: string | undefined)
   if (database === undefined) return undefined
   try {
     if (statSync(file).mtimeMs + 60_000 >= statSync(database).mtimeMs) return undefined
-    return `${relative} was written ${modifiedOn(file)}, older than the application database (${modifiedOn(database)}); it may not reflect recent changes. Studio refreshes it on its next full export.`
+    return `${relative} was written ${modifiedOn(file)}, older than the application database (${modifiedOn(database)}). This is the last snapshot Studio wrote for that component, not a fresh export: run the application export in FactoryTalk View Studio once to refresh it, then reopen that folder.`
   } catch {
     return undefined
   }
