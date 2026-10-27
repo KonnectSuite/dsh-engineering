@@ -77,7 +77,10 @@ Start from the application, not from a folder someone emailed:
 
 1. `ftview_apps` lists the ME applications installed on this host.
 2. `ftview_export` writes one to a NEW folder through the vendor export server. No Studio window is
-   needed and the application is not modified.
+   needed and the application is not modified. It also copies the alarm setup (`Alarms/Alarms.xml`) and
+   the tag CSV (`Tags/<application>.csv`) from the Studio project store, and reports a `warning` for
+   either when the stored file is older than the application database — say so rather than treating
+   those tags or alarms as current.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,

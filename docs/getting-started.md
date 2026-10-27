@@ -111,8 +111,9 @@ expressions and read NetLogic guidance from the pinned cheat-sheet snapshot.
 ## 5. What the bundle will not pretend
 
 - **FactoryTalk View import and runtime creation are Studio steps.** The bundle exports, authors,
-  validates and verifies; it does not import into Studio or build a `.mer`. The export also does not
-  include the HMI tag CSV — export that separately if tag bindings matter.
+  validates and verifies; it does not import into Studio or build a `.mer`. The export copies the alarm
+  setup and the tag CSV from the Studio project store; when those files are older than the application
+  database the result says so instead of presenting them as current.
 - **MotionWorks needs its IDE running.** Without it, the row is read-only over saved files.
 - **Optix needs the Studio bridge.** Disk files can be stale while Studio is open; the bridge is the
   truth.

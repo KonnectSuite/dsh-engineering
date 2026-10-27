@@ -12,7 +12,7 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, readdirSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** CLSID of the ME export server (`MEExport.exe`). */
@@ -113,17 +113,29 @@ export async function listApplications(): Promise<VendorResult<readonly MeApplic
 }
 
 /**
- * Export one application's displays and globals into a new folder.
+ * Export one application's displays, globals, alarms and tags into a new folder.
+ *
+ * The export server covers displays, global objects and project settings. The
+ * alarm setup and the tag database live beside the application in the Studio
+ * project store, and `ExportAll` does not copy them, so this function does:
+ * without them a "full" export has no tags to bind and no alarms to review.
+ *
+ * Those two files are snapshots Studio writes when it exports them from their
+ * editors, not live views of the database, so each copy is checked against the
+ * application database's timestamp and a stale one is reported rather than
+ * silently handed over as current.
  *
  * @param application - Application name as listed.
  * @param destination - Folder to create and fill.
- * @returns Files written, relative to the destination.
+ * @param documentsRoot - Public Documents folder, injectable for tests.
+ * @returns Files written and any freshness warnings.
  */
-export async function exportApplication(application: string, destination: string): Promise<VendorResult<readonly string[]>> {
+export async function exportApplication(application: string, destination: string, documentsRoot?: string): Promise<VendorResult<ExportResult>> {
   if (existsSync(destination)) return { error: `A file or folder already exists at ${destination}. Export into a new folder.` }
   const result = await runPowerShell('powershell.exe', EXPORT_SCRIPT, { clsid: EXPORT_CLSID, app: application, dest: destination })
   if (result.code !== 0) return { error: `Export failed: ${result.stderr.trim() || `exit ${result.code}`}` }
   if (!existsSync(destination)) return { error: 'The engine reported success but wrote no folder.' }
+  const extras = copyProjectExtras(application, destination, documentsRoot)
   const files: string[] = []
   const walk = (directory: string, prefix: string): void => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -133,7 +145,97 @@ export async function exportApplication(application: string, destination: string
     }
   }
   walk(destination, '')
-  return { value: files.sort() }
+  return { value: { files: files.sort(), warnings: extras.warnings } }
+}
+
+/** One export run's files and freshness warnings. */
+export interface ExportResult {
+  /** Files written, relative to the destination. */
+  readonly files: readonly string[]
+  /** Components that are missing or older than the application database. */
+  readonly warnings: readonly string[]
+}
+
+/** What the project store contributed to an export. */
+export interface ProjectExtras {
+  /** Export-relative paths copied from the store. */
+  readonly copied: readonly string[]
+  /** Why a component is missing or possibly stale. */
+  readonly warnings: readonly string[]
+}
+
+/** The Studio project store that holds one application's alarms and tags. */
+export function projectFolder(application: string, documentsRoot = join(process.env.PUBLIC ?? 'C:/Users/Public', 'Documents')): string | undefined {
+  const folder = join(documentsRoot, 'RSView Enterprise/ME/HMI projects', application)
+  return existsSync(folder) ? folder : undefined
+}
+
+/** A readable date for one file's timestamp. */
+function modifiedOn(path: string): string {
+  try {
+    return statSync(path).mtime.toISOString().slice(0, 10)
+  } catch {
+    return 'unknown'
+  }
+}
+
+/** A warning when one copied snapshot predates the application database. */
+function freshness(file: string, relative: string, database: string | undefined): string | undefined {
+  if (database === undefined) return undefined
+  try {
+    if (statSync(file).mtimeMs + 60_000 >= statSync(database).mtimeMs) return undefined
+    return `${relative} was written ${modifiedOn(file)}, older than the application database (${modifiedOn(database)}); it may not reflect recent changes. Studio refreshes it on its next full export.`
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Copy the alarm setup and the tag CSV from the project store into an export.
+ *
+ * The file names and layout match what Studio writes when it exports the whole
+ * application (`Alarms/Alarms.xml`, `Tags/<application>.csv`), so a reader
+ * cannot tell this export from a hand-made one.
+ *
+ * @param application - Application name.
+ * @param destination - Export folder that already exists.
+ * @param documentsRoot - Public Documents folder, injectable for tests.
+ * @returns Paths copied and any staleness warnings.
+ */
+export function copyProjectExtras(application: string, destination: string, documentsRoot?: string): ProjectExtras {
+  const source = projectFolder(application, documentsRoot)
+  if (source === undefined) {
+    return { copied: [], warnings: [`No Studio project folder was found for ${application}, so alarms and tags were not exported.`] }
+  }
+  const database = join(source, `${application}.med`)
+  const copied: string[] = []
+  const warnings: string[] = []
+  const alarms = join(source, 'Alarms.xml')
+  if (existsSync(alarms)) {
+    const target = join(destination, 'Alarms')
+    mkdirSync(target, { recursive: true })
+    copyFileSync(alarms, join(target, 'Alarms.xml'))
+    copied.push('Alarms/Alarms.xml')
+    const warning = freshness(alarms, 'Alarms/Alarms.xml', existsSync(database) ? database : undefined)
+    if (warning !== undefined) warnings.push(warning)
+  } else {
+    warnings.push('No Alarms.xml in the application store, so alarms were not exported. Export alarm setup from Studio once.')
+  }
+  // Studio names the tag file `<application>-Tags.CSV`; match the suffix
+  // case-insensitively because older applications used `.csv`.
+  const entries = readdirSync(source, { withFileTypes: true })
+  const tags = entries.find(entry => entry.isFile() && /-tags\.csv$/iu.test(entry.name))
+  if (tags !== undefined) {
+    const target = join(destination, 'Tags')
+    mkdirSync(target, { recursive: true })
+    copyFileSync(join(source, tags.name), join(target, `${application}.csv`))
+    copied.push(`Tags/${application}.csv`)
+    const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
+    if (warning !== undefined) warnings.push(warning)
+  } else {
+    warnings.push('No tag CSV in the application store, so tags were not exported. Export the tag database from Studio once.')
+  }
+  return { copied, warnings }
 }
 
 /**

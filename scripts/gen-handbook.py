@@ -114,8 +114,9 @@ SECTIONS: list[Section] = [
             "(`.mer`) and download it to the terminal.",
         ]),
          ("What it will not claim", [
-            "That an import happened without the re-export proof, that a `.mer` was built, or that tag "
-            "bindings were checked when the vendor export carried no HMI tag CSV.",
+            "That an import happened without the re-export proof, that a `.mer` was built, or that copied "
+            "alarms and tags are current when they are older than the application database — the export "
+            "reports that case as a warning.",
         ])],
     ),
     Section(

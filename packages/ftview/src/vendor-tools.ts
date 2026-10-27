@@ -72,12 +72,15 @@ export function vendorTools(fs: FsService): readonly ToolDefinition[] {
         if (exported.error !== undefined) {
           throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Check that the application is not open in Studio, then retry with a new output_root.')
         }
-        const files = exported.value ?? []
+        const files = exported.value?.files ?? []
+        const warnings = exported.value?.warnings ?? []
         const displays = files.filter(file => /\/Displays\/.+\.xml$/iu.test(file) && !/batchimport/iu.test(file))
         const manifests = files.filter(file => /batchimport/iu.test(file))
+        const alarms = files.filter(file => /^Alarms\//iu.test(file))
+        const tags = files.filter(file => /^Tags\/.+\.csv$/iu.test(file))
         return success(
-          `Exported ${application}: ${files.length} file(s), ${displays.length} display(s)${manifests.length === 0 ? '' : `, ${manifests.length} import manifest(s)`}.`,
-          { application, output_root: destination, files, display_count: displays.length, manifests },
+          `Exported ${application}: ${files.length} file(s), ${displays.length} display(s)${alarms.length === 0 ? ', no alarms' : ', alarms'}${tags.length === 0 ? ', no tags CSV' : ', tags CSV'}${manifests.length === 0 ? '' : `, ${manifests.length} import manifest(s)`}${warnings.length === 0 ? '' : `; ${warnings.length} warning(s)`}.`,
+          { application, output_root: destination, files, display_count: displays.length, alarms, tags, manifests, warnings },
           [{ tool: 'ftview_open', args: { root: destination }, why: 'Open the fresh export and author against it.' }],
           VENDOR_COVERAGE,
         )

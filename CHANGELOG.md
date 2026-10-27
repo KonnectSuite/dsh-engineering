@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.4] - 2026-10-27
+
+### Added
+
+- **`ftview_export` now brings the alarm setup and the tag database.** The vendor export server covers
+  displays, global objects and project settings; alarms and tags live beside the application in the
+  Studio project store and were missing from a "full" export, so tag bindings had nothing to check
+  against. The export now copies `Alarms/Alarms.xml` and `Tags/<application>.csv` into the export in the
+  same layout Studio uses, and reports a warning for each when the stored snapshot is older than the
+  application database (on the commissioning application both were dated 2026-09-29 against a database
+  modified 2026-10-27).
+
+### Documentation
+
+- FTView skill, getting-started and the handbook now describe the alarms/tags copy and its staleness
+  warning instead of "the vendor export carries no tag CSV".
 ## [0.8.3] - 2026-10-27
 
 ### Documentation
