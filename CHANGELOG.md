@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.10.1] - 2026-10-27
+
+### Added
+
+- **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped — **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields — which is why the old preview showed blank navigation buttons.
+- The renderer is not wired into the client face yet; the artifact still serves the panel. Known gap, stated rather than implied.
 ## [0.10.0] - 2026-10-27
 
 ### Added

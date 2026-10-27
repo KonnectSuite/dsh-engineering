@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2024",
+    "lib": [
+      "ES2024"
+    ],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -8,11 +11,13 @@
     "types": [
       "node"
     ],
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "declaration": true,
     "rootDir": "src",
     "outDir": "lib"
   },
   "include": [
-    "src/index.ts"
+    "src/**/*.ts"
   ]
 }
