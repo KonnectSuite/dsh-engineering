@@ -7,6 +7,7 @@
  * @module dsh-engineering-mwi/read/service
  */
 
+import { createHash } from 'node:crypto'
 import { MwiError } from '../core/errors.ts'
 import type { CodeEngine, EngineResult } from '../core/code-engine.ts'
 import type { ProjectRef } from '../session/project.ts'
@@ -75,7 +76,13 @@ export class ReadService {
   async get(project: ProjectRef, kind: string, name: string, library?: string): Promise<EngineResult> {
     if (kind === 'pou') {
       const text = await this.engine.run('read_text', { project: project.directory, pou: name }, 60_000)
-      return { ...text, project: project.directory }
+      // The edit preconditions take the hash of exactly this body. Computing it
+      // here is what makes the documented `expected_body_sha256` obtainable from
+      // this read at all: the engine returns the body, not its digest, and a
+      // caller that has to find the hash elsewhere is a caller that guesses.
+      const body = typeof text.body === 'string' ? text.body : undefined
+      const digest = body === undefined ? {} : { text_body_sha256: createHash('sha256').update(body).digest('hex') }
+      return { ...text, project: project.directory, ...digest }
     }
     if (kind === 'block') {
       return await this.engine.run('block_interface', {

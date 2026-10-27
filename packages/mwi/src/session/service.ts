@@ -17,7 +17,7 @@ import { CodeEngine } from '../core/code-engine.ts'
 import { MwiError } from '../core/errors.ts'
 import { PowerShellBridgeTransport } from '../core/ps-bridge.ts'
 import { StageService, type StageOptions, type StageRecord } from './stage.ts'
-import { backupRootOf, ensureBackup, findBackup, listBackups, type BackupRecord } from './backup.ts'
+import { ensureBackup, findBackup, listBackups, type BackupRecord } from './backup.ts'
 import { compareVariables } from '../edit/compare.ts'
 import { ReadService } from '../read/service.ts'
 import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
@@ -42,6 +42,12 @@ function directRecord(backup: BackupRecord): StageRecord {
     previous_embedded_path: null,
     staged_at: backup.created_at,
   }
+}
+
+/** Whether two paths name the same project, with or without the `.mwt` suffix. */
+function sameProject(left: string, right: string): boolean {
+  const bare = (path: string): string => resolve(path).toLowerCase().replace(/\.mwt$/u, '')
+  return bare(left) === bare(right)
 }
 
 /** One open worksheet request. */
@@ -177,6 +183,18 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     return await this.bridge.run('ide_state', { include_window_state: true }) as Record<string, unknown>
   }
 
+  /** @returns The open project path, or undefined when no IDE or no project is open. */
+  private async activeProject(): Promise<string | undefined> {
+    let status: Record<string, unknown>
+    try {
+      status = await this.status()
+    } catch (error) {
+      if (error instanceof MwiError && error.code === 'IDE_NOT_RUNNING') return undefined
+      throw error
+    }
+    return status.is_project_open === true && typeof status.active_project === 'string' ? status.active_project : undefined
+  }
+
   /** @returns The written stage record. */
   async stage(source: string, options: StageOptions = {}): Promise<StageRecord> {
     return await this.stages.stage(source, {
@@ -205,9 +223,24 @@ export class PowerShellSessionRuntime implements SessionRuntime {
 
   /** @returns The bridge's open result. */
   async open(path: string, options: { userApproved?: boolean; expectedProject?: string }): Promise<Record<string, unknown>> {
-    const resolved = resolve(path)
+    const resolved = resolve(this.workspace, path)
     if (!isInside(stageRootOf(this.workspace), resolved)) {
       const record = this.attach(resolved)
+      // An already-open project is attached, not reopened: OpenProject reloads the
+      // files, and a reload over unsaved editor changes is data loss the backup
+      // cannot undo. The verified identity is the whole job in that case.
+      const active = await this.activeProject()
+      if (active !== undefined && sameProject(active, record.mwt)) {
+        return {
+          requested: record.mwt,
+          is_project_open: true,
+          active_project: active,
+          matches_request: true,
+          already_open: true,
+          backup: record.backup,
+          backup_manifest: record.manifest,
+        }
+      }
       const binding = await this.engine.run('check_mwt', { project: record.mwt }) as { wrapper_sha256?: string }
       return await this.bridge.run('open', {
         path: record.mwt,
@@ -249,9 +282,9 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     if (status.is_project_open !== true || typeof status.active_project !== 'string') {
       throw new MwiError('NO_PROJECT', 'No project is open in the IDE.', 'Open a staged project first with mw_project_open.')
     }
-    const record = this.stages.stagedAt(status.active_project)
+    const record = this.stagedAt(status.active_project)
     if (record === undefined) {
-      throw new MwiError('NOT_STAGED', `The open project is not a proven stage: ${status.active_project}.`, 'Open a staged project before navigating worksheets.')
+      throw new MwiError('NOT_ATTACHED', `The open project is not proven: ${status.active_project}.`, 'Open the workspace project with mw_project_open first.')
     }
     const target = await this.engine.run('worksheet_target', {
       project: record.staged_directory,
@@ -644,15 +677,20 @@ export class PowerShellSessionRuntime implements SessionRuntime {
 
   /** The open project must be a proven stage or a verified direct backup; every compile and verify depends on it. */
   private async openStagedRecord(): Promise<StageRecord> {
-    const status = await this.status()
-    if (status.is_project_open !== true || typeof status.active_project !== 'string') {
+    const active = await this.activeProject()
+    if (active === undefined) {
       throw new MwiError('NO_PROJECT', 'No project is open in the IDE.', 'Open a project with mw_project_open before compiling.')
     }
-    const record = this.stagedAt(status.active_project)
-    if (record === undefined) {
-      throw new MwiError('NOT_ATTACHED', `The open project has no proven backup: ${status.active_project}.`, 'Open the workspace project with mw_project_open so a verified backup is taken first.')
+    const record = this.stagedAt(active)
+    if (record !== undefined) return record
+    // The IDE already has a workspace project open that this bundle did not open.
+    // Take the verified backup now rather than refuse: the edit still needs the
+    // same rollback evidence, and the guarded edit itself still refuses an
+    // unsaved project before it writes.
+    if (!isInside(this.workspace, active) || isInside(join(this.workspace, '.motionworks'), active)) {
+      throw new MwiError('NOT_ATTACHED', `The open project has no proven backup: ${active}.`, 'Open a workspace project with mw_project_open so a verified backup is taken first.')
     }
-    return record
+    return directRecord(this.attach(active))
   }
 
   /** The only openable project, staged or backed up, or a refusal that explains the choice. */

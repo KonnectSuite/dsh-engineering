@@ -93,7 +93,7 @@ export function readTools(readsOf: ReadFactory = workspace => runtimeFor(workspa
     }),
     tool({
       name: 'mw_get',
-      description: 'Read one POU with its declarations, one type, one task row, one block interface or the EtherNet/IP assembly map.',
+      description: 'Read one POU with its declarations and the text_body_sha256 that the edit preconditions take, one type, one task row, one block interface or the EtherNet/IP assembly map.',
       parameters: object({
         kind: choice('What to read.', GET_KINDS),
         name: string('Exact component name; omit only for kind eip.'),

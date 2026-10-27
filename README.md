@@ -46,7 +46,7 @@ Tool groups, by product:
 - **L5X** — 11 read (`open_project` … `compare_projects`), 9 staged drafts (`draft_*`), 6 Logix
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
 - **FactoryTalk View** — 6 read, 5 staged edits, 3 Studio handoff
-- **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 staged edits
+- **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 6 tools, unlinked to a skill until one exists
 
 ## Switches
@@ -60,7 +60,7 @@ down:
 |---|---|---|
 | `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (on), `studio` (on), `live` (on), `allowWrites` (on) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
-| `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (on) |
+| `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
 | `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty) |
 
@@ -92,9 +92,10 @@ Where each surface actually stands, based on what has been exercised.
 - Live EtherNet/IP: polling, one-request batch reads of up to 64 tags, controller identity and clock, LAN discovery, and a bounded trend
 - Supervised live writes: `write_live_tag` and `write_controller_clock` need the row's `allowWrites` switch **and** per-call human approval, and report the value the controller reads back
 - FactoryTalk View ME: export reads, structural checks, comparison, staged display and HMI tag edits
-- MotionWorks IEC: verified live against 3 Pro 1.19 — stage, start, worksheet, close, saved-project
-  reads, compile diagnostics, code replacement, declaration add, POU create/delete, block insertion
-  and a POU package export/delete/import round trip
+- MotionWorks IEC: verified live against 3 Pro 1.19 — direct open with a verified pre-edit backup
+  under `.motionworks/attached`, attach-without-reload to a project the IDE already has open, start,
+  worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU
+  create/delete, block insertion and a POU package export/delete/import round trip
 - Ladder viewer and FactoryTalk View display preview
 
 **On by default** — every tool surface mounts on a fresh install. Switch one off from the row's
@@ -117,6 +118,7 @@ the lean profile is the one that turns them off.
 
 | Version | What landed |
 |---|---|
+| **0.4.17** | MotionWorks edits the real project again: the pre-edit backup is written where the bridge and engine verify it, an already-open project is attached instead of reloaded, and `mw_get` returns the body hash the edit takes |
 | **0.4.15** | Every tool surface ships on by default; the row Configure pages switch them off |
 | **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |
 | **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
@@ -154,9 +156,9 @@ another bundle owns.
 ```mermaid
 flowchart TB
   Profile["Profile bundle list"] --> Bundle["@aryacode/dsh-engineering"]
-  Bundle -->|insert| L5X["l5x (on) — read + guidance; editing / studio / live off"]
+  Bundle -->|insert| L5X["l5x (on) — read + guidance + drafts / SDK / live"]
   Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
-  Bundle -->|insert| MWI["mwi (on) — session, read, verify; edit off"]
+  Bundle -->|insert| MWI["mwi (on) — session, read, verify, edit"]
   Bundle -->|insert| Viewers["viewers (on) — ladder + ME display previews"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
@@ -166,18 +168,19 @@ even when the implementation behind a row is replaced.
 
 | Row id | Package entry | Config options |
 |---|---|---|
-| `l5x` | `dsh-engineering-l5x` | `editing` off · `studio` off · `live` off |
+| `l5x` | `dsh-engineering-l5x` | `editing` on · `studio` on · `live` on · `allowWrites` on |
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
-| `mwi` | `dsh-engineering-mwi` | `edit` off |
+| `mwi` | `dsh-engineering-mwi` | `edit` on |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
-| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` off · `allowDestructive` off · `allowInvoke` off · `preview` off |
+| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on |
 
 ## Safety
 
 - **Read-only by default.** Reading, checks, comparison and the viewers never change a controller.
 - **Edits write new files.** `draft_apply` writes one new L5X beside the source and refuses to
   overwrite; `ftview_apply` writes a new export folder and leaves the source untouched. MotionWorks
-  edits write only the staged copy and verify unrelated saved and native state.
+  edits write the real workspace project, after one complete backup under
+  `<workspace>/.motionworks/attached/`, and verify unrelated saved and native state.
 - **Controller changes need a human.** Upload, mode change and download require per-call approval and
   a session policy that permits asking. The tools refuse before contacting a controller when approval
   is unavailable, and a download accepts only a verification id produced by a passed build.

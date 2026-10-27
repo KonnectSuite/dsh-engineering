@@ -125,7 +125,7 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
     }),
     tool({
       name: 'mw_project_open',
-      description: 'Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/backups/. Refuses to replace another open project without the exact approved path.',
+      description: 'Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/.motionworks/attached/, and a project the IDE already has open is attached without being reloaded. Refuses to replace another open project without the exact approved path.',
       parameters: object({
         path: string('Workspace .mwt (edits the real project, backup taken first) or a staged .mwt from mw_project_stage.'),
         user_approved: boolean('True only after the user approved saving and closing another open project.'),
@@ -140,7 +140,9 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
         return success(
           opened.matches_request === false
             ? 'The open call returned, but the IDE has a different project open.'
-            : `Opened ${String(opened.active_project ?? args.path)}.`,
+            : opened.already_open === true
+              ? `Already open; verified the pre-edit backup for ${String(opened.active_project ?? args.path)}.`
+              : `Opened ${String(opened.active_project ?? args.path)}.`,
           opened,
           [{ tool: 'mw_ide_status', why: 'Confirm the active project and compile state.' }],
           IDE_COVERAGE,

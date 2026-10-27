@@ -9,9 +9,11 @@ whenToUse: The user has MotionWorks IEC 3 Pro open or asks for work in it — a 
 ## Boundary
 
 This surface edits the **real workspace project**. `mw_project_open` takes one complete, hash-verified
-backup under `<workspace>/backups/<project>/<timestamp>` before the IDE opens the project, and reuses
-that backup for later attaches. `mw_project_stage` remains available as an optional sandbox when you
-want the IDE to open a copy instead. Nothing here downloads to a controller or commands motion.
+backup under `<workspace>/.motionworks/attached/` before the IDE opens the project, and reuses that
+backup for later attaches. A project the IDE already has open is attached — the backup is written and
+the project is **not** reloaded, so unsaved editor changes survive. `mw_project_stage` remains
+available as an optional sandbox when you want the IDE to open a copy instead. Nothing here downloads
+to a controller or commands motion.
 
 The native IDE API is the editing path. Desktop input belongs to the computer-use companion and is a
 fallback for operations without a native call, never a substitute for a refused native one.
@@ -24,7 +26,8 @@ present, the MotionWorks rows are not enabled on this host, or the host is not W
 1. `mw_project_find` lists workspace projects, any staged copy and any existing pre-edit backup.
    Nothing else identifies the project you may touch.
 2. `mw_project_open` opens the workspace `.mwt` directly. It first writes and verifies the backup, so
-   the edit can always be rolled back.
+   the edit can always be rolled back. When the IDE already has that exact project open, it records
+   the verified backup and reports `already_open` instead of reloading the files.
 3. `mw_ide_status` reports the project identity, active view, modal dialogs and compile state. Read it
    before and after operations that change the IDE.
 
@@ -56,7 +59,9 @@ A compile verdict is the vendor engine's. It does not prove runtime behavior or 
 
 Only with the edit row enabled. One operation per call:
 
-- `mw_edit_code` replaces one ST or IL body, guarded by an expected body hash.
+- `mw_edit_code` replaces one ST or IL body, guarded by an expected body hash. Read the body with
+  `mw_get` (or `mw_read_text`) and pass the `text_body_sha256` that read returns; the guard compares
+  the hash of exactly that body, so a hash taken from anywhere else is a guess.
 - `mw_edit_variables` adds, edits, deletes or groups one declaration through the native API.
 - `mw_edit_structure` creates, copies, renames, deletes, converts or task-assigns a POU.
 - `mw_insert_block` inserts one FB instance and its bound ST call.
@@ -64,8 +69,8 @@ Only with the edit row enabled. One operation per call:
 - `mw_validate` prepares the edits and reports findings. Read them before applying.
 - `mw_apply` saves the open project through the IDE, in place. The pre-edit backup is the rollback point.
 
-Never apply a change whose expected hash no longer matches. If the source changed, re-read it and
-read it again and retry the edit.
+Never apply a change whose expected hash no longer matches. If the source changed, re-read the body
+and retry the edit with the new hash.
 
 ## Reporting
 

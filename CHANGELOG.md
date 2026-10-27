@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.4.17] - 2026-10-27
+
+### Fixed
+
+- **A direct MotionWorks open was refused as "outside the staging root".** 0.4.13 promised a
+  backup-first direct open, but the copy was written to `<workspace>/backups/<project>/<timestamp>`
+  while the shipped bridge (`Get-DirectIdentity`) and the read-only engine (`assert_direct_attached`)
+  only accept an identity record at `<workspace>/.motionworks/attached/records/<id>.json` naming a
+  backup under `.motionworks/attached/backups`. The two never met: `mw_project_open` refused every
+  project the retired solo plugin had not already attached, which is why MotionWorks work still looked
+  like it required staging. The backup module now writes exactly that layout, verifies the copy before
+  writing the identity, and refuses to replace an identity that no longer verifies.
+- **A project already open in the IDE could not be edited.** Edits, compile and verify required a
+  proven backup and failed with `NOT_ATTACHED` for a workspace project the IDE already had open.
+  `mw_project_open` now attaches that project — writes the verified backup and reports
+  `already_open` — instead of calling `OpenProject`, because a reload over unsaved editor changes is
+  data loss the backup cannot undo. An edit, compile or verify that finds an unattached workspace
+  project takes the backup before it refuses.
+- **`mw_edit_code` could not be given the hash it demands.** Its precondition is the SHA-256 of the
+  saved body, and the tool tells the caller to read `text_body_sha256` from `mw_get`; `mw_get`
+  returned the body but no hash, so the hash had to be found elsewhere or guessed and the edit failed
+  with "Saved code differs from expected_body/hash". `mw_get` now returns the `text_body_sha256` of
+  exactly the body it returns.
+
+### Documentation
+
+- `packages/mwi/SKILL.md`: the backup lives under `<workspace>/.motionworks/attached/`, an
+  already-open project is attached and not reloaded, and the edit section names the hash `mw_get`
+  returns.
+- `packages/mwi/README.md`: rows, backup layout, the attach-without-reload path and the guarded read,
+  including what the identity check does and does not recompute.
+- README: the MotionWorks row, the composition diagram, the tool groups and the safety section
+  describe a direct edit. The row-default table and diagram now match the shipped defaults (every
+  surface on), which the 0.4.15 release changed but the diagram still showed as off.
+
 ## [0.4.16] - 2026-10-27
 
 ### Added

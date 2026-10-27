@@ -657,7 +657,7 @@ Optional sandbox: copy one workspace project into .motionworks/stage so the IDE 
 
 #### `mw_project_open`
 
-Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/backups/. Refuses to replace another open project without the exact approved path.
+Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/.motionworks/attached/, and a project the IDE already has open is attached without being reloaded. Refuses to replace another open project without the exact approved path.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -719,7 +719,7 @@ List POUs, variables, globals, types, tasks or library blocks from the saved pro
 
 #### `mw_get`
 
-Read one POU with its declarations, one type, one task row, one block interface or the EtherNet/IP assembly map.
+Read one POU with its declarations and the text_body_sha256 that the edit preconditions take, one type, one task row, one block interface or the EtherNet/IP assembly map.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

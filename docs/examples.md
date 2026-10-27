@@ -318,6 +318,47 @@ ftview_studio_handoff({ "before_id": "v-1", "after_id": "v-2", "application": "L
 The handoff returns an ordered import plan for a human in FactoryTalk View Studio. No vendor utility
 runs and no file is written.
 
+## 8. Edit a MotionWorks IEC project in place
+
+The `mwi` row edits the **real workspace project**. The first open writes one complete backup under
+`.motionworks/attached/`, and a project the IDE already has open is attached rather than reloaded.
+
+```
+mw_ide_status()
+mw_project_find({ "filter": "BottomCutter" })
+mw_project_open({ "path": "C:/Projects/Line/BottomCutterS5.mwt" })
+```
+
+If that project is already open in the IDE, the result carries `already_open: true` and the backup
+path; no `OpenProject` call is made. When another project is open, closing it needs the exact path:
+
+```
+mw_project_open({
+  "path": "C:/Projects/Line/BottomCutterS5.mwt",
+  "user_approved": true,
+  "expected_project": "C:/Projects/Line/TopCutterS5.mwt"
+})
+```
+
+Read the body and keep the hash it returns — that is the precondition the edit takes:
+
+```
+mw_get({ "kind": "pou", "name": "BtmCutterFFCamSetup" })
+# → document.body, document.text_body_sha256
+mw_edit_code({
+  "pou": "BtmCutterFFCamSetup",
+  "expected_body_sha256": "<document.text_body_sha256>",
+  "changes": [{ "find": "iState := INT#5;", "replace": "iState := INT#6;", "count": 1 }]
+})
+mw_compile({ "mode": "build" })
+mw_diagnostics({ "pane": "Errors" })
+```
+
+An edit refused because the open project has no proven backup takes the backup first; an edit refused
+because the hash no longer matches means the saved body changed — re-read it and pass the new hash.
+MotionWorks edits verify unrelated saved and native state, and `mw_apply` saves in place. A compile
+verdict is the vendor engine's and does not prove runtime behavior.
+
 ## Reporting reminders
 
 - Quote the program, routine and rung or ST line for an L5X finding; quote the display file and

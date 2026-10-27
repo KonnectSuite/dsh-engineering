@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering-mwi",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MotionWorks IEC 3 Pro IDE tools, redesigned for the engineering bundle.",
   "type": "module",
   "exports": {
