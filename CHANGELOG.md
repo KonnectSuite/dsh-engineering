@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.12] - 2026-10-27
+
+### Fixed
+
+- **The MotionWorks workspace setting was ignored.** `workspace` is volatile, so it arrives as a
+  live reference; passing the reference to `configureWorkspace` did nothing. The row now unwraps it
+  with `text()`, so the value saved in Configure is the folder the tools search.
+
 ## [0.4.11] - 2026-10-27
 
 ### Fixed

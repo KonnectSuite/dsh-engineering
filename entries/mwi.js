@@ -12,7 +12,7 @@ import * as skill from '../vendor/mwi/lib/skill.js'
 import * as verify from '../vendor/mwi/lib/verify.js'
 import * as edit from '../vendor/mwi/lib/edit.js'
 import { configureWorkspace } from '../vendor/mwi/lib/session/workspace.js'
-import { flag } from './config.js'
+import { flag, text } from './config.js'
 
 export const name = 'engineering-mwi'
 /** The whole product needs the tool registry. */
@@ -43,7 +43,7 @@ export function apply(ctx, config = {}) {
   // claim the tools are on while the request still lacks them.
   let mounted
   const sync = () => {
-    configureWorkspace(config.workspace)
+    configureWorkspace(text(config.workspace))
     const wanted = flag(config.edit)
     if (wanted && mounted === undefined) mounted = ctx.plugin(edit)
     else if (!wanted && mounted !== undefined) {

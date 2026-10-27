@@ -48,3 +48,15 @@ export function list(input) {
   const current = resolve(input, [])
   return Array.isArray(current) ? current : []
 }
+
+/**
+ * Read a string field.
+ *
+ * @param input - the raw field, a reference, or undefined.
+ * @param fallback - value to use when the field is absent or not a string.
+ * @returns the string value.
+ */
+export function text(input, fallback = '') {
+  const current = resolve(input, fallback)
+  return typeof current === 'string' ? current : fallback
+}

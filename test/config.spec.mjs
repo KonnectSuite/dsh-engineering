@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { flag, list } from '../entries/config.js'
+import { flag, list, text } from '../entries/config.js'
 
 /**
  * A field marked `.volatile()` reaches apply() as a live reference, not as the
@@ -58,9 +58,16 @@ test('volatile-only updates remount the optional surfaces instead of claiming th
 
 test('mwi resolves its workspace from config, marker, then process directory', () => {
   const entry = readFileSync(new URL('../entries/mwi.js', import.meta.url), 'utf8')
-  assert.match(entry, /configureWorkspace\(config\.workspace\)/u)
+  assert.match(entry, /configureWorkspace\(text\(config\.workspace\)\)/u)
   const source = readFileSync(new URL('../packages/mwi/src/session/workspace.ts', import.meta.url), 'utf8')
   assert.match(source, /recordedWorkspace\(\)/u)
   assert.match(source, /mwi\.workspace/u)
   assert.match(source, /realpathSync/u)
+})
+
+test('a volatile string reads its snapshot', () => {
+  assert.equal(text({ get: () => 'C:\\Projects' }), 'C:\\Projects')
+  assert.equal(text('C:\\Projects'), 'C:\\Projects')
+  assert.equal(text(undefined), '')
+  assert.equal(text({ get: () => 42 }), '')
 })
