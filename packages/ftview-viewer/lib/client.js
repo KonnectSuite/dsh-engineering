@@ -261,8 +261,78 @@ function imageElement(node, options, left, top, width, height) {
   if (href !== void 0) return `<image x="${left}" y="${top}" width="${width}" height="${height}" href="${escapeXml(href)}" preserveAspectRatio="none"/>`;
   return `<g><rect x="${left}" y="${top}" width="${width}" height="${height}" fill="#f0f0f0" stroke="#909090" stroke-dasharray="4 3"/><text x="${left + width / 2}" y="${top + height / 2}" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI" font-size="10" fill="#606060">image ${escapeXml(name || "(unnamed)")}</text></g>`;
 }
+function connectionOf(node, name) {
+  const connections = child(node, "connections");
+  if (connections === void 0) return void 0;
+  const connection = connections.children.find((candidate) => candidate.tag === "connection" && attribute(candidate, "name") === name);
+  return connection === void 0 ? void 0 : attribute(connection, "expression");
+}
+function numericValue(expression, options) {
+  if (expression === void 0) return void 0;
+  const value = options.tagValues?.[expression];
+  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number.parseFloat(value) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : void 0;
+}
+function clamp(value, low, high) {
+  return Math.min(high, Math.max(low, value));
+}
+function barGraphElement(node, options, left, top, width, height, paint) {
+  const minimum = numberAttribute(node, "minValue", 0);
+  const maximum = numberAttribute(node, "maxValue", 100);
+  const value = numericValue(connectionOf(node, "Value"), options) ?? minimum;
+  const fraction = maximum === minimum ? 0 : clamp((value - minimum) / (maximum - minimum), 0, 1);
+  const fill = colourOf(attribute(node, "fillColor")) ?? colourOf(attribute(node, "foreColor")) ?? "#00c000";
+  const direction = attribute(node, "fillDirection") ?? "leftToRight";
+  const filled = (() => {
+    switch (direction) {
+      case "rightToLeft":
+        return { x: left + width * (1 - fraction), y: top, width: width * fraction, height };
+      case "topToBottom":
+        return { x: left, y: top, width, height: height * fraction };
+      case "bottomToTop":
+        return { x: left, y: top + height * (1 - fraction), width, height: height * fraction };
+      default:
+        return { x: left, y: top, width: width * fraction, height };
+    }
+  })();
+  const thresholds = Number.parseInt(attribute(node, "numberOfThresholds") ?? "0", 10) || 0;
+  const marks = [];
+  for (let index = 1; index <= thresholds; index += 1) {
+    const element = node.children.find((candidate) => candidate.tag === `thresh${index}Value`);
+    const fromElement = element === void 0 ? Number.NaN : Number.parseFloat(element.text.trim());
+    const at = Number.isFinite(fromElement) ? fromElement : numberAttribute(node, `thresh${index}Value`, Number.NaN);
+    if (!Number.isFinite(at) || maximum === minimum) continue;
+    const fractionOfMark = clamp((at - minimum) / (maximum - minimum), 0, 1);
+    const x = left + width * fractionOfMark;
+    marks.push(`<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#ff0000" stroke-width="1"/>`);
+  }
+  return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>` + (fraction > 0 ? `<rect x="${filled.x}" y="${filled.y}" width="${filled.width}" height="${filled.height}" fill="${fill}"/>` : "") + marks.join("");
+}
+function gaugeElement(node, options, left, top, width, height) {
+  const minimum = numberAttribute(node, "minValue", 0);
+  const maximum = numberAttribute(node, "maxValue", 100);
+  const value = numericValue(connectionOf(node, "Value"), options) ?? minimum;
+  const fraction = maximum === minimum ? 0 : clamp((value - minimum) / (maximum - minimum), 0, 1);
+  const cx = left + width / 2;
+  const cy = top + height / 2;
+  const radius = Math.min(width, height) / 2 - 4;
+  const start = Math.PI * 0.75;
+  const end = Math.PI * 2.25;
+  const angle = start + (end - start) * fraction;
+  const point = (at, r) => `${cx + Math.cos(at) * r},${cy + Math.sin(at) * r}`;
+  const arc = `M ${point(start, radius)} A ${radius} ${radius} 0 1 1 ${point(end, radius)}`;
+  return `<path d="${arc}" fill="none" stroke="#808080" stroke-width="2"/><line x1="${cx}" y1="${cy}" x2="${point(angle, radius - 2).split(",")[0]}" y2="${point(angle, radius - 2).split(",")[1]}" stroke="#c00000" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="3" fill="#202020"/>`;
+}
+function trendElement(node, left, top, width, height, paint) {
+  const lines = [];
+  for (let index = 1; index < 4; index += 1) {
+    const y = top + height / 4 * index;
+    lines.push(`<line x1="${left}" y1="${y}" x2="${left + width}" y2="${y}" stroke="#b0b0b0" stroke-width="1"/>`);
+  }
+  return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>${lines.join("")}<text x="${left + 6}" y="${top + 14}" font-family="Segoe UI" font-size="10" fill="#606060">trend</text>`;
+}
 function valueElement(node, caption, left, top, width, height, margin, options) {
-  const expression = attribute(node, "expression") ?? "";
+  const expression = attribute(node, "expression") ?? connectionOf(node, "Value") ?? "";
   const value = options.tagValues?.[expression];
   const shown = value === void 0 ? "####" : String(value);
   return textElement({ ...caption, text: shown }, left, top, width, height, margin);
@@ -294,6 +364,17 @@ function renderObject(node, depth, options) {
       case "stringDisplay":
       case "stringInput":
         return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>` + valueElement(node, caption, left, top, width, height, margin, options);
+      case "barGraph":
+        return barGraphElement(node, options, left, top, width, height, paint);
+      case "gauge":
+        return gaugeElement(node, options, left, top, width, height);
+      case "trend":
+        return trendElement(node, left, top, width, height, paint);
+      case "listSelector": {
+        const body = `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`;
+        const label = caption.text === "" ? "list" : caption.text;
+        return body + textElement({ ...caption, text: label, anchor: "start" }, left, top, width, height, margin);
+      }
       case "alarmList":
       case "alarmStatusList":
       case "alarmBanner":

@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.3] - 2026-10-27
+
+### Added
+
+- **Graphs and selectors draw their data.** `barGraph` fills in proportion to its `Value` connection between `minValue`
+  and `maxValue`, honours `fillDirection` (all four directions) and draws each threshold as a red mark. The Laminator
+  `Main Screen` conveyor strips now show real proportions instead of empty boxes.
+- `gauge` draws its scale arc and a needle; `trend` draws its grid; `listSelector` shows its caption. These types do
+  not occur in the Laminator export, so they are covered by unit tests rather than a real screen.
+- Numeric fields read the `Value` connection when they have no `expression` attribute, which is how most of the
+  project's numeric displays are wired.
+
+### Known gaps
+
+- Values are supplied by the caller (tests and the preview harness); live controller values arrive with the route.
+- Reference objects (`isReferenceObject="true"` with `linkBaseObject`) still render their local state only; resolving
+  the base object in Global Objects is not implemented.
 ## [0.10.2] - 2026-10-27
 
 ### Changed

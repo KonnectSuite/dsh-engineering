@@ -58,6 +58,36 @@ test('renders a tag value instead of the placeholder', () => {
   assert.match(svg, />42\.5</u)
 })
 
+const GRAPHS = `<?xml version="1.0"?>
+<gfx><displaySettings width="400" height="200"/>
+<barGraph name="Bar" left="10" top="10" width="200" height="20" backColor="#001C38" borderStyle="line" borderWidth="1" fillColor="#10EB10" minValue="0" maxValue="100" fillDirection="leftToRight" numberOfThresholds="1">
+  <connections><connection name="Value" expression="Speed"/></connections>
+  <thresh1Value>80</thresh1Value>
+</barGraph>
+<gauge name="G" left="10" top="50" width="100" height="100" minValue="0" maxValue="100">
+  <connections><connection name="Value" expression="Speed"/></connections>
+</gauge>
+<trend name="T" left="220" top="50" width="150" height="80" backColor="white"/>
+<listSelector name="L" left="220" top="140" width="150" height="30" backColor="white" borderStyle="line"><states><state stateId="0"><caption caption="Recipes" alignment="middleLeft"/></state></states></listSelector>
+</gfx>`
+
+test('fills a bar graph in proportion to its value and draws its threshold', () => {
+  const empty = renderDisplay(GRAPHS)
+  assert.match(empty, /<rect x="10" y="10" width="200" height="20" fill="#001c38"/u)
+  const half = renderDisplay(GRAPHS, { tagValues: { Speed: 50 } })
+  assert.match(half, /<rect x="10" y="10" width="100" height="20" fill="#10eb10"/u)
+  assert.match(half, /<line x1="170" y1="10" x2="170" y2="30" stroke="#ff0000"/u)
+})
+
+test('draws a gauge needle, a trend grid and a list selector label', () => {
+  const svg = renderDisplay(GRAPHS, { tagValues: { Speed: 50 } })
+  assert.match(svg, /<path d="M [^"]+" fill="none" stroke="#808080"/u)
+  assert.match(svg, /<line x1="60" y1="100"/u)
+  assert.match(svg, />trend</u)
+  assert.match(svg, />Recipes</u)
+  assert.match(svg, /<line x1="220" y1="70" x2="370" y2="70" stroke="#b0b0b0"/u)
+})
+
 test('renders the real Laminator display when the export is present', () => {
   const file = 'C:/Users/Admin/AppData/Local/Temp/ftvx_laminator_v2_20261027/Displays/Main Screen.xml'
   if (!existsSync(file)) return
