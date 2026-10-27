@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.8] - 2026-10-27
+
+### Added
+
+- **Compare view.** The preview’s **Compare** action loads the same display from a second export folder through the
+  display route and shows both renders side by side with their labels, so an edit can be judged before it is applied.
+  The second folder is asked for by name, nothing is written, and the button toggles the pane off.
+
+### Changed
+
+- Phase 4 of the preview plan is complete: inspect, navigate, back, PNG export and compare.
 ## [0.10.7] - 2026-10-27
 
 ### Added

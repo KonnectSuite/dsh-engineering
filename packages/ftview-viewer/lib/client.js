@@ -593,6 +593,7 @@ function Display(props) {
   const [liveValues, setLiveValues] = React.useState({});
   const [liveNotice, setLiveNotice] = React.useState("");
   const container = React.useRef(null);
+  const [compare2, setCompare] = React.useState(void 0);
   const parsed = React.useMemo(() => {
     try {
       const display = parseXml(xml);
@@ -690,6 +691,30 @@ function Display(props) {
     setDisplayName(previous.name);
     setSelected(void 0);
   };
+  const startCompare = React.useCallback(async () => {
+    if (root === void 0) return;
+    const other = window.prompt("Compare with another export folder");
+    if (other === null || other.trim() === "") return;
+    const name = displayName !== "" ? displayName : ((address ?? "").split(/[\\/]/u).pop() ?? "").replace(/\.xml$/iu, "");
+    try {
+      const response = await fetch(`/engineering/ftview/display?root=${encodeURIComponent(other.trim())}&name=${encodeURIComponent(name)}`, { cache: "no-store" });
+      if (!response.ok) {
+        setLiveNotice(`compare: ${name} is not in that export (${response.status})`);
+        return;
+      }
+      setCompare({ name, xml: await response.text() });
+    } catch (error) {
+      setLiveNotice(error instanceof Error ? error.message : String(error));
+    }
+  }, [root, displayName, address]);
+  const compareSvg = React.useMemo(() => {
+    if (compare2 === void 0) return "";
+    try {
+      return renderDisplay(compare2.xml);
+    } catch {
+      return "";
+    }
+  }, [compare2]);
   if (rendered.error !== "") {
     return h(
       "div",
@@ -716,6 +741,15 @@ function Display(props) {
         { style: { marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" } },
         live && liveNotice !== "" ? h("span", { style: { opacity: 0.7 } }, liveNotice) : null,
         history.length > 0 ? h("button", { type: "button", onClick: back, style: { font: "inherit" } }, "\u2190 Back") : null,
+        h("button", {
+          type: "button",
+          disabled: root === void 0,
+          onClick: () => {
+            if (compare2 === void 0) void startCompare();
+            else setCompare(void 0);
+          },
+          style: { font: "inherit", fontWeight: compare2 === void 0 ? 400 : 600 }
+        }, compare2 === void 0 ? "Compare" : "Compare \xD7"),
         h("button", { type: "button", onClick: () => downloadPng(container.current, displayName), style: { font: "inherit" } }, "PNG"),
         h("button", { type: "button", disabled: root === void 0, title: root === void 0 ? "Open the export folder, not a single file" : `${parsed.tags.length} tag(s) bound`, onClick: () => setLive(!live), style: { font: "inherit", fontWeight: live ? 600 : 400 } }, live ? "Live on" : "Live"),
         h("button", { type: "button", onClick: () => setFit(true), style: { font: "inherit" } }, t("fit")),
@@ -724,7 +758,7 @@ function Display(props) {
     ),
     h(
       "div",
-      { style: { flex: 1, minHeight: 0, display: "flex" } },
+      { style: { flex: 1, minHeight: 0, display: "flex", gap: 6 } },
       h(
         "div",
         {
@@ -743,9 +777,19 @@ function Display(props) {
           },
           style: { flex: 1, minWidth: 0, overflow: "auto", background: "#202020", padding: 8 }
         },
+        compare2 === void 0 ? null : h("div", { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, displayName === "" ? "current" : displayName),
         h("div", {
           style: fit ? { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } : { width, height },
           dangerouslySetInnerHTML: { __html: rendered.svg }
+        })
+      ),
+      compare2 === void 0 ? null : h(
+        "div",
+        { style: { flex: 1, minWidth: 0, overflow: "auto", background: "#202020", padding: 8, borderLeft: "1px solid rgba(128,128,128,.35)" } },
+        h("div", { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, `compare: ${compare2.name}`),
+        h("div", {
+          style: fit ? { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" } : { width, height },
+          dangerouslySetInnerHTML: { __html: compareSvg }
         })
       ),
       chosen === void 0 ? null : h(

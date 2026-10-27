@@ -114,6 +114,7 @@ export function Display(props: { source: string; t: (key: string) => string; add
   const [liveValues, setLiveValues] = React.useState<Record<string, number | string | boolean>>({})
   const [liveNotice, setLiveNotice] = React.useState('')
   const container = React.useRef<HTMLDivElement | null>(null)
+  const [compare, setCompare] = React.useState<{ name: string; xml: string } | undefined>(undefined)
   const parsed = React.useMemo(() => {
     try {
       const display = parseXml(xml)
@@ -215,6 +216,35 @@ export function Display(props: { source: string; t: (key: string) => string; add
     setSelected(undefined)
   }
 
+  /** Load the same display from a second export and show them side by side. */
+  const startCompare = React.useCallback(async (): Promise<void> => {
+    if (root === undefined) return
+    const other = window.prompt('Compare with another export folder')
+    if (other === null || other.trim() === '') return
+    const name = displayName !== ''
+      ? displayName
+      : ((address ?? '').split(/[\\/]/u).pop() ?? '').replace(/\.xml$/iu, '')
+    try {
+      const response = await fetch(`/engineering/ftview/display?root=${encodeURIComponent(other.trim())}&name=${encodeURIComponent(name)}`, { cache: 'no-store' })
+      if (!response.ok) {
+        setLiveNotice(`compare: ${name} is not in that export (${response.status})`)
+        return
+      }
+      setCompare({ name, xml: await response.text() })
+    } catch (error) {
+      setLiveNotice(error instanceof Error ? error.message : String(error))
+    }
+  }, [root, displayName, address])
+
+  const compareSvg = React.useMemo(() => {
+    if (compare === undefined) return ''
+    try {
+      return renderDisplay(compare.xml)
+    } catch {
+      return ''
+    }
+  }, [compare])
+
   if (rendered.error !== '') {
     return h('div', { style: { padding: 16, font: '13px system-ui', color: '#a00' } },
       h('p', null, t('invalid')),
@@ -232,11 +262,17 @@ export function Display(props: { source: string; t: (key: string) => string; add
       h('span', { style: { marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' } },
         live && liveNotice !== '' ? h('span', { style: { opacity: 0.7 } }, liveNotice) : null,
         history.length > 0 ? h('button', { type: 'button', onClick: back, style: { font: 'inherit' } }, '← Back') : null,
+        h('button', {
+          type: 'button',
+          disabled: root === undefined,
+          onClick: () => { if (compare === undefined) void startCompare(); else setCompare(undefined) },
+          style: { font: 'inherit', fontWeight: compare === undefined ? 400 : 600 },
+        }, compare === undefined ? 'Compare' : 'Compare ×'),
         h('button', { type: 'button', onClick: () => downloadPng(container.current, displayName), style: { font: 'inherit' } }, 'PNG'),
         h('button', { type: 'button', disabled: root === undefined, title: root === undefined ? 'Open the export folder, not a single file' : `${parsed.tags.length} tag(s) bound`, onClick: () => setLive(!live), style: { font: 'inherit', fontWeight: live ? 600 : 400 } }, live ? 'Live on' : 'Live'),
         h('button', { type: 'button', onClick: () => setFit(true), style: { font: 'inherit' } }, t('fit')),
         h('button', { type: 'button', onClick: () => setFit(false), style: { font: 'inherit' } }, t('actual')))),
-    h('div', { style: { flex: 1, minHeight: 0, display: 'flex' } },
+    h('div', { style: { flex: 1, minHeight: 0, display: 'flex', gap: 6 } },
       h('div', {
         ref: container,
         onClick: event => {
@@ -253,9 +289,16 @@ export function Display(props: { source: string; t: (key: string) => string; add
         },
         style: { flex: 1, minWidth: 0, overflow: 'auto', background: '#202020', padding: 8 },
       },
+        compare === undefined ? null : h('div', { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, displayName === '' ? 'current' : displayName),
         h('div', {
           style: fit ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width, height },
           dangerouslySetInnerHTML: { __html: rendered.svg },
+        })),
+      compare === undefined ? null : h('div', { style: { flex: 1, minWidth: 0, overflow: 'auto', background: '#202020', padding: 8, borderLeft: '1px solid rgba(128,128,128,.35)' } },
+        h('div', { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, `compare: ${compare.name}`),
+        h('div', {
+          style: fit ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width, height },
+          dangerouslySetInnerHTML: { __html: compareSvg },
         })),
       chosen === undefined ? null : h('div', { style: { width: 260, flex: 'none', borderLeft: '1px solid rgba(128,128,128,.25)', overflow: 'auto', padding: 8, fontSize: 11 } },
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
