@@ -633,7 +633,7 @@ Find and stage a workspace project, then start, inspect and close the IDE.
 
 #### `mw_project_find`
 
-Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory and whether a staged copy exists. Call this before staging or opening anything.
+Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -648,7 +648,7 @@ No parameters.
 
 #### `mw_project_stage`
 
-Copy one workspace project into the stage so the IDE opens a copy, never the original. The .mwt and its expanded directory are copied and the wrapper is bound to the staged directory.
+Optional sandbox: copy one workspace project into .motionworks/stage so the IDE opens a copy instead of the real files. Normal editing opens the workspace project directly.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -657,21 +657,21 @@ Copy one workspace project into the stage so the IDE opens a copy, never the ori
 
 #### `mw_project_open`
 
-Open one staged project in the running IDE. Refuses a path that is not a proven stage, and refuses to replace another open project without the exact approved path.
+Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/backups/. Refuses to replace another open project without the exact approved path.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `path` | string | yes | Staged .mwt path returned by mw_project_stage. |
+| `path` | string | yes | Workspace .mwt (edits the real project, backup taken first) or a staged .mwt from mw_project_stage. |
 | `user_approved` | boolean | no | True only after the user approved saving and closing another open project. |
 | `expected_project` | string | no | Exact open project path named in that approval. |
 
 #### `mw_ide_start`
 
-Start MotionWorks IEC with one staged project, or attach to the IDE that is already running. Refuses when several stages exist without a project argument.
+Start MotionWorks IEC with one workspace project (backup first) or a staged copy, or attach to the IDE that is already running. Refuses when several projects are openable without a project argument.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `project` | string | no | Staged .mwt to start with. Omit when exactly one project is staged. |
+| `project` | string | no | Workspace or staged .mwt to start with. Omit when exactly one project is openable. |
 
 #### `mw_worksheet_open`
 
@@ -805,7 +805,7 @@ Off by default. Code, declarations, structure, block insertion and POU packages,
 
 #### `mw_edit_code`
 
-Replace one ST or IL body in the open staged project through the native ChangeCodeWS path. Supply exact find/replace changes with the body hash, or a complete body with the current body. Verifies saved and native state, then leaves compilation to mw_compile.
+Replace one ST or IL body in the open project through the native ChangeCodeWS path. Supply exact find/replace changes with the body hash, or a complete body with the current body. Verifies saved and native state, then leaves compilation to mw_compile.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -817,7 +817,7 @@ Replace one ST or IL body in the open staged project through the native ChangeCo
 
 #### `mw_edit_variables`
 
-Add, edit or delete one declaration in the open staged project through the native IDE API. Edit replaces the complete seven-field declaration and optional boolean flags; delete needs approval and reference review.
+Add, edit or delete one declaration in the open project through the native IDE API. Edit replaces the complete seven-field declaration and optional boolean flags; delete needs approval and reference review.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -869,7 +869,7 @@ Insert one FB instance declaration and its ST call into a POU through the native
 
 #### `mw_transfer_pou`
 
-Export one writable POU to a private workspace package, or import that untouched package into this staged project. Import needs the export token and a dependency review; a token is consumed by one attempt.
+Export one writable POU to a private workspace package, or import that untouched package into this project. Import needs the export token and a dependency review; a token is consumed by one attempt.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -880,7 +880,7 @@ Export one writable POU to a private workspace package, or import that untouched
 
 #### `mw_validate`
 
-Validate the open staged project before applying: workflow blockers, native validation and an optional program review for one POU or proposed body. Read the findings before saving or compiling.
+Validate the open project before applying: workflow blockers, native validation and an optional program review for one POU or proposed body. Read the findings before saving or compiling.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -889,6 +889,6 @@ Validate the open staged project before applying: workflow blockers, native vali
 
 #### `mw_apply`
 
-Save the open staged project through the IDE. This writes only the staged copy; promoting source back to the workspace remains a separate, explicit step.
+Save the open project through the IDE. A workspace project is written in place; its verified pre-edit backup stays under <workspace>/backups/.
 
 No parameters.

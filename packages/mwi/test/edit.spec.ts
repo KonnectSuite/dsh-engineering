@@ -141,7 +141,7 @@ describe('edit tools', () => {
 
   it('applies the staged project and points at compile', async () => {
     const result = await call(fakeRuntime(), 'mw_apply')
-    expect(result.summary).toContain('Saved the staged project')
+    expect(result.summary).toContain('Saved the open project')
     expect(result.next?.[0]?.tool).toBe('mw_compile')
   })
 })

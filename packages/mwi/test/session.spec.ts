@@ -61,7 +61,7 @@ describe('session tools', () => {
     const result = await call(fakeRuntime(), 'mw_project_find', {}, workspace)
     expect(result.data?.projects).toHaveLength(1)
     expect(result.data?.projects).toMatchObject([{ name: 'Line', staged: join(workspace, '.motionworks', 'stage', 'Line.mwt') }])
-    expect(result.next?.[0]?.tool).toBe('mw_project_stage')
+    expect(result.next?.[0]?.tool).toBe('mw_project_open')
   })
 
   it('reports an IDE that is not running as a state and points at start', async () => {

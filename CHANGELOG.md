@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.4.13] - 2026-10-27
+
+### Changed
+
+- **MotionWorks edits the real project again.** `mw_project_open` and `mw_ide_start` now take a
+  workspace `.mwt` and work on its files directly. Before the first write they copy the wrapper and
+  the expanded project into `<workspace>/backups/<project>/<timestamp>/`, hash every copied file in
+  `backup-manifest.json`, verify the copy, and reuse that backup on later attaches. `mw_apply` saves
+  in place; there is no sync-back step.
+- **Staging is optional.** `mw_project_stage` remains for a sandbox copy, but the skill and tool
+  descriptions lead with the direct path.
+
 ## [0.4.12] - 2026-10-27
 
 ### Fixed

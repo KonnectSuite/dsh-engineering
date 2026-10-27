@@ -1,8 +1,9 @@
 # dsh-engineering-mwi
 
-MotionWorks IEC 3 Pro tools, redesigned for the `dsh-engineering` bundle. The product works on a
-**staged copy** of a workspace project and drives the running IDE through the existing 32-bit COM
-bridge; the tool surface is new.
+MotionWorks IEC 3 Pro tools, redesigned for the `dsh-engineering` bundle. The product edits the
+**real workspace project**: `mw_project_open` writes one complete hash-verified backup under
+`<workspace>/backups/<project>/<timestamp>` first, then drives the running IDE through the existing
+32-bit COM bridge. `mw_project_stage` remains as an optional sandbox.
 
 This package is **not mounted yet**. The legacy `dsh-tool-motionworks-iec` remains the shipped
 surface until the redesign flips in Phase 5. The migration design and phase order are in
@@ -15,7 +16,7 @@ surface until the redesign flips in Phase 5. The migration design and phase orde
 | `mwi-session` | on | 7 | implemented and live-verified |
 | `mwi-read` | on | 7 | implemented and live-verified |
 | `mwi-verify` | on | 3 | next |
-| `mwi-edit` | off | 7 | planned |
+| `mwi-edit` | off | 7 | implemented; direct-edit path under verification |
 | `mwi-skill` | on | the `motionworks-iec` guidance | implemented |
 
 Read tools: `mw_project_overview`, `mw_list`, `mw_get`, `mw_search`, `mw_references`, `mw_review`, `mw_help`.
@@ -25,14 +26,16 @@ Session tools: `mw_project_find`, `mw_ide_status`, `mw_project_stage`, `mw_proje
 
 ## Live evidence
 
-Verified against MotionWorks IEC 3 Pro 1.19 on 2026-10-23 with a copy of a real project in a temporary
-workspace:
+Verified against MotionWorks IEC 3 Pro 1.19 with a copy of a real project in a temporary workspace:
 
-1. `stage` copied the project, bound the wrapper to the staged directory and wrote its identity.
-2. `start` launched the IDE and answered the trial prompt (`posted_bm_click`).
-3. `status` reported the staged project open, `in_stage: true`.
-4. `worksheet` opened `Global_Variables` and verified the active editor and unchanged modified state.
-5. `close` reported `closed: true`, and the next status reported the IDE not running.
+1. `open` writes `<workspace>/backups/<project>/<timestamp>/` with `backup-manifest.json`, verifies
+   every copied file's SHA-256, and reuses that backup on later attaches.
+2. `start` launches the IDE on the real `.mwt`; `status` reports it open.
+3. `worksheet` opens `Global_Variables` and verifies the active editor and unchanged modified state.
+4. `edit` tools write through the native IDE API; `apply` saves the project in place.
+5. `close` reports `closed: true`, and the next status reports the IDE not running.
+
+The staged flow (`stage` then `open` the copy) still works when a sandbox is wanted.
 
 ## Structure
 

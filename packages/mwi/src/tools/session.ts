@@ -13,6 +13,7 @@ import { success } from '../core/result.ts'
 import { MwiError } from '../core/errors.ts'
 import { tool, type ToolDefinition } from '../core/tool.ts'
 import { findProjects, stageRootOf, workspaceOf } from '../session/workspace.ts'
+import { listBackups } from '../session/backup.ts'
 import { runtimeFor, type SessionRuntime } from '../session/service.ts'
 
 /** How the tools reach a workspace runtime; injectable for tests. */
@@ -48,7 +49,7 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
   return [
     tool({
       name: 'mw_project_find',
-      description: 'Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory and whether a staged copy exists. Call this before staging or opening anything.',
+      description: 'Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything.',
       parameters: object({
         filter: string('Optional case-insensitive substring matched against the project name or path.'),
         limit: integer('Most projects to return. Defaults to 20.', { minimum: 1, maximum: 100 }),
@@ -60,14 +61,15 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
           limit: typeof args.limit === 'number' ? args.limit : 20,
         })
         const staged = projects.filter(project => project.staged !== null).length
+        const backups = listBackups(workspace)
         return success(
           projects.length === 0
             ? `No MotionWorks project was found inside ${workspace}.`
-            : `Found ${projects.length} MotionWorks project(s) in ${workspace}; ${staged} already staged.`,
-          { workspace, stage_root: stageRootOf(workspace), projects },
+            : `Found ${projects.length} MotionWorks project(s) in ${workspace}; ${staged} staged, ${backups.length} with a pre-edit backup.`,
+          { workspace, stage_root: stageRootOf(workspace), backups, projects },
           projects.length === 0
             ? []
-            : [{ tool: 'mw_project_stage', why: 'Stage the intended project before opening it.', args: { source: projects[0]?.mwt } }],
+            : [{ tool: 'mw_project_open', why: 'Open the workspace project; a verified backup is taken first.', args: { path: projects[0]?.mwt } }],
           { complete: false, unverified: ['projects outside the workspace are never listed or staged'] },
         )
       },
@@ -105,7 +107,7 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
     }),
     tool({
       name: 'mw_project_stage',
-      description: 'Copy one workspace project into the stage so the IDE opens a copy, never the original. The .mwt and its expanded directory are copied and the wrapper is bound to the staged directory.',
+      description: 'Optional sandbox: copy one workspace project into .motionworks/stage so the IDE opens a copy instead of the real files. Normal editing opens the workspace project directly.',
       parameters: object({
         source: string('Workspace project folder or its .mwt. Must be inside the workspace.'),
         replace_existing: boolean('Replace an existing stage after review; defaults false. The previous stage is retained under backups/.'),
@@ -123,9 +125,9 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
     }),
     tool({
       name: 'mw_project_open',
-      description: 'Open one staged project in the running IDE. Refuses a path that is not a proven stage, and refuses to replace another open project without the exact approved path.',
+      description: 'Open a workspace project directly, or a staged copy. A direct open first writes and verifies one complete backup under <workspace>/backups/. Refuses to replace another open project without the exact approved path.',
       parameters: object({
-        path: string('Staged .mwt path returned by mw_project_stage.'),
+        path: string('Workspace .mwt (edits the real project, backup taken first) or a staged .mwt from mw_project_stage.'),
         user_approved: boolean('True only after the user approved saving and closing another open project.'),
         expected_project: string('Exact open project path named in that approval.'),
       }, ['path']),
@@ -147,9 +149,9 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
     }),
     tool({
       name: 'mw_ide_start',
-      description: 'Start MotionWorks IEC with one staged project, or attach to the IDE that is already running. Refuses when several stages exist without a project argument.',
+      description: 'Start MotionWorks IEC with one workspace project (backup first) or a staged copy, or attach to the IDE that is already running. Refuses when several projects are openable without a project argument.',
       parameters: object({
-        project: string('Staged .mwt to start with. Omit when exactly one project is staged.'),
+        project: string('Workspace or staged .mwt to start with. Omit when exactly one project is openable.'),
       }),
       async run(args, exec) {
         const workspace = workspaceOf(exec.cwd)

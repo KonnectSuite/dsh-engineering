@@ -1,9 +1,9 @@
 /**
  * The edit row: replace code, edit declarations, change structure and apply.
  *
- * Editing is off by default. Every tool writes only the staged project, and the
- * proven native helpers verify that unrelated saved and native state did not
- * change.
+ * Editing is off by default. Every tool writes the open project (the real files
+ * for a workspace project, with a verified backup already taken) and the proven
+ * native helpers verify that unrelated saved and native state did not change.
  *
  * @module dsh-engineering-mwi/tools/edit
  */
@@ -38,7 +38,7 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
   return [
     tool({
       name: 'mw_edit_code',
-      description: 'Replace one ST or IL body in the open staged project through the native ChangeCodeWS path. Supply exact find/replace changes with the body hash, or a complete body with the current body. Verifies saved and native state, then leaves compilation to mw_compile.',
+      description: 'Replace one ST or IL body in the open project through the native ChangeCodeWS path. Supply exact find/replace changes with the body hash, or a complete body with the current body. Verifies saved and native state, then leaves compilation to mw_compile.',
       parameters: object({
         pou: string('Exact POU name.'),
         changes: list('Exact find/replace changes; each must match its expected count.', objectItem('One exact change.', {
@@ -87,7 +87,7 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
     }),
     tool({
       name: 'mw_edit_variables',
-      description: 'Add, edit or delete one declaration in the open staged project through the native IDE API. Edit replaces the complete seven-field declaration and optional boolean flags; delete needs approval and reference review.',
+      description: 'Add, edit or delete one declaration in the open project through the native IDE API. Edit replaces the complete seven-field declaration and optional boolean flags; delete needs approval and reference review.',
       parameters: object({
         operation: choice('Variable operation.', ['add', 'edit', 'delete']),
         pou: string('POU for a local declaration; omit for resource globals.'),
@@ -253,7 +253,7 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
     }),
     tool({
       name: 'mw_transfer_pou',
-      description: 'Export one writable POU to a private workspace package, or import that untouched package into this staged project. Import needs the export token and a dependency review; a token is consumed by one attempt.',
+      description: 'Export one writable POU to a private workspace package, or import that untouched package into this project. Import needs the export token and a dependency review; a token is consumed by one attempt.',
       parameters: object({
         operation: choice('Package operation.', ['export', 'import']),
         pou: string('Exact POU to export.'),
@@ -288,7 +288,7 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
     }),
     tool({
       name: 'mw_validate',
-      description: 'Validate the open staged project before applying: workflow blockers, native validation and an optional program review for one POU or proposed body. Read the findings before saving or compiling.',
+      description: 'Validate the open project before applying: workflow blockers, native validation and an optional program review for one POU or proposed body. Read the findings before saving or compiling.',
       parameters: object({
         pou: string('POU to review.'),
         body: string('Proposed replacement body to review without writing it.'),
@@ -304,7 +304,7 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
           ready ? 'Validation found no blocker.' : `Validation found ${String((result.blockers as unknown[] | undefined)?.length ?? 0)} blocker(s) and ${String((result.validation_errors as unknown[] | undefined)?.length ?? 0)} validation error(s).`,
           result,
           ready
-            ? [{ tool: 'mw_apply', why: 'Save the validated staged project.' }]
+            ? [{ tool: 'mw_apply', why: 'Save the validated project.' }]
             : [{ tool: 'mw_review', why: 'Inspect the components named by the findings.' }],
           EDIT_COVERAGE,
         )
@@ -312,13 +312,13 @@ export function editTools(runtimeOf: EditRuntimeFactory = runtimeFor): readonly 
     }),
     tool({
       name: 'mw_apply',
-      description: 'Save the open staged project through the IDE. This writes only the staged copy; promoting source back to the workspace remains a separate, explicit step.',
+      description: 'Save the open project through the IDE. A workspace project is written in place; its verified pre-edit backup stays under <workspace>/backups/.',
       parameters: object({}),
       async run(_args, exec) {
         const workspace = workspaceOf(exec.cwd)
         const result = await runtimeOf(workspace).apply()
         return success(
-          'Saved the staged project through the IDE.',
+          'Saved the open project through the IDE.',
           result,
           [{ tool: 'mw_compile', why: 'Compile the saved project.' }],
           EDIT_COVERAGE,

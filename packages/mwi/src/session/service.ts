@@ -17,6 +17,7 @@ import { CodeEngine } from '../core/code-engine.ts'
 import { MwiError } from '../core/errors.ts'
 import { PowerShellBridgeTransport } from '../core/ps-bridge.ts'
 import { StageService, type StageOptions, type StageRecord } from './stage.ts'
+import { backupRootOf, ensureBackup, findBackup, listBackups, type BackupRecord } from './backup.ts'
 import { compareVariables } from '../edit/compare.ts'
 import { ReadService } from '../read/service.ts'
 import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
@@ -27,6 +28,21 @@ export const BRIDGE_DIR = fileURLToPath(new URL('../../bridge/', import.meta.url
 export const CODE_DIR = fileURLToPath(new URL('../../code/', import.meta.url))
 /** Vendored proven mutation helpers. */
 export const LEGACY_DIR = fileURLToPath(new URL('../../legacy/', import.meta.url))
+
+/** A stage-shaped view of a real, backed-up project. */
+function directRecord(backup: BackupRecord): StageRecord {
+  return {
+    name: backup.name,
+    source: backup.mwt,
+    source_directory: backup.directory,
+    workspace: backup.workspace,
+    staged_mwt: backup.mwt,
+    staged_directory: backup.directory,
+    bound_to: backup.directory,
+    previous_embedded_path: null,
+    staged_at: backup.created_at,
+  }
+}
 
 /** One open worksheet request. */
 export interface WorksheetRequest {
@@ -46,7 +62,9 @@ export interface SessionRuntime {
   ideState(): Promise<Record<string, unknown>>
   /** Stage one workspace project. */
   stage(source: string, options?: StageOptions): Promise<StageRecord>
-  /** Open a staged project. */
+  /** Back up a real workspace project before the first write, or reuse its verified backup. */
+  attach(path: string): BackupRecord
+  /** Open a staged or a real (backed-up) project. */
   open(path: string, options: { userApproved?: boolean; expectedProject?: string }): Promise<Record<string, unknown>>
   /** Start the IDE with a staged project. */
   start(project?: string): Promise<Record<string, unknown>>
@@ -180,11 +198,26 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     })
   }
 
+  /** @returns The verified pre-edit backup record. */
+  attach(path: string): BackupRecord {
+    return ensureBackup(this.workspace, path)
+  }
+
   /** @returns The bridge's open result. */
   async open(path: string, options: { userApproved?: boolean; expectedProject?: string }): Promise<Record<string, unknown>> {
     const resolved = resolve(path)
-    if (!isInside(stageRootOf(this.workspace), resolved) || !existsSync(resolved)) {
-      throw new MwiError('NOT_STAGED', `${resolved} is not a staged project.`, 'Stage the workspace project with mw_project_stage, then open the staged .mwt.')
+    if (!isInside(stageRootOf(this.workspace), resolved)) {
+      const record = this.attach(resolved)
+      const binding = await this.engine.run('check_mwt', { project: record.mwt }) as { wrapper_sha256?: string }
+      return await this.bridge.run('open', {
+        path: record.mwt,
+        wrapper_sha256: binding.wrapper_sha256,
+        user_approved: options.userApproved === true,
+        ...(options.expectedProject === undefined ? {} : { expected_project: options.expectedProject }),
+      }) as Record<string, unknown>
+    }
+    if (!existsSync(resolved)) {
+      throw new MwiError('NOT_STAGED', `${resolved} is not a staged project.`, 'Pass a workspace .mwt, or stage the workspace project with mw_project_stage.')
     }
     const name = resolved.replace(/\\/gu, '/').split('/').pop()?.replace(/\.mwt$/iu, '') ?? ''
     if (this.stages.identityOf(name) === undefined) {
@@ -201,11 +234,11 @@ export class PowerShellSessionRuntime implements SessionRuntime {
 
   /** @returns The bridge's start result. */
   async start(project?: string): Promise<Record<string, unknown>> {
-    const staged = project === undefined ? this.singleStage() : this.stageMwt(project)
-    const binding = await this.engine.run('check_mwt', { project: staged }) as { wrapper_sha256?: string }
+    const target = project === undefined ? this.singleStage() : this.projectMwt(project)
+    const binding = await this.engine.run('check_mwt', { project: target }) as { wrapper_sha256?: string }
     return await this.bridge.run('start_ide', {
       include_trial_method: true,
-      path: staged,
+      path: target,
       wrapper_sha256: binding.wrapper_sha256,
     }) as Record<string, unknown>
   }
@@ -243,9 +276,12 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     }) as Record<string, unknown>
   }
 
-  /** @returns The stage record for a path. */
+  /** @returns The stage record for a path, when it is staged or directly backed up. */
   stagedAt(path: string): StageRecord | undefined {
-    return this.stages.stagedAt(path)
+    const staged = this.stages.stagedAt(path)
+    if (staged !== undefined) return staged
+    const backup = findBackup(this.workspace, path)
+    return backup === undefined ? undefined : directRecord(backup)
   }
 
   /** @returns The bridge's compile result. */
@@ -606,42 +642,49 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     }
   }
 
-  /** The open project must be a proven stage; every compile and verify depends on it. */
+  /** The open project must be a proven stage or a verified direct backup; every compile and verify depends on it. */
   private async openStagedRecord(): Promise<StageRecord> {
     const status = await this.status()
     if (status.is_project_open !== true || typeof status.active_project !== 'string') {
-      throw new MwiError('NO_PROJECT', 'No project is open in the IDE.', 'Open a staged project with mw_project_open before compiling.')
+      throw new MwiError('NO_PROJECT', 'No project is open in the IDE.', 'Open a project with mw_project_open before compiling.')
     }
-    const record = this.stages.stagedAt(status.active_project)
+    const record = this.stagedAt(status.active_project)
     if (record === undefined) {
-      throw new MwiError('NOT_STAGED', `The open project is not a proven stage: ${status.active_project}.`, 'Open a staged project; the verify row never compiles a workspace original.')
+      throw new MwiError('NOT_ATTACHED', `The open project has no proven backup: ${status.active_project}.`, 'Open the workspace project with mw_project_open so a verified backup is taken first.')
     }
     return record
   }
 
-  /** The only staged project, or a refusal that explains the choice. */
+  /** The only openable project, staged or backed up, or a refusal that explains the choice. */
   private singleStage(): string {
-    let names: string[] = []
+    const stages: string[] = []
     try {
-      names = readdirSync(stageRootOf(this.workspace)).filter(name => name.toLowerCase().endsWith('.mwt'))
+      for (const name of readdirSync(stageRootOf(this.workspace))) {
+        if (name.toLowerCase().endsWith('.mwt')) stages.push(join(stageRootOf(this.workspace), name))
+      }
     } catch {
-      names = []
+      // No stage directory.
     }
-    if (names.length === 0) throw new MwiError('NO_STAGE', 'No project is staged in this workspace.', 'Call mw_project_find, then mw_project_stage.')
-    if (names.length > 1) {
-      throw new MwiError('AMBIGUOUS_STAGE', `${names.length} projects are staged.`, 'Pass project: the staged .mwt to start.', names)
+    const attached = listBackups(this.workspace).map(record => record.mwt)
+    const candidates = stages.length > 0 ? stages : attached
+    if (candidates.length === 0) {
+      throw new MwiError('NO_PROJECT', 'No project is staged or backed up in this workspace.', 'Call mw_project_find, then mw_project_open with the workspace .mwt.')
     }
-    return join(stageRootOf(this.workspace), names[0] as string)
+    if (candidates.length > 1) {
+      throw new MwiError('AMBIGUOUS_PROJECT', `${candidates.length} projects are openable.`, 'Pass project: the exact .mwt to start.', candidates)
+    }
+    return candidates[0] as string
   }
 
-  /** Resolve a requested staged project. */
-  private stageMwt(project: string): string {
+  /** Resolve a requested project, taking a backup for a real workspace project. */
+  private projectMwt(project: string): string {
     const resolved = resolve(this.workspace, project)
     const mwt = resolved.toLowerCase().endsWith('.mwt') ? resolved : `${resolved}.mwt`
-    if (!isInside(stageRootOf(this.workspace), mwt) || !existsSync(mwt)) {
-      throw new MwiError('NOT_STAGED', `${mwt} is not a staged project.`, 'Stage the workspace project first, then pass the staged .mwt.')
+    if (isInside(stageRootOf(this.workspace), mwt)) {
+      if (!existsSync(mwt)) throw new MwiError('NOT_STAGED', `${mwt} is not a staged project.`, 'Stage the workspace project first, or open the workspace .mwt directly.')
+      return mwt
     }
-    return mwt
+    return ensureBackup(this.workspace, mwt).mwt
   }
 }
 

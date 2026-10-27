@@ -41,8 +41,8 @@ export interface SkillContext {
 /** Registration metadata, kept here so a test can assert it without the file. */
 export const SKILL = {
   name: 'motionworks-iec',
-  description: 'Operate a running Yaskawa MotionWorks IEC 3 Pro IDE through staged projects — find and stage a workspace project, read the live object model and POU code, edit declarations and code, compile, read diagnostics, and verify a staged change.',
-  whenToUse: 'The user has MotionWorks IEC 3 Pro open or asks for work in it — a build or compile verdict, the live project model, reading or changing POU code, variable declarations, tasks, or the IDE error list. Also use when a MotionWorks project is mentioned: find which project is in the workspace before answering. For a question about a project outside the workspace, say it cannot be staged.',
+  description: 'Operate a running Yaskawa MotionWorks IEC 3 Pro IDE on the real project files — find and open a workspace project (one verified backup first), read the live object model and POU code, edit declarations and code, compile, read diagnostics, and verify the change.',
+  whenToUse: 'The user has MotionWorks IEC 3 Pro open or asks for work in it — a build or compile verdict, the live project model, reading or changing POU code, variable declarations, tasks, or the IDE error list. Also use when a MotionWorks project is mentioned: find which project is in the workspace before answering. For a question about a project outside the workspace, say it cannot be opened.',
 } as const
 
 /**
