@@ -9,6 +9,7 @@
  * each capability can be switched off from the row's config form.
  */
 import z from '@deepseek-ai/schemastery'
+import { dirname, join } from 'node:path'
 import * as optix from '../vendor/optix/lib/index.js'
 import { flag, list, text } from './config.js'
 
@@ -43,6 +44,15 @@ export const Config = z.object({
   allowPreviewInput: z.boolean().default(true).volatile().description(
     'Pointer and keyboard input into the emulator preview. Input can change runtime values.',
   ),
+  ocrExecutable: z.string().default('').volatile().description(
+    'Full path to tesseract.exe for optix_ocr. Leave empty to keep OCR unregistered.',
+  ),
+  ocrLanguage: z.string().default('eng').volatile().description(
+    'Tesseract language code or + separated list, for example eng or eng+deu.',
+  ),
+  ocrTessdataDirectory: z.string().default('').volatile().description(
+    'Folder holding the .traineddata files. Empty derives tessdata beside tesseract.exe.',
+  ),
   requestTimeoutMs: z.natural().min(1).max(2147483647).default(20000),
   maxResponseBytes: z.natural().min(1).default(2000000),
   maxBatchOps: z.natural().min(1).default(40),
@@ -57,23 +67,31 @@ export const Config = z.object({
  * @param config - the Studio bridge, authoring gates and preview settings.
  */
 export function apply(ctx, config = {}) {
-  const options = () => ({
-    bridgeUrls: list(config.bridgeUrls),
-    bridgeToken: text(config.bridgeToken),
-    allowWrites: flag(config.allowWrites),
-    allowDestructive: flag(config.allowDestructive),
-    allowInvoke: flag(config.allowInvoke),
-    preview: flag(config.preview),
-    cdpUrl: text(config.cdpUrl, 'http://127.0.0.1:9223'),
-    previewUrl: text(config.previewUrl, 'http://127.0.0.1:8081/'),
-    allowPreviewInput: flag(config.allowPreviewInput),
-    requestTimeoutMs: config.requestTimeoutMs ?? 20000,
-    maxResponseBytes: config.maxResponseBytes ?? 2000000,
-    maxBatchOps: config.maxBatchOps ?? 40,
-    maxMapNodes: config.maxMapNodes ?? 800,
-    maxMapDepth: config.maxMapDepth ?? 8,
-    maxPreviewPixels: config.maxPreviewPixels ?? 8000000,
-  })
+  const options = () => {
+    const ocrExecutable = text(config.ocrExecutable)
+    return {
+      bridgeUrls: list(config.bridgeUrls),
+      bridgeToken: text(config.bridgeToken),
+      allowWrites: flag(config.allowWrites),
+      allowDestructive: flag(config.allowDestructive),
+      allowInvoke: flag(config.allowInvoke),
+      preview: flag(config.preview),
+      cdpUrl: text(config.cdpUrl) || 'http://127.0.0.1:9223',
+      previewUrl: text(config.previewUrl) || 'http://127.0.0.1:8081/',
+      allowPreviewInput: flag(config.allowPreviewInput),
+      ocr: ocrExecutable === '' ? null : {
+        executable: ocrExecutable,
+        language: text(config.ocrLanguage, 'eng'),
+        tessdataDirectory: text(config.ocrTessdataDirectory) || join(dirname(ocrExecutable), 'tessdata'),
+      },
+      requestTimeoutMs: config.requestTimeoutMs ?? 20000,
+      maxResponseBytes: config.maxResponseBytes ?? 2000000,
+      maxBatchOps: config.maxBatchOps ?? 40,
+      maxMapNodes: config.maxMapNodes ?? 800,
+      maxMapDepth: config.maxMapDepth ?? 8,
+      maxPreviewPixels: config.maxPreviewPixels ?? 8000000,
+    }
+  }
   let mounted
   // Volatile-only config changes are committed into the live references and
   // emit `loader/volatile-update` instead of re-running apply(). The prebuilt

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.16] - 2026-10-27
+
+### Added
+
+- **FactoryTalk Optix OCR is configurable from Plugins.** The `optix` row now
+  carries `ocrExecutable`, `ocrLanguage` and `ocrTessdataDirectory`. A configured
+  executable registers `optix_ocr`; an empty path keeps OCR off. An empty tessdata
+  folder derives `tessdata` beside the executable. OCR still requires the preview
+  browser and one matching tab, because it reads the rendered canvas.
+
+### Fixed
+
+- **An empty preview URL no longer breaks `optix_preview` and `optix_screenshot`.**
+  A saved blank `previewUrl` or `cdpUrl` now falls back to the loopback defaults
+  instead of failing with `Invalid URL`.
+
 ## [0.4.15] - 2026-10-27
 
 ### Changed

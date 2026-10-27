@@ -26,7 +26,7 @@ read-only or low-context profile does not need:
 | `l5x` | `allowWrites` | on | the two approval-gated writes (tag, wall clock) |
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
 | `mwi` | `edit` | on | the seven MotionWorks edit schemas |
-| `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` | on | Studio authoring, destructive ops, method invocation and emulator preview |
+| `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `ocrExecutable` | on | Studio authoring, destructive ops, method invocation, emulator preview and OCR when Tesseract is set |
 
 The previews are independent of the tools — switching a product off does not remove the ladder viewer.
 Both previews mount from **one** row (`viewers`), because a package registers exactly one browser
@@ -39,7 +39,7 @@ bundle.
 | **Studio 5000 L5X** | 40 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 14 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 6 | all on | Optix Studio installed |
+| **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 
 Tool groups, by product:
 
@@ -62,7 +62,7 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify and guidance; optionally the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
-| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl` |
+| `optix` | FactoryTalk Optix Studio authoring | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
