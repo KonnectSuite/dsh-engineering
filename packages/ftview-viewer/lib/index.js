@@ -9,5 +9,6 @@
  */
 export { parseXml, child, children, attribute, numberAttribute } from "./xml.js";
 export { renderDisplay, colourOf } from "./render.js";
+export { evaluate, referencesOf } from "./expression.js";
 /** Host entry: this package is browser-only, so the server half has nothing to do. */
 export function apply() { }

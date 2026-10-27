@@ -9,18 +9,39 @@
  *   node --import tsx scripts/ftview-preview.mjs "Displays/Main Screen.xml" artifacts/ftview --png
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { basename, join, resolve } from 'node:path'
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { renderDisplay } from '../packages/ftview-viewer/src/index.ts'
+import { parseXml, attribute, renderDisplay } from '../packages/ftview-viewer/src/index.ts'
 
 const [file, outRoot = 'artifacts/ftview', ...rest] = process.argv.slice(2)
 if (file === undefined) {
-  console.error('usage: ftview-preview.mjs <display.xml> [outDir] [--png]')
+  console.error('usage: ftview-preview.mjs <display.xml> [outDir] [--png] [--tags {"Tag":1}]')
   process.exit(2)
 }
 const source = readFileSync(file, 'utf8')
-const svg = renderDisplay(source)
+
+/** Resolve Global Objects by `File.Object` for reference objects. */
+function loadGlobals(displayFile) {
+  const folder = join(dirname(displayFile), '..', 'Global Objects')
+  if (!existsSync(folder)) return {}
+  const globals = {}
+  const walk = (node, file, prefix) => {
+    const name = attribute(node, 'name')
+    if (name !== undefined) globals[`${file}.${name}`] = node
+    for (const child of node.children) walk(child, file, prefix)
+  }
+  for (const entry of readdirSync(folder)) {
+    if (!entry.toLowerCase().endsWith('.xml')) continue
+    const document = parseXml(readFileSync(join(folder, entry), 'utf8'))
+    walk(document, basename(entry, '.xml'), '')
+  }
+  return globals
+}
+
+const tagsIndex = rest.indexOf('--tags')
+const tagValues = tagsIndex === -1 ? {} : JSON.parse(rest[tagsIndex + 1] ?? '{}')
+const svg = renderDisplay(source, { tagValues, globals: loadGlobals(file) })
 const name = basename(file).replace(/\.xml$/iu, '')
 const out = resolve(outRoot)
 mkdirSync(out, { recursive: true })

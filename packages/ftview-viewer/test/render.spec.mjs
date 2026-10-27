@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
-import { renderDisplay, parseXml } from '../src/index.ts'
+import { renderDisplay, parseXml, evaluate } from '../src/index.ts'
 
 const DISPLAY = `<?xml version="1.0"?>
 <display width="800" height="600" backColor="#C6C6C6">
@@ -96,4 +96,28 @@ test('renders the real Laminator display when the export is present', () => {
   assert.ok(svg.includes('</svg>'))
   const captions = svg.match(/<text /gu)?.length ?? 0
   assert.ok(captions > 10, `expected captions, got ${captions}`)
+})
+
+test('evaluates animation comparisons without inventing unknown tags', () => {
+  assert.equal(evaluate('{Current_Screen} = 6', { Current_Screen: 6 }), true)
+  assert.equal(evaluate('{Current_Screen} = 6', { Current_Screen: 2 }), false)
+  assert.equal(evaluate('{Speed} > 100 AND {Run} = 1', { Speed: 120, Run: 1 }), true)
+  assert.equal(evaluate('{Speed} > 100', {}), undefined)
+})
+
+const REFERENCE = `<gfx><displaySettings width="400" height="200"/>
+<group name="Nav" left="10" top="10" isReferenceObject="true" linkBaseObject="Header_Footer.Group3"/>
+<panel name="Marker" left="0" top="150" width="20" height="20" backColor="#123456">
+  <animations><animateVisibility expression="{Current_Screen}=1" expressionTrueState="visible"/></animations>
+</panel></gfx>`
+
+test('resolves a reference object against Global Objects and hides it by animation', () => {
+  const base = parseXml('<gfx><group name="Group3"><panel name="BasePanel" left="0" top="0" width="50" height="50" backColor="#abcdef"/></group></gfx>').children[0]
+  const hidden = renderDisplay(REFERENCE, { globals: { 'Header_Footer.Group3': base }, tagValues: { Current_Screen: 2 } })
+  assert.match(hidden, /fill="#abcdef"/u)
+  assert.doesNotMatch(hidden, /fill="#123456"/u)
+  const shown = renderDisplay(REFERENCE, { globals: { 'Header_Footer.Group3': base }, tagValues: { Current_Screen: 1 } })
+  assert.match(shown, /fill="#123456"/u)
+  const unknown = renderDisplay(REFERENCE, { globals: { 'Header_Footer.Group3': base } })
+  assert.match(unknown, /fill="#123456"/u, 'an unknown tag leaves the base state visible')
 })

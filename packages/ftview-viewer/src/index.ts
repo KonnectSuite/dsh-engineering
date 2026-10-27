@@ -11,6 +11,8 @@
 export { parseXml, child, children, attribute, numberAttribute } from './xml.ts'
 export type { XmlNode } from './xml.ts'
 export { renderDisplay, colourOf } from './render.ts'
+export { evaluate, referencesOf } from './expression.ts'
+export type { TagValues } from './expression.ts'
 export type { RenderOptions } from './render.ts'
 
 /** Host entry: this package is browser-only, so the server half has nothing to do. */

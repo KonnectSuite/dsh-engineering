@@ -13,6 +13,7 @@
  */
 
 import { attribute, child, numberAttribute, parseXml, type XmlNode } from './xml.ts'
+import { evaluate } from './expression.ts'
 
 /** Inputs a live preview may supply. */
 export interface RenderOptions {
@@ -20,6 +21,8 @@ export interface RenderOptions {
   readonly imageHref?: (name: string) => string | undefined
   /** Current tag values, keyed by HMI tag name. */
   readonly tagValues?: Readonly<Record<string, number | string | boolean>>
+  /** Global Objects by `File.Object` name, for reference objects. */
+  readonly globals?: Readonly<Record<string, XmlNode>>
 }
 
 const OBJECTS = new Set([
@@ -256,8 +259,47 @@ function valueElement(node: XmlNode, caption: ReturnType<typeof captionOf>, left
   return textElement({ ...caption, text: shown }, left, top, width, height, margin)
 }
 
+/** A reference object resolved against its Global Objects base. */
+function resolveReference(node: XmlNode, options: RenderOptions): XmlNode {
+  if (attribute(node, 'isReferenceObject') !== 'true') return node
+  const link = attribute(node, 'linkBaseObject')
+  const base = link === undefined ? undefined : options.globals?.[link]
+  if (base === undefined) return node
+  // Placement stays local; everything the base defines (states, caption, child
+  // objects) is inherited, which is what the Studio reference object means.
+  const placement = new Set(['name', 'left', 'top', 'width', 'height', 'visible', 'isReferenceObject', 'linkBaseObject', 'linkSize', 'linkConnections', 'linkAnimations'])
+  const attributes: Record<string, string> = { ...base.attributes }
+  for (const [key, value] of Object.entries(node.attributes)) {
+    if (placement.has(key)) attributes[key] = value
+  }
+  return {
+    tag: base.tag,
+    attributes,
+    children: node.children.length > 0 ? node.children : base.children,
+    text: base.text,
+  }
+}
+
+/** Visibility from an `animateVisibility` animation, when its tags are known. */
+function animatedVisibility(node: XmlNode, options: RenderOptions): boolean | undefined {
+  const animations = child(node, 'animations')
+  if (animations === undefined) return undefined
+  for (const animation of animations.children) {
+    if (animation.tag !== 'animateVisibility') continue
+    const expression = attribute(animation, 'expression')
+    if (expression === undefined) continue
+    const result = evaluate(expression, options.tagValues ?? {})
+    if (result === undefined) continue
+    const trueState = attribute(animation, 'expressionTrueState') ?? 'visible'
+    return result ? trueState === 'visible' : trueState !== 'visible'
+  }
+  return undefined
+}
+
 /** Draw one object and its children. */
-function renderObject(node: XmlNode, depth: number, options: RenderOptions): string {
+function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): string {
+  const node = resolveReference(rawNode, options)
+  if (animatedVisibility(node, options) === false) return ''
   const left = numberAttribute(node, 'left', 0)
   const top = numberAttribute(node, 'top', 0)
   const width = numberAttribute(node, 'width', 0)

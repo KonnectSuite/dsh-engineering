@@ -118,6 +118,69 @@ function numberAttribute(node, name, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// packages/ftview-viewer/src/expression.ts
+var COMPARISON = /^\s*(.+?)\s*(<=|>=|<>|!=|=|<|>)\s*(.+?)\s*$/u;
+function operand(text, values) {
+  const trimmed = text.trim();
+  const tag = /^\{([^}]+)\}$/u.exec(trimmed);
+  if (tag !== null) {
+    const value = values[(tag[1] ?? "").trim()];
+    return value === void 0 ? { known: false, value: 0 } : { known: true, value: typeof value === "boolean" ? Number(value) : value };
+  }
+  const quoted = /^['"](.*)['"]$/u.exec(trimmed);
+  if (quoted !== null) return { known: true, value: quoted[1] ?? "" };
+  const number = Number(trimmed);
+  if (Number.isFinite(number)) return { known: true, value: number };
+  return void 0;
+}
+function compare(left, operator, right) {
+  const bothNumeric = typeof left === "number" && typeof right === "number";
+  const a = bothNumeric ? left : String(left);
+  const b = bothNumeric ? right : String(right);
+  switch (operator) {
+    case "=":
+      return a === b;
+    case "<>":
+    case "!=":
+      return a !== b;
+    case "<":
+      return a < b;
+    case ">":
+      return a > b;
+    case "<=":
+      return a <= b;
+    case ">=":
+      return a >= b;
+    default:
+      return false;
+  }
+}
+function clause(text, values) {
+  const match = COMPARISON.exec(text);
+  if (match === null) return void 0;
+  const left = operand(match[1] ?? "", values);
+  const right = operand(match[3] ?? "", values);
+  if (left === void 0 || right === void 0 || !left.known || !right.known) return void 0;
+  return compare(left.value, match[2] ?? "=", right.value);
+}
+function evaluate(expression, values) {
+  const text = expression.trim();
+  if (text === "") return void 0;
+  const parts = text.split(/\s+(AND|OR)\s+/iu);
+  if (parts.length === 1) return clause(text, values);
+  const results = [];
+  const operators = [];
+  for (const part of parts) {
+    if (/^(AND|OR)$/iu.test(part)) operators.push(part.toUpperCase());
+    else results.push(clause(part, values));
+  }
+  if (results.some((result) => result === void 0)) return void 0;
+  return operators.reduce((combined, operator, index) => {
+    const next = results[index + 1] ?? false;
+    return operator === "AND" ? combined && next : combined || next;
+  }, results[0] ?? false);
+}
+
 // packages/ftview-viewer/src/render.ts
 var OBJECTS = /* @__PURE__ */ new Set([
   "panel",
@@ -337,7 +400,40 @@ function valueElement(node, caption, left, top, width, height, margin, options) 
   const shown = value === void 0 ? "####" : String(value);
   return textElement({ ...caption, text: shown }, left, top, width, height, margin);
 }
-function renderObject(node, depth, options) {
+function resolveReference(node, options) {
+  if (attribute(node, "isReferenceObject") !== "true") return node;
+  const link = attribute(node, "linkBaseObject");
+  const base = link === void 0 ? void 0 : options.globals?.[link];
+  if (base === void 0) return node;
+  const placement = /* @__PURE__ */ new Set(["name", "left", "top", "width", "height", "visible", "isReferenceObject", "linkBaseObject", "linkSize", "linkConnections", "linkAnimations"]);
+  const attributes = { ...base.attributes };
+  for (const [key, value] of Object.entries(node.attributes)) {
+    if (placement.has(key)) attributes[key] = value;
+  }
+  return {
+    tag: base.tag,
+    attributes,
+    children: node.children.length > 0 ? node.children : base.children,
+    text: base.text
+  };
+}
+function animatedVisibility(node, options) {
+  const animations = child(node, "animations");
+  if (animations === void 0) return void 0;
+  for (const animation of animations.children) {
+    if (animation.tag !== "animateVisibility") continue;
+    const expression = attribute(animation, "expression");
+    if (expression === void 0) continue;
+    const result = evaluate(expression, options.tagValues ?? {});
+    if (result === void 0) continue;
+    const trueState = attribute(animation, "expressionTrueState") ?? "visible";
+    return result ? trueState === "visible" : trueState !== "visible";
+  }
+  return void 0;
+}
+function renderObject(rawNode, depth, options) {
+  const node = resolveReference(rawNode, options);
+  if (animatedVisibility(node, options) === false) return "";
   const left = numberAttribute(node, "left", 0);
   const top = numberAttribute(node, "top", 0);
   const width = numberAttribute(node, "width", 0);

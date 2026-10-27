@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.10.4] - 2026-10-27
+
+### Added
+
+- **Animations evaluate.** `animateVisibility` expressions (`{Current_Screen} = 6`) are evaluated against known tag values;
+  an unknown tag leaves the object in its base state instead of hiding it. The expression reader covers tag references,
+  numbers, strings, the six comparisons and `AND`/`OR`.
+- **Reference objects resolve against Global Objects.** Objects with `isReferenceObject="true"` and
+  `linkBaseObject="Header_Footer.Group3"` inherit the base object's states, caption and children while keeping their own
+  placement. On the Laminator `Main Screen` this restores the navigation highlight: selecting `Current_Screen=1` lights
+  the Main Screen button, which is exactly how the runtime behaves.
+- `scripts/ftview-preview.mjs` loads `Global Objects/*.xml` beside the display automatically and accepts
+  `--tags '{"Current_Screen":1}'`, so a screen can be checked in isolation.
+
+### Known gaps
+
+- Values are still supplied by the caller; the controller route is the remaining phase-3 work.
 ## [0.10.3] - 2026-10-27
 
 ### Added
