@@ -293,30 +293,55 @@ ftview_compare({ "before_id": "v-1", "after_id": "v-2" })
 
 Comparison is by display name, tag name and file content hash.
 
-## 7. Edit a FactoryTalk View export
+## 7. Export, author and verify a FactoryTalk View application
 
-The `ftview-edit` row stages one change per call, validates against a re-parsed copy, then writes a
-new export folder.
+Start from the installed application rather than a folder someone emailed. The vendor export server runs
+without a Studio window and does not change the project:
+
+```
+ftview_apps({ "filter": "Laminator" })
+ftview_export({ "application": "Carpenter_EPS_Laminator001", "output_root": "C:/Exports/Laminator" })
+ftview_open({ "root": "C:/Exports/Laminator" })
+```
+
+Author against the schema the export declares. One operation per call, then validate before applying:
+
+```
+ftview_draft_display_create({ "name": "Arya Overview", "width": 800, "height": 600 })
+ftview_draft_object_add({
+  "display": "Arya Overview", "type": "text", "name": "Heading",
+  "attributes_json": "{\"height\":\"30\",\"width\":\"300\",\"left\":\"20\",\"top\":\"20\"}",
+  "caption": "Line overview"
+})
+ftview_draft_object_add({
+  "display": "Arya Overview", "type": "momentaryButton", "name": "StartBtn",
+  "attributes_json": "{\"height\":\"60\",\"width\":\"120\",\"left\":\"20\",\"top\":\"80\"}",
+  "connections_json": "{\"Value\":\"SystemRunning\"}"
+})
+ftview_validate({ "draft_id": "d-1" })
+ftview_apply({ "draft_id": "d-1", "output_root": "C:/Exports/Laminator-edited" })
+```
+
+`ftview_validate` reports `schema.ran` and the vendor-schema errors; `ftview_apply` refuses a document
+the schema rejects. Apply writes a new folder containing the changed displays, `IMPORT.md` and the
+vendor's own `Displays/BatchImport_<app>.xml`.
+
+A human imports that list in FactoryTalk View Studio, then the import is proven, not assumed:
+
+```
+ftview_verify_import({ "application": "Carpenter_EPS_Laminator001" })
+```
+
+Each display comes back `matched: true` or with the differing attributes and missing/extra objects. The
+export does not include the HMI tag CSV, and the bundle does not import or build a `.mer` — those remain
+Studio steps.
+
+An attribute-only edit still works without authoring:
 
 ```
 ftview_draft_display_set({ "display": "Main", "object": "StartButton", "attribute": "Text", "value": "START LINE" })
-ftview_draft_display_add({ "copy_from": "Main", "name": "MainCopy" })
 ftview_draft_tag_upsert({ "name": "Line_Run", "description": "Line running", "type": "BOOL" })
-ftview_validate({ "draft_id": "d-1" })
-ftview_apply({ "draft_id": "d-1", "output_root": "C:/Projects/Line/ME-edited" })
 ```
-
-`ftview_apply` writes a new folder; the source export is untouched. Then plan the manual Studio
-import:
-
-```
-ftview_studio_status()
-ftview_studio_preflight({ "before_id": "v-1", "after_id": "v-2" })
-ftview_studio_handoff({ "before_id": "v-1", "after_id": "v-2", "application": "Line" })
-```
-
-The handoff returns an ordered import plan for a human in FactoryTalk View Studio. No vendor utility
-runs and no file is written.
 
 ## 8. Edit a MotionWorks IEC project in place
 
@@ -359,11 +384,46 @@ because the hash no longer matches means the saved body changed — re-read it a
 MotionWorks edits verify unrelated saved and native state, and `mw_apply` saves in place. A compile
 verdict is the vendor engine's and does not prove runtime behavior.
 
+## 9. Read and author a FactoryTalk Optix project
+
+Optix is read through the Studio bridge, so the loaded project — not the disk — is the truth. Start by
+finding the project and mapping it:
+
+```
+optix_status()
+optix_read({ "project": "Line", "request": { "action": "map", "mode": "overview" } })
+optix_read({ "project": "Line", "request": { "action": "type_schema", "type": "Label" } })
+```
+
+Author as a typed batch. `dry_run` validates the whole batch without writing; live writes need the row's
+`allowWrites` switch, and destructive operations need `allowDestructive`:
+
+```
+optix_edit({
+  "project": "Line",
+  "dry_run": true,
+  "ops": [
+    { "op": "create_variable", "parent": "Objects/Line", "name": "LineSpeed", "datatype": "Float" },
+    { "op": "bind", "path": "Screens/MainScreen/Label1", "name": "Text", "source_path": "Objects/Line/LineSpeed", "mode": "Read" }
+  ]
+})
+```
+
+Expressions and NetLogic guidance are checked before they are attached:
+
+```
+optix_validate_expression({ "project": "Line", "expression": "String.Format('{0:F1} m/min', {0})", "sources": "Objects/Line/LineSpeed" })
+optix_netlogic({ "query": "PeriodicTask" })
+```
+
+A successful model change is not a save: `optix_apply` is not a Studio save, and rendering still needs
+the emulator preview (`optix_screenshot`) when one is configured.
+
 ## Reporting reminders
 
 - Quote the program, routine and rung or ST line for an L5X finding; quote the display file and
   object name for a FactoryTalk View finding.
-- State what the export cannot prove: XSD validity, PLC binding, runtime behavior, visual rendering,
+- State what the export cannot prove: PLC binding, runtime behavior, visual rendering,
   FBD/SFC execution, dynamic indices, and whether online logic matches the export.
 - A missing entry is a configuration fact, not a reason to use another tool: if `draft_*`,
   `studio_*` or `poll_live_tags` are unavailable, say the row is not enabled here.

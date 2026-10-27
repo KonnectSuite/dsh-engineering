@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.2] - 2026-10-27
+
+### Documentation
+
+- **A getting-started guide for a new install.** `docs/getting-started.md` answers the first questions a
+  fresh AryaCode user has: what each of the four rows needs installed, how to install from the market,
+  the loop every product follows (read → act in a copy → verify → hand off), a paste-ready first prompt
+  per product, and the boundaries the bundle will not pretend away (Studio import/runtime, the missing
+  tag CSV in a vendor export, MWI's IDE, Optix's bridge).
+- README: a "New here?" pointer, a market-first Install section, corrected Status and Requirements
+  (FTView authoring/export/schema, eleven L5X drafts) and the Getting started entry in the documentation
+  table.
+- Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export → author →
+  schema-validate → apply with the `BatchImport` manifest → verify the import), and a new section 9
+  covers reading and authoring a FactoryTalk Optix project.
 ## [0.8.1] - 2026-10-27
 
 ### Added

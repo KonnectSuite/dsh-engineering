@@ -6,6 +6,9 @@ switch: disable it and that plugin unloads, so its tool schemas leave the reques
 
 `@aryacode/dsh-engineering` · 97 tools · 5 rows · 4 products · MIT
 
+**New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
+product follows, and the first prompt to paste for each of the four.
+
 ---
 
 ## Why a bundle
@@ -85,15 +88,16 @@ Where each surface actually stands, based on what has been exercised.
 **Working and verified**
 
 - L5X offline reads, references, usage, checks and comparison against revision 19+ projects
-- Staged L5X editing — nine `draft_*` tools, validation, and one new file on apply
+- Staged L5X editing — eleven `draft_*` tools, the instruction catalog, `compose_rung`, validation and one new file on apply
 - Logix Designer SDK: a real ACD exported to a 3.0 MB L5X against SDK v37
 - Supervised controller access — upload, mode change and download behind per-call approval, with
   downloads accepting only a verification id produced by a passed build
 - Live EtherNet/IP: polling, one-request batch reads of up to 64 tags, controller identity and clock, LAN discovery, and a bounded trend
 - Supervised live writes: `write_live_tag` and `write_controller_clock` need the row's `allowWrites` switch **and** per-call human approval, and report the value the controller reads back
-- FactoryTalk View ME: export reads, structural checks, comparison, staged display and HMI tag edits;
-  reads verified on a real Studio export (`<gfx>` displays and the comma-delimited tag CSV —
-  18 displays, 361 tags, no parse errors)
+- FactoryTalk View ME: export reads, structural checks, comparison, display and tag edits, display and
+  object authoring, vendor-schema validation, the vendor export path and object-level import
+  verification; commissioned on a real Studio export (18 displays, 361 tags, no parse errors) and a
+  real application export (13 displays, 19 files, 74 applications listed)
 - MotionWorks IEC: verified live against 3 Pro 1.19 — direct open with a verified pre-edit backup
   under `.motionworks/attached`, attach-without-reload to a project the IDE already has open, start,
   worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU
@@ -110,8 +114,11 @@ the lean profile is the one that turns them off.
 - Live reads, SDK builds and live writes cannot establish that online logic matches the export; every result says
   so in `coverage`
 - FBD/SFC semantics are not exercised
-- FactoryTalk View Studio work is a **manual handoff**: the bundle plans the import and preflights
-  changed files, it does not import
+- FactoryTalk View **import and runtime creation are Studio steps**: the bundle exports through the
+  vendor engine, authors and schema-validates the displays, writes the `BatchImport` manifest, and
+  verifies the import object by object afterwards; it does not import or build a `.mer`
+- The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
+  export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
 
 **Not in this repository** — CAD mounts as an independent plugin.
@@ -134,8 +141,12 @@ the lean profile is the one that turns them off.
 
 ## Install
 
-The bundle carries its components (`vendor/`), its own browser face (both previews) and the rows.
-Installing a component on its own gives you tools **without** the rows that switch them.
+Install **Engineering** from the market (**Plugins → Arya Plugin Market → Engineering** → Install or
+Update), then open a chat. The bundle carries its components (`vendor/`), its own browser face (both
+previews) and the rows; installing a component on its own gives you tools **without** the rows that
+switch them.
+
+Manual install, for a profile managed by hand:
 
 ```sh
 # in the AryaCode profile
@@ -149,6 +160,11 @@ pnpm add @aryacode/dsh-engineering
 
 Then, in the application, the **Engineering** card lists each row as a component. Per-row enable state
 lives in the profile, so disabling a row survives the next update.
+
+First session after install: open the workspace folder that holds your export or project, then ask in
+plain language — "open Line.L5X and run the checks", "list the FactoryTalk View ME applications", "find
+the MotionWorks projects here". The agent picks the product's skill and tools; [Getting
+started](docs/getting-started.md) has the exact prompts and the boundaries.
 
 For development, clone this repository, `pnpm install`, and link it into a profile bundle list; the
 development home mounts the same rows.
@@ -211,7 +227,8 @@ even when the implementation behind a row is replaced.
 | L5X Studio SDK | Studio 5000 with the Logix Designer SDK service, FactoryTalk Linx, .NET |
 | L5X controller | Reachable controller, FactoryTalk Linx, a matching uploaded ACD |
 | L5X live | A reachable controller over EtherNet/IP; no Studio, Linx or ACD |
-| FactoryTalk View read, edit | Node only; a FactoryTalk View ME export folder |
+| FactoryTalk View read, edit, author | Node only; a FactoryTalk View ME export folder, plus an installed `Gfx-ME*.xsd` for schema validation |
+| FactoryTalk View export | FactoryTalk View ME Studio installed on the host (the export server runs without an open window) |
 | FactoryTalk View Studio | FactoryTalk View Studio ME for discovery and the manual import |
 | MotionWorks IEC | MotionWorks IEC 3 Pro; the 32-bit COM bridge and the Python saved-model engine |
 | Optix | FactoryTalk Optix Studio |
@@ -220,6 +237,7 @@ even when the implementation behind a row is replaced.
 
 | Document | Owns |
 |---|---|
+| [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Examples](docs/examples.md) | End-to-end sessions per product |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
