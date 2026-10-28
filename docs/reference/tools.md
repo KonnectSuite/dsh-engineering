@@ -636,6 +636,7 @@ Catalog the object types the export uses, with each type’s attributes, how oft
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
 | `type` | string | no | Optional exact element type, e.g. "momentaryButton", to list its attributes. |
+| `all` | string | no | Pass "true" to list every element type drafting accepts, including ones this export does not use. |
 | `limit` | integer | no | Most types to return. Defaults to 20. |
 
 #### `ftview_design_check`

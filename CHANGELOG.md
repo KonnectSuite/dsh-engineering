@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1] - 2026-10-27
+
+### Fixed
+
+- **The generated tool reference was stale.** `ftview_object_types` gained the `all` parameter in 0.12.0, but
+  `docs/reference/tools.md` was generated before that edit and `pnpm test` caught it only after the release was
+  published. The reference is regenerated; no tool behaviour changed.
 ## [0.12.0] - 2026-10-27
 
 ### Added
