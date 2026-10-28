@@ -349,18 +349,20 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'ftview_studio_export_prepare',
-      description: 'Plan a fresh tag-database export for one application: resolve its .med, confirm Rockwell’s Tag Import and Export Wizard is installed, and return the exact wizard steps and destination file. Does not click anything.',
+      description: 'Plan a fresh tag-database or alarm export for one application: resolve its .med, confirm the vendor wizard, and return the exact wizard steps and destination file. Pass export_root to have the wizard write the snapshot straight into an export folder (Tags/ or Alarms/) instead of the project store. Does not click anything.',
       parameters: object({
         application: string('Application name as ftview_apps lists it.'),
         kind: choice('Asset kind to prepare: tags or alarms. Defaults to tags.', ['tags', 'alarms']),
+        export_root: string('Optional export folder to write the snapshot into directly (Tags/ or Alarms/), instead of the project store.'),
       }, ['application']),
       async run(args) {
         const application = requiredString(args, 'application')
         const kind = optionalString(args, 'kind') ?? 'tags'
+        const exportRoot = optionalString(args, 'export_root')
         try {
-          const plan = kind === 'alarms' ? prepareAlarmExport(application) : prepareTagExport(application)
+          const plan = kind === 'alarms' ? prepareAlarmExport(application, undefined, exportRoot) : prepareTagExport(application, undefined, undefined, exportRoot)
           return success(
-            `Prepared tag export for ${application}: run the wizard, then accept ${plan.destination}.`,
+            `Prepared ${kind === 'alarms' ? 'alarm' : 'tag'} export for ${application}: run the wizard, then accept ${plan.destination}.`,
             plan,
             [],
             COVERAGE,

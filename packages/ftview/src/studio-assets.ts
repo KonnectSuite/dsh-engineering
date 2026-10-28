@@ -15,7 +15,7 @@
  */
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { projectFolder } from './vendor.ts'
 
 /** Kinds of asset the wizards produce. */
@@ -66,13 +66,13 @@ export function tagWizardPath(): string {
  * @param wizard - Wizard path, injectable for tests.
  * @returns Paths and the steps the actuator must perform.
  */
-export function prepareTagExport(application: string, documentsRoot?: string, wizard = tagWizardPath()): AssetPlan {
+export function prepareTagExport(application: string, documentsRoot?: string, wizard = tagWizardPath(), exportRoot?: string): AssetPlan {
   const store = projectFolder(application, documentsRoot)
   if (store === undefined) throw new Error(`no Studio project store for ${application}`)
   const med = join(store, `${application}.med`)
   if (!existsSync(med)) throw new Error(`no application database at ${med}`)
   if (!existsSync(wizard)) throw new Error(`the Tag Import and Export Wizard is not installed at ${wizard}`)
-  const destination = join(store, `${application}-Tags.CSV`)
+  const destination = exportRoot === undefined || exportRoot === '' ? join(store, `${application}-Tags.CSV`) : join(exportRoot, 'Tags', `${application}.csv`)
   return {
     application,
     kind: 'tags',
@@ -84,7 +84,9 @@ export function prepareTagExport(application: string, documentsRoot?: string, wi
       'Operation: Export FactoryTalk View tag database to CSV files -> Next.',
       `Project: ${med}`,
       `Destination: ${destination} -> Finish.`,
-      'Then call ftview_studio_export_accept with kind="tags" and that destination.',
+      exportRoot === undefined || exportRoot === ''
+        ? 'Then call ftview_studio_export_accept with kind="tags" and that destination.'
+        : 'The file is already inside the export, so nothing is copied: call ftview_studio_export_accept with kind="tags", source and destination both that file, to validate it in place.',
     ],
   }
 }
@@ -118,8 +120,10 @@ export function acceptAsset(kind: AssetKind, source: string, destination?: strin
   let copiedTo: string | undefined
   if (destination !== undefined && destination !== '') {
     const target = /\.(csv|xml)$/iu.test(destination) ? destination : join(destination, basename(source))
-    mkdirSync(dirname(target), { recursive: true })
-    copyFileSync(source, target)
+    if (resolve(target) !== resolve(source)) {
+      mkdirSync(dirname(target), { recursive: true })
+      copyFileSync(source, target)
+    }
     copiedTo = target
   }
   return {
@@ -145,12 +149,13 @@ export function acceptAsset(kind: AssetKind, source: string, destination?: strin
  * @param documentsRoot - Public Documents folder, injectable for tests.
  * @returns Paths and the steps the actuator must perform.
  */
-export function prepareAlarmExport(application: string, documentsRoot?: string): AssetPlan {
+export function prepareAlarmExport(application: string, documentsRoot?: string, exportRoot?: string): AssetPlan {
   const store = projectFolder(application, documentsRoot)
   if (store === undefined) throw new Error(`no Studio project store for ${application}`)
   const med = join(store, `${application}.med`)
   if (!existsSync(med)) throw new Error(`no application database at ${med}`)
-  const destination = join(store, 'Alarms.xml')
+  const folder = exportRoot === undefined || exportRoot === '' ? store : join(exportRoot, 'Alarms')
+  const destination = join(folder, 'Alarms.xml')
   return {
     application,
     kind: 'alarms',
@@ -160,8 +165,10 @@ export function prepareAlarmExport(application: string, documentsRoot?: string):
       `Start FactoryTalk View Studio and open ${application}; the alarm wizard runs inside Studio, so it must be open.`,
       'Right-click Alarms > Alarm Setup in the Explorer, choose Import and Export...',
       'Select "Export alarm configuration from application" -> Next.',
-      `File name "Alarms", folder ${store} -> Finish.`,
-      'Then call ftview_studio_export_accept with kind="alarms" and that destination.',
+      `File name "Alarms", folder ${folder} -> Finish. Use the "..." button to browse there; the wizard defaults to the project store, not this folder.`,
+      exportRoot === undefined || exportRoot === ''
+        ? 'Then call ftview_studio_export_accept with kind="alarms" and that destination.'
+        : 'The file is already inside the export, so nothing is copied: call ftview_studio_export_accept with kind="alarms", source and destination both that file, to validate it in place.',
     ],
   }
 }

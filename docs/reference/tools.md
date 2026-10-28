@@ -660,12 +660,13 @@ Map the export’s HMI tags to controller tags using the tag CSV Address column,
 
 #### `ftview_studio_export_prepare`
 
-Plan a fresh tag-database export for one application: resolve its .med, confirm Rockwell’s Tag Import and Export Wizard is installed, and return the exact wizard steps and destination file. Does not click anything.
+Plan a fresh tag-database or alarm export for one application: resolve its .med, confirm the vendor wizard, and return the exact wizard steps and destination file. Pass export_root to have the wizard write the snapshot straight into an export folder (Tags/ or Alarms/) instead of the project store. Does not click anything.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `application` | string | yes | Application name as ftview_apps lists it. |
 | `kind` | string (tags \| alarms) | no | Asset kind to prepare: tags or alarms. Defaults to tags. |
+| `export_root` | string | no | Optional export folder to write the snapshot into directly (Tags/ or Alarms/), instead of the project store. |
 
 #### `ftview_studio_export_accept`
 
