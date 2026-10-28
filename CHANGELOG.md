@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.0] - 2026-10-28
+
+### Changed
+
+- **`ftview_export` now reports asset freshness instead of only warning.** Its result carries `assets: { tags, alarms }` as `fresh`, `stale` or `missing`, and when either is not fresh the `next` list names `ftview_studio_export_prepare` (with the right `kind`) so the model refreshes the snapshot through the wizard and accepts it, rather than binding against an old file.
 ## [0.15.0] - 2026-10-28
 
 ### Added

@@ -33,6 +33,21 @@ describe('project store extras', () => {
     const result = copyProjectExtras(app, destination, root)
     expect(result.copied).toEqual(['Alarms/Alarms.xml', `Tags/${app}.csv`])
     expect(result.warnings).toEqual([])
+    expect(result.status).toEqual({ alarms: 'fresh', tags: 'fresh' })
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('marks a snapshot older than the database as stale', () => {
+    const { root, app, destination } = store({ alarms: true, tags: true, olderThanDatabase: true })
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.status).toEqual({ alarms: 'stale', tags: 'stale' })
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('marks absent assets as missing', () => {
+    const { root, app, destination } = store({ alarms: false, tags: false, olderThanDatabase: false })
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.status).toEqual({ alarms: 'missing', tags: 'missing' })
     rmSync(root, { recursive: true, force: true })
   })
 

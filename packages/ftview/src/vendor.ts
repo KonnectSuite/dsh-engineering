@@ -146,15 +146,21 @@ export async function exportApplication(application: string, destination: string
     }
   }
   walk(destination, '')
-  return { value: { files: files.sort(), warnings: extras.warnings } }
+  return { value: { files: files.sort(), warnings: extras.warnings, assets: extras.status } }
 }
 
 /** One export run's files and freshness warnings. */
+/** Whether the store snapshot for one asset is usable. */
+  export type AssetFreshness = 'fresh' | 'stale' | 'missing'
+
+/** One export run's files, freshness warnings and asset status. */
 export interface ExportResult {
   /** Files written, relative to the destination. */
   readonly files: readonly string[]
   /** Components that are missing or older than the application database. */
   readonly warnings: readonly string[]
+  /** Tags and alarms: fresh, older than the .med, or not exported at all. */
+  readonly assets: { readonly tags: AssetFreshness; readonly alarms: AssetFreshness }
 }
 
 /** What the project store contributed to an export. */
@@ -163,6 +169,8 @@ export interface ProjectExtras {
   readonly copied: readonly string[]
   /** Why a component is missing or possibly stale. */
   readonly warnings: readonly string[]
+  /** Freshness of each asset snapshot. */
+  readonly status: { readonly tags: AssetFreshness; readonly alarms: AssetFreshness }
 }
 
 /** The Studio project store that holds one application's alarms and tags. */
@@ -206,11 +214,12 @@ function freshness(file: string, relative: string, database: string | undefined)
 export function copyProjectExtras(application: string, destination: string, documentsRoot?: string): ProjectExtras {
   const source = projectFolder(application, documentsRoot)
   if (source === undefined) {
-    return { copied: [], warnings: [`No Studio project folder was found for ${application}, so alarms and tags were not exported.`] }
+    return { copied: [], warnings: [`No Studio project folder was found for ${application}, so alarms and tags were not exported.`], status: { tags: 'missing', alarms: 'missing' } }
   }
   const database = join(source, `${application}.med`)
   const copied: string[] = []
   const warnings: string[] = []
+  const status: { tags: AssetFreshness; alarms: AssetFreshness } = { tags: 'missing', alarms: 'missing' }
   const alarms = join(source, 'Alarms.xml')
   if (existsSync(alarms)) {
     const target = join(destination, 'Alarms')
@@ -218,6 +227,7 @@ export function copyProjectExtras(application: string, destination: string, docu
     copyFileSync(alarms, join(target, 'Alarms.xml'))
     copied.push('Alarms/Alarms.xml')
     const warning = freshness(alarms, 'Alarms/Alarms.xml', existsSync(database) ? database : undefined)
+    status.alarms = warning === undefined ? 'fresh' : 'stale'
     if (warning !== undefined) warnings.push(warning)
   } else {
     warnings.push('No Alarms.xml in the application store. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.')
@@ -232,6 +242,7 @@ export function copyProjectExtras(application: string, destination: string, docu
     copyFileSync(join(source, tags.name), join(target, `${application}.csv`))
     copied.push(`Tags/${application}.csv`)
     const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
+    status.tags = warning === undefined ? 'fresh' : 'stale'
     if (warning !== undefined) warnings.push(warning)
   } else {
     warnings.push('No tag CSV in the application store. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.')
@@ -269,7 +280,7 @@ export function copyProjectExtras(application: string, destination: string, docu
       warnings.push('The exported displays reference images, but the application store has no Images folder, so those objects cannot render. Add the bitmaps in Studio or attach a folder that has them.')
     }
   }
-  return { copied, warnings }
+  return { copied, warnings, status }
 }
 
 /**
