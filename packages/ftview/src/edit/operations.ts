@@ -163,12 +163,19 @@ export function setAttribute(xml: string, object: string | undefined, attribute:
 /**
  * Rename a display root.
  *
+ * A Studio ME export names a display by its file, and its root is `<gfx>` with no
+ * `name` attribute — `Gfx-ME17.xsd` rejects one. Only the older `<display
+ * name="…">` shape carries the name in the document, so only that shape is
+ * rewritten here; the file rename is what names a `<gfx>` display.
+ *
  * @param xml - Display XML.
  * @param name - New display name.
  * @returns The modified XML.
  */
 export function renameDisplay(xml: string, name: string): string {
-  return setAttribute(xml, undefined, 'name', name)
+  const root = /^\s*(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<([A-Za-z][\w.:-]*)/u.exec(xml)?.[1]?.toLowerCase()
+  if (root === 'display') return setAttribute(xml, undefined, 'name', name)
+  return xml
 }
 
 /**

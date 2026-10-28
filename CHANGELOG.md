@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.16.1] - 2026-10-28
+
+### Fixed
+
+- **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="…">` shape and leaves `<gfx>` untouched; the file name is the display name.
 ## [0.16.0] - 2026-10-28
 
 ### Changed

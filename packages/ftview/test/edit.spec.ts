@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
+import { renameDisplay } from '../src/edit/operations.ts'
 
 /** A six-column tag CSV with one duplicate name. */
 const CSV = [
@@ -109,5 +110,18 @@ describe('refusals', () => {
     const staged = await l5x.call('ftview_draft_tag_upsert', { view_id: view, name: 'StopPB', type: 'A' })
     const applied = await l5x.call('ftview_apply', { draft_id: staged.data?.draft_id, output_root: 'export' })
     expect(applied.error?.code).toBe('OUTPUT_EXISTS')
+  })
+})
+
+describe('display naming', () => {
+  it('does not put a name attribute on a gfx display', () => {
+    const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">\n  <displaySettings width="800" height="600"/>\n</gfx>\n'
+    expect(renameDisplay(xml, 'Renamed')).toBe(xml)
+  })
+
+  it('renames the legacy display root that carries the name', () => {
+    const renamed = renameDisplay('<Display name="Old"><Object name="A"/></Display>', 'New')
+    expect(renamed).toContain('name="New"')
+    expect(renamed).not.toContain('name="Old"')
   })
 })
