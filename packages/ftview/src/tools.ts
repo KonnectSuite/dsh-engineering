@@ -11,6 +11,7 @@ import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { capabilities } from './capabilities.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -178,7 +179,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         }
         for (const tag of app.tags) {
           if (tag.name.toLowerCase().includes(query) || tag.description.toLowerCase().includes(query)) {
-            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â ${tag.description}`}` })
+            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${tag.description}`}` })
           }
         }
         const limit = optionalInteger(args, 'limit') ?? 50
@@ -246,7 +247,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'ftview_object_types',
-      description: 'Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
+      description: 'Catalog the object types the export uses, with each typeâ€™s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
       parameters: object({
         view_id: VIEW_ID,
         type: string('Optional exact element type, e.g. "momentaryButton", to list its attributes.'),
@@ -313,7 +314,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'ftview_live_map',
-      description: 'Map the export’s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.',
+      description: 'Map the exportâ€™s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.',
       parameters: object({
         view_id: VIEW_ID,
         limit: integer('Most tag rows to return. Defaults to 40.', { minimum: 1, maximum: 500 }),
@@ -374,7 +375,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'ftview_studio_export_accept',
-      description: 'Validate a tag CSV or alarm XML produced by Rockwell’s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.',
+      description: 'Validate a tag CSV or alarm XML produced by Rockwellâ€™s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.',
       parameters: object({
         kind: choice('Asset kind to accept: tags (CSV) or alarms (XML).', ['tags', 'alarms']),
         source: string('File the wizard wrote.'),
@@ -397,8 +398,27 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
       },
     }),
     tool({
+      name: 'ftview_tag_snapshot',
+      description: 'Write the application tag CSV without the tag wizard: attaches a copy of the application tag database (TAG\\<app>.MDF) to the local SQL Server instance and renders the wizard-identical CSV, including folder rows, ordering, labels and embedded newlines. Use instead of ftview_studio_export_prepare for tags; the wizard remains the fallback when no SQL Server client tools or instance exist.',
+      parameters: object({
+        application: string('Application name as ftview_apps lists it.'),
+        output: string('Optional CSV path to write. Defaults to <project store>\\<application>\\<application>-Tags.CSV.'),
+      }, ['application']),
+      async run(args) {
+        const application = requiredString(args, 'application')
+        const output = optionalString(args, 'output') ?? defaultTagCsv(application)
+        const snapshot = exportTagSnapshot(application, output)
+        return success(
+          `Tag snapshot for ${application}: ${snapshot.tags} tag(s), ${snapshot.folders} folder(s), ${snapshot.bytes} byte(s) at ${snapshot.path}, read from ${snapshot.instance}.`,
+          snapshot,
+          [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_studio_import_prepare',
-      description: 'Package displays from an applied export for Studio’s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',
+      description: 'Package displays from an applied export for Studioâ€™s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',
       parameters: object({
         export_root: string('Applied export folder that contains Displays/.'),
         displays: string('Display names to import, separated by commas, without .xml.'),
@@ -439,4 +459,5 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
     }),
   ]
 }
+
 

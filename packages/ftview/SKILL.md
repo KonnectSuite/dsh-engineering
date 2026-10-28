@@ -10,8 +10,7 @@ whenToUse: Use when the user asks about FactoryTalk View ME, PanelView Plus, ME 
 
 This surface reads and stages changes to documented text exports: display XML and the HMI tag CSV.
 A staged edit is written to a NEW export folder; the source is never modified. The Studio entry plans
-a manual import for a human; it does not drive Studio, contact a terminal, or decode MER or MED
-databases.
+a manual import; it does not drive Studio, contact a terminal, or decode MER/MED databases.
 
 Both export shapes are read: the Studio ME export (`<gfx>` displays and `Tags/*.csv`) and the older
 `<display>`-root files. Staged changes are re-parsed and checked against the installed `Gfx-ME*.xsd`.
@@ -26,18 +25,16 @@ Backups go into one shared tree:
     <the copy>
 ```
 
-FactoryTalk View is the `ftview` product: the copy is the whole export folder (display XML plus the tag
-CSV), one stamp per backup. `ftview_apply` already writes a new folder, so this is a backup on request
-("back up this export"). Build it as a copy plus `backup-manifest.json` listing every file's relative
-path and SHA-256. `<workspace>/_backups` and `<workspace>/backups/<project>/…` are older layouts: never
-write there, and leave what is there alone.
+FactoryTalk View is the `ftview` product: copy the whole export folder plus `backup-manifest.json`
+(relative path and SHA-256 per file), one stamp per backup. `ftview_apply` already writes a new folder,
+so this is a backup on request. Never write to `<workspace>/_backups` or `backups/<project>/…`; those
+are older layouts.
 
 ## Start
 
 1. Call `ftview_open` with the export folder. Keep the returned `view_id`.
 2. Later calls may omit `view_id` when exactly one export is open.
-3. Ask only for the exports the task needs: display XML for display work, the tag CSV for tag work,
-   L5X only when PLC binding matters.
+3. Ask only for the exports the task needs: display XML, the tag CSV, or L5X for PLC binding.
 
 ## Inspect
 
@@ -75,8 +72,8 @@ Start from the installed application:
 
 1. `ftview_apps` lists the ME applications installed on this host.
 2. `ftview_export` writes one to a NEW folder through the vendor export server. Studio need not be
-   open; the application is not modified. Use `export_root` with `ftview_studio_export_prepare` to put a
-   tag or alarm snapshot inside the folder and avoid a store round-trip.
+   open; the application is not modified. Add tags with `ftview_tag_snapshot`, and pass `export_root`
+   to `ftview_studio_export_prepare` for an alarm snapshot.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
@@ -112,14 +109,21 @@ Rules the guide encodes:
 
 `ftview_live_map` reports which HMI tags are controller-backed and which are
 memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
-`Global Objects` and `Images` from the export, so references and bitmaps render.
+`Global Objects` and `Images`, so references and bitmaps render.
 
 The preview is static: alarm banners are placeholders, visibility evaluates, colour/fill do not, and
-gradients/blink are approximate. Say so when citing a capture.
+gradients/blink are approximate. Say so when citing a capture.## Tags and alarms
 
-## Fresh tags and alarms
+The export has displays and global objects only. For tags, call
+`ftview_tag_snapshot { application, output? }`: it attaches a copy of `TAG/<application>.MDF` to the
+local SQL Server Express, reads `dbo.AllTagsView` and writes the same rows, quoting and order as the
+vendor wizard — no Studio, no wizard, and the application database is never written. Then
+`ftview_studio_export_accept` validates or copies it into the export. Without local SQL tools, fall
+back to `ftview_studio_export_prepare` (standalone DatabaseConverter).
 
-The export has displays and global objects only. For fresh assets call `ftview_studio_export_prepare { application, kind, export_root }`: the wizard then writes `Tags/<application>.csv` or `Alarms/Alarms.xml` straight into that export folder, and `ftview_studio_export_accept` validates it in place (source and destination may be the same file). Tags use standalone DatabaseConverter; alarms run inside Studio, so Studio must be open. Export, authoring, validation, apply and verification need no Studio.
+Alarms still run inside Studio: `ftview_studio_export_prepare { application, kind: "alarms", export_root }`
+has the wizard write `Alarms/Alarms.xml` into the export folder, so Studio must be open. Export,
+authoring, validation, apply and verification need no Studio.
 ## Import and verify
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
@@ -137,10 +141,9 @@ The export has displays and global objects only. For fresh assets call `ftview_s
 The `ftview-studio` entry plans a manual import; it may be disabled.
 
 - `ftview_studio_status` discovers installed ME tooling, schemas and help files.
-- `ftview_studio_preflight` checks the files that differ between two exports for Studio import
-  problems, including name restrictions.
-- `ftview_studio_handoff` returns the ordered manual import plan for a human in FactoryTalk View
-  Studio. No vendor utility runs and no file is written.
+- `ftview_studio_preflight` checks the files that differ between two exports for import problems,
+  including name restrictions.
+- `ftview_studio_handoff` returns the ordered manual import plan. Nothing is written.
 
 ## Reporting
 
@@ -148,11 +151,10 @@ The `ftview-studio` entry plans a manual import; it may be disabled.
   completeness.
 - State what the export cannot prove: XSD validity, PLC binding, runtime behavior, visual rendering,
   and anything absent from the supplied export.
-- Quote the display file and object name for a finding.
-- Do not call a tag unused from the absence of references in displays; other consumers are invisible
-  here.
+- Quote the display file and object name.
+- Do not call a tag unused because displays never reference it; other consumers are invisible here.
 
 ## Out of scope
 
 FactoryTalk View SE and FactoryTalk Optix are different products and are not analyzed here. MER/MED
-databases are not decoded, and no tool contacts a PanelView terminal or changes runtime data.
+databases are not decoded and no tool contacts a PanelView or changes runtime data.

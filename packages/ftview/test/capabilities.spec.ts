@@ -34,10 +34,11 @@ describe('host capabilities', () => {
 
   it('reports missing wizards instead of guessing', () => {
     const root = mkdtempSync(join(tmpdir(), 'ftview-capabilities-empty-'))
-    const report = capabilities({ programFiles: join(root, 'none'), documentsRoot: join(root, 'none') })
+    const report = capabilities({ programFiles: join(root, 'none'), documentsRoot: join(root, 'none'), sqlcmd: null })
     expect(report.tags).toBe('missing')
     expect(report.alarms).toBe('missing')
     expect(report.schemas).toEqual([])
     rmSync(root, { recursive: true, force: true })
   })
 })
+

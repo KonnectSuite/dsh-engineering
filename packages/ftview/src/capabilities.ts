@@ -10,6 +10,7 @@
 
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { findSqlcmd } from './tagdb.ts'
 
 /** One capability status. */
 export type CapabilityStatus = 'available' | 'requires-studio' | 'unverified' | 'missing'
@@ -46,6 +47,8 @@ export interface CapabilityProbe {
   readonly programFiles?: string
   /** Public Documents root. */
   readonly documentsRoot?: string
+  /** Forced sqlcmd path; null means no local SQL tools. */
+  readonly sqlcmd?: string | null
 }
 
 /**
@@ -64,6 +67,7 @@ export function capabilities(probe: CapabilityProbe = {}): Capabilities {
   const schemas = existsSync(schemasDir)
     ? readdirSync(schemasDir).map(name => /^Gfx-ME(\d+)\.xsd$/u.exec(name)?.[1]).filter((version): version is string => version !== undefined).map(Number).sort((a, b) => a - b).map(String)
     : []
+  const sqlcmd = probe.sqlcmd === undefined ? findSqlcmd() : probe.sqlcmd ?? undefined
   const applications = existsSync(store) ? readdirSync(store, { withFileTypes: true }).filter(entry => entry.isDirectory()).length : 0
   return {
     platform: process.platform,
@@ -71,13 +75,13 @@ export function capabilities(probe: CapabilityProbe = {}): Capabilities {
     tagWizard: existsSync(tagWizard) ? tagWizard : undefined,
     schemas,
     applications,
-    tags: existsSync(tagWizard) ? 'available' : 'missing',
+    tags: sqlcmd !== undefined ? 'available' : existsSync(tagWizard) ? 'requires-studio' : 'missing',
     alarms: existsSync(studio) ? 'requires-studio' : 'missing',
     import: existsSync(studio) ? 'requires-studio' : 'missing',
     backup: 'unverified',
     live: 'unverified',
     notes: [
-      'Tag CSV: DatabaseConverter.exe is standalone; Studio does not need to be open.',
+      'Tag CSV: ftview_tag_snapshot reads the application tag database directly through local SQL Server and reproduces the wizard CSV byte for byte; no Studio and no wizard. DatabaseConverter.exe remains the fallback.',
       'Alarm XML: the Alarm Import Export Wizard runs inside VStudio.exe; open the application, then right-click Alarms > Alarm Setup > Import and Export.',
       'Display import: the Graphics Import Export Wizard is a Studio context menu; there is no standalone importer.',
       'Backup: ApplicationManagerServer is a 32-bit COM server and BackupLocal has failed on this host; treat backup as unverified.',
@@ -85,3 +89,5 @@ export function capabilities(probe: CapabilityProbe = {}): Capabilities {
     ],
   }
 }
+
+
