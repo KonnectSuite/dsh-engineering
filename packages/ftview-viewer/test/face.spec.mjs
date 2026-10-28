@@ -98,7 +98,7 @@ test('the tab body renders the display through the new renderer', () => {
   const component = body[0]
   const tree = component({ content: { kind: 'bytes', data: new TextEncoder().encode(DISPLAY) } })
   const text = strings(tree).join('\n')
-  assert.match(text, /<svg xmlns=/u)
+  assert.match(text, /<svg [^>]*xmlns=/u)
   assert.match(text, /Main Screen/u)
   assert.match(text, /400×300/u)
 })

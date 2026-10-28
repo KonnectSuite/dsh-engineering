@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.10.9] - 2026-10-27
+
+### Fixed
+
+- **Fit did not fit.** The rendered SVG carries the display's pixel size (`width="1280" height="1024"`), which is right for
+  the PNG export and wrong inside a narrow preview pane: the drawing kept its intrinsic size and the pane showed a crop of
+  it, so Fit and 100% looked identical. Fit now renders through `responsiveSvg`, which overrides the size, keeps the
+  `viewBox` and preserves the aspect ratio; 100% still shows the full-size drawing with scrolling. Found by driving the
+  running app with computer use, not by a unit test.
 ## [0.10.8] - 2026-10-27
 
 ### Added

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
-import { renderDisplay, parseXml, evaluate } from '../src/index.ts'
+import { renderDisplay, parseXml, evaluate, responsiveSvg } from '../src/index.ts'
 
 const DISPLAY = `<?xml version="1.0"?>
 <display width="800" height="600" backColor="#C6C6C6">
@@ -122,4 +122,11 @@ test('resolves a reference object against Global Objects and hides it by animati
   assert.match(shown, /fill="#123456"/u)
   const unknown = renderDisplay(REFERENCE, { globals: { 'Header_Footer.Group3': base } })
   assert.match(unknown, /fill="#123456"/u, 'an unknown tag leaves the base state visible')
+})
+test('responsiveSvg overrides the intrinsic size but keeps the viewBox', () => {
+  const svg = renderDisplay(DISPLAY)
+  const fitted = responsiveSvg(svg)
+  assert.match(fitted, /<svg style="width:100%;height:100%;display:block"/u)
+  assert.match(fitted, /preserveAspectRatio="xMidYMid meet"/u)
+  assert.match(fitted, /viewBox="0 0 800 600"/u)
 })

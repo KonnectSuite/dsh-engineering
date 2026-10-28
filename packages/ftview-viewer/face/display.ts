@@ -9,7 +9,7 @@
 
 import * as React from 'react'
 import { parseXml, attribute, type XmlNode } from '../src/xml.ts'
-import { renderDisplay } from '../src/render.ts'
+import { renderDisplay, responsiveSvg } from '../src/render.ts'
 
 /** Create-element alias; the bundle compiles without JSX. */
 const h = React.createElement
@@ -292,13 +292,13 @@ export function Display(props: { source: string; t: (key: string) => string; add
         compare === undefined ? null : h('div', { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, displayName === '' ? 'current' : displayName),
         h('div', {
           style: fit ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width, height },
-          dangerouslySetInnerHTML: { __html: rendered.svg },
+          dangerouslySetInnerHTML: { __html: fit ? responsiveSvg(rendered.svg) : rendered.svg },
         })),
       compare === undefined ? null : h('div', { style: { flex: 1, minWidth: 0, overflow: 'auto', background: '#202020', padding: 8, borderLeft: '1px solid rgba(128,128,128,.35)' } },
         h('div', { style: { fontSize: 10, opacity: 0.7, marginBottom: 4 } }, `compare: ${compare.name}`),
         h('div', {
           style: fit ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { width, height },
-          dangerouslySetInnerHTML: { __html: compareSvg },
+          dangerouslySetInnerHTML: { __html: fit ? responsiveSvg(compareSvg) : compareSvg },
         })),
       chosen === undefined ? null : h('div', { style: { width: 260, flex: 'none', borderLeft: '1px solid rgba(128,128,128,.25)', overflow: 'auto', padding: 8, fontSize: 11 } },
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },

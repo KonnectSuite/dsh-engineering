@@ -385,3 +385,18 @@ export function renderDisplay(source: string, options: RenderOptions = {}): stri
   const body = objects.map(object => renderObject(object, 0, options)).join('')
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${background}"/>${body}</svg>`
 }
+
+/**
+ * Make an SVG fill its container while keeping its aspect ratio.
+ *
+ * The rendered document carries the display's pixel size as attributes, which is
+ * right for the PNG export and wrong for a preview pane narrower than the
+ * display: without this, "fit" showed a crop of the top-left corner. The style
+ * overrides the intrinsic size; the viewBox keeps the drawing proportional.
+ *
+ * @param svg - A document from {@link renderDisplay}.
+ * @returns The same document, sized to its container.
+ */
+export function responsiveSvg(svg: string): string {
+  return svg.replace('<svg ', '<svg style="width:100%;height:100%;display:block" preserveAspectRatio="xMidYMid meet" ')
+}
