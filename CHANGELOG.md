@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.18.4] - 2026-10-28
+
+### Added
+
+- **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists … will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
 ## [0.18.3] - 2026-10-28
 
 ### Fixed

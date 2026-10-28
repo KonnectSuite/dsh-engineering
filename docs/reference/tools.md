@@ -686,6 +686,7 @@ Package displays from an applied export for Studio’s Graphics Import Export Wi
 | `export_root` | string | yes | Applied export folder that contains Displays/. |
 | `displays` | string | yes | Display names to import, separated by commas, without .xml. |
 | `output_root` | string | no | Optional new folder for the package; defaults to a folder under the system temp directory. |
+| `mode` | string (create \| update) | no | Import mode: create new displays, or update existing ones. |
 
 #### `ftview_apps`
 

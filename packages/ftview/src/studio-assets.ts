@@ -191,7 +191,7 @@ export interface DisplayImportPlan {
  * @param outputRoot - New folder for the package.
  * @returns The package paths and the wizard steps.
  */
-export function prepareDisplayImport(exportRoot: string, displays: readonly string[], outputRoot: string): DisplayImportPlan {
+export function prepareDisplayImport(exportRoot: string, displays: readonly string[], outputRoot: string, mode: 'create' | 'update' = 'create'): DisplayImportPlan {
   if (displays.length === 0) throw new Error('name at least one display to import')
   if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
   // Studio resolves importFile beside the batch file, so the XML files live at the package root.

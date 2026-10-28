@@ -400,13 +400,15 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         export_root: string('Applied export folder that contains Displays/.'),
         displays: string('Display names to import, separated by commas, without .xml.'),
         output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
+        mode: choice('Import mode: create new displays, or update existing ones.', ['create', 'update']),
       }, ['export_root', 'displays']),
       async run(args) {
         const exportRoot = requiredString(args, 'export_root')
         const names = requiredString(args, 'displays').split(',').map(name => name.trim()).filter(name => name !== '')
         const outputRoot = optionalString(args, 'output_root') ?? join(tmpdir(), `ftview-import-${Date.now().toString(36)}`)
         try {
-          const plan = prepareDisplayImport(exportRoot, names, outputRoot)
+          const mode = optionalString(args, 'mode') === 'update' ? 'update' : 'create'
+          const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode)
           return success(
             `Packaged ${plan.displays.length} display(s) for import: batch file ${plan.manifest}.`,
             plan,
