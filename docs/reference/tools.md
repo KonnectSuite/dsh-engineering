@@ -665,6 +665,7 @@ Plan a fresh tag-database export for one application: resolve its .med, confirm 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `application` | string | yes | Application name as ftview_apps lists it. |
+| `kind` | string (tags \| alarms) | no | Asset kind to prepare: tags or alarms. Defaults to tags. |
 
 #### `ftview_studio_export_accept`
 

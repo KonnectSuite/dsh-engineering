@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { acceptAsset, prepareTagExport } from '../src/studio-assets.ts'
+import { acceptAsset, prepareAlarmExport, prepareTagExport } from '../src/studio-assets.ts'
 
 /** A fake Public Documents tree with one application and one wizard. */
 function fixture(): { root: string; wizard: string; app: string; med: string } {
@@ -66,6 +66,17 @@ describe('accepting an export', () => {
     writeFileSync(source, 'hello')
     expect(() => acceptAsset('tags', source)).toThrow(/not a FactoryTalk tag CSV/)
     expect(() => acceptAsset('alarms', source)).toThrow(/not an alarm XML/)
+    rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('preparing an alarm export', () => {
+  it('points at the Studio wizard and Alarms.xml', () => {
+    const { root, app } = fixture()
+    const plan = prepareAlarmExport(app, root)
+    expect(plan.kind).toBe('alarms')
+    expect(plan.destination.endsWith('Alarms.xml')).toBe(true)
+    expect(plan.steps.join(' ')).toContain('Alarm Import Export Wizard')
     rmSync(root, { recursive: true, force: true })
   })
 })

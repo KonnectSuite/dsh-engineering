@@ -10,7 +10,7 @@ import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
-import { acceptAsset, prepareTagExport } from './studio-assets.ts'
+import { acceptAsset, prepareAlarmExport, prepareTagExport } from './studio-assets.ts'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -349,11 +349,13 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
       description: 'Plan a fresh tag-database export for one application: resolve its .med, confirm Rockwell’s Tag Import and Export Wizard is installed, and return the exact wizard steps and destination file. Does not click anything.',
       parameters: object({
         application: string('Application name as ftview_apps lists it.'),
+        kind: choice('Asset kind to prepare: tags or alarms. Defaults to tags.', ['tags', 'alarms']),
       }, ['application']),
       async run(args) {
         const application = requiredString(args, 'application')
+        const kind = optionalString(args, 'kind') ?? 'tags'
         try {
-          const plan = prepareTagExport(application)
+          const plan = kind === 'alarms' ? prepareAlarmExport(application) : prepareTagExport(application)
           return success(
             `Prepared tag export for ${application}: run the wizard, then accept ${plan.destination}.`,
             plan,

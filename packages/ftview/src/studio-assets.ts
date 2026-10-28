@@ -131,3 +131,37 @@ export function acceptAsset(kind: AssetKind, source: string, destination?: strin
     ...(copiedTo === undefined ? {} : { copiedTo }),
   }
 }
+
+/**
+ * Build the instruction plan for one application's alarm export.
+ *
+ * The Alarm Import Export Wizard is a dialog hosted by FactoryTalk View Studio
+ * (it runs inside `VStudio.exe`), so there is no executable to start: the
+ * application must be open, and the wizard is reached from Studio's menu. The
+ * wizard defaults to the store folder and the file name `Alarms`, which is the
+ * expected file below.
+ *
+ * @param application - Application name as `ftview_apps` lists it.
+ * @param documentsRoot - Public Documents folder, injectable for tests.
+ * @returns Paths and the steps the actuator must perform.
+ */
+export function prepareAlarmExport(application: string, documentsRoot?: string): AssetPlan {
+  const store = projectFolder(application, documentsRoot)
+  if (store === undefined) throw new Error(`no Studio project store for ${application}`)
+  const med = join(store, `${application}.med`)
+  if (!existsSync(med)) throw new Error(`no application database at ${med}`)
+  const destination = join(store, 'Alarms.xml')
+  return {
+    application,
+    kind: 'alarms',
+    med,
+    destination,
+    steps: [
+      `Open ${application} in FactoryTalk View Studio.`,
+      'Tools > Alarm Import Export Wizard.',
+      'Select "Export alarm configuration from application" -> Next.',
+      `File name "Alarms", folder ${store} -> Finish.`,
+      'Then call ftview_studio_export_accept with kind="alarms" and that destination.',
+    ],
+  }
+}
