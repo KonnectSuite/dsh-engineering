@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
 import { renameDisplay } from '../src/edit/operations.ts'
+import { targetPath } from '../src/core.ts'
 
 /** A six-column tag CSV with one duplicate name. */
 const CSV = [
@@ -123,5 +124,11 @@ describe('display naming', () => {
     const renamed = renameDisplay('<Display name="Old"><Object name="A"/></Display>', 'New')
     expect(renamed).toContain('name="New"')
     expect(renamed).not.toContain('name="Old"')
+  })
+})
+describe('resolved target paths', () => {
+  it('uses the display path of a resolved target instead of "[object Object]"', () => {
+    expect(targetPath({ targetKey: {}, displayPath: 'C:/Projects/out' })).toBe('C:/Projects/out')
+    expect(targetPath('out')).toBe('out')
   })
 })

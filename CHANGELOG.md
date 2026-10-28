@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.1] - 2026-10-28
+
+### Fixed
+
+- **`ftview_apply` now composes write paths from the resolved target's `displayPath`.** The host may return an `FsTarget` object from `fs.resolve`; interpolating it produced `[object Object]` in child paths instead of the folder the caller named. `targetPath()` normalizes both shapes, and the apply existence check still runs against the resolved target.
 ## [0.17.0] - 2026-10-28
 
 ### Added

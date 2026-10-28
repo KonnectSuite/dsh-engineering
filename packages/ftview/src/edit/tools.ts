@@ -11,7 +11,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition } from '../core.ts'
+import { EngineeringError, targetPath, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition } from '../core.ts'
 import type { ViewSession } from '../session.ts'
 import type { EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
@@ -437,11 +437,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             schemaErrors.slice(0, 5).map(finding => `${finding.file}: ${finding.message}`),
           )
         }
-        const outputRoot = await fs.resolve(requiredString(args, 'output_root'), {
+        const resolvedRoot = await fs.resolve(requiredString(args, 'output_root'), {
           ...(exec.cwd === undefined ? {} : { cwd: exec.cwd }),
           ...(exec.signal === undefined ? {} : { signal: exec.signal }),
         })
-        const existing = await fs.stat(outputRoot, exec.signal)
+        const existing = await fs.stat(resolvedRoot, exec.signal)
+        const outputRoot = targetPath(resolvedRoot)
         if (existing !== undefined) {
           throw new EngineeringError('OUTPUT_EXISTS', `A file or folder already exists at ${requiredString(args, 'output_root')}.`, 'Pass a new output_root; apply never merges into an existing folder.')
         }

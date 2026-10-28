@@ -158,6 +158,20 @@ export interface FsTarget {
   readonly displayPath: string
 }
 
+/**
+ * The path string for a resolved target.
+ *
+ * The host may resolve to an {@link FsTarget} rather than a string. Interpolating
+ * that object yields `[object Object]`, which then fails the sandbox and writes
+ * nothing, so every composed child path goes through this function.
+ *
+ * @param target - A resolved target or a plain path.
+ * @returns The path to address the target or its children by.
+ */
+export function targetPath(target: FsTarget | string): string {
+  return typeof target === 'string' ? target : target.displayPath
+}
+
 /** The harness filesystem as it is actually provided: operations take resolved targets. */
 export interface RawFsService {
   resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget | string>
