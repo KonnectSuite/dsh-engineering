@@ -34,27 +34,27 @@ to check before you promise a result.
 | Tag CSV | The export only carries tags if you added a snapshot. `ftview_tag_snapshot` regenerates it from the application's tag database at any time; without it, tag upsert still writes rows but `ftview_live_map` has nothing to map. |
 | Alarms | `Alarms.xml` is a Studio export, not application content. Missing means no alarm review, not a broken export. |
 | Display names | A display is named by its file. Names that are invalid file names (slashes, reserved characters) cannot be created by the toolset; rename in Studio. |
-| Display size and type | `ftview_draft_display_create` takes width, height and backColor â€” read an existing display or `displaySettings` first instead of assuming 1280Ã—1024. |
+| Display size and type | `ftview_draft_display_create` takes width, height and backColor - read an existing display or `displaySettings` first instead of assuming 1280x1024. |
 | Image stems | `imageName` is the file stem without extension (`Equilateral triangle`, not `.bmp`). If the picture is absent from the application's `Images`, the object imports but renders blank. |
 | Global objects | A placement of a `Header_Footer` object references the global file; the global itself must exist in the application. `linkBaseObject` syntax is `<GlobalFile>.<ObjectName>`. |
 | Connection names | They differ by control: `Value` on numeric displays and buttons, `Indicator` on a `multistateIndicator`, `display` (attribute) on a `gotoButton`. The importer rejects the wrong name â€” the catalog shows what the export uses. |
 | Locale | Displays, captions and schema are locale-neutral; Studio's UI language does not change the XML. |
 | Host | Display export and display import need FactoryTalk View on Windows. Tag snapshots additionally need local SQL Server Express (`sqlcmd`); alarm snapshots run inside Studio. Reading, drafting and tag rendering work anywhere. |
 
-## Workflow that survives contact with Studio
+## Workflow
 
-1. `ftview_apps` â†’ `ftview_export` to a new folder. Read `assets` in the result; it
+1. `ftview_apps` -> `ftview_export` to a new folder (no Studio needed). Read `assets`; it
    says whether tags and alarms are `fresh`, `stale` or `missing`.
 2. `ftview_open`, then `ftview_check` and `ftview_object_types all="true"` before
    designing, so names and attributes come from the application, not from memory.
-3. Draft one operation per call, then `ftview_validate` â€” expect `schema.ran: true`
+3. Draft one operation per call, then `ftview_validate` - expect `schema.ran: true`
    and no error findings. The bounded `findings` list is deliberate: `by_rule` and
    `findings_total` still count everything.
 4. `ftview_apply` to a new folder. Copy binary assets (`Images/`) yourself; apply
    writes text only.
-5. `ftview_studio_import_prepare { export_root, displays, mode }`:
+5. Import needs Studio. `ftview_studio_import_prepare { export_root, displays, mode }`:
    `create` for a new display, `update` to complete or correct one that already
-   exists. Run the Graphics Import Export Wizard (right-click Displays â†’ Import and
+   exists. Run the Graphics Import Export Wizard (right-click Displays -> Import and
    Export) with that `BatchImport.xml`.
 6. `ftview_verify_import` after the wizard: it re-exports the application and
    compares object by object with the draft. That is the only step that proves the
