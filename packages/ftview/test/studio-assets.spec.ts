@@ -89,7 +89,7 @@ describe('packaging a display import', () => {
     const out = join(root, 'import')
     const plan = prepareDisplayImport(exportRoot, ['Arya Proof'], out)
     expect(plan.displays).toEqual(['Arya Proof'])
-    expect(readFileSync(join(out, 'Displays', 'Arya Proof.xml'), 'utf8')).toContain('<gfx>')
+    expect(readFileSync(join(out, 'Arya Proof.xml'), 'utf8')).toContain('<gfx>')
     expect(readFileSync(plan.manifest, 'utf8')).toContain('<import importFile="Arya Proof.xml"/>')
     expect(plan.steps.join(' ')).toContain('Import and Export')
     rmSync(root, { recursive: true, force: true })

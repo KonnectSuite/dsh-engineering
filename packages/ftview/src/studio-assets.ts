@@ -194,7 +194,8 @@ export interface DisplayImportPlan {
 export function prepareDisplayImport(exportRoot: string, displays: readonly string[], outputRoot: string): DisplayImportPlan {
   if (displays.length === 0) throw new Error('name at least one display to import')
   if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
-  const folder = join(outputRoot, 'Displays')
+  // Studio resolves importFile beside the batch file, so the XML files live at the package root.
+  const folder = outputRoot
   mkdirSync(folder, { recursive: true })
   for (const display of displays) {
     const source = join(exportRoot, 'Displays', `${display}.xml`)

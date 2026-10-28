@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.18.1] - 2026-10-28
+
+### Fixed
+
+- **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file '…\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
 ## [0.18.0] - 2026-10-28
 
 ### Added
