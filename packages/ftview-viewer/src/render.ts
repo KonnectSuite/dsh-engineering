@@ -348,8 +348,14 @@ function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): 
         break
     }
     if (OBJECTS.has(node.tag)) {
-      // Buttons, indicators and any type with a face: fill, border and caption.
-      const body = `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+      // Buttons, indicators and any type with a face: the Studio `shape`
+      // attribute decides between a rectangle, a rounded rectangle and an
+      // ellipse, which is how status lamps are drawn as circles rather than
+      // blocks.
+      const objectShape = (attribute(node, 'shape') ?? 'rectangle').toLowerCase()
+      const body = objectShape === 'ellipse'
+        ? `<ellipse cx="${left + width / 2}" cy="${top + height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+        : `<rect x="${left}" y="${top}" width="${width}" height="${height}"${objectShape.includes('round') ? ' rx="4" ry="4"' : ''} fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
       return caption.text === '' ? body : body + textElement(caption, left, top, width, height, margin)
     }
     return ''

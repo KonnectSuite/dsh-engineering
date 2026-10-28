@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { liveRoute, displayRoute } from '../src/live-route.ts'
+import { liveRoute, displayRoute, globalsRoute, imageRoute } from '../src/live-route.ts'
 import type { LiveRead } from '../src/live-read.ts'
 
 /** One export folder with a tag CSV that maps RUN to a controller tag. */
@@ -73,6 +73,24 @@ describe('the display file route', () => {
     expect(found.body).toContain('<gfx')
     expect(displayRoute(new URL(`http://x/display?root=${encodeURIComponent(root)}&name=Absent`)).status).toBe(404)
     expect(displayRoute(new URL(`http://x/display?root=${encodeURIComponent(root)}&name=../secret`)).status).toBe(400)
+    rmSync(root, { recursive: true, force: true })
+  })
+})
+
+describe('the globals and image routes', () => {
+  it('serves Global Objects and refuses traversal outside Images', () => {
+    const root = exportFolder()
+    mkdirSync(join(root, 'Global Objects'), { recursive: true })
+    mkdirSync(join(root, 'Images'), { recursive: true })
+    writeFileSync(join(root, 'Global Objects', 'Header_Footer.xml'), '<gfx><panel name="P"/></gfx>')
+    writeFileSync(join(root, 'Images', 'logo.bmp'), 'bmp')
+    const globals = JSON.parse(globalsRoute(new URL(`http://x/globals?root=${encodeURIComponent(root)}`)).body) as { files: { name: string }[] }
+    expect(globals.files.map(file => file.name)).toEqual(['Header_Footer'])
+    const image = imageRoute(new URL(`http://x/image?root=${encodeURIComponent(root)}&name=logo.bmp`))
+    expect(image.status).toBe(200)
+    expect(image.contentType).toBe('image/bmp')
+    expect(imageRoute(new URL(`http://x/image?root=${encodeURIComponent(root)}&name=../secret.png`)).status).toBe(400)
+    expect(imageRoute(new URL(`http://x/image?root=${encodeURIComponent(root)}&name=absent.png`)).status).toBe(404)
     rmSync(root, { recursive: true, force: true })
   })
 })

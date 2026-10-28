@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.11.0] - 2026-10-27
+
+### Added
+
+- **Global Objects load in the preview.** The face fetches `/engineering/ftview/globals` and resolves every
+  `isReferenceObject` against its base, so the header, footer and navigation highlight appear in the app instead of
+  empty placements. This was the largest visual regression against Studio.
+- **Images render in the preview.** A new `/engineering/ftview/image` route serves `Images/<name>` with a file-name
+  whitelist, and the face resolves every image through it.
+- **Shape fidelity.** Buttons and indicators honour Studio’s `shape` attribute: `ellipse` draws a circle (status lamps
+  were rectangles), rounded shapes get a corner radius.
+- **Drafting accepts every drawable element type.** `ftview_draft_object_add` validates the type against the 34-type
+  contract (`panel`, `group`, shapes, all button kinds, numeric/string fields, bar graph, gauge, trend, list selector,
+  alarm objects, recipe, ActiveX, symbol, reference/global object) and rejects an unknown type with the candidate list.
+
+### Verified against Studio
+
+The reference screenshot of `Load Conveyor Screen` in Studio is committed at
+`artifacts/ftview/studio-load-conveyor.png`; comparing it with the preview identified the three gaps above
+(header/logo via globals and images, and circular indicators).
 ## [0.10.9] - 2026-10-27
 
 ### Fixed

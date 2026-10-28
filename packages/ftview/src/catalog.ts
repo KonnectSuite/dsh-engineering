@@ -87,3 +87,19 @@ export function observeObjects(app: CatalogSource): ObjectType[] {
 
 /** Object types that behave like a control a person presses. */
 export const BUTTON_TYPES = new Set(['momentaryButton', 'gotoButton', 'multistateButton', 'latchedButton', 'maintainButton', 'rampButton', 'clearAlarmBannerButton'])
+
+/**
+ * Every drawable element type a display can contain.
+ *
+ * The list is the drafting contract: `ftview_draft_object_add` refuses a type
+ * outside it, and the preview draws a labelled placeholder for any of them it
+ * does not render yet, so an agent never silently writes an element Studio will
+ * reject or the viewer will drop.
+ */
+export const ELEMENT_TYPES: ReadonlySet<string> = new Set([
+  'panel', 'group', 'text', 'rectangle', 'line', 'ellipse', 'arc', 'polygon', 'polyline', 'image',
+  'momentaryButton', 'maintainButton', 'latchedButton', 'multistateButton', 'rampButton', 'gotoButton',
+  'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput',
+  'barGraph', 'gauge', 'trend', 'listSelector', 'alarmList', 'alarmStatusList', 'alarmBanner',
+  'clearAlarmBannerButton', 'recipe', 'activeX', 'symbol', 'referenceObject', 'globalObject',
+])

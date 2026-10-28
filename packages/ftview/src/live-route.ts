@@ -158,3 +158,60 @@ export function displayRoute(url: URL): DisplayAnswer {
     return { status: 500, body: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), contentType: 'application/json' }
   }
 }
+
+/** An answer that may carry binary image data. */
+export interface BinaryAnswer {
+  readonly status: number
+  readonly body: string | Uint8Array
+  readonly contentType: string
+}
+
+/**
+ * Serve the Global Objects files beside an export.
+ *
+ * Reference objects (`isReferenceObject="true"`) inherit states, captions and
+ * children from a global object; without these files a preview draws only the
+ * local placement, which is exactly the header/footer that goes missing.
+ *
+ * @param url - Request URL with `root`.
+ * @returns JSON `{ files: [{ name, xml }] }`.
+ */
+export function globalsRoute(url: URL): DisplayAnswer {
+  const root = url.searchParams.get('root') ?? ''
+  const folder = join(root, 'Global Objects')
+  if (!existsSync(folder)) return { status: 200, body: JSON.stringify({ files: [] }), contentType: 'application/json' }
+  try {
+    const files = readdirSync(folder)
+      .filter(file => /\.xml$/iu.test(file))
+      .slice(0, 100)
+      .map(file => ({ name: file.replace(/\.xml$/iu, ''), xml: readFileSync(join(folder, file), 'utf8') }))
+    return { status: 200, body: JSON.stringify({ files }), contentType: 'application/json' }
+  } catch (error) {
+    return { status: 500, body: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), contentType: 'application/json' }
+  }
+}
+
+/**
+ * Serve one bitmap from the export's `Images/` folder.
+ *
+ * @param url - Request URL with `root` and `name`.
+ * @returns The image bytes, or a short error.
+ */
+export function imageRoute(url: URL): BinaryAnswer {
+  const root = url.searchParams.get('root') ?? ''
+  const name = url.searchParams.get('name') ?? ''
+  if (!/^[A-Za-z0-9 _().-]{1,120}\.(bmp|jpg|jpeg|png|gif)$/iu.test(name)) {
+    return { status: 400, body: JSON.stringify({ error: 'name must be an image file name' }), contentType: 'application/json' }
+  }
+  const file = join(root, 'Images', name)
+  if (!existsSync(file)) {
+    return { status: 404, body: JSON.stringify({ error: `no image named ${name}` }), contentType: 'application/json' }
+  }
+  const extension = name.split('.').pop()?.toLowerCase() ?? ''
+  const type = extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' : `image/${extension}`
+  try {
+    return { status: 200, body: readFileSync(file), contentType: type }
+  } catch (error) {
+    return { status: 500, body: JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), contentType: 'application/json' }
+  }
+}

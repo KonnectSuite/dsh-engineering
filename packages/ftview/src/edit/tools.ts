@@ -18,6 +18,7 @@ import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
 import type { EditOperation } from './operations.ts'
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
+import { ELEMENT_TYPES } from '../catalog.ts'
 
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
@@ -238,6 +239,14 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const view = session.require(optionalString(args, 'view_id'), exec)
         const display = displayOf(view, requiredString(args, 'display'))
         const type = requiredString(args, 'type')
+        if (!ELEMENT_TYPES.has(type)) {
+          throw new EngineeringError(
+            'UNKNOWN_OBJECT_TYPE',
+            `${JSON.stringify(type)} is not a FactoryTalk View element type.`,
+            `Use one of the ${ELEMENT_TYPES.size} drawable types; ftview_object_types lists what this export already uses.`,
+            [...ELEMENT_TYPES].sort(),
+          )
+        }
         const attributes = { ...jsonObject(args.attributes_json, 'attributes_json') }
         const profileId = optionalString(args, 'profile_id')
         const profile = profileId === undefined ? undefined : profileOf?.(profileId) as {

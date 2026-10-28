@@ -485,7 +485,8 @@ function renderObject(rawNode, depth, options) {
         break;
     }
     if (OBJECTS.has(node.tag)) {
-      const body = `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`;
+      const objectShape = (attribute(node, "shape") ?? "rectangle").toLowerCase();
+      const body = objectShape === "ellipse" ? `<ellipse cx="${left + width / 2}" cy="${top + height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>` : `<rect x="${left}" y="${top}" width="${width}" height="${height}"${objectShape.includes("round") ? ' rx="4" ry="4"' : ""} fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`;
       return caption.text === "" ? body : body + textElement(caption, left, top, width, height, margin);
     }
     return "";
@@ -595,6 +596,7 @@ function Display(props) {
   const [live, setLive] = React.useState(false);
   const [liveValues, setLiveValues] = React.useState({});
   const [liveNotice, setLiveNotice] = React.useState("");
+  const [globals, setGlobals] = React.useState({});
   const container = React.useRef(null);
   const [compare2, setCompare] = React.useState(void 0);
   const parsed = React.useMemo(() => {
@@ -663,7 +665,7 @@ function Display(props) {
   }, [live, root, parsed.tags]);
   const rendered = React.useMemo(() => {
     try {
-      return { svg: renderDisplay(xml, { tagValues: liveValues }), count: parsed.index.size, error: "" };
+      return { svg: renderDisplay(xml, { tagValues: liveValues, globals, imageHref }), count: parsed.index.size, error: "" };
     } catch (error) {
       return { svg: "", count: 0, error: error instanceof Error ? error.message : String(error) };
     }
@@ -694,6 +696,32 @@ function Display(props) {
     setDisplayName(previous.name);
     setSelected(void 0);
   };
+  React.useEffect(() => {
+    if (root === void 0) return void 0;
+    let cancelled = false;
+    const globalsOf = {};
+    const walk = (node, file) => {
+      const name = node.attributes?.name;
+      if (typeof name === "string" && name !== "") globalsOf[`${file}.${name}`] = node;
+      for (const child2 of node.children) walk(child2, file);
+    };
+    fetch(`/engineering/ftview/globals?root=${encodeURIComponent(root)}`, { cache: "no-store" }).then((response) => response.ok ? response.json() : { files: [] }).then((body) => {
+      if (cancelled) return;
+      for (const entry of body.files ?? []) {
+        try {
+          walk(parseXml(entry.xml), entry.name);
+        } catch {
+        }
+      }
+      setGlobals(globalsOf);
+    }).catch(() => void 0);
+    return () => {
+      cancelled = true;
+    };
+  }, [root]);
+  function imageHref(name) {
+    return root === void 0 ? void 0 : `/engineering/ftview/image?root=${encodeURIComponent(root)}&name=${encodeURIComponent(name)}`;
+  }
   const startCompare = React.useCallback(async () => {
     if (root === void 0) return;
     const other = window.prompt("Compare with another export folder");
@@ -713,7 +741,7 @@ function Display(props) {
   const compareSvg = React.useMemo(() => {
     if (compare2 === void 0) return "";
     try {
-      return renderDisplay(compare2.xml);
+      return renderDisplay(compare2.xml, { globals, imageHref });
     } catch {
       return "";
     }

@@ -11,7 +11,7 @@ import { stringFs, type PluginContext } from './core.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
 import { vendorTools } from './vendor-tools.ts'
-import { displayRoute, liveRoute } from './live-route.ts'
+import { displayRoute, globalsRoute, imageRoute, liveRoute } from './live-route.ts'
 
 /** Plugin name in a composition. */
 export const name = 'ftview-read'
@@ -87,6 +87,40 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
               return
             }
             const answer = displayRoute(new URL(request.url ?? '/', 'http://localhost'))
+            response.writeHead(answer.status, { 'content-type': answer.contentType, 'cache-control': 'no-store' })
+            response.end(answer.body)
+          },
+        })
+        scope.webServer?.register({
+          kind: 'exact',
+          path: '/engineering/ftview/globals',
+          handler: (request: { method?: string; url?: string }, response: {
+            writeHead(status: number, headers: Record<string, string>): void
+            end(body?: string): void
+          }) => {
+            if (request.method !== 'GET') {
+              response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
+              response.end(JSON.stringify({ error: 'GET only' }))
+              return
+            }
+            const answer = globalsRoute(new URL(request.url ?? '/', 'http://localhost'))
+            response.writeHead(answer.status, { 'content-type': answer.contentType, 'cache-control': 'no-store' })
+            response.end(answer.body)
+          },
+        })
+        scope.webServer?.register({
+          kind: 'exact',
+          path: '/engineering/ftview/image',
+          handler: (request: { method?: string; url?: string }, response: {
+            writeHead(status: number, headers: Record<string, string>): void
+            end(body?: string | Uint8Array): void
+          }) => {
+            if (request.method !== 'GET') {
+              response.writeHead(405, { 'content-type': 'application/json', allow: 'GET' })
+              response.end(JSON.stringify({ error: 'GET only' }))
+              return
+            }
+            const answer = imageRoute(new URL(request.url ?? '/', 'http://localhost'))
             response.writeHead(answer.status, { 'content-type': answer.contentType, 'cache-control': 'no-store' })
             response.end(answer.body)
           },

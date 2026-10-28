@@ -113,6 +113,7 @@ export function Display(props: { source: string; t: (key: string) => string; add
   const [live, setLive] = React.useState(false)
   const [liveValues, setLiveValues] = React.useState<Record<string, number | string | boolean>>({})
   const [liveNotice, setLiveNotice] = React.useState('')
+  const [globals, setGlobals] = React.useState<Record<string, unknown>>({})
   const container = React.useRef<HTMLDivElement | null>(null)
   const [compare, setCompare] = React.useState<{ name: string; xml: string } | undefined>(undefined)
   const parsed = React.useMemo(() => {
@@ -182,7 +183,7 @@ export function Display(props: { source: string; t: (key: string) => string; add
 
   const rendered = React.useMemo(() => {
     try {
-      return { svg: renderDisplay(xml, { tagValues: liveValues }), count: parsed.index.size, error: '' }
+      return { svg: renderDisplay(xml, { tagValues: liveValues, globals: globals as never, imageHref }), count: parsed.index.size, error: '' }
     } catch (error) {
       return { svg: '', count: 0, error: error instanceof Error ? error.message : String(error) }
     }
@@ -216,6 +217,40 @@ export function Display(props: { source: string; t: (key: string) => string; add
     setSelected(undefined)
   }
 
+  // Reference objects inherit their states, captions and children from a Global
+  // Objects file; without it the header and footer draw as empty placements.
+  React.useEffect(() => {
+    if (root === undefined) return undefined
+    let cancelled = false
+    const globalsOf: Record<string, unknown> = {}
+    const walk = (node: { attributes?: Record<string, string>; children: readonly unknown[] }, file: string): void => {
+      const name = node.attributes?.name
+      if (typeof name === 'string' && name !== '') globalsOf[`${file}.${name}`] = node
+      for (const child of node.children) walk(child as { attributes?: Record<string, string>; children: readonly unknown[] }, file)
+    }
+    fetch(`/engineering/ftview/globals?root=${encodeURIComponent(root)}`, { cache: 'no-store' })
+      .then(response => response.ok ? response.json() : { files: [] })
+      .then((body: { files?: { name: string; xml: string }[] }) => {
+        if (cancelled) return
+        for (const entry of body.files ?? []) {
+          try {
+            walk(parseXml(entry.xml), entry.name)
+          } catch {
+            // A broken global file must not hide the display.
+          }
+        }
+        setGlobals(globalsOf)
+      })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [root])
+
+  function imageHref(name: string): string | undefined {
+    return root === undefined
+      ? undefined
+      : `/engineering/ftview/image?root=${encodeURIComponent(root)}&name=${encodeURIComponent(name)}`
+  }
+
   /** Load the same display from a second export and show them side by side. */
   const startCompare = React.useCallback(async (): Promise<void> => {
     if (root === undefined) return
@@ -239,7 +274,7 @@ export function Display(props: { source: string; t: (key: string) => string; add
   const compareSvg = React.useMemo(() => {
     if (compare === undefined) return ''
     try {
-      return renderDisplay(compare.xml)
+      return renderDisplay(compare.xml, { globals: globals as never, imageHref })
     } catch {
       return ''
     }
