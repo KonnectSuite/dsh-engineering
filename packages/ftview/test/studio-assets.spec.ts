@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { acceptAsset, prepareAlarmExport, prepareTagExport } from '../src/studio-assets.ts'
+import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from '../src/studio-assets.ts'
 
 /** A fake Public Documents tree with one application and one wizard. */
 function fixture(): { root: string; wizard: string; app: string; med: string } {
@@ -77,6 +77,30 @@ describe('preparing an alarm export', () => {
     expect(plan.kind).toBe('alarms')
     expect(plan.destination.endsWith('Alarms.xml')).toBe(true)
     expect(plan.steps.join(' ')).toContain('Alarm Import Export Wizard')
+    rmSync(root, { recursive: true, force: true })
+  })
+})
+describe('packaging a display import', () => {
+  it('writes the display and the gfxImport batch file', () => {
+    const { root } = fixture()
+    const exportRoot = join(root, 'export')
+    mkdirSync(join(exportRoot, 'Displays'), { recursive: true })
+    writeFileSync(join(exportRoot, 'Displays', 'Arya Proof.xml'), '<?xml version="1.0"?>\n<gfx><displaySettings width="800" height="600"/></gfx>')
+    const out = join(root, 'import')
+    const plan = prepareDisplayImport(exportRoot, ['Arya Proof'], out)
+    expect(plan.displays).toEqual(['Arya Proof'])
+    expect(readFileSync(join(out, 'Displays', 'Arya Proof.xml'), 'utf8')).toContain('<gfx>')
+    expect(readFileSync(plan.manifest, 'utf8')).toContain('<import importFile="Arya Proof.xml"/>')
+    expect(plan.steps.join(' ')).toContain('Import and Export')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('refuses a file that is not a gfx display', () => {
+    const { root } = fixture()
+    const exportRoot = join(root, 'export')
+    mkdirSync(join(exportRoot, 'Displays'), { recursive: true })
+    writeFileSync(join(exportRoot, 'Displays', 'Bad.xml'), '<display/>')
+    expect(() => prepareDisplayImport(exportRoot, ['Bad'], join(root, 'import'))).toThrow(/not a <gfx>/)
     rmSync(root, { recursive: true, force: true })
   })
 })

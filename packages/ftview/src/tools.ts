@@ -10,7 +10,9 @@ import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
-import { acceptAsset, prepareAlarmExport, prepareTagExport } from './studio-assets.ts'
+import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -388,6 +390,31 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
           )
         } catch (error) {
           throw new EngineeringError('EXPORT_ACCEPT_FAILED', error instanceof Error ? error.message : String(error), 'Point source at the file the wizard wrote; tags need the ";Tag Type, Tag Name" header, alarms need an <alarms> root.')
+        }
+      },
+    }),
+    tool({
+      name: 'ftview_studio_import_prepare',
+      description: 'Package displays from an applied export for Studio’s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',
+      parameters: object({
+        export_root: string('Applied export folder that contains Displays/.'),
+        displays: string('Display names to import, separated by commas, without .xml.'),
+        output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
+      }, ['export_root', 'displays']),
+      async run(args) {
+        const exportRoot = requiredString(args, 'export_root')
+        const names = requiredString(args, 'displays').split(',').map(name => name.trim()).filter(name => name !== '')
+        const outputRoot = optionalString(args, 'output_root') ?? join(tmpdir(), `ftview-import-${Date.now().toString(36)}`)
+        try {
+          const plan = prepareDisplayImport(exportRoot, names, outputRoot)
+          return success(
+            `Packaged ${plan.displays.length} display(s) for import: batch file ${plan.manifest}.`,
+            plan,
+            [],
+            COVERAGE,
+          )
+        } catch (error) {
+          throw new EngineeringError('IMPORT_PREPARE_FAILED', error instanceof Error ? error.message : String(error), 'Pass an applied export folder and display names it actually contains; each display file must be a <gfx> document.')
         }
       },
     }),

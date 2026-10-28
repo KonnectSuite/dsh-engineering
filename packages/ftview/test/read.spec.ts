@@ -61,7 +61,7 @@ describe('registration', () => {
   it('registers the read intents in a stable order', () => {
     const { definitions } = harness(exportFiles())
     expect(definitions.map(definition => definition.name)).toEqual([
-      'ftview_open', 'ftview_list', 'ftview_get', 'ftview_find', 'ftview_check', 'ftview_compare', 'ftview_object_types', 'ftview_design_check', 'ftview_live_map', 'ftview_studio_export_prepare', 'ftview_studio_export_accept', 'ftview_apps', 'ftview_export',
+      'ftview_open', 'ftview_list', 'ftview_get', 'ftview_find', 'ftview_check', 'ftview_compare', 'ftview_object_types', 'ftview_design_check', 'ftview_live_map', 'ftview_studio_export_prepare', 'ftview_studio_export_accept', 'ftview_studio_import_prepare', 'ftview_apps', 'ftview_export',
     ])
   })
 

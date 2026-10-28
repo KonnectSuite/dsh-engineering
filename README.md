@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 104 tools · 6 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 105 tools · 6 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -49,7 +49,7 @@ Tool groups, by product:
 
 - **L5X** — 13 read (`open_project` … `document_project`), 11 staged drafts (`draft_*`, `compose_rung`), 6 Logix
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
-- **FactoryTalk View** — 11 read, 5 staged edits, 3 Studio handoff
+- **FactoryTalk View** — 12 read, 5 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 10 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the 9 bridge tools need Studio
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the

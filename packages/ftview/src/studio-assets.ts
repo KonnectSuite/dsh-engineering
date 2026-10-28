@@ -14,7 +14,7 @@
  * @module dsh-engineering-ftview/studio-assets
  */
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { projectFolder } from './vendor.ts'
 
@@ -162,6 +162,62 @@ export function prepareAlarmExport(application: string, documentsRoot?: string):
       'Select "Export alarm configuration from application" -> Next.',
       `File name "Alarms", folder ${store} -> Finish.`,
       'Then call ftview_studio_export_accept with kind="alarms" and that destination.',
+    ],
+  }
+}
+/** A prepared import package for the Graphics Import Export Wizard. */
+export interface DisplayImportPlan {
+  /** Folder holding the display XML files and the batch import file. */
+  readonly folder: string
+  /** Batch import file the wizard consumes. */
+  readonly manifest: string
+  /** Display names copied into the folder. */
+  readonly displays: readonly string[]
+  /** Steps for the computer-use agent. */
+  readonly steps: readonly string[]
+}
+
+/**
+ * Build a batch import folder from an applied export.
+ *
+ * `ftview_apply` writes display XML beside a manifest; the Graphics Import
+ * Export Wizard needs the files and a `gfxImport` file together, and the app
+ * name in the manifest is not what the plugin knows, so the manifest is written
+ * from the selected display names. Each source file must be a `<gfx>` document:
+ * anything else is refused rather than handed to Studio.
+ *
+ * @param exportRoot - Applied export folder containing `Displays/`.
+ * @param displays - Display names to import, without `.xml`.
+ * @param outputRoot - New folder for the package.
+ * @returns The package paths and the wizard steps.
+ */
+export function prepareDisplayImport(exportRoot: string, displays: readonly string[], outputRoot: string): DisplayImportPlan {
+  if (displays.length === 0) throw new Error('name at least one display to import')
+  if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
+  const folder = join(outputRoot, 'Displays')
+  mkdirSync(folder, { recursive: true })
+  for (const display of displays) {
+    const source = join(exportRoot, 'Displays', `${display}.xml`)
+    if (!existsSync(source)) throw new Error(`no display file at ${source}`)
+    const text = readFileSync(source, 'utf8')
+    if (!/<gfx[\s>]/iu.test(text)) throw new Error(`${source} is not a <gfx> display document`)
+    copyFileSync(source, join(folder, `${display}.xml`))
+  }
+  const manifest = join(outputRoot, 'BatchImport.xml')
+  const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<gfxImport>']
+  for (const display of displays) lines.push(`    <import importFile="${display}.xml"/>`)
+  lines.push('</gfxImport>', '')
+  writeFileSync(manifest, lines.join('\n'))
+  return {
+    folder: outputRoot,
+    manifest,
+    displays,
+    steps: [
+      `In FactoryTalk View Studio open the application, then right-click Displays > Import and Export.`,
+      'Import graphic information into displays -> Next.',
+      'Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
+      'Choose Multiple displays batch import file -> Next.',
+      `Select ${manifest} -> Finish, then open the display in Studio.`,
     ],
   }
 }
