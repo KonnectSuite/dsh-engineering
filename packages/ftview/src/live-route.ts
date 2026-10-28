@@ -200,10 +200,24 @@ export function globalsRoute(url: URL): DisplayAnswer {
 export function imageRoute(url: URL): BinaryAnswer {
   const root = url.searchParams.get('root') ?? ''
   const name = url.searchParams.get('name') ?? ''
-  if (!/^[A-Za-z0-9 _().-]{1,120}\.(bmp|jpg|jpeg|png|gif)$/iu.test(name)) {
+  // Studio stores the bitmap as `<name>.bmp`, but a display object refers to the
+  // image by name only (`imageName="Equilateral triangle"`), so the extension is
+  // optional here and the lookup is case-insensitive.
+  if (!/^[A-Za-z0-9 _().-]{1,120}(\.(bmp|jpg|jpeg|png|gif))?$/iu.test(name)) {
     return { status: 400, body: JSON.stringify({ error: 'name must be an image file name' }), contentType: 'application/json' }
   }
-  const file = join(root, 'Images', name)
+  const folder = join(root, 'Images')
+  const entries = existsSync(folder) ? readdirSync(folder) : []
+  const candidates = /\.[A-Za-z0-9]{2,4}$/u.test(name)
+    ? [name]
+    : [name, `${name}.bmp`, `${name}.png`, `${name}.jpg`, `${name}.jpeg`, `${name}.gif`]
+  const resolved = candidates
+    .map(candidate => entries.find(entry => entry.toLowerCase() === candidate.toLowerCase()))
+    .find(entry => entry !== undefined)
+  if (resolved === undefined) {
+    return { status: 404, body: JSON.stringify({ error: `no image named ${name}` }), contentType: 'application/json' }
+  }
+  const file = join(folder, resolved)
   if (!existsSync(file)) {
     return { status: 404, body: JSON.stringify({ error: `no image named ${name}` }), contentType: 'application/json' }
   }

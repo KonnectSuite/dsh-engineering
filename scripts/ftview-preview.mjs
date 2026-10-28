@@ -41,7 +41,17 @@ function loadGlobals(displayFile) {
 
 const tagsIndex = rest.indexOf('--tags')
 const tagValues = tagsIndex === -1 ? {} : JSON.parse(rest[tagsIndex + 1] ?? '{}')
-const svg = renderDisplay(source, { tagValues, globals: loadGlobals(file) })
+const imageFolder = join(dirname(file), '..', 'Images')
+const images = existsSync(imageFolder) ? readdirSync(imageFolder) : []
+const imageHref = (name) => {
+  const candidates = [name, `${name}.bmp`, `${name}.png`, `${name}.jpg`]
+  const found = candidates.map(candidate => images.find(entry => entry.toLowerCase() === candidate.toLowerCase())).find(Boolean)
+  if (found === undefined) return undefined
+  const extension = found.split('.').pop()?.toLowerCase() ?? 'bmp'
+  const type = extension === 'jpg' || extension === 'jpeg' ? 'jpeg' : extension
+  return `data:image/${type};base64,${readFileSync(join(imageFolder, found)).toString('base64')}`
+}
+const svg = renderDisplay(source, { tagValues, globals: loadGlobals(file), imageHref })
 const name = basename(file).replace(/\.xml$/iu, '')
 const out = resolve(outRoot)
 mkdirSync(out, { recursive: true })

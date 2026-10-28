@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.11.1] - 2026-10-27
+
+### Fixed
+
+- **Image objects resolve by name, with or without an extension, case-insensitively.** A display refers to
+  `imageName="Equilateral triangle"` while the store holds `Equilateral triangle.bmp`; the route required an extension,
+  so every image 404'd and drew a placeholder. Names are trimmed and matched against `.bmp`, `.png`, `.jpg`, `.jpeg`
+  and `.gif`.
+- The preview harness can inline `Images/` as data URLs, which is how the logo and the triangle indicators were
+  verified: with the real Images present, `Main Screen` now draws the CARPENTER logo and the green/red triangles.
 ## [0.11.0] - 2026-10-27
 
 ### Added

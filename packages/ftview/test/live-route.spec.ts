@@ -84,6 +84,7 @@ describe('the globals and image routes', () => {
     mkdirSync(join(root, 'Images'), { recursive: true })
     writeFileSync(join(root, 'Global Objects', 'Header_Footer.xml'), '<gfx><panel name="P"/></gfx>')
     writeFileSync(join(root, 'Images', 'logo.bmp'), 'bmp')
+    writeFileSync(join(root, 'Images', 'Equilateral triangle.bmp'), 'bmp')
     const globals = JSON.parse(globalsRoute(new URL(`http://x/globals?root=${encodeURIComponent(root)}`)).body) as { files: { name: string }[] }
     expect(globals.files.map(file => file.name)).toEqual(['Header_Footer'])
     const image = imageRoute(new URL(`http://x/image?root=${encodeURIComponent(root)}&name=logo.bmp`))
