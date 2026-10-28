@@ -668,7 +668,7 @@ List the FactoryTalk View ME applications installed on this host, through the ve
 
 #### `ftview_export`
 
-Export one installed ME application (displays, global objects, tags) to a NEW folder through the vendor export server. The application is not modified.
+Export one installed ME application (displays and global objects) to a NEW folder through the vendor export server. If the project store holds a user-exported Alarms.xml or tag CSV, copy it as a snapshot and report its age; such files are not part of a normal application. The application is not modified.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

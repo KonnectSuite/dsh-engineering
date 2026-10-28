@@ -113,12 +113,13 @@ export async function listApplications(): Promise<VendorResult<readonly MeApplic
 }
 
 /**
- * Export one application's displays, globals, alarms and tags into a new folder.
+ * Export one application's displays and global objects into a new folder.
  *
  * The export server covers displays, global objects and project settings. The
- * alarm setup and the tag database live beside the application in the Studio
- * project store, and `ExportAll` does not copy them, so this function does:
- * without them a "full" export has no tags to bind and no alarms to review.
+ * alarm setup and the tag database live in Studio's editors, **not** in a normal
+ * application folder. If the user has exported a snapshot of either into the
+ * project store, this copies that snapshot as-is; a normal application export
+ * therefore has no tags to bind and no alarms to review.
  *
  * Those two files are snapshots Studio writes when it exports them from their
  * editors, not live views of the database, so each copy is checked against the
@@ -219,7 +220,7 @@ export function copyProjectExtras(application: string, destination: string, docu
     const warning = freshness(alarms, 'Alarms/Alarms.xml', existsSync(database) ? database : undefined)
     if (warning !== undefined) warnings.push(warning)
   } else {
-    warnings.push('No Alarms.xml in the application store, so alarms were not exported. Export alarm setup from Studio once.')
+    warnings.push('No Alarms.xml in the application store. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.')
   }
   // Studio names the tag file `<application>-Tags.CSV`; match the suffix
   // case-insensitively because older applications used `.csv`.
@@ -233,7 +234,7 @@ export function copyProjectExtras(application: string, destination: string, docu
     const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
     if (warning !== undefined) warnings.push(warning)
   } else {
-    warnings.push('No tag CSV in the application store, so tags were not exported. Export the tag database from Studio once.')
+    warnings.push('No tag CSV in the application store. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.')
   }
   // Display objects can reference bitmaps by name, and the export engine does not
   // copy them: without this folder every image object draws as an empty box.

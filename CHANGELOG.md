@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.13.1] - 2026-10-28
+
+### Fixed
+
+- **`ftview_export` no longer claims to export alarms and tags.** An ME application folder does not contain
+  `Alarms.xml` or a tag CSV; those exist only when someone exports them from Studio's Alarm Setup / Tag Database
+  into the store. The tool now says it exports displays and global objects, copies an existing snapshot **only if
+  present**, reports its age, and the warnings state that the files are not part of a normal application. Skill and
+  tool descriptions corrected to match.
 ## [0.13.0] - 2026-10-28
 
 ### Added

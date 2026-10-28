@@ -53,7 +53,7 @@ export function vendorTools(fs: FsService): readonly ToolDefinition[] {
     }),
     tool({
       name: 'ftview_export',
-      description: 'Export one installed ME application (displays, global objects, tags) to a NEW folder through the vendor export server. The application is not modified.',
+      description: 'Export one installed ME application (displays and global objects) to a NEW folder through the vendor export server. If the project store holds a user-exported Alarms.xml or tag CSV, copy it as a snapshot and report its age; such files are not part of a normal application. The application is not modified.',
       parameters: object({
         application: string('Application name as ftview_apps lists it.'),
         output_root: string('New folder for the export. It must not exist.'),
