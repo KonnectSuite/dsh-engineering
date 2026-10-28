@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.14.1] - 2026-10-28
+
+### Fixed
+
+- The 0.14.0 skill exceeded its 8000-byte budget (the new export section pushed it over; `pnpm test` caught it after
+  publish). The skill is trimmed back under budget with the prepare/accept workflow kept.
 ## [0.14.0] - 2026-10-28
 
 ### Added

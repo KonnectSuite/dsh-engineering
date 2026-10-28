@@ -13,15 +13,12 @@ A staged edit is written to a NEW export folder; the source is never modified. T
 a manual import for a human; it does not drive Studio, contact a terminal, or decode MER or MED
 databases.
 
-Both export shapes are read: the Studio ME export (`<gfx>` displays, `Gfx-ME17.xsd`, a comma-delimited
-`Tags/*.csv` with its header before the `###002` line and `;` comment rows) and the older
-`<display>`-root files. Both export shapes are staged and validated: changes are applied to a re-parsed copy and the
-changed displays are checked against the installed `Gfx-ME*.xsd` before anything is written.
+Both export shapes are read: the Studio ME export (`<gfx>` displays and `Tags/*.csv`) and the older
+`<display>`-root files. Staged changes are re-parsed and checked against the installed `Gfx-ME*.xsd`.
 
 ## Backups
 
-Every engineering product backs up into the same tree, so a backup means one place whichever surface
-you are in:
+Backups go into one shared tree:
 
 ```
 <workspace>/backups/<product>/<subject>/<UTC stamp>/
@@ -121,13 +118,7 @@ colour/fill do not, and gradients/patterns/blink are approximated. State that wh
 
 ## Fresh tags and alarms
 
-The normal export carries displays and global objects; the tag database and alarm setup are separate wizards:
-
-1. `ftview_studio_export_prepare { application }` resolves the `.med`, confirms Rockwell's Tag Import and Export Wizard, and returns the exact steps and destination file.
-2. Run that wizard with computer use (Export tag database to CSV -> project -> destination -> Finish).
-3. `ftview_studio_export_accept { kind: "tags", source, destination }` validates the CSV (header, row count) and copies it into the export. Use `kind: "alarms"` for an `<alarms>` XML from the Alarm Import Export Wizard.
-
-Accept refuses empty or wrong-shaped files, so a failed wizard never becomes a silent stale asset.
+The normal export has displays and global objects only. For fresh assets: `ftview_studio_export_prepare { application }` names the `.med`, the wizard and the destination; run that wizard with computer use; then `ftview_studio_export_accept { kind, source, destination }` validates and copies the CSV (tags) or `<alarms>` XML (alarms). Accept refuses empty or wrong-shaped files.
 ## Import and verify
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
