@@ -75,9 +75,8 @@ Start from the installed application:
 
 1. `ftview_apps` lists the ME applications installed on this host.
 2. `ftview_export` writes one to a NEW folder through the vendor export server. Studio need not be
-   open; the application is not modified. Displays and global objects are exported; an alarm or
-   tag snapshot is copied **only if you already exported one into the project store** (`Alarms/Alarms.xml`,
-   `Tags/<application>.csv`) and its age is reported.
+   open; the application is not modified. Use `export_root` with `ftview_studio_export_prepare` to put a
+   tag or alarm snapshot inside the folder and avoid a store round-trip.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
@@ -120,7 +119,7 @@ gradients/blink are approximate. Say so when citing a capture.
 
 ## Fresh tags and alarms
 
-The normal export has displays and global objects only. For fresh assets: `ftview_studio_export_prepare { application }` names the `.med`, the wizard and the destination; run that wizard with computer use; then `ftview_studio_export_accept { kind, source, destination }` validates and copies the CSV (tags) or `<alarms>` XML (alarms). Accept refuses empty or wrong-shaped files.
+The export has displays and global objects only. For fresh assets call `ftview_studio_export_prepare { application, kind, export_root }`: the wizard then writes `Tags/<application>.csv` or `Alarms/Alarms.xml` straight into that export folder, and `ftview_studio_export_accept` validates it in place (source and destination may be the same file). Tags use standalone DatabaseConverter; alarms run inside Studio, so Studio must be open. Export, authoring, validation, apply and verification need no Studio.
 ## Import and verify
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:

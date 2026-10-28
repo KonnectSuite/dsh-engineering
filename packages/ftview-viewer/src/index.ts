@@ -10,7 +10,8 @@
 
 export { parseXml, child, children, attribute, numberAttribute } from './xml.ts'
 export type { XmlNode } from './xml.ts'
-export { renderDisplay, colourOf, responsiveSvg } from './render.ts'
+export { renderDisplay, colourOf, responsiveSvg, detectArtifact } from './render.ts'
+export type { ArtifactKind, ArtifactSummary } from './render.ts'
 export { evaluate, referencesOf } from './expression.ts'
 export type { TagValues } from './expression.ts'
 export type { RenderOptions } from './render.ts'

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, existsSync } from 'node:fs'
-import { renderDisplay, parseXml, evaluate, responsiveSvg } from '../src/index.ts'
+import { renderDisplay, parseXml, evaluate, responsiveSvg, detectArtifact } from '../src/index.ts'
 
 const DISPLAY = `<?xml version="1.0"?>
 <display width="800" height="600" backColor="#C6C6C6">
@@ -141,4 +141,19 @@ test('renders a multistateIndicator banner in its current state', () => {
   assert.match(svg, /data-ftv-type="multistateIndicator"/u)
   assert.match(svg, /fill="#f5e11b"/u)
   assert.match(svg, />MANUAL</u)
+})
+test('detects alarms, tag CSV and batch import files instead of calling them displays', () => {
+  const alarms = '<?xml version="1.0"?><alarms version="1.0" id="Alarms"><alarm name="A"/><alarm name="B"/></alarms>'
+  assert.equal(detectArtifact(alarms).kind, 'alarms')
+  assert.deepEqual(detectArtifact(alarms).details, ['2 alarm definition(s)', 'id: Alarms', 'schema version 1.0'])
+
+  const tags = ';Tag Type, Tag Name\n"D","AutoManual","x"\n"A","Speed","y"'
+  assert.equal(detectArtifact(tags).kind, 'tags')
+  assert.deepEqual(detectArtifact(tags).details, ['2 tag row(s)'])
+
+  const batch = '<gfxImport><import importFile="A.xml" importType="create" display="A"/></gfxImport>'
+  assert.equal(detectArtifact(batch).kind, 'batch')
+
+  assert.equal(detectArtifact('<gfx><displaySettings width="10" height="10"/></gfx>').kind, 'display')
+  assert.equal(detectArtifact('hello').kind, 'unknown')
 })

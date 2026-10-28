@@ -9,6 +9,7 @@
 
 import * as React from 'react'
 import { parseXml, attribute, type XmlNode } from '../src/xml.ts'
+import { detectArtifact, type ArtifactSummary } from '../src/render.ts'
 import { renderDisplay, responsiveSvg } from '../src/render.ts'
 
 /** Create-element alias; the bundle compiles without JSX. */
@@ -102,7 +103,7 @@ function downloadPng(container: HTMLElement | null, name: string): void {
 }
 
 /** The display surface with its toolbar, inspector and preview. */
-export function Display(props: { source: string; t: (key: string) => string; address?: string }): React.ReactElement {
+function DisplaySurface(props: { source: string; t: (key: string) => string; address?: string }): React.ReactElement {
   const { source, t, address } = props
   const root = exportRootOf(address)
   const [xml, setXml] = React.useState(source)
@@ -347,4 +348,27 @@ export function Display(props: { source: string; t: (key: string) => string; add
           h('tbody', null, Object.entries(chosen.attributes).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => h('tr', { key }, h('td', { style: { opacity: 0.6, paddingRight: 6, verticalAlign: 'top' } }, key), h('td', null, value))))),
         chosen.connections.length === 0 ? null : h('div', null, h('strong', null, 'Connections'), chosen.connections.map((connection, index) => h('div', { key: index }, `${connection.name ?? '?'} ← ${connection.expression ?? '?'}`))),
         h('div', { style: { opacity: 0.6, marginTop: 4 } }, `${chosen.states} state(s)`)))) 
+}
+
+/** Summary card for a FactoryTalk View artifact that is not a display. */
+function ArtifactCard(props: { artifact: ArtifactSummary; t: (key: string) => string; address?: string }): React.ReactElement {
+  const { artifact } = props
+  return h('div', { style: { padding: 16, font: '13px system-ui', display: 'flex', flexDirection: 'column', gap: 6 } },
+    h('div', { style: { fontWeight: 600, fontSize: 14 } }, artifact.title),
+    ...artifact.details.map((line, index) => h('div', { key: `d${index}`, style: { opacity: 0.8 } }, line)),
+    h('div', { style: { opacity: 0.55, fontSize: 11, marginTop: 8 } },
+      props.address === undefined || props.address === '' ? 'Detected from file content' : props.address),
+    h('div', { style: { opacity: 0.55, fontSize: 11 } }, artifact.kind === 'unknown' ? props.t('invalid') : 'Not a display, so nothing is drawn. Open a file under Displays/ to render.'))
+}
+
+/**
+ * The document preview entry: detect the artifact, then render a display or a summary.
+ *
+ * @param props - File source, locale lookup and address.
+ * @returns A display surface or an artifact summary card.
+ */
+export function Display(props: { source: string; t: (key: string) => string; address?: string }): React.ReactElement {
+  const artifact = detectArtifact(props.source)
+  if (artifact.kind === 'display') return h(DisplaySurface, props)
+  return h(ArtifactCard, { artifact, t: props.t, address: props.address })
 }

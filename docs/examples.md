@@ -296,12 +296,18 @@ Comparison is by display name, tag name and file content hash.
 ## 7. Export, author and verify a FactoryTalk View application
 
 Start from the installed application rather than a folder someone emailed. The vendor export server runs
-without a Studio window and does not change the project:
+without a Studio window and does not change the project. Export, authoring, validation, apply and
+verification need no Studio; only the alarm snapshot and the display import do.
 
 ```
 ftview_apps({ "filter": "Laminator" })
 ftview_export({ "application": "Carpenter_EPS_Laminator001", "output_root": "C:/Exports/Laminator" })
 ftview_open({ "root": "C:/Exports/Laminator" })
+ftview_studio_export_prepare({ "application": "Carpenter_EPS_Laminator001", "kind": "tags",
+  "export_root": "C:/Exports/Laminator" })
+ftview_studio_export_accept({ "kind": "tags",
+  "source": "C:/Exports/Laminator/Tags/Carpenter_EPS_Laminator001.csv",
+  "destination": "C:/Exports/Laminator/Tags/Carpenter_EPS_Laminator001.csv" })
 ```
 
 Author against the schema the export declares. One operation per call, then validate before applying:

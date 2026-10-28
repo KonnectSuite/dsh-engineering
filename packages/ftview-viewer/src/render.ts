@@ -409,3 +409,59 @@ export function renderDisplay(source: string, options: RenderOptions = {}): stri
 export function responsiveSvg(svg: string): string {
   return svg.replace('<svg ', '<svg style="width:100%;height:100%;display:block" preserveAspectRatio="xMidYMid meet" ')
 }
+
+/** What kind of FactoryTalk View artifact a file is. */
+export type ArtifactKind = 'display' | 'alarms' | 'tags' | 'batch' | 'unknown'
+
+/** Detection result shown by the preview when the file is not a display. */
+export interface ArtifactSummary {
+  /** Artifact family. */
+  readonly kind: ArtifactKind
+  /** Human title for the preview header. */
+  readonly title: string
+  /** Short factual lines, for example counts. */
+  readonly details: readonly string[]
+}
+
+/**
+ * Detect which FactoryTalk View artifact a file holds.
+ *
+ * The preview used to assume every opened `*.xml` was a display, so a valid
+ * alarm export showed as an error. Detection runs before rendering: alarms,
+ * tag CSVs and batch import files get a summary card, displays render, and only
+ * genuinely unknown content is reported as unrecognised.
+ *
+ * @param source - File text.
+ * @returns The kind, a title and factual details.
+ */
+export function detectArtifact(source: string): ArtifactSummary {
+  if (/<alarms[\s>]/iu.test(source)) {
+    const alarms = (source.match(/<alarm[\s>]/gu) ?? []).length
+    const id = /<alarms[^>]*\bid="([^"]*)"/iu.exec(source)?.[1]
+    const version = /<alarms[^>]*\bversion="([^"]*)"/iu.exec(source)?.[1]
+    return {
+      kind: 'alarms',
+      title: 'Alarm configuration export',
+      details: [
+        `${alarms} alarm definition(s)`,
+        ...(id === undefined ? [] : [`id: ${id}`]),
+        ...(version === undefined ? [] : [`schema version ${version}`]),
+      ],
+    }
+  }
+  if (/;\s*Tag Type\s*,/iu.test(source)) {
+    const rows = source.split(/\r?\n/u).filter(line => /^"?[DAS]"?,/u.test(line)).length
+    return { kind: 'tags', title: 'HMI tag database (CSV)', details: [`${rows} tag row(s)`] }
+  }
+  if (/<gfxImport[\s>]/iu.test(source)) {
+    const entries = (source.match(/<import[\s>]/gu) ?? []).length
+    return { kind: 'batch', title: 'Display batch import file', details: [`${entries} import entry(ies)`] }
+  }
+  try {
+    const root = parseXml(source)
+    if (root.tag === 'gfx' || root.tag === 'display') return { kind: 'display', title: 'FactoryTalk View display', details: [] }
+    return { kind: 'unknown', title: `Unrecognised XML: <${root.tag}>`, details: [] }
+  } catch {
+    return { kind: 'unknown', title: 'Unrecognised file', details: [] }
+  }
+}
