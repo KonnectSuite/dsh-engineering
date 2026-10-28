@@ -365,11 +365,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
     tool({
       name: 'ftview_validate',
       description: 'Prepare the staged edits: apply them to a re-parsed copy, validate the changed displays against the installed Gfx-ME schema, and report the changed files and findings. Writes nothing.',
-      parameters: object({ draft_id: DRAFT_ID }, []),
+      parameters: object({ draft_id: DRAFT_ID, limit: integer('Maximum findings to return; the counts in by_rule stay complete.', { minimum: 1, maximum: 500 }) }, []),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
         const view = session.require(draft.viewId, exec)
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
+        const limit = optionalInteger(args, 'limit') ?? 50
         const byRule: Record<string, number> = {}
         for (const finding of prepared.findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
         const schemaErrors = prepared.schema.findings.filter(finding => finding.error)
@@ -380,7 +381,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             draft_sha256: prepared.hash,
             changed_files: [...prepared.texts.keys()],
             added: prepared.added,
-            findings: prepared.findings,
+            findings: prepared.findings.slice(0, limit),
+            findings_total: prepared.findings.length,
+            findings_truncated: prepared.findings.length > limit,
             by_rule: byRule,
             schema: prepared.schema,
           },

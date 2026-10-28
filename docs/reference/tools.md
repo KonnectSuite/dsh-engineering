@@ -818,6 +818,7 @@ Prepare the staged edits: apply them to a re-parsed copy, validate the changed d
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `draft_id` | string | no | Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat. |
+| `limit` | integer | no | Maximum findings to return; the counts in by_rule stay complete. |
 
 #### `ftview_verify_import`
 

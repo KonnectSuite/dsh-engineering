@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
-import { addObject, renameDisplay } from '../src/edit/operations.ts'
+import { addObject, renameDisplay, setObject } from '../src/edit/operations.ts'
 import { targetPath } from '../src/core.ts'
 
 /** A six-column tag CSV with one duplicate name. */
@@ -170,5 +170,21 @@ describe('indicator binding', () => {
     })
     expect(xml).toContain('name="Indicator"')
     expect(xml).not.toContain('name="Value"')
+  })
+})
+describe('changing a caption', () => {
+  it('updates a button caption inside its states, not as an attribute', () => {
+    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'B', attributes: { left: '0', top: '0', width: '10', height: '10' }, caption: 'OLD' })
+    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'B', caption: 'NEW', attributes: {} })
+    expect(xml).toContain('caption="NEW"')
+    expect(xml).not.toContain('caption="OLD"')
+    expect(xml).not.toMatch(/<momentaryButton[^>]*caption=/u)
+  })
+
+  it('updates a gotoButton caption child', () => {
+    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'gotoButton', name: 'N', attributes: { left: '0', top: '0', width: '10', height: '10', display: 'Main' }, caption: 'OLD' })
+    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'N', caption: 'NEW', attributes: {} })
+    expect(xml).toContain('caption="NEW"')
+    expect(xml).not.toContain('caption="OLD"')
   })
 })

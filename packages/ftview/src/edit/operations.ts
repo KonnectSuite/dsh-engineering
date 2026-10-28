@@ -453,7 +453,7 @@ export function setObject(xml: string, op: ObjectSetOperation): string {
     const tree = parseDisplayTree(current)
     const node = findNamed(tree.root, op.object)
     if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
-    current = setNodeAttribute(tree, node, 'caption', op.caption)
+    current = setCaption(tree, node, op.caption)
   }
   if (op.connections !== undefined) {
     for (const name of Object.keys(op.connections)) {
@@ -551,4 +551,32 @@ function connectionNamesFor(type: string, connections: Readonly<Record<string, s
   const mapped: Record<string, string> = {}
   for (const [name, expression] of Object.entries(connections)) mapped[name === 'Value' ? 'Indicator' : name] = expression
   return mapped
+}
+/**
+ * Set the caption of an existing object in the shape its element expects.
+ *
+ * Stateful controls keep captions in `<states><state><caption>`; simple buttons
+ * in a `<caption>` child; everything else in a `caption` attribute. Writing the
+ * attribute on a button is what Studio rejects.
+ *
+ * @param tree - Parsed display.
+ * @param node - Target object.
+ * @param caption - New caption text.
+ * @returns The modified display XML.
+ */
+function setCaption(tree: DisplayTree, node: DisplayNode, caption: string): string {
+  const escaped = escapeAttribute(caption)
+  if (STATEFUL_TYPES.has(node.type)) {
+    const inner = tree.xml.slice(node.tagEnd, node.contentEnd)
+    if (!/<states[\s>]/u.test(inner)) throw new EngineeringError('INVALID_CAPTION', `${node.type} has no states to caption.`, 'Add the element with ftview_draft_object_add and states_json, or set states in Studio.')
+    const replaced = inner.replace(/<caption\b[^>]*>/gu, tag => (/\bcaption="/u.test(tag) ? tag.replace(/\bcaption="[^"]*"/u, `caption="${escaped}"`) : tag))
+    return tree.xml.slice(0, node.tagEnd) + replaced + tree.xml.slice(node.contentEnd)
+  }
+  if (CAPTION_CHILD_TYPES.has(node.type)) {
+    const inner = tree.xml.slice(node.tagEnd, node.contentEnd)
+    const replaced = inner.replace(/<caption\b[^>]*>/u, tag => (/\bcaption="/u.test(tag) ? tag.replace(/\bcaption="[^"]*"/u, `caption="${escaped}"`) : tag))
+    if (replaced === inner) throw new EngineeringError('INVALID_CAPTION', `${node.type} has no caption child to change.`, 'Add the caption child in Studio, then retry.')
+    return tree.xml.slice(0, node.tagEnd) + replaced + tree.xml.slice(node.contentEnd)
+  }
+  return setNodeAttribute(tree, node, 'caption', caption)
 }

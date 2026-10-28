@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.19.0] - 2026-10-28
+
+### Fixed
+
+- **`ftview_draft_object_set` now writes captions in the shape each element accepts.** Buttons and indicators update their `<states><state><caption>` faces; `gotoButton` and the simple buttons update the `<caption>` child; other objects keep the `caption` attribute. Editing a button caption previously produced schema-invalid XML.
+- **`ftview_validate` bounds its findings.** It returns the first `limit` findings (default 50) and still reports `findings_total`, `findings_truncated` and complete `by_rule` counts, so a legacy export with hundreds of duplicate-name warnings no longer floods the result.
+
+### Added
+
+- **`docs/reference/ftview-any-app.md`** — what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export → draft → validate → apply → import → verify loop.
 ## [0.18.4] - 2026-10-28
 
 ### Added

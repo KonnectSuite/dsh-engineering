@@ -247,6 +247,7 @@ even when the implementation behind a row is replaced.
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Examples](docs/examples.md) | End-to-end sessions per product |
+| [Any FTView application](docs/reference/ftview-any-app.md) | What is generic, what varies per application, and the import/verify loop |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |
 | [FTView port](docs/port/ftview.md) | FactoryTalk View port decisions |
