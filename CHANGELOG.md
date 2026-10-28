@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.13.0] - 2026-10-28
+
+### Added
+
+- **The object contract is now teachable.** `TYPE_GUIDE` documents all 34 drawable types with required attributes,
+  allowed children and a construction note; `ftview_object_types all="true"` returns it alongside what the export uses.
+- `multistateIndicator` and `polyline` are part of both the drafting contract and the renderer. The missing
+  `multistateIndicator` was why the yellow **MANUAL** bar never drew — it was dropped before rendering, and no
+  attribute change could fix it.
+- The FTView skill now documents the contract workflow (read `all`, read the used type, draft, validate, apply), the
+  image-name and reference-object rules, and the preview's fidelity limits.
+
+### Fixed
+
+- Reference objects take **all** local attributes over the base, so a reference multistate keeps its own
+  `currentStateId` instead of the base's state.
+
+### Verified
+
+`Load Conveyor Screen` now draws the MANUAL bar and the header/footer exactly where Studio puts them; `Main Screen`
+draws the logo, triangles and round lamps. 66 FTView tests, 12 renderer tests, 69 bundle tests.
 ## [0.12.1] - 2026-10-27
 
 ### Fixed

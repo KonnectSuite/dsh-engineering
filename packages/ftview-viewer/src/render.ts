@@ -26,9 +26,9 @@ export interface RenderOptions {
 }
 
 const OBJECTS = new Set([
-  'panel', 'text', 'group', 'momentaryButton', 'gotoButton', 'multistateButton', 'latchedButton',
-  'maintainButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'image',
-  'line', 'rectangle', 'ellipse', 'polygon', 'arc', 'barGraph', 'gauge', 'listSelector', 'trend',
+  'panel', 'text', 'group', 'momentaryButton', 'gotoButton', 'multistateButton', 'multistateIndicator',
+  'latchedButton', 'maintainButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'image',
+  'line', 'rectangle', 'ellipse', 'polygon', 'polyline', 'arc', 'barGraph', 'gauge', 'listSelector', 'trend',
   'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX',
   'symbol', 'referenceObject', 'globalObject', 'rampButton',
 ])
@@ -265,13 +265,10 @@ function resolveReference(node: XmlNode, options: RenderOptions): XmlNode {
   const link = attribute(node, 'linkBaseObject')
   const base = link === undefined ? undefined : options.globals?.[link]
   if (base === undefined) return node
-  // Placement stays local; everything the base defines (states, caption, child
-  // objects) is inherited, which is what the Studio reference object means.
-  const placement = new Set(['name', 'left', 'top', 'width', 'height', 'visible', 'isReferenceObject', 'linkBaseObject', 'linkSize', 'linkConnections', 'linkAnimations'])
-  const attributes: Record<string, string> = { ...base.attributes }
-  for (const [key, value] of Object.entries(node.attributes)) {
-    if (placement.has(key)) attributes[key] = value
-  }
+  // The base object supplies defaults, but **every** attribute on the reference
+  // overrides it. Taking only placement dropped `currentStateId="0"` on a
+  // reference multistate and drew the base's default state (the MANUAL bar).
+  const attributes: Record<string, string> = { ...base.attributes, ...node.attributes }
   return {
     tag: base.tag,
     attributes,

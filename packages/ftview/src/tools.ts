@@ -8,7 +8,7 @@ import { EngineeringError, choice, integer, object, optionalInteger, optionalStr
 import type { DisplayFile, TagRow } from './model.ts'
 import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
-import { ELEMENT_TYPES, observeObjects } from './catalog.ts'
+import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import type { ViewSession } from './session.ts'
 
@@ -259,6 +259,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
             `${ELEMENT_TYPES.size} element types are drawable; ${catalog.length} occur in this export.`,
             {
               all_types: [...ELEMENT_TYPES].sort(),
+              guide: TYPE_GUIDE,
               used_types: catalog.map(entry => entry.type),
               unused_types: [...ELEMENT_TYPES].filter(type => !catalog.some(entry => entry.type === type)).sort(),
             },

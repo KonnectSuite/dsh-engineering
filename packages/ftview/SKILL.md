@@ -15,9 +15,8 @@ databases.
 
 Both export shapes are read: the Studio ME export (`<gfx>` displays, `Gfx-ME17.xsd`, a comma-delimited
 `Tags/*.csv` with its header before the `###002` line and `;` comment rows) and the older
-`<display>`-root files. Staged attribute edits were built for the `<display>` shape; on a `<gfx>`
-export, read and verify with this surface and make the change in Studio, or confirm the edit applied
-before relying on it.
+`<display>`-root files. Both export shapes are staged and validated: changes are applied to a re-parsed copy and the
+changed displays are checked against the installed `Gfx-ME*.xsd` before anything is written.
 
 ## Backups
 
@@ -90,6 +89,36 @@ Start from the application, not from a folder someone emailed:
 4. `ftview_validate` must show `schema.ran: true` with no schema errors before you apply. `schema.ran:
    false` means the host has no Studio schema and validation did not run; say so instead of claiming
    validity.
+
+## The object contract
+
+Read the contract instead of guessing attribute names:
+
+1. `ftview_object_types all="true"` returns the 33 drawable types, a per-type `guide` (required
+   attributes, allowed children, a one-line note), what this export uses and what it does not.
+2. `ftview_object_types type="momentaryButton"` returns the attributes this project actually writes on
+   that type, with usage counts and example values. Copy those names and values.
+3. `ftview_draft_object_add` refuses a type outside the contract and fills `left`, `top`, `width`,
+   `height` when omitted. One object per call.
+
+Rules the guide encodes:
+
+- A button's face is `<states><state><caption>`; colours and captions live there, not in a bare
+  `caption` attribute.
+- Values come from `<connections><connection name="Value" expression="Tag"/>`; a numeric display also
+  accepts `expression`.
+- `shape="circle"` or `"ellipse"` draws a round lamp; `gotoButton` needs `display` for navigation.
+- `image` takes `imageName` as the file stem with **no extension** (`Equilateral triangle`, not
+  `Equilateral triangle.bmp`).
+
+## Preview and fidelity
+
+`ftview_live_map` reports which HMI tags are controller-backed (topic and PLC tag) and which are
+memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
+`Global Objects` and `Images` from the export, so reference objects and bitmaps render.
+
+The preview is static: alarm banners/lists are placeholders, visibility animations evaluate but
+colour/fill do not, and gradients/patterns/blink are approximated. State that when citing a capture.
 
 ## Import and verify
 

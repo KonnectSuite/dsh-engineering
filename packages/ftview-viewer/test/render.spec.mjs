@@ -135,3 +135,10 @@ test('draws a circular multistateButton as an ellipse', () => {
   const svg = renderDisplay(display)
   assert.match(svg, /<ellipse [^>]*rx="10" ry="10"/u)
 })
+test('renders a multistateIndicator banner in its current state', () => {
+  const display = `<gfx><displaySettings width="400" height="100"/><multistateIndicator name="Banner" left="0" top="0" width="400" height="40" currentStateId="0" backStyle="solid" borderStyle="line" borderWidth="2"><states><state stateId="Error" backColor="#001C38"/><state stateId="0" backColor="#F5E11B"><caption caption="MANUAL" fontFamily="Arial" fontSize="16" color="black" alignment="topCenter"/></state></states></multistateIndicator></gfx>`
+  const svg = renderDisplay(display)
+  assert.match(svg, /data-ftv-type="multistateIndicator"/u)
+  assert.match(svg, /fill="#f5e11b"/u)
+  assert.match(svg, />MANUAL</u)
+})

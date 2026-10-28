@@ -192,6 +192,7 @@ var OBJECTS = /* @__PURE__ */ new Set([
   "momentaryButton",
   "gotoButton",
   "multistateButton",
+  "multistateIndicator",
   "latchedButton",
   "maintainButton",
   "numericDisplay",
@@ -203,6 +204,7 @@ var OBJECTS = /* @__PURE__ */ new Set([
   "rectangle",
   "ellipse",
   "polygon",
+  "polyline",
   "arc",
   "barGraph",
   "gauge",
@@ -408,15 +410,17 @@ function resolveReference(node, options) {
   const link = attribute(node, "linkBaseObject");
   const base = link === void 0 ? void 0 : options.globals?.[link];
   if (base === void 0) return node;
-  const placement = /* @__PURE__ */ new Set(["name", "left", "top", "width", "height", "visible", "isReferenceObject", "linkBaseObject", "linkSize", "linkConnections", "linkAnimations"]);
-  const attributes = { ...base.attributes };
-  for (const [key, value] of Object.entries(node.attributes)) {
-    if (placement.has(key)) attributes[key] = value;
-  }
+  const attributes = { ...base.attributes, ...node.attributes };
   return {
     tag: base.tag,
     attributes,
-    children: node.children.length > 0 ? node.children : base.children,
+    // Keep the base object's visuals and only take the local bindings: a
+    // reference group carries its own <animations>/<connections>, and taking
+    // those instead of the base children is what dropped the header bar.
+    children: [
+      ...base.children,
+      ...node.children.filter((candidate) => candidate.tag === "animations" || candidate.tag === "connections")
+    ],
     text: base.text
   };
 }

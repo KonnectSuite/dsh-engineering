@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ELEMENT_TYPES, observeObjects } from '../src/catalog.ts'
+import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from '../src/catalog.ts'
 import { contrastRatio, designFindings } from '../src/design.ts'
 import type { Application, DisplayFile, DisplayObject } from '../src/model.ts'
 
@@ -62,9 +62,20 @@ describe('design checks', () => {
 
 describe('the element type contract', () => {
   it('covers every drawable object family', () => {
-    for (const type of ['panel', 'group', 'text', 'rectangle', 'ellipse', 'line', 'polygon', 'polyline', 'arc', 'image', 'momentaryButton', 'maintainButton', 'latchedButton', 'multistateButton', 'rampButton', 'gotoButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'barGraph', 'gauge', 'trend', 'listSelector', 'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX', 'symbol', 'referenceObject', 'globalObject']) {
+    for (const type of ['panel', 'group', 'text', 'rectangle', 'ellipse', 'line', 'polygon', 'polyline', 'arc', 'image', 'momentaryButton', 'maintainButton', 'latchedButton', 'multistateButton', 'rampButton', 'gotoButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'barGraph', 'gauge', 'trend', 'listSelector', 'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX', 'symbol', 'referenceObject', 'globalObject', 'multistateIndicator']) {
       expect(ELEMENT_TYPES.has(type)).toBe(true)
     }
-    expect(ELEMENT_TYPES.size).toBe(33)
+    expect(ELEMENT_TYPES.size).toBe(34)
+  })
+})
+describe('the type guide', () => {
+  it('documents every drawable type with required attributes', () => {
+    expect(Object.keys(TYPE_GUIDE).sort()).toEqual([...ELEMENT_TYPES].sort())
+    for (const type of ELEMENT_TYPES) {
+      expect(TYPE_GUIDE[type]?.required.length ?? 0).toBeGreaterThan(0)
+      expect(typeof TYPE_GUIDE[type]?.note).toBe('string')
+    }
+    expect(TYPE_GUIDE.momentaryButton?.children).toContain('states')
+    expect(TYPE_GUIDE.image?.required).toContain('imageName')
   })
 })
