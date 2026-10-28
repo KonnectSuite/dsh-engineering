@@ -275,7 +275,13 @@ function resolveReference(node: XmlNode, options: RenderOptions): XmlNode {
   return {
     tag: base.tag,
     attributes,
-    children: node.children.length > 0 ? node.children : base.children,
+    // Keep the base object's visuals and only take the local bindings: a
+    // reference group carries its own <animations>/<connections>, and taking
+    // those instead of the base children is what dropped the header bar.
+    children: [
+      ...base.children,
+      ...node.children.filter(candidate => candidate.tag === 'animations' || candidate.tag === 'connections'),
+    ],
     text: base.text,
   }
 }
@@ -353,7 +359,7 @@ function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): 
       // ellipse, which is how status lamps are drawn as circles rather than
       // blocks.
       const objectShape = (attribute(node, 'shape') ?? 'rectangle').toLowerCase()
-      const body = objectShape === 'ellipse'
+      const body = objectShape === 'ellipse' || objectShape === 'circle'
         ? `<ellipse cx="${left + width / 2}" cy="${top + height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
         : `<rect x="${left}" y="${top}" width="${width}" height="${height}"${objectShape.includes('round') ? ' rx="4" ry="4"' : ''} fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
       return caption.text === '' ? body : body + textElement(caption, left, top, width, height, margin)

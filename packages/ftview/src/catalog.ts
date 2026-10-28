@@ -91,7 +91,7 @@ export const BUTTON_TYPES = new Set(['momentaryButton', 'gotoButton', 'multistat
 /**
  * Every drawable element type a display can contain.
  *
- * The list is the drafting contract: `ftview_draft_object_add` refuses a type
+ * The list is the drafting contract (33 types): `ftview_draft_object_add` refuses a type
  * outside it, and the preview draws a labelled placeholder for any of them it
  * does not render yet, so an agent never silently writes an element Studio will
  * reject or the viewer will drop.

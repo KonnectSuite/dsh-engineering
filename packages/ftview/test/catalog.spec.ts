@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { observeObjects } from '../src/catalog.ts'
+import { ELEMENT_TYPES, observeObjects } from '../src/catalog.ts'
 import { contrastRatio, designFindings } from '../src/design.ts'
 import type { Application, DisplayFile, DisplayObject } from '../src/model.ts'
 
@@ -57,5 +57,14 @@ describe('design checks', () => {
     expect(findings.some(finding => finding.message.includes('Tiny'))).toBe(true)
     expect(findings.some(finding => finding.message.includes('Orphan'))).toBe(true)
     expect(findings.filter(finding => finding.rule === 'VIEW-NAV-01' && (finding.evidence as { display?: string }).display === 'Setup')).toEqual([])
+  })
+})
+
+describe('the element type contract', () => {
+  it('covers every drawable object family', () => {
+    for (const type of ['panel', 'group', 'text', 'rectangle', 'ellipse', 'line', 'polygon', 'polyline', 'arc', 'image', 'momentaryButton', 'maintainButton', 'latchedButton', 'multistateButton', 'rampButton', 'gotoButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'barGraph', 'gauge', 'trend', 'listSelector', 'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX', 'symbol', 'referenceObject', 'globalObject']) {
+      expect(ELEMENT_TYPES.has(type)).toBe(true)
+    }
+    expect(ELEMENT_TYPES.size).toBe(33)
   })
 })

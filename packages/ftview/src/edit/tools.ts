@@ -264,6 +264,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           const font = profile.hmi?.fonts?.[0]?.value
           if (font !== undefined && attributes.fontFamily === undefined && (/text$/iu.test(type) || /button$/iu.test(type))) attributes.fontFamily = font
         }
+        for (const [key, value] of [['left', '10'], ['top', '10'], ['width', '100'], ['height', '30']] as const) {
+          if (attributes[key] === undefined) attributes[key] = value
+        }
         const caption = optionalString(args, 'caption')
         if (caption !== undefined) attributes.caption = caption
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
@@ -300,6 +303,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
 
         const attributes = jsonObject(args.attributes_json, 'attributes_json')
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
+        for (const [key, value] of [['left', '10'], ['top', '10'], ['width', '100'], ['height', '30']] as const) {
+          if (attributes[key] === undefined) attributes[key] = value
+        }
         const caption = optionalString(args, 'caption')
         if (Object.keys(attributes).length === 0 && Object.keys(connections).length === 0 && caption === undefined) {
           throw new EngineeringError('INVALID_ARGUMENT', 'No change was requested.', 'Pass attributes_json, connections_json or caption.')

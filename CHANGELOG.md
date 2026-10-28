@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.12.0] - 2026-10-27
+
+### Added
+
+- **Every drawable element type is a drafting target.** `ELEMENT_TYPES` is the 33-type contract behind
+  `ftview_draft_object_add`; an unknown type is refused with the candidate list, and geometry defaults (`left`, `top`,
+  `width`, `height`) are filled when omitted. `ftview_object_types all="true"` lists the contract, what the export uses
+  and what it does not.
+- **Global Objects and images in the app preview.** `/engineering/ftview/globals` resolves `isReferenceObject` bases;
+  `/engineering/ftview/image` serves `Images/` with case-insensitive, extension-optional lookup (Studio names
+  `Equilateral triangle` while the file is `Equilateral triangle.bmp`).
+- **Shape fidelity**: `circle` and `ellipse` draw ellipses, rounded shapes get a radius; reference objects keep the
+  base object's children and only take local bindings, so header/footer content is no longer dropped.
+
+### Verified
+
+Real screens rendered with Studio as the oracle: `Main Screen` now shows the CARPENTER logo, the green/red triangles and
+circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart from the alarm banner placeholder and the
+`MANUAL` multistate bar (see Known gaps). 68 bundle tests, 65 FTView tests, 11 renderer tests.
+
+### Known gaps
+
+- The alarm banner/list draws a labelled placeholder instead of the runtime message.
+- A reference multistate whose base state is value-triggered can render the design-time state instead of the runtime
+  one (`MANUAL` bar on Load Conveyor).
 ## [0.11.1] - 2026-10-27
 
 ### Fixed

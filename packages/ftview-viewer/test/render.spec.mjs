@@ -130,3 +130,8 @@ test('responsiveSvg overrides the intrinsic size but keeps the viewBox', () => {
   assert.match(fitted, /preserveAspectRatio="xMidYMid meet"/u)
   assert.match(fitted, /viewBox="0 0 800 600"/u)
 })
+test('draws a circular multistateButton as an ellipse', () => {
+  const display = `<gfx><displaySettings width="100" height="100"/><multistateButton name="Lamp" left="10" top="10" width="20" height="20" shape="circle" currentStateId="1" backColor="#00ff00" borderStyle="line" borderWidth="2"><states><state stateId="1" backColor="#00ff00"/></states></multistateButton></gfx>`
+  const svg = renderDisplay(display)
+  assert.match(svg, /<ellipse [^>]*rx="10" ry="10"/u)
+})

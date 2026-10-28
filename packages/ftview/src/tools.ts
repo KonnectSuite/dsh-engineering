@@ -8,7 +8,7 @@ import { EngineeringError, choice, integer, object, optionalInteger, optionalStr
 import type { DisplayFile, TagRow } from './model.ts'
 import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
-import { observeObjects } from './catalog.ts'
+import { ELEMENT_TYPES, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import type { ViewSession } from './session.ts'
 
@@ -246,6 +246,7 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
       parameters: object({
         view_id: VIEW_ID,
         type: string('Optional exact element type, e.g. "momentaryButton", to list its attributes.'),
+        all: string('Pass "true" to list every element type drafting accepts, including ones this export does not use.'),
         limit: integer('Most types to return. Defaults to 20.', { minimum: 1, maximum: 200 }),
       }, []),
       async run(args, exec) {
@@ -253,10 +254,22 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         const catalog = observeObjects(view.app)
         const wanted = optionalString(args, 'type')
         const limit = optionalInteger(args, 'limit') ?? 20
+        if (optionalString(args, 'all') === 'true') {
+          return success(
+            `${ELEMENT_TYPES.size} element types are drawable; ${catalog.length} occur in this export.`,
+            {
+              all_types: [...ELEMENT_TYPES].sort(),
+              used_types: catalog.map(entry => entry.type),
+              unused_types: [...ELEMENT_TYPES].filter(type => !catalog.some(entry => entry.type === type)).sort(),
+            },
+            [],
+            COVERAGE,
+          )
+        }
         if (wanted !== undefined) {
           const entry = catalog.find(candidate => candidate.type === wanted)
           if (entry === undefined) {
-            throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${wanted} objects are present in this export.`, 'Call ftview_object_types without a type to see what the export uses.')
+            throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${wanted} objects are present in this export.`, 'Call ftview_object_types without a type to see what the export uses, or with all="true" for every drawable type.')
           }
           return success(
             `${entry.type}: ${entry.used} object(s); ${entry.attributes.length} attribute(s).`,
