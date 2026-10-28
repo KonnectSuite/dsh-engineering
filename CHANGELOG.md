@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.19.2] - 2026-10-28
+
+### Fixed
+
+- **The alarm-export steps named the wrong menu.** `ftview_studio_export_prepare { kind: "alarms" }` said `Tools > Alarm Import Export Wizard`. The wizard opens from **right-click `Alarms > Alarm Setup` → `Import and Export…`**, and it runs inside `VStudio.exe`, so Studio must be open with the application loaded. The steps now say that, including the case where Studio is closed.
+
+### Verified on CC019_Main
+
+- Tag export through `DatabaseConverter.exe`: `CC019_Main-Tags.CSV`, 104 tags, 110 lines.
+- Alarm export through `Alarm Setup → Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
 ## [0.19.1] - 2026-10-28
 
 ### Fixed

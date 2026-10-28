@@ -157,8 +157,8 @@ export function prepareAlarmExport(application: string, documentsRoot?: string):
     med,
     destination,
     steps: [
-      `Open ${application} in FactoryTalk View Studio.`,
-      'Tools > Alarm Import Export Wizard.',
+      `Start FactoryTalk View Studio and open ${application}; the alarm wizard runs inside Studio, so it must be open.`,
+      'Right-click Alarms > Alarm Setup in the Explorer, choose Import and Export...',
       'Select "Export alarm configuration from application" -> Next.',
       `File name "Alarms", folder ${store} -> Finish.`,
       'Then call ftview_studio_export_accept with kind="alarms" and that destination.',
