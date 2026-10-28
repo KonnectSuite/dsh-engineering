@@ -62,7 +62,56 @@ export interface ObjectAddOperation {
   readonly index?: number
   readonly connections?: Readonly<Record<string, string>>
   readonly caption?: string
+  readonly states?: readonly ObjectState[]
+  readonly animations?: ObjectAnimations
 }
+
+/** One face of a button or indicator, written as `<states><state>`. */
+export interface ObjectState {
+  /** State id as the export writes it: "0", "1" or "Error" for buttons. */
+  readonly stateId?: string
+  /** Value that selects this state on a value-triggered indicator. */
+  readonly value?: number
+  /** Caption drawn on the face. */
+  readonly caption?: string
+  /** Caption font size, default 14. */
+  readonly fontSize?: number
+  /** Caption colour, default "white". */
+  readonly color?: string
+  /** Face background colour. */
+  readonly backColor?: string
+  /** Face border colour. */
+  readonly borderColor?: string
+  /** Blink the face. */
+  readonly blink?: boolean
+}
+
+/** Animations attached to an object. */
+export interface ObjectAnimations {
+  /** Show or hide the object while an expression is true. */
+  readonly visibility?: {
+    readonly expression: string
+    readonly expressionTrueState?: 'visible' | 'invisible'
+  }
+}
+
+/**
+ * Controls whose face is a `<states>` child rather than a `caption` attribute.
+ *
+ * `Gfx-ME17.xsd` rejects `caption` on these elements; their captions and colours
+ * live in per-state `<caption>` children.
+ */
+const STATEFUL_TYPES = new Set([
+  'momentaryButton', 'maintainButton', 'maintainedButton', 'latchedButton', 'multistateButton',
+  'rampButton', 'multistateIndicator',
+])
+
+/** Controls whose caption is a <caption> child rather than a states face. */
+const CAPTION_CHILD_TYPES = new Set([
+  'gotoButton', 'closeButton', 'clearAlarmBannerButton', 'acknowledgeAlarmButton', 'silenceAlarmsButton',
+  'diagnosticsClearButton', 'diagnosticsClearAllButton', 'informationAckButton',
+  'moveUpKey', 'moveDownKey', 'moveLeftKey', 'moveRightKey',
+])
 
 /** Change attributes, caption or connections on an existing object. */
 export interface ObjectSetOperation {
@@ -290,20 +339,97 @@ export function createDisplay(op: DisplayCreateOperation): string {
 export function addObject(xml: string, op: ObjectAddOperation): string {
   assertObjectStyle(op.type, op.name)
   const tree = parseDisplayTree(xml)
+  const build = (depth: number): string => {
+    const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
+    const stateful = STATEFUL_TYPES.has(op.type)
+    const captionChild = CAPTION_CHILD_TYPES.has(op.type)
+    if (op.caption !== undefined && !stateful && !captionChild && attributes.caption === undefined) attributes.caption = escapeAttribute(op.caption)
+    const children: string[] = []
+    if (captionChild) {
+      if (op.caption !== undefined) children.push(captionXml(op.caption, op.attributes, depth))
+      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
+      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+    } else if (stateful) {
+      const states = op.states ?? defaultStates(op.caption, op.attributes)
+      if (states !== undefined && states.length > 0) children.push(statesXml(states, depth, op.type))
+      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
+      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+    } else {
+      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
+    }
+    const inner = children.join('')
+    return renderElement(op.type, attributes, inner === '' ? undefined : inner, depth)
+  }
   if (op.parent !== undefined) {
     const parent = findNamed(tree.root, op.parent)
     if (parent === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.parent)} in this display.`, 'Call ftview_get to see the object names, then add inside an existing group.')
-    const depth = depthOf(tree.root, parent)
-    const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
-    const innerConnections = op.connections === undefined ? '' : connectionsXml(op.connections, depth + 1)
-    const element = renderElement(op.type, attributes, innerConnections === '' ? undefined : innerConnections, depth + 1)
-    return insertChild(tree, parent, element, op.index)
+    return insertChild(tree, parent, build(depthOf(tree.root, parent) + 1), op.index)
   }
-  const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
-  if (op.caption !== undefined && attributes.caption === undefined) attributes.caption = escapeAttribute(op.caption)
-  const innerConnections = op.connections === undefined ? '' : connectionsXml(op.connections, 1)
-  const element = renderElement(op.type, attributes, innerConnections === '' ? undefined : innerConnections, 1)
-  return insertChild(tree, tree.root, element, op.index)
+  return insertChild(tree, tree.root, build(1), op.index)
+}
+
+/**
+ * Two faces for a caption-only stateful control, so a button still shows text and
+ * a pressed colour without the caller describing states.
+ *
+ * @param caption - Caption the caller passed, when any.
+ * @param attributes - Object attributes, for the resting colour.
+ * @returns Two states, or undefined when no caption was given.
+ */
+function defaultStates(caption: string | undefined, attributes: Readonly<Record<string, string>>): readonly ObjectState[] | undefined {
+  if (caption === undefined) return undefined
+  const backColor = attributes.backColor ?? '#24384A'
+  const borderColor = attributes.borderColor ?? '#0E1620'
+  return [
+    { stateId: '0', caption, backColor, borderColor, fontSize: 18 },
+    { stateId: '1', caption, backColor: '#2FA8E0', borderColor: '#2FA8E0', fontSize: 18 },
+  ]
+}
+
+/**
+ * Render `<states>` with one `<state>` and `<caption>` per face.
+ *
+ * @param states - Faces to write.
+ * @param depth - Indentation depth of the control element.
+ * @param type - Control type, used for the state-id rules.
+ * @returns XML for the states child.
+ */
+function statesXml(states: readonly ObjectState[], depth: number, type: string): string {
+  const pad = '    '.repeat(depth)
+  const statePad = '    '.repeat(depth + 1)
+  const captionPad = '    '.repeat(depth + 2)
+  const indicator = type === 'multistateIndicator'
+  if (!indicator && states.length > 3) throw new EngineeringError('INVALID_STATES', 'A button accepts at most three states (0, 1 and Error).', 'Pass at most three states, or use multistateIndicator for many values.')
+  const rendered = states.map((state, index) => {
+    const stateId = state.stateId ?? String(index)
+    if (!indicator && !/^(0|1|Error)$/u.test(stateId)) throw new EngineeringError('INVALID_STATES', `${JSON.stringify(stateId)} is not a button state id.`, 'Use "0", "1" or "Error" for a button state.')
+    if (indicator && !/^(\d+|Error)$/u.test(stateId)) throw new EngineeringError('INVALID_STATES', `${JSON.stringify(stateId)} is not an indicator state id.`, 'Use a number (0, 1, 2 …) or "Error" for an indicator state.')
+    const face = state.backColor ?? '#24384A'
+    const border = state.borderColor ?? face
+    const attrs = [`stateId="${escapeAttribute(stateId)}"`]
+    if (state.value !== undefined) attrs.push(`value="${Math.trunc(state.value)}"`)
+    attrs.push(`backColor="${escapeAttribute(face)}"`, `borderColor="${escapeAttribute(border)}"`, `blink="${state.blink === true ? 'true' : 'false'}"`)
+    const caption = `<caption fontFamily="Arial Unicode MS" fontSize="${state.fontSize ?? 14}" bold="false" italic="false" underline="false" strikethrough="false" caption="${escapeAttribute(state.caption ?? '')}" color="${escapeAttribute(state.color ?? 'white')}" backColor="${escapeAttribute(face)}" backStyle="transparent" alignment="middleCenter" wordWrap="true" blink="false"/>`
+    return `${statePad}<state ${attrs.join(' ')}>\n${captionPad}${caption}\n${statePad}</state>\n`
+  })
+  return `${pad}<states>\n${rendered.join('')}${pad}</states>\n`
+}
+
+/**
+ * Render a visibility animation.
+ *
+ * @param visibility - Expression and the state that makes it true.
+ * @param depth - Indentation depth of the control element.
+ * @returns XML for the animations child.
+ */
+function animationsXml(visibility: NonNullable<ObjectAnimations['visibility']>, depth: number): string {
+  const expression = visibility.expression.trim()
+  if (expression === '') throw new EngineeringError('INVALID_ANIMATION', 'A visibility animation needs an expression.', 'Pass for example "{AutoRunning} = 0".')
+  const trueState = visibility.expressionTrueState ?? 'visible'
+  if (trueState !== 'visible' && trueState !== 'invisible') throw new EngineeringError('INVALID_ANIMATION', `${JSON.stringify(trueState)} is not a visibility state.`, 'Use "visible" or "invisible".')
+  const pad = '    '.repeat(depth)
+  return `${pad}<animations>\n${pad}    <animateVisibility expression="${escapeAttribute(expression)}" expressionTrueState="${trueState}"/>\n${pad}</animations>\n`
 }
 
 /**
@@ -395,4 +521,18 @@ export function orderObject(xml: string, op: ObjectOrderOperation): string {
   const container = parentName === undefined ? next.root : findNamed(next.root, parentName)
   if (container === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `The parent of ${JSON.stringify(target)} disappeared while reordering.`, 'Reopen the display and retry.')
   return insertChild(next, container, element, op.index)
+}
+
+/**
+ * Render the `<caption>` child that simple-button controls take.
+ *
+ * @param caption - Caption text.
+ * @param attributes - Object attributes, for colour and font.
+ * @param depth - Indentation depth of the control element.
+ * @returns XML for the caption child.
+ */
+function captionXml(caption: string, attributes: Readonly<Record<string, string>>, depth: number): string {
+  const pad = '    '.repeat(depth)
+  const color = attributes.foreColor ?? 'white'
+  return `${pad}<caption fontFamily="Arial Unicode MS" fontSize="16" bold="false" italic="false" underline="false" strikethrough="false" caption="${escapeAttribute(caption)}" color="${escapeAttribute(color)}" backColor="${escapeAttribute(attributes.backColor ?? '#0E1620')}" backStyle="transparent" alignment="middleCenter" wordWrap="true" blink="false"/>\n`
 }

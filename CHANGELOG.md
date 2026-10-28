@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0] - 2026-10-28
+
+### Added
+
+- **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption …/></state>…</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
+- **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility …/></animations>`.
+- **`gotoButton` captions are now a `<caption>` child**, which is the shape its schema expects; a `states` face would be invalid.
+
+### Verified
+
+- `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** — two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
+- Rendered to `artifacts/ftview-arya/Arya Control.png`.
+- Not yet imported into a live Studio application: Studio started in Demo Mode and the application did not finish loading during this run, so the schema is the acceptance evidence here.
 ## [0.17.2] - 2026-10-28
 
 ### Changed

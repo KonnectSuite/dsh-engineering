@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
-import { renameDisplay } from '../src/edit/operations.ts'
+import { addObject, renameDisplay } from '../src/edit/operations.ts'
 import { targetPath } from '../src/core.ts'
 
 /** A six-column tag CSV with one duplicate name. */
@@ -130,5 +130,34 @@ describe('resolved target paths', () => {
   it('uses the display path of a resolved target instead of "[object Object]"', () => {
     expect(targetPath({ targetKey: {}, displayPath: 'C:/Projects/out' })).toBe('C:/Projects/out')
     expect(targetPath('out')).toBe('out')
+  })
+})
+describe('stateful controls', () => {
+  it('writes button states and captions as children', () => {
+    const xml = addObject('<gfx><displaySettings width="100" height="100"/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'Start', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      caption: 'START', connections: { Value: 'AutoManual' },
+    })
+    expect(xml).toContain('<states>')
+    expect(xml).toContain('caption="START"')
+    expect(xml).not.toContain('caption="START" backColor')
+    expect(xml.indexOf('<states>')).toBeLessThan(xml.indexOf('<connections>'))
+  })
+
+  it('writes gotoButton captions as a caption child', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'gotoButton', name: 'Nav', attributes: { left: '0', top: '0', width: '10', height: '10', display: 'Setup Screen' }, caption: 'SETUP',
+    })
+    expect(xml).toContain('<caption ')
+    expect(xml).toContain('caption="SETUP"')
+  })
+
+  it('writes a visibility animation', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'panel', name: 'Banner', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      animations: { visibility: { expression: '{AutoRunning} = 0', expressionTrueState: 'visible' } },
+    })
+    expect(xml).toContain('<animateVisibility')
+    expect(xml).toContain('expressionTrueState="visible"')
   })
 })

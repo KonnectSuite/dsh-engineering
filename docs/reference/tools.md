@@ -768,7 +768,9 @@ Stage one new object inside a display: geometry, attributes and tag connections.
 | `type` | string | yes | Object element type as the export writes it, e.g. "momentaryButton", "text", "panel", "numericDisplay", "gotoButton". |
 | `name` | string | yes | New object name, unique inside the display. |
 | `attributes_json` | string | no | Object attributes as a JSON object, e.g. {"height":"50","width":"120","left":"20","top":"40"}. |
-| `caption` | string | no | Optional caption text (text objects and buttons). |
+| `caption` | string | no | Optional caption text; on buttons and indicators it becomes the face caption inside states. |
+| `states_json` | string | no | Optional button or indicator faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. Buttons accept 0, 1, Error; multistateIndicator accepts numbered stateId with value. |
+| `animations_json` | string | no | Optional animations as JSON, e.g. {"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}. |
 | `connections_json` | string | no | Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}. |
 | `parent` | string | no | Optional group name to add inside. Omit to add at the display root. |
 | `index` | integer | no | Optional position among siblings, for z-order. |

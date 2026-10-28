@@ -81,7 +81,7 @@ Start from the installed application:
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
-     `gotoButton`, …) with geometry, caption and tag connections;
+     `gotoButton`, …) with `states_json` faces, `animations_json` and connections;
    - `ftview_draft_object_set`, `ftview_draft_object_delete`, `ftview_draft_object_order` for existing
      objects.
 4. `ftview_validate` must show `schema.ran: true` with no schema errors before you apply. `schema.ran:
@@ -111,7 +111,7 @@ Rules the guide encodes:
 
 ## Preview and fidelity
 
-`ftview_live_map` reports which HMI tags are controller-backed (topic and PLC tag) and which are
+`ftview_live_map` reports which HMI tags are controller-backed and which are
 memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
 `Global Objects` and `Images` from the export, so references and bitmaps render.
 

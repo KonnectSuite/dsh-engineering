@@ -15,7 +15,7 @@ import { EngineeringError, targetPath, choice, integer, object, optionalInteger,
 import type { ViewSession } from '../session.ts'
 import type { EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
-import type { EditOperation } from './operations.ts'
+import type { EditOperation, ObjectAnimations, ObjectState } from './operations.ts'
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
@@ -229,7 +229,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         type: string('Object element type as the export writes it, e.g. "momentaryButton", "text", "panel", "numericDisplay", "gotoButton".'),
         name: string('New object name, unique inside the display.'),
         attributes_json: string('Object attributes as a JSON object, e.g. {"height":"50","width":"120","left":"20","top":"40"}.'),
-        caption: string('Optional caption text (text objects and buttons).'),
+        caption: string('Optional caption text; on buttons and indicators it becomes the face caption inside states.'),
+        states_json: string('Optional button or indicator faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. Buttons accept 0, 1, Error; multistateIndicator accepts numbered stateId with value.'),
+        animations_json: string('Optional animations as JSON, e.g. {"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}.'),
         connections_json: string('Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}.'),
         parent: string('Optional group name to add inside. Omit to add at the display root.'),
         index: integer('Optional position among siblings, for z-order.', { minimum: 0 }),
@@ -268,7 +270,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           if (attributes[key] === undefined) attributes[key] = value
         }
         const caption = optionalString(args, 'caption')
-        if (caption !== undefined) attributes.caption = caption
+        const states = jsonStates(optionalString(args, 'states_json'))
+        const animations = jsonAnimations(optionalString(args, 'animations_json'))
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
         const parent = optionalString(args, 'parent')
         const index = optionalInteger(args, 'index')
@@ -278,6 +281,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           type,
           name: requiredString(args, 'name'),
           attributes,
+          ...(caption === undefined ? {} : { caption }),
+          ...(states === undefined ? {} : { states }),
+          ...(animations === undefined ? {} : { animations }),
           ...(parent === undefined ? {} : { parent }),
           ...(index === undefined ? {} : { index }),
           ...(Object.keys(connections).length === 0 ? {} : { connections }),
@@ -512,3 +518,76 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
 
 /** A helper kept for callers that want the operation count type. */
 export type { EditOperation }
+
+/**
+ * Parse the optional `states_json` array.
+ *
+ * @param value - JSON text from the tool arguments.
+ * @returns States, or undefined when the argument is absent.
+ */
+function jsonStates(value: string | undefined): readonly ObjectState[] | undefined {
+  if (value === undefined) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'states_json is not valid JSON.', 'Pass an array like [{"stateId":"0","caption":"START"}].')
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) throw new EngineeringError('INVALID_ARGUMENT', 'states_json must be a non-empty array.', 'Pass at least one state, for example [{"stateId":"0","caption":"START"}].')
+  const states: ObjectState[] = []
+  for (const entry of parsed) {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) throw new EngineeringError('INVALID_ARGUMENT', 'Each state must be a JSON object.', 'Pass states such as {"stateId":"0","caption":"START","backColor":"#24384A"}.')
+    const record = entry as Record<string, unknown>
+    const state: Record<string, unknown> = {}
+    if (record.stateId !== undefined) {
+      if (typeof record.stateId !== 'string') throw new EngineeringError('INVALID_ARGUMENT', 'stateId must be a string.', 'Use "0", "1" or "Error".')
+      state.stateId = record.stateId
+    }
+    if (record.value !== undefined) {
+      if (typeof record.value !== 'number' || !Number.isFinite(record.value)) throw new EngineeringError('INVALID_ARGUMENT', 'value must be a number.', 'Use the PLC value that selects this state, for example 1.')
+      state.value = Math.trunc(record.value)
+    }
+    for (const key of ['caption', 'color', 'backColor', 'borderColor'] as const) {
+      const field = record[key]
+      if (field !== undefined) {
+        if (typeof field !== 'string') throw new EngineeringError('INVALID_ARGUMENT', `${key} must be a string.`, `Pass ${key} as text.`)
+        state[key] = field
+      }
+    }
+    if (record.fontSize !== undefined) {
+      if (typeof record.fontSize !== 'number' || !Number.isFinite(record.fontSize)) throw new EngineeringError('INVALID_ARGUMENT', 'fontSize must be a number.', 'Use a size such as 18.')
+      state.fontSize = Math.trunc(record.fontSize)
+    }
+    if (record.blink !== undefined) {
+      if (typeof record.blink !== 'boolean') throw new EngineeringError('INVALID_ARGUMENT', 'blink must be true or false.', 'Pass true to blink the face.')
+      state.blink = record.blink
+    }
+    states.push(state as unknown as ObjectState)
+  }
+  return states
+}
+
+/**
+ * Parse the optional `animations_json` object.
+ *
+ * @param value - JSON text from the tool arguments.
+ * @returns Animations, or undefined when the argument is absent.
+ */
+function jsonAnimations(value: string | undefined): ObjectAnimations | undefined {
+  if (value === undefined) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'animations_json is not valid JSON.', 'Pass {"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new EngineeringError('INVALID_ARGUMENT', 'animations_json must be a JSON object.', 'Pass {"visibility":{"expression":"…","expressionTrueState":"visible"}}.')
+  const visibility = (parsed as Record<string, unknown>).visibility
+  if (visibility === undefined) throw new EngineeringError('INVALID_ARGUMENT', 'animations_json has no supported animation.', 'Only "visibility" is supported: {"visibility":{"expression":"{Tag} = 1","expressionTrueState":"visible"}}.')
+  if (visibility === null || typeof visibility !== 'object' || Array.isArray(visibility)) throw new EngineeringError('INVALID_ARGUMENT', 'visibility must be a JSON object.', 'Pass an expression and an optional expressionTrueState.')
+  const record = visibility as Record<string, unknown>
+  if (typeof record.expression !== 'string' || record.expression.trim() === '') throw new EngineeringError('INVALID_ARGUMENT', 'visibility.expression must be a non-empty string.', 'Pass for example "{AutoRunning} = 0".')
+  const trueState = record.expressionTrueState
+  if (trueState !== undefined && trueState !== 'visible' && trueState !== 'invisible') throw new EngineeringError('INVALID_ARGUMENT', 'expressionTrueState must be "visible" or "invisible".', 'Omit it to default to visible.')
+  return { visibility: { expression: record.expression, ...(trueState === undefined ? {} : { expressionTrueState: trueState }) } }
+}
