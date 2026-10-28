@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.19.1] - 2026-10-28
+
+### Fixed
+
+- **`ftview_export` creates the destination's parent folder first.** Exporting an application into a new tree failed with `Value does not fall within the expected range` at `ExportAll` when the parent folder did not exist; the Laminator export only worked because `Laminator/HMI` was already there. `ApplicationManager`-style parents are now created before the vendor call.
+
+### Verified
+
+- Second application exported and drafted against: `CC019_Main` (70 displays, 1280×800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
 ## [0.19.0] - 2026-10-28
 
 ### Fixed

@@ -13,7 +13,7 @@
 
 import { spawn } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 /** CLSID of the ME export server (`MEExport.exe`). */
 export const EXPORT_CLSID = '9d882577-aa92-466b-a749-6d6b5093b623'
@@ -133,6 +133,9 @@ export async function listApplications(): Promise<VendorResult<readonly MeApplic
  */
 export async function exportApplication(application: string, destination: string, documentsRoot?: string): Promise<VendorResult<ExportResult>> {
   if (existsSync(destination)) return { error: `A file or folder already exists at ${destination}. Export into a new folder.` }
+  // The vendor exporter returns "Value does not fall within the expected range"
+  // when the destination's parent folder is absent, so create it first.
+  mkdirSync(dirname(destination), { recursive: true })
   const result = await runPowerShell('powershell.exe', EXPORT_SCRIPT, { clsid: EXPORT_CLSID, app: application, dest: destination })
   if (result.code !== 0) return { error: `Export failed: ${result.stderr.trim() || `exit ${result.code}`}` }
   if (!existsSync(destination)) return { error: 'The engine reported success but wrote no folder.' }
