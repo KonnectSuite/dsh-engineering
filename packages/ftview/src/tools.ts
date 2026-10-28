@@ -11,6 +11,7 @@ import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { capabilities } from './capabilities.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ViewSession } from './session.ts'
@@ -418,6 +419,20 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         } catch (error) {
           throw new EngineeringError('IMPORT_PREPARE_FAILED', error instanceof Error ? error.message : String(error), 'Pass an applied export folder and display names it actually contains; each display file must be a <gfx> document.')
         }
+      },
+    }),
+    tool({
+      name: 'ftview_capabilities',
+      description: 'Report what this host can do with FactoryTalk View: Studio and tag-wizard presence, installed Gfx schema versions, application count, and which steps need a running Studio. Read-only.',
+      parameters: object({}, []),
+      async run() {
+        const report = capabilities()
+        return success(
+          `FTView host: ${report.applications} application(s); schemas ${report.schemas.length === 0 ? 'none' : report.schemas.join(', ')}; tags ${report.tags}, alarms ${report.alarms}, import ${report.import}.`,
+          report,
+          [],
+          COVERAGE,
+        )
       },
     }),
   ]

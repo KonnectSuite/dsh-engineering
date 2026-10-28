@@ -58,6 +58,7 @@
     "ftview_studio_export_prepare",
     "ftview_studio_export_accept",
     "ftview_studio_import_prepare",
+    "ftview_capabilities",
     "ftview_apps",
     "ftview_export",
     "ftview_draft_display_set",
@@ -216,6 +217,7 @@
         "ftview_studio_export_prepare",
         "ftview_studio_export_accept",
         "ftview_studio_import_prepare",
+        "ftview_capabilities",
         "ftview_apps",
         "ftview_export"
       ]

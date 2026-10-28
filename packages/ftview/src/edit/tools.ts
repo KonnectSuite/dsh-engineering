@@ -13,9 +13,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EngineeringError, targetPath, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition } from '../core.ts'
 import type { ViewSession } from '../session.ts'
-import type { EditDrafts } from './drafts.ts'
+import type { EditDraft, EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
-import type { EditOperation, ObjectAnimations, ObjectState } from './operations.ts'
+import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, ObjectAnimations, ObjectState } from './operations.ts'
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
@@ -42,13 +42,28 @@ function objectCount(display: { objects: readonly { name?: string }[] }, name: s
   return display.objects.filter(object => object.name === name).length
 }
 
-/** One display by name, with a repairable failure. */
-function displayOf(view: { app: { displays: readonly { name: string; file: string; objects: readonly { name?: string }[] }[] } }, name: string) {
-  const display = view.app.displays.find(candidate => candidate.name === name)
-  if (display === undefined) {
-    throw new EngineeringError('COMPONENT_NOT_FOUND', `No display is named ${JSON.stringify(name)} in this export.`, 'Call ftview_list with kind "display" to see the display names.', view.app.displays.slice(0, 5).map(candidate => candidate.name))
+/** The chat's draft, when one exists (ambiguous or absent is fine here). */
+function draftOf(store: EditDrafts, exec: ExecContext): EditDraft | undefined {
+  try {
+    return store.get(exec, undefined)
+  } catch {
+    return undefined
   }
-  return display
+}
+
+/** One display by name, including a display this same draft creates. */
+function displayOf(view: { app: { displays: readonly { name: string; file: string; objects: readonly { name?: string }[] }[] } }, name: string, draft?: EditDraft) {
+  const display = view.app.displays.find(candidate => candidate.name === name)
+  if (display !== undefined) return display
+  const created = draft === undefined ? undefined : draft.operations.find((operation): operation is DisplayCreateOperation => operation.kind === 'display_create' && operation.name === name)
+  if (created !== undefined) return { name, file: created.file, objects: [] }
+  const copied = draft === undefined ? undefined : draft.operations.find((operation): operation is DisplayAddOperation => operation.kind === 'display_add' && operation.name === name)
+  if (copied !== undefined) {
+    const source = view.app.displays.find(candidate => candidate.name === copied.copyFrom)
+    const directory = source === undefined ? '' : source.file.includes('/') ? source.file.slice(0, source.file.lastIndexOf('/') + 1) : ''
+    return { name, file: `${directory}${name}.xml`, objects: [] }
+  }
+  throw new EngineeringError('COMPONENT_NOT_FOUND', `No display is named ${JSON.stringify(name)} in this export or this draft.`, 'Call ftview_list with kind "display" to see the display names.', view.app.displays.slice(0, 5).map(candidate => candidate.name))
 }
 
 /** Parse one JSON object argument into string attributes. */
@@ -239,7 +254,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       }, ['display', 'type', 'name']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const display = displayOf(view, requiredString(args, 'display'))
+        const display = displayOf(view, requiredString(args, 'display'), draftOf(drafts, exec))
         const type = requiredString(args, 'type')
         if (!ELEMENT_TYPES.has(type)) {
           throw new EngineeringError(
@@ -304,7 +319,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       }, ['display', 'object']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const display = displayOf(view, requiredString(args, 'display'))
+        const display = displayOf(view, requiredString(args, 'display'), draftOf(drafts, exec))
         const object = requiredString(args, 'object')
 
         const attributes = jsonObject(args.attributes_json, 'attributes_json')
@@ -337,7 +352,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       }, ['display', 'object']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const display = displayOf(view, requiredString(args, 'display'))
+        const display = displayOf(view, requiredString(args, 'display'), draftOf(drafts, exec))
         const object = requiredString(args, 'object')
 
         const { draft } = stage(exec, optionalString(args, 'view_id'), { kind: 'object_delete', file: display.file, object })
@@ -355,7 +370,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       }, ['display', 'object', 'index']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const display = displayOf(view, requiredString(args, 'display'))
+        const display = displayOf(view, requiredString(args, 'display'), draftOf(drafts, exec))
         const object = requiredString(args, 'object')
 
         const { draft } = stage(exec, optionalString(args, 'view_id'), { kind: 'object_order', file: display.file, object, index: optionalInteger(args, 'index') ?? 0 })

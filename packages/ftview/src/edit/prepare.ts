@@ -79,7 +79,7 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
   const displayNames = new Set(app.displays.map(display => display.name))
   for (const operation of operations) {
     if (operation.kind === 'display_set') {
-      if (!displayByFile.has(operation.file)) {
+      if (!displayByFile.has(operation.file) && !added.includes(operation.file)) {
         throw new EngineeringError('COMPONENT_NOT_FOUND', `The draft targets ${operation.file}, which this export no longer contains.`, 'Reopen the export and stage the edit again.')
       }
       const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)

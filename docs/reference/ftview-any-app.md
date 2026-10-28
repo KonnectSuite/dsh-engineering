@@ -64,3 +64,13 @@ to check before you promise a result.
 - The wizard steps themselves are manual (or computer-use), not a plugin call.
 - Live values are read over EtherNet/IP and have not been verified against hardware
   in this workspace.
+
+## What the installed product offers, and what it does not
+
+- **`DatabaseConverter.exe`** is the only fully standalone exporter: tag database to CSV. Studio closed is fine.
+- **`MEExport.exe`** is the display/global export server used by `ftview_export`; its interfaces are `ExportApp`, `ExportSvr`, `ExportGraphics`, `GfxXmlExport` — no alarm export.
+- **`GfxXmlImport.GfxImport`** and **`GfxXmlWizard.GraphicsXmlWizard`** are registered COM classes with `Initialize` / `ImportXML` / `LaunchWizard`. They require a live graphics server and project context (`pGfxServer`, `pFramework`, `pProjContext`) supplied by Studio; there is no registered class to create those outside Studio, so display import remains a Studio wizard step.
+- **`METriggerEditor.exe`** is the Alarm Editor. It contains the alarm import/export implementation and writes an `<Alarms>` document, but it has no command line and exits when launched alone; it is hosted by Studio.
+- **`ApplicationManagerServer.AppMgrServer`** is a 32-bit COM server with List/Backup/Restore/Copy/Rename. `ListLocalApps` answers, but `BackupLocal` fails on this host (`Class not registered` for app type `ME`, range error otherwise), so backup is reported as unverified rather than promised.
+- **`ApplicationManager.exe`**, **`FactoryTalk View ME Application Documenter.exe`**, **`Icedbe.exe`**, **`LegacyTagDBConvertTool.exe`** are GUI tools with no documented command line; the Documenter can produce a human-readable report but not an importable XML export.
+- **Import and alarm export therefore need a running Studio.** `ftview_capabilities` reports that per host instead of leaving it to assumption.

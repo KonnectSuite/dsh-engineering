@@ -33,7 +33,7 @@ async function opened() {
 describe('editing registration', () => {
   it('mounts the eleven edit tools after the read surface', () => {
     const { definitions } = harness(exportFiles(), { edit: true })
-    expect(definitions.map(definition => definition.name).slice(14)).toEqual([
+    expect(definitions.map(definition => definition.name).slice(15)).toEqual([
       'ftview_draft_display_set', 'ftview_draft_display_add', 'ftview_draft_tag_upsert',
       'ftview_draft_display_create', 'ftview_draft_object_add', 'ftview_draft_object_set',
       'ftview_draft_object_delete', 'ftview_draft_object_order', 'ftview_validate',
@@ -186,5 +186,23 @@ describe('changing a caption', () => {
     xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'N', caption: 'NEW', attributes: {} })
     expect(xml).toContain('caption="NEW"')
     expect(xml).not.toContain('caption="OLD"')
+  })
+})
+describe('authoring into a new draft display', () => {
+  it('adds objects to a display this draft just created', async () => {
+    const { l5x, view } = await opened()
+    const created = await l5x.call('ftview_draft_display_create', { view_id: view, name: 'Fresh', width: 800, height: 600 })
+    expect(created.error).toBeUndefined()
+    const draftId = created.data?.draft_id as string
+    const added = await l5x.call('ftview_draft_object_add', {
+      view_id: view, draft_id: draftId, display: 'Fresh', type: 'text', name: 'Hello',
+      attributes_json: '{"left":"10","top":"10","width":"200","height":"40"}', caption: 'HELLO',
+    })
+    expect(added.error).toBeUndefined()
+    const applied = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'freshout' })
+    expect(applied.error).toBeUndefined()
+    const written = [...l5x.written.values()].join('\n')
+    expect(written).toContain('name="Hello"')
+    expect(written).toContain('HELLO')
   })
 })

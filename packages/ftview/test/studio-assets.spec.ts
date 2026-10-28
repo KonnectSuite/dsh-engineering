@@ -76,7 +76,7 @@ describe('preparing an alarm export', () => {
     const plan = prepareAlarmExport(app, root)
     expect(plan.kind).toBe('alarms')
     expect(plan.destination.endsWith('Alarms.xml')).toBe(true)
-    expect(plan.steps.join(' ')).toContain('Alarm Import Export Wizard')
+    expect(plan.steps.join(' ')).toContain('Alarm Setup')
     rmSync(root, { recursive: true, force: true })
   })
 })
