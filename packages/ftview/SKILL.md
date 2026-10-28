@@ -66,16 +66,18 @@ unavailable, say editing is not enabled here rather than trying another tool.
   vendor schema rejects a document.
 - `ftview_apply` writes a NEW export folder, plus `Displays/BatchImport_<app>.xml` and `IMPORT.md` so
   Studio's Batch Import has the exact list of changed displays. It never modifies the source.
+- `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard
+  (right-click Displays > Import and Export), then you import and open them in Studio.
 
 ## Authoring
 
-Start from the application, not from a folder someone emailed:
+Start from the installed application:
 
 1. `ftview_apps` lists the ME applications installed on this host.
-2. `ftview_export` writes one to a NEW folder through the vendor export server. No Studio window is
-   needed and the application is not modified. Displays and global objects are exported; an alarm or
+2. `ftview_export` writes one to a NEW folder through the vendor export server. Studio need not be
+   open; the application is not modified. Displays and global objects are exported; an alarm or
    tag snapshot is copied **only if you already exported one into the project store** (`Alarms/Alarms.xml`,
-   `Tags/<application>.csv`) and its age is reported. Those files are not part of a normal application.
+   `Tags/<application>.csv`) and its age is reported.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
@@ -88,10 +90,10 @@ Start from the application, not from a folder someone emailed:
 
 ## The object contract
 
-Read the contract instead of guessing attribute names:
+Read the contract instead of guessing:
 
-1. `ftview_object_types all="true"` returns the 33 drawable types, a per-type `guide` (required
-   attributes, allowed children, a one-line note), what this export uses and what it does not.
+1. `ftview_object_types all="true"` returns the 34 drawable types, a per-type `guide` (required
+   attributes, children, one note) and what this export uses.
 2. `ftview_object_types type="momentaryButton"` returns the attributes this project actually writes on
    that type, with usage counts and example values. Copy those names and values.
 3. `ftview_draft_object_add` refuses a type outside the contract and fills `left`, `top`, `width`,
@@ -111,10 +113,10 @@ Rules the guide encodes:
 
 `ftview_live_map` reports which HMI tags are controller-backed (topic and PLC tag) and which are
 memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
-`Global Objects` and `Images` from the export, so reference objects and bitmaps render.
+`Global Objects` and `Images` from the export, so references and bitmaps render.
 
-The preview is static: alarm banners/lists are placeholders, visibility animations evaluate but
-colour/fill do not, and gradients/patterns/blink are approximated. State that when citing a capture.
+The preview is static: alarm banners are placeholders, visibility evaluates, colour/fill do not, and
+gradients/blink are approximate. Say so when citing a capture.
 
 ## Fresh tags and alarms
 

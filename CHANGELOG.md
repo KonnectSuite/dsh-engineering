@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.17.2] - 2026-10-28
+
+### Changed
+
+- The FTView skill now says how applied displays reach Studio (`ftview_studio_import_prepare`, then the Graphics Import Export Wizard) and corrects the object-contract count to the 34 drawable types.
 ## [0.17.1] - 2026-10-28
 
 ### Fixed
