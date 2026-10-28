@@ -55,6 +55,8 @@
     "ftview_object_types",
     "ftview_design_check",
     "ftview_live_map",
+    "ftview_studio_export_prepare",
+    "ftview_studio_export_accept",
     "ftview_apps",
     "ftview_export",
     "ftview_draft_display_set",
@@ -210,6 +212,8 @@
         "ftview_object_types",
         "ftview_design_check",
         "ftview_live_map",
+        "ftview_studio_export_prepare",
+        "ftview_studio_export_accept",
         "ftview_apps",
         "ftview_export"
       ]

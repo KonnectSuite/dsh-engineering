@@ -10,6 +10,7 @@ import { findingsOf } from './checks.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
+import { acceptAsset, prepareTagExport } from './studio-assets.ts'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -341,6 +342,51 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
           ],
           COVERAGE,
         )
+      },
+    }),
+    tool({
+      name: 'ftview_studio_export_prepare',
+      description: 'Plan a fresh tag-database export for one application: resolve its .med, confirm Rockwell’s Tag Import and Export Wizard is installed, and return the exact wizard steps and destination file. Does not click anything.',
+      parameters: object({
+        application: string('Application name as ftview_apps lists it.'),
+      }, ['application']),
+      async run(args) {
+        const application = requiredString(args, 'application')
+        try {
+          const plan = prepareTagExport(application)
+          return success(
+            `Prepared tag export for ${application}: run the wizard, then accept ${plan.destination}.`,
+            plan,
+            [],
+            COVERAGE,
+          )
+        } catch (error) {
+          throw new EngineeringError('EXPORT_PREPARE_FAILED', error instanceof Error ? error.message : String(error), 'Check the application name with ftview_apps and that the host has FactoryTalk View installed.')
+        }
+      },
+    }),
+    tool({
+      name: 'ftview_studio_export_accept',
+      description: 'Validate a tag CSV or alarm XML produced by Rockwell’s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.',
+      parameters: object({
+        kind: choice('Asset kind to accept: tags (CSV) or alarms (XML).', ['tags', 'alarms']),
+        source: string('File the wizard wrote.'),
+        destination: string('Optional export folder, or an exact .csv/.xml target.'),
+      }, ['kind', 'source']),
+      async run(args) {
+        const kind = requiredString(args, 'kind') as 'tags' | 'alarms'
+        const source = requiredString(args, 'source')
+        try {
+          const accepted = acceptAsset(kind, source, optionalString(args, 'destination'))
+          return success(
+            `Accepted ${kind}: ${accepted.entries} entr(ies), ${accepted.bytes} byte(s) from ${accepted.modified}${accepted.copiedTo === undefined ? '' : `, copied to ${accepted.copiedTo}`}.`,
+            accepted,
+            [],
+            COVERAGE,
+          )
+        } catch (error) {
+          throw new EngineeringError('EXPORT_ACCEPT_FAILED', error instanceof Error ? error.message : String(error), 'Point source at the file the wizard wrote; tags need the ";Tag Type, Tag Name" header, alarms need an <alarms> root.')
+        }
       },
     }),
   ]

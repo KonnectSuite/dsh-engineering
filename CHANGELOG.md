@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.14.0] - 2026-10-28
+
+### Added
+
+- **`ftview_studio_export_prepare`** resolves an application's `.med`, verifies Rockwell's Tag Import and Export Wizard is installed, and returns the exact steps and destination file. It does not click anything.
+- **`ftview_studio_export_accept`** validates what the wizard produced — tag CSV header and row count, or an `<alarms>` XML — and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
+- The FTView skill documents the prepare → wizard (computer use) → accept workflow for fresh tags and alarms.
+
+### Notes
+
+- Rockwell's wizards are desktop dialogs. UIA, Win32 messages, browse-dialog automation and coordinate input were tried against them and are not reliable enough to ship; the harness's computer use is the actuator, and the two tools above make its result verifiable. Application Manager backup was also attempted and fails on this host ("Class not registered").
 ## [0.13.1] - 2026-10-28
 
 ### Fixed

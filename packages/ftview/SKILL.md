@@ -119,6 +119,15 @@ memory; the preview's **Live** button reads those tags over EtherNet/IP, read-on
 The preview is static: alarm banners/lists are placeholders, visibility animations evaluate but
 colour/fill do not, and gradients/patterns/blink are approximated. State that when citing a capture.
 
+## Fresh tags and alarms
+
+The normal export carries displays and global objects; the tag database and alarm setup are separate wizards:
+
+1. `ftview_studio_export_prepare { application }` resolves the `.med`, confirms Rockwell's Tag Import and Export Wizard, and returns the exact steps and destination file.
+2. Run that wizard with computer use (Export tag database to CSV -> project -> destination -> Finish).
+3. `ftview_studio_export_accept { kind: "tags", source, destination }` validates the CSV (header, row count) and copies it into the export. Use `kind: "alarms"` for an `<alarms>` XML from the Alarm Import Export Wizard.
+
+Accept refuses empty or wrong-shaped files, so a failed wizard never becomes a silent stale asset.
 ## Import and verify
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
