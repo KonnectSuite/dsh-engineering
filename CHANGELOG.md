@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.18.2] - 2026-10-28
+
+### Fixed
+
+- **Import packages now force display creation.** The generated `gfxImport` entries were bare `importFile` references, so Studio imported in update mode and refused with `The display 'Arya Overview' does not exist.` Each entry now carries `importType="create"` and the explicit `display` name, which is what the batch file documents. The package under `Laminator/HMI/Arya Import` was rewritten for the retry.
 ## [0.18.1] - 2026-10-28
 
 ### Fixed

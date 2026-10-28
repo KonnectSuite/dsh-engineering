@@ -206,7 +206,7 @@ export function prepareDisplayImport(exportRoot: string, displays: readonly stri
   }
   const manifest = join(outputRoot, 'BatchImport.xml')
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<gfxImport>']
-  for (const display of displays) lines.push(`    <import importFile="${display}.xml"/>`)
+  for (const display of displays) lines.push(`    <import importFile="${escapeXmlAttribute(display)}.xml" importType="create" display="${escapeXmlAttribute(display)}"/>`)
   lines.push('</gfxImport>', '')
   writeFileSync(manifest, lines.join('\n'))
   return {
@@ -221,4 +221,13 @@ export function prepareDisplayImport(exportRoot: string, displays: readonly stri
       `Select ${manifest} -> Finish, then open the display in Studio.`,
     ],
   }
+}
+/**
+ * Escape a value for an XML attribute.
+ *
+ * @param value - Text to escape.
+ * @returns The escaped text.
+ */
+function escapeXmlAttribute(value: string): string {
+  return value.replace(/&/gu, '&amp;').replace(/"/gu, '&quot;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
 }
