@@ -161,3 +161,14 @@ describe('stateful controls', () => {
     expect(xml).toContain('expressionTrueState="visible"')
   })
 })
+describe('indicator binding', () => {
+  it('binds a multistateIndicator through the Indicator connection', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'multistateIndicator', name: 'Lamp', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      states: [{ stateId: '0', value: 0, backColor: '#F5E11B' }, { stateId: '1', value: 1, backColor: '#45D483' }],
+      connections: { Value: 'AutoManual' },
+    })
+    expect(xml).toContain('name="Indicator"')
+    expect(xml).not.toContain('name="Value"')
+  })
+})

@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.18.3] - 2026-10-28
+
+### Fixed
+
+- **`multistateIndicator` binds through `Indicator`, not `Value`.** Studio's importer rejected `name="Value"` on the element with `The connection with the name 'Value' is not valid on a 'multistateIndicator' element.` The object writer now maps a caller's `Value` connection to `Indicator` for indicators, so the mode lamp imports. The same fix was applied to the pending `Arya Control.xml` package.
+- Restored the non-stateful branch of `addObject` after the connection mapping edit, so visibility animations on panels keep being written (regression caught by the animation test).
 ## [0.18.2] - 2026-10-28
 
 ### Fixed

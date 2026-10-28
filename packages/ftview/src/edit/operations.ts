@@ -348,14 +348,14 @@ export function addObject(xml: string, op: ObjectAddOperation): string {
     if (captionChild) {
       if (op.caption !== undefined) children.push(captionXml(op.caption, op.attributes, depth))
       if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
-      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
     } else if (stateful) {
       const states = op.states ?? defaultStates(op.caption, op.attributes)
       if (states !== undefined && states.length > 0) children.push(statesXml(states, depth, op.type))
       if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
-      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
     } else {
-      if (op.connections !== undefined) children.push(connectionsXml(op.connections, depth))
+      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
       if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
     }
     const inner = children.join('')
@@ -535,4 +535,20 @@ function captionXml(caption: string, attributes: Readonly<Record<string, string>
   const pad = '    '.repeat(depth)
   const color = attributes.foreColor ?? 'white'
   return `${pad}<caption fontFamily="Arial Unicode MS" fontSize="16" bold="false" italic="false" underline="false" strikethrough="false" caption="${escapeAttribute(caption)}" color="${escapeAttribute(color)}" backColor="${escapeAttribute(attributes.backColor ?? '#0E1620')}" backStyle="transparent" alignment="middleCenter" wordWrap="true" blink="false"/>\n`
+}
+/**
+ * Rename connections to the name a control's schema expects.
+ *
+ * A `multistateIndicator` binds through `Indicator`, not `Value`; importing the
+ * wrong name fails in Studio with "connection with the name 'Value' is not valid".
+ *
+ * @param type - Control element type.
+ * @param connections - Connections as the caller wrote them.
+ * @returns Connections keyed by the names this control accepts.
+ */
+function connectionNamesFor(type: string, connections: Readonly<Record<string, string>>): Readonly<Record<string, string>> {
+  if (type !== 'multistateIndicator' || connections.Value === undefined) return connections
+  const mapped: Record<string, string> = {}
+  for (const [name, expression] of Object.entries(connections)) mapped[name === 'Value' ? 'Indicator' : name] = expression
+  return mapped
 }
