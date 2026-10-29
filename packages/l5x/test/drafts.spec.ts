@@ -102,3 +102,38 @@ describe('draft handles', () => {
     expect(none.error?.code).toBe('NO_DRAFT')
   })
 })
+
+describe('draft editing', () => {
+  it('lists staged operations with the index each occupies', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'REAL', description: 'Start threshold', value: 80 })
+    await l5x.call('draft_rung', { program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(Start)OTE(Run);' })
+    const list = await l5x.call('draft_list', {})
+    expect(list.error).toBeUndefined()
+    expect(list.data?.operation_count).toBe(2)
+    const operations = list.data?.operations as readonly { index: number; operation: string; rung?: number }[]
+    expect(operations.map(operation => operation.index)).toEqual([0, 1])
+    expect(operations[0]?.operation).toBe('add_tag')
+    expect(operations[1]?.operation).toBe('replace_rung')
+  })
+
+  it('removes exactly one operation and keeps the rest', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'REAL', description: 'first' })
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Stop', data_type: 'REAL', description: 'second' })
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Hold', data_type: 'REAL', description: 'third' })
+    const removed = await l5x.call('draft_remove_op', { index: 1 })
+    expect(removed.error).toBeUndefined()
+    expect(removed.data?.operation_count).toBe(2)
+    const names = (removed.data?.operations as readonly { name?: string }[]).map(operation => operation.name)
+    expect(names).toEqual(['SP_Start', 'SP_Hold'])
+  })
+
+  it('refuses an index past the end and points at draft_list', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'REAL', description: 'only' })
+    const outOfRange = await l5x.call('draft_remove_op', { index: 4 })
+    expect(outOfRange.error?.code).toBe('UNKNOWN_OPERATION')
+    expect(outOfRange.error?.fix).toContain('draft_list')
+  })
+})

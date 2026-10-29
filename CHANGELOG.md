@@ -1,3 +1,12 @@
+## [0.31.0] - 2026-10-29
+
+### Added
+
+- **`draft_list` and `draft_remove_op`.** A staged operation can now be inspected by index and dropped on its own. Before this, one wrong rung meant discarding every staged edit or hand-editing the L5X outside the plugin — the field session chose the hand edit, with 29 one-off PowerShell scripts as the price.
+
+### Changed
+
+- `draft_remove_op` takes a positional index that `draft_list` reports, not a rung number, so a removal cannot land on real logic by guesswork. An out-of-range index is refused with the current operation count and a pointer back to `draft_list`.
 ## [0.30.0] - 2026-10-29
 
 ### Added

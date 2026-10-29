@@ -66,6 +66,33 @@ function appended(draft: Draft, operation: DraftOperation): unknown {
   )
 }
 
+/** The fields worth showing for one staged operation. */
+function describeOperation(index: number, operation: DraftOperation): Record<string, unknown> {
+  const pick = ['operation', 'program', 'routine', 'rung', 'name', 'scope', 'tag', 'udt', 'member', 'mode', 'comment'] as const
+  const described: Record<string, unknown> = { index }
+  for (const key of pick) {
+    const value = operation[key]
+    if (value !== undefined) described[key] = value
+  }
+  return described
+}
+
+/** Name and scope of every tag the draft adds, so a composed rung may reference it. */
+function stagedTags(draft: Draft): { name: string; scope: string; dataType: string }[] {
+  const tags: { name: string; scope: string; dataType: string }[] = []
+  for (const operation of draft.operations) {
+    if (operation.operation !== 'add_tag') continue
+    const name = typeof operation.name === 'string' ? operation.name : undefined
+    if (name === undefined) continue
+    tags.push({
+      name,
+      scope: typeof operation.scope === 'string' ? operation.scope : 'controller',
+      dataType: typeof operation.data_type === 'string' ? operation.data_type : 'DINT',
+    })
+  }
+  return tags
+}
+
 /**
  * The draft tools, bound to one chat's project and draft stores.
  *
@@ -350,6 +377,51 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           removed ? `Discarded ${draft.operations.length} staged operation(s) from ${draft.id}.` : `No draft ${draft.id} was staged in this chat.`,
           { draft_id: draft.id, operations_dropped: removed ? draft.operations.length : 0, discarded: removed },
           [{ tool: 'draft_tag', args: {}, why: 'Stage the replacement edits, or stop here.' }],
+          DRAFT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'draft_list',
+      description: 'List the staged operations of the draft with the index each one occupies, so a wrong edit can be removed without discarding the rest. Writes nothing.',
+      parameters: object({
+        draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
+        project_id: PROJECT_ID,
+      }, []),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        return success(
+          `Draft ${draft.id}: ${draft.operations.length} staged operation(s).`,
+          {
+            draft_id: draft.id,
+            project_id: draft.projectId,
+            operation_count: draft.operations.length,
+            operations: draft.operations.map((operation, index) => describeOperation(index, operation)),
+          },
+          [
+            { tool: 'draft_remove_op', args: { draft_id: draft.id, index: 0 }, why: 'Remove one staged operation by its index.' },
+            { tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
+          ],
+          DRAFT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'draft_remove_op',
+      description: 'Remove exactly one staged operation from the draft, keeping the others. Call draft_list first: the index is positional, not a rung number.',
+      parameters: object({
+        index: integer('Zero-based index as draft_list reports it.', { minimum: 0 }),
+        draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
+        project_id: PROJECT_ID,
+      }, ['index']),
+      async run(args, exec) {
+        const index = optionalInteger(args, 'index')
+        if (index === undefined) throw invalid('index', 'remove_op needs the index of the operation to drop.', 'Call draft_list and pass one of its indices.')
+        const draft = drafts.removeAt(exec, drafts.get(exec, optionalString(args, 'draft_id')).id, index)
+        return success(
+          `Removed operation ${index}; draft ${draft.id} now holds ${draft.operations.length}.`,
+          { draft_id: draft.id, operation_count: draft.operations.length, operations: draft.operations.map((operation, position) => describeOperation(position, operation)) },
+          [{ tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the rest of the draft before writing anything.' }],
           DRAFT_COVERAGE,
         )
       },

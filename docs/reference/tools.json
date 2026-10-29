@@ -24,6 +24,8 @@
     "draft_udt_member",
     "draft_udt_description",
     "draft_discard",
+    "draft_list",
+    "draft_remove_op",
     "draft_validate",
     "draft_apply",
     "studio_sdk_status",
@@ -168,6 +170,8 @@
         "draft_udt_member",
         "draft_udt_description",
         "draft_discard",
+        "draft_list",
+        "draft_remove_op",
         "draft_validate",
         "draft_apply"
       ]
