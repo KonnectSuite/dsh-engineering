@@ -50,6 +50,27 @@ describe('TAG_NOT_BOUND', () => {
     expect(String(unbound[0]?.message)).toContain('"BeltSped"')
   })
 
+  it('reads a brace-wrapped expression and skips an alias binding', async () => {
+    const l5x = harness(new Map([
+      ['export/Displays/Main.xml', [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+        '    <displaySettings width="640" height="480" backColor="#C6C6C6"/>',
+        '    <object type="numericDisplay" name="Good"><connections><connection name="Value" expression="{BeltSpeed}"/></connections></object>',
+        '    <object type="numericDisplay" name="Bad"><connections><connection name="Value" expression="{BeltSped}"/></connections></object>',
+        '    <object type="numericDisplay" name="Alias"><connections><connection name="Value" expression="{[PLC]BeltSpeed}"/></connections></object>',
+        '</gfx>',
+        '',
+      ].join('\n')],
+      ['export/tags.csv', CSV],
+    ]))
+    await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', {})
+    const rows = (checked.data?.findings ?? []).filter(finding => finding.rule === 'TAG_NOT_BOUND')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.evidence).toMatchObject({ object: 'Bad', expression: '{BeltSped}' })
+  })
+
   it('stays quiet on an export with no tag CSV', async () => {
     const l5x = harness(new Map([['export/Displays/Main.xml', DISPLAY]]))
     const open = await l5x.call('ftview_open', { root: 'export' })

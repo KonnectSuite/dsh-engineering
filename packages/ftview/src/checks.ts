@@ -53,8 +53,10 @@ export function findingsOf(app: Checkable): Finding[] {
       for (const object of display.objects) {
         if (object.name === undefined || object.name === "") continue
         for (const [name, expression] of Object.entries(object.connections ?? {})) {
-          const root = expression.split(/[.[]/u)[0]?.trim() ?? ''
-          if (root === '' || /^[0-9]+$/u.test(root) || root.includes(':') || root.includes('/')) continue
+          const cleaned = expression.replace(/^[{]/u, '').replace(/[}]$/u, '').trim()
+          if (cleaned.includes(']') || cleaned.includes(':')) continue
+          const root = cleaned.split(/[.[]/u)[0]?.trim() ?? ''
+          if (root === '' || /^[0-9]+$/u.test(root) || root.includes('/')) continue
           if (tagNames.has(root)) continue
           findings.push({
             rule: 'TAG_NOT_BOUND',

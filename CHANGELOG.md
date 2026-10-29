@@ -1,3 +1,10 @@
+## [0.59.0] - 2026-10-29
+
+### Fixed
+
+- **`TAG_NOT_BOUND` reads the expression the way Machine Edition writes it.** Braces are stripped and
+  alias bindings (`{[PLC]Tag}`) are left alone, so a real export reports no false positives instead of
+  one finding per `{` character.
 ## [0.58.0] - 2026-10-29
 
 ### Added
