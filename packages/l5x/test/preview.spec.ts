@@ -2,6 +2,7 @@
  * The ladder preview: one viewer document per proposed answer, and refusals.
  */
 import { describe, expect, it } from 'vitest'
+import { renderLadderSvg } from '../src/engine/render-ladder.ts'
 import { fixtureBytes, harness } from './harness.ts'
 
 /** A harness with the read entry mounted, which owns the preview tool. */
@@ -90,5 +91,33 @@ describe('rungs from a file', () => {
     const l5x = harness()
     const result = await l5x.call('l5x_rung_preview', {})
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})
+describe('renderLadderSvg', () => {
+  it('draws one box per instruction, labels the operands and numbers the rungs', () => {
+    const raster = renderLadderSvg([
+      { number: 0, text: 'XIC(Start)XIO(Stop)OTE(Run);' },
+      { number: 1, text: 'XIC(Fault)OTL(Latched);' },
+    ], 'Pump start')
+    expect(raster.svg).toContain('XIC(Start)')
+    expect(raster.svg).toContain('XIO(Stop)')
+    expect(raster.svg).toContain('OTL(Latched)')
+    expect(raster.svg).toContain('viewBox="0 0 ')
+    expect(raster.rungs).toBe(2)
+    expect(raster.width).toBeGreaterThan(300)
+    expect(raster.height).toBeGreaterThan(80)
+  })
+
+  it('stacks a branch and reports that it flattened it', () => {
+    const raster = renderLadderSvg([{ number: 0, text: 'XIC(A)[XIC(B),XIC(C)]OTE(Run);' }])
+    expect(raster.svg).toContain('XIC(B)')
+    expect(raster.svg).toContain('XIC(C)')
+    expect(raster.flattened).toEqual(['branch with 2 path(s)'])
+  })
+
+  it('escapes operands so a stray angle bracket cannot break the SVG', () => {
+    const raster = renderLadderSvg([{ number: 0, text: 'XIC(A<B)OTE(Run);' }])
+    expect(raster.svg).toContain('&lt;')
+    expect(raster.svg).not.toContain('A<B')
   })
 })

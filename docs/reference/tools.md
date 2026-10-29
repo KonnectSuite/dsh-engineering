@@ -200,6 +200,7 @@ Render proposed ladder rungs as a diagram: writes one minimal L5X preview docume
 | `comments` | string | no | Optional rung comments, one per line, blank for a rung without a comment. |
 | `title` | string | no | Optional document and controller name, for example "PumpStart". |
 | `output` | string | no | Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X". |
+| `diagram` | string (yes \| no) | no | Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to yes. |
 
 ### L5X drafts
 

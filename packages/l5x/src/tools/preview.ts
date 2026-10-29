@@ -13,9 +13,11 @@
 
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
-import { object, string } from '../core/params.ts'
+import { choice, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
+import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
+import { dirname, isAbsolute } from 'node:path'
 import type { ProjectSession } from '../session.ts'
 import { optionalString, tool } from './common.ts'
 
@@ -25,6 +27,7 @@ const PREVIEW_COVERAGE: Coverage = {
   unverified: [
     'controller-compile acceptance of an unfamiliar instruction mnemonic',
     'the instruction catalog: previews are not validated against a project',
+    'exact Studio rendering: the diagram is a schematic drawn from the parsed rungs',
     'runtime behavior',
   ],
 }
@@ -125,6 +128,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         comments: string('Optional rung comments, one per line, blank for a rung without a comment.'),
         title: string('Optional document and controller name, for example "PumpStart".'),
         output: string('Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X".'),
+        diagram: choice('Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to yes.', ['yes', 'no']),
       }, []),
       async run(args, exec) {
         const inline = optionalString(args, 'rungs')
@@ -158,16 +162,46 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         const slug = title.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Preview'
         const path = optionalString(args, 'output') ?? `.l5x-preview/${slug}.L5X`
         const written = await session.writeTextAt(path, documentOf(slug, rungs), exec)
+        let image: { svg: string; png?: string } = { svg: '' }
+        let rasterError: string | undefined
+        let skipped = false
+        if (optionalString(args, 'diagram') !== 'no') {
+          const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text })), slug)
+          try {
+            const absolute = await session.resolvePath(path, exec)
+            if (!isAbsolute(absolute)) {
+              rasterError = `the workspace path ${absolute} is not absolute, so no image was written`
+            } else {
+              image = await writeLadderRaster(dirname(absolute), slug, raster)
+            }
+          } catch (error) {
+            rasterError = error instanceof Error ? error.message : String(error)
+          }
+        } else {
+          skipped = true
+        }
+        const png = rasterError === undefined ? image.png : undefined
+        const drawing = skipped
+          ? 'No diagram was requested.'
+          : png === undefined
+            ? rasterError === undefined
+              ? `No PNG diagram: no Chrome or Edge was found on this host, so only ${image.svg} was written.`
+              : `No PNG diagram: ${rasterError}.`
+            : `Drew the rungs as ${png}.`
         return success(
-          `Rendered ${rungs.length} rung(s) to ${written}; open it in the sidebar preview to see ladder logic.`,
+          `Rendered ${rungs.length} rung(s) to ${written}. ${drawing}`,
           {
             path: written,
             rungs: rungs.length,
             instructions: [...new Set(rungs.flatMap(rung => rung.instructions))],
             rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
-            note: 'Open this file in the sidebar preview to see the rungs as ladder; it is a preview document, not an importable project.',
+            ...(image.svg === '' ? {} : { diagram_svg: image.svg }),
+            ...(png === undefined ? {} : { diagram_png: png }),
+            note: 'The diagram is a schematic drawn from the parsed rungs; the L5X preview document is what the sidebar viewer draws. Neither is an importable project.',
           },
-          [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }],
+          png === undefined
+            ? [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }]
+            : [{ tool: 'present', why: 'Attach the PNG so the answer shows the ladder diagram itself.', args: { files: [{ path: png, description: 'Ladder diagram of the proposed rungs' }] } }],
           PREVIEW_COVERAGE,
         )
       },
