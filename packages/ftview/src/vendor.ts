@@ -15,6 +15,7 @@ import { spawn } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { alarmXmlBytes, readAlarmDatabase, renderAlarmXml } from './alarmdb.ts'
+import { exportTagSnapshot } from './tagdb.ts'
 
 /** CLSID of the ME export server (`MEExport.exe`). */
 export const EXPORT_CLSID = '9d882577-aa92-466b-a749-6d6b5093b623'
@@ -256,16 +257,39 @@ export function copyProjectExtras(application: string, destination: string, docu
   // case-insensitively because older applications used `.csv`.
   const entries = readdirSync(source, { withFileTypes: true })
   const tags = entries.find(entry => entry.isFile() && /-tags\.csv$/iu.test(entry.name))
+  const tagsTarget = join(destination, 'Tags')
+  restamp: {
+    if (!existsSync(join(source, 'TAG', `${application}.MDF`))) break restamp
+    // The tag database reads without Studio too, so a missing or older snapshot
+    // is replaced by a fresh decode instead of being copied and flagged.
+    const snapshotWarning = tags === undefined
+      ? 'missing'
+      : freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
+    if (snapshotWarning === undefined) break restamp
+    try {
+      mkdirSync(tagsTarget, { recursive: true })
+      exportTagSnapshot(application, join(tagsTarget, `${application}.csv`), source)
+      const index = copied.indexOf(`Tags/${application}.csv`)
+      if (index === -1) copied.push(`Tags/${application}.csv`)
+      status.tags = 'fresh'
+      break restamp
+    } catch {
+      // No local SQL tools or an unreadable database: fall through to the
+      // snapshot copy below, which keeps the old warning behaviour.
+    }
+  }
   if (tags !== undefined) {
     const target = join(destination, 'Tags')
     mkdirSync(target, { recursive: true })
-    copyFileSync(join(source, tags.name), join(target, `${application}.csv`))
-    copied.push(`Tags/${application}.csv`)
-    const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
-    status.tags = warning === undefined ? 'fresh' : 'stale'
-    if (warning !== undefined) warnings.push(warning)
-  } else {
-    warnings.push('No tag CSV in the application store. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.')
+    if (status.tags !== 'fresh') {
+      copyFileSync(join(source, tags.name), join(target, `${application}.csv`))
+      copied.push(`Tags/${application}.csv`)
+      const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
+      status.tags = warning === undefined ? 'fresh' : 'stale'
+      if (warning !== undefined) warnings.push(warning)
+    }
+  } else if (status.tags !== 'fresh') {
+    warnings.push('No tag CSV in the application store and no readable tag database. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.')
   }
   // Display objects can reference bitmaps by name, and the export engine does not
   // copy them: without this folder every image object draws as an empty box.
