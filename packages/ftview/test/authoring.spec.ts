@@ -62,7 +62,8 @@ describe('authoring', { timeout: 30_000 }, () => {
     expect(written).toContain('<gfx')
     expect(written).toContain('width="1024"')
     expect(applied.data?.manifest).toBe('Displays/BatchImport_export.xml')
-    expect(l5x.written.get('out/IMPORT.md') ?? '').toContain('Changed displays')
+    expect(l5x.written.get('out/IMPORT.md') ?? '').toContain('Multiple displays batch import file')
+    expect(l5x.written.get('out/Displays/BatchImport_export.xml') ?? '').toContain('importType=')
   })
 
   it('adds an object at the display root', async () => {

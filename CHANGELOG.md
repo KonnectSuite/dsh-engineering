@@ -1,3 +1,14 @@
+## [0.44.0] - 2026-10-29
+
+### Fixed
+
+- The import manifest `ftview_apply` writes was not usable by the Graphics Import Export Wizard: entries had
+  no `importType` and no `display`, so every run failed with "The display ... does not exist" or silently
+  ignored the files. Each entry now carries `importType="create"` for a display the draft introduced and
+  `importType="update"` for one that already existed, plus its `display` name.
+- `IMPORT.md` now lists the wizard's exact four steps and counts creates against updates, so a run cannot
+  fail because the manifest disagreed with the application.
+
 ## [0.43.0] - 2026-10-29
 
 ### Added

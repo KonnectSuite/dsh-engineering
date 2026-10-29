@@ -841,24 +841,37 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           .filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file))
         let manifest: string | undefined
         if (changedDisplays.length > 0) {
-          const entries = changedDisplays
-            .map(file => `    <import importFile="${file.replace(/^Displays\//u, '').replaceAll('&', '&amp;').replaceAll('"', '&quot;')}"/>`)
-            .join('\n')
+          // The wizard needs importType and display on every entry, and resolves
+          // importFile beside the batch file, so entries carry bare file names.
+          const existing = new Set(view.app.displays.map(display => display.name))
+          const rows = changedDisplays.map(file => {
+            const name = file.replace(/^Displays\//u, '').replace(/\.xml$/iu, '')
+            const kind = existing.has(name) ? 'update' : 'create'
+            const escaped = name.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
+            return { name, kind, line: `    <import importFile="${escaped}.xml" importType="${kind}" display="${escaped}"/>` }
+          })
           manifest = `Displays/BatchImport_${view.app.name}.xml`
-          await fs.writeText(`${outputRoot}/${manifest}`, `<?xml version="1.0" encoding="UTF-8"?>\n<gfxImport>\n${entries}\n</gfxImport>\n`, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeText(`${outputRoot}/${manifest}`, `<?xml version="1.0" encoding="UTF-8"?>\n<gfxImport>\n${rows.map(row => row.line).join('\n')}\n</gfxImport>\n`, { kind: 'createIfAbsent' }, exec.signal)
           written += 1
+          const creates = rows.filter(row => row.kind === 'create').map(row => row.name)
+          const updates = rows.filter(row => row.kind === 'update').map(row => row.name)
           const steps = [
             `# Import ${view.app.name}`,
             '',
-            `Open FactoryTalk View Studio → Application Manager, open **${view.app.name}**, and import the displays listed in \`Displays/BatchImport_${view.app.name}.xml\` (${changedDisplays.length} file(s)).`,
+            `In FactoryTalk View Studio open **${view.app.name}**, then right-click **Displays > Import and Export**.`,
+            '',
+            '1. Select "Import graphic information into displays" -> Next.',
+            '2. Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
+            '3. Choose "Multiple displays batch import file" -> Next.',
+            `4. Select \`${manifest}\` -> Finish.`,
+            '',
+            `The manifest holds ${rows.length} display(s): ${creates.length} to create${creates.length === 0 ? '' : ` (${creates.join(', ')})`}, ${updates.length} to update${updates.length === 0 ? '' : ` (${updates.join(', ')})`}.`,
+            'A "create" entry fails when the display already exists, and an "update" entry fails when it does not.',
             '',
             'Then:',
             '1. Verify each display opens without warnings.',
             '2. Create the runtime application (`.mer`).',
-            '3. Run `ftview_verify_import` with the draft id to prove the import matches this draft.',
-            '',
-            'Changed displays:',
-            ...changedDisplays.map(file => `- ${file}`),
+            '3. Run `ftview_verify_import` to prove the import matches this draft.',
             '',
           ].join('\n')
           await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal)

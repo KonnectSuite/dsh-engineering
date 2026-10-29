@@ -61,6 +61,20 @@ describe('stage, validate, apply', () => {
     expect(files.get('export/Main.xml')).not.toContain('visible="0"')
   })
 
+  it('marks an edited existing display as an update in the import manifest', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_display_set', {
+      view_id: view, display: 'Main', object: 'StartPB', attribute: 'visible', value: '0',
+    })
+    const draftId = staged.data?.draft_id as string
+    const applied = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    const manifest = l5x.written.get('out/Displays/BatchImport_export.xml') ?? ''
+    expect(manifest).toContain('importFile="Main.xml" importType="update" display="Main"')
+    expect(manifest).not.toContain('importType="create"')
+    expect(l5x.written.get('out/IMPORT.md') ?? '').toContain('1 to update (Main)')
+  })
+
   it('updates one tag row in the copied CSV', async () => {
     const { l5x, view } = await opened()
     const staged = await l5x.call('ftview_draft_tag_upsert', { view_id: view, name: 'StopPB', description: 'Stop button' })
