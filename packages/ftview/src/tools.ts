@@ -13,13 +13,13 @@ import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import { themeAudit } from './theme-audit.ts'
 import { SCAFFOLD_THEME } from './edit/scaffold.ts'
-import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { acceptAsset, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { capabilities } from './capabilities.ts'
 import { crossReference, readL5x } from './cross.ts'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -581,6 +581,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         displays: string('Display names to import, separated by commas, without .xml.'),
         output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
         mode: choice('Import mode: create new displays, or update existing ones.', ['create', 'update']),
+        current_export: string('Optional export of the application as it stands now; each display it already holds is written as an update instead of a create, so one batch cannot fail on a display that exists.'),
       }, ['export_root', 'displays']),
       async run(args) {
         const exportRoot = requiredString(args, 'export_root')
@@ -588,14 +589,17 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         const outputRoot = optionalString(args, 'output_root') ?? join(tmpdir(), `ftview-import-${Date.now().toString(36)}`)
         try {
           const mode = optionalString(args, 'mode') === 'update' ? 'update' : 'create'
-          const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode)
+          const currentRoot = optionalString(args, 'current_export')
+          const existing = currentRoot === undefined || currentRoot === '' ? undefined : displayNamesIn(resolve(currentRoot))
+          const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode, existing)
+          const unknown = existing === undefined ? [] : names.filter(name => !existing.includes(name))
           const unrendered = names.filter(name => !session.wasRendered(name))
           const note = unrendered.length === 0
             ? 'Every packaged display was drawn in this chat.'
             : `${unrendered.length} of ${names.length} packaged display(s) were never drawn here (${unrendered.join(', ')}); draw them before importing.`
           return success(
-            `Packaged ${plan.displays.length} display(s) for import: batch file ${plan.manifest}. ${note}`,
-            { ...plan, unrendered },
+            `Packaged ${plan.displays.length} display(s) for import: ${plan.created} create, ${plan.updated} update; batch file ${plan.manifest}. ${note}`,
+            { ...plan, unrendered, newDisplays: unknown },
             unrendered.length === 0
               ? []
               : [{ tool: 'ftview_render', args: { displays_json: JSON.stringify(unrendered) }, why: 'Look at these screens before asking for an import; the render reports objects outside the canvas or overflowing their box.' }],

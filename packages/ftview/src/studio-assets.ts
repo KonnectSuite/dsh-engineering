@@ -14,7 +14,7 @@
  * @module dsh-engineering-ftview/studio-assets
  */
 
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { parseDisplay } from './model.ts'
 import { projectFolder } from './vendor.ts'
@@ -36,6 +36,7 @@ export interface AssetPlan {
   readonly wizard?: string
   /** Steps for the computer-use agent. */
   readonly steps: readonly string[]
+
 }
 
 /** What accepting an export found. */
@@ -183,6 +184,12 @@ export interface DisplayImportPlan {
   readonly displays: readonly string[]
   /** Steps for the computer-use agent. */
   readonly steps: readonly string[]
+  /** Per-display import action written into the manifest. */
+  readonly decisions: readonly { readonly display: string; readonly action: 'create' | 'update' }[]
+  /** Displays the application does not have yet. */
+  readonly created: number
+  /** Displays the application already has. */
+  readonly updated: number
 }
 
 /**
@@ -199,7 +206,13 @@ export interface DisplayImportPlan {
  * @param outputRoot - New folder for the package.
  * @returns The package paths and the wizard steps.
  */
-export function prepareDisplayImport(exportRoot: string, displays: readonly string[], outputRoot: string, mode: 'create' | 'update' = 'create'): DisplayImportPlan {
+export function prepareDisplayImport(
+  exportRoot: string,
+  displays: readonly string[],
+  outputRoot: string,
+  mode: 'create' | 'update' = 'create',
+  existing?: readonly string[],
+): DisplayImportPlan {
   if (displays.length === 0) throw new Error('name at least one display to import')
   if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
   // Studio resolves importFile beside the batch file, so the XML files live at the package root.
@@ -218,22 +231,47 @@ export function prepareDisplayImport(exportRoot: string, displays: readonly stri
   }
   const manifest = join(outputRoot, 'BatchImport.xml')
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<gfxImport>']
-  for (const display of displays) lines.push(`    <import importFile="${escapeXmlAttribute(display)}.xml" importType="${mode}" display="${escapeXmlAttribute(display)}"/>`)
+  const present = new Set(existing ?? [])
+  const decisions: { display: string; action: 'create' | 'update' }[] = displays.map(display => ({
+    display,
+    action: (existing === undefined ? mode === 'update' : present.has(display)) ? 'update' : 'create',
+  }))
+  for (const decision of decisions) lines.push(`    <import importFile="${escapeXmlAttribute(decision.display)}.xml" importType="${decision.action}" display="${escapeXmlAttribute(decision.display)}"/>`)
   lines.push('</gfxImport>', '')
   writeFileSync(manifest, lines.join('\n'))
   return {
     folder: outputRoot,
     manifest,
     displays,
+    decisions,
+    created: decisions.filter(decision => decision.action === 'create').length,
+    updated: decisions.filter(decision => decision.action === 'update').length,
     steps: [
       `In FactoryTalk View Studio open the application, then right-click Displays > Import and Export.`,
       'Import graphic information into displays -> Next.',
       'Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
       'Choose Multiple displays batch import file -> Next.',
-      `Select ${manifest} -> Finish (the manifest is written for "${mode}": ${mode === 'create' ? 'the displays must not exist yet' : 'the displays must already exist'}), then open the display in Studio.`,
+      `Select ${manifest} -> Finish (${decisions.filter(decision => decision.action === 'create').length} create, ${decisions.filter(decision => decision.action === 'update').length} update), then open the display in Studio.`,
     ],
   }
 }
+/**
+ * Display names an export folder holds.
+ *
+ * This is how the plugin learns whether a display already exists in the
+ * application: export the application as it stands, then pass the folder.
+ *
+ * @param exportRoot - Export folder containing `Displays/`.
+ * @returns Display names without the `.xml` suffix.
+ */
+export function displayNamesIn(exportRoot: string): string[] {
+  const folder = join(exportRoot, 'Displays')
+  if (!existsSync(folder)) return []
+  return readdirSync(folder)
+    .filter(file => /\.xml$/iu.test(file))
+    .map(file => file.replace(/\.xml$/iu, ''))
+}
+
 /**
  * Escape a value for an XML attribute.
  *

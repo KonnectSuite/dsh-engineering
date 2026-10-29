@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Fixed
+
+- **The import manifest types each display, not the whole batch.** `ftview_studio_import_prepare`
+  takes `current_export` (an export of the application as it stands) and writes `create` for a
+  display the application does not have yet and `update` for one it does, reporting the counts. The
+  wizard fails the entire batch when one entry's type is wrong, which is how a package of new and
+  changed screens failed in the field.
 ## [0.68.0] - 2026-10-29
 
 ### Added

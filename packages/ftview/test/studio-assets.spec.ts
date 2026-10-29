@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from '../src/studio-assets.ts'
+import { acceptAsset, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from '../src/studio-assets.ts'
 
 /** A fake Public Documents tree with one application and one wizard. */
 function fixture(): { root: string; wizard: string; app: string; med: string } {
@@ -105,7 +105,29 @@ describe('packaging a display import', () => {
     const manifest = readFileSync(plan.manifest, 'utf8')
     expect(manifest).toContain('importType="update"')
     expect(manifest).not.toContain('importType="create"')
-    expect(plan.steps.join(' ')).toContain('must already exist')
+    expect(plan.steps.join(' ')).toContain('0 create, 1 update')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('writes create for a new display and update for one the application already holds', () => {
+    const { root } = fixture()
+    const exportRoot = join(root, 'export')
+    const currentRoot = join(root, 'current')
+    mkdirSync(join(exportRoot, 'Displays'), { recursive: true })
+    mkdirSync(join(currentRoot, 'Displays'), { recursive: true })
+    for (const name of ['Arya Proof', 'Arya New']) {
+      writeFileSync(join(exportRoot, 'Displays', `${name}.xml`), '<?xml version="1.0"?>\n<gfx><displaySettings width="800" height="600"/></gfx>')
+    }
+    writeFileSync(join(currentRoot, 'Displays', 'Arya Proof.xml'), '<?xml version="1.0"?>\n<gfx><displaySettings width="800" height="600"/></gfx>')
+    const out = join(root, 'import-mixed')
+    const plan = prepareDisplayImport(exportRoot, ['Arya Proof', 'Arya New'], out, 'create', displayNamesIn(currentRoot))
+    const manifest = readFileSync(plan.manifest, 'utf8')
+    expect(manifest).toContain('importFile="Arya Proof.xml" importType="update"')
+    expect(manifest).toContain('importFile="Arya New.xml" importType="create"')
+    expect(plan.created).toBe(1)
+    expect(plan.updated).toBe(1)
+    expect(plan.decisions.map(decision => decision.action)).toEqual(['update', 'create'])
+    expect(plan.steps.join(' ')).toContain('1 create, 1 update')
     rmSync(root, { recursive: true, force: true })
   })
 

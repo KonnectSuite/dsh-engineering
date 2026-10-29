@@ -126,7 +126,7 @@ neither needs Studio; the decoder matches wizard XML byte-for-byte.
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
 
 1. Draw every display in the package with `ftview_render` and read the PNGs first; `ftview_studio_import_prepare` names any display this chat never drew.
-2. A human imports the displays listed in the manifest in FactoryTalk View Studio.
+2. A human imports the manifest in FactoryTalk View Studio; pass `current_export` so each display is typed create or update.
 3. `ftview_verify_import` exports again and compares object by object: `matched: true` for every display is the only proof the import landed.
 4. Creating the `.mer` and downloading it stay Studio and ME Transfer Utility steps.
 
