@@ -61,6 +61,16 @@ describe('renderDisplaySvg', () => {
     expect(result.svg).toContain('<circle cx="260" cy="140" r="20" fill="#00C853"/>')
   })
 
+  it('inlines a raster the display references', () => {
+    const images = new Map([['Carpenter', { mime: 'image/png', base64: 'AAAA' }]])
+    const result = renderDisplaySvg('Overview', [{ type: 'image', name: 'Logo', attributes: { left: '10', top: '10', width: '100', height: '40', imageName: 'Carpenter' } }], settings, images)
+    expect(result.svg).toContain('href="data:image/png;base64,AAAA"')
+  })
+
+  it('labels an image whose file was not found', () => {
+    const result = renderDisplaySvg('Overview', [{ type: 'image', name: 'Logo', attributes: { left: '10', top: '10', width: '100', height: '40', imageName: 'Missing' } }], settings)
+    expect(result.svg).toContain('>Logo</text>')
+  })
   it('labels widgets it cannot render instead of dropping them', () => {
     const result = renderDisplaySvg('Overview', [{ type: 'trend', name: 'Trend1', attributes: { left: '10', top: '10', width: '100', height: '50' } }], settings)
     expect(result.svg).toContain('>Trend1</text>')
@@ -103,6 +113,19 @@ describe('ftview_render', () => {
     await l5x.call('ftview_draft_object_add', { view_id: view, display: 'Overview', type: 'text', name: 'DraftNote', attributes_json: '{"left":"10","top":"10","width":"100","height":"20","caption":"X"}' })
     const result = await l5x.call('ftview_render', { view_id: view, display: 'Other', source: 'draft' })
     expect(result.error?.code).toBe('NOT_FOUND')
+  })
+  it('inlines artwork from the export Images folder', async () => {
+    const withImage = GFX.replace(
+      '    <screen name="Hidden"',
+      '    <screen name="Logo" type="image" left="0" top="0" width="40" height="40" imageName="Mark"/>',
+    )
+    const files = new Map([['export/Displays/Overview.xml', withImage], ['export/Images/Mark.png', 'png-bytes']])
+    const l5x = harness(files, { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const output = join(mkdtempSync(join(tmpdir(), 'ftview-image-')), 'renders')
+    const result = await l5x.call('ftview_render', { view_id: open.data?.view_id as string, display: 'Overview', output })
+    expect(result.error).toBeUndefined()
+    expect(readFileSync(result.data?.svg as string, 'utf8')).toContain('data:image/png;base64,')
   })
   it('refuses a display that is not in the export', async () => {
     const files = new Map([['export/Displays/Overview.xml', GFX]])

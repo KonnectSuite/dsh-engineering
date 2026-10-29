@@ -1,3 +1,9 @@
+## [0.27.0] - 2026-10-29
+
+### Added
+
+- **A render inlines the display's real artwork.** `ftview_render` reads the rasters a display references from the export's `Images` folder and embeds them in the SVG, so a screen shows its actual images instead of a labelled placeholder. An image the export mentions but does not ship is still drawn as a placeholder, and the result now says so, because many ME exports ship an empty `Images` folder.
+
 ## [0.26.0] - 2026-10-29
 
 ### Added

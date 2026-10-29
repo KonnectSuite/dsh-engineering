@@ -20,7 +20,7 @@ import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
 import { scaffoldLayout } from './scaffold.ts'
-import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RenderSettings } from '../render-svg.ts'
+import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
 /** The view handle parameter, described once. */
@@ -34,7 +34,8 @@ const RENDER_COVERAGE: Coverage = {
   complete: false,
   unverified: [
     'the geometry is drawn from the export, not from Studio',
-    'animations, images, global objects and vendor widgets are placeholders',
+    'animations, global objects and vendor widgets are placeholders',
+    'an image is inlined only when its file is present in the Images folder; many ME exports ship none',
     'no controller binding or runtime behaviour is shown',
   ],
 }
@@ -110,6 +111,36 @@ function jsonObject(value: unknown, name: string): Record<string, string> {
  * @param maxOperations - Inclusive operations per draft.
  * @returns Tool definitions in registration order.
  */
+/** Media type of one raster by file extension. */
+const RASTER_TYPES: Readonly<Record<string, string>> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp' }
+
+/**
+ * Load the rasters a display references, so the renderer inlines real artwork.
+ *
+ * Missing files are skipped: an image the export mentions but does not ship must not
+ * stop the render, because the result already reports what it could not draw.
+ */
+async function loadRasters(fs: FsService, root: string, objects: readonly { attributes: Readonly<Record<string, string>> }[], signal: AbortSignal | undefined): Promise<Map<string, RasterImage>> {
+  const names = new Set<string>()
+  for (const object of objects) {
+    const name = object.attributes.imageName ?? object.attributes.image
+    if (name !== undefined && name !== '') names.add(name)
+  }
+  const loaded = new Map<string, RasterImage>()
+  for (const name of names) {
+    for (const [extension, mime] of Object.entries(RASTER_TYPES)) {
+      try {
+        const bytes = await fs.readBytes(`${root}/Images/${name}.${extension}`, signal, 8 * 1024 * 1024)
+        loaded.set(name, { mime, base64: Buffer.from(bytes).toString('base64') })
+        break
+      } catch {
+        // Try the next extension, then give up and let the renderer label the object.
+      }
+    }
+  }
+  return loaded
+}
+
 export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown): readonly ToolDefinition[] {
   /** Resolve the view and append one operation. */
   const stage = (exec: ExecContext | undefined, viewId: string | undefined, operation: EditOperation) => {
@@ -652,7 +683,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
           settings = settingsFromXml(new TextDecoder().decode(bytes))
         }
-        const result = renderDisplaySvg(name, objects, settings)
+        const images = await loadRasters(fs, view.app.root, objects, exec?.signal)
+        const result = renderDisplaySvg(name, objects, settings, images)
         const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
         const written = await writeRender(outputRoot, name, result)
         const browser = findBrowser()

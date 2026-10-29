@@ -32,6 +32,12 @@ export interface RenderResult {
 /** Settings defaults the ME templates use when a file omits them. */
 const DEFAULT_SETTINGS: RenderSettings = { width: 640, height: 480, backColor: '#C6C6C6' }
 
+/** One raster the renderer can inline: the image bytes and their media type. */
+export interface RasterImage {
+  readonly mime: string
+  readonly base64: string
+}
+
 /** Child elements the parser reports as objects but which draw nothing. */
 const STRUCTURAL = new Set(['connections', 'connection', 'caption', 'states', 'state', 'animations', 'imagesettings', 'displaysettings', 'parameterfile', 'message', 'scada'])
 
@@ -81,7 +87,7 @@ function faceText(object: DisplayObject): string {
 }
 
 /** One object as SVG. */
-function draw(object: DisplayObject): string {
+function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): string {
   const left = geometry(object, 'left', 0)
   const top = geometry(object, 'top', 0)
   const width = geometry(object, 'width', 0)
@@ -98,6 +104,11 @@ function draw(object: DisplayObject): string {
   }
   if (type === 'line') {
     return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${colour(object.attributes.color, '#000000')}" stroke-width="1"/>`
+  }
+  const imageName = object.attributes.imageName
+  if (imageName !== undefined && images.has(imageName)) {
+    const raster = images.get(imageName) as RasterImage
+    return `<image x="${left}" y="${top}" width="${width}" height="${height}" preserveAspectRatio="none" href="data:${raster.mime};base64,${raster.base64}"/>`
   }
   if (type.includes('indicator')) {
     const cx = left + width / 2
@@ -116,7 +127,7 @@ function draw(object: DisplayObject): string {
 }
 
 /** Render a display to an SVG document. */
-export function renderDisplaySvg(name: string, objects: readonly DisplayObject[], settings: RenderSettings): RenderResult {
+export function renderDisplaySvg(name: string, objects: readonly DisplayObject[], settings: RenderSettings, images: ReadonlyMap<string, RasterImage> = new Map()): RenderResult {
   const skipped: string[] = []
   const shapes: string[] = []
   for (const object of objects) {
@@ -125,7 +136,7 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
       skipped.push(object.name ?? object.type)
       continue
     }
-    shapes.push(draw(object))
+    shapes.push(draw(object, images))
   }
   const svg = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
