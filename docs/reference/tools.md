@@ -930,7 +930,8 @@ Write the prepared edits to a NEW export folder: changed files get the edits, ot
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `draft_id` | string | no | Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat. |
-| `output_root` | string | yes | New folder for the edited export. It must not exist. Example: "C:/Projects/Line/ME Export Edited". |
+| `output_root` | string | yes | Folder for the edited export. It must not exist unless overwrite is yes and this chat wrote it. Example: "C:/Projects/Line/ME Export Edited". |
+| `overwrite` | string (no \| yes) | no | Re-write a folder this chat already applied into, instead of naming a new one. |
 
 #### `ftview_render`
 

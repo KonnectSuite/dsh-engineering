@@ -577,7 +577,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       description: 'Write the prepared edits to a NEW export folder: changed files get the edits, other text exports are copied verbatim. The source folder is never modified.',
       parameters: object({
         draft_id: DRAFT_ID,
-        output_root: string('New folder for the edited export. It must not exist. Example: "C:/Projects/Line/ME Export Edited".'),
+        output_root: string('Folder for the edited export. It must not exist unless overwrite is yes and this chat wrote it. Example: "C:/Projects/Line/ME Export Edited".'),
+        overwrite: choice('Re-write a folder this chat already applied into, instead of naming a new one.', ['no', 'yes']),
       }, ['output_root']),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
@@ -598,13 +599,30 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         })
         const existing = await fs.stat(resolvedRoot, exec.signal)
         const outputRoot = targetPath(resolvedRoot)
+        const overwrite = optionalString(args, 'overwrite') === 'yes'
         if (existing !== undefined) {
-          throw new EngineeringError('OUTPUT_EXISTS', `A file or folder already exists at ${requiredString(args, 'output_root')}.`, 'Pass a new output_root; apply never merges into an existing folder.')
+          const tracked = session.appliedAt(outputRoot)
+          if (!overwrite) {
+            throw new EngineeringError(
+              'OUTPUT_EXISTS',
+              `A file or folder already exists at ${requiredString(args, 'output_root')}.`,
+              'Pass overwrite: "yes" to re-apply into the folder this chat wrote, or a new output_root.',
+            )
+          }
+          if (tracked === undefined) {
+            throw new EngineeringError(
+              'OUTPUT_NOT_TRACKED',
+              `This chat did not write ${outputRoot}, so applying there would merge into someone else's folder.`,
+              'Pass a new output_root; overwrite only re-writes a folder this chat created.',
+            )
+          }
         }
         if (fs.writeText === undefined) {
           throw new EngineeringError('OUTPUT_UNAVAILABLE', 'The filesystem provider in this profile cannot write files.', 'Use a profile whose filesystem provider allows writes.')
         }
         const hashes = new Map(view.app.files.map(file => [file.file, file.sha256]))
+        const writeKind = existing === undefined ? 'createIfAbsent' as const : 'overwrite' as const
+        const writtenFiles: string[] = []
         let written = 0
         for (const file of view.app.files) {
           const bytes = await fs.readBytes(`${view.app.root}/${file.file}`, exec.signal, 64 * 1024 * 1024)
@@ -650,6 +668,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal)
           written += 1
         }
+        session.recordApplied(outputRoot, writtenFiles)
         drafts.remove(exec, draft.id)
         return success(
           `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}.`,

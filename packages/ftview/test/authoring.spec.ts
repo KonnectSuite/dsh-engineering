@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
+import { ViewSession } from '../src/session.ts'
 
 /** A Studio-shaped display: `<gfx>` root, schema declaration, nested group. */
 const GFX = [
@@ -156,5 +157,33 @@ describe('discarding a draft', () => {
     expect(discarded.data?.operations_dropped).toBe(1)
     const after = await l5x.call('ftview_validate', { draft_id: staged.data?.draft_id })
     expect(after.error).toBeDefined()
+  })
+})
+describe('apply overwrite', { timeout: 30_000 }, () => {
+  it('accepts overwrite: yes and replaces the file set with this draft', async () => {
+    const { l5x, view } = await opened()
+    await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'text', name: 'FirstPass',
+      attributes_json: JSON.stringify({ height: '24', width: '200', left: '20', top: '120' }),
+    })
+    const first = await l5x.call('ftview_apply', { output_root: 'out' })
+    expect(first.error).toBeUndefined()
+    await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'text', name: 'SecondPass',
+      attributes_json: JSON.stringify({ height: '24', width: '200', left: '20', top: '150' }),
+    })
+    const second = await l5x.call('ftview_apply', { output_root: 'out', overwrite: 'yes' })
+    expect(second.error).toBeUndefined()
+    const written = l5x.written.get('out/Displays/Main Screen.xml') ?? ''
+    expect(written).toContain('name="SecondPass"')
+  })
+
+  it('tracks the folder it wrote, normalising separators', () => {
+    const session = new ViewSession({ resolve: async (path: string) => path, stat: async () => ({ type: 'directory' }), readBytes: async () => new Uint8Array() } as never, 50)
+    expect(session.appliedAt('C:/Projects/Out')).toBeUndefined()
+    session.recordApplied('C:\\Projects\\Out', ['Displays/A.xml', 'IMPORT.md'])
+    const tracked = session.appliedAt('C:/Projects/Out')
+    expect(tracked?.has('IMPORT.md')).toBe(true)
+    expect(tracked?.size).toBe(2)
   })
 })

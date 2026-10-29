@@ -23,6 +23,7 @@ export interface OpenView {
 export class ViewSession {
   private readonly chats = new WeakMap<object, Map<string, OpenView>>()
   private readonly detached = new Map<string, OpenView>()
+  private readonly applied = new Map<string, Set<string>>()
 
   /**
    * @param fs - Filesystem provider.
@@ -34,6 +35,26 @@ export class ViewSession {
     private readonly maxFiles: number,
     private readonly maxViews = 2,
   ) {}
+
+
+  /**
+   * Remember the files one apply wrote into a folder, so a retry can be told
+   * apart from an attempt to merge into an unfamiliar folder.
+   *
+   * @param root - Resolved output folder.
+   * @param files - Export-relative files that were written.
+   */
+  recordApplied(root: string, files: readonly string[]): void {
+    this.applied.set(root.replace(/\\/gu, '/'), new Set(files))
+  }
+
+  /**
+   * @param root - Resolved output folder.
+   * @returns The files this chat wrote there, if it wrote any.
+   */
+  appliedAt(root: string): ReadonlySet<string> | undefined {
+    return this.applied.get(root.replace(/\\/gu, '/'))
+  }
 
   /**
    * Resolve, check and scan one export folder for the calling chat.
