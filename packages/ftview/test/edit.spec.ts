@@ -408,6 +408,36 @@ describe('artwork beside the display', () => {
   })
 })
 
+describe('package scope', () => {
+  it('a full package lists every display and copies artwork an untouched display names', async () => {
+    const files = exportFiles()
+    files.set('export/Overview.xml', '<Display name="Overview"><Image name="Plate" imageName="Plate"/></Display>')
+    files.set('export/Images/Plate.png', '\u0089PNG-plate')
+    const l5x = harness(files, { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+    await l5x.call('ftview_draft_object_add', { view_id: view, display: 'Main', type: 'text', name: 'Hint', attributes_json: JSON.stringify({ left: 4, top: 4, width: 60, height: 20, caption: 'Ready' }) })
+    const applied = await l5x.call('ftview_apply', { output_root: 'out', package: 'full' })
+    const data = applied.data as { package: string; manifest: string; images: string[] }
+    expect(data.package).toBe('full')
+    expect(data.images).toContain('Plate.png')
+    const manifest = l5x.written.get(`out/${data.manifest}`) ?? ''
+    expect(manifest).toContain('display="Main"')
+    expect(manifest).toContain('display="Overview"')
+  })
+
+  it('a delta package lists only the changed display', async () => {
+    const { l5x, view } = await opened()
+    await l5x.call('ftview_draft_object_add', { view_id: view, display: 'Main', type: 'text', name: 'Hint', attributes_json: JSON.stringify({ left: 4, top: 4, width: 60, height: 20, caption: 'Ready' }) })
+    const applied = await l5x.call('ftview_apply', { output_root: 'out' })
+    const data = applied.data as { package: string; manifest: string }
+    const manifest = l5x.written.get(`out/${data.manifest}`) ?? ''
+    expect(data.package).toBe('delta')
+    expect(manifest).toContain('display="Main"')
+    expect(manifest).not.toContain('display="Overview"')
+  })
+})
+
 describe('object drift between a draft and an export', () => {
   const application = {
     root: 'export',

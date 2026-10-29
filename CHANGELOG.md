@@ -1,3 +1,12 @@
+## [0.68.0] - 2026-10-29
+
+### Added
+
+- **`ftview_apply` takes `package: "delta" | "full"`.** A delta (default) lists only the displays
+  the draft changed, which is what an application that already holds the screens needs. A full
+  package lists every display in the export and copies the artwork those untouched displays name,
+  so a fresh application can be built from one import instead of a delta that leaves screens and
+  their pictures behind.
 ## [0.67.0] - 2026-10-29
 
 ### Fixed

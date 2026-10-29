@@ -1161,6 +1161,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         draft_id: DRAFT_ID,
         output_root: string('Folder for the edited export. It must not exist unless overwrite is yes and this chat wrote it. Example: "C:/Projects/Line/ME Export Edited".'),
         overwrite: choice('Re-write a folder this chat already applied into, instead of naming a new one.', ['no', 'yes']),
+        package: choice('What the import manifest should list: only the displays this draft changed (delta) or every display in the export (full), which is what a fresh application needs.', ['delta', 'full']),
       }, ['output_root']),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
@@ -1220,11 +1221,27 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           await fs.writeText(`${outputRoot}/${file}`, text, { kind: 'createIfAbsent' }, exec.signal)
           written += 1
         }
+        // The vendor's own import file: Studio's Batch Import reads this list
+        // from the Displays folder. Writing it here is what turns a folder of
+        // XML into a one-step import.
+        // Display files arrive as `Displays/X.xml` from a real export and as
+        // `X.xml` when a draft created the display, so both shapes count.
+        const changedDisplays = [...prepared.texts.keys()]
+          .filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file))
+        const packageMode = optionalString(args, 'package') ?? 'delta'
+        // A delta is right for an application that already holds the screens.
+        // A fresh application needs every display, or the ones the draft did
+        // not touch stay missing and their artwork is never copied.
+        const packageDisplays = packageMode === 'full'
+          ? view.app.files.map(file => file.file).filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file) && !/^Images\//iu.test(file) && !/tags/iu.test(file))
+          : changedDisplays
         // Artwork travels with the display: a display that names an image is
         // broken after import unless the file is beside it, and the vendor
         // wizard copies only the XML.
         const imageNames = new Set<string>()
-        for (const text of prepared.texts.values()) {
+        for (const file of packageDisplays) {
+          const staged = prepared.texts.get(file)
+          const text = staged ?? new TextDecoder('utf-8').decode(await fs.readBytes(`${view.app.root}/${file}`, exec.signal, 64 * 1024 * 1024))
           for (const match of text.matchAll(/\bimageName="([^"]+)"/gu)) imageNames.add(match[1])
         }
         const copiedImages: string[] = []
@@ -1242,19 +1259,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           written += 1
         }
 
-        // The vendor's own import file: Studio's Batch Import reads this list
-        // from the Displays folder. Writing it here is what turns a folder of
-        // XML into a one-step import.
-        // Display files arrive as `Displays/X.xml` from a real export and as
-        // `X.xml` when a draft created the display, so both shapes count.
-        const changedDisplays = [...prepared.texts.keys()]
-          .filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file))
         let manifest: string | undefined
-        if (changedDisplays.length > 0) {
+        if (packageDisplays.length > 0) {
           // The wizard needs importType and display on every entry, and resolves
           // importFile beside the batch file, so entries carry bare file names.
           const existing = new Set(view.app.displays.map(display => display.name))
-          const rows = changedDisplays.map(file => {
+          const rows = packageDisplays.map(file => {
             const name = file.replace(/^Displays\//u, '').replace(/\.xml$/iu, '')
             const kind = existing.has(name) ? 'update' : 'create'
             const escaped = name.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;')
@@ -1292,7 +1302,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const firstDisplay = changedDisplays[0]?.replace(/^Displays\//iu, '').replace(/\.xml$/iu, '')
         return success(
           `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}${copiedImages.length === 0 ? '' : `; ${copiedImages.length} image(s)`}${missingImages.length === 0 ? '' : `; ${missingImages.length} image(s) missing from the export`}.`,
-          { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), images: copiedImages, missing_images: missingImages, schema: prepared.schema },
+          { output_root: outputRoot, draft_id: draft.id, package: packageMode, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), images: copiedImages, missing_images: missingImages, schema: prepared.schema },
           [
             { tool: 'ftview_open', args: { root: outputRoot }, why: 'Reopen the written export and check it.' },
             ...(firstDisplay === undefined ? [] : [{ tool: 'ftview_render', args: { display: firstDisplay, output: `${outputRoot}/renders` }, why: 'Look at the screen you just wrote before anyone imports it; the PNG is beside the SVG.' }]),

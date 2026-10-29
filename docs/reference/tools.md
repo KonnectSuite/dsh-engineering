@@ -1091,6 +1091,7 @@ Write the prepared edits to a NEW export folder: changed files get the edits, ot
 | `draft_id` | string | no | Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat. |
 | `output_root` | string | yes | Folder for the edited export. It must not exist unless overwrite is yes and this chat wrote it. Example: "C:/Projects/Line/ME Export Edited". |
 | `overwrite` | string (no \| yes) | no | Re-write a folder this chat already applied into, instead of naming a new one. |
+| `package` | string (delta \| full) | no | What the import manifest should list: only the displays this draft changed (delta) or every display in the export (full), which is what a fresh application needs. |
 
 #### `ftview_render`
 
