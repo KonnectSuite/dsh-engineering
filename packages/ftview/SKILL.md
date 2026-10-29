@@ -112,18 +112,17 @@ memory; the preview's **Live** button reads those tags over EtherNet/IP, read-on
 `Global Objects` and `Images`, so references and bitmaps render.
 
 The preview is static: alarm banners are placeholders, visibility evaluates, colour/fill do not, and
-gradients/blink are approximate. Say so when citing a capture.## Tags and alarms
+gradients/blink are approximate. Say so when citing a capture.
 
-The export has displays and global objects only. For tags, call
-`ftview_tag_snapshot { application, output? }`: it attaches a copy of `TAG/<application>.MDF` to the
-local SQL Server Express, reads `dbo.AllTagsView` and writes the same rows, quoting and order as the
-vendor wizard — no Studio, no wizard, and the application database is never written. Then
-`ftview_studio_export_accept` validates or copies it into the export. Without local SQL tools, fall
-back to `ftview_studio_export_prepare` (standalone DatabaseConverter).
+## Tags and alarms
 
-Alarms still run inside Studio: `ftview_studio_export_prepare { application, kind: "alarms", export_root }`
-has the wizard write `Alarms/Alarms.xml` into the export folder, so Studio must be open. Export,
-authoring, validation, apply and verification need no Studio.
+`ftview_export` also writes what the store holds: tags come from `TAG/<application>.MDF` through
+`ftview_tag_snapshot { application, output? }` (a copy attached to local SQL Express, `dbo.AllTagsView`,
+same rows and quoting as the wizard), alarms are decoded from `M_Alarms/MachineAlarms.mal` by
+`ftview_alarm_snapshot { application, output? }`. Neither writes the application database, neither
+needs Studio, and the decoder reproduces wizard XML byte-for-byte on three applications.
+`ftview_studio_export_accept` validates or copies either file. If a database is missing, fall back to
+`ftview_studio_export_prepare` (tags: standalone DatabaseConverter; alarms: Studio wizard + `export_root`).
 ## Import and verify
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:

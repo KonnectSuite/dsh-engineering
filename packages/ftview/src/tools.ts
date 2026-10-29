@@ -12,6 +12,7 @@ import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
+import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { capabilities } from './capabilities.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -410,6 +411,25 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
         const snapshot = exportTagSnapshot(application, output)
         return success(
           `Tag snapshot for ${application}: ${snapshot.tags} tag(s), ${snapshot.folders} folder(s), ${snapshot.bytes} byte(s) at ${snapshot.path}, read from ${snapshot.instance}.`,
+          snapshot,
+          [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_alarm_snapshot',
+      description: 'Write the alarm configuration XML without the Alarm Import Export Wizard: decodes M_Alarms\\MachineAlarms.mal (OLE2 compound file) into the wizard-identical <alarms> document, including triggers, messages, colours, flags and the settings block. Use instead of ftview_studio_export_prepare for alarms; the wizard remains the fallback for older database versions or when decoding is refused.',
+      parameters: object({
+        application: string('Application name as ftview_apps lists it.'),
+        output: string('Optional XML path to write. Defaults to <project store>\\<application>\\<application>-Alarms.xml.'),
+      }, ['application']),
+      async run(args) {
+        const application = requiredString(args, 'application')
+        const output = optionalString(args, 'output') ?? defaultAlarmXml(application)
+        const snapshot = exportAlarmSnapshot(application, output)
+        return success(
+          `Alarm snapshot for ${application}: ${snapshot.triggers} trigger(s), ${snapshot.messages} message(s), ${snapshot.bytes} byte(s) at ${snapshot.path}, decoded from ${snapshot.mal}.`,
           snapshot,
           [],
           COVERAGE,

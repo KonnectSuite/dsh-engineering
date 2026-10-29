@@ -12,8 +12,9 @@
  */
 
 import { spawn } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { alarmXmlBytes, readAlarmDatabase, renderAlarmXml } from './alarmdb.ts'
 
 /** CLSID of the ME export server (`MEExport.exe`). */
 export const EXPORT_CLSID = '9d882577-aa92-466b-a749-6d6b5093b623'
@@ -224,16 +225,32 @@ export function copyProjectExtras(application: string, destination: string, docu
   const warnings: string[] = []
   const status: { tags: AssetFreshness; alarms: AssetFreshness } = { tags: 'missing', alarms: 'missing' }
   const alarms = join(source, 'Alarms.xml')
-  if (existsSync(alarms)) {
-    const target = join(destination, 'Alarms')
-    mkdirSync(target, { recursive: true })
-    copyFileSync(alarms, join(target, 'Alarms.xml'))
+  const alarmTarget = join(destination, 'Alarms')
+  let decodedAlarms = false
+  if (existsSync(join(source, 'M_Alarms', 'MachineAlarms.mal'))) {
+    // The alarm database decodes without Studio, so the export carries the
+    // application's current alarms instead of whatever snapshot was last
+    // written by the wizard. Older database versions throw and fall back.
+    try {
+      const database = readAlarmDatabase(application, source)
+      mkdirSync(alarmTarget, { recursive: true })
+      writeFileSync(join(alarmTarget, 'Alarms.xml'), alarmXmlBytes(renderAlarmXml(database)))
+      copied.push('Alarms/Alarms.xml')
+      status.alarms = 'fresh'
+      decodedAlarms = true
+    } catch {
+      decodedAlarms = false
+    }
+  }
+  if (!decodedAlarms && existsSync(alarms)) {
+    mkdirSync(alarmTarget, { recursive: true })
+    copyFileSync(alarms, join(alarmTarget, 'Alarms.xml'))
     copied.push('Alarms/Alarms.xml')
     const warning = freshness(alarms, 'Alarms/Alarms.xml', existsSync(database) ? database : undefined)
     status.alarms = warning === undefined ? 'fresh' : 'stale'
     if (warning !== undefined) warnings.push(warning)
-  } else {
-    warnings.push('No Alarms.xml in the application store. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.')
+  } else if (!decodedAlarms) {
+    warnings.push('No Alarms.xml in the application store and no decodable alarm database. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.')
   }
   // Studio names the tag file `<application>-Tags.CSV`; match the suffix
   // case-insensitively because older applications used `.csv`.

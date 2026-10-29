@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, utimesSync, rmSync } from 'node:fs'
+import { mkdirSync, writeFileSync, utimesSync, rmSync, copyFileSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
@@ -66,6 +66,20 @@ describe('project store extras', () => {
     expect(result.copied).toEqual([])
     expect(result.warnings.join(' ')).toContain('No Alarms.xml')
     expect(result.warnings.join(' ')).toContain('No tag CSV')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('decodes current alarms from the alarm database instead of copying a snapshot', () => {
+    const { root, app, folder, destination } = store({ alarms: false, tags: false, olderThanDatabase: false })
+    mkdirSync(join(folder, 'M_Alarms'), { recursive: true })
+    copyFileSync(join(import.meta.dirname, 'fixtures/alarms/AryaFTV_CarpenterPilot_20261007/MachineAlarms.mal'), join(folder, 'M_Alarms/MachineAlarms.mal'))
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.status.alarms).toBe('fresh')
+    expect(result.copied).toContain('Alarms/Alarms.xml')
+    const decoded = readFileSync(join(destination, 'Alarms/Alarms.xml'), 'utf8')
+    expect(decoded.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true)
+    expect(decoded).toContain('<trigger id="T1"')
+    expect(decoded).toContain('<message id="M1"')
     rmSync(root, { recursive: true, force: true })
   })
 

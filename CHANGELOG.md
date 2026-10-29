@@ -1,10 +1,20 @@
 # Changelog
 
+## [0.22.0] - 2026-10-28
+
+### Added
+
+- **`ftview_alarm_snapshot`: alarm XML without Studio.** The tool reads `M_Alarms/MachineAlarms.mal` straight from the application store. The stream is an OLE2 compound file: header counts and next ids come from the trailer, then one 102-byte trigger record and one 30-byte message record each, with `FF <len>`-prefixed UTF-16 strings (`FF FE`/`FF 00` for absent or empty). `LS<length><locale>` outranks the base stream because it carries the localized `triggerLabel` and `messageText`. Output is byte-identical to the vendor wizard's `Alarms.xml` on `AryaFTV_CarpenterPilot_20261007` (33 triggers), `Carpenter_EPS_Laminator001` (23) and `CC019_Main` (64); ids above the encoded limit are reported as notes rather than invented.
+- **`ftview_export` fills alarms from the application database.** When `M_Alarms/MachineAlarms.mal` is present the export decodes it into `Alarms/Alarms.xml` and reports `alarms: "fresh"` instead of copying an absent or stale snapshot.
+
+### Changed
+
+- **Alarms are no longer "requires Studio".** `ftview_capabilities` reports `alarms: "available"` when the machine alarm database exists, with the Studio wizard kept as the fallback for applications that carry no `M_Alarms` folder. Skill and `docs/reference/ftview-any-app.md` now describe the decoder and its limits.
 ## [0.21.0] - 2026-10-28
 
 ### Added
 
-- **`ftview_tag_snapshot`: the tag CSV without Studio or the wizard.** The tool copies `TAG/<application>.MDF` to a temp folder, attaches the copy to the local SQL Server Express instance (`MSSQLSERVER`, `SQLEXPRESS`, …), reads `dbo.AllTagsView` and renders the rows with the vendor wizard's exact quoting, ordering, CRLF endings and UTF-8 BOM. The application database is only read; the attach is dropped and the copy removed. Verified byte-identical against the wizard snapshots for `AryaFTV_CarpenterPilot_20261007` (101 tags), `CC019_Main` (121 tags) and `Carpenter_EPS_Laminator001` (378 tags).
+- **`ftview_tag_snapshot`: the tag CSV without Studio or the wizard.** The tool copies `TAG/<application>.MDF` to a temp folder, attaches the copy to the local SQL Server Express instance (`MSSQLSERVER`, `SQLEXPRESS`, â€¦), reads `dbo.AllTagsView` and renders the rows with the vendor wizard's exact quoting, ordering, CRLF endings and UTF-8 BOM. The application database is only read; the attach is dropped and the copy removed. Verified byte-identical against the wizard snapshots for `AryaFTV_CarpenterPilot_20261007` (101 tags), `CC019_Main` (121 tags) and `Carpenter_EPS_Laminator001` (378 tags).
 - **A SQL-aware capability status.** `ftview_capabilities` reports `tags: "available"` when local SQL tools exist even without `DatabaseConverter.exe`, and its notes say which path is in use.
 
 ### Changed
@@ -35,7 +45,7 @@
 ### Added
 
 - **`ftview_capabilities`** reports what the host can actually do: Studio and tag-wizard paths, installed `Gfx-ME*` schema versions, application count, and status for tags (`available`), alarms and import (`requires-studio`), backup and live (`unverified`), with one line per fact an agent must not guess.
-- **Objects can be added to a display created in the same draft.** `ftview_draft_object_add`, `_set`, `_delete` and `_order` resolve a display that the draft's `display_create` or `display_add` just made, instead of failing with “No display is named …”. Display settings on a draft-added display are accepted too.
+- **Objects can be added to a display created in the same draft.** `ftview_draft_object_add`, `_set`, `_delete` and `_order` resolve a display that the draft's `display_create` or `display_add` just made, instead of failing with â€œNo display is named â€¦â€. Display settings on a draft-added display are accepted too.
 
 ### Documented
 
@@ -44,12 +54,12 @@
 
 ### Fixed
 
-- **The alarm-export steps named the wrong menu.** `ftview_studio_export_prepare { kind: "alarms" }` said `Tools > Alarm Import Export Wizard`. The wizard opens from **right-click `Alarms > Alarm Setup` → `Import and Export…`**, and it runs inside `VStudio.exe`, so Studio must be open with the application loaded. The steps now say that, including the case where Studio is closed.
+- **The alarm-export steps named the wrong menu.** `ftview_studio_export_prepare { kind: "alarms" }` said `Tools > Alarm Import Export Wizard`. The wizard opens from **right-click `Alarms > Alarm Setup` â†’ `Import and Exportâ€¦`**, and it runs inside `VStudio.exe`, so Studio must be open with the application loaded. The steps now say that, including the case where Studio is closed.
 
 ### Verified on CC019_Main
 
 - Tag export through `DatabaseConverter.exe`: `CC019_Main-Tags.CSV`, 104 tags, 110 lines.
-- Alarm export through `Alarm Setup → Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
+- Alarm export through `Alarm Setup â†’ Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
 ## [0.19.1] - 2026-10-28
 
 ### Fixed
@@ -58,7 +68,7 @@
 
 ### Verified
 
-- Second application exported and drafted against: `CC019_Main` (70 displays, 1280×800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
+- Second application exported and drafted against: `CC019_Main` (70 displays, 1280Ã—800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
 ## [0.19.0] - 2026-10-28
 
 ### Fixed
@@ -68,12 +78,12 @@
 
 ### Added
 
-- **`docs/reference/ftview-any-app.md`** — what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export → draft → validate → apply → import → verify loop.
+- **`docs/reference/ftview-any-app.md`** â€” what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export â†’ draft â†’ validate â†’ apply â†’ import â†’ verify loop.
 ## [0.18.4] - 2026-10-28
 
 ### Added
 
-- **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists … will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
+- **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists â€¦ will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
 ## [0.18.3] - 2026-10-28
 
 ### Fixed
@@ -89,18 +99,18 @@
 
 ### Fixed
 
-- **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file '…\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
+- **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file 'â€¦\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
 ## [0.18.0] - 2026-10-28
 
 ### Added
 
-- **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption …/></state>…</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
-- **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility …/></animations>`.
+- **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption â€¦/></state>â€¦</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
+- **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility â€¦/></animations>`.
 - **`gotoButton` captions are now a `<caption>` child**, which is the shape its schema expects; a `states` face would be invalid.
 
 ### Verified
 
-- `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** — two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
+- `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** â€” two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
 - Rendered to `artifacts/ftview-arya/Arya Control.png`.
 - Not yet imported into a live Studio application: Studio started in Demo Mode and the application did not finish loading during this run, so the schema is the acceptance evidence here.
 ## [0.17.2] - 2026-10-28
@@ -123,7 +133,7 @@
 
 ### Fixed
 
-- **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="…">` shape and leaves `<gfx>` untouched; the file name is the display name.
+- **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="â€¦">` shape and leaves `<gfx>` untouched; the file name is the display name.
 ## [0.16.0] - 2026-10-28
 
 ### Changed
@@ -146,8 +156,8 @@
 ### Added
 
 - **`ftview_studio_export_prepare`** resolves an application's `.med`, verifies Rockwell's Tag Import and Export Wizard is installed, and returns the exact steps and destination file. It does not click anything.
-- **`ftview_studio_export_accept`** validates what the wizard produced — tag CSV header and row count, or an `<alarms>` XML — and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
-- The FTView skill documents the prepare → wizard (computer use) → accept workflow for fresh tags and alarms.
+- **`ftview_studio_export_accept`** validates what the wizard produced â€” tag CSV header and row count, or an `<alarms>` XML â€” and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
+- The FTView skill documents the prepare â†’ wizard (computer use) â†’ accept workflow for fresh tags and alarms.
 
 ### Notes
 
@@ -168,7 +178,7 @@
 - **The object contract is now teachable.** `TYPE_GUIDE` documents all 34 drawable types with required attributes,
   allowed children and a construction note; `ftview_object_types all="true"` returns it alongside what the export uses.
 - `multistateIndicator` and `polyline` are part of both the drafting contract and the renderer. The missing
-  `multistateIndicator` was why the yellow **MANUAL** bar never drew — it was dropped before rendering, and no
+  `multistateIndicator` was why the yellow **MANUAL** bar never drew â€” it was dropped before rendering, and no
   attribute change could fix it.
 - The FTView skill now documents the contract workflow (read `all`, read the used type, draft, validate, apply), the
   image-name and reference-object rules, and the preview's fidelity limits.
@@ -233,7 +243,7 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
   empty placements. This was the largest visual regression against Studio.
 - **Images render in the preview.** A new `/engineering/ftview/image` route serves `Images/<name>` with a file-name
   whitelist, and the face resolves every image through it.
-- **Shape fidelity.** Buttons and indicators honour Studio’s `shape` attribute: `ellipse` draws a circle (status lamps
+- **Shape fidelity.** Buttons and indicators honour Studioâ€™s `shape` attribute: `ellipse` draws a circle (status lamps
   were rectangles), rounded shapes get a corner radius.
 - **Drafting accepts every drawable element type.** `ftview_draft_object_add` validates the type against the 34-type
   contract (`panel`, `group`, shapes, all button kinds, numeric/string fields, bar graph, gauge, trend, list selector,
@@ -257,7 +267,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
-- **Compare view.** The preview’s **Compare** action loads the same display from a second export folder through the
+- **Compare view.** The previewâ€™s **Compare** action loads the same display from a second export folder through the
   display route and shows both renders side by side with their labels, so an edit can be judged before it is applied.
   The second folder is asked for by name, nothing is written, and the button toggles the pane off.
 
@@ -269,9 +279,9 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Added
 
 - **Interactive preview.** Every rendered object now carries its type and name, so a click opens an inspector with the
-  object’s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
+  objectâ€™s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
 - **Navigation.** Double-clicking a `gotoButton` (or using the inspector) loads its target display through the new
-  `GET /engineering/ftview/display?root=&name=` route, with a **← Back** history. The route accepts display file names
+  `GET /engineering/ftview/display?root=&name=` route, with a **â† Back** history. The route accepts display file names
   only and refuses traversal.
 - **PNG export** of the current view from the toolbar.
 
@@ -284,14 +294,14 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **`ftview_object_types`.** Catalogs the object types the open export actually uses: how many of each, every attribute
   seen with its usage count and up to three example values, and example names. Ask for one `type` to get its attribute
-  table — the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
+  table â€” the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
 - **`ftview_design_check`.** Rule-based findings from the `view` corpus: touch targets under 44 px (`VIEW-HPM-02`),
   controls with no base caption (`VIEW-HPM-01`), text contrast below 4.5:1 (`VIEW-COLOR-01`) and displays no
   `gotoButton` reaches (`VIEW-NAV-01`). Every finding names its rule and its evidence.
 
 ### Changed
 
-- FactoryTalk View read surface: 7 → 9 tools; bundle total 100 → 102.
+- FactoryTalk View read surface: 7 â†’ 9 tools; bundle total 100 â†’ 102.
 ## [0.10.5] - 2026-10-27
 
 ### Added
@@ -363,7 +373,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
-- **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped — **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields — which is why the old preview showed blank navigation buttons.
+- **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped â€” **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields â€” which is why the old preview showed blank navigation buttons.
 - The renderer is not wired into the client face yet; the artifact still serves the panel. Known gap, stated rather than implied.
 ## [0.10.0] - 2026-10-27
 
@@ -379,7 +389,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Changed
 
-- FactoryTalk View read surface: 6 → 7 tools; bundle total 99 → 100.
+- FactoryTalk View read surface: 6 â†’ 7 tools; bundle total 99 â†’ 100.
 
 ### Known gaps
 
@@ -393,7 +403,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   zero displays even when it wrote thirteen. The count now matches the paths the tool actually returns.
 - **The tags and alarms warning now says what it means.** The copied `Alarms/Alarms.xml` and
   `Tags/<application>.csv` are snapshots Studio last wrote when those components were exported from their
-  editors — not fresh data. The warning states that, and that the application export in Studio is what
+  editors â€” not fresh data. The warning states that, and that the application export in Studio is what
   refreshes them. There is no supported headless export for either component; this is the honest boundary.
 ## [0.9.2] - 2026-10-27
 
@@ -401,7 +411,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **The `engineering-standards` skill was missing from the catalog.** 0.9.1 mounted it by calling the skills
   service from inside the resources row's `apply()`, which only works if that service already exists at that
-  row's turn — it mounts before the Optix row, so the skill was silently skipped (the tools still loaded).
+  row's turn â€” it mounts before the Optix row, so the skill was silently skipped (the tools still loaded).
   The skill is now its own plugin with `inject: ['skills']`, the same pattern the product skills use, so the
   host activates it when the service is up regardless of row order. A test asserts the injection list and
   registration.
@@ -425,21 +435,21 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **Model-agnostic engineering resources: a local standards corpus.** 34 authored pages across six domains
   (IEC 61131-3, Rockwell, Yaskawa, FactoryTalk View/HMI, Optix, craft) with front-matter provenance and 100+
-  rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, …). `engineering_reference` lists the contents, ranks pages for a
+  rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, â€¦). `engineering_reference` lists the contents, ranks pages for a
   query and returns one page with its rules; search is deterministic and needs no network, embedding model or
   tokenizer. `scripts/gen-resources.mjs` validates every page (fields, domains, id/file agreement, rule
   uniqueness, size and word budgets) and generates `index.json`/`SOURCE.json`; `pnpm resources:check` fails on
   a stale index.
-- **House-style profiles.** `engineering_profile` reads the conventions of the open project — L5X tag prefixes
+- **House-style profiles.** `engineering_profile` reads the conventions of the open project â€” L5X tag prefixes
   and case, seal-in and latch forms, comment density; FactoryTalk View palette, fonts, button geometry,
-  navigation and popups — with counts, evidence and a `low`/`medium`/`high` confidence. A profile is evidence,
+  navigation and popups â€” with counts, evidence and a `low`/`medium`/`high` confidence. A profile is evidence,
   not authority, and the tool says which project and SHA-256 it came from.
 - **Generation follows the profile.** `ftview_draft_display_create` applies the profile's background colour and
   `ftview_draft_object_add` its button geometry and font when the caller omits them, reporting
   `profile_applied`.
 - **New `resources` row and the `engineering-standards` skill.** The row mounts the two tools and the skill
-  that tells a model to read the relevant page and the project profile before authoring. Tools 97 → 99, rows
-  5 → 6.
+  that tells a model to read the relevant page and the project profile before authoring. Tools 97 â†’ 99, rows
+  5 â†’ 6.
 - `docs/resources.md` documents the corpus, its provenance, the index commands and the profile schema.
 
 ### Known limits
@@ -468,7 +478,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **A workflow handbook, generated from one source.** `docs/handbook/Engineering-Handbook.pdf` (7 pages),
   an editable `.docx` and a printable `.html` cover the four products: what each row needs, the shared
-  read → act → verify → hand-off loop, what the agent does, what stays human, and a "what proves what"
+  read â†’ act â†’ verify â†’ hand-off loop, what the agent does, what stays human, and a "what proves what"
   table.
 - **Six workflow diagrams** in `docs/diagrams/` (SVG masters and PNG): the shared loop and one per
   product, with agent steps, human steps and proof steps visually distinguished. They are embedded in
@@ -482,14 +492,14 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **A getting-started guide for a new install.** `docs/getting-started.md` answers the first questions a
   fresh AryaCode user has: what each of the four rows needs installed, how to install from the market,
-  the loop every product follows (read → act in a copy → verify → hand off), a paste-ready first prompt
+  the loop every product follows (read â†’ act in a copy â†’ verify â†’ hand off), a paste-ready first prompt
   per product, and the boundaries the bundle will not pretend away (Studio import/runtime, the missing
   tag CSV in a vendor export, MWI's IDE, Optix's bridge).
 - README: a "New here?" pointer, a market-first Install section, corrected Status and Requirements
   (FTView authoring/export/schema, eleven L5X drafts) and the Getting started entry in the documentation
   table.
-- Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export → author →
-  schema-validate → apply with the `BatchImport` manifest → verify the import), and a new section 9
+- Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export â†’ author â†’
+  schema-validate â†’ apply with the `BatchImport` manifest â†’ verify the import), and a new section 9
   covers reading and authoring a FactoryTalk Optix project.
 ## [0.8.1] - 2026-10-27
 
@@ -498,7 +508,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - **FactoryTalk View ME authoring.** The surface no longer only edits an export someone handed over:
   - `ftview_apps` lists the ME applications installed on the host through the vendor export server
     (74 applications were listed on the commissioning host).
-  - `ftview_export` exports one application to a NEW folder through `MEExportSvr` — no Studio window,
+  - `ftview_export` exports one application to a NEW folder through `MEExportSvr` â€” no Studio window,
     no project change. Proven end to end: 19 files and 13 displays for `Carpenter_EPS_Laminator001`.
   - `ftview_draft_display_create`, `ftview_draft_object_add`, `ftview_draft_object_set`,
     `ftview_draft_object_delete` and `ftview_draft_object_order` author displays and objects against a
@@ -513,7 +523,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Documentation
 
-- `packages/ftview/SKILL.md`: an Authoring section (apps → export → author → validate) and an Import
+- `packages/ftview/SKILL.md`: an Authoring section (apps â†’ export â†’ author â†’ validate) and an Import
   and verify section that states plainly which steps remain Studio and ME Transfer Utility.
 - README: 97 tools, FactoryTalk View ME 22, and the 0.8.0 milestone.
 ## [0.7.0] - 2026-10-27
@@ -521,10 +531,10 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Added
 
 - **Ladder generation that cannot emit invalid NeutralText.** Three pieces:
-  - `list_instructions` — the instruction catalog the composer validates: mnemonic, category, summary
-    and operand slots with their kinds (BOOL, NUMBER, TIMER, …), filterable. 41 instructions, covering
+  - `list_instructions` â€” the instruction catalog the composer validates: mnemonic, category, summary
+    and operand slots with their kinds (BOOL, NUMBER, TIMER, â€¦), filterable. 41 instructions, covering
     every mnemonic the Laminator project uses (45 distinct across 860 rungs).
-  - `compose_rung` — builds one rung from a structure tree (`spec_json`) or a named pattern
+  - `compose_rung` â€” builds one rung from a structure tree (`spec_json`) or a named pattern
     (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves every operand against the
     export (including unqualified program tags and aliases), type-checks each slot, emits the export's
     own bracket style, and re-parses its output with the same parser `draft_rung` uses. Unknown
@@ -544,7 +554,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Documentation
 
-- `packages/l5x/SKILL.md`: a Generate section (catalog → compose → validate → apply) and a
+- `packages/l5x/SKILL.md`: a Generate section (catalog â†’ compose â†’ validate â†’ apply) and a
   Documentation section (bundle contents, the comment round trip, what the bundle cannot prove).
 - README: 89 tools, L5X 44, and the 0.7.0 milestone.
 
@@ -573,7 +583,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 Commissioned against the Laminator fixtures: a real Studio 5000 ACD exported to a 5.4 MB L5X, a
 real FactoryTalk View ME export, and two MotionWorks projects.
 
-### Fixed — FactoryTalk View could not read a real Studio export
+### Fixed â€” FactoryTalk View could not read a real Studio export
 
 `ftview_open` reported **0 displays and 0 tags** for a genuine ME export. Five independent causes:
 
@@ -596,10 +606,10 @@ Verified on `Laminator/HMI/Main`: **18 displays, 361 tags, 0 parse errors** (was
 `<gfx>` export is supported; the staged edit tools were built for the `<display>` shape and are not
 verified to rewrite `<gfx>` objects.
 
-### Fixed — Studio 5000 checks drowned real findings in false positives
+### Fixed â€” Studio 5000 checks drowned real findings in false positives
 
 `run_checks` on the Laminator export produced 562 findings, 315 of them "unresolved reference", on a
-project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresent` →
+project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresent` â†’
 `FanFold_StraightCut_AENTR:2:I.7`): aliases carry no `DataType`, their targets are not declared
 `<Tag>`s, and the fast resolver stopped instead of falling back to the canonical one.
 
@@ -608,9 +618,9 @@ project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresen
 - A member of a module-defined or opaque type (`Drive_MCFG.CommFLT`, `Axis_MAH.PC`) and `S:`/`R:`
   system flags are reported as coverage limits, not unresolved references.
 
-**562 → 264 findings; unresolved 315 → 16**, with the unused-tag and multiple-write findings intact.
+**562 â†’ 264 findings; unresolved 315 â†’ 16**, with the unused-tag and multiple-write findings intact.
 
-### Fixed — Studio 5000 edits
+### Fixed â€” Studio 5000 edits
 
 - **`add_tag` required a value for a scalar tag.** Studio defaults scalars to zero, so declaring a
   plain REAL was impossible without inventing a value; `value` is now optional and still validated
@@ -620,13 +630,13 @@ project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresen
   take an alias's type from the canonical resolver; writes still refuse an alias and name the tag to
   write instead.
 - **`export_acd_to_l5x` failed when Studio had the ACD open.** The SDK opens the file itself, so the
-  normal case — the project the user is working on — failed with "being used by another process". The
+  normal case â€” the project the user is working on â€” failed with "being used by another process". The
   export now copies the ACD and opens the copy, with the source hash re-checked before and after.
 
 Verified end to end on the Laminator export: `draft_tag` (REAL, no value) plus a rung replacement
 validated and applied to a 5,391,840-byte L5X.
 
-### Fixed — MotionWorks IEC
+### Fixed â€” MotionWorks IEC
 
 - **`mw_get kind="block"` crashed with `KeyError: 'native_libraries'`.** The block interface is decoded
   against the installed libraries as well as the saved project; the read service now supplies the live
@@ -642,7 +652,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Documentation
 
-- `docs/optix-netlogic.md`: how the FactoryTalk Optix NetLogic cheat sheet should be carried — a
+- `docs/optix-netlogic.md`: how the FactoryTalk Optix NetLogic cheat sheet should be carried â€” a
   pinned snapshot, a generated index, and one `optix_netlogic` retrieval tool, with the risk flags and
   disclaimers the repository itself requires.
 
@@ -652,8 +662,8 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 - **No Python bytecode in the tarball, again.** 0.4.21 shipped three `__pycache__/*.pyc` files
   because a `py_compile` guard check ran in the checkout before packing, and `assemble.mjs` copied
-  `code/` wholesale. They were inert — the interpreter ignores a `.pyc` whose source no longer matches
-  — but a stale `staging.cpython-312.pyc` beside a changed guard is exactly the ambiguity this
+  `code/` wholesale. They were inert â€” the interpreter ignores a `.pyc` whose source no longer matches
+  â€” but a stale `staging.cpython-312.pyc` beside a changed guard is exactly the ambiguity this
   release line must not carry. `assemble.mjs` now excludes `__pycache__` and `*.pyc` at copy time, so
   the outcome no longer depends on someone remembering to delete them.
 
@@ -721,8 +731,8 @@ Verified on both Laminator projects through the shipped engine: attach into
   writing the identity, and refuses to replace an identity that no longer verifies.
 - **A project already open in the IDE could not be edited.** Edits, compile and verify required a
   proven backup and failed with `NOT_ATTACHED` for a workspace project the IDE already had open.
-  `mw_project_open` now attaches that project — writes the verified backup and reports
-  `already_open` — instead of calling `OpenProject`, because a reload over unsaved editor changes is
+  `mw_project_open` now attaches that project â€” writes the verified backup and reports
+  `already_open` â€” instead of calling `OpenProject`, because a reload over unsaved editor changes is
   data loss the backup cannot undo. An edit, compile or verify that finds an unattached workspace
   project takes the backup before it refuses.
 - **`mw_edit_code` could not be given the hash it demands.** Its precondition is the SHA-256 of the
@@ -827,7 +837,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Fixed
 
-- **The row settings page sat on "Loading configuration…".** The Plugins page snapshots a row's
+- **The row settings page sat on "Loading configurationâ€¦".** The Plugins page snapshots a row's
   configuration form once when it opens and does not subscribe to it, so a form that was still
   loading at that moment never produced the switches. The page now reads the live form from the
   client `configForms` service, whose `get` starts the one describe fetch, and subscribes to it;
@@ -874,7 +884,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   EtherNet/IP tools, and the L5X count is 40 (84 with Optix).
 - `docs/examples.md`: a live section covering batch reads, discovery, the controller clock, the trend,
   and a supervised write with the exact fields the reader must see and the refusals they may hit.
-- `docs/architecture.md`: a new EtherNet/IP section — the two workers, the transaction engine's deadline
+- `docs/architecture.md`: a new EtherNet/IP section â€” the two workers, the transaction engine's deadline
   and decoding, and the four gates that stand between a write request and a controller.
 - `docs/port/l5x.md`: the live surface is recorded as seven tools with the driver call each one uses, and
   the unused capability (CIP subscriptions, UDT `Structure` reads) is named.
@@ -887,15 +897,15 @@ Verified on both Laminator projects through the shipped engine: attach into
 The EtherNet/IP surface now uses the driver rather than one corner of it. Five new tools, all under the
 L5X product row's `live` switch:
 
-- `read_live_tags` — up to 64 declared scalars in **one** request (CIP tag group) instead of one
+- `read_live_tags` â€” up to 64 declared scalars in **one** request (CIP tag group) instead of one
   connection-and-read per tag.
-- `read_controller_clock` — controller identity plus the wall clock beside the workstation clock and the
+- `read_controller_clock` â€” controller identity plus the wall clock beside the workstation clock and the
   offset between them; reports "unsupported" on non-L8x models instead of guessing.
-- `discover_controllers` — bounded UDP broadcast discovery: address, product, revision, serial, status.
+- `discover_controllers` â€” bounded UDP broadcast discovery: address, product, revision, serial, status.
   Needs no address and no export.
-- `write_live_tag` — one declared scalar, **approval-gated**, then read back over CIP so the result is
+- `write_live_tag` â€” one declared scalar, **approval-gated**, then read back over CIP so the result is
   the controller's own value.
-- `write_controller_clock` — set the wall clock (L8x), approval-gated, read back.
+- `write_controller_clock` â€” set the wall clock (L8x), approval-gated, read back.
 
 ### Safety
 
@@ -909,7 +919,7 @@ L5X product row's `live` switch:
 - A write whose readback differs from the requested value fails with `WRITE_NOT_VERIFIED` rather than
   reporting success.
 - `test/live.spec.ts` covers the gating: switch off, policy `never`, declined prompt, wrong value type,
-  and a UDT tag refused as non-scalar — 70 tests in the package.
+  and a UDT tag refused as non-scalar â€” 70 tests in the package.
 
 ## [0.4.5] - 2026-10-25
 
@@ -929,22 +939,22 @@ One plugin now covers all four products: 5 rows, 79 tools, both previews, no com
 
 ### Changed
 
-- **One row per product instead of one per surface.** The Plugins page now lists five rows — `l5x`,
-  `ftview`, `mwi`, `viewers`, `optix` — instead of sixteen. Each product row mounts its whole surface,
+- **One row per product instead of one per surface.** The Plugins page now lists five rows â€” `l5x`,
+  `ftview`, `mwi`, `viewers`, `optix` â€” instead of sixteen. Each product row mounts its whole surface,
   so one switch turns a product off instead of four.
 - **The optional surfaces are the row's config.** `entries/l5x.js` mounts read + guidance and takes
   `editing`, `studio` and `live` (all off by default); `entries/ftview.js` takes `edit` and `studio`
-  (both on); `entries/mwi.js` takes `edit` (off). The defaults are unchanged — a read-only profile
-  still pays only for the read surfaces — but the toggle now lives with the product it belongs to.
+  (both on); `entries/mwi.js` takes `edit` (off). The defaults are unchanged â€” a read-only profile
+  still pays only for the read surfaces â€” but the toggle now lives with the product it belongs to.
 - Row ids change from `l5x-read` / `ftview-edit` / `mwi-verify` to `l5x` / `ftview` / `mwi`, so a
   profile's per-row enable state resets once on upgrade. The product-level defaults are identical.
-- Legacy subpath exports are kept (`./l5x/read`, `./ftview/edit`, `./mwi/verify`, …) so a profile
+- Legacy subpath exports are kept (`./l5x/read`, `./ftview/edit`, `./mwi/verify`, â€¦) so a profile
   patch that still names one of them keeps working.
 
 ### Note
 
 The grouping is plugin-side by choice: `cordis:group` exists in the patch format, but the Plugins
-page skips group rows (`plugin-manager/src/index.ts`: "Group rows are containers … their children
+page skips group rows (`plugin-manager/src/index.ts`: "Group rows are containers â€¦ their children
 carry the switches"), so a group switch is a shell feature rather than a bundle one. Collapsing the
 row list is what a bundle can do on its own, without a harness change to maintain across DSH
 upgrades.
@@ -955,7 +965,7 @@ upgrades.
 
 - **The vendored rows could not import their own libraries.** The trees under `vendor/` are the
   components' own code, and that code imports `fast-xml-parser`, `fast-xml-validator` and
-  `st-ethernet-ip` — but vendoring drops the component manifests, and the bundle declared none of them.
+  `st-ethernet-ip` â€” but vendoring drops the component manifests, and the bundle declared none of them.
   At mount the loader reported `ERR_MODULE_NOT_FOUND` and every L5X and FactoryTalk View row failed to
   import, taking its tools with them. The bundle now declares all three at the versions the components
   pin, and `test/docs.spec.mjs` fails when a component dependency is not declared here.
@@ -968,13 +978,13 @@ upgrades.
   failed one step later, when the profile tried to apply the bundle: the patch's first entry targeted
   the `tool-capability-policy` row, and no such row exists in an AryaCode profile, so composition threw
   `dsh: [@aryacode/dsh-engineering] patch: entry "tool-capability-policy" not found` and the plugin
-  manager rolled the install back — which is what the market card reported as *Cannot install*.
+  manager rolled the install back â€” which is what the market card reported as *Cannot install*.
 
 ### Removed
 
 - **The per-skill tool filter.** `policyOnly` / `toolPolicy` / `capabilities` are an AryaAI harness
   feature: AryaAI's fork of `@deepseek-ai/dsh-tool-skill` implements them, and the AryaCode line's copy
-  of the same package does not. In this product the layer never filtered anything — an older harness
+  of the same package does not. In this product the layer never filtered anything â€” an older harness
   skipped the missing row with a warning, the current one treats it as fatal. Rows are the switch:
   disabling `l5x-editing`, `l5x-studio`, `l5x-live` or `mwi-edit` unmounts that plugin and removes its
   tool schemas from the request, which is the same context saving by a mechanism this harness has.
@@ -1056,10 +1066,10 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 
 
 
-- Add the FTView Studio entry `ftview-studio`: `ftview_studio_status`, `ftview_studio_preflight`, `ftview_studio_handoff` — discovery of installs, schemas, help and the Add Component utility, changed-file preflight with Studio name restrictions, and the ordered manual import plan. No vendor utility is executed.
+- Add the FTView Studio entry `ftview-studio`: `ftview_studio_status`, `ftview_studio_preflight`, `ftview_studio_handoff` â€” discovery of installs, schemas, help and the Add Component utility, changed-file preflight with Studio name restrictions, and the ordered manual import plan. No vendor utility is executed.
 - Add 6 Studio tests: registration, discovery with a simulated install, absent install, changed-file preflight, unsafe-name blocker and the handoff plan. FTView suite is 26 tests.
 
-- Add the FTView editing entry `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` — one operation per call, text-preserving transforms, re-parsed validation, and apply to a new folder that never touches the source. Row disabled until the old plugin retires.
+- Add the FTView editing entry `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` â€” one operation per call, text-preserving transforms, re-parsed validation, and apply to a new folder that never touches the source. Row disabled until the old plugin retires.
 - Add 8 editing tests: display attribute edit end to end, tag row update, display copy, draft clearing, unknown display, duplicate name, and existing-output refusal. FTView suite is 20 tests.
 
 - Fold the FactoryTalk View display preview into the bundle as `dsh-engineering-ftview-viewer`, mounted by the `ftview-viewer` row (disabled until the old plugin retires, because both claim `.xml` previews).
@@ -1075,7 +1085,7 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Verified live after the retirement: the session listed the eleven read tools and the new `rockwell-l5x` description, with no `l5x_*` tool and no old skill text.
 
 - Port the client face: the PLC trend card (`lib/client.js`, 17.2 KB closure-factory bundle) registered for `start_plc_trend`, with its locales, styles and trend model. The card mounts independently of every tool row.
-- Record that the old plugin's `face.ts` and `Studio5000.tsx` were dead code — never imported by its client entry — so the two-rung ladder rail is not a ported feature. A ladder viewer for L5X documents would be new work.
+- Record that the old plugin's `face.ts` and `Studio5000.tsx` were dead code â€” never imported by its client entry â€” so the two-rung ladder rail is not a ported feature. A ladder viewer for L5X documents would be new work.
 - Add `dsh.client` metadata, a `tsdown.client.config.ts` bundle with the package name as its registration id, and the host build now emits both halves.
 
 - Add the `l5x-live` entry: `poll_live_tags` and `start_plc_trend`, 2,971 schema characters, inserted disabled. Reads use the package's polling worker and its own EtherNet/IP connection, so no Studio, FactoryLinx or SDK is required.

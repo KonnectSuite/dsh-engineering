@@ -27,7 +27,7 @@ describe('host capabilities', () => {
     expect(report.schemas).toEqual(['16', '17'])
     expect(report.applications).toBe(1)
     expect(report.tags).toBe('available')
-    expect(report.alarms).toBe('requires-studio')
+    expect(report.alarms).toBe('available')
     expect(report.import).toBe('requires-studio')
     rmSync(root, { recursive: true, force: true })
   })
