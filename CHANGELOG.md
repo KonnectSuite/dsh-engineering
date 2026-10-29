@@ -1,3 +1,20 @@
+## [0.49.0] - 2026-10-29
+
+### Fixed
+
+- **A safety controller is refused before an offline build, not after it aborts.** Detection looked
+  only for `<SafetyTask>`/`<SafetyProgram>` elements; the real commissioning export marks safety
+  with `Class="Safety"` on its task and program, a `SafetyNetwork` port number and a
+  `SafetyLocked` controller, so the import ran and the SDK answered
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` — which reads like an empty draft, not a refusal. The field
+  session retried it four times and then edited the ACD by script instead.
+
+### Changed
+
+- `verify_offline_l5x` now answers `SAFETY_PROJECT_OFFLINE_VERIFY` and names the evidence it found,
+  and the generic abort advice carries that evidence when it exists.
+
+
 ## [0.48.0] - 2026-10-29
 
 ### Added

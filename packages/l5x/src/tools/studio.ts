@@ -120,11 +120,12 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const baseline = await session.require(requiredString(args, 'baseline_id'), exec)
-        if (isSafetyProject(project.xml)) {
+        const safety = safetyEvidence(project.xml)
+        if (safety.length > 0) {
           throw new L5xError(
             'SAFETY_PROJECT_OFFLINE_VERIFY',
-            'The Studio SDK importer aborts on this safety controller: every L5X of it, edited or not, returns XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, so an offline build cannot prove anything.',
-            'Prove this change by importing the L5X in Studio 5000 and building there; keep the change set small enough to review by eye.',
+            `The Studio SDK importer aborts on this safety controller (${safety.join(', ')}): every L5X of it, edited or not, returns XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, so an offline build cannot prove anything.`,
+            'Prove this change by importing the L5X in Studio 5000 and building there; keep the change set small enough to review by eye. Editing only standard-task logic and verifying that logic in a non-safety copy of the project is the other way to get a build verdict.',
           )
         }
         const review = reviewDownloadSource(baseline, project)
@@ -142,8 +143,9 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           ...review.blockers,
           ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat']),
         ]
+        const abort = importAbortAdvice(`${build.sdk_error ?? ''}\n${build.log ?? ''}`)
         const advice = build.offline_build === 'failed'
-          ? importAbortAdvice(`${build.sdk_error ?? ''}\n${build.log ?? ''}`)
+          ? abort === null ? null : safety.length === 0 ? abort : `Detected safety (${safety.join(', ')}): ${abort}`
           : null
         const eligible = build.offline_build === 'passed' && blockers.length === 0 && build.output_path !== null && build.output_sha256 !== null
         const verificationId = eligible ? randomUUID() : null
@@ -259,12 +261,28 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
   ]
 }
 
+/**
+ * Why an export belongs to a GuardLogix or Compact GuardLogix safety controller, most specific first.
+ *
+ * The element form (<SafetyTask>) is what older exports write; newer exports name the task and
+ * program in an attribute and mark them with Class="Safety", which the element-only check missed,
+ * so the offline build was attempted and aborted with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES.
+ */
+export function safetyEvidence(xml: string): string[] {
+  const evidence: string[] = []
+  if (/<(SafetyTask|SafetyProgram)\b/u.test(xml)) evidence.push('a SafetyTask or SafetyProgram element')
+  if (/SafetySignature\s*=/iu.test(xml)) evidence.push('a stored safety signature')
+  if (/Class\s*=\s*"Safety"/u.test(xml)) evidence.push('a program with Class="Safety"')
+  if (/Type\s*=\s*"SAFETY"/iu.test(xml)) evidence.push('a module typed SAFETY')
+  if (/<SafetyNetworkNumber\b/u.test(xml)) evidence.push('a SafetyNetworkNumber element')
+  if (/SafetyNetwork(?:Number)?\s*=\s*"16#/iu.test(xml)) evidence.push('safety network ports')
+  if (/SafetyLocked\b/u.test(xml)) evidence.push('a safety-locked controller')
+  return evidence
+}
+
 /** True when the export belongs to a GuardLogix or Compact GuardLogix safety controller. */
 export function isSafetyProject(xml: string): boolean {
-  return /<(SafetyTask|SafetyProgram)\b/u.test(xml)
-    || /SafetySignature\s*=/iu.test(xml)
-    || /Type\s*=\s*"SAFETY"/iu.test(xml)
-    || /<SafetyNetworkNumber\b/iu.test(xml)
+  return safetyEvidence(xml).length > 0
 }
 
 /**
