@@ -1,3 +1,15 @@
+## [0.37.0] - 2026-10-29
+
+### Added
+
+- `ftview_apply` ends with a `ftview_render` step for the first changed display, so the screen can be
+  looked at before anyone imports it.
+
+### Fixed
+
+- `ftview_apply` writes the Studio batch-import manifest for displays a draft created, which arrive as
+  `X.xml` rather than `Displays/X.xml`.
+
 ## [0.36.0] - 2026-10-29
 
 ### Changed

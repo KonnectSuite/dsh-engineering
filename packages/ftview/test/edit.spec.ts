@@ -285,4 +285,19 @@ describe('ftview_draft_tags', () => {
     const empty = await l5x.call('ftview_draft_tags', { view_id: view, tags_json: '[]' })
     expect(empty.error?.code).toBe('INVALID_ARGUMENT')
   })
+  it('points at the renderer after writing a display', async () => {
+    const { l5x, view } = await opened()
+    await l5x.call('ftview_draft_object_add', {
+      view_id: view,
+      display: 'Main',
+      type: 'panel',
+      name: 'HintPanel',
+      attributes_json: JSON.stringify({ left: '40', top: '300', width: '200', height: '80' }),
+    })
+    const applied = await l5x.call('ftview_apply', { output_root: 'hint' })
+    expect(applied.error).toBeUndefined()
+    const steps = (applied.next ?? []) as Array<{ tool: string; args?: Record<string, unknown> }>
+    const render = steps.find(step => step.tool === 'ftview_render')
+    expect(render?.args?.display).toBe('Main')
+  })
 })

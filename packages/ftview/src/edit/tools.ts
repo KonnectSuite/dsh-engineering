@@ -764,8 +764,10 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         // The vendor's own import file: Studio's Batch Import reads this list
         // from the Displays folder. Writing it here is what turns a folder of
         // XML into a one-step import.
+        // Display files arrive as `Displays/X.xml` from a real export and as
+        // `X.xml` when a draft created the display, so both shapes count.
         const changedDisplays = [...prepared.texts.keys()]
-          .filter(file => /^Displays\/.+\.xml$/iu.test(file) && !/batchimport/iu.test(file))
+          .filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file))
         let manifest: string | undefined
         if (changedDisplays.length > 0) {
           const entries = changedDisplays
@@ -793,11 +795,13 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         }
         session.recordApplied(outputRoot, writtenFiles)
         drafts.remove(exec, draft.id)
+        const firstDisplay = changedDisplays[0]?.replace(/^Displays\//iu, '').replace(/\.xml$/iu, '')
         return success(
           `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}.`,
           { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), schema: prepared.schema },
           [
             { tool: 'ftview_open', args: { root: outputRoot }, why: 'Reopen the written export and check it.' },
+            ...(firstDisplay === undefined ? [] : [{ tool: 'ftview_render', args: { display: firstDisplay, output: `${outputRoot}/renders` }, why: 'Look at the screen you just wrote before anyone imports it; the PNG is beside the SVG.' }]),
             { tool: 'ftview_verify_import', args: { application: view.app.name }, why: 'After Studio imports it, prove the import matches this draft.' },
           ],
           APPLY_COVERAGE,
