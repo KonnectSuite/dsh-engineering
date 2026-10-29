@@ -13,6 +13,7 @@ import { prepareChangeSet } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
+import { getRoutine } from '../model/routines.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -46,6 +47,17 @@ const COMPOSED_COVERAGE: Coverage = {
 }
 
 /** Parse one JSON-object argument, refusing anything else. */
+/** Parse a JSON array, refusing anything else with a repairable message. */
+function jsonArray(value: string, name: string): readonly unknown[] {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw invalid(name, `${name} is not valid JSON.`, `Pass a JSON array of rung descriptions.`)
+  }
+  if (!Array.isArray(parsed)) throw invalid(name, `${name} must be a JSON array.`, 'Wrap the descriptions in [ ] .')
+  return parsed
+}
 function jsonObject(value: string | undefined, name: string): Record<string, unknown> {
   if (value === undefined) return {}
   let parsed: unknown
@@ -233,6 +245,83 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
+      name: 'compose_batch',
+      description: 'Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Nothing is written until draft_apply.',
+      parameters: object({
+        rungs_json: string('Rungs as JSON, e.g. [{"spec":{"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}},{"pattern":"ton_delay","arguments":{"tag":"Timer","seconds":5}}].'),
+        program: string('Program to stage into. Example: "MainProgram".'),
+        routine: string('Routine to stage into. Example: "MainRoutine".'),
+        rung: integer('First rung number for the batch; each later rung uses the next number.', { minimum: 0 }),
+        draft_id: string('Draft handle to append to. Omit when exactly one draft exists in this chat.'),
+        project_id: PROJECT_ID,
+      }, ['rungs_json', 'program', 'routine', 'rung']),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const stagedNow = drafts.existing(exec, project.id)
+        const visible = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
+        const entries = jsonArray(requiredString(args, 'rungs_json'), 'rungs_json')
+        if (entries.length === 0) throw invalid('rungs_json', 'rungs_json is empty.', 'Pass at least one rung description.')
+        if (entries.length > 200) throw invalid('rungs_json', 'rungs_json holds more than 200 rungs.', 'Split the batch; 200 is the limit for one call.')
+        const composed: ComposedRung[] = []
+        for (const [index, entry] of entries.entries()) {
+          if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) throw invalid('rungs_json', `Entry ${index} is not a JSON object.`, 'Pass {"spec": {...}} or {"pattern": "start_stop_latch", "arguments": {...}}.')
+          const record = entry as Record<string, unknown>
+          const pattern = record.pattern
+          const spec = record.spec
+          if ((pattern === undefined) === (spec === undefined)) throw invalid('rungs_json', `Entry ${index} needs exactly one of pattern or spec.`, 'Pass {"pattern":"ton_delay","arguments":{...}} or {"spec":{"series":[...]}}.')
+          if (pattern !== undefined) {
+            if (typeof pattern !== 'string' || !(PATTERNS as readonly string[]).includes(pattern)) throw invalid('rungs_json', `Entry ${index} names an unknown pattern.`, `Pass one of: ${PATTERNS.join(', ')}.`)
+            const argsObject = record.arguments === undefined ? {} : record.arguments
+            if (argsObject === null || typeof argsObject !== 'object' || Array.isArray(argsObject)) throw invalid('rungs_json', `Entry ${index} arguments must be a JSON object.`, 'Pass the pattern arguments, e.g. {"start":"Start","stop":"Stop","run":"Run"}.')
+            composed.push(...composePattern(visible, pattern as PatternName, argsObject as Record<string, unknown>).rungs)
+          } else {
+            composed.push(composeRung(visible, spec as unknown as LadderNodeSpec))
+          }
+        }
+        const program = requiredString(args, 'program')
+        const routine = requiredString(args, 'routine')
+        const requested = optionalInteger(args, 'rung')
+        const body = getRoutine(project.document, program, routine)?.body
+        const known = body?.type === 'RLL' ? body.rungs.map(rung => rung.number) : []
+        const stagedInserts = (stagedNow?.operations ?? []).filter(operation => operation.operation === 'insert_rung' && operation.program === program && operation.routine === routine).length
+        const first = requested ?? (known.length === 0 ? 0 : Math.max(...known) + 1 + stagedInserts)
+        const comments = entries.map((entry, index) => {
+          const comment = (entry as Record<string, unknown>).comment
+          if (comment !== undefined && typeof comment !== 'string') throw invalid('rungs_json', `Entry ${index} comment must be text.`, 'Pass the rung comment as a string.')
+          return comment
+        })
+        if (composed.length !== entries.length) throw invalid('rungs_json', 'A pattern expanded to more than one rung; the batch would shift the rung numbers you asked for.', 'Stage that pattern with compose_rung, or place it last.')
+        let draft: Draft | undefined
+        for (const [index, rung] of composed.entries()) {
+          try {
+            draft = drafts.append(exec, project.id, {
+              operation: 'insert_rung',
+              program,
+              routine,
+              rung: first + index,
+              text: rung.neutral_text,
+              ...(comments[index] === undefined ? {} : { comment: comments[index] as string }),
+            }, maxOperations)
+          } catch (error) {
+            if (error instanceof L5xError && error.code === 'NAME_COLLISION') {
+              throw invalid('rung', `Rung ${first + index} already exists in ${program}/${routine}, so the batch cannot be staged there.`, `Pass a start rung past the last rung of the routine, or stage this rung on its own with compose_rung. Nothing was staged.`)
+            }
+            throw error
+          }
+        }
+        const stagedDraft = draft as Draft
+        return success(
+          `Composed and staged ${composed.length} rung(s) at ${routine} rung ${first}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
+          {
+            draft_id: stagedDraft.id,
+            operation_count: stagedDraft.operations.length,
+            rungs: composed.map((rung, index) => ({ rung: first + index, neutral_text: rung.neutral_text })),
+          },
+          [{ tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' }],
+          COMPOSED_COVERAGE,
+        )
+      },
+    }),    tool({
       name: 'draft_st',
       description: 'Append one Structured Text body replacement to the chat draft. Nothing is written until draft_apply.',
       parameters: object({

@@ -105,7 +105,7 @@ Write ladder through the composer, not by inventing NeutralText.
 `l5x_rung_preview` takes one rung per line and one comment per line: it validates each rung like `draft_rung`, writes a viewer document and draws a PNG when Chrome or Edge is installed. Present the PNG. Nothing is imported.
 
 - `list_instructions` gives the mnemonic, category and operand slots with their kinds; read it before composing.
-- `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves every operand, type-checks each slot and parses its own output; anything unknown or mistyped is refused before staging.
+- `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves and type-checks every operand, refusing anything unknown or mistyped before staging. compose_batch does the same for 200 rungs in one call, refusing the batch if a rung fails.
 - Pass `program`, `routine`, `mode` and `rung` to stage it (plus `comment`); without them it returns text only.
 - `fault_latch` stages two rungs at `rung` and `rung + 1`; rung numbers are not renumbered, so pick free ones.
 

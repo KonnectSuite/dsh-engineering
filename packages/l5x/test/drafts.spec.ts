@@ -164,3 +164,42 @@ describe('composition against staged tags', () => {
     expect(composed.error?.message).toContain('BOOL')
   })
 })
+
+describe('compose_batch', () => {
+  const two = [
+    { spec: { series: [{ instr: 'XIC', args: ['Motor_1.Running'] }, { instr: 'OTE', args: ['Motor_1.RunCommand'] }] } },
+    { spec: { series: [{ instr: 'XIO', args: ['Motor_2.Running'] }, { instr: 'OTE', args: ['Motor_2.RunCommand'] }] } },
+  ]
+
+  it('composes and stages several rungs in one call', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('compose_batch', { rungs_json: JSON.stringify(two), program: 'MainProgram', routine: 'MainRoutine' })
+    expect(staged.error).toBeUndefined()
+    const rungs = staged.data?.rungs as readonly { rung: number; neutral_text: string }[]
+    expect(rungs[1]!.rung).toBe(rungs[0]!.rung + 1)
+    expect(rungs[0]?.neutral_text).toContain('XIC(Motor_1.Running)')
+    expect(rungs[1]?.neutral_text).toContain('OTE(Motor_2.RunCommand)')
+    expect(staged.data?.operation_count).toBe(2)
+    const validate = await l5x.call('draft_validate', {})
+    expect(validate.error).toBeUndefined()
+  })
+
+  it('refuses the whole batch when one rung names an undeclared tag', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('compose_batch', {
+      rungs_json: JSON.stringify([two[0], { spec: { series: [{ instr: 'XIC', args: ['NoSuchTag'] }, { instr: 'OTE', args: ['RunAlias'] }] } }]),
+      program: 'MainProgram',
+      routine: 'MainRoutine',
+      rung: 1,
+    })
+    expect(staged.error?.code).toBe('TAG_NOT_FOUND')
+    const list = await l5x.call('draft_list', {})
+    expect(list.error?.code).toBe('NO_DRAFT')
+  })
+
+  it('refuses an entry that names neither a pattern nor a spec', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('compose_batch', { rungs_json: '[{}]', program: 'MainProgram', routine: 'MainRoutine', rung: 4 })
+    expect(staged.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})

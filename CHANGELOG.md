@@ -1,3 +1,12 @@
+## [0.34.0] - 2026-10-29
+
+### Added
+
+- **`compose_batch` writes many validated rungs in one call.** Up to 200 rung descriptions — composition trees or named patterns — are checked against the export and against the tags the same draft stages, then staged at consecutive rung numbers. The field session wrote 29 one-off scripts to add rungs one at a time; a batch that composes 20 rungs is now one call.
+
+### Changed
+
+- The batch is atomic: if any rung in it is invalid, nothing is staged and the refusal names the entry. A rung number that already exists is refused with the start rung to use instead, not a generic collision.
 ## [0.33.0] - 2026-10-29
 
 ### Added
