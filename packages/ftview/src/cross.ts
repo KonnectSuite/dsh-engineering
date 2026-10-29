@@ -64,6 +64,8 @@ export interface CrossReport {
     readonly alarmTriggers: number
     /** HMI tags an alarm watches but no display shows. */
     readonly alarmOnly: readonly string[]
+    /** Alarm expressions naming a tag the HMI tag CSV does not declare. */
+    readonly alarmUnresolved: readonly string[]
   }
 }
 
@@ -239,6 +241,12 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
   const alarmOnly = app.tags
     .filter(tag => alarmCount(tag.name) > 0 && displaysUsing(app, tag.name, texts) === 0)
     .map(tag => tag.name)
+  const hmiNames = new Set(app.tags.map(tag => tag.name.toLowerCase()))
+  const alarmUnresolved = [...(alarms?.byTag.keys() ?? [])].filter(name => !hmiNames.has(name)).sort()
+  for (const name of alarmUnresolved) {
+    if (findings.length >= limit) break
+    findings.push({ code: 'ALARM_TAG_NOT_IN_HMI', severity: 'warning', subject: name, detail: `alarm trigger(s) ${(alarms?.byTag.get(name) ?? []).join(', ')} watch this tag, which the HMI tag CSV does not declare.` })
+  }
   return {
     rows: rows.slice(0, limit),
     findings: findings.slice(0, limit),
@@ -252,6 +260,7 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
       plcUnreferencedByHmi: unreferenced,
       alarmTriggers: alarms?.triggers ?? 0,
       alarmOnly,
+      alarmUnresolved,
     },
   }
 }

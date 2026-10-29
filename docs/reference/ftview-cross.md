@@ -7,6 +7,10 @@ the two exports and reports the mismatches.
 
 It reads; it writes nothing, and it does not need FactoryTalk View Studio or Studio 5000.
 
+### Alarm expressions
+
+Alarm triggers hold `{[device]Tag.bit}` expressions too. When a decoded `Alarms.xml` is supplied, each trigger's tag is counted per row (`alarms`), and `ALARM_TAG_NOT_IN_HMI` flags an expression naming a tag the HMI tag CSV never declares — usually a typo in Alarm Setup that no display would reveal. `counts.alarmUnresolved` lists those names in the same order.
+
 ## What it joins
 
 | Side | Source | Used for |

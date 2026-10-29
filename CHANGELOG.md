@@ -2,6 +2,10 @@
 
 ### Added
 
+- **Alarm triggers that name a missing HMI tag are reported.** `ftview_cross_reference` scans decoded
+  `Alarms.xml` expressions per trigger, adds `counts.alarmUnresolved`, and raises
+  `ALARM_TAG_NOT_IN_HMI` with the trigger ids so a typo in Alarm Setup is found before a terminal
+  annunciates nothing.
 - **`ftview_export` opens what it exported.** The result carries `view_id`, so authoring starts
   immediately instead of a separate `ftview_open` round trip; when opening fails the result falls
   back to naming the folder and the export still succeeds.

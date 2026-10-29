@@ -135,7 +135,7 @@ describe('crossReference', () => {
       rows: readonly { hmiTag: string; status: string; plcUses: number; displays: number; plcTag: string | null }[]
       findings: readonly { code: string; subject: string }[]
     }
-    expect(data.counts).toEqual({ hmiTags: 4, linked: 1, memory: 1, unlinked: 1, unsupported: 1, plcTags: 3, plcUnreferencedByHmi: 0, alarmTriggers: 0, alarmOnly: [] })
+    expect(data.counts).toEqual({ hmiTags: 4, linked: 1, memory: 1, unlinked: 1, unsupported: 1, plcTags: 3, plcUnreferencedByHmi: 0, alarmTriggers: 0, alarmOnly: [], alarmUnresolved: [] })
     const motor = data.rows.find(row => row.hmiTag === 'Motor_Run')
     expect(motor).toMatchObject({ status: 'linked', plcTag: 'Motor_Run', plcUses: 2, displays: 1 })
     expect(data.findings.map(finding => finding.code)).toEqual(expect.arrayContaining(['HMI_TAG_NOT_IN_PLC', 'ADDRESS_UNSUPPORTED', 'PLC_TAG_NOT_IN_HMI']))
@@ -181,5 +181,27 @@ describe('crossReference', () => {
     const direct = crossReference(app, plc)
     expect(direct.counts.hmiTags).toBe(4)
     expect(direct.rows.map(row => row.status)).toEqual(['linked', 'unlinked', 'unsupported'])
+  })
+})
+
+describe('alarm expressions that name no HMI tag', () => {
+  it('reports the tag and its trigger ids', () => {
+    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+    const report = crossReference(app, readL5x(L5X), {
+      alarms: '<alarms><triggers><trigger id="T7" exp="{[Line]Ghost_Word.3}"/><trigger id="T8" exp="{[Line]Motor_Run.0}"/></triggers></alarms>',
+    })
+    expect(report.counts.alarmUnresolved).toEqual(['ghost_word'])
+    const finding = report.findings.find(item => item.code === 'ALARM_TAG_NOT_IN_HMI')
+    expect(finding?.subject).toBe('ghost_word')
+    expect(finding?.detail).toContain('T7')
+  })
+
+  it('stays quiet when every alarm expression resolves', () => {
+    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+    const report = crossReference(app, readL5x(L5X), {
+      alarms: '<alarms><triggers><trigger id="T1" exp="{[Line]Motor_Run.0}"/></triggers></alarms>',
+    })
+    expect(report.counts.alarmUnresolved).toEqual([])
+    expect(report.findings.some(item => item.code === 'ALARM_TAG_NOT_IN_HMI')).toBe(false)
   })
 })

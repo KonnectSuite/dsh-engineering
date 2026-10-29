@@ -246,7 +246,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         const report = crossReference(app, plc, { limit, includeMemory: optionalString(args, 'include_memory') === 'yes', displays, alarms })
         const { counts } = report
         return success(
-          `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at${counts.alarmTriggers === 0 ? '' : `; ${counts.alarmTriggers} alarm trigger(s) watch tags, ${counts.alarmOnly.length} of them on no display`}.`,
+          `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at${counts.alarmTriggers === 0 ? '' : `; ${counts.alarmTriggers} alarm trigger(s) watch tags, ${counts.alarmOnly.length} of them on no display${counts.alarmUnresolved.length === 0 ? '' : `, and ${counts.alarmUnresolved.length} watch ${counts.alarmUnresolved.length === 1 ? 'a tag' : 'tags'} the tag CSV does not declare (${counts.alarmUnresolved.slice(0, 3).join(', ')})`}`}.`,
           report,
           [
             { tool: 'ftview_cross_reference', args: { view_id: optionalString(args, 'view_id'), l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },
