@@ -1,3 +1,12 @@
+## [0.62.0] - 2026-10-29
+
+### Fixed
+
+- **`ftview_validate` reports an edit aimed at an object that is not in the display.** `DRAFT_TARGET_MISSING`
+  names the file, display and object, and the operation that cannot land, instead of failing the whole
+  prepare step with `COMPONENT_NOT_FOUND`. The rest of the draft still validates, so one wrong name no
+  longer hides the findings for the other operations. A set or delete on an object the same draft added
+  is accepted, and an `object_add` can still be followed by edits to the object it placed.
 ## [0.61.0] - 2026-10-29
 
 ### Added

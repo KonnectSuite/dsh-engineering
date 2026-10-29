@@ -163,6 +163,8 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
   const added: string[] = []
   const displayByFile = new Map(app.displays.map(display => [display.file, display]))
   const displayNames = new Set(app.displays.map(display => display.name))
+  const missingTargets: Finding[] = []
+  const addedObjects = new Map<string, Set<string>>()
   for (const operation of operations) {
     if (operation.kind === 'display_set') {
       if (!displayByFile.has(operation.file) && !added.includes(operation.file)) {
@@ -193,6 +195,24 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
         throw new EngineeringError('COMPONENT_NOT_FOUND', `The draft targets ${operation.file}, which this export no longer contains.`, 'Reopen the export and stage the edit again.')
       }
       const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)
+      if (operation.kind === 'object_add') {
+        const names = addedObjects.get(operation.file) ?? new Set<string>()
+        names.add(operation.name)
+        addedObjects.set(operation.file, names)
+      } else {
+        const parsed = parseDisplay(operation.file, current)
+        const present = new Set(parsed.objects.map(object => object.name).filter((name): name is string => name !== undefined && name !== ''))
+        for (const name of addedObjects.get(operation.file) ?? []) present.add(name)
+        if (!present.has(operation.object)) {
+          missingTargets.push({
+            rule: 'DRAFT_TARGET_MISSING',
+            severity: 'error',
+            message: `The draft ${operation.kind === 'object_delete' ? 'deletes' : 'changes'} ${JSON.stringify(operation.object)} in ${JSON.stringify(parsed.name)}, but that object is not in the display.` ,
+            evidence: { file: operation.file, display: parsed.name, object: operation.object, operation: operation.kind },
+          })
+          continue
+        }
+      }
       const next = operation.kind === 'object_add' ? addObject(current, operation)
         : operation.kind === 'object_set' ? setObject(current, operation)
           : operation.kind === 'object_delete' ? deleteObject(current, operation)
@@ -257,7 +277,7 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
     const file = diagnostic.split(':')[0] ?? ''
     return !changedFiles.has(file)
   })
-  const findings = [...findingsOf({ displays, tags, tagErrors, diagnostics }), ...draftLayoutFindings(operations, displays)]
+  const findings = [...findingsOf({ displays, tags, tagErrors, diagnostics }), ...draftLayoutFindings(operations, displays), ...missingTargets]
   // Validate only the documents this draft writes: the unchanged ones were
   // already read by the session, and re-validating 18 displays per call would
   // make every edit pay for the whole export.
