@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { encodeEntities } from './display-tree.ts'
+import { decodeEntities } from './model.ts'
 import type { DisplayObject } from './model.ts'
 
 /** Canvas size and background read from `displaySettings`. */
@@ -115,7 +116,8 @@ function grid(left: number, top: number, width: number, height: number, stroke: 
 
 /** Text drawn on a face: the caption attribute, else the object name. */
 function faceText(object: DisplayObject): string {
-  return object.attributes.caption ?? object.attributes.Text ?? object.name ?? ''
+  const raw = object.attributes.caption ?? object.attributes.Text ?? object.name ?? ''
+  return decodeEntities(raw)
 }
 
 /** One object as SVG. */
@@ -132,7 +134,11 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
   if (type === 'text') {
     const size = geometry(object, 'fontSize', 12)
     const colourText = colour(object.attributes.color, '#000000')
-    return `<text x="${left}" y="${top + size}" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${label}</text>`
+    const lines = faceText(object).split(/\r?\n/u).map(line => encodeEntities(line))
+    const spans = lines
+      .map((line, index) => `<tspan x="${left}" dy="${index === 0 ? 0 : size + 2}">${line}</tspan>`)
+      .join('')
+    return `<text x="${left}" y="${top + size}" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${spans}</text>`
   }
   if (type === 'line') {
     const points = polyline(object)

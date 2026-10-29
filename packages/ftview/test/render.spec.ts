@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { findBrowser, renderDisplaySvg, settingsFromXml } from '../src/render-svg.ts'
+import { parseDisplay } from '../src/model.ts'
 import { harness } from './harness.ts'
 
 const GFX = [
@@ -102,7 +103,7 @@ describe('ftview_render', { timeout: 30_000 }, () => {
     const result = await l5x.call('ftview_render', { view_id: view, display: 'Overview', source: 'draft', output })
     expect(result.error).toBeUndefined()
     expect(result.data?.source).toBe('draft')
-    expect(readFileSync(result.data?.svg as string, 'utf8')).toContain('>DRAFT ONLY</text>')
+    expect(readFileSync(result.data?.svg as string, 'utf8')).toContain('>DRAFT ONLY</tspan>')
   })
 
   it('says so when the draft does not touch the display', async () => {
@@ -153,6 +154,27 @@ describe('ftview_render', { timeout: 30_000 }, () => {
     const lines = svg.split('<line ').length - 1
     expect(lines).toBeGreaterThanOrEqual(4)
     expect(svg).toContain('stroke-opacity="0.5"')
+  })
+
+  it('draws the caption a state face carries, not the object name', () => {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+      '<displaySettings width="200" height="100" backColor="#C6C6C6"/>',
+      '<screen>',
+      '<momentaryButton name="PB1" left="10" top="10" width="80" height="30" backColor="#0088C8">',
+      '<states><state stateId="Error"><caption caption="Error"/></state><state stateId="0"><caption caption="START"/></state></states>',
+      '</momentaryButton>',
+      '<text name="Title" left="10" top="60" width="180" height="20" caption="LINE ONE&#xA;LINE TWO" fontSize="12"/>',
+      '</screen>',
+      '</gfx>',
+    ].join('\n')
+    const parsed = parseDisplay('Faces.xml', xml)
+    const svg = renderDisplaySvg('Faces', parsed.objects, settingsFromXml(xml)).svg
+    expect(svg).toContain('>START</text>')
+    expect(svg).not.toContain('>PB1</text>')
+    expect(svg).toContain('>LINE ONE</tspan>')
+    expect(svg).toContain('>LINE TWO</tspan>')
   })
 
 })

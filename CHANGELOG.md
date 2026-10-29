@@ -1,3 +1,12 @@
+## [0.40.0] - 2026-10-29
+
+### Added
+
+- Frames read their caption from the face a screen shows at rest (`stateId="0"`), so a button drawn in a
+  render says START or YES instead of its object name.
+- Character references in captions (`&#xA;`, `&amp;`) are decoded, and a multi-line caption is drawn as one
+  `tspan` per line instead of a flattened single line.
+
 ## [0.39.0] - 2026-10-29
 
 ### Added

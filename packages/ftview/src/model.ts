@@ -213,11 +213,58 @@ function attributesOf(node: Readonly<Record<string, unknown>>): Record<string, s
   return attributes
 }
 
+/** Decode the character references ME leaves in caption and text values. */
+export function decodeEntities(value: string): string {
+  return value
+    .replace(/&#x([0-9a-f]+);/giu, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)))
+    .replace(/&#(\d+);/gu, (_, dec: string) => String.fromCodePoint(Number(dec)))
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&amp;/gu, '&')
+}
+
+/** The text a child element carries, when it carries any. */
+function childText(node: unknown): string | undefined {
+  if (node === null || typeof node !== 'object' || Array.isArray(node)) return undefined
+  const raw = (node as Record<string, unknown>)['#text']
+  return typeof raw === 'string' && raw.trim() !== '' ? decodeEntities(raw.trim()) : undefined
+}
+
+/** Caption text of a face: the caption attribute on the element, else its text. */
+function captionOf(node: unknown): string | undefined {
+  if (node === null || typeof node !== 'object' || Array.isArray(node)) return undefined
+  const attribute = attributesOf(node as Record<string, unknown>).caption
+  if (attribute !== undefined && attribute.trim() !== '') return decodeEntities(attribute.trim())
+  return childText(node)
+}
+
+/** First state of a states bag, whichever shape the parser produced. */
+function firstState(states: unknown): Record<string, unknown> | undefined {
+  if (states === null || typeof states !== 'object') return undefined
+  const state = (states as Record<string, unknown>).state
+  const list = (Array.isArray(state) ? state : [state]).filter(item => item !== null && typeof item === 'object' && !Array.isArray(item)) as Array<Record<string, unknown>>
+  const resting = list.find(item => item[ATTRIBUTE + 'stateId'] === '0')
+  return resting ?? list[0]
+}
+
 /** Collect one element and its descendants as display objects. */
 function collectObjects(node: unknown, type: string, out: DisplayObject[], depth: number): void {
   if (depth > 8 || node === null || typeof node !== 'object' || Array.isArray(node)) return
   const record = node as Record<string, unknown>
   const attributes = attributesOf(record)
+  // Faces store their text in a caption child, and stateful buttons keep it on
+  // the first state, so lift it onto the object the rest of the code reads.
+  if (attributes.caption === undefined) {
+    const caption = captionOf(record.caption)
+      ?? captionOf((firstState(record.states) ?? {}).caption)
+    if (caption !== undefined) attributes.caption = caption
+  }
+  if (attributes.Text === undefined) {
+    const body = childText(record)
+    if (body !== undefined) attributes.Text = body
+  }
   const named = attributes.name ?? attributes.Name
   out.push({ type, ...(named === undefined ? {} : { name: named }), attributes })
   for (const [key, value] of Object.entries(record)) {
