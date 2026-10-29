@@ -971,6 +971,7 @@ Stage a whole screen from one description: cards of label/value and label/lamp r
 | `width` | integer | no | Display width in pixels. Omit to read displaySettings from the display file. |
 | `height` | integer | no | Display height in pixels. Omit to read displaySettings from the display file. |
 | `tags_json` | string | no | Optional HMI tags for this screen as JSON, e.g. [{"name":"BeltSpeed","description":"Cutter belt speed"}]. Staged in the same draft as the objects. |
+| `theme_json` | string | no | Optional palette overrides as JSON, e.g. {"header":"#0088C8","footer":"#143243"}. Same slots as SCAFFOLD_THEME: backdrop, header, surface, footer, titleColor, footerColor. |
 
 #### `ftview_draft_popup`
 

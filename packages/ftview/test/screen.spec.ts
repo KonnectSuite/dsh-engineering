@@ -47,6 +47,58 @@ const SPEC = {
   nav: [{ label: 'MAIN', display: 'MAIN' }, { label: 'MANUAL', display: 'MANUAL' }],
 } as const
 
+describe('screen palette', () => {
+  it('stages header and footer in the requested palette and reports contrast', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      theme_json: JSON.stringify({ header: '#004A6B', footer: '#004A6B', titleColor: '#FFFFFF', footerColor: '#FFFFFF' }),
+    })
+    expect(staged.error).toBeUndefined()
+    const theme = staged.data?.theme as Record<string, string>
+    expect(theme.header).toBe('#004A6B')
+    const contrast = staged.data?.contrast as readonly { pair: string; ratio: number; pass: boolean }[]
+    expect(contrast).toHaveLength(2)
+    expect(contrast.every(row => row.pass)).toBe(true)
+    expect(staged.data?.theme).toMatchObject({ header: '#004A6B', footer: '#004A6B' })
+  })
+
+  it('flags a palette whose title would not be readable', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      theme_json: JSON.stringify({ header: '#F2F2F2', titleColor: '#FFFFFF' }),
+    })
+    expect(staged.error).toBeUndefined()
+    const contrast = staged.data?.contrast as readonly { pair: string; pass: boolean }[]
+    expect(contrast[0]).toMatchObject({ pair: 'title on header', pass: false })
+  })
+
+  it('refuses an unknown palette slot or a malformed colour', async () => {
+    const { l5x, view } = await opened()
+    const slot = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      theme_json: JSON.stringify({ accent: '#0088C8' }),
+    })
+    expect(slot.error?.code).toBe('INVALID_ARGUMENT')
+    expect(slot.error?.message).toContain('accent')
+    const colour = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      theme_json: JSON.stringify({ header: 'blue' }),
+    })
+    expect(colour.error?.code).toBe('INVALID_ARGUMENT')
+    expect(colour.error?.fix).toContain('#0088C8')
+  })
+})
+
 describe('screenLayout', () => {
   it('puts the cards and the navigation row inside the body slot', () => {
     const layout = screenLayout({ ...SPEC, width: 1000, height: 700 })

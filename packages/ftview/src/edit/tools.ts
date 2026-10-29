@@ -19,7 +19,8 @@ import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, Object
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
-import { scaffoldLayout, SCAFFOLD_THEME } from './scaffold.ts'
+import { scaffoldLayout, SCAFFOLD_THEME, type ScaffoldTheme } from './scaffold.ts'
+import { contrastRatio } from '../design.ts'
 import { restyleDisplay, type RestyleTheme } from './restyle.ts'
 import { selectBulk } from './bulk.ts'
 import type { BulkMatch } from './bulk.ts'
@@ -577,6 +578,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
             slots: layout.slots,
             theme: layout.theme,
+            contrast: contrastRows(layout.theme),
             note: 'Place content objects inside slots.body; header, title, footer and footerText are already drawn. Keep every object inside its slot and clear of the others.',
           },
           [
@@ -596,6 +598,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         width: integer('Display width in pixels. Omit to read displaySettings from the display file.', { minimum: 200 }),
         height: integer('Display height in pixels. Omit to read displaySettings from the display file.', { minimum: 150 }),
         tags_json: string('Optional HMI tags for this screen as JSON, e.g. [{"name":"BeltSpeed","description":"Cutter belt speed"}]. Staged in the same draft as the objects.'),
+        theme_json: string('Optional palette overrides as JSON, e.g. {"header":"#0088C8","footer":"#143243"}. Same slots as SCAFFOLD_THEME: backdrop, header, surface, footer, titleColor, footerColor.'),
       }, ['display', 'spec_json']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
@@ -617,9 +620,10 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           throw new EngineeringError('INVALID_ARGUMENT', `Cannot read the size of display ${JSON.stringify(name)}.`, 'Pass width and height, or check that the display file still carries displaySettings.')
         }
         const spec = jsonScreen(requiredString(args, 'spec_json'))
+        const palette = jsonPalette(optionalString(args, 'theme_json'))
         let layout: ReturnType<typeof screenLayout>
         try {
-          layout = screenLayout({ ...spec, width, height })
+          layout = screenLayout({ ...spec, width, height, ...(palette === undefined ? {} : { theme: palette }) })
         } catch (error) {
           throw new EngineeringError('INVALID_ARGUMENT', error instanceof Error ? error.message : String(error), 'Adjust the cards, rows or navigation in spec_json.')
         }
@@ -672,6 +676,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           })
         }
         if (draft === undefined) throw new EngineeringError('INTERNAL', 'The screen description produced no objects.', 'Report this as a defect.')
+        const used: ScaffoldTheme = { ...SCAFFOLD_THEME, ...(palette ?? {}) }
         return success(
           `Draft ${draft.id}: laid out ${layout.objects.length} objects on ${name} (${spec.cards?.length ?? 0} card(s), ${spec.nav?.length ?? 0} nav button(s))${tagNames.length === 0 ? '' : ` and ${tagNames.length} tag row(s)`}.`,
           {
@@ -680,6 +685,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
             ...(tagNames.length === 0 ? {} : { tags: tagNames }),
             slots: layout.slots,
+            theme: used,
+            contrast: contrastRows(used),
             note: 'Every object is positioned already. Validate the draft, render it with ftview_render source "draft", then apply.',
           },
           [
@@ -1350,6 +1357,47 @@ export type { EditOperation }
  * @param value - JSON text from the tool arguments.
  * @returns States, or undefined when the argument is absent.
  */
+/** Palette slots a screen request may override. */
+const PALETTE_KEYS = ['backdrop', 'header', 'surface', 'footer', 'titleColor', 'footerColor'] as const
+
+/** Parse palette overrides; a bad colour is refused rather than silently dropped. */
+function jsonPalette(value: string | undefined): Partial<ScaffoldTheme> | undefined {
+  if (value === undefined || value.trim() === '') return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'theme_json is not valid JSON.', 'Pass for example {"header":"#0088C8"}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new EngineeringError('INVALID_ARGUMENT', 'theme_json must be a JSON object.', 'Pass palette slots, for example {"footer":"#143243"}.')
+  }
+  const record = parsed as Record<string, unknown>
+  const palette: Record<string, string> = {}
+  for (const [key, colour] of Object.entries(record)) {
+    if (!(PALETTE_KEYS as readonly string[]).includes(key)) {
+      throw new EngineeringError('INVALID_ARGUMENT', `theme_json names ${JSON.stringify(key)}, which is not a palette slot.`, `Use one of: ${PALETTE_KEYS.join(', ')}.`)
+    }
+    if (typeof colour !== 'string' || !/^#[0-9A-Fa-f]{6}$/u.test(colour)) {
+      throw new EngineeringError('INVALID_ARGUMENT', `theme_json.${key} is not a #RRGGBB colour.`, 'Pass a six-digit hex colour, for example "#0088C8".')
+    }
+    palette[key] = colour
+  }
+  return palette as Partial<ScaffoldTheme>
+}
+
+/** Contrast of the two text-on-band pairs the scaffold draws. */
+function contrastRows(theme: ScaffoldTheme): readonly { pair: string; ratio: number; pass: boolean }[] {
+  const rows = [
+    { pair: 'title on header', fore: theme.titleColor, back: theme.header },
+    { pair: 'footer text on footer', fore: theme.footerColor, back: theme.footer },
+  ]
+  return rows.map(row => {
+    const ratio = Number(contrastRatio(row.fore, row.back).toFixed(2))
+    return { pair: row.pair, ratio, pass: ratio >= 4.5 }
+  })
+}
+
 /** Parse a screen description, keeping only the fields the layout understands. */
 function jsonPopup(value: string): Omit<PopupSpec, 'width' | 'height'> {
   let parsed: unknown

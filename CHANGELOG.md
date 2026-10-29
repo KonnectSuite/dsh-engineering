@@ -1,3 +1,12 @@
+## [0.65.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_screen` accepts a palette.** `theme_json` overrides the scaffold slots used for
+  that screen (backdrop, header, surface, footer, title and footer text), so a customer palette does
+  not need a restyle pass afterwards; the result echoes the palette and reports the contrast of the
+  two text-on-band pairs, flagging a title that would not be readable.
+
 ## [0.64.0] - 2026-10-29
 
 ### Added
