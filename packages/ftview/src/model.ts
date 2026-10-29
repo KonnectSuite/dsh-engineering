@@ -56,6 +56,8 @@ export interface Application {
   readonly tagErrors: readonly string[]
   readonly diagnostics: readonly string[]
   readonly files: readonly ScannedFile[]
+  /** File names inside `Images/`; the walker does not read their bytes. */
+  readonly images?: readonly string[]
 }
 
 /** Parsed tag CSV: rows plus the structural errors found while reading it. */
@@ -352,6 +354,7 @@ async function walk(
   signal: AbortSignal | undefined,
   visit: (file: string, absolute: string) => Promise<void>,
   budget: { count: number; max: number },
+  images: string[],
 ): Promise<void> {
   signal?.throwIfAborted()
   const path = relative === '' ? root : `${root.replace(/[\\/]$/u, '')}/${relative}`
@@ -365,7 +368,11 @@ async function walk(
     signal?.throwIfAborted()
     const child = relative === '' ? entry.name : `${relative}/${entry.name}`
     if (entry.type === 'directory') {
-      await walk(fs, root, child, signal, visit, budget)
+      if (/^images$/iu.test(entry.name)) {
+        const listing = await listDirectory(fs, `${path.replace(/[\\/]$/u, '')}/${entry.name}`, signal)
+        for (const art of listing) if (art.type !== 'directory') images.push(art.name)
+      }
+      await walk(fs, root, child, signal, visit, budget, images)
       continue
     }
     if (!/\.(xml|csv)$/iu.test(entry.name)) continue
@@ -397,6 +404,7 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
   const tagErrors: string[] = []
   const diagnostics: string[] = []
   const files: ScannedFile[] = []
+  const images: string[] = []
   await walk(fs, base, '', signal, async (file, absolute) => {
     const bytes = await fs.readBytes(absolute, signal, 32 * 1024 * 1024)
     const text = decodeText(bytes)
@@ -418,7 +426,7 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
       return
     }
     displays.push(display)
-  }, { count: 0, max: maxFiles })
+  }, { count: 0, max: maxFiles }, images)
   const name = base.replace(/[\\/]$/u, '').split(/[\\/]/u).pop() ?? base
-  return { root: base, name, displays, tags, tagFiles, tagErrors, diagnostics, files }
+  return { root: base, name, displays, tags, tagFiles, tagErrors, diagnostics, files, images }
 }

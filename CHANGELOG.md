@@ -2,6 +2,10 @@
 
 ### Added
 
+- **`ftview_check` names artwork the export does not ship.** A display that names
+  `Images/<file>` rendered an empty box with no warning anywhere in the workflow. The scan now records
+  the file names under `Images/` (without reading their bytes) and reports `IMAGE_MISSING` per display
+  and object, so a received export can be judged complete before anyone imports it.
 - **`ftview_apply` copies artwork byte for byte.** The applied folder used to state that native
   binary files were not copied, so a display naming `Images/<name>.png` produced a folder whose
   artwork was missing (or text-mangled). The copy loop now writes binary export files through

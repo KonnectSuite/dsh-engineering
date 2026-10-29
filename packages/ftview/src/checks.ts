@@ -20,6 +20,8 @@ export interface Checkable {
   readonly tags: readonly TagRow[]
   readonly tagErrors: readonly string[]
   readonly diagnostics: readonly string[]
+  /** File names inside `Images/`, needed to prove an image reference resolves. */
+  readonly images?: readonly string[]
 }
 
 
@@ -70,6 +72,20 @@ export function findingsOf(app: Checkable): Finding[] {
   }
   for (const display of app.displays) {
     for (const object of display.objects) {
+      const image = object.attributes.imageName?.trim()
+      if (image !== undefined && image !== '' && app.images !== undefined) {
+        const present = app.images.some(name =>
+          name.toLowerCase() === image.toLowerCase() || name.toLowerCase().startsWith(`${image.toLowerCase()}.`),
+        )
+        if (!present) {
+          findings.push({
+            rule: 'IMAGE_MISSING',
+            severity: 'warning',
+            message: `Display ${JSON.stringify(display.name)} names image ${JSON.stringify(image)}, and the export has no such file.`,
+            evidence: { display: display.name, object: object.name, image },
+          })
+        }
+      }
       if (object.name === undefined || object.name === '') continue
       const target = object.attributes.display ?? object.connections?.Display ?? object.connections?.display ?? ''
       if (target === '' || target.startsWith('{') || displayNames.has(target)) continue
