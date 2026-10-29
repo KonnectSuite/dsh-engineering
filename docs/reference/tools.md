@@ -235,7 +235,7 @@ Append one rung-comment change to the chat draft. Sets or clears the comment Stu
 
 #### `compose_rung`
 
-Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export, and optionally stage it in the draft. Never emits text that fails the ladder parser.
+Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

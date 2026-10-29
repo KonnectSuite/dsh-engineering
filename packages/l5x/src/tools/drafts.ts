@@ -12,6 +12,7 @@
 import { prepareChangeSet } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { L5xError } from '../core/errors.ts'
+import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -166,7 +167,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'compose_rung',
-      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export, and optionally stage it in the draft. Never emits text that fails the ladder parser.',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
         spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}.'),
@@ -182,6 +183,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, []),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
+        // A rung may be written against a tag this same draft declares.
+        const stagedNow = drafts.existing(exec, project.id)
+        const visible = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
         const pattern = optionalString(args, 'pattern')
         const specJson = optionalString(args, 'spec_json')
         if ((pattern === undefined) === (specJson === undefined)) {
@@ -190,10 +194,10 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         let composed: { rungs: readonly ComposedRung[]; pattern?: string }
         if (pattern !== undefined) {
           if (!(PATTERNS as readonly string[]).includes(pattern)) throw invalid('pattern', `Unknown pattern ${JSON.stringify(pattern)}.`, `Pass one of: ${PATTERNS.join(', ')}.`)
-          composed = composePattern(project, pattern as PatternName, jsonObject(typeof args.arguments_json === 'string' ? args.arguments_json : undefined, 'arguments_json'))
+          composed = composePattern(visible, pattern as PatternName, jsonObject(typeof args.arguments_json === 'string' ? args.arguments_json : undefined, 'arguments_json'))
         } else {
           const spec = jsonObject(specJson, 'spec_json')
-          composed = { rungs: [composeRung(project, spec as unknown as LadderNodeSpec)] }
+          composed = { rungs: [composeRung(visible, spec as unknown as LadderNodeSpec)] }
         }
         const program = optionalString(args, 'program')
         const routine = optionalString(args, 'routine')

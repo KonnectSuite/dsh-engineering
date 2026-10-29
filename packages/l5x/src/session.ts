@@ -13,7 +13,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import { L5xParseError, loadL5x, type L5xDocument } from './model/index.ts'
+import { L5xParseError, loadL5x, type L5xDocument, type L5xTag } from './model/index.ts'
 import { styleProfileOf, type L5xStyleProfile } from './engine/style.ts'
 import type { ExecContext } from './core/tool.ts'
 import { L5xError } from './core/errors.ts'
@@ -41,6 +41,8 @@ export interface ProjectSnapshot {
   readonly xml: string
   /** The parsed document. */
   readonly document: L5xDocument
+  /** Tags a draft declares that the export does not have yet; composition resolves them, nothing is written. */
+  readonly stagedTags?: readonly L5xTag[]
   /** Studio software revision the export declares. */
   readonly softwareRevision: string
   /** Whether this revision is in the parser's observed test matrix. */

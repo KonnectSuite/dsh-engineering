@@ -137,3 +137,30 @@ describe('draft editing', () => {
     expect(outOfRange.error?.fix).toContain('draft_list')
   })
 })
+describe('composition against staged tags', () => {
+  const spec = '{"series":[{"instr":"XIC","args":["SP_Start"]},{"instr":"OTE","args":["SP_Latch"]}]}'
+
+  it('refuses a staged name before the draft declares it', async () => {
+    const l5x = await opened()
+    const composed = await l5x.call('compose_rung', { spec_json: spec })
+    expect(composed.error?.code).toBe('TAG_NOT_FOUND')
+  })
+
+  it('composes once the same draft declares the tag', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'BOOL', description: 'staged start' })
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Latch', data_type: 'BOOL', description: 'staged latch' })
+    const composed = await l5x.call('compose_rung', { spec_json: spec })
+    expect(composed.error).toBeUndefined()
+    const rungs = composed.data?.rungs as readonly { neutral_text: string }[] | undefined
+    expect(rungs?.[0]?.neutral_text).toContain('XIC(SP_Start)')
+  })
+
+  it('still type-checks the staged declaration', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'REAL', description: 'wrong type' })
+    const composed = await l5x.call('compose_rung', { spec_json: spec })
+    expect(composed.error?.code).toBe('INVALID_OPERAND')
+    expect(composed.error?.message).toContain('BOOL')
+  })
+})

@@ -85,7 +85,8 @@ const TAG_TEXT = /^[A-Za-z_][A-Za-z0-9_:.[\]]*$/u
 const isLiteral = (text: string): boolean => LITERAL.test(text)
 
 /** A BOOL-ish check for the slot validation below uses this resolved operand. */
-function resolveOperand(document: Parameters<typeof resolveTag>[0], text: string): ReturnType<typeof resolveTag> {
+function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<typeof resolveTag> {
+  const document = project.document
   const direct = resolveTag(document, 'controller', text)
   if (direct.resolved) return direct
   // A rung is written inside a program, so an unqualified program tag is the
@@ -93,6 +94,11 @@ function resolveOperand(document: Parameters<typeof resolveTag>[0], text: string
   // two programs declaring it is an ambiguity the caller must settle.
   const base = text.split(/[.[:]/u)[0] ?? text
   const declared = document.tags.filter(tag => tag.name.toUpperCase() === base.toUpperCase())
+  // A draft may declare the tag this rung is written against; that is not an error.
+  const staged = (project.stagedTags ?? []).find(tag => tag.name.toUpperCase() === base.toUpperCase())
+  if (staged !== undefined && declared.length === 0) {
+    return { symbol: text, scope: staged.scope, resolved: true, canonical: staged.name, data_type: staged.dataType, aliases: [], indices_verified: false }
+  }
   if (declared.length === 1) return resolveTag(document, declared[0]!.scope, text)
   if (declared.length > 1) {
     throw new L5xError(
@@ -117,7 +123,7 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   if (!TAG_TEXT.test(text)) {
     throw new L5xError('INVALID_OPERAND', `"${text}" is not a tag or a number.`, 'Pass a declared tag name, a member path, or a numeric literal; no spaces or quotes.')
   }
-  const resolution = resolveOperand(project.document, text)
+  const resolution = resolveOperand(project, text)
   if (!resolution.resolved) {
     const near = project.document.tags
       .map(tag => tag.name)

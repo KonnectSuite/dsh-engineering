@@ -53,6 +53,20 @@ export class DraftStore {
   }
 
   /**
+   * The draft for one project when one already exists, without creating it.
+   *
+   * @param exec - Calling context; its chat selects the draft set.
+   * @param projectId - Project handle the draft edits.
+   * @returns The accumulated draft, or undefined when nothing is staged yet.
+   */
+  existing(exec: ExecContext | undefined, projectId: string): Draft | undefined {
+    for (const draft of this.chatsOf(exec).values()) {
+      if (draft.projectId === projectId) return draft
+    }
+    return undefined
+  }
+
+  /**
    * Append one operation to a project's draft.
    *
    * @param exec - Calling context.
