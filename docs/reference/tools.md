@@ -718,11 +718,12 @@ Search one opened export by name or text across displays, display objects and HM
 
 #### `ftview_check`
 
-Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, and screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND). Vendor XSD validation and controller binding are not performed.
+Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), and — when a decoded Alarms.xml is supplied — an alarm setup whose display-name is not in the export (ALARM_DISPLAY_MISSING). Vendor XSD validation and controller binding are not performed.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
+| `alarms` | string | no | Path to a decoded Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept. |
 
 #### `ftview_compare`
 

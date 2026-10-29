@@ -6,7 +6,7 @@
 
 import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from './core.ts'
 import type { DisplayFile, TagRow } from './model.ts'
-import { findingsOf } from './checks.ts'
+import { alarmFindings, findingsOf } from './checks.ts'
 import { diffObjects } from './objects-diff.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
@@ -303,11 +303,19 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_check',
-      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, and screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND). Vendor XSD validation and controller binding are not performed.',
-      parameters: object({ view_id: VIEW_ID }, []),
+      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), and — when a decoded Alarms.xml is supplied — an alarm setup whose display-name is not in the export (ALARM_DISPLAY_MISSING). Vendor XSD validation and controller binding are not performed.',
+      parameters: object({
+        view_id: VIEW_ID,
+        alarms: string('Path to a decoded Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept.'),
+      }, []),
       async run(args, exec) {
         const { app } = session.require(optionalString(args, 'view_id'), exec)
         const findings = findingsOf(app)
+        const alarmsPath = optionalString(args, 'alarms')
+        if (alarmsPath !== undefined && read !== undefined) {
+          const names = new Set(app.displays.map(display => display.name))
+          findings.push(...alarmFindings(await read(alarmsPath), names))
+        }
         const byRule: Record<string, number> = {}
         for (const finding of findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
         return success(

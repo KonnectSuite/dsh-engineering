@@ -22,6 +22,31 @@ export interface Checkable {
   readonly diagnostics: readonly string[]
 }
 
+
+/**
+ * Findings from a decoded alarm configuration.
+ *
+ * The alarm setup names the display the terminal opens when an alarm is
+ * annunciated (`display-name`). If that display is not in the application, the
+ * terminal has nowhere to show alarms, and no display review would reveal it.
+ *
+ * @param alarmsXml - Decoded `Alarms.xml` text.
+ * @param displayNames - Display names present in the export.
+ * @returns Findings for the alarm configuration.
+ */
+export function alarmFindings(alarmsXml: string, displayNames: ReadonlySet<string>): Finding[] {
+  const findings: Finding[] = []
+  const name = /\bdisplay-name="([^"]*)"/u.exec(alarmsXml)?.[1]?.trim() ?? ''
+  if (name !== '' && !displayNames.has(name)) {
+    findings.push({
+      rule: 'ALARM_DISPLAY_MISSING',
+      severity: 'warning',
+      message: `The alarm setup opens ${JSON.stringify(name)} for alarms, and this export has no display with that name.`,
+      evidence: { file: 'Alarms.xml', display: name },
+    })
+  }
+  return findings
+}
 /**
  * Run the structural checks.
  *
