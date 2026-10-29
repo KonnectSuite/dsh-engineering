@@ -1,3 +1,16 @@
+## [0.41.0] - 2026-10-29
+
+### Added
+
+- `DisplayObject.connections` carries the expressions an object is wired to (`Value`, `Indicator`,
+  `Display`), read from both the flat and the `<connections>`-wrapped ME shapes.
+- Renders print that tag inside the frame, so a picture shows what a display reads instead of only its
+  caption and object name.
+
+### Notes
+
+- Long expressions are shortened to the room the frame has; the full text stays in `data.connections`.
+
 ## [0.40.0] - 2026-10-29
 
 ### Added

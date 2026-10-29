@@ -114,6 +114,17 @@ function grid(left: number, top: number, width: number, height: number, stroke: 
   return lines.join('')
 }
 
+/** The expression a frame is wired to, as a short label, or an empty string. */
+function wiredTag(object: DisplayObject, left: number, top: number, width: number, height: number): string {
+  const connections = object.connections ?? {}
+  const raw = connections.Value ?? connections.Indicator ?? connections.Display ?? Object.values(connections)[0]
+  if (raw === undefined || raw === '') return ''
+  const full = decodeEntities(raw)
+  const room = Math.max(6, Math.floor(width / 5))
+  const shown = full.length > room ? `${full.slice(0, room)}…` : full
+  return `<text x="${left + 3}" y="${top + height - 3}" font-size="9" font-family="Segoe UI, Arial, sans-serif" fill="#0B1220">${encodeEntities(shown)}</text>`
+}
+
 /** Text drawn on a face: the caption attribute, else the object name. */
 function faceText(object: DisplayObject): string {
   const raw = object.attributes.caption ?? object.attributes.Text ?? object.name ?? ''
@@ -131,6 +142,7 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
   const stroke = colour(object.attributes.borderColor, 'none')
   const border = `${geometry(object, 'borderWidth', 0) > 0 && stroke !== 'none' ? ` stroke="${stroke}"` : ''}`
   const label = encodeEntities(faceText(object))
+  const tag = wiredTag(object, left, top, width, height)
   if (type === 'text') {
     const size = geometry(object, 'fontSize', 12)
     const colourText = colour(object.attributes.color, '#000000')
@@ -158,22 +170,22 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
     const cx = left + width / 2
     const cy = top + height / 2
     const radius = Math.max(2, Math.min(width, height) / 2)
-    return `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${colour(object.attributes.backColor, '#FF0000')}"${border}/>`
+    return `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="${colour(object.attributes.backColor, '#FF0000')}"${border}/>${tag}`
   }
   const rect = `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${fill}"${border}/>`
   if (type.includes('button')) {
     const size = geometry(object, 'fontSize', 12)
     const colourText = colour(object.attributes.captionColor ?? object.attributes.color, '#000000')
-    return `${rect}<text x="${left + width / 2}" y="${top + height / 2 + size / 3}" text-anchor="middle" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${label}</text>`
+    return `${rect}${tag}<text x="${left + width / 2}" y="${top + height / 2 + size / 3}" text-anchor="middle" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${label}</text>`
   }
   if (type.includes('trend')) {
-    return `${rect}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 4, 4)}`
+    return `${rect}${tag}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 4, 4)}`
   }
   if (type.includes('bargraph')) {
-    return `${rect}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 1, 4)}`
+    return `${rect}${tag}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 1, 4)}`
   }
-  if (type === 'panel' || type.includes('rectangle')) return rect
-  return `${rect}<text x="${left + 2}" y="${top + 12}" font-size="10" font-family="Segoe UI, Arial, sans-serif" fill="#64748B">${encodeEntities(object.name ?? object.type)}</text>`
+  if (type === 'panel' || type.includes('rectangle')) return `${rect}${tag}`
+  return `${rect}${tag}<text x="${left + 2}" y="${top + 12}" font-size="10" font-family="Segoe UI, Arial, sans-serif" fill="#64748B">${encodeEntities(object.name ?? object.type)}</text>`
 }
 
 /** Render a display to an SVG document. */

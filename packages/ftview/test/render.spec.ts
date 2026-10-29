@@ -177,4 +177,44 @@ describe('ftview_render', { timeout: 30_000 }, () => {
     expect(svg).toContain('>LINE TWO</tspan>')
   })
 
+  it('lifts the connections an object is wired to', () => {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+      '<displaySettings width="200" height="100" backColor="#C6C6C6"/>',
+      '<screen>',
+      '<numericDisplay name="Speed" left="10" top="10" width="120" height="24">',
+      '<connections><connection name="Value" expression="{Cutter}Hmi_MainDriveSpeed"/></connections>',
+      '</numericDisplay>',
+      '</screen>',
+      '</gfx>',
+    ].join('\n')
+    const parsed = parseDisplay('Wired.xml', xml)
+    const field = parsed.objects.find(object => object.name === 'Speed')
+    expect(field?.connections).toEqual({ Value: '{Cutter}Hmi_MainDriveSpeed' })
+    const svg = renderDisplaySvg('Wired', parsed.objects, settingsFromXml(xml)).svg
+    expect(svg).toContain('{Cutter}Hmi_MainDrive')
+  })
+
+  it('draws the tag an indicator reads, not only its lamp', () => {
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+      '<displaySettings width="200" height="100" backColor="#C6C6C6"/>',
+      '<screen>',
+      '<multistateIndicator name="Ready" left="10" top="10" width="60" height="60">',
+      '<connections><connection name="Indicator" expression="LineReady"/></connections>',
+      '<states><state stateId="0" value="0"><caption caption="Off"/></state></states>',
+      '</multistateIndicator>',
+      '</screen>',
+      '</gfx>',
+    ].join('\n')
+    const parsed = parseDisplay('Lamp.xml', xml)
+    const lamp = parsed.objects.find(object => object.name === 'Ready')
+    expect(lamp?.connections).toEqual({ Indicator: 'LineReady' })
+    const svg = renderDisplaySvg('Lamp', parsed.objects, settingsFromXml(xml)).svg
+    expect(svg).toContain('LineReady')
+    expect(svg).toContain('<circle')
+  })
+
 })

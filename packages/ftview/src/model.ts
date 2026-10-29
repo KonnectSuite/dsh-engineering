@@ -27,6 +27,8 @@ export interface DisplayObject {
   readonly type: string
   readonly name?: string
   readonly attributes: Readonly<Record<string, string>>
+  /** Connection name to expression, as ME writes it (Value, Indicator, Display). */
+  readonly connections?: Readonly<Record<string, string>>
 }
 
 /** One parsed display file. */
@@ -249,6 +251,20 @@ function firstState(states: unknown): Record<string, unknown> | undefined {
   return resting ?? list[0]
 }
 
+/** Connection name to expression for one object. */
+function connectionsOf(node: unknown): Record<string, string> {
+  const connections: Record<string, string> = {}
+  const list = Array.isArray(node) ? node : node === undefined ? [] : [node]
+  for (const item of list) {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue
+    const attributes = attributesOf(item as Record<string, unknown>)
+    const name = attributes.name ?? attributes.Name
+    const expression = attributes.expression ?? attributes.Expression
+    if (name !== undefined && expression !== undefined && expression !== '') connections[name] = expression
+  }
+  return connections
+}
+
 /** Collect one element and its descendants as display objects. */
 function collectObjects(node: unknown, type: string, out: DisplayObject[], depth: number): void {
   if (depth > 8 || node === null || typeof node !== 'object' || Array.isArray(node)) return
@@ -266,7 +282,14 @@ function collectObjects(node: unknown, type: string, out: DisplayObject[], depth
     if (body !== undefined) attributes.Text = body
   }
   const named = attributes.name ?? attributes.Name
-  out.push({ type, ...(named === undefined ? {} : { name: named }), attributes })
+  const wrapped = (record.connections ?? {}) as Record<string, unknown>
+  const connections = { ...connectionsOf(record.connection), ...connectionsOf(wrapped.connection) }
+  out.push({
+    type,
+    ...(named === undefined ? {} : { name: named }),
+    attributes,
+    ...(Object.keys(connections).length === 0 ? {} : { connections }),
+  })
   for (const [key, value] of Object.entries(record)) {
     if (key.startsWith(ATTRIBUTE) || key === '#text') continue
     if (Array.isArray(value)) {
