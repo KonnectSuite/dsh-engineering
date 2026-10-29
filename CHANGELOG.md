@@ -1,3 +1,12 @@
+## [0.52.0] - 2026-10-29
+
+### Added
+
+- **`l5x_diagram` pages a large project.** `routine` restricts the page to one routine and
+  `start_rung` continues from where the last page stopped; the result carries `start_rung` and
+  `next_start`, and the summary says which offset to page from next. A 799-rung commissioning project
+  used to be truncated after `max_rungs` with no way to see the rest.
+
 ## [0.51.0] - 2026-10-29
 
 ### Added

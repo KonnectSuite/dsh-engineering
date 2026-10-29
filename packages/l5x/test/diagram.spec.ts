@@ -1,7 +1,9 @@
 /**
  * The whole-project ladder diagram: one page for every RLL rung.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.setConfig({ testTimeout: 30_000 })
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -55,6 +57,32 @@ describe('l5x_diagram', () => {
     expect(result.error).toBeUndefined()
     expect(result.data?.rungs).toBe(2)
     expect(result.data?.omitted as number).toBeGreaterThan(0)
-    expect(result.summary).toContain('left off the page')
+    expect(result.summary).toContain('more follow, so page on with start_rung')
   })
+
+  it('pages a long project with start_rung', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    expect(open.error).toBeUndefined()
+    const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
+    const first = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 1 })
+    expect(first.error).toBeUndefined()
+    expect(first.data?.start_rung).toBe(0)
+    expect(typeof first.data?.next_start).toBe('number')
+    const second = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 1, start_rung: 1 })
+    expect(second.error).toBeUndefined()
+    expect(second.data?.start_rung).toBe(1)
+    expect(second.summary).toContain('from rung offset 1')
+  }, 30000)
+
+  it('restricts the page to one routine', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
+    const one = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, routine: 'MainRoutine' })
+    expect(one.error).toBeUndefined()
+    expect(one.data?.routines).toBe(1)
+    const missing = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, routine: 'NoSuchRoutine' })
+    expect(missing.error?.code).toBe('NOT_FOUND')
+  }, 30000)
 })

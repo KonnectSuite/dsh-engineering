@@ -142,17 +142,21 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
       parameters: object({
         project_id: string('Optional project handle. Omit when exactly one project is open.'),
         program: string('Optional program name to restrict the page to one program.'),
+        routine: string('Optional routine name to restrict the page to one routine.'),
+        start_rung: integer('Rung offset to start the page at, for reading a large project in pages. Defaults to 0.', { minimum: 0 }),
         max_rungs: integer('Most rungs to draw. Defaults to 60, at most 200.', { minimum: 1, maximum: 200 }),
         output: string('Optional folder for the image, relative to the workspace. Defaults to ".l5x-diagram".'),
       }, []),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const program = optionalString(args, 'program')
+        const routineName = optionalString(args, 'routine')
+        const startRung = optionalNumber(args, 'start_rung') ?? 0
         const requested = optionalNumber(args, 'max_rungs') ?? 60
         if (requested < 1 || requested > 200) {
           throw new L5xError('INVALID_ARGUMENT', `max_rungs must be between 1 and 200, not ${requested}.`, 'Pass a smaller page, for example 40, or omit the argument for 60.')
         }
-        const routines = listRoutines(project.document).filter(info => info.type === 'RLL' && (program === undefined || info.program === program))
+        const routines = listRoutines(project.document).filter(info => info.type === 'RLL' && (program === undefined || info.program === program) && (routineName === undefined || info.name === routineName))
         if (routines.length === 0) {
           throw new L5xError(
             'NOT_FOUND',
@@ -164,10 +168,15 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         const rows: Row[] = []
         let omitted = 0
         let beyond = 0
+        let seen = 0
         for (const info of routines) {
           const routine = getRoutine(project.document, info.program, info.name)
           if (routine === undefined || routine.body.type !== 'RLL') continue
           for (const rung of routine.body.rungs) {
+            if (seen < startRung) {
+              seen += 1
+              continue
+            }
             if (rows.length >= requested) {
               omitted += 1
               continue
@@ -200,7 +209,7 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         const raster = await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title))
         const words = omitted === 0
           ? `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg}.`
-          : `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg}; ${omitted} more were left off the page.`
+          : `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg} (from rung offset ${startRung}); ${omitted} more follow, so page on with start_rung ${startRung + rows.length}.`
         return success(
           `${words}${beyond === 0 ? '' : ` ${beyond} rung(s) carried no instructions.`}`,
           {
@@ -208,6 +217,8 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
             programs: [...new Set(rows.map(row => row.program))],
             routines: rows.length === 0 ? 0 : new Set(rows.map(row => `${row.program}/${row.routine}`)).size,
             rungs: rows.length,
+            start_rung: startRung,
+            next_start: omitted === 0 ? null : startRung + rows.length,
             omitted,
             empty: beyond,
             diagram_svg: raster.svg,

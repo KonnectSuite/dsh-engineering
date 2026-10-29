@@ -226,6 +226,8 @@ Draw every ladder rung of the open project on one page as a schematic, so a revi
 |---|---|---|---|
 | `project_id` | string | no | Optional project handle. Omit when exactly one project is open. |
 | `program` | string | no | Optional program name to restrict the page to one program. |
+| `routine` | string | no | Optional routine name to restrict the page to one routine. |
+| `start_rung` | integer | no | Rung offset to start the page at, for reading a large project in pages. Defaults to 0. |
 | `max_rungs` | integer | no | Most rungs to draw. Defaults to 60, at most 200. |
 | `output` | string | no | Optional folder for the image, relative to the workspace. Defaults to ".l5x-diagram". |
 
