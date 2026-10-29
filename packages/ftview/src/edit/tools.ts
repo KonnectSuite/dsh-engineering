@@ -23,6 +23,7 @@ import { scaffoldLayout } from './scaffold.ts'
 import { selectBulk } from './bulk.ts'
 import type { BulkMatch } from './bulk.ts'
 import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from './screen.ts'
+import { popupLayout, type PopupButton, type PopupSpec } from './popup.ts'
 import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
@@ -689,6 +690,82 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_popup',
+      description: 'Stage a modal popup in one call: an onTop display at the size and position given, a title, a wrapped message, and one to three buttons that close the popup or open another display. Creates the display when the export has none with that name. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Popup display name, for example "Confirm Popup". A new onTop display is created when this export has none with the name.'),
+        spec_json: string('Popup description as JSON: {"title":"CONFIRM","message":"ARE YOU SURE YOU WANT TO START THE SYSTEM?","buttons":[{"label":"NO","backColor":"#B91C1C"},{"label":"YES"}]}. Up to three buttons; add "action":"goto" with "display" to open another display instead of closing.'),
+        width: integer('Popup width in pixels. Defaults to 395.', { minimum: 200 }),
+        height: integer('Popup height in pixels. Defaults to 190.', { minimum: 120 }),
+      }, ['display', 'spec_json']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'display')
+        const parsed = jsonPopup(requiredString(args, 'spec_json'))
+        const width = optionalInteger(args, 'width')
+        const height = optionalInteger(args, 'height')
+        let layout: ReturnType<typeof popupLayout>
+        try {
+          layout = popupLayout({
+            ...parsed,
+            ...(width === undefined ? {} : { width }),
+            ...(height === undefined ? {} : { height }),
+          })
+        } catch (error) {
+          throw new EngineeringError('INVALID_ARGUMENT', error instanceof Error ? error.message : String(error), 'Adjust the message, buttons or size in spec_json.')
+        }
+        let draft: EditDraft | undefined
+        const existing = view.app.displays.find(candidate => candidate.name === name)
+        let file: string
+        if (existing === undefined) {
+          file = `Displays/${name}.xml`
+          draft = stage(exec, view.id, {
+            kind: 'display_create',
+            file,
+            name,
+            width: layout.width,
+            height: layout.height,
+            displayType: 'onTop',
+            ...(layout.settings.backColor === undefined ? {} : { backColor: layout.settings.backColor }),
+          }).draft
+        } else {
+          file = existing.file
+        }
+        for (const [attribute, value] of Object.entries(layout.settings)) {
+          if (attribute === 'width' || attribute === 'height' || attribute === 'displayType') continue
+          draft = stage(exec, view.id, { kind: 'display_set', file, attribute, value }).draft
+        }
+        for (const item of layout.objects) {
+          draft = stage(exec, view.id, {
+            kind: 'object_add',
+            file,
+            type: item.type,
+            name: item.name,
+            attributes: item.attributes,
+            ...(item.caption === undefined ? {} : { caption: item.caption }),
+          }).draft
+        }
+        if (draft === undefined) throw new EngineeringError('INTERNAL', 'The popup description produced no objects.', 'Report this as a defect.')
+        return success(
+          `Draft ${draft.id}: popup ${name} at ${layout.width}x${layout.height} with ${layout.objects.length} object(s) and ${parsed.buttons.length} button(s).`,
+          {
+            draft_id: draft.id,
+            operation_count: draft.operations.length,
+            display: { name, file, width: layout.width, height: layout.height },
+            placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
+            settings: layout.settings,
+            note: 'Render the staged draft with ftview_render source "draft" to check the message fits before applying.',
+          },
+          [
+            { tool: 'ftview_render', why: 'Look at the staged popup before applying it.', args: { display: name, source: 'draft' } },
+            { tool: 'ftview_validate', why: 'Validate the staged popup before writing anything.', args: { draft_id: draft.id } },
+          ],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_draft_object_add',
       description: 'Stage one new object inside a display: geometry, attributes and tag connections. Validated against the vendor schema on ftview_validate. Nothing is written until ftview_apply.',
       parameters: object({
@@ -1202,6 +1279,42 @@ export type { EditOperation }
  * @returns States, or undefined when the argument is absent.
  */
 /** Parse a screen description, keeping only the fields the layout understands. */
+function jsonPopup(value: string): Omit<PopupSpec, 'width' | 'height'> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'spec_json is not valid JSON.', 'Pass a popup like {"title":"CONFIRM","message":"ARE YOU SURE","buttons":[{"label":"NO"},{"label":"YES"}]}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new EngineeringError('INVALID_ARGUMENT', 'spec_json must be a JSON object.', 'Start from {"message": "...", "buttons": [...]}.')
+  const record = parsed as Record<string, unknown>
+  if (typeof record.message !== 'string' || record.message.trim() === '') throw new EngineeringError('INVALID_ARGUMENT', 'spec_json needs a message.', 'Pass the text the operator reads, for example "ARE YOU SURE YOU WANT TO START?".')
+  if (!Array.isArray(record.buttons) || record.buttons.length === 0) throw new EngineeringError('INVALID_ARGUMENT', 'spec_json needs a buttons array.', 'Pass at least one button, for example [{"label":"YES"}].')
+  const buttons: PopupButton[] = record.buttons.map(entry => {
+    if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) throw new EngineeringError('INVALID_ARGUMENT', 'Each button must be a JSON object.', 'Pass {"label":"YES"} or {"label":"NO","backColor":"#B91C1C"}.')
+    const button = entry as Record<string, unknown>
+    if (typeof button.label !== 'string' || button.label === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each button needs a label.', 'Pass the caption, for example "YES".')
+    const action = button.action
+    if (action !== undefined && action !== 'close' && action !== 'goto') throw new EngineeringError('INVALID_ARGUMENT', 'A button action must be "close" or "goto".', 'Omit action to close the popup, or use "goto" with a display name.')
+    if (action === 'goto' && (typeof button.display !== 'string' || button.display === '')) throw new EngineeringError('INVALID_ARGUMENT', `Button ${JSON.stringify(button.label)} goes to a display but names none.`, 'Pass the display name in "display".')
+    return {
+      label: button.label,
+      ...(action === undefined ? {} : { action }),
+      ...(typeof button.display === 'string' ? { display: button.display } : {}),
+      ...(typeof button.backColor === 'string' ? { backColor: button.backColor } : {}),
+    }
+  })
+  return {
+    ...(typeof record.title === 'string' && record.title !== '' ? { title: record.title } : {}),
+    message: record.message,
+    buttons,
+    ...(typeof record.positionX === 'number' ? { positionX: record.positionX } : {}),
+    ...(typeof record.positionY === 'number' ? { positionY: record.positionY } : {}),
+    ...(typeof record.backColor === 'string' ? { backColor: record.backColor } : {}),
+    ...(record.frame === true ? { frame: true } : {}),
+  }
+}
+
 function jsonScreen(value: string): Omit<ScreenSpec, 'width' | 'height'> {
   let parsed: unknown
   try {

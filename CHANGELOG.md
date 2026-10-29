@@ -1,3 +1,16 @@
+## [0.57.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_popup` builds a modal popup in one call.** Title, a message that survives a vendor
+  import (line breaks are written as `&#xA;`), and one to three buttons that close the popup or open a
+  display. A new popup is created as an `onTop` display with no title bar, the way Machine Edition
+  confirmations behave, and an existing display of that name is reused.
+
+### Fixed
+
+- **Line breaks in captions are kept.** `escapeAttribute` writes `&#xA;` for a newline, so a multi-line
+  message reaches Studio as two lines instead of being flattened onto one.
 ## [0.56.0] - 2026-10-29
 
 ### Fixed

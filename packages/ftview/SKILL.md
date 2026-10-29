@@ -54,12 +54,12 @@ is ever written to `<workspace>/_backups`.
 The `ftview-edit` entry stages changes; it may be disabled in this profile. If a draft tool is
 unavailable, say editing is not enabled here rather than trying another tool.
 
-- `ftview_draft_display_set` stages one attribute change on a display or one of its named objects.
-- `ftview_draft_display_add` stages a new display by copying an existing display file.
+- `ftview_draft_display_set` stages one attribute change.
+- `ftview_draft_display_add` copies an existing display to a new name.
 - `ftview_draft_tag_upsert` stages one HMI tag change; ftview_draft_tags stages a batch of them in one call.
 - One operation per call. Each returns the draft id and the operation count; nothing is written yet.
 - `ftview_validate` re-parses the edited copy, checks the changed displays against the installed
-  `Gfx-ME*.xsd` and lists findings, including `DRAFT_OVERLAP` for overlapping placements. `ftview_apply` refuses a document the vendor schema rejects.
+  `Gfx-ME*.xsd` and lists findings (including `DRAFT_OVERLAP`); `ftview_apply` refuses a document the vendor schema rejects.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
 - `ftview_render` draws one display or up to eight (`displays_json`) to SVG and PNG: look before importing. `problems` flags clipped objects.
@@ -77,6 +77,7 @@ Start from the installed application:
    to `ftview_studio_export_prepare` for an alarm snapshot.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_scaffold` for a new screen: chrome plus `slots` rectangles to place into;
+- `ftview_draft_popup` for a modal popup: title, message (`\n` breaks a line), 1-3 buttons;
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
      `gotoButton`, …) with `states_json` faces, `animations_json` and connections;

@@ -140,7 +140,12 @@ export interface ObjectOrderOperation {
 
 /** Escape one XML attribute value. */
 export function escapeAttribute(value: string): string {
-  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('\n', '&#xA;')
 }
 
 /** Escape one CSV cell when it needs quoting. */
