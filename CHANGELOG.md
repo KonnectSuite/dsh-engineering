@@ -1,3 +1,11 @@
+## [0.58.0] - 2026-10-29
+
+### Added
+
+- **`ftview_check` reports a binding the tag CSV cannot satisfy.** Every connection on a named object
+  is resolved to its root tag; when the CSV is present and does not declare that root, the finding is
+  `TAG_NOT_BOUND` with the display, object, connection and expression. A misspelled tag used to look
+  identical to a working one in a render and only fail on the PanelView.
 ## [0.57.0] - 2026-10-29
 
 ### Added

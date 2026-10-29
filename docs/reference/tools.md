@@ -718,7 +718,7 @@ Search one opened export by name or text across displays, display objects and HM
 
 #### `ftview_check`
 
-Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, and files that did not parse. Vendor XSD validation and PLC binding are not performed.
+Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, and screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND). Vendor XSD validation and controller binding are not performed.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

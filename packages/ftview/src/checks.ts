@@ -48,5 +48,23 @@ export function findingsOf(app: Checkable): Finding[] {
     if (tagNames.has(tag.name)) findings.push({ rule: 'DUPLICATE_TAG_NAME', severity: 'error', message: `The tag CSV declares ${JSON.stringify(tag.name)} more than once.`, evidence: { tag: tag.name } })
     tagNames.add(tag.name)
   }
+  if (tagNames.size > 0) {
+    for (const display of app.displays) {
+      for (const object of display.objects) {
+        if (object.name === undefined || object.name === "") continue
+        for (const [name, expression] of Object.entries(object.connections ?? {})) {
+          const root = expression.split(/[.[]/u)[0]?.trim() ?? ''
+          if (root === '' || /^[0-9]+$/u.test(root) || root.includes(':') || root.includes('/')) continue
+          if (tagNames.has(root)) continue
+          findings.push({
+            rule: 'TAG_NOT_BOUND',
+            severity: 'warning',
+            message: `Display ${JSON.stringify(display.name)} binds ${name} to ${JSON.stringify(expression)}, but ${JSON.stringify(root)} is not a tag in this CSV.`,
+            evidence: { display: display.name, object: object.name ?? '', connection: name, expression },
+          })
+        }
+      }
+    }
+  }
   return findings
 }

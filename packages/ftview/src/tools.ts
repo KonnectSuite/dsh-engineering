@@ -277,7 +277,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_check',
-      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, and files that did not parse. Vendor XSD validation and PLC binding are not performed.',
+      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, and screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND). Vendor XSD validation and controller binding are not performed.',
       parameters: object({ view_id: VIEW_ID }, []),
       async run(args, exec) {
         const { app } = session.require(optionalString(args, 'view_id'), exec)
