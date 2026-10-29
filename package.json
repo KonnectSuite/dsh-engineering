@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.62.0",
+  "version": "0.63.0",
   "description": "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
   "keywords": [
     "dsh",
@@ -70,7 +70,8 @@
     "fast-xml-parser": "5.11.1",
     "fast-xml-validator": "1.4.2",
     "playwright-core": "1.61.1",
-    "st-ethernet-ip": "2.7.5"
+    "st-ethernet-ip": "2.7.5",
+    "@aryacode/dsh-engineering-ftview": "workspace:0.63.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",

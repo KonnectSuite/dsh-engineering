@@ -1,3 +1,12 @@
+## [0.63.0] - 2026-10-29
+
+### Added
+
+- **`ftview_theme_audit` measures house-theme conformance.** Every display is checked for the
+  theme backdrop, a header band, a footer band and the share of its colours already in the palette,
+  and each non-conforming display becomes one `VIEW-THEME-01` finding. Deciding which screens still
+  need `ftview_draft_restyle` was a manual pass over dozens of displays.
+
 ## [0.62.0] - 2026-10-29
 
 ### Fixed

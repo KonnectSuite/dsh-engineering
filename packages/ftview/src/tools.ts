@@ -11,6 +11,8 @@ import { diffObjects } from './objects-diff.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
+import { themeAudit } from './theme-audit.ts'
+import { SCAFFOLD_THEME } from './edit/scaffold.ts'
 import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
@@ -21,6 +23,21 @@ import { join } from 'node:path'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
+/** Palette overrides for the theme audit; malformed JSON is refused, not ignored. */
+function parseTheme(json: string | undefined): Parameters<typeof themeAudit>[1] {
+  if (json === undefined || json.trim() === '') return undefined
+  try {
+    const parsed: unknown = JSON.parse(json)
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new EngineeringError('INVALID_ARGUMENT', 'theme_json must be a JSON object of colour overrides.', 'Pass for example {"header":"#0088C8"}.')
+    }
+    return { ...SCAFFOLD_THEME, ...(parsed as Record<string, string>) }
+  } catch (error) {
+    if (error instanceof EngineeringError) throw error
+    throw new EngineeringError('INVALID_ARGUMENT', 'theme_json is not valid JSON.', 'Fix the JSON or omit the argument to audit against the house theme.')
+  }
+}
+
 const COVERAGE: Coverage = {
   complete: false,
   unverified: [
@@ -403,6 +420,32 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           `${findings.length} design finding(s): ${count('error')} error, ${count('warning')} warning, ${count('info')} info.`,
           { findings: findings.slice(0, limit), truncated: findings.length > limit },
           [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_theme_audit',
+      description: 'Measure every display against the house theme: backdrop, header band, footer band and how much of the palette it already uses. Read-only; pairs with ftview_draft_restyle.',
+      parameters: object({
+        view_id: VIEW_ID,
+        theme_json: string('Optional palette overrides, e.g. {"header":"#0088C8"}.'),
+        limit: integer('Most rows to return. Defaults to 40.', { minimum: 1, maximum: 200 }),
+      }, []),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const overrides = parseTheme(optionalString(args, 'theme_json'))
+        const audit = themeAudit(view.app, overrides)
+        const limit = optionalInteger(args, 'limit') ?? 40
+        return success(
+          `${audit.conforming} of ${audit.total} display(s) follow the house theme; ${audit.total - audit.conforming} need a restyle.`,
+          {
+            conforming: audit.conforming,
+            total: audit.total,
+            displays: audit.rows.slice(0, limit),
+            findings: audit.findings,
+          },
+          [{ tool: 'ftview_draft_restyle', args: { view_id: view.id }, why: 'Repaint a display in the palette the audit measured against.' }],
           COVERAGE,
         )
       },
