@@ -16,6 +16,7 @@ import type { ViewSession } from '../session.ts'
 import type { EditDraft, EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
 import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, ObjectAnimations, ObjectState } from './operations.ts'
+import { verifyDraft } from './verify-draft.ts'
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
@@ -1122,9 +1123,11 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const results = await verifyDisplays(fs, root, expected)
         const matched = results.filter(result => result.matched).length
         const differences = results.flatMap(result => result.differences.map(difference => ({ file: result.file, ...difference })))
+        const reopened = await session.open(root, exec)
+        const drift = verifyDraft(draft, reopened.app)
         return success(
-          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}. Export kept at ${root}.`,
-          { application: requiredString(args, 'application'), export_root: root, displays: results, differences, matched: allMatched(results) },
+          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}. Export kept at ${root}.`,
+          { application: requiredString(args, 'application'), export_root: root, displays: results, differences, matched: allMatched(results), drift },
           matched === results.length
             ? [{ tool: 'ftview_draft_display_create', why: 'Author the next screen against the verified export.' }]
             : [{ tool: 'ftview_validate', args: { draft_id: draft.id }, why: 'Re-read the draft findings before correcting the difference.' }],

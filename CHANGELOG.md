@@ -1,3 +1,11 @@
+## [0.66.0] - 2026-10-29
+
+### Added
+
+- **`ftview_verify_import` compares staged objects, not just display files.** The round-trip check
+  now also reports, per display, staged objects the import dropped and fields whose landed value
+  differs from the value the draft set (geometry, face colours, caption). That is the difference
+  between "the file was accepted" and "the change is on the screen".
 ## [0.65.0] - 2026-10-29
 
 ### Added

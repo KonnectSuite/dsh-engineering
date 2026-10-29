@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
 import { addObject, renameDisplay, setObject } from '../src/edit/operations.ts'
 import { targetPath } from '../src/core.ts'
+import type { Application } from '../src/model.ts'
+import type { EditDraft } from '../src/edit/drafts.ts'
+import { verifyDraft } from '../src/edit/verify-draft.ts'
 
 /** A six-column tag CSV with one duplicate name. */
 const CSV = [
@@ -385,5 +388,52 @@ describe('ftview_draft_tags', () => {
     })
     expect(result.error?.code).toBe('NO_MATCH')
     expect(result.error?.fix).toContain('Object')
+  })
+})
+
+describe('object drift between a draft and an export', () => {
+  const application = {
+    root: 'export',
+    name: 'Line',
+    displays: [
+      {
+        file: 'Main.xml',
+        name: 'Main',
+        parseError: undefined,
+        objects: [
+          { type: 'panel', name: 'Frame', attributes: { left: '20', top: '20', width: '100', height: '40' } },
+        ],
+      },
+    ],
+    tags: [],
+  } as unknown as Application
+  const draft = (operations: unknown[]) => ({ id: 'd1', operations } as unknown as EditDraft)
+
+  it('reports a staged object the export does not contain', () => {
+    const verdict = verifyDraft(draft([
+      { kind: 'object_add', file: 'Main.xml', type: 'panel', name: 'NeverImported', attributes: { left: '10' } },
+    ]), application)
+    expect(verdict.landed).toBe(false)
+    expect(verdict.missing).toBe(1)
+    expect(verdict.displays[0]?.missing).toContain('NeverImported')
+  })
+
+  it('reports geometry drift on an object the export has', () => {
+    const verdict = verifyDraft(draft([
+      { kind: 'object_set', file: 'Main.xml', object: 'Frame', attributes: { left: '404' } },
+    ]), application)
+    expect(verdict.landed).toBe(false)
+    expect(verdict.changed).toBe(1)
+    const row = verdict.displays[0]?.changed[0]?.drift.find(entry => entry.field === 'left')
+    expect(row?.staged).toBe('404')
+    expect(row?.landed).toBe('20')
+  })
+
+  it('accepts a draft whose staged values match the export', () => {
+    const verdict = verifyDraft(draft([
+      { kind: 'object_set', file: 'Main.xml', object: 'Frame', attributes: { left: '20', top: '20' } },
+    ]), application)
+    expect(verdict.landed).toBe(true)
+    expect(verdict.matched).toBe(1)
   })
 })
