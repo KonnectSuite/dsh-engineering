@@ -148,6 +148,7 @@ export interface FsService {
   readBytes(path: string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   listDir?(path: string, signal?: AbortSignal): Promise<readonly DirEntry[]>
   writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
+  writeBytes?(path: string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
 }
 
 /** A path resolved by the harness filesystem into its backend identity. */
@@ -179,6 +180,7 @@ export interface RawFsService {
   readBytes(target: FsTarget | string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   listDir?(target: FsTarget | string, signal?: AbortSignal): Promise<readonly DirEntry[]>
   writeText?(target: FsTarget | string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
+  writeBytes?(target: FsTarget | string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
 }
 
 /**
@@ -213,6 +215,11 @@ export function stringFs(service: RawFsService): FsService {
   if (service.writeText !== undefined) {
     fs.writeText = async (path, text, options, signal) => {
       await service.writeText!(await targetOf(path, signal), text, options, signal)
+    }
+  }
+  if (service.writeBytes !== undefined) {
+    fs.writeBytes = async (path, bytes, options, signal) => {
+      await service.writeBytes!(await targetOf(path, signal), bytes, options, signal)
     }
   }
   return fs

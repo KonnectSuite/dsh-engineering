@@ -45,6 +45,7 @@ export function harness(files: ReadonlyMap<string, string>, options: { edit?: bo
         return new TextEncoder().encode(text)
       },
       async writeText(path: string, text: string) { written.set(path, text) },
+    async writeBytes(path: string, bytes: Uint8Array) { written.set(path, new TextDecoder('latin1').decode(bytes)) },
       async listDir(path: string) {
         const prefix = `${path}/`
         const children = new Map<string, string>()

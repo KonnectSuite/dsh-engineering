@@ -1,3 +1,13 @@
+## [0.67.0] - 2026-10-29
+
+### Fixed
+
+- **`ftview_apply` copies the artwork a display names.** A display that sets `imageName` was
+  broken after import because the wizard copies only the XML, so the folder it produced had no
+  `Images/` files. Apply now finds each named image in the export (`png`, `jpg`, `jpeg`, `gif`,
+  `bmp`), writes it beside the displays, and returns `images` and `missing_images` — a name the
+  export does not carry is reported instead of failing silently. Filesystem providers gained an
+  optional `writeBytes`, so binary files are copied byte-for-byte.
 ## [0.66.0] - 2026-10-29
 
 ### Added

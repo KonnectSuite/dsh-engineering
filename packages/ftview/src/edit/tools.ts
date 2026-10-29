@@ -54,6 +54,25 @@ function jsonAttributes(raw: string): Array<[string, string]> {
 }
 
 /** The view handle parameter, described once. */
+/**
+ * Find one display image by name, trying the extensions ME exports use.
+ *
+ * @param name - The image name as the display declares it.
+ * @param root - The export root that holds `Images/`.
+ * @param fs - Filesystem provider.
+ * @param signal - Abort signal from the tool call.
+ * @returns The path and file name, or undefined when the export does not carry it.
+ */
+async function findImage(name: string, root: string, fs: FsService, signal: AbortSignal | undefined): Promise<{ path: string; file: string } | undefined> {
+  for (const extension of ['png', 'jpg', 'jpeg', 'gif', 'bmp']) {
+    const file = `${name}.${extension}`
+    const path = `${root}/Images/${file}`
+    const stat = await fs.stat(path, signal)
+    if (stat !== undefined) return { path, file }
+  }
+  return undefined
+}
+
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
 
 /** The draft handle parameter, described once. */
@@ -1201,6 +1220,28 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           await fs.writeText(`${outputRoot}/${file}`, text, { kind: 'createIfAbsent' }, exec.signal)
           written += 1
         }
+        // Artwork travels with the display: a display that names an image is
+        // broken after import unless the file is beside it, and the vendor
+        // wizard copies only the XML.
+        const imageNames = new Set<string>()
+        for (const text of prepared.texts.values()) {
+          for (const match of text.matchAll(/\bimageName="([^"]+)"/gu)) imageNames.add(match[1])
+        }
+        const copiedImages: string[] = []
+        const missingImages: string[] = []
+        for (const image of imageNames) {
+          const found = await findImage(image, view.app.root, fs, exec.signal)
+          if (found === undefined) {
+            missingImages.push(image)
+            continue
+          }
+          const bytes = await fs.readBytes(found.path, exec.signal, 32 * 1024 * 1024)
+          if (fs.writeBytes === undefined) throw new EngineeringError('OUTPUT_UNAVAILABLE', 'This profile cannot copy binary files.', 'Use a profile whose filesystem provider writes bytes.')
+          await fs.writeBytes(`${outputRoot}/Images/${found.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal)
+          copiedImages.push(found.file)
+          written += 1
+        }
+
         // The vendor's own import file: Studio's Batch Import reads this list
         // from the Displays folder. Writing it here is what turns a folder of
         // XML into a one-step import.
@@ -1250,8 +1291,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         drafts.remove(exec, draft.id)
         const firstDisplay = changedDisplays[0]?.replace(/^Displays\//iu, '').replace(/\.xml$/iu, '')
         return success(
-          `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}.`,
-          { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), schema: prepared.schema },
+          `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}${copiedImages.length === 0 ? '' : `; ${copiedImages.length} image(s)`}${missingImages.length === 0 ? '' : `; ${missingImages.length} image(s) missing from the export`}.`,
+          { output_root: outputRoot, draft_id: draft.id, files_written: written, changed_files: [...prepared.texts.keys()], ...(manifest === undefined ? {} : { manifest }), images: copiedImages, missing_images: missingImages, schema: prepared.schema },
           [
             { tool: 'ftview_open', args: { root: outputRoot }, why: 'Reopen the written export and check it.' },
             ...(firstDisplay === undefined ? [] : [{ tool: 'ftview_render', args: { display: firstDisplay, output: `${outputRoot}/renders` }, why: 'Look at the screen you just wrote before anyone imports it; the PNG is beside the SVG.' }]),
