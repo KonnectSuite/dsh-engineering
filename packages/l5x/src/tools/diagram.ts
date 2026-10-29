@@ -106,24 +106,29 @@ export function renderProjectDiagram(rows: readonly Row[], title: string, note?:
     shapes.push(`<text x="28" y="${middle + 6}" fill="#7DD3FC" font-family="Segoe UI, Arial, sans-serif" font-size="15">${row.number}</text>`)
     let x = 120
     let rowTop = middle - 20
+    let rowHeight = 30
     let bottom = rowTop + 30
     for (const device of row.devices) {
       const boxWidth = widthOf(device)
-      if (x + boxWidth > width - 40) {
-        x = 120
-        rowTop += 34
-      }
-      shapes.push(`<rect x="${x}" y="${rowTop}" width="${boxWidth}" height="30" rx="6" fill="#1E293B" stroke="#60A5FA" stroke-width="1.5"/>`)
       const label = `${device.op}(${device.operand})`
       const lines = splitLabel(label)
+      // A wrapped label needs a taller box, and the next row has to clear that height.
+      const boxHeight = lines.length > 1 ? 34 : 30
+      if (x + boxWidth > width - 40) {
+        x = 120
+        rowTop += rowHeight + 6
+        rowHeight = 30
+      }
+      shapes.push(`<rect x="${x}" y="${rowTop}" width="${boxWidth}" height="${boxHeight}" rx="6" fill="#1E293B" stroke="#60A5FA" stroke-width="1.5"/>`)
       if (lines.length > 1) {
-        shapes.push(`<text x="${x + 10}" y="${rowTop + 13}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[0] ?? '', boxWidth - 20))}</text>`)
-        shapes.push(`<text x="${x + 10}" y="${rowTop + 26}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[1] ?? '', boxWidth - 20))}</text>`)
+        shapes.push(`<text x="${x + 10}" y="${rowTop + 14}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[0] ?? '', boxWidth - 20))}</text>`)
+        shapes.push(`<text x="${x + 10}" y="${rowTop + 28}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[1] ?? '', boxWidth - 20))}</text>`)
       } else {
         shapes.push(`<text x="${x + 10}" y="${rowTop + 21}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="14">${escape(fitLabel(label, boxWidth - 20))}</text>`)
       }
       x += boxWidth + 16
-      bottom = Math.max(bottom, rowTop + 30)
+      rowHeight = Math.max(rowHeight, boxHeight)
+      bottom = Math.max(bottom, rowTop + boxHeight)
     }
     top = bottom + 22
   }

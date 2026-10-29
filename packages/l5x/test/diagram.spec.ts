@@ -3,6 +3,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { splitLabel } from '../src/engine/render-ladder.ts'
+import { renderProjectDiagram } from '../src/tools/diagram.ts'
 
 vi.setConfig({ testTimeout: 30_000 })
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
@@ -105,4 +106,15 @@ describe('l5x_diagram', () => {
     const svg = readFileSync(result.data?.diagram_svg as string, 'utf8')
     expect(svg).toContain('1-1 of')
   }, 30000)
+
+  it('gives a wrapped row more vertical room than a single-line row', () => {
+    const device = (op: string, operand: string) => ({ op, operand })
+    const row = (devices: { op: string; operand: string }[]) => ({ program: 'MainProgram', routine: 'Main', number: 0, comment: '', devices })
+    const short = renderProjectDiagram([row(Array.from({ length: 6 }, () => device('XIC', 'A')))], 'T')
+    const long = renderProjectDiagram([
+      row(Array.from({ length: 6 }, () => device('MOVE', 'BottomKnife_MP200Iec:I.Data[3],BottomKnife_MP200Iec:O.DegreePosition'))),
+    ], 'T')
+    expect(long.height).toBeGreaterThan(short.height)
+    expect(long.svg).toContain('BottomKnife_MP200Iec:O.DegreePosition')
+  })
 })

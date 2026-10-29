@@ -118,6 +118,34 @@ describe('ftview_draft_screen', () => {
     expect(critical, JSON.stringify(critical)).toEqual([])
   })
 
+  it('stages HMI tags in the same draft as the screen', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      tags_json: JSON.stringify([{ name: 'BeltSpeed', description: 'Cutter belt speed' }]),
+    })
+    expect(staged.error).toBeUndefined()
+    expect(staged.data?.tags).toEqual(['BeltSpeed'])
+    expect(staged.summary).toContain('1 tag row')
+    expect(staged.data?.operation_count).toBe((staged.data?.placed as readonly unknown[]).length + 1)
+    // Validation and apply need a tag CSV in the export; staging is what this test proves.
+    expect(staged.data?.placed).toBeDefined()
+  })
+
+  it('refuses a tag row without a description or type', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_screen', {
+      view_id: view,
+      display: 'Overview',
+      spec_json: JSON.stringify(SPEC),
+      tags_json: JSON.stringify([{ name: 'Empty' }]),
+    })
+    expect(staged.error?.code).toBe('INVALID_ARGUMENT')
+    expect(staged.error?.message).toContain('Empty')
+  })
+
   it('refuses malformed JSON and unknown row kinds', async () => {
     const { l5x, view } = await opened()
     const broken = await l5x.call('ftview_draft_screen', { view_id: view, display: 'Overview', spec_json: '{"title":' })

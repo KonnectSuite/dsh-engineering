@@ -593,6 +593,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         spec_json: string('Screen description as JSON: {"title":"LAMINATOR","subtitle":"cutter and stack status","cards":[{"title":"CUTTER","rows":[{"kind":"value","label":"Belt speed","tag":"BeltSpeed"},{"kind":"lamp","label":"Cut off","tag":"CutOff"}]}],"nav":[{"label":"MAIN","display":"MAIN"}]}. Up to 4 cards and 4 navigation buttons.'),
         width: integer('Display width in pixels. Omit to read displaySettings from the display file.', { minimum: 200 }),
         height: integer('Display height in pixels. Omit to read displaySettings from the display file.', { minimum: 150 }),
+        tags_json: string('Optional HMI tags for this screen as JSON, e.g. [{"name":"BeltSpeed","description":"Cutter belt speed"}]. Staged in the same draft as the objects.'),
       }, ['display', 'spec_json']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
@@ -633,13 +634,49 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             ...(item.states === undefined ? {} : { states: item.states.map(state => ({ ...state })) }),
           }).draft
         }
+        const tagNames: string[] = []
+        const tagsJson = optionalString(args, 'tags_json')
+        if (tagsJson !== undefined) {
+          let entries: unknown
+          try {
+            entries = JSON.parse(tagsJson)
+          } catch {
+            throw new EngineeringError('INVALID_ARGUMENT', 'tags_json is not valid JSON.', 'Pass an array like [{"name":"BeltSpeed","description":"Cutter belt speed"}].')
+          }
+          if (!Array.isArray(entries) || entries.length === 0) {
+            throw new EngineeringError('INVALID_ARGUMENT', 'tags_json must be a non-empty array.', 'Pass at least one tag, or omit tags_json.')
+          }
+          if (entries.length > 500) {
+            throw new EngineeringError('INVALID_ARGUMENT', 'tags_json holds more than 500 tags.', 'Split the batch; 500 tags is the limit for one call.')
+          }
+          entries.forEach((entry, index) => {
+            const record = entry as Record<string, unknown>
+            const tagName = record.name
+            if (typeof tagName !== 'string' || tagName === '') {
+              throw new EngineeringError('INVALID_ARGUMENT', `Tag ${index} needs a name.`, 'Pass the HMI tag name, for example "BeltSpeed".')
+            }
+            const description = typeof record.description === 'string' ? record.description : undefined
+            const type = typeof record.type === 'string' ? record.type : undefined
+            if (description === undefined && type === undefined) {
+              throw new EngineeringError('INVALID_ARGUMENT', `Tag ${JSON.stringify(tagName)} needs a description, a type, or both.`, 'Pass description or type; nothing was staged.')
+            }
+            draft = stage(exec, view.id, {
+              kind: 'tag_upsert',
+              name: tagName,
+              ...(description === undefined ? {} : { description }),
+              ...(type === undefined ? {} : { type }),
+            }).draft
+            tagNames.push(tagName)
+          })
+        }
         if (draft === undefined) throw new EngineeringError('INTERNAL', 'The screen description produced no objects.', 'Report this as a defect.')
         return success(
-          `Draft ${draft.id}: laid out ${layout.objects.length} objects on ${name} (${spec.cards?.length ?? 0} card(s), ${spec.nav?.length ?? 0} nav button(s)).`,
+          `Draft ${draft.id}: laid out ${layout.objects.length} objects on ${name} (${spec.cards?.length ?? 0} card(s), ${spec.nav?.length ?? 0} nav button(s))${tagNames.length === 0 ? '' : ` and ${tagNames.length} tag row(s)`}.`,
           {
             draft_id: draft.id,
             operation_count: draft.operations.length,
             placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
+            ...(tagNames.length === 0 ? {} : { tags: tagNames }),
             slots: layout.slots,
             note: 'Every object is positioned already. Validate the draft, render it with ftview_render source "draft", then apply.',
           },

@@ -960,6 +960,7 @@ Stage a whole screen from one description: cards of label/value and label/lamp r
 | `spec_json` | string | yes | Screen description as JSON: {"title":"LAMINATOR","subtitle":"cutter and stack status","cards":[{"title":"CUTTER","rows":[{"kind":"value","label":"Belt speed","tag":"BeltSpeed"},{"kind":"lamp","label":"Cut off","tag":"CutOff"}]}],"nav":[{"label":"MAIN","display":"MAIN"}]}. Up to 4 cards and 4 navigation buttons. |
 | `width` | integer | no | Display width in pixels. Omit to read displaySettings from the display file. |
 | `height` | integer | no | Display height in pixels. Omit to read displaySettings from the display file. |
+| `tags_json` | string | no | Optional HMI tags for this screen as JSON, e.g. [{"name":"BeltSpeed","description":"Cutter belt speed"}]. Staged in the same draft as the objects. |
 
 #### `ftview_draft_object_add`
 

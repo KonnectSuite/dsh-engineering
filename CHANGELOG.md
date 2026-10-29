@@ -1,3 +1,17 @@
+## [0.55.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_screen` stages the screen's tags in the same draft.** The new `tags_json` argument
+  takes the HMI tags the screen reads; they land beside the objects, so one apply writes the screen and
+  its tag rows together instead of a separate `ftview_draft_tags` call.
+
+### Changed
+
+- **`l5x_diagram` gives wrapped rows their own height.** An operand that wrapped onto two lines used to
+  keep the single-line row pitch, so the next row sat tight against it; the row now grows by the height
+  of its tallest device.
+
 ## [0.54.0] - 2026-10-29
 
 ### Changed
