@@ -30,6 +30,10 @@ import { popupLayout, type PopupButton, type PopupSpec } from './popup.ts'
 import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
+/** Export files that are bytes, not text: artwork and other vendored binaries. */
+const BINARY = /\.(png|jpe?g|gif|bmp|ico|emf|wmf|tif?f|cur|ani)$/iu
+
+
 /** A JSON object of attribute names to string values, at most 200 pairs. */
 function jsonAttributes(raw: string): Array<[string, string]> {
   let parsed: unknown
@@ -1211,6 +1215,15 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           const bytes = await fs.readBytes(`${view.app.root}/${file.file}`, exec.signal, 64 * 1024 * 1024)
           if (createHash('sha256').update(bytes).digest('hex') !== hashes.get(file.file)) {
             throw new EngineeringError('STALE_EXPORT', `The export changed on disk since it was opened: ${file.file}.`, 'Reopen the export with ftview_open, stage the edits again, then apply.')
+          }
+          if (BINARY.test(file.file)) {
+            if (fs.writeBytes === undefined) {
+              throw new EngineeringError('OUTPUT_UNAVAILABLE', `The filesystem provider cannot copy ${file.file}, which is a binary export file.`, 'Use a profile whose filesystem provider allows binary writes; artwork must travel with the displays.')
+            }
+            await fs.writeBytes(`${outputRoot}/${file.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal)
+            writtenFiles.push(file.file)
+            written += 1
+            continue
           }
           const text = prepared.texts.get(file.file) ?? new TextDecoder('utf-8').decode(bytes)
           await fs.writeText(`${outputRoot}/${file.file}`, text, { kind: 'createIfAbsent' }, exec.signal)

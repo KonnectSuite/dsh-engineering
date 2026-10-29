@@ -38,7 +38,7 @@ export const EDIT_COVERAGE: Coverage = {
   unverified: [
     'vendor XSD schema validation',
     'Studio import and runtime behavior',
-    'native binary files are not copied by apply',
+    'binary export files are copied byte for byte, but a file the export does not contain cannot be invented',
     'unchanged text exports are copied verbatim',
   ],
 }

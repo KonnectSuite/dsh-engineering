@@ -2,6 +2,11 @@
 
 ### Added
 
+- **`ftview_apply` copies artwork byte for byte.** The applied folder used to state that native
+  binary files were not copied, so a display naming `Images/<name>.png` produced a folder whose
+  artwork was missing (or text-mangled). The copy loop now writes binary export files through
+  `writeBytes` at the same relative path, so a handed-over folder and a later import package both
+  carry the images the displays name.
 - **`ftview_compare` diffs tag rows, not just their names.** `tags.changed` lists each field that
   moved — device address, description, data source, native type, read-only — with both values, so a
   re-addressed tag between two application versions is visible instead of hiding behind a changed

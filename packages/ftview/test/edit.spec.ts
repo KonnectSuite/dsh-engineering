@@ -484,3 +484,37 @@ describe('object drift between a draft and an export', () => {
     expect(verdict.matched).toBe(1)
   })
 })
+
+describe('apply carries artwork', () => {
+  const DISPLAY = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+    '    <displaySettings width="640" height="480" backColor="#FFFFFF"/>',
+    '    <image name="Logo" left="10" top="10" width="120" height="60" imageName="Logo"/>',
+    '    <text name="Title" left="10" top="100" width="200" height="20" caption="Before"/>',
+    '</gfx>',
+    '',
+  ].join('\n')
+
+  it('writes Images/ beside the displays it copies', async () => {
+    const l5x = harness(new Map([
+      ['export/Displays/Main.xml', DISPLAY],
+      ['export/Images/Logo.png', 'PNG-bytes'],
+      ['export/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'export' })
+    expect(opened.error).toBeUndefined()
+    const staged = await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('ftview_apply', { output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    expect(l5x.written.get('out/Images/Logo.png')).toBe('PNG-bytes')
+    expect(l5x.written.get('out/Displays/Main.xml')).toContain('After')
+  })
+})
