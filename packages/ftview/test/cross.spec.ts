@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addressRoot, crossReference, readL5x, uses } from '../src/cross.ts'
+import { addressRoot, crossReference, readAlarms, readL5x, uses } from '../src/cross.ts'
 import { parseTagCsv } from '../src/model.ts'
 import { harness } from './harness.ts'
 
@@ -63,6 +63,19 @@ function files(): Map<string, string> {
   ])
 }
 
+/** One alarm watching an HMI tag that no display shows. */
+const ALARMS = [
+  '<?xml version="1.0" encoding="UTF-8"?>',
+  '<alarms version="1.0">',
+  '  <alarm history-size="128">',
+  '    <triggers>',
+  '      <trigger id="T1" type="value" exp="{[PLC]MemTag}" label="Alarm scrub" handshake-tag="{[PLC]Motor_Run}"/>',
+  '    </triggers>',
+  '  </alarm>',
+  '</alarms>',
+  '',
+].join('\n')
+
 /** Open the HMI export with the read entry mounted. */
 async function opened() {
   const l5x = harness(files())
@@ -103,6 +116,15 @@ describe('addressRoot', () => {
   })
 })
 
+describe('readAlarms', () => {
+  it('reads the tags each trigger watches, including non-expression attributes', () => {
+    const usage = readAlarms(ALARMS)
+    expect(usage.triggers).toBe(1)
+    expect(usage.byTag.get('memtag')).toEqual(['T1'])
+    expect(usage.byTag.get('motor_run')).toEqual(['T1'])
+  })
+})
+
 describe('crossReference', () => {
   it('classifies every HMI tag and counts display and logic usage', async () => {
     const { l5x, view } = await opened()
@@ -113,12 +135,28 @@ describe('crossReference', () => {
       rows: readonly { hmiTag: string; status: string; plcUses: number; displays: number; plcTag: string | null }[]
       findings: readonly { code: string; subject: string }[]
     }
-    expect(data.counts).toEqual({ hmiTags: 4, linked: 1, memory: 1, unlinked: 1, unsupported: 1, plcTags: 3, plcUnreferencedByHmi: 0 })
+    expect(data.counts).toEqual({ hmiTags: 4, linked: 1, memory: 1, unlinked: 1, unsupported: 1, plcTags: 3, plcUnreferencedByHmi: 0, alarmTriggers: 0, alarmOnly: [] })
     const motor = data.rows.find(row => row.hmiTag === 'Motor_Run')
     expect(motor).toMatchObject({ status: 'linked', plcTag: 'Motor_Run', plcUses: 2, displays: 1 })
     expect(data.findings.map(finding => finding.code)).toEqual(expect.arrayContaining(['HMI_TAG_NOT_IN_PLC', 'ADDRESS_UNSUPPORTED', 'PLC_TAG_NOT_IN_HMI']))
     expect(result.coverage?.complete).toBe(false)
     expect(result.coverage?.unverified.join(' ')).toMatch(/direction/u)
+  })
+
+  it('joins alarm usage and names the tags only an alarm watches', async () => {
+    const map = files()
+    map.set('export/Alarms/Alarms.xml', ALARMS)
+    const l5x = harness(map)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const result = await l5x.call('ftview_cross_reference', { view_id: open.data?.view_id as string, l5x_path: 'Line.L5X' })
+    const data = result.data as {
+      counts: { alarmTriggers: number; alarmOnly: readonly string[] }
+      rows: readonly { hmiTag: string; alarms: number }[]
+    }
+    expect(data.counts.alarmTriggers).toBe(1)
+    expect(data.counts.alarmOnly).toEqual(['MemTag'])
+    expect(data.rows.find(row => row.hmiTag === 'Ghost_Tag')?.alarms).toBe(0)
+    expect(result.summary).toContain('1 alarm trigger')
   })
 
   it('hides memory tags unless asked, and slices to the limit', async () => {

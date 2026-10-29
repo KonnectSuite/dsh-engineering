@@ -2,6 +2,10 @@
 
 ### Added
 
+- **Cross-reference counts alarm usage.** `ftview_cross_reference` reads the export alarm
+  configuration and reports, per HMI tag, how many alarm triggers watch it (`rows[].alarms`), the
+  trigger count, and `counts.alarmOnly` — the tags an alarm watches that no display shows. A tag
+  used only by alarms used to look unused.
 - **An import package reports the displays the application already matches.** `ftview_studio_import_prepare`
   compares each packaged display's objects with the `current_export` of the application and returns
   `comparison.unchanged`, `changed` and `added`. An import rewrites whatever it lists, so the

@@ -17,7 +17,7 @@ import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepar
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { capabilities } from './capabilities.ts'
-import { crossReference, readL5x } from './cross.ts'
+import { crossReference, readAlarms, readL5x } from './cross.ts'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { ViewSession } from './session.ts'
@@ -234,10 +234,19 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
             // A display the scan read but the filesystem no longer serves adds no usage.
           }
         }
-        const report = crossReference(app, plc, { limit, includeMemory: optionalString(args, 'include_memory') === 'yes', displays })
+        let alarms: string | undefined
+        for (const candidate of ['Alarms/Alarms.xml', 'Alarms/alarms.xml', 'alarms/alarms.xml']) {
+          if (alarms !== undefined) break
+          try {
+            alarms = await read(`${base}/${candidate}`)
+          } catch {
+            // The export may carry no alarm configuration at all.
+          }
+        }
+        const report = crossReference(app, plc, { limit, includeMemory: optionalString(args, 'include_memory') === 'yes', displays, alarms })
         const { counts } = report
         return success(
-          `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at.`,
+          `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at${counts.alarmTriggers === 0 ? '' : `; ${counts.alarmTriggers} alarm trigger(s) watch tags, ${counts.alarmOnly.length} of them on no display`}.`,
           report,
           [
             { tool: 'ftview_cross_reference', args: { view_id: optionalString(args, 'view_id'), l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },

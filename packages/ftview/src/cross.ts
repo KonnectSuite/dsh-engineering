@@ -35,6 +35,7 @@ export interface CrossRow {
   readonly address: string | null
   readonly plcTag: string | null
   readonly displays: number
+  readonly alarms: number
   readonly plcUses: number
   readonly status: 'linked' | 'memory' | 'unlinked' | 'unsupported'
 }
@@ -59,6 +60,10 @@ export interface CrossReport {
     readonly unsupported: number
     readonly plcTags: number
     readonly plcUnreferencedByHmi: number
+    /** Alarm triggers found in the alarm configuration. */
+    readonly alarmTriggers: number
+    /** HMI tags an alarm watches but no display shows. */
+    readonly alarmOnly: readonly string[]
   }
 }
 
@@ -68,6 +73,8 @@ export interface CrossOptions {
   readonly includeMemory?: boolean
   /** Display file path to text, so the tool decides how files are read. */
   readonly displays?: ReadonlyMap<string, string>
+  /** Alarm configuration XML, when the export carries one. */
+  readonly alarms?: string
 }
 
 /** Parse the tag and routine text out of an L5X. */
@@ -149,6 +156,40 @@ function displaysUsing(app: Application, name: string, texts: ReadonlyMap<string
   return count
 }
 
+export interface AlarmUsage {
+  readonly triggers: number
+  /** HMI tag name (lower case) to the trigger ids watching it. */
+  readonly byTag: ReadonlyMap<string, readonly string[]>
+}
+
+/**
+ * Read which tags the alarm configuration watches.
+ *
+ * Alarm expressions use the same `{[device]Tag.bit}` form as displays, and
+ * several non-expression attributes (ack, handshake, silence) can hold a tag
+ * too, so every attribute value is scanned for braces rather than guessing
+ * which attributes matter.
+ *
+ * @param text - Alarm XML from the export.
+ * @returns Trigger count and the tags each trigger references.
+ */
+export function readAlarms(text: string): AlarmUsage {
+  const byTag = new Map<string, string[]>()
+  const triggers = [...text.matchAll(/<trigger\b[^>]*>/gu)]
+  for (const [index, trigger] of triggers.entries()) {
+    const id = /\bid="([^"]+)"/u.exec(trigger[0])?.[1] ?? `T${index + 1}`
+    for (const reference of trigger[0].matchAll(/\{([^}]*)\}/gu)) {
+      const inside = reference[1] ?? ''
+      const name = inside.replace(/^\[[^\]]*\]/u, '').split('.')[0]?.trim().toLowerCase() ?? ''
+      if (name === '') continue
+      const list = byTag.get(name) ?? []
+      if (!list.includes(id)) list.push(id)
+      byTag.set(name, list)
+    }
+  }
+  return { triggers: triggers.length, byTag }
+}
+
 /** Join the HMI export to the PLC tags. */
 export function crossReference(app: Application, plc: PlcSide, options: CrossOptions = {}): CrossReport {
   const limit = options.limit ?? 50
@@ -158,6 +199,8 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
   const findings: CrossFinding[] = []
   const texts = options.displays
   const linked = new Set<string>()
+  const alarms = options.alarms === undefined ? undefined : readAlarms(options.alarms)
+  const alarmCount = (name: string): number => alarms?.byTag.get(name.toLowerCase())?.length ?? 0
   let memory = 0
   let unlinked = 0
   let unsupported = 0
@@ -166,24 +209,24 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
     const parsed = addressRoot(address)
     if (parsed.unsupported) {
       unsupported += 1
-      rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), plcUses: 0, status: 'unsupported' })
+      rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), alarms: alarmCount(tag.name), plcUses: 0, status: 'unsupported' })
       findings.push({ code: 'ADDRESS_UNSUPPORTED', severity: 'info', subject: tag.name, detail: `${address} is a data-table address, not a Logix tag name; the link is not verified.` })
       continue
     }
     if (parsed.root === null) {
       memory += 1
-      if (options.includeMemory === true) rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), plcUses: 0, status: 'memory' })
+      if (options.includeMemory === true) rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), alarms: alarmCount(tag.name), plcUses: 0, status: 'memory' })
       continue
     }
     const target = byName.get(parsed.root.toLowerCase())
     if (target === undefined) {
       unlinked += 1
-      rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), plcUses: 0, status: 'unlinked' })
+      rows.push({ hmiTag: tag.name, address, plcTag: null, displays: displaysUsing(app, tag.name, texts), alarms: alarmCount(tag.name), plcUses: 0, status: 'unlinked' })
       findings.push({ code: 'HMI_TAG_NOT_IN_PLC', severity: 'warning', subject: tag.name, detail: `points at ${parsed.root}, which no tag in this L5X declares.` })
       continue
     }
     linked.add(target.name.toLowerCase())
-    rows.push({ hmiTag: tag.name, address, plcTag: target.name, displays: displaysUsing(app, tag.name, texts), plcUses: uses(plc.texts, target.name), status: 'linked' })
+    rows.push({ hmiTag: tag.name, address, plcTag: target.name, displays: displaysUsing(app, tag.name, texts), alarms: alarmCount(tag.name), plcUses: uses(plc.texts, target.name), status: 'linked' })
   }
   const unused = plc.tags.filter(tag => !linked.has(tag.name.toLowerCase()))
   let unreferenced = 0
@@ -193,6 +236,9 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
       findings.push({ code: 'PLC_TAG_NOT_IN_HMI', severity: 'info', subject: tag.name, detail: `declared in ${tag.scope} scope; no HMI tag points at it.` })
     }
   }
+  const alarmOnly = app.tags
+    .filter(tag => alarmCount(tag.name) > 0 && displaysUsing(app, tag.name, texts) === 0)
+    .map(tag => tag.name)
   return {
     rows: rows.slice(0, limit),
     findings: findings.slice(0, limit),
@@ -204,6 +250,8 @@ export function crossReference(app: Application, plc: PlcSide, options: CrossOpt
       unsupported,
       plcTags: plc.tags.length,
       plcUnreferencedByHmi: unreferenced,
+      alarmTriggers: alarms?.triggers ?? 0,
+      alarmOnly,
     },
   }
 }
