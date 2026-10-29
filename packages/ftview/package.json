@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering-ftview",
-  "version": "0.1.2",
+  "version": "0.50.0",
   "description": "FactoryTalk View ME export analysis, redesigned for the engineering bundle.",
   "type": "module",
   "main": "lib/index.js",

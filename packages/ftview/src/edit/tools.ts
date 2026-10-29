@@ -951,6 +951,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           : undefined
         const screens = []
         for (const name of names) screens.push(await drawOne(name))
+        for (const screen of screens) session.recordRendered(screen.display)
         const problems = screens.flatMap(screen => screen.problems)
         const trouble = problems.length === 0
           ? 'No object leaves the canvas or overflows its box.'

@@ -546,10 +546,16 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         try {
           const mode = optionalString(args, 'mode') === 'update' ? 'update' : 'create'
           const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode)
+          const unrendered = names.filter(name => !session.wasRendered(name))
+          const note = unrendered.length === 0
+            ? 'Every packaged display was drawn in this chat.'
+            : `${unrendered.length} of ${names.length} packaged display(s) were never drawn here (${unrendered.join(', ')}); draw them before importing.`
           return success(
-            `Packaged ${plan.displays.length} display(s) for import: batch file ${plan.manifest}.`,
-            plan,
-            [],
+            `Packaged ${plan.displays.length} display(s) for import: batch file ${plan.manifest}. ${note}`,
+            { ...plan, unrendered },
+            unrendered.length === 0
+              ? []
+              : [{ tool: 'ftview_render', args: { displays_json: JSON.stringify(unrendered) }, why: 'Look at these screens before asking for an import; the render reports objects outside the canvas or overflowing their box.' }],
             COVERAGE,
           )
         } catch (error) {

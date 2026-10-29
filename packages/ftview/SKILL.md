@@ -126,13 +126,10 @@ needs Studio, and the decoder reproduces wizard XML byte-for-byte on three appli
 
 `ftview_apply` writes the folder, the manifest and `IMPORT.md`. Then:
 
-1. A human opens the application in FactoryTalk View Studio and imports the displays listed in the
-   manifest.
-2. `ftview_verify_import` exports the application again and compares it object by object with the
-   draft. `matched: true` for every display is the only proof the import landed; anything else lists
-   the differing attributes and objects.
-3. Creating the runtime application (`.mer`) and downloading it to the terminal remain Studio and
-   ME Transfer Utility steps. No tool here creates a `.mer` or contacts a PanelView.
+1. Draw every display in the package with `ftview_render` and read the PNGs first; `ftview_studio_import_prepare` names any display this chat never drew.
+2. A human imports the displays listed in the manifest in FactoryTalk View Studio.
+3. `ftview_verify_import` exports again and compares object by object: `matched: true` for every display is the only proof the import landed.
+4. Creating the `.mer` and downloading it stay Studio and ME Transfer Utility steps.
 
 ## Studio
 

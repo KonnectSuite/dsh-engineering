@@ -1,3 +1,19 @@
+## [0.50.0] - 2026-10-29
+
+### Added
+
+- **`ftview_studio_import_prepare` says whether anyone looked at the screens.** Every display this
+  chat drew is remembered, and the package reports the displays that were never rendered — with a
+  `ftview_render` step for them — instead of letting a human import a layout nobody has seen. In the
+  field session 10 packages were built, 0 renders were taken, and the agent's own log says it was
+  "`revising layouts`" from text alone.
+
+### Changed
+
+- The FactoryTalk View skill now makes looking a step in the loop: draw every display, read the
+  PNGs, then ask for the import. The L5X skill says to start a review with `l5x_diagram` rather
+  than reading rungs one at a time.
+
 ## [0.49.0] - 2026-10-29
 
 ### Fixed

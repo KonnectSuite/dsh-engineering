@@ -24,6 +24,7 @@ export class ViewSession {
   private readonly chats = new WeakMap<object, Map<string, OpenView>>()
   private readonly detached = new Map<string, OpenView>()
   private readonly applied = new Map<string, Set<string>>()
+  private readonly rendered = new Set<string>()
 
   /**
    * @param fs - Filesystem provider.
@@ -46,6 +47,23 @@ export class ViewSession {
    */
   recordApplied(root: string, files: readonly string[]): void {
     this.applied.set(root.replace(/\\/gu, '/'), new Set(files))
+  }
+
+  /**
+   * Remember that a display was drawn, so the import step can tell whether anyone looked.
+   *
+   * @param display - Display name as the export spells it.
+   */
+  recordRendered(display: string): void {
+    this.rendered.add(display)
+  }
+
+  /**
+   * @param display - Display name as the export spells it.
+   * @returns True when this chat drew that display.
+   */
+  wasRendered(display: string): boolean {
+    return this.rendered.has(display)
   }
 
   /**
