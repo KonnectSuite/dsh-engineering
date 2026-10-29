@@ -43,6 +43,19 @@ export function findingsOf(app: Checkable): Finding[] {
       objectNames.add(object.name)
     }
   }
+  for (const display of app.displays) {
+    for (const object of display.objects) {
+      if (object.name === undefined || object.name === '') continue
+      const target = object.attributes.display ?? object.connections?.Display ?? object.connections?.display ?? ''
+      if (target === '' || target.startsWith('{') || displayNames.has(target)) continue
+      findings.push({
+        rule: 'GOTO_TARGET_MISSING',
+        severity: 'warning',
+        message: `Display ${JSON.stringify(display.name)} sends ${JSON.stringify(object.name)} to ${JSON.stringify(target)}, but this export has no display named that.`,
+        evidence: { display: display.name, object: object.name, target },
+      })
+    }
+  }
   const tagNames = new Set<string>()
   for (const tag of app.tags) {
     if (tagNames.has(tag.name)) findings.push({ rule: 'DUPLICATE_TAG_NAME', severity: 'error', message: `The tag CSV declares ${JSON.stringify(tag.name)} more than once.`, evidence: { tag: tag.name } })

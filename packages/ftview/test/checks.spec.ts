@@ -38,6 +38,30 @@ async function opened() {
   return l5x
 }
 
+describe('GOTO_TARGET_MISSING', () => {
+  it('reports a navigation button that names no display', async () => {
+    const gfx = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+      '    <displaySettings width="640" height="480"/>',
+      '    <object type="gotoButton" name="ToManual" display="Manual" width="100" height="40"><caption><text>MANUAL</text></caption></object>',
+      '    <object type="gotoButton" name="ToTypo" display="Manaul" width="100" height="40"><caption><text>MANAUL</text></caption></object>',
+      '</gfx>',
+      '',
+    ].join('\n')
+    const l5x = harness(new Map([
+      ['export/Displays/Main.xml', gfx],
+      ['export/Displays/Manual.xml', gfx.replaceAll('Manaul', 'Manual').replaceAll('ToTypo', 'ToManual2')],
+    ]))
+    await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', {})
+    const rows = (checked.data?.findings ?? []).filter(finding => finding.rule === 'GOTO_TARGET_MISSING')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.evidence).toMatchObject({ display: 'Main', object: 'ToTypo', target: 'Manaul' })
+    expect(String(rows[0]?.message)).toContain('"Manaul"')
+  })
+})
+
 describe('TAG_NOT_BOUND', () => {
   it('reports the misspelled tag and nothing else', async () => {
     const l5x = await opened()

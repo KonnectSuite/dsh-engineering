@@ -1,3 +1,11 @@
+## [0.60.0] - 2026-10-29
+
+### Added
+
+- **`ftview_check` reports navigation into a display this export does not have.** A `gotoButton`
+  (or any object with a `Display` connection) that names a missing display is `GOTO_TARGET_MISSING`,
+  with the display, object and target. A typo there is invisible until an operator touches the button
+  on the terminal.
 ## [0.59.0] - 2026-10-29
 
 ### Fixed
