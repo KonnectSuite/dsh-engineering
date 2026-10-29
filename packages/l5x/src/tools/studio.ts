@@ -110,7 +110,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
     }),
     tool({
       name: 'verify_offline_l5x',
-      description: 'Import a full L5X into a new offline ACD and build it with the Studio SDK. Build needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. No controller operation.',
+      description: 'Import a full L5X into a new offline ACD and build it with the Studio SDK. Build needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. A safety controller is refused up front because the importer aborts it with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES. No controller operation.',
       parameters: object({
         project_id: PROJECT_ID,
         baseline_id: string('Project handle of the unchanged baseline export this draft came from. Example: "3f2c...".'),
@@ -135,11 +135,16 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           readonly offline_build: string
           readonly output_path: string | null
           readonly output_sha256: string | null
+          readonly sdk_error?: string | null
+          readonly log?: string
         }
         const blockers = [
           ...review.blockers,
           ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat']),
         ]
+        const advice = build.offline_build === 'failed'
+          ? importAbortAdvice(`${build.sdk_error ?? ''}\n${build.log ?? ''}`)
+          : null
         const eligible = build.offline_build === 'passed' && blockers.length === 0 && build.output_path !== null && build.output_sha256 !== null
         const verificationId = eligible ? randomUUID() : null
         if (verificationId !== null) {
@@ -152,7 +157,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           })
         }
         return success(
-          `Offline build ${build.offline_build}; ${blockers.length} blocker(s).`,
+          `Offline build ${build.offline_build}; ${blockers.length} blocker(s).${advice === null ? '' : ` ${advice}`}`,
           {
             ...build,
             baseline_sha256: baseline.sha256,
@@ -160,6 +165,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
             change_count: review.change_count,
             change_summary: review.changes.slice(0, 30).map(change => ({ kind: change.kind, component: change.component, key: change.key })),
             safety_changed: review.safety_changed,
+            failure_advice: advice,
             blockers,
             download_ready: eligible,
             verification_id: verificationId,
@@ -254,6 +260,20 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
 }
 
 /** True when the export belongs to a GuardLogix or Compact GuardLogix safety controller. */
-function isSafetyProject(xml: string): boolean {
+export function isSafetyProject(xml: string): boolean {
   return /<(SafetyTask|SafetyProgram)\b/u.test(xml)
+    || /SafetySignature\s*=/iu.test(xml)
+    || /Type\s*=\s*"SAFETY"/iu.test(xml)
+    || /<SafetyNetworkNumber\b/iu.test(xml)
 }
+
+/**
+ * Guidance for an import the SDK aborts without producing a change. The public symptom is
+ * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES; the cause is a safety controller or a signature the importer
+ * will not recompute, and retrying cannot help, so say so instead of leaving the model to retry.
+ */
+export function importAbortAdvice(text: string): string | null {
+  if (!/IMPORT_ABORTED_NO_CHANGES/iu.test(text)) return null
+  return 'The SDK importer aborted without changes (XMLSrv_E_IMPORT_ABORTED_NO_CHANGES). A safety controller, or an L5X whose safety signature must be recomputed, returns this and a retry cannot change it: import the L5X in Studio 5000 and build there, or prove the change with run_checks plus a targeted read.'
+}
+

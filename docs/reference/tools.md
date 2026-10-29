@@ -412,7 +412,7 @@ Export one existing offline ACD to a new full L5X with the running Logix Designe
 
 #### `verify_offline_l5x`
 
-Import a full L5X into a new offline ACD and build it with the Studio SDK. Build needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. No controller operation.
+Import a full L5X into a new offline ACD and build it with the Studio SDK. Build needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. A safety controller is refused up front because the importer aborts it with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES. No controller operation.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
