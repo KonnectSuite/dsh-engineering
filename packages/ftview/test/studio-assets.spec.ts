@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { acceptAsset, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from '../src/studio-assets.ts'
+import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from '../src/studio-assets.ts'
 
 /** A fake Public Documents tree with one application and one wizard. */
 function fixture(): { root: string; wizard: string; app: string; med: string } {
@@ -128,6 +128,25 @@ describe('packaging a display import', () => {
     expect(plan.updated).toBe(1)
     expect(plan.decisions.map(decision => decision.action)).toEqual(['update', 'create'])
     expect(plan.steps.join(' ')).toContain('1 create, 1 update')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('says which packaged displays the application already holds unchanged', () => {
+    const { root } = fixture()
+    const pkg = join(root, 'pkg')
+    const current = join(root, 'current')
+    mkdirSync(pkg, { recursive: true })
+    mkdirSync(join(current, 'Displays'), { recursive: true })
+    const gfx = (caption: string) => `<?xml version="1.0"?>\n<gfx><displaySettings width="800" height="600"/><text name="T1" left="10" top="10" width="100" height="20" caption="${caption}"/></gfx>`
+    writeFileSync(join(pkg, 'Same.xml'), gfx('Run'))
+    writeFileSync(join(pkg, 'Edited.xml'), gfx('Run'))
+    writeFileSync(join(pkg, 'Brand New.xml'), gfx('Run'))
+    writeFileSync(join(current, 'Displays', 'Same.xml'), gfx('Run'))
+    writeFileSync(join(current, 'Displays', 'Edited.xml'), gfx('Stop'))
+    const comparison = comparePackage(pkg, current, ['Same', 'Edited', 'Brand New'])
+    expect(comparison.unchanged).toEqual(['Same'])
+    expect(comparison.changed).toEqual(['Edited'])
+    expect(comparison.added).toEqual(['Brand New'])
     rmSync(root, { recursive: true, force: true })
   })
 

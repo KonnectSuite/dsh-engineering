@@ -16,7 +16,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
-import { parseDisplay } from './model.ts'
+import { parseDisplay, type DisplayObject } from './model.ts'
 import { projectFolder } from './vendor.ts'
 
 /** Kinds of asset the wizards produce. */
@@ -264,6 +264,54 @@ export function prepareDisplayImport(
  * @param exportRoot - Export folder containing `Displays/`.
  * @returns Display names without the `.xml` suffix.
  */
+export interface PackageComparison {
+  /** Displays the application already holds with the same objects. */
+  readonly unchanged: readonly string[]
+  /** Displays that exist but differ. */
+  readonly changed: readonly string[]
+  /** Displays the application does not have. */
+  readonly added: readonly string[]
+}
+
+/**
+ * Compare packaged displays with the application export they will replace.
+ *
+ * An import rewrites the display, so one whose objects already match costs an
+ * update and changes nothing; saying so lets a package drop it before asking.
+ *
+ * @param exportRoot - Package folder containing the display XML.
+ * @param currentRoot - Export of the application as it stands.
+ * @param displays - Display names in the package.
+ * @returns Which displays are unchanged, changed or new.
+ */
+export function comparePackage(exportRoot: string, currentRoot: string, displays: readonly string[]): PackageComparison {
+  const unchanged: string[] = []
+  const changed: string[] = []
+  const added: string[] = []
+  for (const display of displays) {
+    const currentFile = join(currentRoot, 'Displays', `${display}.xml`)
+    if (!existsSync(currentFile)) {
+      added.push(display)
+      continue
+    }
+    const next = parseDisplay(`${display}.xml`, readFileSync(join(exportRoot, `${display}.xml`), 'utf8'))
+    const previous = parseDisplay(`${display}.xml`, readFileSync(currentFile, 'utf8'))
+    const same = next.parseError === undefined && previous.parseError === undefined
+      ? JSON.stringify(shapeOf(next.objects)) === JSON.stringify(shapeOf(previous.objects))
+      : false
+    ;(same ? unchanged : changed).push(display)
+  }
+  return { unchanged, changed, added }
+}
+
+/** Object identity: type, name, geometry and caption, enough to spot a real edit. */
+function shapeOf(objects: readonly DisplayObject[]): string[] {
+  return objects
+    .filter(object => !/^(connections|connection|caption|states|state|animations|imageSettings|displaySettings|parameterFile)$/iu.test(object.type))
+    .map(object => [object.type, object.name ?? '', object.attributes.left ?? '', object.attributes.top ?? '', object.attributes.width ?? '', object.attributes.height ?? '', object.attributes.caption ?? ''].join('|'))
+    .sort()
+}
+
 export function displayNamesIn(exportRoot: string): string[] {
   const folder = join(exportRoot, 'Displays')
   if (!existsSync(folder)) return []

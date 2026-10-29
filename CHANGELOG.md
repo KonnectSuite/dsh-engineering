@@ -1,3 +1,12 @@
+## [Unreleased]
+
+### Added
+
+- **An import package reports the displays the application already matches.** `ftview_studio_import_prepare`
+  compares each packaged display's objects with the `current_export` of the application and returns
+  `comparison.unchanged`, `changed` and `added`. An import rewrites whatever it lists, so the
+  identical screens are worth knowing before asking a human to run a batch that changes nothing.
+
 ## [0.69.0] - 2026-10-29
 
 ### Fixed

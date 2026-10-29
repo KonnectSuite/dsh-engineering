@@ -13,7 +13,7 @@ import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
 import { themeAudit } from './theme-audit.ts'
 import { SCAFFOLD_THEME } from './edit/scaffold.ts'
-import { acceptAsset, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { capabilities } from './capabilities.ts'
@@ -593,13 +593,14 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           const existing = currentRoot === undefined || currentRoot === '' ? undefined : displayNamesIn(resolve(currentRoot))
           const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode, existing)
           const unknown = existing === undefined ? [] : names.filter(name => !existing.includes(name))
+          const comparison = currentRoot === undefined || currentRoot === '' ? undefined : comparePackage(outputRoot, resolve(currentRoot), names)
           const unrendered = names.filter(name => !session.wasRendered(name))
           const note = unrendered.length === 0
             ? 'Every packaged display was drawn in this chat.'
             : `${unrendered.length} of ${names.length} packaged display(s) were never drawn here (${unrendered.join(', ')}); draw them before importing.`
           return success(
-            `Packaged ${plan.displays.length} display(s) for import: ${plan.created} create, ${plan.updated} update; batch file ${plan.manifest}. ${note}`,
-            { ...plan, unrendered, newDisplays: unknown },
+            `Packaged ${plan.displays.length} display(s) for import: ${plan.created} create, ${plan.updated} update${comparison === undefined ? '' : `, ${comparison.unchanged.length} already identical`}; batch file ${plan.manifest}. ${note}`,
+            { ...plan, unrendered, newDisplays: unknown, comparison },
             unrendered.length === 0
               ? []
               : [{ tool: 'ftview_render', args: { displays_json: JSON.stringify(unrendered) }, why: 'Look at these screens before asking for an import; the render reports objects outside the canvas or overflowing their box.' }],
