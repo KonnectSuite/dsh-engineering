@@ -2,6 +2,9 @@
 
 ### Added
 
+- **`VIEW-NAV-02` catches a display an operator cannot leave.** `ftview_design_check` reports a
+  display that something navigates to while it holds no `gotoButton` or `closeButton`; a popup like
+  that strands the operator at the machine, and reachability alone never showed it.
 - **`ftview_check` verifies the alarm display exists.** Given a decoded `Alarms.xml`, an alarm setup
   whose `display-name` is not a display in the export raises `ALARM_DISPLAY_MISSING`; the terminal
   otherwise opens nothing when an alarm is annunciated and the configuration looks correct from the

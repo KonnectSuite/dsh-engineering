@@ -14,6 +14,9 @@ import { BUTTON_TYPES } from './catalog.ts'
 import type { Finding } from './checks.ts'
 import type { Application } from './model.ts'
 
+/** Object types that move an operator off the current display. */
+const EXIT_TYPES = new Set(['gotobutton', 'closebutton', 'returnbutton'])
+
 /** Minimum comfortable touch target in pixels. */
 const TOUCH_MINIMUM = 44
 
@@ -125,6 +128,18 @@ export function designFindings(app: Application): Finding[] {
         evidence: { display: display.name },
       })
     }
+  }
+  for (const display of app.displays) {
+    if (display.name === 'Main Screen' || display.name === 'Main') continue
+    if (!targets.has(display.name)) continue
+    const exits = display.objects.filter(object => EXIT_TYPES.has(object.type.toLowerCase()))
+    if (exits.length > 0) continue
+    findings.push({
+      rule: 'VIEW-NAV-02',
+      severity: 'warning',
+      message: `Something navigates to ${display.name} and it holds no gotoButton or closeButton, so an operator who lands there cannot leave.`,
+      evidence: { display: display.name, exit_controls: 0 },
+    })
   }
   return findings
 }

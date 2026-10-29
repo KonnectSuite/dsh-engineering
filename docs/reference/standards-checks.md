@@ -39,6 +39,7 @@ latch result as "somewhere there is a reset", not as "this latch is safe".
 | `VIEW-HPM-01` | `ftview_design_check` | A control with no caption. | VIEW-HPM-01 |
 | `VIEW-COLOR-01` | `ftview_design_check` | Text whose contrast against its fill is below the readable threshold. | VIEW-COLOR-01 |
 | `VIEW-NAV-01` | `ftview_design_check` | A display no other display navigates to. | VIEW-NAV-01 |
+| `VIEW-NAV-02` | `ftview_design_check` | A display something navigates to that holds no `gotoButton` or `closeButton`, so an operator who lands there cannot leave. | VIEW-NAV-02 |
 | `DRAFT_OVERLAP` | `ftview_validate` | Two objects this draft places partly over each other, with both names and the overlap area. Whole-display backdrops and panels containing their children are excluded. | VIEW-LAYOUT-01 |
 | `TAG_CSV`, `UNPARSED_FILE`, `DUPLICATE_*` | `ftview_check` | Structural problems in the export itself, before any design question. | — |
 
