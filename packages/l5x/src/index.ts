@@ -15,6 +15,7 @@ import { readTools } from './tools/read.ts'
 import { referenceTools } from './tools/references.ts'
 import { checkTools } from './tools/checks.ts'
 import { documentTools } from './tools/document.ts'
+import { previewTools } from './tools/preview.ts'
 
 /** Plugin name in a composition. */
 export const name = 'l5x-read'
@@ -44,7 +45,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   }
   const session = new ProjectSession(ctx.fs, maxFileBytes)
   ctx.provide?.(PROJECTS_SERVICE, session)
-  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session), ...documentTools(session)]) {
+  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session), ...documentTools(session), ...previewTools(session)]) {
     ctx.tools.register(definition)
   }
 }
@@ -54,6 +55,7 @@ export { readTools } from './tools/read.ts'
 export { referenceTools } from './tools/references.ts'
 export { checkTools } from './tools/checks.ts'
 export { documentTools } from './tools/document.ts'
+export { previewTools } from './tools/preview.ts'
 export { L5xError } from './core/errors.ts'
 export type { NextStep, Coverage, Success } from './core/result.ts'
 export type { ToolDefinition } from './core/tool.ts'

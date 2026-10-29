@@ -19,6 +19,7 @@ describe('registration', () => {
       'compare_projects',
       'list_instructions',
       'document_project',
+      'l5x_rung_preview',
     ])
   })
 

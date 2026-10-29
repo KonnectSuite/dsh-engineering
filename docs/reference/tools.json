@@ -13,6 +13,7 @@
     "compare_projects",
     "list_instructions",
     "document_project",
+    "l5x_rung_preview",
     "draft_rung",
     "draft_rung_comment",
     "compose_rung",
@@ -138,6 +139,13 @@
       "tools": [
         "list_instructions",
         "document_project"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X preview",
+      "tools": [
+        "l5x_rung_preview"
       ]
     },
     {
