@@ -20,6 +20,7 @@ import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
 import { scaffoldLayout } from './scaffold.ts'
+import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from './screen.ts'
 import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
@@ -367,6 +368,73 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         )
       },
     }),    tool({
+      name: 'ftview_draft_screen',
+      description: 'Stage a whole screen from one description: cards of label/value and label/lamp rows plus a navigation row, laid out on the scaffold slots so nothing is placed by guesswork. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list, or one this draft creates.'),
+        spec_json: string('Screen description as JSON: {"title":"LAMINATOR","subtitle":"cutter and stack status","cards":[{"title":"CUTTER","rows":[{"kind":"value","label":"Belt speed","tag":"BeltSpeed"},{"kind":"lamp","label":"Cut off","tag":"CutOff"}]}],"nav":[{"label":"MAIN","display":"MAIN"}]}. Up to 4 cards and 4 navigation buttons.'),
+        width: integer('Display width in pixels. Omit to read displaySettings from the display file.', { minimum: 200 }),
+        height: integer('Display height in pixels. Omit to read displaySettings from the display file.', { minimum: 150 }),
+      }, ['display', 'spec_json']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'display')
+        const display = displayOf(view, name, draftOf(drafts, exec))
+        let width = optionalInteger(args, 'width')
+        let height = optionalInteger(args, 'height')
+        if (width === undefined || height === undefined) {
+          const bytes = await fs.readBytes(`${view.app.root}/${display.file}`, exec?.signal, 4 * 1024 * 1024)
+          const settings = /<displaySettings\b[^>]*>/u.exec(new TextDecoder().decode(bytes))?.[0] ?? ''
+          const found = (attribute: string): number | undefined => {
+            const raw = new RegExp(`${attribute}="(\\d+)"`, 'u').exec(settings)?.[1]
+            return raw === undefined ? undefined : Number(raw)
+          }
+          width = width ?? found('width')
+          height = height ?? found('height')
+        }
+        if (width === undefined || height === undefined) {
+          throw new EngineeringError('INVALID_ARGUMENT', `Cannot read the size of display ${JSON.stringify(name)}.`, 'Pass width and height, or check that the display file still carries displaySettings.')
+        }
+        const spec = jsonScreen(requiredString(args, 'spec_json'))
+        let layout: ReturnType<typeof screenLayout>
+        try {
+          layout = screenLayout({ ...spec, width, height })
+        } catch (error) {
+          throw new EngineeringError('INVALID_ARGUMENT', error instanceof Error ? error.message : String(error), 'Adjust the cards, rows or navigation in spec_json.')
+        }
+        let draft: EditDraft | undefined
+        for (const item of layout.objects) {
+          draft = stage(exec, view.id, {
+            kind: 'object_add',
+            file: display.file,
+            type: item.type,
+            name: item.name,
+            attributes: item.attributes,
+            ...(item.caption === undefined ? {} : { caption: item.caption }),
+            ...(item.connections === undefined ? {} : { connections: item.connections }),
+            ...(item.states === undefined ? {} : { states: item.states.map(state => ({ ...state })) }),
+          }).draft
+        }
+        if (draft === undefined) throw new EngineeringError('INTERNAL', 'The screen description produced no objects.', 'Report this as a defect.')
+        return success(
+          `Draft ${draft.id}: laid out ${layout.objects.length} objects on ${name} (${spec.cards?.length ?? 0} card(s), ${spec.nav?.length ?? 0} nav button(s)).`,
+          {
+            draft_id: draft.id,
+            operation_count: draft.operations.length,
+            placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
+            slots: layout.slots,
+            note: 'Every object is positioned already. Validate the draft, render it with ftview_render source "draft", then apply.',
+          },
+          [
+            { tool: 'ftview_validate', why: 'Validate the staged screen before writing anything.', args: { draft_id: draft.id } },
+            { tool: 'ftview_render', why: 'Render the staged draft to see the screen before import.', args: { display: name, source: 'draft' } },
+          ],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_draft_object_add',
       description: 'Stage one new object inside a display: geometry, attributes and tag connections. Validated against the vendor schema on ftview_validate. Nothing is written until ftview_apply.',
       parameters: object({
@@ -754,6 +822,59 @@ export type { EditOperation }
  * @param value - JSON text from the tool arguments.
  * @returns States, or undefined when the argument is absent.
  */
+/** Parse a screen description, keeping only the fields the layout understands. */
+function jsonScreen(value: string): Omit<ScreenSpec, 'width' | 'height'> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'spec_json is not valid JSON.', 'Pass a description like {"title":"MAIN","cards":[{"title":"CUTTER","rows":[{"kind":"value","label":"Belt speed","tag":"BeltSpeed"}]}]}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new EngineeringError('INVALID_ARGUMENT', 'spec_json must be a JSON object.', 'Start from {"title": "...", "cards": [...]}.')
+  const record = parsed as Record<string, unknown>
+  if (typeof record.title !== 'string' || record.title === '') throw new EngineeringError('INVALID_ARGUMENT', 'spec_json needs a non-empty title.', 'Pass the header text, for example "LAMINATOR · OVERVIEW".')
+  const cards: ScreenCard[] = []
+  if (record.cards !== undefined) {
+    if (!Array.isArray(record.cards)) throw new EngineeringError('INVALID_ARGUMENT', 'cards must be an array.', 'Pass cards as [{"title":"CUTTER","rows":[...]}].')
+    for (const entry of record.cards) {
+      if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) throw new EngineeringError('INVALID_ARGUMENT', 'Each card must be a JSON object.', 'Pass {"title":"CUTTER","rows":[...]}.')
+      const card = entry as Record<string, unknown>
+      if (typeof card.title !== 'string' || card.title === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each card needs a title.', 'Pass the card heading, for example "STACK".')
+      if (!Array.isArray(card.rows)) throw new EngineeringError('INVALID_ARGUMENT', `Card ${JSON.stringify(card.title)} needs a rows array.`, 'Pass rows as [{"kind":"value","label":"Belt speed","tag":"BeltSpeed"}].')
+      const rows = card.rows.map(row => {
+        if (row === null || typeof row !== 'object' || Array.isArray(row)) throw new EngineeringError('INVALID_ARGUMENT', 'Each row must be a JSON object.', 'Pass {"kind":"value","label":"Belt speed","tag":"BeltSpeed"}.')
+        const item = row as Record<string, unknown>
+        const kind = item.kind
+        if (kind !== 'value' && kind !== 'lamp') throw new EngineeringError('INVALID_ARGUMENT', 'A row kind must be "value" or "lamp".', 'Use "value" for a numeric readout and "lamp" for a state indicator.')
+        if (typeof item.label !== 'string' || item.label === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each row needs a label.', 'Pass the text shown beside the value, for example "Belt speed".')
+        if (typeof item.tag !== 'string' || item.tag === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each row needs a tag.', 'Pass the HMI or PLC tag the row shows, for example "BeltSpeed".')
+        return { kind, label: item.label, tag: item.tag } as const
+      })
+      cards.push({ title: card.title, rows })
+    }
+  }
+  const nav: ScreenNav[] = []
+  if (record.nav !== undefined) {
+    if (!Array.isArray(record.nav)) throw new EngineeringError('INVALID_ARGUMENT', 'nav must be an array.', 'Pass nav as [{"label":"MAIN","display":"MAIN"}].')
+    for (const entry of record.nav) {
+      if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) throw new EngineeringError('INVALID_ARGUMENT', 'Each navigation button must be a JSON object.', 'Pass {"label":"MAIN","display":"MAIN"}.')
+      const button = entry as Record<string, unknown>
+      if (typeof button.label !== 'string' || button.label === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each navigation button needs a label.', 'Pass the caption, for example "MAIN".')
+      if (typeof button.display !== 'string' || button.display === '') throw new EngineeringError('INVALID_ARGUMENT', 'Each navigation button needs a display.', 'Pass the target display name, for example "MAIN".')
+      nav.push({ label: button.label, display: button.display })
+    }
+  }
+  const subtitle = typeof record.subtitle === 'string' ? record.subtitle : undefined
+  const footer = typeof record.footer === 'string' ? record.footer : undefined
+  return {
+    title: record.title,
+    ...(subtitle === undefined ? {} : { subtitle }),
+    ...(footer === undefined ? {} : { footer }),
+    cards,
+    nav,
+  }
+}
+
 function jsonStates(value: string | undefined): readonly ObjectState[] | undefined {
   if (value === undefined) return undefined
   let parsed: unknown
