@@ -7,6 +7,7 @@
 import { EngineeringError, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from './core.ts'
 import type { DisplayFile, TagRow } from './model.ts'
 import { findingsOf } from './checks.ts'
+import { diffObjects } from './objects-diff.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
@@ -293,7 +294,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_compare',
-      description: 'Compare two opened exports by display name, tag name and file content hash.',
+      description: 'Compare two opened exports by display name, tag name, file content hash, and the objects inside each display that changed.',
       parameters: object({
         before_id: string('View id of the earlier export.'),
         after_id: string('View id of the later export.'),
@@ -315,12 +316,23 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         const hashOf = new Map(before.files.map(file => [file.file, file.sha256]))
         const changedFiles = after.files.filter(file => hashOf.get(file.file) !== file.sha256).map(file => file.file)
         const limit = optionalInteger(args, 'limit') ?? 50
+        const objects = diffObjects(before.displays, after.displays, limit)
+        const objectCounts = objects.displays.reduce(
+          (total: { added: number; removed: number; changed: number }, display) => ({
+            added: total.added + display.added.length,
+            removed: total.removed + display.removed.length,
+            changed: total.changed + display.changed.length,
+          }),
+          { added: 0, removed: 0, changed: 0 },
+        )
         return success(
-          `${diff(oldNames.displays, newNames.displays).added.length + diff(oldNames.displays, newNames.displays).removed.length} display change(s), ${diff(oldNames.tags, newNames.tags).added.length + diff(oldNames.tags, newNames.tags).removed.length} tag change(s), ${changedFiles.length} changed file(s).`,
+          `${diff(oldNames.displays, newNames.displays).added.length + diff(oldNames.displays, newNames.displays).removed.length} display change(s), ${diff(oldNames.tags, newNames.tags).added.length + diff(oldNames.tags, newNames.tags).removed.length} tag change(s), ${changedFiles.length} changed file(s), ${objects.changedDisplays} display(s) with object changes (${objectCounts.added} added, ${objectCounts.removed} removed, ${objectCounts.changed} changed).`,
           {
             displays: diff(oldNames.displays, newNames.displays),
             tags: diff(oldNames.tags, newNames.tags),
             files_changed: changedFiles.slice(0, limit),
+            objects: objects.displays,
+            objects_truncated: objects.truncated,
             truncated: changedFiles.length > limit,
           },
           [],

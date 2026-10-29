@@ -1,3 +1,12 @@
+## [0.43.0] - 2026-10-29
+
+### Added
+
+- `ftview_compare` reports what changed **inside** each display, not only which files differ: per display,
+  the objects added, removed, and changed with the fields that moved (`left`, `caption`, `connections`, ...).
+  After a Studio import this is the proof that a specific object landed, where a file hash only says the
+  file is different.
+
 ## [0.42.0] - 2026-10-29
 
 ### Fixed
