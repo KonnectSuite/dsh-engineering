@@ -19,7 +19,8 @@ import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, Object
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
-import { scaffoldLayout } from './scaffold.ts'
+import { scaffoldLayout, SCAFFOLD_THEME } from './scaffold.ts'
+import { restyleDisplay, type RestyleTheme } from './restyle.ts'
 import { selectBulk } from './bulk.ts'
 import type { BulkMatch } from './bulk.ts'
 import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from './screen.ts'
@@ -870,6 +871,77 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_restyle',
+      description: 'Repaint one existing display in the house theme: backdrop, panel surfaces, text colour and field/button shells, keeping geometry and every object. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        theme_json: string('Optional palette overrides, e.g. {"header":"#0088C8"}.'),
+      }, ['display']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'display')
+        const listed = view.app.displays.find(candidate => candidate.name === name)
+        if (listed === undefined) {
+          throw new EngineeringError(
+            'NOT_FOUND',
+            `No display is named ${JSON.stringify(name)} in ${view.app.name}.`,
+            'Call ftview_list with kind "display" and use the exact name.',
+          )
+        }
+        const prepared = await prepareEdit(fs, view.app, draftOf(drafts, exec)?.operations ?? [], exec?.signal)
+        const normalize = (value: string) => value.replace(/\\/g, '/')
+        const wanted = normalize(listed.file)
+        const stagedText = [...prepared.texts].find(([path]) => {
+          const candidate = normalize(path)
+          return candidate === wanted || candidate.endsWith(`/${wanted}`) || wanted.endsWith(`/${candidate}`)
+        })
+        const display = stagedText === undefined ? listed : parseDisplay(stagedText[0], stagedText[1])
+        const theme = { ...SCAFFOLD_THEME, ...jsonObject(args.theme_json, 'theme_json') } as RestyleTheme
+        const result = restyleDisplay(display, theme)
+        const settingEntries = Object.entries(result.settings)
+        if (result.changes.length === 0 && settingEntries.length === 0) {
+          throw new EngineeringError(
+            'NO_CHANGES',
+            `${JSON.stringify(display.name)} already matches this palette.`,
+            'Pass theme_json with the colours you want, or use ftview_draft_object_set for one object.',
+          )
+        }
+        let last: EditDraft | undefined
+        for (const [attribute, value] of settingEntries) {
+          const { draft } = stage(exec, optionalString(args, 'view_id'), {
+            kind: 'display_set',
+            file: listed.file,
+            attribute,
+            value,
+          })
+          last = draft
+        }
+        for (const change of result.changes) {
+          const { draft } = stage(exec, optionalString(args, 'view_id'), {
+            kind: 'object_set',
+            file: display.file,
+            object: change.object,
+            attributes: change.attributes,
+          })
+          last = draft
+        }
+        const attributes = result.changes.reduce((sum, change) => sum + Object.keys(change.attributes).length, settingEntries.length)
+        return success(
+          `Staged ${result.changes.length} restyle change(s) on ${JSON.stringify(display.name)} (${attributes} attribute(s)); ${result.skipped.length} object(s) left as they are.`,
+          {
+            display: display.name,
+            settings: result.settings,
+            changes: result.changes,
+            skipped: result.skipped,
+            operation_count: last?.operations.length ?? 0,
+          },
+          [{ tool: 'ftview_validate', why: 'Check the palette against the schema before applying.' }],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_draft_object_delete',
       description: 'Stage the removal of one object from a display. Nothing is written until ftview_apply.',
       parameters: object({
@@ -1210,7 +1282,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           let objects = display?.objects ?? []
           let settings: RenderSettings
           if (fromDraft) {
-            const prepared = await prepareEdit(fs, view.app, drafts.get(exec, undefined).operations, exec?.signal)
+            const prepared = await prepareEdit(fs, view.app, draftOf(drafts, exec)?.operations ?? [], exec?.signal)
             const staged = [...prepared.texts].find(([path]) => path === sourceFile || path.endsWith(`/${sourceFile}`))
             if (staged === undefined) {
               throw new EngineeringError('NOT_FOUND', `The staged draft does not touch ${name}.`, 'Stage an object or display operation for this display, or render the export with source "export".')

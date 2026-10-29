@@ -1,3 +1,13 @@
+## [0.61.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_restyle` repaints an existing display in the house palette.** It walks a display the
+  way a person would on a restyle job: backdrop and panel surfaces become the deep theme, text the
+  bright colour, and field and button shells the accent, while geometry, objects and captions stay put.
+  Reference objects are skipped because the global object owns their look, and indicators or drawings
+  are skipped because their colours carry meaning. `theme_json` overrides any colour; the display
+  backdrop is staged as a display setting, so `ftview_draft_display_set` remains the audit trail.
 ## [0.60.0] - 2026-10-29
 
 ### Added

@@ -82,7 +82,8 @@ Start from the installed application:
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
      `gotoButton`, …) with `states_json` faces, `animations_json` and connections;
    - `ftview_draft_object_set`, `ftview_draft_object_delete`, `ftview_draft_object_order` for existing
-     objects. `ftview_bulk_set` stages one change across matching objects; dry run first.
+     objects; `ftview_draft_restyle` repaints a whole display in the house palette. `ftview_bulk_set`
+     stages one change across matching objects; dry run first.
 4. `ftview_validate` must show `schema.ran: true` with no schema errors before you apply. `schema.ran:
    false` means the host has no Studio schema and validation did not run; say so instead of claiming
    validity.
@@ -107,20 +108,17 @@ Rules the guide encodes:
 
 ## Preview and fidelity
 
-`ftview_live_map` reports which HMI tags are controller-backed and which are
-memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
-`Global Objects` and `Images`, so references and bitmaps render.
-
-The preview is static: alarm banners, colour/fill and gradients are approximate. Say so when citing a
-capture.
+`ftview_live_map` separates controller-backed tags from memory; the preview's **Live** button reads
+them over EtherNet/IP, read-only, and loads `Global Objects` and `Images`. The preview is static:
+alarm banners, colour/fill and gradients are approximate, so say so when citing a capture.
 
 ## Tags and alarms
 
 `ftview_export` also writes what the store holds: tags come from `TAG/<application>.MDF` through
 `ftview_tag_snapshot { application, output? }` (a copy attached to local SQL Express, `dbo.AllTagsView`,
 same rows and quoting as the wizard), alarms are decoded from `M_Alarms/MachineAlarms.mal` by
-`ftview_alarm_snapshot { application, output? }`. Neither writes the application database, neither
-needs Studio, and the decoder reproduces wizard XML byte-for-byte on three applications.
+`ftview_alarm_snapshot { application, output? }`. Neither touches the application database and
+neither needs Studio; the decoder matches wizard XML byte-for-byte.
 `ftview_studio_export_accept` validates or copies either file. If a database is missing, fall back to
 `ftview_studio_export_prepare` (tags: standalone DatabaseConverter; alarms: Studio wizard + `export_root`).
 ## Import and verify
@@ -136,9 +134,9 @@ needs Studio, and the decoder reproduces wizard XML byte-for-byte on three appli
 
 The `ftview-studio` entry plans a manual import; it may be disabled.
 
-- `ftview_studio_status` discovers installed ME tooling, schemas and help files.
-- `ftview_studio_preflight` checks the files that differ between two exports for import problems.
-- `ftview_studio_handoff` returns the ordered manual import plan. Nothing is written.
+- `ftview_studio_status` and `ftview_studio_preflight` discover ME tooling and check the files that
+  differ between two exports for import problems; `ftview_studio_handoff` returns the manual import
+  plan and writes nothing.
 
 ## Reporting
 
