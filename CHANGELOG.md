@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+### Changed
+
+- **The renderer contract no longer claims images are placeholders.** Artwork has been inlined since
+  0.27.0 when `Images/<file>` is present, and tests cover it, but the module header, the reference text
+  and the `ftview_render` description still said images were drawn as placeholders. A model reading the
+  description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
 
 - **`ftview_check` names artwork the export does not ship.** A display that names

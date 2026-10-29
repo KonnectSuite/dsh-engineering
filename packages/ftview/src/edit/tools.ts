@@ -1327,7 +1327,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
     }),
     tool({
       name: 'ftview_render',
-      description: 'Draw one display, or up to eight in one call, of the open export as SVG files and as PNGs when a headless Chrome or Edge is installed, so the screens can be inspected before anyone imports them. Reports every object that leaves the canvas or overflows its box. Geometry and colour only: animations, images and vendor widgets are drawn as labelled placeholders.',
+      description: 'Draw one display, or up to eight in one call, of the open export as SVG files and as PNGs when a headless Chrome or Edge is installed, so the screens can be inspected before anyone imports them. Reports every object that leaves the canvas or overflows its box. Geometry and colour only: artwork is inlined when the export carries its file; animations and vendor widgets are drawn as labelled placeholders.',
       parameters: object({
         view_id: VIEW_ID,
         display: string('Display name as listed by ftview_list. Omit when displays_json is given.'),

@@ -3,8 +3,9 @@
  *
  * This is a sanity view, not a Studio preview: it draws the geometry the export
  * declares (panels, text, buttons, indicators, lines) so a model can see overlap
- * and colour before a human imports anything. Animations, images and vendor
- * widgets are drawn as placeholders on purpose.
+ * and colour before a human imports anything. Artwork named by an object is inlined when the
+ * export carries its file under `Images/`; animations and vendor widgets are drawn as
+ * labelled placeholders on purpose.
  */
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, statSync } from 'node:fs'

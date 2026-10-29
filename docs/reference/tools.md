@@ -1098,7 +1098,7 @@ Write the prepared edits to a NEW export folder: changed files get the edits, ot
 
 #### `ftview_render`
 
-Draw one display, or up to eight in one call, of the open export as SVG files and as PNGs when a headless Chrome or Edge is installed, so the screens can be inspected before anyone imports them. Reports every object that leaves the canvas or overflows its box. Geometry and colour only: animations, images and vendor widgets are drawn as labelled placeholders.
+Draw one display, or up to eight in one call, of the open export as SVG files and as PNGs when a headless Chrome or Edge is installed, so the screens can be inspected before anyone imports them. Reports every object that leaves the canvas or overflows its box. Geometry and colour only: artwork is inlined when the export carries its file; animations and vendor widgets are drawn as labelled placeholders.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
