@@ -61,11 +61,34 @@ interface Cell {
   readonly height: number
   readonly fill: string
   readonly stroke: string
+  /** Label broken for a two-line face; absent for a single line. */
+  readonly lines?: readonly string[]
+}
+
+/** Longest line a box carries before it wraps. */
+const LABEL_CHARS = 30
+
+/**
+ * Break a label into at most two lines, preferring a separator near the middle.
+ *
+ * @param label - Instruction label as drawn.
+ */
+export function splitLabel(label: string): string[] {
+  if (label.length <= LABEL_CHARS) return [label]
+  const middle = label.length / 2
+  let best = -1
+  for (const separator of ['_', '.', ':', ',', ' ']) {
+    const at = label.lastIndexOf(separator, Math.floor(middle + 6))
+    if (at > 8 && at < label.length - 6 && (best < 0 || Math.abs(at - middle) < Math.abs(best - middle))) best = at
+  }
+  if (best > 0) return [label.slice(0, best + 1).trim(), label.slice(best + 1).trim()]
+  return [label.slice(0, LABEL_CHARS), label.slice(LABEL_CHARS)]
 }
 
 /** Width of a box that holds one label. */
 function boxWidth(label: string): number {
-  return Math.max(84, Math.ceil(label.length * FONT * 0.62) + 18)
+  const widest = splitLabel(label).reduce((width, line) => Math.max(width, line.length), 0)
+  return Math.max(84, Math.ceil(widest * FONT * 0.62) + 18)
 }
 
 /** Draw one instruction node as a label. */
@@ -95,7 +118,7 @@ function laySequence(nodes: readonly LadderNode[], startX: number, centreY: numb
       const label = instructionLabel(node)
       const box = boxWidth(label)
       const colours = coloursFor(node.name)
-      cells.push({ label, x, y: centreY - BOX_HEIGHT / 2, width: box, height: BOX_HEIGHT, ...colours })
+      cells.push({ label, lines: splitLabel(label), x, y: centreY - BOX_HEIGHT / 2, width: box, height: BOX_HEIGHT, ...colours })
       x += box + BOX_GAP
       continue
     }
@@ -159,13 +182,20 @@ function drawRung(rung: RungSpec, top: number, left: number, right: number, flat
       continue
     }
     shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" rx="3" fill="${cell.fill}" stroke="${cell.stroke}"/>`)
-    shapes.push(`<text x="${cell.x + cell.width / 2}" y="${cell.y + cell.height / 2 + 4.5}" text-anchor="middle" font-size="${FONT}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(cell.label)}</text>`)
+    const lines = cell.lines ?? [cell.label]
+    const centreX = cell.x + cell.width / 2
+    if (lines.length > 1) {
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 - 3}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(lines[0] ?? '')}</text>`)
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 11}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(lines[1] ?? '')}</text>`)
+    } else {
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 4.5}" text-anchor="middle" font-size="${FONT}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(cell.label)}</text>`)
+    }
   }
   return { shapes, height }
 }
 
 /** Render rungs to one SVG document. */
-export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder preview'): LadderRaster {
+export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder preview', note?: string): LadderRaster {
   const flattened: string[] = []
   const widest = Math.max(
     420,
@@ -179,7 +209,7 @@ export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder prev
   const left = 16
   const right = width - 16
   const shapes: string[] = []
-  let top = 34
+  let top = note === undefined ? 34 : 52
   for (const rung of rungs) {
     const drawn = drawRung(rung, top, left, right, flattened)
     shapes.push(...drawn.shapes)
@@ -191,6 +221,7 @@ export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder prev
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     `<rect x="0" y="0" width="${width}" height="${height}" fill="#0B1220"/>`,
     `<text x="16" y="18" font-size="12" font-family="Segoe UI, Arial, sans-serif" fill="#94A3B8">${escapeXml(title)}</text>`,
+    ...(note === undefined ? [] : [`<text x="16" y="34" font-size="11" font-family="Segoe UI, Arial, sans-serif" fill="#64748B">${escapeXml(note)}</text>`]),
     ...shapes,
     '</svg>',
     '',

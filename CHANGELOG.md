@@ -1,3 +1,15 @@
+## [0.54.0] - 2026-10-29
+
+### Changed
+
+- **Ladder diagrams wrap long operands instead of shortening them.** A label that does not fit on one
+  line is broken at a separator near the middle and drawn on two lines, so
+  `MOVE(BottomKnife_MP200Iec:O.Data[3],BottomKnife_MP200Iec:O.DegreePosition)` stays readable on the
+  page. Applies to `l5x_diagram` and `l5x_rung_preview`.
+- **`l5x_diagram` captions the page with the range it covers** — `5-16 of 799 rung(s)` — and names the
+  `start_rung` that continues it, so a page image carries its own navigation instead of relying on the
+  caller to remember the offset.
+
 ## [0.53.0] - 2026-10-29
 
 ### Added

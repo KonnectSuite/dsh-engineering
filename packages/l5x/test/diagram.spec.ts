@@ -2,6 +2,7 @@
  * The whole-project ladder diagram: one page for every RLL rung.
  */
 import { describe, expect, it, vi } from 'vitest'
+import { splitLabel } from '../src/engine/render-ladder.ts'
 
 vi.setConfig({ testTimeout: 30_000 })
 import { mkdtempSync, readFileSync, existsSync } from 'node:fs'
@@ -84,5 +85,24 @@ describe('l5x_diagram', () => {
     expect(one.data?.routines).toBe(1)
     const missing = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, routine: 'NoSuchRoutine' })
     expect(missing.error?.code).toBe('NOT_FOUND')
+  }, 30000)
+
+  it('breaks a long operand across two lines instead of shortening it', () => {
+    const label = 'MOVE(BottomKnife_MP200Iec:O.Data[0],BottomKnife_MP200Iec:O.Data[1])'
+    const lines = splitLabel(label)
+    expect(lines).toHaveLength(2)
+    expect(lines.join('')).toBe(label)
+    expect(lines.every(line => line.length <= 36)).toBe(true)
+    expect(splitLabel('XIC(Start)')).toEqual(['XIC(Start)'])
+  })
+
+  it('captions the page with the range it covers', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
+    const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 1 })
+    expect(result.error).toBeUndefined()
+    const svg = readFileSync(result.data?.diagram_svg as string, 'utf8')
+    expect(svg).toContain('1-1 of')
   }, 30000)
 })

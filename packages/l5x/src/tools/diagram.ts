@@ -17,7 +17,7 @@ import { integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import type { ProjectSession } from '../session.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
-import { writeLadderRaster, type LadderRaster } from '../engine/render-ladder.ts'
+import { splitLabel, writeLadderRaster, type LadderRaster } from '../engine/render-ladder.ts'
 import { optionalNumber, optionalString, tool } from './common.ts'
 
 /** What a whole-project diagram cannot establish. */
@@ -83,12 +83,12 @@ function fitLabel(label: string, width: number): string {
 }
 
 /** Draw the rows as a ladder page. */
-export function renderProjectDiagram(rows: readonly Row[], title: string): LadderRaster {
+export function renderProjectDiagram(rows: readonly Row[], title: string, note?: string): LadderRaster {
   const width = 1500
   const header = 108
   const shapes: string[] = []
   shapes.push(`<text x="28" y="46" fill="#E2E8F0" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="600">${escape(title)}</text>`)
-  shapes.push(`<text x="28" y="76" fill="#94A3B8" font-family="Segoe UI, Arial, sans-serif" font-size="16">${rows.length} rung(s) drawn as instruction chains</text>`)
+  shapes.push(`<text x="28" y="76" fill="#94A3B8" font-family="Segoe UI, Arial, sans-serif" font-size="16">${rows.length} rung(s) drawn as instruction chains${note === undefined ? "" : ` · ${escape(note)}`}</text>`)
   let top = header
   let routine = ''
   for (const row of rows) {
@@ -114,7 +114,14 @@ export function renderProjectDiagram(rows: readonly Row[], title: string): Ladde
         rowTop += 34
       }
       shapes.push(`<rect x="${x}" y="${rowTop}" width="${boxWidth}" height="30" rx="6" fill="#1E293B" stroke="#60A5FA" stroke-width="1.5"/>`)
-      shapes.push(`<text x="${x + 10}" y="${rowTop + 21}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="14">${escape(fitLabel(`${device.op}(${device.operand})`, boxWidth - 20))}</text>`)
+      const label = `${device.op}(${device.operand})`
+      const lines = splitLabel(label)
+      if (lines.length > 1) {
+        shapes.push(`<text x="${x + 10}" y="${rowTop + 13}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[0] ?? '', boxWidth - 20))}</text>`)
+        shapes.push(`<text x="${x + 10}" y="${rowTop + 26}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="12">${escape(fitLabel(lines[1] ?? '', boxWidth - 20))}</text>`)
+      } else {
+        shapes.push(`<text x="${x + 10}" y="${rowTop + 21}" fill="#E2E8F0" font-family="Consolas, monospace" font-size="14">${escape(fitLabel(label, boxWidth - 20))}</text>`)
+      }
       x += boxWidth + 16
       bottom = Math.max(bottom, rowTop + 30)
     }
@@ -206,7 +213,10 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         if (!isAbsolute(target)) {
           throw new L5xError('INVALID_ARGUMENT', `The workspace path ${target} is not absolute, so no image could be written.`, 'Pass an absolute output folder.')
         }
-        const raster = await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title))
+        const at = startRung + 1
+        const through = startRung + rows.length
+        const pageNote = `${at}-${through} of ${at - 1 + rows.length + omitted} rung(s)` + (omitted === 0 ? '' : ` · next page start_rung ${through}`)
+        const raster = await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title, pageNote))
         const words = omitted === 0
           ? `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg}.`
           : `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg} (from rung offset ${startRung}); ${omitted} more follow, so page on with start_rung ${startRung + rows.length}.`
