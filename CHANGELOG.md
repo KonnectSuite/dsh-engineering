@@ -1,3 +1,15 @@
+## [0.38.0] - 2026-10-29
+
+### Added
+
+- `ftview_render` draws vendor polylines, trend grids and bar-graph tracks, so separators and charts read
+  as the screen does rather than as labelled boxes.
+
+### Fixed
+
+- A `line` object is drawn from its own `line` polyline with its line width and dash style; it used to be
+  a diagonal across the object's bounding box.
+
 ## [0.37.0] - 2026-10-29
 
 ### Added

@@ -72,7 +72,7 @@ describe('renderDisplaySvg', () => {
     expect(result.svg).toContain('>Logo</text>')
   })
   it('labels widgets it cannot render instead of dropping them', () => {
-    const result = renderDisplaySvg('Overview', [{ type: 'trend', name: 'Trend1', attributes: { left: '10', top: '10', width: '100', height: '50' } }], settings)
+    const result = renderDisplaySvg('Overview', [{ type: 'vendorWidget', name: 'Trend1', attributes: { left: '10', top: '10', width: '100', height: '50' } }], settings)
     expect(result.svg).toContain('>Trend1</text>')
   })
 })
@@ -134,4 +134,25 @@ describe('ftview_render', { timeout: 30_000 }, () => {
     const result = await l5x.call('ftview_render', { view_id: open.data?.view_id as string, display: 'Nope' })
     expect(result.error?.code).toBe('NOT_FOUND')
   })
+  it('draws a vendor polyline, not a diagonal between its corners', () => {
+    const display = settingsFromXml(GFX)
+    const svg = renderDisplaySvg('Lines', [
+      { type: 'line', name: 'Rule', attributes: { left: '10', top: '20', width: '100', height: '4', line: '12 24 80 24 80 60', lineWidth: '3', foreColor: '#112233', lineStyle: 'dash' } },
+    ], display).svg
+    expect(svg).toContain('points="12,24 80,24 80,60"')
+    expect(svg).toContain('stroke-dasharray="6 4"')
+    expect(svg).toContain('stroke-width="3"')
+  })
+
+  it('draws a trend and a bar graph as gridded tracks', () => {
+    const display = settingsFromXml(GFX)
+    const svg = renderDisplaySvg('Charts', [
+      { type: 'barGraph', name: 'Speed', attributes: { left: '20', top: '40', width: '120', height: '40', backColor: '#001C38', borderColor: '#94A3B8', borderWidth: '1' } },
+      { type: 'trend', name: 'History', attributes: { left: '20', top: '120', width: '160', height: '80', borderColor: '#94A3B8', borderWidth: '1' } },
+    ], display).svg
+    const lines = svg.split('<line ').length - 1
+    expect(lines).toBeGreaterThanOrEqual(4)
+    expect(svg).toContain('stroke-opacity="0.5"')
+  })
+
 })

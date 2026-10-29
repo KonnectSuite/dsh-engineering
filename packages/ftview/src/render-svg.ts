@@ -81,6 +81,38 @@ function geometry(object: DisplayObject, name: string, fallback: number): number
   return Number.isFinite(value) ? value : fallback
 }
 
+/** The vendor's polyline marker: pairs of display coordinates, space separated. */
+function polyline(object: DisplayObject): string | undefined {
+  const raw = object.attributes.line
+  if (raw === undefined) return undefined
+  const numbers = raw.trim().split(/\s+/u).map(Number).filter(Number.isFinite)
+  if (numbers.length < 4 || numbers.length % 2 !== 0) return undefined
+  const pairs: string[] = []
+  for (let i = 0; i < numbers.length; i += 2) pairs.push(`${numbers[i]},${numbers[i + 1]}`)
+  return pairs.join(' ')
+}
+
+/** SVG dash pattern for a vendor line style. */
+function dash(style: string | undefined): string {
+  if (style === 'dash') return ' stroke-dasharray="6 4"'
+  if (style === 'dot') return ' stroke-dasharray="2 3"'
+  return ''
+}
+
+/** Grid lines inside a box, for trends and bar tracks. */
+function grid(left: number, top: number, width: number, height: number, stroke: string, columns: number, rows: number): string {
+  const lines: string[] = []
+  for (let i = 1; i < columns; i += 1) {
+    const x = left + (width / columns) * i
+    lines.push(`<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="${stroke}" stroke-width="1" stroke-opacity="0.5"/>`)
+  }
+  for (let i = 1; i < rows; i += 1) {
+    const y = top + (height / rows) * i
+    lines.push(`<line x1="${left}" y1="${y}" x2="${left + width}" y2="${y}" stroke="${stroke}" stroke-width="1" stroke-opacity="0.5"/>`)
+  }
+  return lines.join('')
+}
+
 /** Text drawn on a face: the caption attribute, else the object name. */
 function faceText(object: DisplayObject): string {
   return object.attributes.caption ?? object.attributes.Text ?? object.name ?? ''
@@ -103,7 +135,13 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
     return `<text x="${left}" y="${top + size}" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${label}</text>`
   }
   if (type === 'line') {
-    return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${colour(object.attributes.color, '#000000')}" stroke-width="1"/>`
+    const points = polyline(object)
+    const strokeColour = colour(object.attributes.foreColor ?? object.attributes.color ?? object.attributes.backColor, '#000000')
+    const width = geometry(object, 'lineWidth', 1)
+    if (points === undefined) {
+      return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${strokeColour}" stroke-width="${width}"/>`
+    }
+    return `<polyline points="${points}" fill="none" stroke="${strokeColour}" stroke-width="${width}"${dash(object.attributes.lineStyle)}/>`
   }
   const imageName = object.attributes.imageName
   if (imageName !== undefined && images.has(imageName)) {
@@ -121,6 +159,12 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
     const size = geometry(object, 'fontSize', 12)
     const colourText = colour(object.attributes.captionColor ?? object.attributes.color, '#000000')
     return `${rect}<text x="${left + width / 2}" y="${top + height / 2 + size / 3}" text-anchor="middle" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${label}</text>`
+  }
+  if (type.includes('trend')) {
+    return `${rect}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 4, 4)}`
+  }
+  if (type.includes('bargraph')) {
+    return `${rect}${grid(left, top, width, height, colour(object.attributes.borderColor, '#94A3B8'), 1, 4)}`
   }
   if (type === 'panel' || type.includes('rectangle')) return rect
   return `${rect}<text x="${left + 2}" y="${top + 12}" font-size="10" font-family="Segoe UI, Arial, sans-serif" fill="#64748B">${encodeEntities(object.name ?? object.type)}</text>`
