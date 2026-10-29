@@ -14,6 +14,7 @@ import { acceptAsset, prepareAlarmExport, prepareDisplayImport, prepareTagExport
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { capabilities } from './capabilities.ts'
+import { crossReference, readL5x } from './cross.ts'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ViewSession } from './session.ts'
@@ -65,7 +66,7 @@ function nearest(names: readonly string[], wanted: string): readonly string[] {
  * @param session - View handles for the calling chat.
  * @returns Tool definitions in registration order.
  */
-export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
+export function ftviewTools(session: ViewSession, read?: (path: string) => Promise<string>): readonly ToolDefinition[] {
   return [
     tool({
       name: 'ftview_open',
@@ -152,6 +153,59 @@ export function ftviewTools(session: ViewSession): readonly ToolDefinition[] {
           { name: display.name, file: display.file, objects: display.objects.slice(0, 200), object_count: display.objects.length },
           [],
           COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_cross_reference',
+      description: 'Join the HMI tags of one opened export to the tags and logic of a Studio 5000 L5X: device address to PLC tag, display usage, logic usage, and the tags that exist on only one side.',
+      parameters: object({
+        view_id: VIEW_ID,
+        l5x_path: string('Path to the .L5X export the HMI talks to. Example: "C:/Projects/Line/Line.L5X".'),
+        include_memory: choice('Include HMI memory tags as rows.', ['yes', 'no']),
+        limit: integer('Most rows and findings to return. Default 50, maximum 200.', { minimum: 1, maximum: 200, default: 50 }),
+      }, ['l5x_path']),
+      async run(args, exec) {
+        const { app } = session.require(optionalString(args, 'view_id'), exec)
+        const path = requiredString(args, 'l5x_path')
+        const limit = optionalInteger(args, 'limit') ?? 50
+        if (read === undefined) {
+          throw new EngineeringError('UNAVAILABLE', 'This host exposes no filesystem reader, so the L5X cannot be opened.', 'Run inside a chat that provides a filesystem service.')
+        }
+        let plc
+        try {
+          plc = readL5x(await read(path))
+        } catch (cause) {
+          throw new EngineeringError('FILE_UNREADABLE', `Cannot read an L5X at ${path}: ${cause instanceof Error ? cause.message : String(cause)}.`, 'Pass the path of a Studio 5000 L5X export on this host.')
+        }
+        const displays = new Map<string, string>()
+        const base = app.root.replace(/[\\/]+$/u, '')
+        for (const display of app.displays) {
+          try {
+            const target = display.file.startsWith(`${base}/`) ? display.file : `${base}/${display.file}`
+            displays.set(display.file, await read(target))
+          } catch {
+            // A display the scan read but the filesystem no longer serves adds no usage.
+          }
+        }
+        const report = crossReference(app, plc, { limit, includeMemory: optionalString(args, 'include_memory') === 'yes', displays })
+        const { counts } = report
+        return success(
+          `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at.`,
+          report,
+          [
+            { tool: 'ftview_cross_reference', args: { view_id: optionalString(args, 'view_id'), l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },
+            { tool: 'find_references', args: { symbol: 'PLC_TAG' }, why: 'Read the rungs behind one PLC tag in the L5X project.' },
+          ],
+          {
+            complete: false,
+            unverified: [
+              'PLC read/write direction: the L5X text is counted, not typed, so a tag can be both read and written.',
+              'Device address shortcuts are not resolved to a controller; only the tag path after the brackets is compared.',
+              'Members and array elements join to their root tag; no member-level typing is verified.',
+              'AOI-internal tags and Add-On Instruction parameters are not expanded.',
+            ],
+          },
         )
       },
     }),

@@ -117,7 +117,7 @@ export function splitCsv(line: string): string[] {
 }
 
 /** Decode bytes as UTF-8 or UTF-16, dropping a byte-order mark. */
-function decode(bytes: Uint8Array): string {
+export function decodeText(bytes: Uint8Array): string {
   // Studio writes most exports as UTF-8, but some generated files (BatchImport) are
   // UTF-16LE. Decoding those as UTF-8 produced a root element of "\0g\0f\0x".
   if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes.subarray(2))
@@ -329,7 +329,7 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
   const files: ScannedFile[] = []
   await walk(fs, base, '', signal, async (file, absolute) => {
     const bytes = await fs.readBytes(absolute, signal, 32 * 1024 * 1024)
-    const text = decode(bytes)
+    const text = decodeText(bytes)
     files.push({ file, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })
     if (/\.csv$/iu.test(file)) {
       const csv = parseTagCsv(text)

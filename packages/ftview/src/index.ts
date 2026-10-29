@@ -8,6 +8,7 @@
  */
 
 import { stringFs, type PluginContext } from './core.ts'
+import { decodeText } from './model.ts'
 import { ViewSession } from './session.ts'
 import { ftviewTools } from './tools.ts'
 import { vendorTools } from './vendor-tools.ts'
@@ -43,9 +44,11 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxFiles) || maxFiles <= 0) {
     throw new Error('ftview-read: maxFiles must be a positive integer')
   }
-  const session = new ViewSession(stringFs(ctx.fs), maxFiles)
+  const files = stringFs(ctx.fs)
+  const session = new ViewSession(files, maxFiles)
   ctx.provide?.(VIEWS_SERVICE, session)
-  for (const definition of [...ftviewTools(session), ...vendorTools(stringFs(ctx.fs))]) ctx.tools.register(definition)
+  const readText = async (path: string): Promise<string> => decodeText(await files.readBytes(path, undefined))
+  for (const definition of [...ftviewTools(session, readText), ...vendorTools(files)]) ctx.tools.register(definition)
   if (config.live !== false) {
     // The route is mounted only when the host offers a web server; a CLI host
     // without one keeps the tool surface and simply has no live preview.

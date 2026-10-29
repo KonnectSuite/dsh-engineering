@@ -263,6 +263,7 @@ even when the implementation behind a row is replaced.
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Examples](docs/examples.md) | End-to-end sessions per product |
 | [Any FTView application](docs/reference/ftview-any-app.md) | What is generic, what varies per application, and the import/verify loop |
+| [Cross-referencing HMI against PLC](docs/reference/ftview-cross.md) | Join an export's tags to a Studio 5000 L5X: device addresses, display usage, logic usage, one-sided tags |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |
 | [FTView port](docs/port/ftview.md) | FactoryTalk View port decisions |

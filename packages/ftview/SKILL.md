@@ -25,16 +25,14 @@ Backups go into one shared tree:
     <the copy>
 ```
 
-FactoryTalk View is the `ftview` product: copy the whole export folder plus `backup-manifest.json`
-(relative path and SHA-256 per file), one stamp per backup. `ftview_apply` already writes a new folder,
-so this is a backup on request. Never write to `<workspace>/_backups` or `backups/<project>/…`; those
-are older layouts.
+FactoryTalk View is the `ftview` product: copy the whole export folder plus `backup-manifest.json`, one
+stamp per backup. `ftview_apply` already writes a new folder, so this is a backup on request. Never write to `<workspace>/_backups`.
 
 ## Start
 
 1. Call `ftview_open` with the export folder. Keep the returned `view_id`.
 2. Later calls may omit `view_id` when exactly one export is open.
-3. Ask only for the exports the task needs: display XML, the tag CSV, or L5X for PLC binding.
+3. Ask only for the exports the task needs: display XML, tag CSV, or L5X for binding.
 
 ## Inspect
 
@@ -48,6 +46,7 @@ are older layouts.
   and files that did not parse. It is not vendor schema validation and says nothing about PLC
   binding.
 - `ftview_compare` compares two opened exports by display name, tag name and file hash.
+- `ftview_cross_reference` joins the export's tags to an L5X: device address, display use, logic use.
 
 ## Editing
 
