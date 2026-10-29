@@ -100,3 +100,60 @@ describe('compare_projects', () => {
     expect(diff.error?.code).toBe('UNKNOWN_PROJECT')
   })
 })
+
+/** A project with one rung that latches and two that drive the same output. */
+const STANDARD_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content TargetName="Std">
+ <Controller Name="Std" Use="Target">
+  <DataTypes />
+  <Tags />
+  <Programs>
+   <Program Name="MainProgram" Use="Target">
+    <Tags />
+    <Routines>
+     <Routine Name="MainRoutine" Type="RLL">
+      <RLLContent>
+       <Rung Number="0" Type="N"><Text>OTL(Latch_1);</Text></Rung>
+       <Rung Number="1" Type="N"><Text>OTE(Out_1);</Text></Rung>
+       <Rung Number="2" Type="N"><Text>OTE(Out_1);</Text></Rung>
+       <Rung Number="3" Type="N"><Text>OTU(Latch_1);</Text></Rung>
+      </RLLContent>
+     </Routine>
+    </Routines>
+   </Program>
+  </Programs>
+ </Controller>
+</RSLogix5000Content>`
+
+/** The rules reported for one document. */
+async function rules(xml: string): Promise<readonly string[]> {
+  const l5x = harness(new Map([['std.l5x', new TextEncoder().encode(xml)]]))
+  const open = await l5x.call('open_project', { path: 'std.l5x' })
+  expect(open.error).toBeUndefined()
+  const checks = await l5x.call('run_checks', {})
+  const findings = (checks.data?.findings ?? []) as readonly { rule: string }[]
+  return findings.map(finding => finding.rule)
+}
+
+describe('standards rules', () => {
+  it('flags an output driven from two rungs in one routine', async () => {
+    expect(await rules(STANDARD_L5X)).toContain('DUPLICATE_OUTPUT')
+  })
+
+  it('does not flag a latch whose reset exists anywhere in the export', async () => {
+    expect(await rules(STANDARD_L5X)).not.toContain('LATCH_WITHOUT_RESET')
+  })
+
+  it('flags a latch with no reset', async () => {
+    const withoutReset = STANDARD_L5X.replace('<Rung Number="3" Type="N"><Text>OTU(Latch_1);</Text></Rung>', '')
+    expect(await rules(withoutReset)).toContain('LATCH_WITHOUT_RESET')
+  })
+
+  it('names the craft basis so the reference can be cited', async () => {
+    const l5x = harness(new Map([['std.l5x', new TextEncoder().encode(STANDARD_L5X)]]))
+    await l5x.call('open_project', { path: 'std.l5x' })
+    const checks = await l5x.call('run_checks', { rule: 'DUPLICATE_OUTPUT' })
+    const findings = (checks.data?.findings ?? []) as readonly { evidence: { basis?: string } }[]
+    expect(findings[0]?.evidence.basis).toBeTypeOf('string')
+  })
+})

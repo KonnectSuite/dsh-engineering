@@ -263,6 +263,24 @@ export class ProjectSession {
   }
 
   /**
+   * Read one text file from the workspace.
+   *
+   * Used by the ladder preview when the rungs were written to a file instead of
+   * being pasted into the call.
+   *
+   * @param requestedPath - File as the caller supplied it.
+   * @param exec - Calling context: cancellation and workspace root.
+   * @returns The decoded text.
+   */
+  async readTextAt(requestedPath: string, exec?: ExecContext): Promise<string> {
+    const target = await this.fs.resolve(requestedPath, {
+      ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
+      ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
+    })
+    const bytes = await this.fs.readBytes(target, exec?.signal)
+    return new TextDecoder('utf-8').decode(bytes)
+  }
+  /**
    * Write one prepared draft to a new path, never overwriting.
    *
    * @param outputPath - Destination as the caller supplied it.

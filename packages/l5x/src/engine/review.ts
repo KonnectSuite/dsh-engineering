@@ -119,6 +119,41 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         { program: routine.program, routine: routine.name, count: undocumented.length, rungs: undocumented.slice(0, 20).map(rung => rung.number), truncated: undocumented.length > 20 }, 'high')
     }
   }
+  // Standards pass: a latch nothing resets, and one output driven from two rungs.
+  // Basis: CRAFT-FAULT-02 (a latch needs a reset that only succeeds when the cause is
+  // gone) and the one-driver-per-output guidance in the craft pages.
+  const latched = new Map<string, { program: string; routine: string; rungs: number[] }>()
+  const reset = new Set<string>()
+  const driven = new Map<string, { program: string; routine: string; tag: string; rungs: number[] }>()
+  for (const routine of doc.routines) {
+    if (routine.body.type !== 'RLL') continue
+    for (const rung of routine.body.rungs) {
+      for (const match of rung.text.matchAll(/(OTL|OTU|OTE)\(([^)]*)\)/gu)) {
+        const kind = match[1]
+        const text = (match[2] ?? '').trim()
+        const tag = text.split(/[.\s]/u)[0] ?? ''
+        if (tag === '') continue
+        if (kind === 'OTU') { reset.add(tag.toLowerCase()); continue }
+        const latch = kind === 'OTL' ? latched.get(tag.toLowerCase()) ?? { program: routine.program, routine: routine.name, rungs: [] } : undefined
+        if (latch !== undefined) {
+          latch.rungs.push(rung.number)
+          latched.set(tag.toLowerCase(), latch)
+        }
+        const key = `${routine.program}::${routine.name}::${tag.toLowerCase()}`
+        const driver = driven.get(key) ?? { program: routine.program, routine: routine.name, tag, rungs: [] }
+        driver.rungs.push(rung.number)
+        driven.set(key, driver)
+      }
+    }
+  }
+  for (const [tag, entry] of latched) {
+    if (reset.has(tag)) continue
+    report('LATCH_WITHOUT_RESET', 'warning', `${entry.program}::${entry.routine} latches ${tag}, and nothing in this export resets it`, { program: entry.program, routine: entry.routine, tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
+  }
+  for (const entry of driven.values()) {
+    if (entry.rungs.length < 2) continue
+    report('DUPLICATE_OUTPUT', 'warning', `${entry.program}::${entry.routine} drives ${entry.tag} from ${entry.rungs.length} rungs`, { program: entry.program, routine: entry.routine, tag: entry.tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
+  }
   const writers = new Map<string, Evidence[]>()
   for (const ref of references) if (ref.resolved !== undefined && (ref.access === 'write' || ref.access === 'read_write')) writers.set(ref.resolved, [...writers.get(ref.resolved) ?? [], ref])
   for (const [symbol, locations] of writers) if (locations.length > 1 && /(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) report('MULTIPLE_OUTPUT_WRITES', 'warning', `Multiple indexed writes to output-like symbol ${symbol}`, locations, 'medium')

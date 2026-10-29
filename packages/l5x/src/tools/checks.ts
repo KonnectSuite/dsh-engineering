@@ -71,7 +71,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
   return [
     tool({
       name: 'run_checks',
-      description: 'Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic. Pass baseline_id to add I/O change checks against an earlier export.',
+      description: 'Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT). Pass baseline_id to add I/O change checks against an earlier export.',
       parameters: object({
         baseline_id: string('Optional second open project id to compare against, enabling I/O module change checks.'),
         rule: string('Only return findings with this exact rule name. Example: "UNUSED_TAG".'),

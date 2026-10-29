@@ -17,7 +17,7 @@ import { object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
 import type { ProjectSession } from '../session.ts'
-import { optionalString, requiredString, tool } from './common.ts'
+import { optionalString, tool } from './common.ts'
 
 /** What a rendered preview cannot establish. */
 const PREVIEW_COVERAGE: Coverage = {
@@ -59,7 +59,7 @@ function instructionsOf(text: string): string[] {
 
 /** Split the caller's block into rungs, dropping blank lines. */
 function rungsOf(text: string, comments: string | undefined): string[] {
-  const lines = text.split(/\r?\n/u).map(line => line.trim()).filter(line => line !== '')
+  const lines = text.split(/\r?\n/u).map(line => line.trim()).filter(line => line !== '' && !line.startsWith('//') && !line.startsWith('#'))
   if (lines.length === 0) {
     throw new L5xError('INVALID_ARGUMENT', 'rungs is empty.', 'Pass one NeutralText rung per line, for example "XIC(Start)OTE(Run);".')
   }
@@ -120,16 +120,22 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
       name: 'l5x_rung_preview',
       description: 'Render proposed ladder rungs as a diagram: writes one minimal L5X preview document into the workspace so the project viewer draws the rungs, validates every rung with the same parser draft_rung uses, and refuses a rung that does not parse. Nothing is imported and no project is modified.',
       parameters: object({
-        rungs: string('NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);"'),
+        rungs: string('NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);". Pass this or rungs_file.'),
+        rungs_file: string('Optional text file whose lines are the NeutralText rungs, one per line. Use it when the rungs are already written to disk.'),
         comments: string('Optional rung comments, one per line, blank for a rung without a comment.'),
         title: string('Optional document and controller name, for example "PumpStart".'),
         output: string('Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X".'),
-      }, ['rungs']),
+      }, []),
       async run(args, exec) {
-        const text = requiredString(args, 'rungs')
+        const inline = optionalString(args, 'rungs')
+        const fromFile = optionalString(args, 'rungs_file')
+        if (inline === undefined && fromFile === undefined) {
+          throw new L5xError('INVALID_ARGUMENT', 'Pass rungs or rungs_file.', 'Pass the NeutralText lines directly, or a path to a file that holds them.')
+        }
         const comments = optionalString(args, 'comments')
         const title = optionalString(args, 'title') ?? 'Preview'
-        const lines = rungsOf(text, comments)
+        const source = inline ?? await session.readTextAt(fromFile as string, exec)
+        const lines = rungsOf(source, comments)
         const commentLines = comments?.split(/\r?\n/u) ?? []
         const rungs: PreviewRung[] = lines.map((line, index) => {
           const parsed = parseLadder(line)

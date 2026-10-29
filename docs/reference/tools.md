@@ -136,7 +136,7 @@ Evidence-backed structural checks and export comparison.
 
 #### `run_checks`
 
-Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic. Pass baseline_id to add I/O change checks against an earlier export.
+Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT). Pass baseline_id to add I/O change checks against an earlier export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -195,7 +195,8 @@ Render proposed ladder rungs as a diagram: writes one minimal L5X preview docume
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `rungs` | string | yes | NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);" |
+| `rungs` | string | no | NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);". Pass this or rungs_file. |
+| `rungs_file` | string | no | Optional text file whose lines are the NeutralText rungs, one per line. Use it when the rungs are already written to disk. |
 | `comments` | string | no | Optional rung comments, one per line, blank for a rung without a comment. |
 | `title` | string | no | Optional document and controller name, for example "PumpStart". |
 | `output` | string | no | Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X". |

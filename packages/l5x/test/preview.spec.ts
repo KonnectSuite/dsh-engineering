@@ -69,3 +69,26 @@ describe('l5x_rung_preview', () => {
     expect(document).toContain('<Text>XIC(A)OTE("B&amp;&lt;&gt;");</Text>')
   })
 })
+
+describe('rungs from a file', () => {
+  it('renders the rungs held in a file', async () => {
+    const files = new Map([['rungs.txt', new TextEncoder().encode('XIC(Start)OTE(Run);\nXIC(Stop)OTU(Run);\n')]])
+    const l5x = harness(files)
+    const result = await l5x.call('l5x_rung_preview', { rungs_file: 'rungs.txt', title: 'FromFile' })
+    expect(result.error).toBeUndefined()
+    expect(Number(result.data?.rungs)).toBe(2)
+  })
+
+  it('skips comment and blank lines so a pasted block works', async () => {
+    const l5x = harness()
+    const result = await l5x.call('l5x_rung_preview', { rungs: '// start latch\n\nXIC(Start)OTE(Run);\n# note\nXIC(Stop)OTU(Run);\n' })
+    expect(result.error).toBeUndefined()
+    expect(Number(result.data?.rungs)).toBe(2)
+  })
+
+  it('asks for rungs when neither rungs nor rungs_file is passed', async () => {
+    const l5x = harness()
+    const result = await l5x.call('l5x_rung_preview', {})
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})
