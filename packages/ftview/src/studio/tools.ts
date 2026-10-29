@@ -4,7 +4,9 @@
  * @module dsh-engineering-ftview/studio/tools
  */
 
-import { object, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from '../core.ts'
+import { EngineeringError, choice, object, optionalString, requiredString, string, success, tool, type Coverage, type ToolDefinition } from '../core.ts'
+import { findingsOf } from '../checks.ts'
+import { themeAudit } from '../theme-audit.ts'
 import type { ViewSession } from '../session.ts'
 import { discoverStudio, type StudioDiscovery } from './discover.ts'
 import { handoffPlan, studioPreflight } from './preflight.ts'
@@ -59,19 +61,32 @@ export function studioTools(session: ViewSession, roots: readonly string[]): rea
     }),
     tool({
       name: 'ftview_studio_preflight',
-      description: 'Check the files that differ between two opened exports for a manual Studio import: parse state, name restrictions, discovered utility and schemas. Writes nothing and starts no Studio.',
+      description: 'Check the files that differ between two opened exports for a manual Studio import: parse state, name restrictions, discovered utility and schemas, plus the engineering gate (critical check findings and house-theme conformance). Writes nothing and starts no Studio.',
       parameters: object({
         before_id: string('View id of the export before the edit.'),
         after_id: string('View id of the edited export.'),
+        gate: choice('report asks the gate to report its verdict; fail refuses when a critical finding or a non-conforming display remains.', ['report', 'fail']),
       }, ['before_id', 'after_id']),
       async run(args, exec) {
         const before = session.require(requiredString(args, 'before_id'), exec).app
         const after = session.require(requiredString(args, 'after_id'), exec).app
         const discovery = await discoverStudio(session.fs, roots, exec.signal)
         const check = studioPreflight(before, after, discovery)
+        const findings = findingsOf(after)
+        const theme = themeAudit(after)
+        const critical = findings.filter(finding => finding.severity === 'error')
+        const gate = { critical: critical.length, warnings: findings.filter(finding => finding.severity === 'warning').length, themed: theme.conforming, displays: theme.total, passed: critical.length === 0 && theme.conforming === theme.total }
+        if (optionalString(args, 'gate') === 'fail' && !gate.passed) {
+          const offenders = [...critical.map(finding => finding.message), ...theme.findings.map(finding => finding.message)]
+          throw new EngineeringError(
+            'GATE_FAILED',
+            `${critical.length} critical finding(s) and ${theme.total - theme.conforming} non-conforming display(s) block this change set.`,
+            `Fix what the gate names, then re-run: ${offenders.slice(0, 3).join(' | ')}`,
+          )
+        }
         return success(
-          `${check.changed.length} file(s) differ; ${check.blockers.length} blocker(s).`,
-          { ...check, discovery: discoveryData(discovery) },
+          `${check.changed.length} file(s) differ; ${check.blockers.length} blocker(s); gate ${gate.passed ? 'passes' : 'flags'} (${critical.length} critical, ${theme.total - theme.conforming} display(s) off-theme).`,
+          { ...check, gate, findings, theme: { conforming: theme.conforming, total: theme.total, rows: theme.rows }, discovery: discoveryData(discovery) },
           check.ready ? [{ tool: 'ftview_studio_handoff', args: { before_id: requiredString(args, 'before_id'), after_id: requiredString(args, 'after_id') }, why: 'Get the ordered manual import steps.' }] : [],
           COVERAGE,
         )

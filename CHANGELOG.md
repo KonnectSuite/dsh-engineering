@@ -1,3 +1,16 @@
+## [0.64.0] - 2026-10-29
+
+### Added
+
+- **`ftview_studio_preflight` carries an engineering gate.** Alongside parse state and name
+  restrictions it now reports critical check findings and house-theme conformance for the edited
+  export, and `gate: "fail"` refuses the change set instead of letting an off-theme or broken screen
+  reach the manual import step. Findings and per-display theme rows ride along in the result.
+
+### Fixed
+
+- The bundle no longer lists the retired `@aryacode/dsh-engineering-ftview` package as a dependency.
+
 ## [0.63.0] - 2026-10-29
 
 ### Added

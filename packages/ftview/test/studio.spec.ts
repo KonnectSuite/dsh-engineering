@@ -78,6 +78,46 @@ describe('preflight', () => {
     expect(check.data?.utility_available).toBe(true)
   })
 
+  it('reports the engineering gate without refusing the report', async () => {
+    const { l5x, before, after } = await opened()
+    const check = await l5x.call('ftview_studio_preflight', { before_id: before, after_id: after })
+    expect(check.error).toBeUndefined()
+    const gate = check.data?.gate as Record<string, unknown>
+    expect(gate.passed).toBe(false)
+    expect(gate.displays).toBe(1)
+    expect(gate.themed).toBe(0)
+    expect(check.summary).toContain('gate flags')
+  })
+
+  it('refuses the change set when the gate is asked to fail', async () => {
+    const { l5x, before, after } = await opened()
+    const check = await l5x.call('ftview_studio_preflight', { before_id: before, after_id: after, gate: 'fail' })
+    expect(check.error?.code).toBe('GATE_FAILED')
+    expect(check.error?.message).toContain('non-conforming display');
+    expect(check.error?.fix).toContain('Main')
+  })
+
+  it('lets a themed change set through the gate', async () => {
+    const themed = files(true)
+    themed.set('after/Main.xml', [
+      '<Display name="Main">',
+      '<DisplaySettings width="640" height="480" backColor="#0E1A24"/>',
+      '<Panel name="HeaderBar" left="0" top="0" width="640" height="88" backColor="#0088C8"/>',
+      '<Panel name="FooterBar" left="0" top="420" width="640" height="60" backColor="#143243"/>',
+      '</Display>',
+    ].join(''))
+    const l5x = harness(themed, { studio: true })
+    const before = await l5x.call('ftview_open', { root: 'before' })
+    const after = await l5x.call('ftview_open', { root: 'after' })
+    const check = await l5x.call('ftview_studio_preflight', {
+      before_id: before.data?.view_id as string,
+      after_id: after.data?.view_id as string,
+      gate: 'fail',
+    })
+    expect(check.error).toBeUndefined()
+    expect(check.data?.gate).toMatchObject({ passed: true, themed: 1, displays: 1 })
+  })
+
   it('blocks a display file name Studio refuses', async () => {
     const map = files(true)
     map.set('after/Bad#Name.xml', '<Display name="Bad"/>')

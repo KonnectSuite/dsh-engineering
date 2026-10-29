@@ -1115,12 +1115,13 @@ No parameters.
 
 #### `ftview_studio_preflight`
 
-Check the files that differ between two opened exports for a manual Studio import: parse state, name restrictions, discovered utility and schemas. Writes nothing and starts no Studio.
+Check the files that differ between two opened exports for a manual Studio import: parse state, name restrictions, discovered utility and schemas, plus the engineering gate (critical check findings and house-theme conformance). Writes nothing and starts no Studio.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `before_id` | string | yes | View id of the export before the edit. |
 | `after_id` | string | yes | View id of the edited export. |
+| `gate` | string (report \| fail) | no | report asks the gate to report its verdict; fail refuses when a critical finding or a non-conforming display remains. |
 
 #### `ftview_studio_handoff`
 
