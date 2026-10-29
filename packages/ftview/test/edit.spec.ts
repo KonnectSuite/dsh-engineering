@@ -206,3 +206,43 @@ describe('authoring into a new draft display', () => {
     expect(written).toContain('HELLO')
   })
 })
+
+describe('draft layout check', () => {
+  it('reports a button placed partly over a panel the same draft added', async () => {
+    const { l5x, view } = await opened()
+    const panel = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main', type: 'panel', name: 'TopPanel',
+      attributes_json: '{"left":"0","top":"0","width":"400","height":"100"}',
+    })
+    expect(panel.error).toBeUndefined()
+    const draftId = panel.data?.draft_id as string
+    const button = await l5x.call('ftview_draft_object_add', {
+      view_id: view, draft_id: draftId, display: 'Main', type: 'momentaryButton', name: 'Start',
+      attributes_json: '{"left":"350","top":"50","width":"120","height":"40"}',
+    })
+    expect(button.error).toBeUndefined()
+    const validated = await l5x.call('ftview_validate', { draft_id: draftId })
+    expect(validated.error).toBeUndefined()
+    const overlap = (validated.data?.findings as Array<{ rule: string }>).filter(finding => finding.rule === 'DRAFT_OVERLAP')
+    expect(overlap).toHaveLength(1)
+  })
+
+  it('stays quiet when the same draft places objects side by side', async () => {
+    const { l5x, view } = await opened()
+    const panel = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main', type: 'panel', name: 'TopPanel',
+      attributes_json: '{"left":"0","top":"0","width":"300","height":"100"}',
+    })
+    expect(panel.error).toBeUndefined()
+    const draftId = panel.data?.draft_id as string
+    const button = await l5x.call('ftview_draft_object_add', {
+      view_id: view, draft_id: draftId, display: 'Main', type: 'momentaryButton', name: 'Start',
+      attributes_json: '{"left":"320","top":"10","width":"120","height":"40"}',
+    })
+    expect(button.error).toBeUndefined()
+    const validated = await l5x.call('ftview_validate', { draft_id: draftId })
+    expect(validated.error).toBeUndefined()
+    const overlap = (validated.data?.findings as Array<{ rule: string }>).filter(finding => finding.rule === 'DRAFT_OVERLAP')
+    expect(overlap).toHaveLength(0)
+  })
+})

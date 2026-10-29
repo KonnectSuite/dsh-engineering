@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.23.0] - 2026-10-29
+
+### Added
+
+- **`ftview_validate` reports an object this draft places partly over a neighbour.** The new `DRAFT_OVERLAP` warning names both objects, the display and the overlap area. It stays quiet for whole-display backdrops and for panels that contain their controls, because those are layering rather than mistakes, so the finding is only about collisions the draft itself introduced. The author sees the collision before apply instead of after import.
+
+### Fixed
+
+- **An object added to a display with no trailing newline landed after the root element.** The insertion point fell back to the end of the file, so the new element sat outside `<gfx>` and the re-parse behaved as if the object did not exist. The insertion now falls back to the parent's closing tag.
+
 ## [0.22.2] - 2026-10-28
 
 ### Fixed

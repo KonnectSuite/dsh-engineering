@@ -1,111 +1,110 @@
 {
-  "name": "@aryacode/dsh-engineering",
-  "version": "0.22.2",
-  "description": "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
-  "keywords": [
-    "dsh",
-    "deepseek-harness",
-    "cordis",
-    "plugin",
-    "bundle",
-    "engineering",
-    "automation",
-    "plc",
-    "studio-5000",
-    "factorytalk",
-    "motionworks"
-  ],
-  "license": "MIT",
-  "type": "module",
-  "engines": {
-    "node": "^22.19.0 || >=24.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/KonnectSuite/dsh-engineering.git"
-  },
-  "homepage": "https://github.com/KonnectSuite/dsh-engineering#readme",
-  "bugs": {
-    "url": "https://github.com/KonnectSuite/dsh-engineering/issues"
-  },
-  "files": [
-    "cordis.patch.yml",
-    "entries/**/*",
-    "lib/**/*",
-    "locale/*.json",
-    "vendor/**/*",
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE"
-  ],
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
-        "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-api-workspace-files",
-        "@deepseek-ai/dsh-api-session-controller",
-        "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-slots"
-      ]
-    }
-  },
-  "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
-    "docs:tools": "tsx scripts/gen-tool-reference.ts",
-    "docs:check": "tsx scripts/gen-tool-reference.ts --check",
-    "netlogic:sync": "node scripts/sync-netlogic.mjs",
-    "resources:build": "node scripts/resources.mjs",
-    "resources:check": "node scripts/resources.mjs --check",
-    "build:client": "node scripts/build-client.mjs",
-    "assemble": "node scripts/assemble.mjs",
-    "prepack": "node scripts/build-client.mjs && node scripts/assemble.mjs"
-  },
-  "dependencies": {
-    "fast-xml-parser": "5.11.1",
-    "fast-xml-validator": "1.4.2",
-    "playwright-core": "1.61.1",
-    "st-ethernet-ip": "2.7.5"
-  },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2"
-  },
-  "devDependencies": {
-    "js-yaml": "^4.1.0",
-    "tsx": "^4.23.15"
-  },
-  "exports": {
-    ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./client": "./lib/client.js",
-    "./package.json": "./package.json",
-    "./l5x": "./entries/l5x.js",
-    "./ftview": "./entries/ftview.js",
-    "./mwi": "./entries/mwi.js",
-    "./optix": "./entries/optix.js",
-    "./l5x/read": "./vendor/l5x/lib/index.js",
-    "./l5x/skill": "./vendor/l5x/lib/skill.js",
-    "./l5x/editing": "./vendor/l5x/lib/editing.js",
-    "./l5x/live": "./vendor/l5x/lib/live.js",
-    "./l5x/studio": "./vendor/l5x/lib/studio.js",
-    "./ftview/read": "./vendor/ftview/lib/index.js",
-    "./ftview/skill": "./vendor/ftview/lib/skill.js",
-    "./ftview/edit": "./vendor/ftview/lib/edit.js",
-    "./ftview/studio": "./vendor/ftview/lib/studio.js",
-    "./mwi/session": "./vendor/mwi/lib/index.js",
-    "./mwi/read": "./vendor/mwi/lib/read.js",
-    "./mwi/skill": "./vendor/mwi/lib/skill.js",
-    "./mwi/verify": "./vendor/mwi/lib/verify.js",
-    "./mwi/edit": "./vendor/mwi/lib/edit.js",
-    "./resources": "./entries/resources.js"
-  }
+    "name":  "@aryacode/dsh-engineering",
+    "version":  "0.23.0",
+    "description":  "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
+    "keywords":  [
+                     "dsh",
+                     "deepseek-harness",
+                     "cordis",
+                     "plugin",
+                     "bundle",
+                     "engineering",
+                     "automation",
+                     "plc",
+                     "studio-5000",
+                     "factorytalk",
+                     "motionworks"
+                 ],
+    "license":  "MIT",
+    "type":  "module",
+    "engines":  {
+                    "node":  "^22.19.0 || \u003e=24.0.0"
+                },
+    "repository":  {
+                       "type":  "git",
+                       "url":  "git+https://github.com/KonnectSuite/dsh-engineering.git"
+                   },
+    "homepage":  "https://github.com/KonnectSuite/dsh-engineering#readme",
+    "bugs":  {
+                 "url":  "https://github.com/KonnectSuite/dsh-engineering/issues"
+             },
+    "files":  [
+                  "cordis.patch.yml",
+                  "entries/**/*",
+                  "lib/**/*",
+                  "locale/*.json",
+                  "vendor/**/*",
+                  "README.md",
+                  "CHANGELOG.md",
+                  "LICENSE"
+              ],
+    "dsh":  {
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "client":  {
+                               "platform":  "web",
+                               "inject":  [
+                                              "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+                                              "@deepseek-ai/dsh-client-ui-renderer",
+                                              "@deepseek-ai/dsh-api-workspace-files",
+                                              "@deepseek-ai/dsh-api-session-controller",
+                                              "@deepseek-ai/dsh-client-ui-conversation",
+                                              "@deepseek-ai/dsh-client-locale",
+                                              "@deepseek-ai/dsh-client-ui-slots"
+                                          ]
+                           }
+            },
+    "scripts":  {
+                    "test":  "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
+                    "docs:tools":  "tsx scripts/gen-tool-reference.ts",
+                    "docs:check":  "tsx scripts/gen-tool-reference.ts --check",
+                    "netlogic:sync":  "node scripts/sync-netlogic.mjs",
+                    "resources:build":  "node scripts/resources.mjs",
+                    "resources:check":  "node scripts/resources.mjs --check",
+                    "build:client":  "node scripts/build-client.mjs",
+                    "assemble":  "node scripts/assemble.mjs",
+                    "prepack":  "node scripts/build-client.mjs \u0026\u0026 node scripts/assemble.mjs"
+                },
+    "dependencies":  {
+                         "fast-xml-parser":  "5.11.1",
+                         "fast-xml-validator":  "1.4.2",
+                         "playwright-core":  "1.61.1",
+                         "st-ethernet-ip":  "2.7.5"
+                     },
+    "peerDependencies":  {
+                             "@deepseek-ai/cordis":  "~4.0.4",
+                             "@deepseek-ai/dsh-tool-skill":  "^0.2.0-rc.2"
+                         },
+    "devDependencies":  {
+                            "js-yaml":  "^4.1.0",
+                            "tsx":  "^4.23.15"
+                        },
+    "exports":  {
+                    ".":  {
+                              "types":  "./lib/index.d.ts",
+                              "default":  "./lib/index.js"
+                          },
+                    "./client":  "./lib/client.js",
+                    "./package.json":  "./package.json",
+                    "./l5x":  "./entries/l5x.js",
+                    "./ftview":  "./entries/ftview.js",
+                    "./mwi":  "./entries/mwi.js",
+                    "./optix":  "./entries/optix.js",
+                    "./l5x/read":  "./vendor/l5x/lib/index.js",
+                    "./l5x/skill":  "./vendor/l5x/lib/skill.js",
+                    "./l5x/editing":  "./vendor/l5x/lib/editing.js",
+                    "./l5x/live":  "./vendor/l5x/lib/live.js",
+                    "./l5x/studio":  "./vendor/l5x/lib/studio.js",
+                    "./ftview/read":  "./vendor/ftview/lib/index.js",
+                    "./ftview/skill":  "./vendor/ftview/lib/skill.js",
+                    "./ftview/edit":  "./vendor/ftview/lib/edit.js",
+                    "./ftview/studio":  "./vendor/ftview/lib/studio.js",
+                    "./mwi/session":  "./vendor/mwi/lib/index.js",
+                    "./mwi/read":  "./vendor/mwi/lib/read.js",
+                    "./mwi/skill":  "./vendor/mwi/lib/skill.js",
+                    "./mwi/verify":  "./vendor/mwi/lib/verify.js",
+                    "./mwi/edit":  "./vendor/mwi/lib/edit.js",
+                    "./resources":  "./entries/resources.js"
+                }
 }
-

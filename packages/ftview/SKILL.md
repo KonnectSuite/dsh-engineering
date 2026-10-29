@@ -58,13 +58,13 @@ unavailable, say editing is not enabled here rather than trying another tool.
 - `ftview_draft_display_add` stages a new display by copying an existing display file.
 - `ftview_draft_tag_upsert` stages one HMI tag description/type change or a new tag row.
 - One operation per call. Each returns the draft id and the operation count; nothing is written yet.
-- `ftview_validate` applies the staged edits to a re-parsed copy, checks the changed displays against
-  the installed `Gfx-ME*.xsd` and reports the changed files. `ftview_apply` refuses to write when the
-  vendor schema rejects a document.
-- `ftview_apply` writes a NEW export folder, plus `Displays/BatchImport_<app>.xml` and `IMPORT.md` so
-  Studio's Batch Import has the exact list of changed displays. It never modifies the source.
-- `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard
-  (right-click Displays > Import and Export), then you import and open them in Studio.
+- `ftview_validate` re-parses the edited copy, checks the changed displays against the installed
+  `Gfx-ME*.xsd` and lists findings, including `DRAFT_OVERLAP` when this draft places an object partly
+  over a neighbour. `ftview_apply` refuses a document the vendor schema rejects.
+- `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
+  display list Studio's Batch Import expects. It never modifies the source.
+- `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
+  put **every** display the task changes in one package so the human imports once, not once per screen.
 
 ## Authoring
 

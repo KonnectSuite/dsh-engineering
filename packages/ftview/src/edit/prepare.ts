@@ -63,6 +63,91 @@ function tagFileOf(app: Application): string {
   return app.tagFiles[0] as string
 }
 
+/** One rectangle read from an object's geometry attributes. */
+interface Rect {
+  readonly left: number
+  readonly top: number
+  readonly width: number
+  readonly height: number
+}
+
+/** Read an object's rectangle, or undefined when its geometry is incomplete. */
+function rectOf(attributes: Readonly<Record<string, string>>): Rect | undefined {
+  const left = Number(attributes.left)
+  const top = Number(attributes.top)
+  const width = Number(attributes.width)
+  const height = Number(attributes.height)
+  if (![left, top, width, height].every(value => Number.isFinite(value) && value >= 0)) return undefined
+  if (width === 0 || height === 0) return undefined
+  return { left, top, width, height }
+}
+
+/** Area two rectangles share, or 0 when they do not overlap. */
+function overlapArea(a: Rect, b: Rect): number {
+  const width = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+  const height = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+  return width > 0 && height > 0 ? width * height : 0
+}
+
+/** True when one rectangle fully contains the other, which is normal layering. */
+function contains(outer: Rect, inner: Rect): boolean {
+  return outer.left <= inner.left && outer.top <= inner.top
+    && outer.left + outer.width >= inner.left + inner.width
+    && outer.top + outer.height >= inner.top + inner.height
+}
+
+/**
+ * Report objects this draft places partially over a neighbour.
+ *
+ * Whole-display backdrops, panels that contain their controls and identical
+ * rectangles are layering, not mistakes, so they stay quiet. Only a partial
+ * intersection is reported: that is the case where a later object hides part of
+ * an earlier one and the screen looks broken after import.
+ *
+ * @param operations - Staged operations.
+ * @param displays - Displays after the edit.
+ * @returns One finding per overlapping pair the draft created.
+ */
+export function draftLayoutFindings(operations: readonly EditOperation[], displays: readonly DisplayFile[]): Finding[] {
+  const touched = new Map<string, Set<string>>()
+  for (const operation of operations) {
+    if (operation.kind !== 'object_add' && operation.kind !== 'object_set') continue
+    const names = touched.get(operation.file) ?? new Set<string>()
+    names.add(operation.kind === 'object_add' ? operation.name : operation.object)
+    touched.set(operation.file, names)
+  }
+  const findings: Finding[] = []
+  for (const [file, names] of touched) {
+    const display = displays.find(candidate => candidate.file === file)
+    if (display === undefined) continue
+    const rects = display.objects
+      .map(object => ({ name: object.name, rect: rectOf(object.attributes) }))
+      .filter((entry): entry is { name: string; rect: Rect } => entry.name !== undefined && entry.rect !== undefined)
+    const canvasWidth = Math.max(...rects.map(entry => entry.rect.left + entry.rect.width))
+    const canvasHeight = Math.max(...rects.map(entry => entry.rect.top + entry.rect.height))
+    const canvas = canvasWidth * canvasHeight
+    for (const name of names) {
+      const mine = rects.find(entry => entry.name === name)
+      if (mine === undefined) continue
+      for (const other of rects) {
+        if (other.name === name) continue
+        const area = overlapArea(mine.rect, other.rect)
+        if (area === 0) continue
+        if (contains(mine.rect, other.rect) || contains(other.rect, mine.rect)) continue
+        if (canvas > 0 && mine.rect.width * mine.rect.height >= canvas * 0.8) continue
+        const smaller = Math.min(mine.rect.width * mine.rect.height, other.rect.width * other.rect.height)
+        findings.push({
+          rule: 'DRAFT_OVERLAP',
+          severity: 'warning',
+          message: `${name} partially covers ${other.name} in display ${JSON.stringify(display.name)}: ${area} px, ${Math.round((area / smaller) * 100)}% of the smaller object.`,
+          evidence: { display: display.name, object: name, overlaps: other.name, area, rect: mine.rect, other: other.rect },
+        })
+      }
+    }
+  }
+  return findings
+}
+
 /**
  * Apply every operation to text and re-parse the result.
  *
@@ -168,7 +253,7 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
     const file = diagnostic.split(':')[0] ?? ''
     return !changedFiles.has(file)
   })
-  const findings = findingsOf({ displays, tags, tagErrors, diagnostics })
+  const findings = [...findingsOf({ displays, tags, tagErrors, diagnostics }), ...draftLayoutFindings(operations, displays)]
   // Validate only the documents this draft writes: the unchanged ones were
   // already read by the session, and re-validating 18 displays per call would
   // make every edit pay for the whole export.

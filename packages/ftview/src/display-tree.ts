@@ -280,9 +280,15 @@ export function insertChild(tree: DisplayTree, parent: DisplayNode, childXml: st
   }
   const children = parent.children
   if (index === undefined || index >= children.length) {
-    // Append on a new line after the last child, not inside its own line.
+    // Append on a new line after the last child, not inside its own line. A
+    // hand-made or one-line document has no newline there, so fall back to the
+    // position of the closing tag: appending at the end of the file would put
+    // the new element after the root element instead of inside it.
     const newline = tree.xml.indexOf('\n', parent.contentEnd)
-    const at = newline < 0 ? tree.xml.length : newline + 1
+    const closing = `</${parent.type}>`
+    const at = newline >= 0 && newline < parent.end
+      ? newline + 1
+      : Math.max(parent.contentEnd, parent.end - closing.length)
     return tree.xml.slice(0, at) + childXml + tree.xml.slice(at)
   }
   const at = (children[Math.max(0, index)] as DisplayNode).start
