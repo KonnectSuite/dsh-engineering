@@ -20,7 +20,8 @@ import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
 import { scaffoldLayout } from './scaffold.ts'
-import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender } from '../render-svg.ts'
+import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RenderSettings } from '../render-svg.ts'
+import { parseDisplay } from '../model.ts'
 
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
@@ -618,21 +619,40 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         view_id: VIEW_ID,
         display: string('Display name as listed by ftview_list.'),
         output: string('Folder for the render. Defaults to a "renders" folder beside the export.'),
+        source: choice('Draw the committed export file or the staged draft that has not been applied yet.', ['export', 'draft']),
       }, ['display']),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
         const name = requiredString(args, 'display')
+        const fromDraft = optionalString(args, 'source') === 'draft'
         const display = view.app.displays.find(candidate => candidate.name === name)
-        if (display === undefined) {
+        if (display === undefined && !fromDraft) {
           throw new EngineeringError('NOT_FOUND', `No display is named ${JSON.stringify(name)} in ${view.app.name}.`, 'Call ftview_list with kind "display" and use the exact name.')
         }
-        if (display.parseError !== undefined) {
+        if (display !== undefined && display.parseError !== undefined) {
           throw new EngineeringError('DISPLAY_UNREADABLE', `${name} did not parse: ${display.parseError}`, 'Fix the display file, reopen the export and try again.')
         }
-        const file = `${view.app.root}/${display.file}`
-        const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
-        const settings = settingsFromXml(new TextDecoder().decode(bytes))
-        const result = renderDisplaySvg(name, display.objects, settings)
+        const sourceFile = display === undefined ? `Displays/${name}.xml` : display.file
+        let objects = display?.objects ?? []
+        let settings: RenderSettings
+        if (fromDraft) {
+          const prepared = await prepareEdit(fs, view.app, drafts.get(exec, undefined).operations, exec?.signal)
+          const staged = [...prepared.texts].find(([path]) => path === sourceFile || path.endsWith(`/${sourceFile}`))
+          if (staged === undefined) {
+            throw new EngineeringError('NOT_FOUND', `The staged draft does not touch ${name}.`, 'Stage an object or display operation for this display, or render the export with source "export".')
+          }
+          const parsed = parseDisplay(staged[0], staged[1])
+          if (parsed.parseError !== undefined) {
+            throw new EngineeringError('DISPLAY_UNREADABLE', `The staged ${name} did not parse: ${parsed.parseError}`, 'Fix the staged edit and try again.')
+          }
+          objects = parsed.objects
+          settings = settingsFromXml(staged[1])
+        } else {
+          const file = `${view.app.root}/${sourceFile}`
+          const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
+          settings = settingsFromXml(new TextDecoder().decode(bytes))
+        }
+        const result = renderDisplaySvg(name, objects, settings)
         const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
         const written = await writeRender(outputRoot, name, result)
         const browser = findBrowser()
@@ -642,8 +662,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             : 'The browser did not produce a PNG; the SVG is valid, so open it directly.'
           : `PNG written by ${browser}.`
         return success(
-          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note}`,
-          { svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, browser: browser ?? null },
+          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) from the ${fromDraft ? 'staged draft' : 'export'} to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note}`,
+          { source: fromDraft ? 'draft' : 'export', svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, browser: browser ?? null },
           [
             { tool: 'ftview_validate', args: {}, why: 'Design findings explain overlaps and contrast the render shows.' },
             { tool: 'ftview_apply', args: {}, why: 'Write the edited export once the screen looks right.' },

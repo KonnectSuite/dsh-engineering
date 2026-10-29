@@ -915,6 +915,7 @@ Draw one display of the open export as an SVG file, and as a PNG when a headless
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
 | `display` | string | yes | Display name as listed by ftview_list. |
 | `output` | string | no | Folder for the render. Defaults to a "renders" folder beside the export. |
+| `source` | string (export \| draft) | no | Draw the committed export file or the staged draft that has not been applied yet. |
 
 ### FTView Studio
 

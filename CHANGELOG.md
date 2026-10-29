@@ -1,14 +1,21 @@
+## [0.26.0] - 2026-10-29
+
+### Added
+
+- **`ftview_render` can draw the staged draft, not just the export.** Pass `source: "draft"` and the render reflects everything staged but not yet applied, so a screen can be looked at before `ftview_apply` and before anyone imports it. A draft that does not touch the display is refused with `NOT_FOUND` instead of silently drawing the committed file.
+
 ## [0.25.1] - 2026-10-29
 
 ### Fixed
 
-- tview_render resolves the SVG path before handing it to the browser, so a relative `output` folder now produces the PNG as well.
+- ftview_render resolves the SVG path before handing it to the browser, so a relative `output` folder now produces the PNG as well.
+
 
 ## [0.25.0] - 2026-10-29
 
 ### Added
 
-- **tview_render shows the screen before anyone imports it.** The tool draws one display of the open export as an SVG file and, when Chrome or Edge is installed, rasterises it to PNG with a headless screenshot, so the image can be attached to the answer. Panels, text, buttons, indicators and lines are drawn from the geometry the export declares; animations, images, global objects and vendor widgets appear as labelled placeholders. The result says which browser produced the PNG, or that only the SVG exists because none was found.
+- **ftview_render shows the screen before anyone imports it.** The tool draws one display of the open export as an SVG file and, when Chrome or Edge is installed, rasterises it to PNG with a headless screenshot, so the image can be attached to the answer. Panels, text, buttons, indicators and lines are drawn from the geometry the export declares; animations, images, global objects and vendor widgets appear as labelled placeholders. The result says which browser produced the PNG, or that only the SVG exists because none was found.
 ## [0.24.0] - 2026-10-29
 
 ### Added

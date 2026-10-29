@@ -81,6 +81,29 @@ describe('ftview_render', () => {
     expect(result.data?.browser).toBe(findBrowser() ?? null)
   })
 
+  it('renders the staged draft before it is applied', async () => {
+    const files = new Map([['export/Displays/Overview.xml', GFX]])
+    const l5x = harness(files, { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+    const staged = await l5x.call('ftview_draft_object_add', { view_id: view, display: 'Overview', type: 'text', name: 'DraftNote', attributes_json: '{"left":"40","top":"220","width":"320","height":"24","caption":"DRAFT ONLY"}' })
+    expect(staged.error).toBeUndefined()
+    const output = join(mkdtempSync(join(tmpdir(), 'ftview-draft-')), 'renders')
+    const result = await l5x.call('ftview_render', { view_id: view, display: 'Overview', source: 'draft', output })
+    expect(result.error).toBeUndefined()
+    expect(result.data?.source).toBe('draft')
+    expect(readFileSync(result.data?.svg as string, 'utf8')).toContain('>DRAFT ONLY</text>')
+  })
+
+  it('says so when the draft does not touch the display', async () => {
+    const files = new Map([['export/Displays/Overview.xml', GFX], ['export/Displays/Other.xml', GFX.replace('Overview', 'Other')]])
+    const l5x = harness(files, { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+    await l5x.call('ftview_draft_object_add', { view_id: view, display: 'Overview', type: 'text', name: 'DraftNote', attributes_json: '{"left":"10","top":"10","width":"100","height":"20","caption":"X"}' })
+    const result = await l5x.call('ftview_render', { view_id: view, display: 'Other', source: 'draft' })
+    expect(result.error?.code).toBe('NOT_FOUND')
+  })
   it('refuses a display that is not in the export', async () => {
     const files = new Map([['export/Displays/Overview.xml', GFX]])
     const l5x = harness(files, { edit: true })
