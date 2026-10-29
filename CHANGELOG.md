@@ -1,3 +1,22 @@
+## [0.48.0] - 2026-10-29
+
+### Added
+
+- `l5x_diagram` draws every ladder rung of the open project on one page (routine headings, rung numbers,
+  comments and instruction chains), with `program` and `max_rungs` to bound the page. Reviewing an
+  unfamiliar controller no longer takes one `l5x_routine_diagram` call per routine — the field session
+  never used the single-routine diagram at all, and this is the call it would have made.
+- Every routine heading names `program/routine`, so repeated rung numbers are explainable, and long
+  operands are clipped inside their box instead of running off the page.
+
+## [0.47.0] - 2026-10-29
+
+### Added
+
+- `ftview_render` takes `displays_json` and draws up to eight displays in one call, returning a `screens`
+  entry per display (file, size, problems) and one merged `problems` list. Checking a twelve-screen set is
+  now one or two calls instead of twelve, which is where review time went in the field.
+
 ## [0.46.0] - 2026-10-29
 
 ### Added

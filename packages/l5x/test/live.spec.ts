@@ -24,7 +24,7 @@ describe('live registration', () => {
   it('mounts the whole EtherNet/IP surface after the read tools', () => {
     const { definitions } = liveHarness()
     const names = definitions.map(definition => definition.name)
-    expect(names.slice(15)).toEqual([
+    expect(names.slice(16)).toEqual([
       'poll_live_tags',
       'read_live_tags',
       'read_controller_clock',

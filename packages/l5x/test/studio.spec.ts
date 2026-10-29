@@ -16,6 +16,7 @@ describe('studio registration', () => {
     expect(names.slice(13)).toEqual([
       'l5x_rung_preview',
       'l5x_routine_diagram',
+  'l5x_diagram',
       'studio_sdk_status',
       'studio_capabilities',
       'export_acd_to_l5x',

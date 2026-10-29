@@ -254,3 +254,48 @@ describe('layout problems', () => {
     expect(result.problems).toEqual([])
   })
 })
+
+
+describe('ftview_render batch', { timeout: 60_000 }, () => {
+  /** Two displays in one export. */
+  function files(): Map<string, string> {
+    return new Map([
+      ['export/Displays/Overview.xml', GFX],
+      ['export/Displays/Other.xml', GFX.replace('Overview', 'Other')],
+    ])
+  }
+
+  it('draws several displays in one call and reports each one', async () => {
+    const l5x = harness(files(), { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const output = join(mkdtempSync(join(tmpdir(), 'ftview-batch-')), 'renders')
+    const result = await l5x.call('ftview_render', {
+      view_id: open.data?.view_id as string,
+      displays_json: JSON.stringify(['Overview', 'Other']),
+      output,
+    })
+    expect(result.error).toBeUndefined()
+    const screens = result.data?.screens as Array<{ display: string; svg: string; problems: unknown[] }>
+    expect(screens.map(screen => screen.display)).toEqual(['Overview', 'Other'])
+    for (const screen of screens) expect(existsSync(screen.svg)).toBe(true)
+    expect(Array.isArray(result.data?.problems)).toBe(true)
+  })
+
+  it('refuses more than eight displays in one call', async () => {
+    const l5x = harness(files(), { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const result = await l5x.call('ftview_render', {
+      view_id: open.data?.view_id as string,
+      displays_json: JSON.stringify(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']),
+    })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+    expect(result.error?.fix).toContain('eight')
+  })
+
+  it('asks for a display when neither argument is given', async () => {
+    const l5x = harness(files(), { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const result = await l5x.call('ftview_render', { view_id: open.data?.view_id as string })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})

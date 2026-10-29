@@ -62,7 +62,7 @@ unavailable, say editing is not enabled here rather than trying another tool.
   `Gfx-ME*.xsd` and lists findings, including `DRAFT_OVERLAP` for overlapping placements. `ftview_apply` refuses a document the vendor schema rejects.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
-- `ftview_render` draws a display to SVG and, when Chrome or Edge exists, PNG: look before importing. `problems` flags clipped objects.
+- `ftview_render` draws one display or up to eight (`displays_json`) to SVG and PNG: look before importing. `problems` flags clipped objects.
   Pass `source: "draft"` to see staged edits before `ftview_apply`.
 - `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
   put **every** display the task changes in one package so the human imports once, not once per screen.
@@ -139,8 +139,7 @@ needs Studio, and the decoder reproduces wizard XML byte-for-byte on three appli
 The `ftview-studio` entry plans a manual import; it may be disabled.
 
 - `ftview_studio_status` discovers installed ME tooling, schemas and help files.
-- `ftview_studio_preflight` checks the files that differ between two exports for import problems,
-  including name restrictions.
+- `ftview_studio_preflight` checks the files that differ between two exports for import problems.
 - `ftview_studio_handoff` returns the ordered manual import plan. Nothing is written.
 
 ## Reporting

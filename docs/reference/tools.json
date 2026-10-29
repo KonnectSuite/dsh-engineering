@@ -15,6 +15,7 @@
     "document_project",
     "l5x_rung_preview",
     "l5x_routine_diagram",
+    "l5x_diagram",
     "draft_rung",
     "draft_rung_comment",
     "compose_rung",
@@ -160,6 +161,13 @@
       "tools": [
         "l5x_rung_preview",
         "l5x_routine_diagram"
+      ]
+    },
+    {
+      "product": "L5X",
+      "group": "L5X diagrams",
+      "tools": [
+        "l5x_diagram"
       ]
     },
     {

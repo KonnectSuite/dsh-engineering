@@ -894,60 +894,82 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
     }),
     tool({
       name: 'ftview_render',
-      description: 'Draw one display of the open export as an SVG file, and as a PNG when a headless Chrome or Edge is installed, so the screen can be inspected before anyone imports it. Geometry and colour only: animations, images and vendor widgets are drawn as labelled placeholders.',
+      description: 'Draw one display, or up to eight in one call, of the open export as SVG files and as PNGs when a headless Chrome or Edge is installed, so the screens can be inspected before anyone imports them. Reports every object that leaves the canvas or overflows its box. Geometry and colour only: animations, images and vendor widgets are drawn as labelled placeholders.',
       parameters: object({
         view_id: VIEW_ID,
-        display: string('Display name as listed by ftview_list.'),
+        display: string('Display name as listed by ftview_list. Omit when displays_json is given.'),
+        displays_json: string('JSON array of up to 8 display names to draw in one call. Example: ["Main","Alarms"].'),
         output: string('Folder for the render. Defaults to a "renders" folder beside the export.'),
         source: choice('Draw the committed export file or the staged draft that has not been applied yet.', ['export', 'draft']),
-      }, ['display']),
+      }, []),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const name = requiredString(args, 'display')
         const fromDraft = optionalString(args, 'source') === 'draft'
-        const display = view.app.displays.find(candidate => candidate.name === name)
-        if (display === undefined && !fromDraft) {
-          throw new EngineeringError('NOT_FOUND', `No display is named ${JSON.stringify(name)} in ${view.app.name}.`, 'Call ftview_list with kind "display" and use the exact name.')
+        const single = optionalString(args, 'display')
+        const listed = args.displays_json === undefined ? undefined : jsonNames(args.displays_json)
+        if (single === undefined && listed === undefined) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'Pass display or displays_json so there is something to draw.', 'Example: {"display":"Main"} or {"displays_json":"[\"Main\",\"Alarms\"]"}.')
         }
-        if (display !== undefined && display.parseError !== undefined) {
-          throw new EngineeringError('DISPLAY_UNREADABLE', `${name} did not parse: ${display.parseError}`, 'Fix the display file, reopen the export and try again.')
-        }
-        const sourceFile = display === undefined ? `Displays/${name}.xml` : display.file
-        let objects = display?.objects ?? []
-        let settings: RenderSettings
-        if (fromDraft) {
-          const prepared = await prepareEdit(fs, view.app, drafts.get(exec, undefined).operations, exec?.signal)
-          const staged = [...prepared.texts].find(([path]) => path === sourceFile || path.endsWith(`/${sourceFile}`))
-          if (staged === undefined) {
-            throw new EngineeringError('NOT_FOUND', `The staged draft does not touch ${name}.`, 'Stage an object or display operation for this display, or render the export with source "export".')
+        const names = listed ?? [single as string]
+        const drawOne = async (name: string) => {
+          const display = view.app.displays.find(candidate => candidate.name === name)
+          if (display === undefined && !fromDraft) {
+            throw new EngineeringError('NOT_FOUND', `No display is named ${JSON.stringify(name)} in ${view.app.name}.`, 'Call ftview_list with kind "display" and use the exact name.')
           }
-          const parsed = parseDisplay(staged[0], staged[1])
-          if (parsed.parseError !== undefined) {
-            throw new EngineeringError('DISPLAY_UNREADABLE', `The staged ${name} did not parse: ${parsed.parseError}`, 'Fix the staged edit and try again.')
+          if (display !== undefined && display.parseError !== undefined) {
+            throw new EngineeringError('DISPLAY_UNREADABLE', `${name} did not parse: ${display.parseError}`, 'Fix the display file, reopen the export and try again.')
           }
-          objects = parsed.objects
-          settings = settingsFromXml(staged[1])
-        } else {
-          const file = `${view.app.root}/${sourceFile}`
-          const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
-          settings = settingsFromXml(new TextDecoder().decode(bytes))
+          const sourceFile = display === undefined ? `Displays/${name}.xml` : display.file
+          let objects = display?.objects ?? []
+          let settings: RenderSettings
+          if (fromDraft) {
+            const prepared = await prepareEdit(fs, view.app, drafts.get(exec, undefined).operations, exec?.signal)
+            const staged = [...prepared.texts].find(([path]) => path === sourceFile || path.endsWith(`/${sourceFile}`))
+            if (staged === undefined) {
+              throw new EngineeringError('NOT_FOUND', `The staged draft does not touch ${name}.`, 'Stage an object or display operation for this display, or render the export with source "export".')
+            }
+            const parsed = parseDisplay(staged[0], staged[1])
+            if (parsed.parseError !== undefined) {
+              throw new EngineeringError('DISPLAY_UNREADABLE', `The staged ${name} did not parse: ${parsed.parseError}`, 'Fix the staged edit and try again.')
+            }
+            objects = parsed.objects
+            settings = settingsFromXml(staged[1])
+          } else {
+            const file = `${view.app.root}/${sourceFile}`
+            const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
+            settings = settingsFromXml(new TextDecoder().decode(bytes))
+          }
+          const images = await loadRasters(fs, view.app.root, objects, exec?.signal)
+          const result = renderDisplaySvg(name, objects, settings, images)
+          const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
+          const written = await writeRender(outputRoot, name, result)
+          return { display: name, svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, problems: result.problems }
         }
-        const images = await loadRasters(fs, view.app.root, objects, exec?.signal)
-        const result = renderDisplaySvg(name, objects, settings, images)
-        const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
-        const written = await writeRender(outputRoot, name, result)
         const browser = findBrowser()
-        const note = written.png === undefined
-          ? browser === undefined
-            ? 'No Chrome or Edge was found, so only the SVG was written; open it in a browser to see the screen.'
-            : 'The browser did not produce a PNG; the SVG is valid, so open it directly.'
-          : `PNG written by ${browser}.`
-        const trouble = result.problems.length === 0
+        const note = browser === undefined
+          ? 'No Chrome or Edge was found, so only the SVG was written; open it in a browser to see the screen.'
+          : undefined
+        const screens = []
+        for (const name of names) screens.push(await drawOne(name))
+        const problems = screens.flatMap(screen => screen.problems)
+        const trouble = problems.length === 0
           ? 'No object leaves the canvas or overflows its box.'
-          : `${result.problems.length} layout problem(s): ${result.problems.slice(0, 3).map(problem => `${problem.object} ${problem.kind === 'outside' ? 'leaves the canvas' : 'overflows its box'}`).join('; ')}${result.problems.length > 3 ? ' and more' : ''}.`
+          : `${problems.length} layout problem(s): ${problems.slice(0, 3).map(problem => `${problem.object} ${problem.kind === 'outside' ? 'leaves the canvas' : 'overflows its box'}`).join('; ')}${problems.length > 3 ? ' and more' : ''}.`
+        const written = screens.map(screen => screen.png ?? screen.svg).join(', ')
+        const first = screens[0] as { svg: string; png?: string; width: number; height: number; drawn: number }
         return success(
-          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) from the ${fromDraft ? 'staged draft' : 'export'} to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note} ${trouble}`,
-          { source: fromDraft ? 'draft' : 'export', svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, problems: result.problems, browser: browser ?? null },
+          `Rendered ${screens.length === 1 ? first === undefined ? 'one display' : names[0] : `${screens.length} displays (${names.join(', ')})`} from the ${fromDraft ? 'staged draft' : 'export'} to ${written}. ${note ?? `PNG written by ${browser}.`} ${trouble}`,
+          {
+            source: fromDraft ? 'draft' : 'export',
+            ...(screens.length === 1 ? {} : { screens }),
+            svg: first.svg,
+            ...(first.png === undefined ? {} : { png: first.png }),
+            width: first.width,
+            height: first.height,
+            drawn: screens.reduce((total, screen) => total + screen.drawn, 0),
+            problems,
+            browser: browser ?? null,
+          },
           [
             { tool: 'ftview_validate', args: {}, why: 'Design findings explain overlaps and contrast the render shows.' },
             { tool: 'ftview_apply', args: {}, why: 'Write the edited export once the screen looks right.' },
@@ -1019,6 +1041,29 @@ function jsonScreen(value: string): Omit<ScreenSpec, 'width' | 'height'> {
     cards,
     nav,
   }
+}
+
+/** A JSON array of display names, bounded so one call cannot draw a whole application. */
+function jsonNames(value: unknown): readonly string[] {
+  if (typeof value !== 'string') throw new EngineeringError('INVALID_ARGUMENT', 'displays_json must be a JSON array of display names.', 'Example: ["Main","Alarms"].')
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'displays_json is not valid JSON.', 'Example: ["Main","Alarms"].')
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) {
+    throw new EngineeringError('INVALID_ARGUMENT', 'displays_json must be a non-empty JSON array.', 'Example: ["Main","Alarms"].')
+  }
+  if (parsed.length > 8) {
+    throw new EngineeringError('INVALID_ARGUMENT', `displays_json lists ${parsed.length} displays; at most 8 can be drawn in one call.`, 'Split the list into calls of eight or fewer.')
+  }
+  for (const name of parsed) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new EngineeringError('INVALID_ARGUMENT', 'Every entry in displays_json must be a display name.', 'Example: ["Main","Alarms"].')
+    }
+  }
+  return [...new Set(parsed as string[])]
 }
 
 function jsonStates(value: string | undefined): readonly ObjectState[] | undefined {
