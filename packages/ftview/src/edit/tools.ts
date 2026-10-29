@@ -20,12 +20,23 @@ import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
 import { scaffoldLayout } from './scaffold.ts'
+import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender } from '../render-svg.ts'
 
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
 
 /** The draft handle parameter, described once. */
 const DRAFT_ID = string('Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat.')
+
+/** What a render can and cannot show. */
+const RENDER_COVERAGE: Coverage = {
+  complete: false,
+  unverified: [
+    'the geometry is drawn from the export, not from Studio',
+    'animations, images, global objects and vendor widgets are placeholders',
+    'no controller binding or runtime behaviour is shown',
+  ],
+}
 
 /** Coverage for apply, which writes text exports only. */
 const APPLY_COVERAGE: Coverage = {
@@ -597,6 +608,47 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             { tool: 'ftview_verify_import', args: { application: view.app.name }, why: 'After Studio imports it, prove the import matches this draft.' },
           ],
           APPLY_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_render',
+      description: 'Draw one display of the open export as an SVG file, and as a PNG when a headless Chrome or Edge is installed, so the screen can be inspected before anyone imports it. Geometry and colour only: animations, images and vendor widgets are drawn as labelled placeholders.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list.'),
+        output: string('Folder for the render. Defaults to a "renders" folder beside the export.'),
+      }, ['display']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'display')
+        const display = view.app.displays.find(candidate => candidate.name === name)
+        if (display === undefined) {
+          throw new EngineeringError('NOT_FOUND', `No display is named ${JSON.stringify(name)} in ${view.app.name}.`, 'Call ftview_list with kind "display" and use the exact name.')
+        }
+        if (display.parseError !== undefined) {
+          throw new EngineeringError('DISPLAY_UNREADABLE', `${name} did not parse: ${display.parseError}`, 'Fix the display file, reopen the export and try again.')
+        }
+        const file = `${view.app.root}/${display.file}`
+        const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
+        const settings = settingsFromXml(new TextDecoder().decode(bytes))
+        const result = renderDisplaySvg(name, display.objects, settings)
+        const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
+        const written = await writeRender(outputRoot, name, result)
+        const browser = findBrowser()
+        const note = written.png === undefined
+          ? browser === undefined
+            ? 'No Chrome or Edge was found, so only the SVG was written; open it in a browser to see the screen.'
+            : 'The browser did not produce a PNG; the SVG is valid, so open it directly.'
+          : `PNG written by ${browser}.`
+        return success(
+          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note}`,
+          { svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, browser: browser ?? null },
+          [
+            { tool: 'ftview_validate', args: {}, why: 'Design findings explain overlaps and contrast the render shows.' },
+            { tool: 'ftview_apply', args: {}, why: 'Write the edited export once the screen looks right.' },
+          ],
+          RENDER_COVERAGE,
         )
       },
     }),

@@ -62,6 +62,8 @@ unavailable, say editing is not enabled here rather than trying another tool.
   over a neighbour. `ftview_apply` refuses a document the vendor schema rejects.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
+- `ftview_render` draws one display to SVG, and to PNG when Chrome or Edge is installed: look at the
+  screen before anyone imports it. Geometry only; animations and widget internals are placeholders.
 - `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
   put **every** display the task changes in one package so the human imports once, not once per screen.
 

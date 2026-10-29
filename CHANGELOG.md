@@ -1,3 +1,8 @@
+## [0.25.0] - 2026-10-29
+
+### Added
+
+- **tview_render shows the screen before anyone imports it.** The tool draws one display of the open export as an SVG file and, when Chrome or Edge is installed, rasterises it to PNG with a headless screenshot, so the image can be attached to the answer. Panels, text, buttons, indicators and lines are drawn from the geometry the export declares; animations, images, global objects and vendor widgets appear as labelled placeholders. The result says which browser produced the PNG, or that only the SVG exists because none was found.
 ## [0.24.0] - 2026-10-29
 
 ### Added

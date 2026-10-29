@@ -77,6 +77,7 @@
     "ftview_validate",
     "ftview_verify_import",
     "ftview_apply",
+    "ftview_render",
     "ftview_studio_status",
     "ftview_studio_preflight",
     "ftview_studio_handoff",
@@ -252,7 +253,8 @@
         "ftview_draft_object_order",
         "ftview_validate",
         "ftview_verify_import",
-        "ftview_apply"
+        "ftview_apply",
+        "ftview_render"
       ]
     },
     {
