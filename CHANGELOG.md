@@ -2,6 +2,9 @@
 
 ### Added
 
+- **`ftview_export` opens what it exported.** The result carries `view_id`, so authoring starts
+  immediately instead of a separate `ftview_open` round trip; when opening fails the result falls
+  back to naming the folder and the export still succeeds.
 - **A package can leave out the displays the application already matches.** `ftview_studio_import_prepare`
   takes `skip_unchanged: "yes"` with `current_export`, drops displays whose objects are already
   identical, names them in `skipped`, and refuses with `NO_CHANGES` when nothing is left to import.

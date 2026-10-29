@@ -48,7 +48,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   const session = new ViewSession(files, maxFiles)
   ctx.provide?.(VIEWS_SERVICE, session)
   const readText = async (path: string): Promise<string> => decodeText(await files.readBytes(path, undefined))
-  for (const definition of [...ftviewTools(session, readText), ...vendorTools(files)]) ctx.tools.register(definition)
+  for (const definition of [...ftviewTools(session, readText), ...vendorTools(files, session)]) ctx.tools.register(definition)
   if (config.live !== false) {
     // The route is mounted only when the host offers a web server; a CLI host
     // without one keeps the tool surface and simply has no live preview.

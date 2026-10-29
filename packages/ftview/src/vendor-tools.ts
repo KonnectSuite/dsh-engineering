@@ -11,6 +11,23 @@
 import { existsSync } from 'node:fs'
 import { EngineeringError, object, optionalString, requiredString, string, success, tool, type Coverage, type FsService, type ToolDefinition } from './core.ts'
 import { exportApplication, listApplications } from './vendor.ts'
+import type { ViewSession } from './session.ts'
+
+/**
+ * Open a fresh export for authoring, tolerating an open failure.
+ *
+ * Export is the step before authoring, so a failed open must not fail the
+ * export itself; the result then points at `ftview_open` instead.
+ */
+async function openExport(session: ViewSession | undefined, root: string, exec: Parameters<ToolDefinition["execute"]>[1]): Promise<string | undefined> {
+  if (session === undefined) return undefined
+  try {
+    const opened = await session.open(root, exec)
+    return opened.id
+  } catch {
+    return undefined
+  }
+}
 
 /** What a vendor call cannot prove. */
 const VENDOR_COVERAGE: Coverage = {
@@ -26,9 +43,11 @@ const VENDOR_COVERAGE: Coverage = {
  * The vendor tools.
  *
  * @param fs - Filesystem provider used to resolve the destination folder.
+ * @param session - When supplied, a fresh export is opened for authoring in the same call,
+ *   because the next step is always to look at what was exported.
  * @returns Tool definitions.
  */
-export function vendorTools(fs: FsService): readonly ToolDefinition[] {
+export function vendorTools(fs: FsService, session?: ViewSession): readonly ToolDefinition[] {
   return [
     tool({
       name: 'ftview_apps',
@@ -79,11 +98,14 @@ export function vendorTools(fs: FsService): readonly ToolDefinition[] {
         const manifests = files.filter(file => /batchimport/iu.test(file))
         const alarms = files.filter(file => /^Alarms\//iu.test(file))
         const tags = files.filter(file => /^Tags\/.+\.csv$/iu.test(file))
+        const opened = await openExport(session, destination, exec)
         return success(
-          `Exported ${application}: ${files.length} file(s), ${displays.length} display(s)${alarms.length === 0 ? ', no alarms' : ', alarms'}${tags.length === 0 ? ', no tags CSV' : ', tags CSV'}${manifests.length === 0 ? '' : `, ${manifests.length} import manifest(s)`}${warnings.length === 0 ? '' : `; ${warnings.length} warning(s)`}.`,
-          { application, output_root: destination, files, display_count: displays.length, alarms, tags, manifests, warnings, assets },
+          `Exported ${application}: ${files.length} file(s), ${displays.length} display(s)${alarms.length === 0 ? ', no alarms' : ', alarms'}${tags.length === 0 ? ', no tags CSV' : ', tags CSV'}${manifests.length === 0 ? '' : `, ${manifests.length} import manifest(s)`}${warnings.length === 0 ? '' : `; ${warnings.length} warning(s)`}${opened === undefined ? '' : `; opened as ${opened}`}.`,
+          { application, output_root: destination, ...(opened === undefined ? {} : { view_id: opened }), files, display_count: displays.length, alarms, tags, manifests, warnings, assets },
           [
-            { tool: 'ftview_open', args: { root: destination }, why: 'Open the fresh export and author against it.' },
+            ...(opened === undefined
+              ? [{ tool: 'ftview_open', args: { root: destination }, why: 'Open the fresh export and author against it.' }]
+              : [{ tool: 'ftview_list', args: { view_id: opened, kind: 'display' }, why: 'The fresh export is already open; list its displays and start authoring.' }]),
             ...(assets.tags === 'fresh' ? [] : [{ tool: 'ftview_studio_export_prepare', args: { application, kind: 'tags' }, why: assets.tags === 'missing' ? 'This export has no tag CSV; prepare a fresh tag export before binding tags.' : 'The tag CSV is older than the application database; refresh it before binding tags.' }]),
             ...(assets.alarms === 'fresh' ? [] : [{ tool: 'ftview_studio_export_prepare', args: { application, kind: 'alarms' }, why: assets.alarms === 'missing' ? 'This export has no alarm XML; prepare an alarm export before reviewing alarms.' : 'The alarm XML is older than the application database; refresh it before reviewing alarms.' }]),
           ],
