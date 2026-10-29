@@ -1,3 +1,10 @@
+## [0.39.0] - 2026-10-29
+
+### Added
+
+- `ftview_draft_display_attrs` stages many attribute changes on a display or one of its objects in a
+  single call, instead of one `ftview_draft_display_set` per attribute.
+
 ## [0.38.0] - 2026-10-29
 
 ### Added

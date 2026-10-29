@@ -24,6 +24,29 @@ import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from '
 import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
+/** A JSON object of attribute names to string values, at most 200 pairs. */
+function jsonAttributes(raw: string): Array<[string, string]> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'attributes_json is not valid JSON.', 'Pass a JSON object, for example {"backColor":"#101820"}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new EngineeringError('INVALID_ARGUMENT', 'attributes_json must be a JSON object.', 'Pass a JSON object of attribute names to values.')
+  }
+  const pairs: Array<[string, string]> = []
+  for (const [name, value] of Object.entries(parsed as Record<string, unknown>)) {
+    if (value === null || typeof value === 'object') {
+      throw new EngineeringError('INVALID_ARGUMENT', `The attribute ${JSON.stringify(name)} is not a scalar value.`, 'Pass strings, numbers or booleans only.')
+    }
+    pairs.push([name, String(value)])
+  }
+  if (pairs.length === 0) throw new EngineeringError('INVALID_ARGUMENT', 'attributes_json is empty.', 'Pass at least one attribute.')
+  if (pairs.length > 200) throw new EngineeringError('INVALID_ARGUMENT', 'attributes_json has more than 200 attributes.', 'Split the call into batches of at most 200 attributes.')
+  return pairs
+}
+
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
 
@@ -190,6 +213,54 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           value: requiredString(args, 'value'),
         })
         return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_display_attrs',
+      description: 'Stage several attribute changes on one display or one of its objects in a single call. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list. Example: "Main".'),
+        object: string('Object name inside the display. Omit to change the display root. Example: "StartPB".'),
+        attributes_json: string('Attributes to set as a JSON object, for example {"backColor":"#101820","borderWidth":"0"}.'),
+      }, ['display', 'attributes_json']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const displayName = requiredString(args, 'display')
+        const display = view.app.displays.find(candidate => candidate.name === displayName)
+        if (display === undefined) {
+          throw new EngineeringError('COMPONENT_NOT_FOUND', `No display is named ${JSON.stringify(displayName)} in this export.`, 'Call ftview_list with kind "display" to see the display names.', view.app.displays.slice(0, 5).map(candidate => candidate.name))
+        }
+        const objectName = optionalString(args, 'object')
+        if (objectName !== undefined) {
+          const count = objectCount(display, objectName)
+          if (count === 0) {
+            throw new EngineeringError('COMPONENT_NOT_FOUND', `No object in ${JSON.stringify(display.name)} is named ${JSON.stringify(objectName)}.`, 'Call ftview_get with kind "display" to see the object names.', display.objects.flatMap(candidate => candidate.name === undefined ? [] : [candidate.name]).slice(0, 5))
+          }
+          if (count > 1) {
+            throw new EngineeringError('AMBIGUOUS_OBJECT', `${display.name} has ${count} objects named ${JSON.stringify(objectName)}, so the edit target is ambiguous.`, 'This export cannot be edited by name alone; use Studio for that display.')
+          }
+        }
+        const pairs = jsonAttributes(requiredString(args, 'attributes_json'))
+        let draft: EditDraft | undefined
+        for (const [attribute, value] of pairs) {
+          const stagedOnce = stage(exec, optionalString(args, 'view_id'), {
+            kind: 'display_set',
+            file: display.file,
+            ...(objectName === undefined ? {} : { object: objectName }),
+            attribute,
+            value,
+          })
+          draft = stagedOnce.draft
+        }
+        if (draft === undefined) throw new EngineeringError('INVALID_ARGUMENT', 'No attributes were given.', 'Pass attributes_json with at least one attribute.')
+        const operations = draft.operations.slice(draft.operations.length - pairs.length)
+        return success(
+          `Staged ${pairs.length} attribute change(s) on ${objectName === undefined ? display.name : `${display.name}/${objectName}`}.`,
+          { draft_id: draft.id, operation_count: draft.operations.length, operations: operations.map(operation => ({ operation: operation.kind, attribute: (operation as { attribute?: string }).attribute, value: (operation as { value?: string }).value })) },
+          nextValidate(draft.id),
+          EDIT_COVERAGE,
+        )
       },
     }),
     tool({

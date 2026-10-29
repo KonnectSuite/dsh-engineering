@@ -34,7 +34,7 @@ describe('editing registration', () => {
   it('mounts the fourteen edit tools after the read surface', () => {
     const { definitions } = harness(exportFiles(), { edit: true })
     expect(definitions.map(definition => definition.name).slice(19)).toEqual([
-      'ftview_draft_display_set', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard',
+      'ftview_draft_display_set', 'ftview_draft_display_attrs', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard',
       'ftview_draft_display_create', 'ftview_draft_display_scaffold', 'ftview_draft_screen', 'ftview_draft_object_add',
       'ftview_draft_object_set',
       'ftview_draft_object_delete', 'ftview_draft_object_order', 'ftview_validate',
@@ -300,4 +300,28 @@ describe('ftview_draft_tags', () => {
     const render = steps.find(step => step.tool === 'ftview_render')
     expect(render?.args?.display).toBe('Main')
   })
+  it('stages many attributes in one call and reports each one', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_display_attrs', {
+      view_id: view,
+      display: 'Main',
+      attributes_json: JSON.stringify({ backColor: '#101820', width: 640, visible: true }),
+    })
+    expect(staged.error).toBeUndefined()
+    expect(staged.data?.operation_count).toBe(3)
+    const operations = staged.data?.operations as Array<{ attribute: string; value: string }>
+    expect(operations.map(operation => operation.attribute)).toEqual(['backColor', 'width', 'visible'])
+    expect(operations[1]?.value).toBe('640')
+  })
+
+  it('refuses a batch that is not a JSON object of scalars', async () => {
+    const { l5x, view } = await opened()
+    const broken = await l5x.call('ftview_draft_display_attrs', { view_id: view, display: 'Main', attributes_json: '[' })
+    expect(broken.error?.code).toBe('INVALID_ARGUMENT')
+    const array = await l5x.call('ftview_draft_display_attrs', { view_id: view, display: 'Main', attributes_json: '["a"]' })
+    expect(array.error?.code).toBe('INVALID_ARGUMENT')
+    const nested = await l5x.call('ftview_draft_display_attrs', { view_id: view, display: 'Main', attributes_json: '{"states":{"a":1}}' })
+    expect(nested.error?.code).toBe('INVALID_ARGUMENT')
+  })
+
 })
