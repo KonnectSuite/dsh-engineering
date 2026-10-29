@@ -337,6 +337,24 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
+      name: 'draft_discard',
+      description: 'Throw away the staged draft, so edits that went the wrong way can be abandoned without writing a file. The project on disk is untouched.',
+      parameters: object({
+        draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
+        project_id: PROJECT_ID,
+      }, []),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        const removed = drafts.discard(exec, draft.id)
+        return success(
+          removed ? `Discarded ${draft.operations.length} staged operation(s) from ${draft.id}.` : `No draft ${draft.id} was staged in this chat.`,
+          { draft_id: draft.id, operations_dropped: removed ? draft.operations.length : 0, discarded: removed },
+          [{ tool: 'draft_tag', args: {}, why: 'Stage the replacement edits, or stop here.' }],
+          DRAFT_COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'draft_validate',
       description: 'Validate the accumulated draft against the open project and return its hash, diff summary and check findings. Writes nothing.',
       parameters: object({

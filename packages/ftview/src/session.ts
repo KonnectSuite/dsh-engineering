@@ -63,14 +63,44 @@ export class ViewSession {
       )
     }
     const app = await scanApplication(this.fs, root, exec?.signal, this.maxFiles)
-    const view: OpenView = { id: randomUUID(), app }
     const views = this.viewsOf(exec)
+    // The same folder opened again re-reads it in place: one handle per root, and
+    // script edits made between calls are visible without a second view id.
+    for (const [id, existing] of views) {
+      if (!sameRoot(existing.app.root, app.root)) continue
+      views.set(id, { id, app })
+      return views.get(id) as OpenView
+    }
+    const view: OpenView = { id: randomUUID(), app }
     views.set(view.id, view)
     while (views.size > this.maxViews) {
       const oldest = views.keys().next().value
       if (oldest !== undefined) views.delete(oldest)
     }
     return view
+  }
+
+  /**
+   * Re-read one open export in place, keeping its view id.
+   *
+   * @param viewId - Handle of the view to refresh.
+   * @param exec - Calling context.
+   * @returns The refreshed view, plus what changed since the last scan.
+   */
+  async reload(viewId: string, exec?: ExecContext): Promise<{ view: OpenView; displays: number; tags: number; added: readonly string[]; removed: readonly string[] }> {
+    const current = this.require(viewId, exec)
+    const before = current.app.displays.map(display => display.name)
+    const app = await scanApplication(this.fs, current.app.root, exec?.signal, this.maxFiles)
+    const view: OpenView = { id: current.id, app }
+    this.viewsOf(exec).set(view.id, view)
+    const after = new Set(app.displays.map(display => display.name))
+    return {
+      view,
+      displays: app.displays.length,
+      tags: app.tags.length,
+      added: [...after].filter(name => !before.includes(name)),
+      removed: before.filter(name => !after.has(name)),
+    }
   }
 
   /**
@@ -126,4 +156,10 @@ export class ViewSession {
     this.chats.set(chat, created)
     return created
   }
+}
+
+/** True when two paths name the same folder, ignoring separators and case. */
+function sameRoot(left: string, right: string): boolean {
+  const normal = (value: string): string => value.replace(/\\\\/gu, '/').replace(/\/+$/u, '').toLowerCase()
+  return normal(left) === normal(right)
 }

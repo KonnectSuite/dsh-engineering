@@ -120,6 +120,13 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const baseline = await session.require(requiredString(args, 'baseline_id'), exec)
+        if (isSafetyProject(project.xml)) {
+          throw new L5xError(
+            'SAFETY_PROJECT_OFFLINE_VERIFY',
+            'The Studio SDK importer aborts on this safety controller: every L5X of it, edited or not, returns XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, so an offline build cannot prove anything.',
+            'Prove this change by importing the L5X in Studio 5000 and building there; keep the change set small enough to review by eye.',
+          )
+        }
         const review = reviewDownloadSource(baseline, project)
         const captured = state.forL5x(exec, baseline.path)
         const baselineVerified = captured?.l5xSha256 === baseline.sha256
@@ -244,4 +251,9 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
       },
     }),
   ]
+}
+
+/** True when the export belongs to a GuardLogix or Compact GuardLogix safety controller. */
+function isSafetyProject(xml: string): boolean {
+  return /<(SafetyTask|SafetyProgram)\b/u.test(xml)
 }

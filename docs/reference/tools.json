@@ -23,6 +23,7 @@
     "draft_tag_description",
     "draft_udt_member",
     "draft_udt_description",
+    "draft_discard",
     "draft_validate",
     "draft_apply",
     "studio_sdk_status",
@@ -48,6 +49,7 @@
     "engineering_reference",
     "engineering_profile",
     "ftview_open",
+    "ftview_reload",
     "ftview_list",
     "ftview_get",
     "ftview_cross_reference",
@@ -68,6 +70,7 @@
     "ftview_draft_display_set",
     "ftview_draft_display_add",
     "ftview_draft_tag_upsert",
+    "ftview_draft_discard",
     "ftview_draft_display_create",
     "ftview_draft_display_scaffold",
     "ftview_draft_object_add",
@@ -164,6 +167,7 @@
         "draft_tag_description",
         "draft_udt_member",
         "draft_udt_description",
+        "draft_discard",
         "draft_validate",
         "draft_apply"
       ]
@@ -219,6 +223,7 @@
       "group": "FTView read",
       "tools": [
         "ftview_open",
+        "ftview_reload",
         "ftview_list",
         "ftview_get",
         "ftview_cross_reference",
@@ -245,6 +250,7 @@
         "ftview_draft_display_set",
         "ftview_draft_display_add",
         "ftview_draft_tag_upsert",
+        "ftview_draft_discard",
         "ftview_draft_display_create",
         "ftview_draft_display_scaffold",
         "ftview_draft_object_add",

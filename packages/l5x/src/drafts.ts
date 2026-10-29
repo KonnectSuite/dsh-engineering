@@ -108,6 +108,17 @@ export class DraftStore {
   }
 
   /**
+   * Remove one draft that has been applied or abandoned.
+   *
+   * @param exec - Calling context.
+   * @param id - Draft handle.
+   * @returns True when a draft was removed.
+   */
+  discard(exec: ExecContext | undefined, id: string): boolean {
+    return this.chatsOf(exec).delete(id)
+  }
+
+  /**
    * Remove one draft after it is applied.
    *
    * @param exec - Calling context.

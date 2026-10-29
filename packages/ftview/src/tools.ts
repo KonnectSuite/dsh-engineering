@@ -99,6 +99,34 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
       },
     }),
     tool({
+      name: 'ftview_reload',
+      description: 'Re-read one opened export folder in place and keep its view_id, so edits made outside the plugin (a re-export, a script, Studio) are visible without opening a second view. Read-only.',
+      parameters: object({
+        view_id: VIEW_ID,
+      }, []),
+      async run(args, exec) {
+        const current = session.require(optionalString(args, 'view_id'), exec)
+        const refreshed = await session.reload(current.id, exec)
+        const changed = refreshed.added.length + refreshed.removed.length
+        return success(
+          `${refreshed.view.app.name}: re-read ${refreshed.displays} displays, ${refreshed.tags} tags${changed === 0 ? '; no display added or removed' : `; ${refreshed.added.length} added, ${refreshed.removed.length} removed`}.`,
+          {
+            view_id: refreshed.view.id,
+            root: refreshed.view.app.root,
+            displays: refreshed.displays,
+            tags: refreshed.tags,
+            added: refreshed.added,
+            removed: refreshed.removed,
+            diagnostics: refreshed.view.app.diagnostics,
+          },
+          [
+            { tool: 'ftview_check', args: { view_id: refreshed.view.id }, why: 'Re-run the structural checks on the fresh scan.' },
+          ],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_list',
       description: 'List the displays or the HMI tags in one opened export, with a name filter and paging.',
       parameters: object({

@@ -73,6 +73,17 @@ export class EditDrafts {
   }
 
   /**
+   * Drop one draft, whether it was applied or abandoned.
+   *
+   * @param exec - Calling context.
+   * @param id - Draft handle.
+   * @returns True when a draft was removed.
+   */
+  discard(exec: ExecContext | undefined, id: string): boolean {
+    return this.draftsOf(exec).delete(id)
+  }
+
+  /**
    * Drop one draft after it is applied.
    *
    * @param exec - Calling context.

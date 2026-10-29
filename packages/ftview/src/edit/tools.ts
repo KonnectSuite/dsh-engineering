@@ -242,6 +242,25 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_discard',
+      description: 'Throw away the staged edits in this chat, so a draft that went the wrong way can be abandoned without applying it. Files are not touched; only the staged operations are dropped.',
+      parameters: object({
+        draft_id: string('Draft handle to discard. Omit when exactly one draft exists in this chat.'),
+      }, []),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        const removed = drafts.discard(exec, draft.id)
+        return success(
+          removed ? `Discarded ${draft.operations.length} staged operation(s) from ${draft.id}.` : `No draft ${draft.id} was staged in this chat.`,
+          { draft_id: draft.id, operations_dropped: removed ? draft.operations.length : 0, discarded: removed },
+          [
+            { tool: 'ftview_list', args: { kind: 'display' }, why: 'Confirm the export is untouched before starting again.' },
+          ],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
       name: 'ftview_draft_display_create',
       description: 'Stage a brand-new display with a schema-valid skeleton. Nothing is written until ftview_apply.',
       parameters: object({

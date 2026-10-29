@@ -77,7 +77,7 @@ describe('renderDisplaySvg', () => {
   })
 })
 
-describe('ftview_render', () => {
+describe('ftview_render', { timeout: 30_000 }, () => {
   it('writes the SVG next to the export and reports the browser', async () => {
     const files = new Map([['export/Displays/Overview.xml', GFX]])
     const l5x = harness(files, { edit: true })

@@ -47,7 +47,7 @@ function schemaOutcome(result: { data?: Record<string, unknown> }): { ran: boole
   return { ran: schema.ran, errors: schema.findings.filter(finding => finding.error).length }
 }
 
-describe('authoring', () => {
+describe('authoring', { timeout: 30_000 }, () => {
   it('creates a display from a schema-shaped skeleton and applies it', async () => {
     const { l5x, view } = await opened()
     const staged = await l5x.call('ftview_draft_display_create', { view_id: view, name: 'Arya Test', width: 1024, height: 768 })
@@ -142,5 +142,19 @@ describe('authoring', () => {
     } else {
       expect(applied.error).toBeUndefined()
     }
+  })
+})
+
+describe('discarding a draft', () => {
+  it('drops the staged operations and leaves the export untouched', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_display_create', { view_id: view, name: 'Arya Throwaway', width: 320, height: 240 })
+    expect(staged.error).toBeUndefined()
+    const discarded = await l5x.call('ftview_draft_discard', { draft_id: staged.data?.draft_id })
+    expect(discarded.error).toBeUndefined()
+    expect(discarded.data?.discarded).toBe(true)
+    expect(discarded.data?.operations_dropped).toBe(1)
+    const after = await l5x.call('ftview_validate', { draft_id: staged.data?.draft_id })
+    expect(after.error).toBeDefined()
   })
 })

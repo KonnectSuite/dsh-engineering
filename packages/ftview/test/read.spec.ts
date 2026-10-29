@@ -61,7 +61,7 @@ describe('registration', () => {
   it('registers the read intents in a stable order', () => {
     const { definitions } = harness(exportFiles())
     expect(definitions.map(definition => definition.name)).toEqual([
-      'ftview_open', 'ftview_list', 'ftview_get', 'ftview_cross_reference', 'ftview_find', 'ftview_check', 'ftview_compare', 'ftview_object_types', 'ftview_design_check', 'ftview_live_map', 'ftview_studio_export_prepare', 'ftview_studio_export_accept', 'ftview_tag_snapshot', 'ftview_alarm_snapshot', 'ftview_studio_import_prepare', 'ftview_capabilities', 'ftview_apps', 'ftview_export',
+      'ftview_open', 'ftview_reload', 'ftview_list', 'ftview_get', 'ftview_cross_reference', 'ftview_find', 'ftview_check', 'ftview_compare', 'ftview_object_types', 'ftview_design_check', 'ftview_live_map', 'ftview_studio_export_prepare', 'ftview_studio_export_accept', 'ftview_tag_snapshot', 'ftview_alarm_snapshot', 'ftview_studio_import_prepare', 'ftview_capabilities', 'ftview_apps', 'ftview_export',
     ])
   })
 
@@ -165,3 +165,21 @@ describe('compare', () => {
   })
 })
 
+
+describe('reload', () => {
+  it('re-scans the same view id and reports no change on an unchanged folder', async () => {
+    const { l5x, view } = await opened()
+    const reloaded = await l5x.call('ftview_reload', { view_id: view })
+    expect(reloaded.error).toBeUndefined()
+    expect(reloaded.data?.view_id).toBe(view)
+    expect(reloaded.data?.displays).toBe(2)
+    expect(reloaded.data?.added).toEqual([])
+    expect(reloaded.data?.removed).toEqual([])
+  })
+
+  it('refuses a view id it does not know', async () => {
+    const l5x = harness(exportFiles())
+    const result = await l5x.call('ftview_reload', { view_id: 'nope' })
+    expect(result.error).toBeDefined()
+  })
+})
