@@ -102,7 +102,7 @@ Editing uses the `draft_*` family. It may be disabled in this profile; if a draf
 Write ladder through the composer, not by inventing NeutralText.
 
 ### Show proposed rungs as ladder
-When an answer proposes rungs, call `l5x_rung_preview` with one rung per line and one comment per line: it validates each rung like `draft_rung`, writes a viewer document, and draws a PNG diagram when Chrome or Edge is installed. Present the PNG so the answer shows ladder, not text. Nothing is imported.
+`l5x_rung_preview` takes one rung per line and one comment per line: it validates each rung like `draft_rung`, writes a viewer document and draws a PNG when Chrome or Edge is installed. Present the PNG. Nothing is imported.
 
 - `list_instructions` gives the mnemonic, category and operand slots with their kinds; read it before composing.
 - `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves every operand, type-checks each slot and parses its own output; anything unknown or mistyped is refused before staging.

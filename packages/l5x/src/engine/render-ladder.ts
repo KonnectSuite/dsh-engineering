@@ -9,10 +9,11 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 
-/** One rung to draw: its number and its verified text. */
+/** One rung to draw: its number, its verified text and an optional comment. */
 export interface RungSpec {
   readonly number: number
   readonly text: string
+  readonly comment?: string
 }
 
 /** A rendered diagram plus what the layout had to flatten. */
@@ -28,21 +29,38 @@ export interface LadderRaster {
 const BOX_HEIGHT = 34
 const BOX_GAP = 16
 const ROW_GAP = 22
-const RAIL = 20
 const FONT = 12.5
+const COMMENT_LINE = 16
+const COMMENT_CHARS = 130
+
+/** Instruction families, so a reader can tell contacts from outputs at a glance. */
+const GROUPS: readonly { readonly names: readonly string[]; readonly fill: string; readonly stroke: string }[] = [
+  { names: ['XIC', 'XIO', 'ONS', 'OSR', 'OSF'], fill: '#14251F', stroke: '#2F6F55' },
+  { names: ['OTE', 'OTL', 'OTU'], fill: '#1B2436', stroke: '#3B5BA5' },
+  { names: ['TON', 'TOF', 'RTO', 'CTU', 'CTD', 'RES'], fill: '#2A2117', stroke: '#8A6A2F' },
+]
 
 /** Escape text for XML content and attributes. */
 function escapeXml(text: string): string {
   return text.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;').replace(/"/gu, '&quot;')
 }
 
-/** One drawn box: the label plus its rectangle. */
+/** Colours for one instruction mnemonic. */
+function coloursFor(name: string): { fill: string; stroke: string } {
+  const upper = name.toUpperCase()
+  const group = GROUPS.find(candidate => candidate.names.includes(upper))
+  return group === undefined ? { fill: '#16202E', stroke: '#4B5B6E' } : { fill: group.fill, stroke: group.stroke }
+}
+
+/** One drawn box: the label, its rectangle and its colours. */
 interface Cell {
   readonly label: string
   readonly x: number
   readonly y: number
   readonly width: number
   readonly height: number
+  readonly fill: string
+  readonly stroke: string
 }
 
 /** Width of a box that holds one label. */
@@ -56,73 +74,110 @@ function instructionLabel(node: Extract<LadderNode, { kind: 'instruction' }>): s
   return operands === '' ? node.name : `${node.name}(${operands})`
 }
 
-/** Lay one sequence of nodes along a row, returning its cells and consumed width. */
+/** Right edge of a laid-out sequence. */
+function rightEdge(cells: readonly Cell[]): number {
+  return cells.reduce((right, cell) => Math.max(right, cell.x + cell.width), 0)
+}
+
+/**
+ * Lay one sequence of nodes along a row.
+ * @param nodes - Parsed nodes in source order.
+ * @param startX - Left edge of the sequence.
+ * @param centreY - Vertical centre of the sequence's first row.
+ * @param flattened - Collector for layout notes.
+ * @returns The drawn cells and the width the sequence occupies.
+ */
 function laySequence(nodes: readonly LadderNode[], startX: number, centreY: number, flattened: string[]): { cells: Cell[]; width: number } {
   const cells: Cell[] = []
   let x = startX
-  let width = 0
   for (const node of nodes) {
     if (node.kind === 'instruction') {
       const label = instructionLabel(node)
       const box = boxWidth(label)
-      cells.push({ label, x, y: centreY - BOX_HEIGHT / 2, width: box, height: BOX_HEIGHT })
+      const colours = coloursFor(node.name)
+      cells.push({ label, x, y: centreY - BOX_HEIGHT / 2, width: box, height: BOX_HEIGHT, ...colours })
       x += box + BOX_GAP
-      width = x - startX
       continue
     }
-    // A branch stacks its paths; the widest path decides the advance.
-    const pathWidths = node.paths.map(path => laySequence(path, startX + 12, centreY, flattened).width)
+    // A branch stacks its paths; the widest path decides how far the rail advances.
+    const step = BOX_HEIGHT + 8
+    const firstCentres = node.paths.map((_path, index) => centreY - ((node.paths.length - 1) * step) / 2 + index * step)
+    const laidPaths = node.paths.map((path, index) => laySequence(path, x + 14, firstCentres[index]!, flattened))
     flattened.push(`branch with ${node.paths.length} path(s)`)
-    const span = Math.max(...pathWidths, 84)
-    let offset = centreY - ((node.paths.length - 1) * (BOX_HEIGHT + 8)) / 2
-    for (const path of node.paths) {
-      const laid = laySequence(path, x + 12, offset, flattened)
-      cells.push(...laid.cells)
-      offset += BOX_HEIGHT + 8
-    }
-    cells.push({ label: '', x, y: centreY - ((node.paths.length - 1) * (BOX_HEIGHT + 8)) / 2 - 4, width: 10, height: (node.paths.length - 1) * (BOX_HEIGHT + 8) + BOX_HEIGHT + 8 })
-    x += span + 22
-    width = x - startX
+    const span = Math.max(84, ...laidPaths.map(laid => rightEdge(laid.cells) - x))
+    for (const laid of laidPaths) cells.push(...laid.cells)
+    const top = firstCentres[0]! - BOX_HEIGHT / 2
+    const bottom = firstCentres[firstCentres.length - 1]! + BOX_HEIGHT / 2
+    cells.push({ label: '', x, y: top, width: 10, height: bottom - top, fill: 'none', stroke: '#64748B' })
+    x += span + 24
   }
-  return { cells, width }
+  return { cells, width: Math.max(0, rightEdge(cells) - startX) }
 }
 
-/** Draw one rung row and return the SVG fragment plus its height. */
-function drawRung(rung: RungSpec, top: number, left: number, right: number, flattened: string[]): { shapes: string[]; height: number; cells: Cell[] } {
+/** Split a comment into drawable lines. */
+function commentLines(comment: string | undefined): string[] {
+  if (comment === undefined || comment.trim() === '') return []
+  const lines: string[] = []
+  for (const paragraph of comment.split(/\r?\n/u)) {
+    let rest = paragraph.trim()
+    while (rest.length > COMMENT_CHARS) {
+      const cut = rest.lastIndexOf(' ', COMMENT_CHARS)
+      const at = cut > 40 ? cut : COMMENT_CHARS
+      lines.push(rest.slice(0, at).trim())
+      rest = rest.slice(at).trim()
+    }
+    lines.push(rest)
+  }
+  return lines
+}
+
+/** Draw one rung row and return the SVG fragments plus the height it consumed. */
+function drawRung(rung: RungSpec, top: number, left: number, right: number, flattened: string[]): { shapes: string[]; height: number } {
   const parsed = parseLadder(rung.text)
-  const centre = top + BOX_HEIGHT / 2 + 6
-  const laid = laySequence(parsed.nodes, left + 18, centre, flattened)
-  const height = Math.max(BOX_HEIGHT + ROW_GAP, ...laid.cells.map(cell => cell.y + cell.height - top + ROW_GAP / 2))
+  const comment = commentLines(rung.comment)
   const shapes: string[] = []
-  shapes.push(`<text x="${left + 4}" y="${top + 12}" font-size="11" font-family="Consolas, monospace" fill="#7D8CA3">${rung.number}</text>`)
+  const numberY = top + 11
+  shapes.push(`<text x="${left + 4}" y="${numberY}" font-size="11" font-family="Consolas, monospace" fill="#7D8CA3">${rung.number}</text>`)
+  let cursor = top
+  if (comment.length > 0) {
+    cursor += COMMENT_LINE / 2
+    for (const line of comment) {
+      shapes.push(`<text x="${left + 26}" y="${cursor + 10}" font-size="11.5" font-family="Segoe UI, Arial, sans-serif" fill="#9FB0C6">${escapeXml(line)}</text>`)
+      cursor += COMMENT_LINE
+    }
+    cursor += 4
+  }
+  const centre = cursor + BOX_HEIGHT / 2 + 6
+  const laid = laySequence(parsed.nodes, left + 26, centre, flattened)
+  const height = Math.max(centre + BOX_HEIGHT / 2 - top + ROW_GAP, ...laid.cells.map(cell => cell.y + cell.height - top + ROW_GAP / 2))
   shapes.push(`<line x1="${left}" y1="${centre}" x2="${right}" y2="${centre}" stroke="#334155" stroke-width="1"/>`)
   shapes.push(`<line x1="${left}" y1="${top}" x2="${left}" y2="${top + height}" stroke="#64748B" stroke-width="2"/>`)
   shapes.push(`<line x1="${right}" y1="${top}" x2="${right}" y2="${top + height}" stroke="#64748B" stroke-width="2"/>`)
   for (const cell of laid.cells) {
     if (cell.label === '') {
-      shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" fill="none" stroke="#64748B"/>`)
+      shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" fill="none" stroke="${cell.stroke}"/>`)
       continue
     }
-    shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" rx="3" fill="#16202E" stroke="#4B5B6E"/>`)
+    shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" rx="3" fill="${cell.fill}" stroke="${cell.stroke}"/>`)
     shapes.push(`<text x="${cell.x + cell.width / 2}" y="${cell.y + cell.height / 2 + 4.5}" text-anchor="middle" font-size="${FONT}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(cell.label)}</text>`)
   }
-  return { shapes, height, cells: laid.cells }
+  return { shapes, height }
 }
 
 /** Render rungs to one SVG document. */
 export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder preview'): LadderRaster {
-  const left = 16
-  const computed = rungs.map(rung => parseLadder(rung.text))
+  const flattened: string[] = []
   const widest = Math.max(
     420,
-    ...computed.map(parsed => {
-      const laid = laySequence(parsed.nodes, 34, 0, [])
-      return laid.width + 90
+    ...rungs.map(rung => {
+      const parsed = parseLadder(rung.text)
+      const laid = laySequence(parsed.nodes, 60, 0, [])
+      return rightEdge(laid.cells) + 60
     }),
   )
-  const width = Math.min(1600, Math.ceil(widest))
+  const width = Math.min(1800, Math.ceil(widest))
+  const left = 16
   const right = width - 16
-  const flattened: string[] = []
   const shapes: string[] = []
   let top = 34
   for (const rung of rungs) {

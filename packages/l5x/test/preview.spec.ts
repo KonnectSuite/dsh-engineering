@@ -121,3 +121,26 @@ describe('renderLadderSvg', () => {
     expect(raster.svg).not.toContain('A<B')
   })
 })
+describe('ladder diagram layout', () => {
+  it('draws the rung comment above the rail and grows the canvas for it', () => {
+    const plain = renderLadderSvg([{ number: 0, text: 'XIC(Start)OTE(Run);' }], 'plain')
+    const commented = renderLadderSvg([{ number: 0, text: 'XIC(Start)OTE(Run);', comment: 'Start the line from the panel' }], 'commented')
+    expect(commented.svg).toContain('Start the line from the panel')
+    expect(commented.height).toBeGreaterThan(plain.height)
+  })
+
+  it('separates contacts from outputs by fill colour', () => {
+    const raster = renderLadderSvg([{ number: 0, text: 'XIC(Start)OTE(Run);' }], 'colours')
+    expect(raster.svg).toContain('#14251F')
+    expect(raster.svg).toContain('#1B2436')
+    expect(raster.svg).toMatch(/XIC\(Start\)/u)
+    expect(raster.svg).toMatch(/OTE\(Run\)/u)
+  })
+
+  it('stacks a parallel branch and notes it in the layout report', () => {
+    const raster = renderLadderSvg([{ number: 0, text: 'XIC(Permit)[XIC(Auto),XIC(Bypass)]OTE(Run);' }], 'branch')
+    expect(raster.flattened.join(' ')).toContain('branch with 2 path(s)')
+    expect(raster.svg).toContain('XIC(Auto)')
+    expect(raster.svg).toContain('XIC(Bypass)')
+  })
+})

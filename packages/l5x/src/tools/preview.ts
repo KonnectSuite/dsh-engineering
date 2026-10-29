@@ -166,7 +166,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         let rasterError: string | undefined
         let skipped = false
         if (optionalString(args, 'diagram') !== 'no') {
-          const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text })), slug)
+          const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
           try {
             const absolute = await session.resolvePath(path, exec)
             if (!isAbsolute(absolute)) {
