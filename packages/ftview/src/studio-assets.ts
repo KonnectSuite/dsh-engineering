@@ -16,6 +16,7 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
+import { parseDisplay } from './model.ts'
 import { projectFolder } from './vendor.ts'
 
 /** Kinds of asset the wizards produce. */
@@ -209,11 +210,15 @@ export function prepareDisplayImport(exportRoot: string, displays: readonly stri
     if (!existsSync(source)) throw new Error(`no display file at ${source}`)
     const text = readFileSync(source, 'utf8')
     if (!/<gfx[\s>]/iu.test(text)) throw new Error(`${source} is not a <gfx> display document`)
+    // A file that does not parse is rejected here rather than inside Studio's wizard,
+    // where the only feedback is "Unable to load the XML file".
+    const parsed = parseDisplay(`${display}.xml`, text)
+    if (parsed.parseError !== undefined) throw new Error(`${source} does not parse as a display: ${parsed.parseError}`)
     copyFileSync(source, join(folder, `${display}.xml`))
   }
   const manifest = join(outputRoot, 'BatchImport.xml')
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<gfxImport>']
-  for (const display of displays) lines.push(`    <import importFile="${escapeXmlAttribute(display)}.xml" importType="create" display="${escapeXmlAttribute(display)}"/>`)
+  for (const display of displays) lines.push(`    <import importFile="${escapeXmlAttribute(display)}.xml" importType="${mode}" display="${escapeXmlAttribute(display)}"/>`)
   lines.push('</gfxImport>', '')
   writeFileSync(manifest, lines.join('\n'))
   return {
@@ -225,7 +230,7 @@ export function prepareDisplayImport(exportRoot: string, displays: readonly stri
       'Import graphic information into displays -> Next.',
       'Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
       'Choose Multiple displays batch import file -> Next.',
-      `Select ${manifest} -> Finish, then open the display in Studio.`,
+      `Select ${manifest} -> Finish (the manifest is written for "${mode}": ${mode === 'create' ? 'the displays must not exist yet' : 'the displays must already exist'}), then open the display in Studio.`,
     ],
   }
 }

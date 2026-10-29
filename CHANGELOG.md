@@ -1,3 +1,16 @@
+## [0.42.0] - 2026-10-29
+
+### Fixed
+
+- `ftview_studio_import_prepare` wrote `importType="create"` even when the caller asked for
+  `mode: "update"`, so an update package asked Studio to create displays that already existed and the
+  wizard ignored every file. The manifest now carries the requested mode and the steps say which one it is.
+
+### Added
+
+- The package refuses a display that does not parse as XML, instead of letting the wizard answer only
+  "Unable to load the XML file".
+
 ## [0.41.0] - 2026-10-29
 
 ### Added

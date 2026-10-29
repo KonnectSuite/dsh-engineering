@@ -95,6 +95,29 @@ describe('packaging a display import', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
+  it('writes the import type the caller asked for', () => {
+    const { root } = fixture()
+    const exportRoot = join(root, 'export')
+    mkdirSync(join(exportRoot, 'Displays'), { recursive: true })
+    writeFileSync(join(exportRoot, 'Displays', 'Arya Proof.xml'), '<?xml version="1.0"?>\n<gfx><displaySettings width="800" height="600"/></gfx>')
+    const out = join(root, 'import-update')
+    const plan = prepareDisplayImport(exportRoot, ['Arya Proof'], out, 'update')
+    const manifest = readFileSync(plan.manifest, 'utf8')
+    expect(manifest).toContain('importType="update"')
+    expect(manifest).not.toContain('importType="create"')
+    expect(plan.steps.join(' ')).toContain('must already exist')
+    rmSync(root, { recursive: true, force: true })
+  })
+
+  it('refuses a gfx file that does not parse instead of handing it to the wizard', () => {
+    const { root } = fixture()
+    const exportRoot = join(root, 'export')
+    mkdirSync(join(exportRoot, 'Displays'), { recursive: true })
+    writeFileSync(join(exportRoot, 'Displays', 'Broken.xml'), '<gfx><screen')
+    expect(() => prepareDisplayImport(exportRoot, ['Broken'], join(root, 'import-broken'))).toThrow(/does not parse as a display/)
+    rmSync(root, { recursive: true, force: true })
+  })
+
   it('refuses a file that is not a gfx display', () => {
     const { root } = fixture()
     const exportRoot = join(root, 'export')
