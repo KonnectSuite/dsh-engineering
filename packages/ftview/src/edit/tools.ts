@@ -243,6 +243,61 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_tags',
+      description: 'Stage many HMI tag updates in one call: each entry changes an existing row description or type, or appends a new row. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        tags_json: string('Tags as JSON, e.g. [{"name":"SP_Start","description":"Start setpoint","type":"A"},{"name":"StartPB","description":"Start pushbutton"}].'),
+      }, ['tags_json']),
+      async run(args, exec) {
+        let parsed: unknown
+        try {
+          parsed = JSON.parse(requiredString(args, 'tags_json'))
+        } catch {
+          throw new EngineeringError('INVALID_ARGUMENT', 'tags_json is not valid JSON.', 'Pass an array like [{"name":"StartPB","description":"Start pushbutton"}].')
+        }
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'tags_json must be a non-empty array.', 'Pass at least one tag, for example [{"name":"StartPB","description":"Start pushbutton"}].')
+        }
+        if (parsed.length > 500) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'tags_json holds more than 500 tags.', 'Split the batch; 500 tags is the limit for one call.')
+        }
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const staged: { name: string; description?: string; type?: string }[] = []
+        for (const [index, entry] of parsed.entries()) {
+          if (entry === null || typeof entry !== 'object' || Array.isArray(entry)) {
+            throw new EngineeringError('INVALID_ARGUMENT', `Tag ${index} is not a JSON object.`, 'Pass {"name":"StartPB","description":"Start pushbutton"}.')
+          }
+          const record = entry as Record<string, unknown>
+          const name = record.name
+          if (typeof name !== 'string' || name === '') {
+            throw new EngineeringError('INVALID_ARGUMENT', `Tag ${index} needs a name.`, 'Pass the HMI tag name, for example "StartPB".')
+          }
+          const description = typeof record.description === 'string' ? record.description : undefined
+          const type = typeof record.type === 'string' ? record.type : undefined
+          if (description === undefined && type === undefined) {
+            throw new EngineeringError('INVALID_ARGUMENT', `Tag ${JSON.stringify(name)} needs a description, a type, or both.`, 'Pass description or type; nothing was staged.')
+          }
+          staged.push({ name, ...(description === undefined ? {} : { description }), ...(type === undefined ? {} : { type }) })
+        }
+        let draft: EditDraft | undefined
+        for (const tag of staged) {
+          draft = stage(exec, view.id, {
+            kind: 'tag_upsert',
+            name: tag.name,
+            ...(tag.description === undefined ? {} : { description: tag.description }),
+            ...(tag.type === undefined ? {} : { type: tag.type }),
+          }).draft
+        }
+        if (draft === undefined) throw new EngineeringError('INTERNAL', 'The tag batch produced no operation.', 'Report this as a defect.')
+        return success(
+          `Draft ${draft.id}: staged ${staged.length} tag update(s).`,
+          { draft_id: draft.id, operation_count: draft.operations.length, tags: staged.map(tag => tag.name) },
+          [{ tool: 'ftview_validate', args: { draft_id: draft.id }, why: 'Validate the tag rows before writing anything.' }],
+          EDIT_COVERAGE,
+        )
+      },
+    }),    tool({
       name: 'ftview_draft_discard',
       description: 'Throw away the staged edits in this chat, so a draft that went the wrong way can be abandoned without applying it. Files are not touched; only the staged operations are dropped.',
       parameters: object({

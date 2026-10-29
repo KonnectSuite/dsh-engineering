@@ -24,7 +24,7 @@ test('the committed reference matches the registered tools', () => {
 test('the reference covers every registered tool', () => {
   // 73 tools live in the three vendored components; the six Optix tools come
   // from a separate package and are counted in the README instead.
-  assert.equal(names.length, 112, 'the reference covers 112 tools; update this when a surface changes')
+  assert.equal(names.length, 113, 'the reference covers 113 tools; update this when a surface changes')
   for (const group of groups) assert.ok(group.tools.length > 0, `${group.group} registers no tools`)
 })
 

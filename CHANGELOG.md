@@ -1,3 +1,12 @@
+## [0.35.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_tags` stages a batch of HMI tags in one call.** Each entry changes a row description, a type, or appends a new row; up to 500 per call. The field session made thirteen single-tag calls to describe one screen's tags.
+
+### Changed
+
+- The batch is atomic: an entry with neither description nor type refuses the whole set and stages nothing, naming the tag at fault.
 ## [0.34.0] - 2026-10-29
 
 ### Added

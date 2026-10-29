@@ -34,7 +34,7 @@ describe('editing registration', () => {
   it('mounts the fourteen edit tools after the read surface', () => {
     const { definitions } = harness(exportFiles(), { edit: true })
     expect(definitions.map(definition => definition.name).slice(19)).toEqual([
-      'ftview_draft_display_set', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_discard',
+      'ftview_draft_display_set', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard',
       'ftview_draft_display_create', 'ftview_draft_display_scaffold', 'ftview_draft_screen', 'ftview_draft_object_add',
       'ftview_draft_object_set',
       'ftview_draft_object_delete', 'ftview_draft_object_order', 'ftview_validate',
@@ -245,5 +245,44 @@ describe('draft layout check', () => {
     expect(validated.error).toBeUndefined()
     const overlap = (validated.data?.findings as Array<{ rule: string }>).filter(finding => finding.rule === 'DRAFT_OVERLAP')
     expect(overlap).toHaveLength(0)
+  })
+})
+
+describe('ftview_draft_tags', () => {
+  it('stages several tag rows in one call and writes them on apply', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_tags', {
+      view_id: view,
+      tags_json: JSON.stringify([
+        { name: 'StopPB', description: 'Stop button', type: 'D' },
+        { name: 'SP_Start', description: 'Start setpoint', type: 'A' },
+      ]),
+    })
+    expect(staged.error).toBeUndefined()
+    const draftId = staged.data?.draft_id as string
+    const applied = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    const csv = l5x.written.get('out/tags.csv') ?? ''
+    expect(csv).toContain('Stop button')
+    expect(csv).toContain('SP_Start')
+  })
+
+  it('refuses the batch when one entry has neither description nor type', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_tags', {
+      view_id: view,
+      tags_json: JSON.stringify([{ name: 'StopPB', description: 'Stop button' }, { name: 'Empty' }]),
+    })
+    expect(staged.error?.code).toBe('INVALID_ARGUMENT')
+    const applied = await l5x.call('ftview_apply', { output_root: 'out' })
+    expect(applied.error?.code).toBe('NO_DRAFT')
+  })
+
+  it('refuses malformed JSON and an empty array', async () => {
+    const { l5x, view } = await opened()
+    const broken = await l5x.call('ftview_draft_tags', { view_id: view, tags_json: '[' })
+    expect(broken.error?.code).toBe('INVALID_ARGUMENT')
+    const empty = await l5x.call('ftview_draft_tags', { view_id: view, tags_json: '[]' })
+    expect(empty.error?.code).toBe('INVALID_ARGUMENT')
   })
 })

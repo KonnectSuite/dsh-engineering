@@ -56,7 +56,7 @@ unavailable, say editing is not enabled here rather than trying another tool.
 
 - `ftview_draft_display_set` stages one attribute change on a display or one of its named objects.
 - `ftview_draft_display_add` stages a new display by copying an existing display file.
-- `ftview_draft_tag_upsert` stages one HMI tag description/type change or a new tag row.
+- `ftview_draft_tag_upsert` stages one HMI tag change; ftview_draft_tags stages a batch of them in one call.
 - One operation per call. Each returns the draft id and the operation count; nothing is written yet.
 - `ftview_validate` re-parses the edited copy, checks the changed displays against the installed
   `Gfx-ME*.xsd` and lists findings, including `DRAFT_OVERLAP` for overlapping placements. `ftview_apply` refuses a document the vendor schema rejects.
