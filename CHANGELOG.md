@@ -1,3 +1,17 @@
+## [0.51.0] - 2026-10-29
+
+### Added
+
+- **`ftview_draft_ops` and `ftview_draft_drop`.** A staged change can now be listed with its index,
+  kind and target, and dropped on its own. Before this, one wrong object move meant discarding every
+  staged edit or hand-editing the display XML — the field session wrote 28 one-off PowerShell scripts
+  that patched XML directly, partly because a draft could not be inspected or trimmed.
+
+### Changed
+
+- `ftview_draft_drop` refuses an index the draft does not hold and names the operation count, so a
+  wrong index cannot silently remove the wrong step.
+
 ## [0.50.0] - 2026-10-29
 
 ### Added

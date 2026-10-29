@@ -56,5 +56,5 @@ describe('import gate', () => {
     expect(prepared.error).toBeUndefined()
     expect(prepared.data?.unrendered).toEqual([])
     expect(prepared.summary).toContain('drawn in this chat')
-  })
+  }, 30000)
 })

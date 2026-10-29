@@ -73,6 +73,23 @@ export class EditDrafts {
   }
 
   /**
+   * Replace the operations of one draft, used to drop a single staged change.
+   *
+   * @param exec - Calling context.
+   * @param id - Draft handle.
+   * @param operations - Operations the draft should hold.
+   * @returns The updated draft.
+   */
+  replaceOperations(exec: ExecContext | undefined, id: string, operations: readonly EditOperation[]): EditDraft {
+    const drafts = this.draftsOf(exec)
+    const current = drafts.get(id)
+    if (current === undefined) throw new EngineeringError('UNKNOWN_DRAFT', `No draft exists with draft_id ${JSON.stringify(id)} in this chat.`, 'Add an operation with an ftview_draft_* tool first.')
+    const updated: EditDraft = { ...current, operations }
+    drafts.set(id, updated)
+    return updated
+  }
+
+  /**
    * Drop one draft, whether it was applied or abandoned.
    *
    * @param exec - Calling context.

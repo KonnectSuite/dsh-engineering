@@ -165,6 +165,16 @@ async function loadRasters(fs: FsService, root: string, objects: readonly { attr
   return loaded
 }
 
+/** How one staged operation reads in a list: its kind and what it changes. */
+function describeOperation(operation: EditOperation): { readonly kind: string; readonly target: string } {
+  const record = operation as unknown as Record<string, unknown>
+  const file = typeof record.file === 'string' ? record.file.replace(/^Displays\//u, '').replace(/\.xml$/u, '') : undefined
+  const display = typeof record.display === 'string' ? record.display : file
+  const target = [display, record.object].filter((part): part is string => typeof part === 'string' && part !== '').join('/')
+  const field = typeof record.attribute === 'string' ? record.attribute : typeof record.name === 'string' ? record.name : undefined
+  return { kind: operation.kind, target: field === undefined ? target : `${target} ${field}` }
+}
+
 export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown): readonly ToolDefinition[] {
   /** Resolve the view and append one operation. */
   const stage = (exec: ExecContext | undefined, viewId: string | undefined, operation: EditOperation) => {
@@ -383,6 +393,46 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           [
             { tool: 'ftview_list', args: { kind: 'display' }, why: 'Confirm the export is untouched before starting again.' },
           ],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_draft_ops',
+      description: 'List the operations staged in this chat\'s draft with their index, kind and target, so a wrong step can be found without applying or re-staging everything.',
+      parameters: object({
+        draft_id: string('Draft handle. Omit when exactly one draft exists in this chat.'),
+      }, []),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        const operations = draft.operations.map((operation, index) => ({ index, ...describeOperation(operation) }))
+        return success(
+          `Draft ${draft.id} holds ${operations.length} operation(s): ${operations.slice(0, 3).map(operation => `#${operation.index} ${operation.kind} ${operation.target}`).join('; ')}${operations.length > 3 ? ' and more' : ''}.`,
+          { draft_id: draft.id, operation_count: operations.length, operations },
+          operations.length === 0 ? [] : [{ tool: 'ftview_draft_drop', args: { draft_id: draft.id, index: 0 }, why: 'Drop the first wrong operation by index instead of discarding the whole draft.' }],
+          EDIT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_draft_drop',
+      description: 'Remove one staged operation by its index from ftview_draft_ops, so a single wrong step can be undone without discarding the draft or editing the L5X by hand.',
+      parameters: object({
+        index: integer('Zero-based operation index reported by ftview_draft_ops.'),
+        draft_id: string('Draft handle. Omit when exactly one draft exists in this chat.'),
+      }, ['index']),
+      async run(args, exec) {
+        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        const index = optionalInteger(args, 'index') ?? -1
+        if (!Number.isInteger(index) || index < 0 || index >= draft.operations.length) {
+          throw new EngineeringError('DRAFT_INDEX_RANGE', `This draft holds ${draft.operations.length} operation(s), so index ${index} cannot be dropped.`, 'Call ftview_draft_ops and pass an index it lists.')
+        }
+        const dropped = draft.operations[index] as EditOperation
+        const updated = drafts.replaceOperations(exec, draft.id, draft.operations.filter((_, position) => position !== index))
+        return success(
+          `Dropped operation #${index} (${describeOperation(dropped).kind} ${describeOperation(dropped).target}); ${updated.operations.length} left.`,
+          { draft_id: updated.id, index, dropped: describeOperation(dropped), operation_count: updated.operations.length },
+          [{ tool: 'ftview_validate', args: { draft_id: updated.id }, why: 'Re-read the findings against the trimmed draft.' }],
           EDIT_COVERAGE,
         )
       },
