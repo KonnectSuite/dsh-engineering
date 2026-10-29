@@ -1124,11 +1124,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
     }),
     tool({
       name: 'ftview_verify_import',
-      description: 'Export the application again through the vendor engine and compare it object by object with the staged draft, proving whether the import landed. Writes only a temporary export folder.',
+      description: 'Compare the staged draft object by object with a fresh export of the application, proving whether the import landed. Exports through the vendor engine by default, or reads an export folder you made by hand (`export_root`), which is the only path when the vendor export is unavailable.',
       parameters: object({
         view_id: VIEW_ID,
         draft_id: DRAFT_ID,
         application: string('Application name as ftview_apps lists it. The same application the package was imported into.'),
+        export_root: string('Export folder to verify against instead of running the vendor export, for a File > Export you made by hand after importing the package.'),
       }, ['application']),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
@@ -1138,15 +1139,19 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         if (expected.size === 0) {
           throw new EngineeringError('NOTHING_TO_VERIFY', 'This draft changes no display, so there is nothing to compare.', 'Stage a display edit first, import it in Studio, then run this again.')
         }
-        const root = join(tmpdir(), `ftview-verify-${randomUUID()}`)
-        const exported = await exportApplication(requiredString(args, 'application'), root)
-        if (exported.error !== undefined) {
-          throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Close the application in Studio if it is open, then retry.')
+        const manual = optionalString(args, 'export_root')
+        const handMade = manual === undefined ? undefined : await session.open(manual, exec)
+        const root = handMade?.app.root ?? join(tmpdir(), `ftview-verify-${randomUUID()}`)
+        if (handMade === undefined) {
+          const exported = await exportApplication(requiredString(args, 'application'), root)
+          if (exported.error !== undefined) {
+            throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Close the application in Studio if it is open, then retry — or pass export_root with a folder you exported by hand after the import.')
+          }
         }
         const results = await verifyDisplays(fs, root, expected)
         const matched = results.filter(result => result.matched).length
         const differences = results.flatMap(result => result.differences.map(difference => ({ file: result.file, ...difference })))
-        const reopened = await session.open(root, exec)
+        const reopened = handMade ?? await session.open(root, exec)
         const drift = verifyDraft(draft, reopened.app)
         return success(
           `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}. Export kept at ${root}.`,

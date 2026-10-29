@@ -518,3 +518,62 @@ describe('apply carries artwork', () => {
     expect(l5x.written.get('out/Displays/Main.xml')).toContain('After')
   })
 })
+
+describe('verify against a hand-made export', () => {
+  const DISPLAY = (caption: string): string => [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
+    '    <displaySettings width="640" height="480" backColor="#FFFFFF"/>',
+    `    <text name="Title" left="10" top="10" width="200" height="20" caption="${caption}"/>`,
+    '</gfx>',
+    '',
+  ].join('\n')
+
+  it('proves the staged object landed without the vendor exporter', async () => {
+    const l5x = harness(new Map([
+      ['base/Displays/Main.xml', DISPLAY('Before')],
+      ['base/Tags/Tags.csv', CSV],
+      ['landed/Displays/Main.xml', DISPLAY('After')],
+      ['landed/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'base' })
+    const staged = await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    expect(staged.error).toBeUndefined()
+    const verified = await l5x.call('ftview_verify_import', {
+      application: 'AnyApp',
+      export_root: 'landed',
+    })
+    expect(verified.error).toBeUndefined()
+    expect(verified.summary).toContain('1/1 display(s) match')
+    expect(verified.summary).toContain('staged objects all landed')
+  })
+
+  it('reports a display that did not land as staged', async () => {
+    const l5x = harness(new Map([
+      ['base/Displays/Main.xml', DISPLAY('Before')],
+      ['base/Tags/Tags.csv', CSV],
+      ['landed/Displays/Main.xml', DISPLAY('Something else')],
+      ['landed/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'base' })
+    await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    const verified = await l5x.call('ftview_verify_import', {
+      application: 'AnyApp',
+      export_root: 'landed',
+    })
+    expect(verified.error).toBeUndefined()
+    expect(verified.summary).toContain('0/1 display(s) match')
+  })
+})

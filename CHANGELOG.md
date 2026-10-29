@@ -8,6 +8,11 @@
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
 
+- **`ftview_verify_import` accepts an export you made by hand.** Verification used to depend on the
+  vendor export engine, so when that export failed (closed Studio, safety project, COM trouble) the
+  proof that an import landed was simply unavailable. `export_root` points the same object-level
+  comparison and drift report at a folder exported from Studio by hand after the import; the vendor
+  path stays the default and its failure message now says which argument avoids it.
 - **`ftview_check` names artwork the export does not ship.** A display that names
   `Images/<file>` rendered an empty box with no warning anywhere in the workflow. The scan now records
   the file names under `Images/` (without reading their bytes) and reports `IMAGE_MISSING` per display

@@ -1077,13 +1077,14 @@ Prepare the staged edits: apply them to a re-parsed copy, validate the changed d
 
 #### `ftview_verify_import`
 
-Export the application again through the vendor engine and compare it object by object with the staged draft, proving whether the import landed. Writes only a temporary export folder.
+Compare the staged draft object by object with a fresh export of the application, proving whether the import landed. Exports through the vendor engine by default, or reads an export folder you made by hand (`export_root`), which is the only path when the vendor export is unavailable.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
 | `draft_id` | string | no | Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat. |
 | `application` | string | yes | Application name as ftview_apps lists it. The same application the package was imported into. |
+| `export_root` | string | no | Export folder to verify against instead of running the vendor export, for a File > Export you made by hand after importing the package. |
 
 #### `ftview_apply`
 
