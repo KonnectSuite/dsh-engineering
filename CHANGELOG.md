@@ -1,3 +1,18 @@
+## [0.53.0] - 2026-10-29
+
+### Added
+
+- **`ftview_bulk_set` applies one change to every matching object.** Match on type, a name glob or
+  existing attribute values, over every display or a named list; `dry_run` reports the selection
+  without staging. The field sessions patched display XML by script for exactly this, so the change
+  now goes through the validated draft path and one import.
+
+### Fixed
+
+- **`ftview_draft_object_set` no longer moves an object it was asked to relabel.** A caption-only
+  change staged default geometry (`left/top 10`, `100x30`), silently repositioning the object; the
+  defaults now apply only when the object is created.
+
 ## [0.52.0] - 2026-10-29
 
 ### Added

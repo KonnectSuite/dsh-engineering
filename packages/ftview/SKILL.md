@@ -81,7 +81,7 @@ Start from the installed application:
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
      `gotoButton`, …) with `states_json` faces, `animations_json` and connections;
    - `ftview_draft_object_set`, `ftview_draft_object_delete`, `ftview_draft_object_order` for existing
-     objects.
+     objects. `ftview_bulk_set` stages one change across matching objects; dry run first.
 4. `ftview_validate` must show `schema.ran: true` with no schema errors before you apply. `schema.ran:
    false` means the host has no Studio schema and validation did not run; say so instead of claiming
    validity.

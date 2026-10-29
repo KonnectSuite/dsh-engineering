@@ -20,6 +20,8 @@ import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
 import { scaffoldLayout } from './scaffold.ts'
+import { selectBulk } from './bulk.ts'
+import type { BulkMatch } from './bulk.ts'
 import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from './screen.ts'
 import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
@@ -105,6 +107,45 @@ function displayOf(view: { app: { displays: readonly { name: string; file: strin
 }
 
 /** Parse one JSON object argument into string attributes. */
+/** Parse a bulk match description. */
+function jsonMatch(raw: unknown): BulkMatch {
+  const value = typeof raw === 'string' ? raw : ''
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'match_json is not valid JSON.', 'Pass an object such as {"type":"text"}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new EngineeringError('INVALID_ARGUMENT', 'match_json must be a JSON object.', 'Pass an object such as {"type":"text"}.')
+  }
+  const record = parsed as Record<string, unknown>
+  const match: { type?: string; name?: string; attribute?: Record<string, string> } = {}
+  if (record.type !== undefined) {
+    if (typeof record.type !== 'string') throw new EngineeringError('INVALID_ARGUMENT', 'match_json.type must be a string.', 'Pass the element type, for example "momentaryButton".')
+    match.type = record.type
+  }
+  if (record.name !== undefined) {
+    if (typeof record.name !== 'string') throw new EngineeringError('INVALID_ARGUMENT', 'match_json.name must be a string.', 'Pass a name glob, for example "Nav*".')
+    match.name = record.name
+  }
+  if (record.attribute !== undefined) {
+    if (record.attribute === null || typeof record.attribute !== 'object' || Array.isArray(record.attribute)) {
+      throw new EngineeringError('INVALID_ARGUMENT', 'match_json.attribute must be a JSON object.', 'Pass existing values, for example {"visible":"1"}.')
+    }
+    const attribute: Record<string, string> = {}
+    for (const [key, entry] of Object.entries(record.attribute as Record<string, unknown>)) {
+      if (typeof entry !== 'string') throw new EngineeringError('INVALID_ARGUMENT', `match_json.attribute.${key} must be a string.`, 'Compare against the value as the export writes it.')
+      attribute[key] = entry
+    }
+    match.attribute = attribute
+  }
+  if (match.type === undefined && match.name === undefined && match.attribute === undefined) {
+    throw new EngineeringError('INVALID_ARGUMENT', 'match_json states nothing to match.', 'Pass type, name or attribute.')
+  }
+  return match
+}
+
 function jsonObject(value: unknown, name: string): Record<string, string> {
   if (value === undefined) return {}
   if (typeof value !== 'string') throw new EngineeringError('INVALID_ARGUMENT', `${name} must be a JSON object string.`, `Pass ${name} as a JSON object, for example {"height":"40"}.`)
@@ -699,9 +740,6 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
 
         const attributes = jsonObject(args.attributes_json, 'attributes_json')
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
-        for (const [key, value] of [['left', '10'], ['top', '10'], ['width', '100'], ['height', '30']] as const) {
-          if (attributes[key] === undefined) attributes[key] = value
-        }
         const caption = optionalString(args, 'caption')
         if (Object.keys(attributes).length === 0 && Object.keys(connections).length === 0 && caption === undefined) {
           throw new EngineeringError('INVALID_ARGUMENT', 'No change was requested.', 'Pass attributes_json, connections_json or caption.')
@@ -732,6 +770,91 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
 
         const { draft } = stage(exec, optionalString(args, 'view_id'), { kind: 'object_delete', file: display.file, object })
         return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_bulk_set',
+      description: 'Stage the same attribute, caption or connection change on every object that matches, across displays. A dry run reports what would change. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        displays_json: string('Optional JSON array of display names to restrict to, e.g. ["Main","Manual"]. Omit to search every display.'),
+        match_json: string('What to select as JSON: {"type":"momentaryButton","name":"*Start*","attribute":{"visible":"1"}}. Absent fields match anything; name accepts * wildcards.'),
+        attributes_json: string('Attributes to set on each match as a JSON object.'),
+        caption: string('Optional caption to set on each match.'),
+        connections_json: string('Connections to set on each match as a JSON object.'),
+        dry_run: choice('Report the matches without staging anything.', ['no', 'yes']),
+        limit: integer('Most objects to change. The selection stops there and the result says it was truncated.', { minimum: 1, maximum: 500 }),
+      }, ['match_json']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const match = jsonMatch(args.match_json)
+        const attributes = jsonObject(args.attributes_json, 'attributes_json')
+        const connections = jsonObject(args.connections_json, 'connections_json')
+        const caption = optionalString(args, 'caption')
+        if (Object.keys(attributes).length === 0 && Object.keys(connections).length === 0 && caption === undefined) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'No change was requested.', 'Pass attributes_json, connections_json or caption.')
+        }
+        const only = optionalString(args, 'displays_json') === undefined ? undefined : jsonNames(optionalString(args, 'displays_json'))
+        const limit = optionalInteger(args, 'limit') ?? 100
+        const selection = selectBulk(view.app.displays, match, limit, only)
+        if (selection.targets.length === 0) {
+          const seen = new Map<string, number>()
+          for (const display of view.app.displays) {
+            for (const object of display.objects) seen.set(object.type, (seen.get(object.type) ?? 0) + 1)
+          }
+          const common = [...seen.entries()].sort((left, right) => right[1] - left[1]).slice(0, 6).map(([type]) => type)
+          throw new EngineeringError(
+            'NO_MATCH',
+            'No object matched that description.',
+            `Match on a type this export uses (${common.join(', ')}), or widen the name glob.`,
+            common,
+          )
+        }
+        const files = new Map(view.app.displays.map(display => [display.name.toLowerCase(), display.file]))
+        const samples = selection.targets.slice(0, 12).map(target => ({ display: target.display, object: target.object, type: target.type }))
+        if (optionalString(args, 'dry_run') === 'yes') {
+          return success(
+            `Would change ${selection.targets.length} object(s) in ${selection.displays.length} display(s).`,
+            {
+              dry_run: true,
+              matched: selection.targets.length,
+              displays: selection.displays.length,
+              scanned: selection.scanned,
+              truncated: selection.truncated,
+              samples,
+            },
+            [{ tool: 'ftview_bulk_set', why: 'Run the same call with dry_run "no" to stage it.', args }],
+            EDIT_COVERAGE,
+          )
+        }
+        for (const target of selection.targets) {
+          const targetFile = files.get(target.display.toLowerCase())
+          if (targetFile === undefined) continue
+          stage(exec, optionalString(args, 'view_id'), {
+            kind: 'object_set',
+            file: targetFile,
+            object: target.object,
+            attributes,
+            ...(caption === undefined ? {} : { caption }),
+            ...(Object.keys(connections).length === 0 ? {} : { connections }),
+          })
+        }
+        const draft = drafts.get(exec, undefined)
+        return success(
+          `Staged ${selection.targets.length} change(s) across ${selection.displays.length} display(s) in draft ${draft.id}.`,
+          {
+            draft_id: draft.id,
+            matched: selection.targets.length,
+            displays: selection.displays.length,
+            operation_count: draft.operations.length,
+            truncated: selection.truncated,
+            samples,
+          },
+          [
+            { tool: 'ftview_validate', why: 'Validate the staged changes before writing anything.', args: { draft_id: draft.id } },
+          ],
+          EDIT_COVERAGE,
+        )
       },
     }),
     tool({

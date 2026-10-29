@@ -37,7 +37,7 @@ describe('editing registration', () => {
       'ftview_draft_display_set', 'ftview_draft_display_attrs', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard', 'ftview_draft_ops', 'ftview_draft_drop',
       'ftview_draft_display_create', 'ftview_draft_display_scaffold', 'ftview_draft_screen', 'ftview_draft_object_add',
       'ftview_draft_object_set',
-      'ftview_draft_object_delete', 'ftview_draft_object_order', 'ftview_validate',
+      'ftview_draft_object_delete', 'ftview_bulk_set', 'ftview_draft_object_order', 'ftview_validate',
       'ftview_verify_import', 'ftview_apply', 'ftview_render',
     ])
   })
@@ -338,4 +338,51 @@ describe('ftview_draft_tags', () => {
     expect(nested.error?.code).toBe('INVALID_ARGUMENT')
   })
 
+
+  it('does not move an object when only its caption changes', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_object_set', { view_id: view, display: 'Main', object: 'StartPB', caption: 'Start' })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('ftview_apply', { draft_id: staged.data?.draft_id as string, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('out/Main.xml') ?? ''
+    expect(written).toContain('Start')
+    expect(written).not.toContain('left="10"')
+    expect(written).not.toContain('top="10"')
+  })
+
+  it('reports what a bulk change would touch before staging it', async () => {
+    const { l5x, view } = await opened()
+    const dry = await l5x.call('ftview_bulk_set', {
+      view_id: view, match_json: JSON.stringify({ name: 'Start*' }), attributes_json: JSON.stringify({ visible: '0' }), dry_run: 'yes',
+    })
+    expect(dry.error).toBeUndefined()
+    expect(dry.data?.matched).toBe(1)
+    expect(dry.data?.dry_run).toBe(true)
+    const abandoned = await l5x.call('ftview_apply', { output_root: 'out' })
+    expect(abandoned.error?.code).toBe('NO_DRAFT')
+  })
+
+  it('stages one change per matching object across displays', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_bulk_set', {
+      view_id: view, match_json: JSON.stringify({ name: '*' }), attributes_json: JSON.stringify({ visible: '0' }),
+    })
+    expect(staged.error).toBeUndefined()
+    expect(staged.data?.matched).toBe(2)
+    expect(staged.data?.displays).toBe(2)
+    const applied = await l5x.call('ftview_apply', { draft_id: staged.data?.draft_id as string, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    expect(l5x.written.get('out/Main.xml')).toContain('visible="0"')
+    expect(l5x.written.get('out/Overview.xml')).toContain('visible="0"')
+  })
+
+  it('refuses a bulk change that matches nothing and names the types it saw', async () => {
+    const { l5x, view } = await opened()
+    const result = await l5x.call('ftview_bulk_set', {
+      view_id: view, match_json: JSON.stringify({ type: 'keypadButton' }), attributes_json: JSON.stringify({ visible: '0' }),
+    })
+    expect(result.error?.code).toBe('NO_MATCH')
+    expect(result.error?.fix).toContain('Object')
+  })
 })
