@@ -9,7 +9,7 @@
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 import { encodeEntities } from './display-tree.ts'
 import type { DisplayObject } from './model.ts'
 
@@ -153,8 +153,8 @@ export async function rasterize(svgPath: string, pngPath: string, size: { readon
     '--disable-gpu',
     '--hide-scrollbars',
     `--window-size=${size.width},${size.height}`,
-    `--screenshot=${pngPath}`,
-    `file:///${svgPath.replace(/\\/gu, '/').replace(/^\//u, '')}`,
+    `--screenshot=${resolve(pngPath)}`,
+    `file:///${resolve(svgPath).replace(/\\/gu, '/').replace(/^\//u, '')}`,
   ]
   const code = await new Promise<number | null>(resolve => {
     const child = spawn(browser, args, { stdio: 'ignore' })

@@ -1,3 +1,9 @@
+## [0.25.1] - 2026-10-29
+
+### Fixed
+
+- tview_render resolves the SVG path before handing it to the browser, so a relative `output` folder now produces the PNG as well.
+
 ## [0.25.0] - 2026-10-29
 
 ### Added

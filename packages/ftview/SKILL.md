@@ -26,7 +26,8 @@ Backups go into one shared tree:
 ```
 
 FactoryTalk View is the `ftview` product: copy the whole export folder plus `backup-manifest.json`, one
-stamp per backup. `ftview_apply` already writes a new folder, so this is a backup on request. Never write to `<workspace>/_backups`.
+stamp per backup, when a backup is requested. `ftview_apply` already writes a new folder, and nothing
+is ever written to `<workspace>/_backups`.
 
 ## Start
 
@@ -62,8 +63,7 @@ unavailable, say editing is not enabled here rather than trying another tool.
   over a neighbour. `ftview_apply` refuses a document the vendor schema rejects.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
-- `ftview_render` draws one display to SVG, and to PNG when Chrome or Edge is installed: look at the
-  screen before anyone imports it. Geometry only; animations and widget internals are placeholders.
+- `ftview_render` draws a display to SVG and, when Chrome or Edge exists, PNG: look before importing.
 - `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
   put **every** display the task changes in one package so the human imports once, not once per screen.
 
@@ -101,11 +101,8 @@ Rules the guide encodes:
 
 - A button's face is `<states><state><caption>`; colours and captions live there, not in a bare
   `caption` attribute.
-- Values come from `<connections><connection name="Value" expression="Tag"/>`; a numeric display also
-  accepts `expression`.
-- `shape="circle"` or `"ellipse"` draws a round lamp; `gotoButton` needs `display` for navigation.
-- `image` takes `imageName` as the file stem with **no extension** (`Equilateral triangle`, not
-  `Equilateral triangle.bmp`).
+- Values come from `<connections><connection name="Value" expression="Tag"/>`; a `gotoButton` needs
+  `display`, and an `image` takes the file stem with no extension (`Equilateral triangle`, not `.bmp`).
 
 ## Preview and fidelity
 
@@ -148,10 +145,9 @@ The `ftview-studio` entry plans a manual import; it may be disabled.
 
 ## Reporting
 
-- Every result carries `summary`, `data`, `next` and `coverage`. Read `coverage` before claiming
-  completeness.
-- State what the export cannot prove: XSD validity, PLC binding, runtime behavior, visual rendering,
-  and anything absent from the supplied export.
+- Every result carries `summary`, `data`, `next` and `coverage`; read `coverage` before claiming completeness.
+- State what the export cannot prove: XSD validity, PLC binding, runtime behavior, and anything absent
+  from the supplied export.
 - Quote the display file and object name.
 - Do not call a tag unused because displays never reference it; other consumers are invisible here.
 
