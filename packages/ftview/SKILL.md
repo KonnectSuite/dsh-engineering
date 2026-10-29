@@ -75,6 +75,7 @@ Start from the installed application:
    open; the application is not modified. Add tags with `ftview_tag_snapshot`, and pass `export_root`
    to `ftview_studio_export_prepare` for an alarm snapshot.
 3. `ftview_open` that folder, then author against it:
+   - `ftview_draft_display_scaffold` for a new screen: chrome plus `slots` rectangles to place into;
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
      `gotoButton`, …) with `states_json` faces, `animations_json` and connections;
@@ -111,8 +112,8 @@ Rules the guide encodes:
 memory; the preview's **Live** button reads those tags over EtherNet/IP, read-only. The preview loads
 `Global Objects` and `Images`, so references and bitmaps render.
 
-The preview is static: alarm banners are placeholders, visibility evaluates, colour/fill do not, and
-gradients/blink are approximate. Say so when citing a capture.
+The preview is static: alarm banners, colour/fill and gradients are approximate. Say so when citing a
+capture.
 
 ## Tags and alarms
 

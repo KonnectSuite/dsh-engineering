@@ -19,6 +19,7 @@ import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, Object
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
 import { ELEMENT_TYPES } from '../catalog.ts'
+import { scaffoldLayout } from './scaffold.ts'
 
 /** The view handle parameter, described once. */
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
@@ -236,6 +237,74 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_display_scaffold',
+      description: 'Stage the shared chrome of a screen in one call: backdrop, header bar, title, subtitle, content surface, footer bar and footer text. Returns the free rectangles (header, body, footer) so later objects are placed into known boxes instead of invented coordinates. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        display: string('Display name as listed by ftview_list, or one this draft creates.'),
+        width: integer('Display width in pixels. Omit to read displaySettings from the display file.', { minimum: 200 }),
+        height: integer('Display height in pixels. Omit to read displaySettings from the display file.', { minimum: 150 }),
+        title: string('Header title text, for example "LAMINATOR · OVERVIEW".'),
+        subtitle: string('Optional second header line.'),
+        footer: string('Optional footer text; defaults to "AryaCode · FactoryTalk View ME".'),
+      }, ['display', 'title']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const name = requiredString(args, 'display')
+        const display = displayOf(view, name, draftOf(drafts, exec))
+        let width = optionalInteger(args, 'width')
+        let height = optionalInteger(args, 'height')
+        if (width === undefined || height === undefined) {
+          const file = `${view.app.root}/${display.file}`
+          const bytes = await fs.readBytes(file, exec?.signal, 4 * 1024 * 1024)
+          const text = new TextDecoder().decode(bytes)
+          const settings = /<displaySettings\b[^>]*>/u.exec(text)?.[0] ?? ''
+          const found = (attribute: string): number | undefined => {
+            const raw = new RegExp(`${attribute}="(\\d+)"`, 'u').exec(settings)?.[1]
+            return raw === undefined ? undefined : Number(raw)
+          }
+          width = width ?? found('width')
+          height = height ?? found('height')
+        }
+        if (width === undefined || height === undefined) {
+          throw new EngineeringError('INVALID_ARGUMENT', `Cannot read the size of display ${JSON.stringify(name)}.`, 'Pass width and height, or check that the display file still carries displaySettings.')
+        }
+        const layout = scaffoldLayout({
+          width,
+          height,
+          title: requiredString(args, 'title'),
+          ...(optionalString(args, 'subtitle') === undefined ? {} : { subtitle: optionalString(args, 'subtitle') as string }),
+          ...(optionalString(args, 'footer') === undefined ? {} : { footer: optionalString(args, 'footer') as string }),
+        })
+        let draft: EditDraft | undefined
+        for (const scaffoldObject of layout.objects) {
+          draft = stage(exec, view.id, {
+            kind: 'object_add',
+            file: display.file,
+            type: scaffoldObject.type,
+            name: scaffoldObject.name,
+            attributes: scaffoldObject.attributes,
+          }).draft
+        }
+        if (draft === undefined) throw new EngineeringError('INTERNAL', 'The scaffold produced no objects.', 'Report this as a defect.')
+        return success(
+          `Draft ${draft.id}: scaffolded ${layout.objects.length} objects on ${name}; content slot is ${layout.slots.body.width}x${layout.slots.body.height} at (${layout.slots.body.left},${layout.slots.body.top}).`,
+          {
+            draft_id: draft.id,
+            operation_count: draft.operations.length,
+            placed: layout.objects.map(item => ({ type: item.type, name: item.name })),
+            slots: layout.slots,
+            theme: layout.theme,
+            note: 'Place content objects inside slots.body; header, title, footer and footerText are already drawn. Keep every object inside its slot and clear of the others.',
+          },
+          [
+            { tool: 'ftview_draft_object_add', why: 'Place the content objects inside slots.body.', args: { display: name } },
+            ...nextValidate(draft.id),
+          ],
+          EDIT_COVERAGE,
+        )
+      },
+    }),    tool({
       name: 'ftview_draft_object_add',
       description: 'Stage one new object inside a display: geometry, attributes and tag connections. Validated against the vendor schema on ftview_validate. Nothing is written until ftview_apply.',
       parameters: object({
