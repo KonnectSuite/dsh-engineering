@@ -144,3 +144,44 @@ describe('ladder diagram layout', () => {
     expect(raster.svg).toContain('XIC(Bypass)')
   })
 })
+describe('l5x_routine_diagram', () => {
+  /** A harness whose project is the open fixture. */
+  async function opened() {
+    const l5x = harness()
+    const result = await l5x.call('open_project', { path: 'sample.l5x' })
+    expect(result.error).toBeUndefined()
+    return l5x
+  }
+
+  it('draws the rungs of an existing routine and names its instructions', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'MainRoutine' })
+    expect(result.error).toBeUndefined()
+    expect(result.data?.program).toBe('MainProgram')
+    expect(result.data?.routine).toBe('MainRoutine')
+    expect(Number(result.data?.rungs)).toBeGreaterThan(0)
+    const list = result.data?.rung_list as { number: number; text: string }[]
+    expect(list.length).toBe(Number(result.data?.rungs))
+    expect(typeof list[0]?.text).toBe('string')
+  })
+
+  it('refuses a routine that does not exist and offers the program routines', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'NoSuchRoutine' })
+    expect(result.error?.code).toBe('NOT_FOUND')
+    expect(result.error?.candidates).toEqual(expect.arrayContaining(['MainProgram/MainRoutine (RLL)']))
+  })
+
+  it('refuses a structured-text routine because it has no ladder to draw', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'FaultHandler' })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+    expect(result.error?.message).toContain('ST')
+  })
+
+  it('requires both program and routine', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram' })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})

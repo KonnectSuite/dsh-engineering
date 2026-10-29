@@ -102,7 +102,7 @@ Editing uses the `draft_*` family. It may be disabled in this profile; if a draf
 Write ladder through the composer, not by inventing NeutralText.
 
 ### Show proposed rungs as ladder
-`l5x_rung_preview` takes one rung per line and one comment per line: it validates each rung like `draft_rung`, writes a viewer document and draws a PNG when Chrome or Edge is installed. Present the PNG. Nothing is imported.
+`l5x_rung_preview` takes one rung per line and one comment per line: it validates each rung like `draft_rung`, writes a viewer document and draws a PNG via Chrome or Edge. Nothing is imported. l5x_routine_diagram draws a routine that already exists; pass program and outine.
 
 - `list_instructions` gives the mnemonic, category and operand slots with their kinds; read it before composing.
 - `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves and type-checks every operand, refusing anything unknown or mistyped before staging. compose_batch does the same for 200 rungs in one call, refusing the batch if a rung fails.
@@ -111,11 +111,11 @@ Write ladder through the composer, not by inventing NeutralText.
 
 ## Documentation
 
-`document_project` writes a handover bundle into a NEW folder and never touches the export:
+`document_project` writes a handover bundle into a NEW folder; the export is untouched:
 
 - `PROJECT.md` — controller, revision, tasks, programs, counts;
 - `io.md` / `io.csv` — modules and module-data tags;
 - `tags.csv` and `tags-studio.csv` — every declared tag, and the `Tag Name,Description` shape Studio imports;
 - `rungs/<program>.md` — each rung's number, comment, NeutralText, instructions and resolved tags.
 
-The bundle is structure and citations, not prose: write the narrative yourself and use `draft_rung_comment` / `draft_tag_description` when it belongs in the project. No C&E, FAT/SAT or runtime proof.
+Structure and citations, not prose: write the narrative and use `draft_rung_comment` / `draft_tag_description` when it belongs in the project.

@@ -20,6 +20,7 @@ describe('registration', () => {
       'list_instructions',
       'document_project',
       'l5x_rung_preview',
+      'l5x_routine_diagram',
     ])
   })
 

@@ -16,6 +16,7 @@ import { success, type Coverage } from '../core/result.ts'
 import { choice, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
+import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
 import { dirname, isAbsolute } from 'node:path'
 import type { ProjectSession } from '../session.ts'
@@ -202,6 +203,83 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
           png === undefined
             ? [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }]
             : [{ tool: 'present', why: 'Attach the PNG so the answer shows the ladder diagram itself.', args: { files: [{ path: png, description: 'Ladder diagram of the proposed rungs' }] } }],
+          PREVIEW_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'l5x_routine_diagram',
+      description: 'Draw a routine that already exists in the project as a ladder diagram, so an answer about live logic can show the rungs instead of NeutralText. Returns the SVG and, when Chrome or Edge is installed, a PNG. Reads the project; writes no project file and imports nothing.',
+      parameters: object({
+        project_id: string('Optional project handle. Omit when exactly one project is open.'),
+        program: string('Program that owns the routine. Example: "MainProgram".'),
+        routine: string('Routine to draw. Example: "MainRoutine".'),
+        output: string('Optional folder for the diagram, relative to the workspace. Defaults to ".l5x-preview".'),
+      }, ['program', 'routine']),
+      async run(args, exec) {
+        const program = optionalString(args, 'program')
+        const routineName = optionalString(args, 'routine')
+        if (program === undefined || routineName === undefined) {
+          throw new L5xError('INVALID_ARGUMENT', 'Pass program and routine.', 'Name the program and the routine it owns, for example "MainProgram" and "MainRoutine".')
+        }
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const routine = getRoutine(project.document, program, routineName)
+        if (routine === undefined) {
+          throw new L5xError(
+            'NOT_FOUND',
+            `No routine is named "${routineName}" in ${program}.`,
+            'List the routines of that program with list_components, then pass one of those names.',
+            listRoutines(project.document, program).map(info => `${info.program}/${info.name} (${info.type})`),
+          )
+        }
+        if (routine.body.type !== 'RLL') {
+          throw new L5xError('INVALID_ARGUMENT', `Routine ${program}/${routineName} is ${routine.body.type}, not ladder, so there are no rungs to draw.`, 'Read it with get_component; only RLL routines have a ladder diagram.')
+        }
+        const rungs: PreviewRung[] = routine.body.rungs.map(rung => ({
+          number: rung.number,
+          text: rung.text,
+          ...(rung.comment === undefined || rung.comment === '' ? {} : { comment: rung.comment }),
+          instructions: instructionsOf(rung.text),
+        }))
+        if (rungs.length === 0) {
+          throw new L5xError('NOT_FOUND', `Routine ${program}/${routineName} has no rungs.`, 'Pick a routine that carries logic.')
+        }
+        const slug = `${program}-${routineName}`.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Routine'
+        const folder = optionalString(args, 'output') ?? '.l5x-preview'
+        const probe = await session.resolvePath(`${folder}/${slug}.svg`, exec)
+        const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
+        let image: { svg: string; png?: string } = { svg: '' }
+        let rasterError: string | undefined
+        if (!isAbsolute(probe)) {
+          rasterError = `the workspace path ${probe} is not absolute, so no image was written`
+        } else {
+          try {
+            image = await writeLadderRaster(dirname(probe), slug, raster)
+          } catch (error) {
+            rasterError = error instanceof Error ? error.message : String(error)
+          }
+        }
+        const png = rasterError === undefined ? image.png : undefined
+        const drawing = png === undefined
+          ? rasterError === undefined
+            ? `No PNG diagram: only the SVG was kept because no rasteriser ran.`
+            : `No PNG diagram: ${rasterError}.`
+          : `Drew the rungs as ${png}.`
+        return success(
+          `Drew ${rungs.length} rung(s) of ${program}/${routineName} as ${png ?? (image.svg === '' ? 'the rung list' : image.svg)}. ${drawing}`,
+          {
+            program,
+            routine: routineName,
+            rungs: rungs.length,
+            instructions: [...new Set(rungs.flatMap(rung => rung.instructions))],
+            rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
+            diagram_svg: image.svg,
+            ...(png === undefined ? {} : { diagram_png: png }),
+            note: 'The diagram is a schematic drawn from the parsed rungs, not a Studio screenshot.',
+          },
+          png === undefined
+            ? []
+            : [{ tool: 'present', why: 'Attach the PNG so the answer shows the ladder diagram itself.', args: { files: [{ path: png, description: `Ladder diagram of ${program}/${routineName}` }] } }],
           PREVIEW_COVERAGE,
         )
       },

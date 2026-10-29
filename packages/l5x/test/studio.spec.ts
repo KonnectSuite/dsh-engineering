@@ -15,6 +15,7 @@ describe('studio registration', () => {
     const names = definitions.map(definition => definition.name)
     expect(names.slice(13)).toEqual([
       'l5x_rung_preview',
+      'l5x_routine_diagram',
       'studio_sdk_status',
       'studio_capabilities',
       'export_acd_to_l5x',

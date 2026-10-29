@@ -1,3 +1,9 @@
+## [0.45.0] - 2026-10-29
+
+### Added
+
+- `l5x_routine_diagram` draws the rungs of a routine that already exists in the open project. Pass `program` and `routine`; it numbers the rungs, lists the instructions it found, and writes a PNG beside the SVG when Chrome or Edge is installed. A missing routine is refused with the program's routines as candidates, and a Structured Text routine is refused because there is no ladder to draw.
+
 ## [0.44.0] - 2026-10-29
 
 ### Fixed
