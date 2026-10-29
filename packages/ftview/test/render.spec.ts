@@ -218,3 +218,39 @@ describe('ftview_render', { timeout: 30_000 }, () => {
   })
 
 })
+
+
+describe('layout problems', () => {
+  /** A display with one text object placed by the test. */
+  function textDisplay(left: number, top: number, width: number, height: number, caption: string, fontSize = 12): string {
+    return [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns="http://www.rockwellautomation.com/FactoryTalk/View/ME/17.00">',
+      '<screen width="640" height="480"/>',
+      '<displaySettings width="640" height="480" backColor="#C6C6C6"/>',
+      '<object type="text" name="Note" left="' + left + '" top="' + top + '" width="' + width + '" height="' + height + '" fontSize="' + fontSize + '" caption="' + caption + '"/>',
+      '</gfx>',
+    ].join('\n')
+  }
+
+  it('reports an object that leaves the canvas', () => {
+    const xml = textDisplay(600, 20, 200, 40, 'Outside')
+    const result = renderDisplaySvg('Outside', parseDisplay('Outside.xml', xml).objects, settingsFromXml(xml))
+    expect(result.problems).toEqual([expect.objectContaining({ object: 'Note', kind: 'outside' })])
+    expect(result.problems[0]?.detail).toContain('640x480')
+  })
+
+  it('reports text that cannot fit its box', () => {
+    const caption = 'a caption far too long for this small box'
+    const xml = textDisplay(20, 20, 120, 16, caption)
+    const result = renderDisplaySvg('Tight', parseDisplay('Tight.xml', xml).objects, settingsFromXml(xml))
+    expect(result.problems.map(problem => problem.kind)).toEqual(['overflows'])
+    expect(result.problems[0]?.detail).toContain(String(caption.length))
+  })
+
+  it('stays quiet when every box fits', () => {
+    const xml = textDisplay(20, 20, 560, 200, 'Short caption')
+    const result = renderDisplaySvg('Room', parseDisplay('Room.xml', xml).objects, settingsFromXml(xml))
+    expect(result.problems).toEqual([])
+  })
+})

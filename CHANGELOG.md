@@ -1,3 +1,18 @@
+## [0.46.0] - 2026-10-29
+
+### Added
+
+- `ftview_render` now reports layout problems alongside the drawing: every object whose box leaves the
+  canvas or whose caption or text cannot fit its box is returned in `problems` with the object name, the
+  kind (`outside` or `overflows`) and a measured detail, so a screen can be corrected before anyone
+  imports it.
+
+### Fixed
+
+- The renderer read the object type from the element name only, so an export that wraps the type in an
+  `<object type="...">` element drew every text, button, indicator and trend as an unlabelled rectangle.
+  It now prefers the declared `type` attribute.
+
 ## [0.45.0] - 2026-10-29
 
 ### Added

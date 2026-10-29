@@ -942,9 +942,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             ? 'No Chrome or Edge was found, so only the SVG was written; open it in a browser to see the screen.'
             : 'The browser did not produce a PNG; the SVG is valid, so open it directly.'
           : `PNG written by ${browser}.`
+        const trouble = result.problems.length === 0
+          ? 'No object leaves the canvas or overflows its box.'
+          : `${result.problems.length} layout problem(s): ${result.problems.slice(0, 3).map(problem => `${problem.object} ${problem.kind === 'outside' ? 'leaves the canvas' : 'overflows its box'}`).join('; ')}${result.problems.length > 3 ? ' and more' : ''}.`
         return success(
-          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) from the ${fromDraft ? 'staged draft' : 'export'} to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note}`,
-          { source: fromDraft ? 'draft' : 'export', svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, browser: browser ?? null },
+          `Rendered ${name} (${result.width}x${result.height}) with ${result.drawn} object(s) from the ${fromDraft ? 'staged draft' : 'export'} to ${written.svg}${written.png === undefined ? '' : ` and ${written.png}`}. ${note} ${trouble}`,
+          { source: fromDraft ? 'draft' : 'export', svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, skipped: result.skipped, problems: result.problems, browser: browser ?? null },
           [
             { tool: 'ftview_validate', args: {}, why: 'Design findings explain overlaps and contrast the render shows.' },
             { tool: 'ftview_apply', args: {}, why: 'Write the edited export once the screen looks right.' },

@@ -28,6 +28,55 @@ export interface RenderResult {
   readonly height: number
   readonly drawn: number
   readonly skipped: readonly string[]
+  readonly problems: readonly RenderProblem[]
+}
+
+/** A geometry problem the drawing exposes before anyone imports it. */
+export interface RenderProblem {
+  readonly object: string
+  readonly kind: 'outside' | 'overflows'
+  readonly detail: string
+}
+
+/** The declared object type: newer exports wrap it in \`type\` on an \`object\` element. */
+function kindOf(object: DisplayObject): string {
+  return String(object.attributes.type ?? object.type).toLowerCase()
+}
+
+/** Rough glyph width of the renderer's fonts, as a fraction of the font size. */
+const CHARACTER_WIDTH = 0.55
+
+/** Lines the text needs at this width, ignoring wrapping subtleties. */
+function linesNeeded(text: string, width: number, size: number): number {
+  const capacity = Math.max(1, Math.floor(width / Math.max(1, size * CHARACTER_WIDTH)))
+  return text.split(/\r?\n/u).reduce((total, line) => total + Math.max(1, Math.ceil(line.length / capacity)), 0)
+}
+
+/** Geometry and text that the canvas or the object's own box cannot hold. */
+function problemsOf(object: DisplayObject, settings: RenderSettings): RenderProblem[] {
+  const name = object.name ?? object.type
+  const left = geometry(object, 'left', 0)
+  const top = geometry(object, 'top', 0)
+  const width = geometry(object, 'width', 0)
+  const height = geometry(object, 'height', 0)
+  const type = kindOf(object)
+  if (type === 'line') return []
+  const problems: RenderProblem[] = []
+  if (left < 0 || top < 0 || left + width > settings.width + 1 || top + height > settings.height + 1) {
+    problems.push({ object: name, kind: 'outside', detail: `box ${left},${top} ${width}x${height} leaves the ${settings.width}x${settings.height} canvas` })
+  }
+  const text = faceText(object)
+  if (type === 'text') {
+    const size = geometry(object, 'fontSize', 12)
+    const needed = linesNeeded(text, width, size) * (size + 2)
+    if (needed > height + 4) problems.push({ object: name, kind: 'overflows', detail: `${text.length} characters need about ${needed}px of height in a ${height}px box` })
+  }
+  if (type.includes('button')) {
+    const size = geometry(object, 'fontSize', 12)
+    const needed = Math.max(...text.split(/\r?\n/u).map(line => line.length)) * size * CHARACTER_WIDTH
+    if (needed > width - 8) problems.push({ object: name, kind: 'overflows', detail: `caption "${text}" needs about ${Math.round(needed)}px in a ${width}px button` })
+  }
+  return problems
 }
 
 /** Settings defaults the ME templates use when a file omits them. */
@@ -137,7 +186,7 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
   const top = geometry(object, 'top', 0)
   const width = geometry(object, 'width', 0)
   const height = geometry(object, 'height', 0)
-  const type = object.type.toLowerCase()
+  const type = kindOf(object)
   const fill = colour(object.attributes.backColor, 'none')
   const stroke = colour(object.attributes.borderColor, 'none')
   const border = `${geometry(object, 'borderWidth', 0) > 0 && stroke !== 'none' ? ` stroke="${stroke}"` : ''}`
@@ -191,14 +240,16 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
 /** Render a display to an SVG document. */
 export function renderDisplaySvg(name: string, objects: readonly DisplayObject[], settings: RenderSettings, images: ReadonlyMap<string, RasterImage> = new Map()): RenderResult {
   const skipped: string[] = []
+  const problems: RenderProblem[] = []
   const shapes: string[] = []
   for (const object of objects) {
-    if (STRUCTURAL.has(object.type.toLowerCase())) continue
+    if (STRUCTURAL.has(object.type.toLowerCase()) || STRUCTURAL.has(kindOf(object))) continue
     if (geometry(object, 'width', 0) === 0 && geometry(object, 'height', 0) === 0) {
       skipped.push(object.name ?? object.type)
       continue
     }
     shapes.push(draw(object, images))
+    problems.push(...problemsOf(object, settings))
   }
   const svg = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
@@ -208,7 +259,7 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
     `</svg>`,
     '',
   ].join('\n')
-  return { svg, width: settings.width, height: settings.height, drawn: shapes.length, skipped }
+  return { svg, width: settings.width, height: settings.height, drawn: shapes.length, skipped, problems }
 }
 
 /** Whether a headless browser exists to rasterise the SVG. */

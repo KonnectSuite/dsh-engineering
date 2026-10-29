@@ -62,7 +62,7 @@ unavailable, say editing is not enabled here rather than trying another tool.
   `Gfx-ME*.xsd` and lists findings, including `DRAFT_OVERLAP` for overlapping placements. `ftview_apply` refuses a document the vendor schema rejects.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
-- `ftview_render` draws a display to SVG and, when Chrome or Edge exists, PNG: look before importing.
+- `ftview_render` draws a display to SVG and, when Chrome or Edge exists, PNG: look before importing. `problems` flags clipped objects.
   Pass `source: "draft"` to see staged edits before `ftview_apply`.
 - `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
   put **every** display the task changes in one package so the human imports once, not once per screen.
@@ -153,5 +153,5 @@ The `ftview-studio` entry plans a manual import; it may be disabled.
 
 ## Out of scope
 
-FactoryTalk View SE and FactoryTalk Optix are different products and are not analyzed here. MER/MED
-databases are not decoded and no tool contacts a PanelView or changes runtime data.
+FactoryTalk View SE and FactoryTalk Optix are not analyzed here; MER/MED databases are not decoded and no
+tool contacts a PanelView or changes runtime data.
