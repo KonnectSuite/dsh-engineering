@@ -2,6 +2,10 @@
 
 ### Added
 
+- **`ftview_compare` diffs tag rows, not just their names.** `tags.changed` lists each field that
+  moved — device address, description, data source, native type, read-only — with both values, so a
+  re-addressed tag between two application versions is visible instead of hiding behind a changed
+  CSV hash.
 - **`VIEW-NAV-02` catches a display an operator cannot leave.** `ftview_design_check` reports a
   display that something navigates to while it holds no `gotoButton` or `closeButton`; a popup like
   that strands the operator at the machine, and reachability alone never showed it.

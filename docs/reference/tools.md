@@ -727,7 +727,7 @@ Run structural checks over one opened export: tag CSV integrity, duplicate names
 
 #### `ftview_compare`
 
-Compare two opened exports by display name, tag name, file content hash, and the objects inside each display that changed.
+Compare two opened exports: displays added or removed, tags added or removed, tag fields that changed (type, description, device address, data source, native type, read-only), changed file hashes, and the objects inside each display that changed.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

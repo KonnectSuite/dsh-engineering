@@ -8,6 +8,7 @@ import { EngineeringError, choice, integer, object, optionalInteger, optionalStr
 import type { DisplayFile, TagRow } from './model.ts'
 import { alarmFindings, findingsOf } from './checks.ts'
 import { diffObjects } from './objects-diff.ts'
+import { tagDiff } from './tag-diff.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
 import { designFindings } from './design.ts'
@@ -328,7 +329,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_compare',
-      description: 'Compare two opened exports by display name, tag name, file content hash, and the objects inside each display that changed.',
+      description: 'Compare two opened exports: displays added or removed, tags added or removed, tag fields that changed (type, description, device address, data source, native type, read-only), changed file hashes, and the objects inside each display that changed.',
       parameters: object({
         before_id: string('View id of the earlier export.'),
         after_id: string('View id of the later export.'),
@@ -337,9 +338,9 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
       async run(args, exec) {
         const before = session.require(requiredString(args, 'before_id'), exec).app
         const after = session.require(requiredString(args, 'after_id'), exec).app
+        const tags = tagDiff(before.tags, after.tags)
         const names = (app: { displays: readonly DisplayFile[]; tags: readonly TagRow[] }) => ({
           displays: new Map(app.displays.map(display => [display.name, display.file])),
-          tags: new Map(app.tags.map(tag => [tag.name, tag.type])),
         })
         const oldNames = names(before)
         const newNames = names(after)
@@ -347,6 +348,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           added: [...right.keys()].filter(name => !left.has(name)),
           removed: [...left.keys()].filter(name => !right.has(name)),
         })
+        const displayChanges = diff(oldNames.displays, newNames.displays)
         const hashOf = new Map(before.files.map(file => [file.file, file.sha256]))
         const changedFiles = after.files.filter(file => hashOf.get(file.file) !== file.sha256).map(file => file.file)
         const limit = optionalInteger(args, 'limit') ?? 50
@@ -360,10 +362,10 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           { added: 0, removed: 0, changed: 0 },
         )
         return success(
-          `${diff(oldNames.displays, newNames.displays).added.length + diff(oldNames.displays, newNames.displays).removed.length} display change(s), ${diff(oldNames.tags, newNames.tags).added.length + diff(oldNames.tags, newNames.tags).removed.length} tag change(s), ${changedFiles.length} changed file(s), ${objects.changedDisplays} display(s) with object changes (${objectCounts.added} added, ${objectCounts.removed} removed, ${objectCounts.changed} changed).`,
+          `${displayChanges.added.length + displayChanges.removed.length} display change(s), ${tags.added.length + tags.removed.length} tag added or removed, ${tags.changed.length} tag field(s) changed, ${changedFiles.length} changed file(s), ${objects.changedDisplays} display(s) with object changes (${objectCounts.added} added, ${objectCounts.removed} removed, ${objectCounts.changed} changed).`,
           {
-            displays: diff(oldNames.displays, newNames.displays),
-            tags: diff(oldNames.tags, newNames.tags),
+            displays: displayChanges,
+            tags,
             files_changed: changedFiles.slice(0, limit),
             objects: objects.displays,
             objects_truncated: objects.truncated,
