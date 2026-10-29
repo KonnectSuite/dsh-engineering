@@ -83,6 +83,16 @@ describe('project store extras', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
+  it('falls back to the snapshot and says why when the alarm stream is unknown', () => {
+    const { root, app, folder, destination } = store({ alarms: true, tags: false, olderThanDatabase: false })
+    mkdirSync(join(folder, 'M_Alarms'), { recursive: true })
+    writeFileSync(join(folder, 'M_Alarms/MachineAlarms.mal'), 'not a compound file')
+    const result = copyProjectExtras(app, destination, root)
+    expect(result.copied).toContain('Alarms/Alarms.xml')
+    expect(result.warnings.join(' ')).toContain('could not be decoded')
+    rmSync(root, { recursive: true, force: true })
+  })
+
   it('copies the bitmaps the displays reference', () => {
     const { root, app, folder, destination } = store({ alarms: true, tags: true, olderThanDatabase: false })
     mkdirSync(join(folder, 'Images'), { recursive: true })

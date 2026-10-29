@@ -436,11 +436,18 @@ function rate(perMille: number): string {
  */
 export function decodeAlarmStreams(application: string, streams: ReadonlyMap<string, Buffer>): AlarmDatabase {
   const alarms = streams.get('Alarms')
-  const lsBytes = streams.get('ls00000409')
+  // The localised table is named for its locale: `ls00000409` (en-US) on most
+  // applications, but `ls00004009` and others appear on older or non-US ones.
+  // Any of them carries the same table, so take the exact US stream when it is
+  // there and otherwise the first localised stream the file holds.
+  const lsName = streams.has('ls00000409')
+    ? 'ls00000409'
+    : [...streams.keys()].find(name => /^ls[0-9a-f]{8}$/iu.test(name))
+  const lsBytes = lsName === undefined ? undefined : streams.get(lsName)
   if (alarms === undefined || lsBytes === undefined) {
     throw new EngineeringError(
       'ALARM_DATABASE_UNREADABLE',
-      `The alarm database of ${application} lacks the ${alarms === undefined ? 'Alarms' : 'ls00000409'} stream.`,
+      `The alarm database of ${application} lacks the ${alarms === undefined ? 'Alarms' : 'ls<locale>'} stream.`,
       'Start FactoryTalk View Studio once with this application so it rewrites MachineAlarms.mal, or confirm the application name.',
     )
   }

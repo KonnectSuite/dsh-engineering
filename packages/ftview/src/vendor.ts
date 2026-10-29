@@ -228,10 +228,12 @@ export function copyProjectExtras(application: string, destination: string, docu
   const alarms = join(source, 'Alarms.xml')
   const alarmTarget = join(destination, 'Alarms')
   let decodedAlarms = false
+  let alarmDecodeFailure = ''
   if (existsSync(join(source, 'M_Alarms', 'MachineAlarms.mal'))) {
     // The alarm database decodes without Studio, so the export carries the
     // application's current alarms instead of whatever snapshot was last
-    // written by the wizard. Older database versions throw and fall back.
+    // written by the wizard. Stream layouts this decoder does not know throw
+    // and fall back to the snapshot, with the reason kept for the caller.
     try {
       const database = readAlarmDatabase(application, source)
       mkdirSync(alarmTarget, { recursive: true })
@@ -239,8 +241,9 @@ export function copyProjectExtras(application: string, destination: string, docu
       copied.push('Alarms/Alarms.xml')
       status.alarms = 'fresh'
       decodedAlarms = true
-    } catch {
+    } catch (error) {
       decodedAlarms = false
+      alarmDecodeFailure = error instanceof Error ? error.message : String(error)
     }
   }
   if (!decodedAlarms && existsSync(alarms)) {
@@ -250,14 +253,18 @@ export function copyProjectExtras(application: string, destination: string, docu
     const warning = freshness(alarms, 'Alarms/Alarms.xml', existsSync(database) ? database : undefined)
     status.alarms = warning === undefined ? 'fresh' : 'stale'
     if (warning !== undefined) warnings.push(warning)
+    if (alarmDecodeFailure !== '') {
+      warnings.push(`Alarms/Alarms.xml is the last wizard snapshot because the alarm database could not be decoded: ${alarmDecodeFailure}`)
+    }
   } else if (!decodedAlarms) {
-    warnings.push('No Alarms.xml in the application store and no decodable alarm database. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.')
+    warnings.push(`No Alarms.xml in the application store and no decodable alarm database${alarmDecodeFailure === '' ? '' : ` (${alarmDecodeFailure})`}. Alarms are not part of a normal ME application export; if you need them, export Alarm Setup from Studio into the store first.`)
   }
   // Studio names the tag file `<application>-Tags.CSV`; match the suffix
   // case-insensitively because older applications used `.csv`.
   const entries = readdirSync(source, { withFileTypes: true })
   const tags = entries.find(entry => entry.isFile() && /-tags\.csv$/iu.test(entry.name))
   const tagsTarget = join(destination, 'Tags')
+  let tagDecodeFailure = ''
   restamp: {
     if (!existsSync(join(source, 'TAG', `${application}.MDF`))) break restamp
     // The tag database reads without Studio too, so a missing or older snapshot
@@ -273,9 +280,10 @@ export function copyProjectExtras(application: string, destination: string, docu
       if (index === -1) copied.push(`Tags/${application}.csv`)
       status.tags = 'fresh'
       break restamp
-    } catch {
-      // No local SQL tools or an unreadable database: fall through to the
-      // snapshot copy below, which keeps the old warning behaviour.
+    } catch (error) {
+      // No local SQL tools or a locked database: fall through to the snapshot
+      // copy below, which keeps the old warning behaviour.
+      tagDecodeFailure = error instanceof Error ? error.message : String(error)
     }
   }
   if (tags !== undefined) {
@@ -287,9 +295,12 @@ export function copyProjectExtras(application: string, destination: string, docu
       const warning = freshness(join(source, tags.name), `Tags/${application}.csv`, existsSync(database) ? database : undefined)
       status.tags = warning === undefined ? 'fresh' : 'stale'
       if (warning !== undefined) warnings.push(warning)
+      if (tagDecodeFailure !== '') {
+        warnings.push(`Tags/${application}.csv is the last wizard snapshot because the tag database could not be read: ${tagDecodeFailure}`)
+      }
     }
   } else if (status.tags !== 'fresh') {
-    warnings.push('No tag CSV in the application store and no readable tag database. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.')
+    warnings.push(`No tag CSV in the application store and no readable tag database${tagDecodeFailure === '' ? '' : ` (${tagDecodeFailure})`}. Tags are not part of a normal ME application export; if you need them, export the tag database from Studio into the store first.`)
   }
   // Display objects can reference bitmaps by name, and the export engine does not
   // copy them: without this folder every image object draws as an empty box.
