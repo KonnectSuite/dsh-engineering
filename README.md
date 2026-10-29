@@ -9,6 +9,21 @@ switch: disable it and that plugin unloads, so its tool schemas leave the reques
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
 
+## Harness compatibility
+
+Verified on AryaCode **0.2.2-alpha.2** (build `0.2.2-alpha.2.AryaCode.0.1.0`) on
+2026-10-28: 0.22.2 installed from npm into a clean packaged profile, loaded with
+no import or activation error, and the market reported the bundle `live` with
+`diagnostics.findings` empty. The 0.20.x line is what the 0.2.1-rc.3 builds
+shipped and is still published, so either host version can install a matching
+release.
+
+The package declares no `dsh.engines.dsh` range today, so the market cannot state a requirement for
+it: with a readable manifest the card says "Host requirement undeclared", and when the manifest
+lookup fails it says "Host requirement unknown". Declaring
+`^0.2.2-alpha.2 || ^0.2.1-rc.3` is the next metadata change; it only takes effect in a release,
+because the market reads the published manifest.
+
 ---
 
 ## Why a bundle

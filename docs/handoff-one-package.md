@@ -346,3 +346,17 @@ State of the wider product, in case the next session is picked up cold:
    `@aryacode/dsh-engineering/l5x` â€” a subpath, which `exactPackageSpecifier` rejects, so the Shell
    never scans that package for a client bundle. Either fold the card into `lib/client.js` as a third
    face (append it to `FACES` in `scripts/build-client.mjs`) or accept that it is gone.
+
+## 10. Status 2026-10-28: 0.22.2 on harness 0.2.2-alpha.2
+
+- Published line: npm `@aryacode/dsh-engineering@0.22.2` (2026-10-29T00:31:23Z), after 0.22.1,
+  0.22.0 and 0.21.0 the same evening; the catalog records 0.22.2 as the Arya release.
+- Verified on AryaCode `0.2.2-alpha.2` (build `0.2.2-alpha.2.AryaCode.0.1.0`): installed from npm
+  into a clean packaged profile, activation `live`, `bundle: true`, no import or activation error,
+  `diagnostics.findings` empty. This is the check the earlier 0.19/0.20 builds never had on 0.2.2.
+- The catalog lists three plugins now: this bundle, `@aryacode/dsh-aryacode-polish` and
+  `@aryacode/dsh-local-llm`. Twelve `@aryacode` entries published in one batch on 2026-10-24 were
+  removed from the catalog until each is tested against 0.2.2 and passes.
+- Open: no `dsh.engines.dsh` declaration, so the market cannot state a requirement for this bundle
+  ("Host requirement undeclared", or "unknown" when the manifest lookup fails); the catalog's other
+  two entries carry the same gap.
