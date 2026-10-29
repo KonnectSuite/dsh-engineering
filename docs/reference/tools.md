@@ -824,6 +824,7 @@ Package displays from an applied export for Studioâ€™s Graphics Import Expo
 | `output_root` | string | no | Optional new folder for the package; defaults to a folder under the system temp directory. |
 | `mode` | string (create \| update) | no | Import mode: create new displays, or update existing ones. |
 | `current_export` | string | no | Optional export of the application as it stands now; each display it already holds is written as an update instead of a create, so one batch cannot fail on a display that exists. |
+| `skip_unchanged` | string (no \| yes) | no | With current_export: leave out displays whose objects already match the application, so the import only touches what changed. |
 
 #### `ftview_capabilities`
 

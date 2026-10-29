@@ -2,7 +2,7 @@
  * The import step should say whether anyone looked at the screens.
  */
 import { describe, expect, it } from 'vitest'
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { harness } from './harness.ts'
@@ -57,4 +57,51 @@ describe('import gate', () => {
     expect(prepared.data?.unrendered).toEqual([])
     expect(prepared.summary).toContain('drawn in this chat')
   }, 30000)
+})
+
+describe('skipping displays the application already matches', () => {
+  const OTHER = DISPLAY.replace('Line', 'Extra')
+
+  it('leaves identical displays out of the package', async () => {
+    const l5x = harness(exportFiles(), { edit: true })
+    await l5x.call('ftview_open', { root: 'export' })
+    const workspace = mkdtempSync(join(tmpdir(), 'ftview-skip-'))
+    mkdirSync(join(workspace, 'applied', 'Displays'), { recursive: true })
+    mkdirSync(join(workspace, 'current', 'Displays'), { recursive: true })
+    writeFileSync(join(workspace, 'applied', 'Displays', 'Main.xml'), DISPLAY, 'utf8')
+    writeFileSync(join(workspace, 'applied', 'Displays', 'Extra.xml'), OTHER, 'utf8')
+    writeFileSync(join(workspace, 'current', 'Displays', 'Main.xml'), DISPLAY, 'utf8')
+    const prepared = await l5x.call('ftview_studio_import_prepare', {
+      export_root: join(workspace, 'applied'),
+      displays: 'Main,Extra',
+      output_root: join(workspace, 'package'),
+      current_export: join(workspace, 'current'),
+      skip_unchanged: 'yes',
+    })
+    expect(prepared.error).toBeUndefined()
+    expect(prepared.data?.displays).toEqual(['Extra'])
+    expect(prepared.data?.skipped).toEqual(['Main'])
+    expect(prepared.summary).toContain('left out Main')
+    const manifest = readFileSync(join(workspace, 'package', 'BatchImport.xml'), 'utf8')
+    expect(manifest).not.toContain('display="Main"')
+    expect(manifest).toContain('display="Extra"')
+  })
+
+  it('refuses when every display is already identical', async () => {
+    const l5x = harness(exportFiles(), { edit: true })
+    await l5x.call('ftview_open', { root: 'export' })
+    const workspace = mkdtempSync(join(tmpdir(), 'ftview-skip-all-'))
+    mkdirSync(join(workspace, 'applied', 'Displays'), { recursive: true })
+    mkdirSync(join(workspace, 'current', 'Displays'), { recursive: true })
+    writeFileSync(join(workspace, 'applied', 'Displays', 'Main.xml'), DISPLAY, 'utf8')
+    writeFileSync(join(workspace, 'current', 'Displays', 'Main.xml'), DISPLAY, 'utf8')
+    const prepared = await l5x.call('ftview_studio_import_prepare', {
+      export_root: join(workspace, 'applied'),
+      displays: 'Main',
+      output_root: join(workspace, 'package'),
+      current_export: join(workspace, 'current'),
+      skip_unchanged: 'yes',
+    })
+    expect(prepared.error?.code).toBe('NO_CHANGES')
+  })
 })

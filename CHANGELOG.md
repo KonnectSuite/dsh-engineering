@@ -2,6 +2,11 @@
 
 ### Added
 
+- **A package can leave out the displays the application already matches.** `ftview_studio_import_prepare`
+  takes `skip_unchanged: "yes"` with `current_export`, drops displays whose objects are already
+  identical, names them in `skipped`, and refuses with `NO_CHANGES` when nothing is left to import.
+  A full package over a mostly-unchanged application no longer asks a human to re-import screens
+  that would not change.
 - **Cross-reference counts alarm usage.** `ftview_cross_reference` reads the export alarm
   configuration and reports, per HMI tag, how many alarm triggers watch it (`rows[].alarms`), the
   trigger count, and `counts.alarmOnly` — the tags an alarm watches that no display shows. A tag

@@ -591,6 +591,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
         mode: choice('Import mode: create new displays, or update existing ones.', ['create', 'update']),
         current_export: string('Optional export of the application as it stands now; each display it already holds is written as an update instead of a create, so one batch cannot fail on a display that exists.'),
+        skip_unchanged: choice('With current_export: leave out displays whose objects already match the application, so the import only touches what changed.', ['no', 'yes']),
       }, ['export_root', 'displays']),
       async run(args) {
         const exportRoot = requiredString(args, 'export_root')
@@ -600,22 +601,29 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           const mode = optionalString(args, 'mode') === 'update' ? 'update' : 'create'
           const currentRoot = optionalString(args, 'current_export')
           const existing = currentRoot === undefined || currentRoot === '' ? undefined : displayNamesIn(resolve(currentRoot))
-          const plan = prepareDisplayImport(exportRoot, names, outputRoot, mode, existing)
-          const unknown = existing === undefined ? [] : names.filter(name => !existing.includes(name))
-          const comparison = currentRoot === undefined || currentRoot === '' ? undefined : comparePackage(outputRoot, resolve(currentRoot), names)
+          const before = existing === undefined ? undefined : comparePackage(exportRoot, resolve(currentRoot as string), names, 'export')
+          const skipped = optionalString(args, 'skip_unchanged') === 'yes' && before !== undefined ? before.unchanged : []
+          const packaged = names.filter(name => !skipped.includes(name))
+          if (packaged.length === 0) {
+            throw new EngineeringError('NO_CHANGES', 'Every packaged display already matches the application, so there is nothing to import.', 'Drop skip_unchanged to re-import them anyway, or edit a display before packaging.')
+          }
+          const plan = prepareDisplayImport(exportRoot, packaged, outputRoot, mode, existing)
+          const unknown = existing === undefined ? [] : packaged.filter(name => !existing.includes(name))
+          const comparison = currentRoot === undefined || currentRoot === '' ? undefined : comparePackage(outputRoot, resolve(currentRoot), packaged)
           const unrendered = names.filter(name => !session.wasRendered(name))
           const note = unrendered.length === 0
             ? 'Every packaged display was drawn in this chat.'
             : `${unrendered.length} of ${names.length} packaged display(s) were never drawn here (${unrendered.join(', ')}); draw them before importing.`
           return success(
-            `Packaged ${plan.displays.length} display(s) for import: ${plan.created} create, ${plan.updated} update${comparison === undefined ? '' : `, ${comparison.unchanged.length} already identical`}; batch file ${plan.manifest}. ${note}`,
-            { ...plan, unrendered, newDisplays: unknown, comparison },
+            `Packaged ${plan.displays.length} display(s) for import: ${plan.created} create, ${plan.updated} update${comparison === undefined ? '' : `, ${comparison.unchanged.length} already identical`}; batch file ${plan.manifest}${skipped.length === 0 ? '' : `; left out ${skipped.join(', ')}`}. ${note}`,
+            { ...plan, unrendered, newDisplays: unknown, comparison, skipped },
             unrendered.length === 0
               ? []
               : [{ tool: 'ftview_render', args: { displays_json: JSON.stringify(unrendered) }, why: 'Look at these screens before asking for an import; the render reports objects outside the canvas or overflowing their box.' }],
             COVERAGE,
           )
         } catch (error) {
+          if (error instanceof EngineeringError) throw error
           throw new EngineeringError('IMPORT_PREPARE_FAILED', error instanceof Error ? error.message : String(error), 'Pass an applied export folder and display names it actually contains; each display file must be a <gfx> document.')
         }
       },

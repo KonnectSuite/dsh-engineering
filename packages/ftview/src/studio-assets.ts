@@ -281,10 +281,11 @@ export interface PackageComparison {
  *
  * @param exportRoot - Package folder containing the display XML.
  * @param currentRoot - Export of the application as it stands.
- * @param displays - Display names in the package.
+ * @param displays - Display names to compare.
+ * @param layout - `package` reads `<root>/<name>.xml`; `export` reads `<root>/Displays/<name>.xml`.
  * @returns Which displays are unchanged, changed or new.
  */
-export function comparePackage(exportRoot: string, currentRoot: string, displays: readonly string[]): PackageComparison {
+export function comparePackage(exportRoot: string, currentRoot: string, displays: readonly string[], layout: 'package' | 'export' = 'package'): PackageComparison {
   const unchanged: string[] = []
   const changed: string[] = []
   const added: string[] = []
@@ -294,7 +295,8 @@ export function comparePackage(exportRoot: string, currentRoot: string, displays
       added.push(display)
       continue
     }
-    const next = parseDisplay(`${display}.xml`, readFileSync(join(exportRoot, `${display}.xml`), 'utf8'))
+    const nextFile = layout === 'package' ? join(exportRoot, `${display}.xml`) : join(exportRoot, 'Displays', `${display}.xml`)
+    const next = parseDisplay(`${display}.xml`, readFileSync(nextFile, 'utf8'))
     const previous = parseDisplay(`${display}.xml`, readFileSync(currentFile, 'utf8'))
     const same = next.parseError === undefined && previous.parseError === undefined
       ? JSON.stringify(shapeOf(next.objects)) === JSON.stringify(shapeOf(previous.objects))
