@@ -843,7 +843,7 @@ Stage display and tag edits. `ftview_apply` writes a new export folder and leave
 
 #### `ftview_draft_display_set`
 
-Stage one attribute change on a display or on one of its named objects. Nothing is written until ftview_apply.
+Stage one attribute change on a display or on one of its named objects. Size, colour and window attributes (width, height, backColor, displayType, positionX, positionY) go to the display's displaySettings element, where Studio keeps them. Nothing is written until ftview_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

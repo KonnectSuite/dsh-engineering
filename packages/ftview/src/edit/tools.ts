@@ -231,7 +231,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
   return [
     tool({
       name: 'ftview_draft_display_set',
-      description: 'Stage one attribute change on a display or on one of its named objects. Nothing is written until ftview_apply.',
+      description: 'Stage one attribute change on a display or on one of its named objects. Size, colour and window attributes (width, height, backColor, displayType, positionX, positionY) go to the display\'s displaySettings element, where Studio keeps them. Nothing is written until ftview_apply.',
       parameters: object({
         view_id: VIEW_ID,
         display: string('Display name as listed by ftview_list. Example: "Main".'),

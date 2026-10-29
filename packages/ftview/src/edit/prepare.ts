@@ -13,6 +13,7 @@ import { EngineeringError, type Coverage, type FsService } from '../core.ts'
 import { findingsOf, type Finding } from '../checks.ts'
 import { parseDisplay, parseTagCsv, type Application, type DisplayFile, type TagRow } from '../model.ts'
 import { addObject, createDisplay, deleteObject, orderObject, renameDisplay, setAttribute, setObject, upsertTag, type EditOperation } from './operations.ts'
+import { DISPLAY_SETTING_ATTRIBUTES, setDisplaySetting } from '../display-tree.ts'
 import { validateSchema, type SchemaValidation } from '../schema.ts'
 
 /** One prepared edit set. */
@@ -168,7 +169,10 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
         throw new EngineeringError('COMPONENT_NOT_FOUND', `The draft targets ${operation.file}, which this export no longer contains.`, 'Reopen the export and stage the edit again.')
       }
       const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)
-      texts.set(operation.file, setAttribute(current, operation.object, operation.attribute, operation.value))
+      const routed = operation.object === undefined && DISPLAY_SETTING_ATTRIBUTES.has(operation.attribute)
+        ? setDisplaySetting(current, operation.attribute, operation.value)
+        : setAttribute(current, operation.object, operation.attribute, operation.value)
+      texts.set(operation.file, routed)
       continue
     }
     if (operation.kind === 'display_create') {

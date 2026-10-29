@@ -1,3 +1,13 @@
+## [0.56.0] - 2026-10-29
+
+### Fixed
+
+- **`ftview_draft_display_set` edits display settings where Studio keeps them.** `width`, `height`,
+  `backColor`, `displayType`, `positionX`, `positionY` and the other window attributes now go to
+  the display's `<displaySettings>` element instead of the display root, which the schema rejects.
+  A display that lost its settings element gets one inserted. Resizing a display or turning it into an
+  `onTop` popup is now something a draft can do.
+
 ## [0.55.0] - 2026-10-29
 
 ### Added

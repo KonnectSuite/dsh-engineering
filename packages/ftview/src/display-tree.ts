@@ -257,6 +257,47 @@ export function setAttribute(tree: DisplayTree, node: DisplayNode, name: string,
   return tree.xml.slice(0, node.start) + rebuilt + tree.xml.slice(node.tagEnd)
 }
 
+/** Settings that live on \`<displaySettings>\`, not on the display root. */
+export const DISPLAY_SETTING_ATTRIBUTES = new Set([
+  'width',
+  'height',
+  'backColor',
+  'displayType',
+  'displayNumber',
+  'positionX',
+  'positionY',
+  'cannotBeReplaced',
+  'titleBar',
+  'size',
+  'securityCode',
+  'maximumTagUpdateRate',
+  'focusHighlightColor',
+  'disableFocusHighlight',
+  'disableInitialInputFocus',
+  'startupMacro',
+  'shutdownMacro',
+  'useGradientStyle',
+])
+
+/**
+ * Set one attribute of the display's \`displaySettings\` element.
+ *
+ * @param xml - Display text.
+ * @param name - Attribute name, for example \`width\`.
+ * @param value - Attribute value.
+ * @returns New document text.
+ */
+export function setDisplaySetting(xml: string, name: string, value: string): string {
+  const tree = parseDisplayTree(xml)
+  const settings = tree.root.children.find(node => node.type === 'displaySettings')
+  if (settings !== undefined) return setAttribute(tree, settings, name, value)
+  const child = tree.root.children[0]
+  const indent = '    '
+  const element = `<displaySettings ${name}="${encodeEntities(value)}"/>\n`
+  if (child === undefined) return insertChild(tree, tree.root, `\n${indent}${element}`)
+  return insertChild(tree, tree.root, `\n${indent}${element}`, 0)
+}
+
 /** Remove one element from a document. */
 export function removeNode(tree: DisplayTree, node: DisplayNode): string {
   return tree.xml.slice(0, node.start) + tree.xml.slice(node.end)
