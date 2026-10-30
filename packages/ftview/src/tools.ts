@@ -17,10 +17,12 @@ import { SCAFFOLD_THEME } from './edit/scaffold.ts'
 import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
+import { alarmReport } from './alarm-report.ts'
 import { capabilities } from './capabilities.ts'
 import { crossReference, readAlarms, readL5x } from './cross.ts'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { basename, join, resolve } from 'node:path'
 import type { ViewSession } from './session.ts'
 
 /** What this surface cannot prove. */
@@ -592,6 +594,48 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         )
       },
     }),
+    tool({
+      name: 'ftview_alarm_report',
+      description: 'Review an Alarms.xml: every trigger and message, plus findings a reviewer can act on — a trigger with no message, a wizard placeholder label, two triggers watching the same expression, an orphaned message, blank message text. Read-only; it needs no Studio and no controller, and it cannot prove runtime behaviour.',
+      parameters: object({
+        path: string('Alarms.xml path, or a folder that contains it (an export, or <project store>\\<application>).'),
+        limit: integer('Most triggers and messages to list. Defaults to 50, at most 200.', { minimum: 1, maximum: 200 }),
+      }, ['path']),
+      async run(args) {
+        const requested = resolve(requiredString(args, 'path'))
+        const limit = optionalInteger(args, 'limit') ?? 50
+        const file = existsSync(requested) && statSync(requested).isDirectory() ? join(requested, 'Alarms.xml') : requested
+        if (!existsSync(file)) {
+          throw new EngineeringError('NOT_FOUND', `No Alarms.xml at ${requested}.`, 'Pass the file itself or a folder that holds it, for example an export with Alarms/Alarms.xml.')
+        }
+        const report = alarmReport(readFileSync(file, 'utf8'))
+        const warning = report.findings.filter(finding => finding.severity === 'warning').length
+        const triggers = report.triggers.slice(0, limit)
+        const messages = report.messages.slice(0, limit)
+        return success(
+          `Alarm review of ${basename(file)}: ${report.counts.triggers} trigger(s), ${report.counts.messages} message(s), ${report.findings.length} finding(s) (${warning} warning).` +
+            (report.counts.withoutMessage === 0 ? '' : ` ${report.counts.withoutMessage} trigger(s) have no message.`) +
+            (report.counts.placeholderLabels === 0 ? '' : ` ${report.counts.placeholderLabels} still carry placeholder labels.`),
+          {
+            path: file,
+            counts: report.counts,
+            triggers,
+            messages,
+            findings: report.findings,
+            truncated: report.triggers.length > triggers.length || report.messages.length > messages.length,
+          },
+          [],
+          {
+            complete: true,
+            unverified: [
+              'that a trigger fires, is acknowledged or is prioritized correctly at runtime',
+              'that an operator can read a message on a terminal',
+            ],
+          },
+        )
+      },
+    }),
+
     tool({
       name: 'ftview_studio_import_prepare',
       description: 'Package displays from an applied export for Studioâ€™s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',

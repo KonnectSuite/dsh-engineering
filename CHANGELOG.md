@@ -19,6 +19,11 @@
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
 
+- **`ftview_alarm_report` reviews an alarm configuration.** `ftview_alarm_snapshot` produced the wizard
+  XML but nothing read it, so a configuration with 17 triggers that raise no message looked exactly like a
+  finished one. The report joins every message to its trigger and returns findings: a trigger with no
+  message, a wizard placeholder label ("Label7"), two triggers on one expression, an orphaned message,
+  blank message text. On the commissioning export it reads 64 triggers, 47 messages and 17 silent triggers.
 - **`ftview_render` can put a set of screens on one review sheet.** `sheet: "yes"` stacks up to eight
   drawings on a single image with a title per display, so a reviewer (or the model) judges a set in one
   look instead of opening a dozen PNGs. The sheet is a plain SVG that embeds each drawing and is
