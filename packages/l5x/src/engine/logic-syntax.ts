@@ -141,8 +141,41 @@ export function parseLadder(source: string): { nodes: readonly LadderNode[]; iss
   return { nodes, issues }
 }
 
-/** One address token sequence, including indices and its source occurrence. */
-export interface AddressOccurrence { readonly text: string; readonly start: number; readonly end: number; readonly line: number; readonly indexTokens: readonly LogicToken[] }
+/**
+ * Instructions that read the rung condition and never drive the right power rail.
+ *
+ * Studio rejects a rung whose last instruction is one of these — the audit raises
+ * `RxCMP_E_AUDIT_OUTPUTS` at build time, long after the draft was accepted. The
+ * parser can see the same thing from the node tree.
+ */
+const RAIL_READERS: ReadonlySet<string> = new Set([
+  'AFI', 'ONS', 'XIC', 'XIO',
+  'EQU', 'GEQ', 'GRT', 'LEQ', 'LES', 'LIM', 'MEQ', 'NEQ',
+])
+
+/**
+ * Name the instruction that leaves a rung without an output.
+ *
+ * The right power rail must be driven by an output instruction; a branch at the
+ * end is fine when every path ends in one.
+ *
+ * @param nodes - Parsed nodes of one rung.
+ * @returns The read-only mnemonic at the rail, or undefined when the rung ends in an output.
+ */
+export function rightRailReader(nodes: readonly LadderNode[]): string | undefined {
+  const last = nodes[nodes.length - 1]
+  if (last === undefined) return undefined
+  if (last.kind === 'branch') {
+    for (const path of last.paths) {
+      const reader = rightRailReader(path)
+      if (reader !== undefined) return reader
+    }
+    return undefined
+  }
+  return RAIL_READERS.has(last.name.toUpperCase()) ? last.name.toUpperCase() : undefined
+}
+
+/** One address token sequence, including indices and its source occurrence. */export interface AddressOccurrence { readonly text: string; readonly start: number; readonly end: number; readonly line: number; readonly indexTokens: readonly LogicToken[] }
 
 /** Read an identifier with optional program qualification, member paths and indices.
  * @param tokens - Source-positioned tokens.

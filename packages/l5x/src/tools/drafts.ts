@@ -9,7 +9,7 @@
  * @module dsh-engineering-l5x/tools/drafts
  */
 
-import { prepareChangeSet } from '../engine/change-set.ts'
+import { prepareChangeSet, checkRungText } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
@@ -119,7 +119,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
   return [
     tool({
       name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. Optionally carries the rung comment. Nothing is written until draft_apply.',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
@@ -152,6 +152,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         } else {
           throw invalid('mode', `Unknown mode ${JSON.stringify(mode)}.`, 'Pass one of: replace, insert, delete.')
         }
+        // Refuse malformed rungs and rungs that never reach the right rail now,
+        // rather than carrying them in the draft until Studio's build rejects them.
+        if (mode !== 'delete' && text !== undefined) checkRungText(text)
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },
     }),
@@ -179,7 +182,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'compose_rung',
-      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser.',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser or leaves the right power rail undriven.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
         spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}.'),

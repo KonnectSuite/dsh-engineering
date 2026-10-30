@@ -2,7 +2,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { loadL5x } from '../model/index.ts'
 import type { L5xDocument } from '../model/types.ts'
-import { parseLadder, lexLogic } from './logic-syntax.ts'
+import { parseLadder, lexLogic, rightRailReader } from './logic-syntax.ts'
 import { compareProjects, runChecks } from './review.ts'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { typeInstances, typeIndex, udtDetail } from './details.ts'
@@ -109,6 +109,20 @@ function externalAccess(row: Record<string, unknown>): string | undefined {
   throw new EngineeringError('INVALID_CHANGE_SET', 'external_access must be "Read/Write", "Read Only" or "None"')
 }
 
+/**
+ * Refuse rung text Studio cannot compile as written.
+ *
+ * The draft path and the change-set path both write NeutralText into a routine,
+ * so both check it here: malformed structure, and a rung whose right power rail
+ * is fed by a read-only instruction (`RxCMP_E_AUDIT_OUTPUTS` in Studio).
+ */
+export function checkRungText(text: string): void {
+  const parsed = parseLadder(text)
+  if (parsed.issues.length > 0) throw new EngineeringError('INVALID_LADDER', 'Rung contains malformed or unsupported NeutralText structure', 'Write one complete rung, ending in a semicolon.')
+  const rail = rightRailReader(parsed.nodes)
+  if (rail !== undefined) throw new EngineeringError('INVALID_LADDER', `The rung ends in ${rail}, which reads the condition but never drives the right power rail; Studio refuses to build it (RxCMP_E_AUDIT_OUTPUTS)`, 'End the rung with an output instruction such as OTE, OTL or a timer; put the condition before it.')
+}
+
 function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation {
   const row = object(value)
   switch (row.operation) {
@@ -119,7 +133,7 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       const selected = { program: identifier(row, 'program'), routine: identifier(row, 'routine'), rung: integer(row, 'rung') }
       if (row.operation === 'delete_rung') return { operation: row.operation, ...selected }
       const source = text(row, 'text')
-      if (parseLadder(source).issues.length > 0) throw new EngineeringError('INVALID_LADDER', 'Rung contains malformed or unsupported NeutralText structure')
+      checkRungText(source)
       const comment = row.comment === undefined ? {} : { comment: text(row, 'comment') }
       if (row.operation === 'replace_rung') return { operation: row.operation, ...selected, text: source, ...comment }
       return { operation: row.operation, ...selected, text: source, ...comment, ...(row.before_rung === undefined ? {} : { before_rung: integer(row, 'before_rung') }) }
@@ -281,7 +295,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     if (operation.language === 'ST') body = stContent(operation.code)
     else {
       const lines = operation.code.split('\n').filter(line => line.trim() !== '')
-      if (lines.some(line => parseLadder(line).issues.length > 0)) throw new EngineeringError('INVALID_LADDER', 'Each nonempty line must contain one complete rung')
+      for (const line of lines) checkRungText(line)
       body = '<RLLContent>' + lines.map((line, index) => `<Rung Number="${index}" Type="N"><Text>${cdata(line)}</Text></Rung>`).join('') + '</RLLContent>'
     }
     return insert(xml, routines, `<Routine Name="${operation.name}" Type="${operation.language}">${body}</Routine>`)
@@ -298,6 +312,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   const targets = rungs.filter(rung => Number(rung.attributes.Number) === operation.rung)
   if (operation.operation === 'insert_rung') {
     if (targets.length !== 0) throw new EngineeringError('NAME_COLLISION', 'Rung number already exists; no automatic renumbering is performed')
+    checkRungText(operation.text)
     const newRung = `<Rung Number="${operation.rung}" Type="N">${commentXml(operation.comment)}<Text>${cdata(operation.text)}</Text></Rung>`
     if (operation.before_rung === undefined) return insert(xml, content, newRung)
     const before = rungs.filter(rung => Number(rung.attributes.Number) === operation.before_rung)
@@ -311,8 +326,10 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     return replace(xml, target.start, target.end, rungWith(target, retainedText(xml, target), operation.comment))
   }
   if (operation.comment !== undefined) {
+    checkRungText(operation.text)
     return replace(xml, target.start, target.end, rungWith(target, `<Text>${cdata(operation.text)}</Text>`, operation.comment))
   }
+  checkRungText(operation.text)
   const contentText = uniqueRegion(target.children, 'Text')
   return replace(xml, contentText.start, contentText.end, `<Text>${cdata(operation.text)}</Text>`)
 }

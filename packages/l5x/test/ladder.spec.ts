@@ -155,4 +155,14 @@ describe('refusals', () => {
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('timer')
   })
+
+  it('refuses a rung that ends without an output instruction', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'XIC', args: ['SystemRunning'] }] }),
+    })
+    expect(result.error?.code).toBe('INVALID_LADDER_SPEC')
+    expect(result.error?.message).toContain('right power rail')
+    expect(result.error?.message).toContain('XIC')
+  })
 })

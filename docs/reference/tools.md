@@ -239,7 +239,7 @@ Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source 
 
 #### `draft_rung`
 
-Append one ladder rung operation to the chat draft: replace, insert or delete. Optionally carries the rung comment. Nothing is written until draft_apply.
+Append one ladder rung operation to the chat draft: replace, insert or delete. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -266,7 +266,7 @@ Append one rung-comment change to the chat draft. Sets or clears the comment Stu
 
 #### `compose_rung`
 
-Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser.
+Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser or leaves the right power rail undriven.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

@@ -11,6 +11,16 @@ async function opened(): Promise<Harness> {
 }
 
 describe('draft accumulation', () => {
+  it('refuses a rung whose right rail is not an output', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(Start)XIC(Run);',
+    })
+    expect(result.error?.code).toBe('INVALID_LADDER')
+    expect(result.error?.message).toContain('right power rail')
+    expect(result.error?.fix).toContain('OTE')
+  })
+
   it('appends one operation per call and returns a stable draft handle', async () => {
     const l5x = await opened()
     const first = await l5x.call('draft_tag', {

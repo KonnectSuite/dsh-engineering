@@ -14,7 +14,7 @@ import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
 import { instructionByName, nearestInstructions, NUMERIC_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
-import { parseLadder } from './logic-syntax.ts'
+import { parseLadder, rightRailReader } from './logic-syntax.ts'
 
 /** One instruction node. */
 export interface InstructionNode {
@@ -217,6 +217,10 @@ function verify(project: ProjectSnapshot, text: string, operands: readonly Compo
   if (parsed.issues.length > 0) {
     // The composer produced text its own parser rejects: a defect, never a draft.
     throw new L5xError('COMPOSER_DEFECT', `The composed rung does not parse: ${parsed.issues[0]?.message ?? 'unknown issue'}`, 'This is a plugin defect; report the spec that produced it.')
+  }
+  const rail = rightRailReader(parsed.nodes)
+  if (rail !== undefined) {
+    throw new L5xError('INVALID_LADDER_SPEC', `The rung ends in ${rail}, which reads the condition but never drives the right power rail; Studio refuses to build such a rung.`, 'End the series with an output instruction such as OTE, OTL or a timer; put the condition before it.')
   }
   const grounding = grounds.size === 2 ? 'mixed' : grounds.has('aoi') ? 'aoi' : 'catalog'
   return { neutral_text: text, instructions, operands, grounding }

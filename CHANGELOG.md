@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- **A rung whose right power rail is not driven is refused before it is staged.** Studio rejects a rung that
+  ends in a read-only instruction with `RxCMP_E_AUDIT_OUTPUTS`, and that only surfaced at build time: a rung
+  such as `XIC(hmi_AutoManual_Cmd)AFI();` passed `draft_rung`, `draft_validate` and `draft_apply`, then failed
+  the Studio build. `draft_rung`, the change-set path and `compose_rung` now check the parsed rung's last node —
+  and every path of a closing branch — and refuse `XIC`, `XIO`, `ONS`, `AFI` and the compare instructions at the
+  rail with the fix that names an output instruction.
 - **The ME alarm setup file is no longer reported as an unparsed display.** `Alarms/Alarms.xml` has an
   `<alarms>` root, so `ftview_open` listed `Root element alarms is not an ME display.` as a structural diagnostic
   even though `ftview_check` reads the same file for its alarm findings. The scan records it as an alarm setup file
