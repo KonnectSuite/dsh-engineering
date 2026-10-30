@@ -310,15 +310,36 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
       description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), artwork a display names but the export does not ship (IMAGE_MISSING), and — when a decoded Alarms.xml is supplied — an alarm setup whose display-name is not in the export (ALARM_DISPLAY_MISSING). Vendor XSD validation and controller binding are not performed.',
       parameters: object({
         view_id: VIEW_ID,
-        alarms: string('Path to a decoded Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept.'),
+        alarms: string('Path to an Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept. When omitted, an Alarms.xml shipped inside the export is read automatically.'),
       }, []),
       async run(args, exec) {
         const { app } = session.require(optionalString(args, 'view_id'), exec)
         const findings = findingsOf(app)
-        const alarmsPath = optionalString(args, 'alarms')
-        if (alarmsPath !== undefined && read !== undefined) {
+        const requested = optionalString(args, 'alarms')
+        const candidates = requested === undefined || requested === ''
+          ? [`${app.root}/Alarms/Alarms.xml`, `${app.root}/Alarms.xml`]
+          : [requested]
+        let alarmsFile: string | undefined
+        let alarmsXml: string | undefined
+        if (read !== undefined) {
+          for (const candidate of candidates) {
+            try {
+              alarmsXml = await read(candidate)
+              alarmsFile = candidate
+              break
+            } catch {
+              // try the next conventional location
+            }
+          }
+        }
+        if (alarmsFile !== undefined && alarmsXml !== undefined) {
+          const xml = alarmsXml
           const names = new Set(app.displays.map(display => display.name))
-          findings.push(...alarmFindings(await read(alarmsPath), names))
+          findings.push(...alarmFindings(xml, names))
+          const tags = new Set(app.tags.map(tag => tag.name))
+          for (const alarm of alarmReport(xml, tags).findings) {
+            findings.push({ rule: alarm.rule, severity: alarm.severity, message: alarm.detail, evidence: { subject: alarm.subject, source: alarmsFile } })
+          }
         }
         const byRule: Record<string, number> = {}
         for (const finding of findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1

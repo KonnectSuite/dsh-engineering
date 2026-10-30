@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **`ftview_check` reads the alarm setup without being asked.** An `Alarms.xml` shipped inside the export
+  (`Alarms/Alarms.xml`, the layout the wizard writes) is now read automatically, so one call covers the
+  display checks and the alarm review: silent triggers, placeholder labels, duplicate expressions, orphaned
+  messages, blank text, and alarm tags the export tag CSV does not declare. Passing `alarms` still overrides
+  the search; an explicit path is used exactly as given.
 - **`ftview_alarm_report` resolves trigger tags against the HMI database.** Pass `tags` (the application
   tag CSV) and every trigger is checked: a trigger watching a tag the database does not define is reported as
   `ALARM_TAG_NOT_IN_HMI` with the tag name. On the commissioning export it found two such tags

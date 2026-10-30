@@ -22,7 +22,7 @@ function files(name: string): Map<string, string> {
   return new Map([
     ['export/Displays/Main.xml', DISPLAY],
     ['export/Alarms/Alarms.xml', alarms(name)],
-    ['export/Tags/Tags.csv', 'Tag Type;Tag Name;Tag Description;Read Only;Data Source;Native Type\n'],
+    ['export/Tags/Tags.csv', '###002 - THIS LINE CONTAINS VERSION INFORMATION. DO NOT REMOVE!!!\nTag Type;Tag Name;Tag Description;Read Only;Data Source;Native Type\nA;Alarm_Word;Alarm word;False;PLC;INT\n'],
   ])
 }
 
@@ -36,6 +36,36 @@ describe('alarm display check', () => {
     const findings = checked.data?.findings as readonly { rule: string; message: string }[]
     const finding = findings.find(item => item.rule === 'ALARM_DISPLAY_MISSING')
     expect(finding?.message).toContain('Alarm Screen')
+  })
+
+  it('reads an Alarms.xml inside the export without being told the path', async () => {
+    const l5x = harness(files('Main'))
+    const opened = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: opened.data?.view_id })
+    const findings = checked.data?.findings as readonly { rule: string }[]
+    expect(findings.some(item => item.rule === 'ALARM_TRIGGER_WITHOUT_MESSAGE')).toBe(true)
+  })
+
+  it('resolves an alarm tag the export tag CSV declares', async () => {
+    const l5x = harness(files('Main'))
+    const opened = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: opened.data?.view_id })
+    const findings = checked.data?.findings as readonly { rule: string }[]
+    expect(findings.some(item => item.rule === 'ALARM_TAG_NOT_IN_HMI')).toBe(false)
+  })
+
+  it('flags an alarm tag the export tag CSV does not declare', async () => {
+    const withoutTag = new Map([
+      ['export/Displays/Main.xml', DISPLAY],
+      ['export/Alarms/Alarms.xml', alarms('Main')],
+      ['export/Tags/Tags.csv', '###002 - THIS LINE CONTAINS VERSION INFORMATION. DO NOT REMOVE!!!\nTag Type;Tag Name;Tag Description;Read Only;Data Source;Native Type\nA;Other;Other tag;False;PLC;INT\n'],
+    ])
+    const l5x = harness(withoutTag)
+    const opened = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: opened.data?.view_id })
+    const findings = checked.data?.findings as readonly { rule: string; message: string }[]
+    const finding = findings.find(item => item.rule === 'ALARM_TAG_NOT_IN_HMI')
+    expect(finding?.message).toContain('Alarm_Word')
   })
 
   it('stays quiet when the alarm display exists', async () => {

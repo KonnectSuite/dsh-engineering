@@ -725,7 +725,7 @@ Run structural checks over one opened export: tag CSV integrity, duplicate names
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
-| `alarms` | string | no | Path to a decoded Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept. |
+| `alarms` | string | no | Path to an Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept. When omitted, an Alarms.xml shipped inside the export is read automatically. |
 
 #### `ftview_compare`
 
