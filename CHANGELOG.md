@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **A full-screen display whose canvas differs from the rest is named.** `ftview_design_check` adds
+  `VIEW-LAYOUT-02` (info) for a `replace` display whose pixel size is not the common one, with the common
+  size and how many displays share it; popups (`onTop`) are excluded because they are sized on purpose.
+  Measured on the Carpenter pilot export: 14 displays, 0 findings — all full screens are 640x480 — where the
+  first cut of the rule had reported the three popups as mismatches.
 - **A draft says when a connection names an unknown tag.** Every authoring tool (object add and set, screen,
   popup, restyle) now compares the connection roots it stages against the export tag database and reports
   `unresolved_tags` in the result, with a sentence naming them. A member such as `Motor.Speed` resolves

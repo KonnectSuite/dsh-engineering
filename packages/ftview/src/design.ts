@@ -12,7 +12,7 @@
 
 import { BUTTON_TYPES } from './catalog.ts'
 import type { Finding } from './checks.ts'
-import type { Application } from './model.ts'
+import type { Application, DisplayFile } from './model.ts'
 
 /** Object types that move an operator off the current display. */
 const EXIT_TYPES = new Set(['gotobutton', 'closebutton', 'returnbutton'])
@@ -70,6 +70,17 @@ function numberAttribute(value: string | undefined): number | undefined {
  * @param app - The scanned application.
  * @returns Findings in rule order.
  */
+/** Canvas of a full-screen display; popups are sized on purpose and are excluded. */
+function canvasOf(display: DisplayFile): { width: number; height: number } | undefined {
+  const settings = display.objects.find(object => object.type.toLowerCase() === 'displaysettings')
+  if (settings === undefined) return undefined
+  if ((settings.attributes.displayType ?? '').toLowerCase() !== 'replace') return undefined
+  const width = numberAttribute(settings.attributes.width)
+  const height = numberAttribute(settings.attributes.height)
+  if (width === undefined || height === undefined) return undefined
+  return { width, height }
+}
+
 export function designFindings(app: Application): Finding[] {
   const findings: Finding[] = []
   const targets = new Set<string>()
@@ -141,5 +152,36 @@ export function designFindings(app: Application): Finding[] {
       evidence: { display: display.name, exit_controls: 0 },
     })
   }
+  const canvases = app.displays
+    .map(display => ({ display, size: canvasOf(display) }))
+    .filter((entry): entry is { display: DisplayFile; size: { width: number; height: number } } => entry.size !== undefined)
+  if (canvases.length > 1) {
+    const counts = new Map<string, number>()
+    for (const entry of canvases) {
+      const key = `${entry.size.width}x${entry.size.height}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    const [common] = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    if (common !== undefined && common[1] > 1) {
+      const [commonSize, commonCount] = common
+      for (const entry of canvases) {
+        const key = `${entry.size.width}x${entry.size.height}`
+        if (key === commonSize) continue
+        findings.push({
+          rule: 'VIEW-LAYOUT-02',
+          severity: 'info',
+          message: `${entry.display.name} is ${entry.size.width}x${entry.size.height} while ${commonCount} other full-screen display(s) are ${commonSize}; a different canvas scales or letterboxes on the same panel.`,
+          evidence: {
+            display: entry.display.name,
+            width: entry.size.width,
+            height: entry.size.height,
+            common: commonSize,
+            common_count: commonCount,
+          },
+        })
+      }
+    }
+  }
+
   return findings
 }
