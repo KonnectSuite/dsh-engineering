@@ -223,7 +223,8 @@ export function documentApplication(application: Application): DocumentBundle {
     '',
     '- `displays.csv` - one row per display with object counts.',
     '- `tags.csv` - one row per HMI tag with the displays that read it.',
-    '- `bindings.csv` - one row per connection with the tag it resolves to.',
+    '- `bindings.csv` - one row per connection with the tag it resolves to; `status` is `hmi tag`,' +
+      '`missing`, `unverified` (no tag table in this export) or `literal` (the expression is not a tag).',
     ...(navigation.rows.length === 0 ? [] : ['', '## Navigation', '', '| From | Object | To |', '| --- | --- | --- |', ...navigation.rows.map(row => `| ${row.from} | ${row.object} | ${row.target} |`)]),
     '',
     'Bindings marked `missing` do not prove a fault: the tag may live in a tag file that was not',
