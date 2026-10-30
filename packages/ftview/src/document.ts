@@ -14,6 +14,7 @@ export interface DocumentCounts {
   readonly bindings: number
   readonly missing: number
   readonly unverified: number
+  readonly navigation: number
 }
 
 export interface DocumentBundle {
@@ -129,11 +130,36 @@ export function bindingsOf(application: Application): {
   return { rows }
 }
 
+/** Every screen-to-screen jump this application declares. */
+export function navigationOf(application: Application): {
+  rows: { from: string; object: string; target: string }[]
+} {
+  const known = new Set(application.displays.map(display => display.name))
+  const rows: { from: string; object: string; target: string }[] = []
+  for (const display of application.displays) {
+    for (const object of drawnOf(display)) {
+      for (const [connection, expression] of Object.entries(object.connections ?? {})) {
+        const direct = /^display$/iu.test(connection)
+        const target = direct ? expression.trim() : ''
+        if (target !== '' && known.has(target)) {
+          rows.push({ from: display.name, object: object.name ?? object.type, target })
+        }
+      }
+      const attribute = object.attributes.display
+      if (typeof attribute === 'string' && known.has(attribute.trim()) && !rows.some(row => row.from === display.name && row.target === attribute.trim() && row.object === (object.name ?? object.type))) {
+        rows.push({ from: display.name, object: object.name ?? object.type, target: attribute.trim() })
+      }
+    }
+  }
+  return { rows }
+}
+
 /** Build the four files of a documentation bundle. */
 export function documentApplication(application: Application): DocumentBundle {
   const bindings = bindingsOf(application)
   const missing = bindings.rows.filter(row => row.status === 'missing')
   const unverified = bindings.rows.filter(row => row.status === 'unverified')
+  const navigation = navigationOf(application)
   const summaries = application.displays.map(display => ({ display, ...summaryOf(display) }))
 
   const displayRows = summaries.map(({ display, buttons, numeric, indicators, text, unparsed }) => [
@@ -196,6 +222,7 @@ export function documentApplication(application: Application): DocumentBundle {
     '- `displays.csv` - one row per display with object counts.',
     '- `tags.csv` - one row per HMI tag with the displays that read it.',
     '- `bindings.csv` - one row per connection with the tag it resolves to.',
+    ...(navigation.rows.length === 0 ? [] : ['', '## Navigation', '', '| From | Object | To |', '| --- | --- | --- |', ...navigation.rows.map(row => `| ${row.from} | ${row.object} | ${row.target} |`)]),
     '',
     'Bindings marked `missing` do not prove a fault: the tag may live in a tag file that was not',
     'exported with this application, and Studio resolves some expressions the export cannot show.',
@@ -216,6 +243,7 @@ export function documentApplication(application: Application): DocumentBundle {
       bindings: bindings.rows.length,
       missing: missing.length,
       unverified: unverified.length,
+      navigation: navigation.rows.length,
     },
   }
 }

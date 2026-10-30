@@ -626,7 +626,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           written.push(path)
         }
         return success(
-          `Documentation for ${view.app.name}: ${bundle.counts.displays} display(s), ${bundle.counts.tags} tag(s), ${bundle.counts.bindings} binding(s) (${bundle.counts.missing} naming an undeclared tag) in ${written.length} file(s) at ${probe}.` +
+          `Documentation for ${view.app.name}: ${bundle.counts.displays} display(s), ${bundle.counts.tags} tag(s), ${bundle.counts.bindings} binding(s) (${bundle.counts.missing} naming an undeclared tag) in ${written.length} file(s) at ${probe}.` + (bundle.counts.navigation > 0 ? ` ${bundle.counts.navigation} screen jump(s) are listed in overview.md.` : '') +
           (bundle.counts.unverified > 0 ? ` No tag table travelled with this export, so ${bundle.counts.unverified} binding(s) carry no tag and cannot be verified.` : ''),
           { application: view.app.name, output_root: probe, counts: bundle.counts, files: written },
           [

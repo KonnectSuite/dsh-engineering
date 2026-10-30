@@ -106,4 +106,27 @@ describe('documentation bundle', () => {
     expect(bindings).toContain('unverified')
     expect(bindings).not.toContain(',missing')
   })
+
+  it('lists the jumps between screens', async () => {
+    const NAV = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx>',
+      '    <displaySettings width="640" height="480" backColor="#FFFFFF"/>',
+      '    <gotoButton name="NavMain" left="10" top="10" width="100" height="40">',
+      '        <caption><text>MAIN</text></caption>',
+      '        <connection name="display" expression="Main"/>',
+      '    </gotoButton>',
+      '</gfx>',
+      '',
+    ].join('\n')
+    const l5x = harness(new Map([['app/Displays/Main.xml', DISPLAY], ['app/Displays/Detail.xml', NAV]]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'app' })
+    const target = join(mkdtempSync(join(tmpdir(), 'ftview-nav-')), 'bundle')
+    const written = await l5x.call('ftview_document', { view_id: opened.data?.view_id, output_root: target })
+    expect(written.error).toBeUndefined()
+    const overview = readFileSync(join(target, 'overview.md'), 'utf8')
+    expect(overview).toContain('## Navigation')
+    expect(overview).toContain('| Detail | NavMain | Main |')
+  })
+
 })
