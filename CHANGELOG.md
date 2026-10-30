@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **Integration coverage for the scaffold and popup paths.** `test/workflow.spec.ts` now also scaffolds an
+  existing display and stages (then applies) a popup, so the three authoring entry points that write vendor XML
+  — screen, scaffold, popup — are each proven against the installed `Gfx-ME17.xsd`, not only against layout unit
+  tests. Both pass unchanged; the only failure was the test fixture, which used a `<caption>` child on `<text>`
+  where the vendor schema requires the attribute.
 - **Fixed: authored screens and popups were rejected by schema validation.** `ftview_draft_screen` wrote
   `borderStyle="solid"` on panels and navigation buttons (not in `borderStyleEnums`),
   `horizontalAlignment`/`verticalAlignment` on numeric displays (not declared), and `foreColor` on a

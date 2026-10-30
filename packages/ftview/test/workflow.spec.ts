@@ -13,7 +13,7 @@ function gfx(name: string): string {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">',
     `    <displaySettings displayType="replace" width="640" height="480" backColor="#C6C6C6"/>`,
-    `    <text name="${name}Label" width="200" height="20" left="20" top="20"><caption><text>${name}</text></caption></text>`,
+    `    <text name="${name}Label" width="200" height="20" left="20" top="20" caption="${name}"/>`,
     '</gfx>',
     '',
   ].join('\n')
@@ -38,6 +38,47 @@ function files(): Map<string, string> {
 }
 
 describe('the authoring workflow end to end', () => {
+  it('scaffolds an existing display that the schema accepts', async () => {
+    const l5x = harness(files(), { edit: true, studio: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+
+    const scaffolded = await l5x.call('ftview_draft_display_scaffold', {
+      view_id: view,
+      display: 'Setup',
+      title: 'SETUP',
+      subtitle: 'line parameters',
+      footer: 'AryaCode test',
+    })
+    expect(scaffolded.error).toBeUndefined()
+    expect(scaffolded.data?.slots).toBeDefined()
+
+    const applied = await l5x.call('ftview_apply', { output_root: 'out-scaffold' })
+    expect(applied.error).toBeUndefined()
+    expect([...l5x.written.keys()]).toContain('out-scaffold/Displays/Setup.xml')
+  })
+
+  it('stages a popup that the schema accepts', async () => {
+    const l5x = harness(files(), { edit: true, studio: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+
+    const staged = await l5x.call('ftview_draft_popup', {
+      view_id: view,
+      display: 'Confirm Popup',
+      spec_json: JSON.stringify({
+        title: 'CONFIRM',
+        message: 'ARE YOU SURE YOU WANT TO START THE SYSTEM?',
+        buttons: [{ label: 'NO', backColor: '#B91C1C' }, { label: 'YES', action: 'goto', display: 'Setup' }],
+      }),
+    })
+    expect(staged.error).toBeUndefined()
+
+    const applied = await l5x.call('ftview_apply', { output_root: 'out-popup' })
+    expect(applied.error).toBeUndefined()
+    expect([...l5x.written.keys()]).toContain('out-popup/Displays/Confirm Popup.xml')
+  })
+
   it('authors, validates, applies, reopens and packages one screen', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
 
