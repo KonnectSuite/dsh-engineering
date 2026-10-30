@@ -94,7 +94,10 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     // same case: defined by the controller, absent from the export.
     const base = ref.symbol.split('.')[0] ?? ref.symbol
     const systemFlag = /^[SR]:/iu.test(ref.symbol)
-    const baseDeclared = systemFlag ? undefined : resolveSymbol(doc, ref.scope, base)
+    // `S:` and `R:` are defined by the controller, not by the export, so their
+    // absence from the declaration table proves nothing about the logic.
+    if (systemFlag) continue
+    const baseDeclared = resolveSymbol(doc, ref.scope, base)
     if (baseDeclared !== undefined) continue
     const key = `${ref.scope}::${ref.symbol}`
     unresolved.set(key, [...unresolved.get(key) ?? [], ref])

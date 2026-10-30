@@ -38,6 +38,17 @@ describe('run_checks', () => {
     expect(rows.every(row => row.severity === 'warning')).toBe(true)
   })
 
+  it('does not report controller system flags as unresolved', async () => {
+    const text = Buffer.from(fixtureBytes()).toString('utf8')
+      .replace('XIC(Start) ,XIC(RunLatch)', 'XIC(S:FS) XIC(NotDeclared) ,XIC(RunLatch)')
+    const l5x = harness(new Map([['sample.l5x', new TextEncoder().encode(text)]]))
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const checks = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    const messages = (checks.data?.findings as { message: string }[]).map(row => row.message).join('\n')
+    expect(messages).not.toContain('S:FS')
+    expect(messages).toContain('NotDeclared')
+  })
+
   it('accepts a baseline project for I/O change checks', async () => {
     const files = new Map<string, Uint8Array>([
       ['before.l5x', fixtureBytes()],

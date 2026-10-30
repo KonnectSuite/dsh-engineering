@@ -27,6 +27,11 @@
 
 ### Fixed
 
+- **Controller system flags are not called unresolved.** `S:` and `R:` addresses are defined by the controller and
+  absent from an export, so the review's unresolved-reference pass still reported them: a valid rung using
+  `S:FS` produced `UNRESOLVED_REFERENCE` and `draft_validate` warned `Symbol MainProgram::S:FS could not be
+  resolved in this export`. The pass now leaves the system flags alone and still reports a genuinely undeclared
+  tag.
 - **A rung whose right power rail is not driven is refused before it is staged.** Studio rejects a rung that
   ends in a read-only instruction with `RxCMP_E_AUDIT_OUTPUTS`, and that only surfaced at build time: a rung
   such as `XIC(hmi_AutoManual_Cmd)AFI();` passed `draft_rung`, `draft_validate` and `draft_apply`, then failed
