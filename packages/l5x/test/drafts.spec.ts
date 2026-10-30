@@ -146,6 +146,33 @@ describe('rung numbering', () => {
     expect(validated.error?.message).toContain('0..7')
     expect(validated.error?.fix).toContain('append')
   })
+
+  it('keeps numbering when a composed batch follows a draft_rung insert', async () => {
+    const l5x = await opened()
+    const first = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 0,
+      text: 'XIC(StartPB)OTE(SystemRunning);', comment: 'Staged one by one.',
+    })
+    expect(first.error).toBeUndefined()
+    const batch = await l5x.call('compose_batch', {
+      rungs_json: JSON.stringify([{ spec: { series: [{ instr: 'XIC', args: ['SystemRunning'] }, { instr: 'OTE', args: ['SystemRunning'] }] } }]),
+      program: 'MainProgram', routine: 'MainRoutine', rung: 1,
+    })
+    expect(batch.error).toBeUndefined()
+    const validated = await l5x.call('draft_validate', {})
+    expect(validated.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'mixed.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('mixed.L5X') ?? ''
+    const reopened = harness(new Map([['mixed.L5X', new TextEncoder().encode(written)]]), { editing: true })
+    await reopened.call('open_project', { path: 'mixed.L5X' })
+    const routine = await reopened.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'MainProgram' })
+    const rungs = (routine.data?.component as { body: { rungs: { number: number, text: string }[] } }).body.rungs
+    expect(rungs.map(row => row.number)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8])
+    expect(rungs[0]?.text).toContain('OTE(SystemRunning)')
+    expect(rungs[1]?.text).toBe('XIC(SystemRunning)OTE(SystemRunning);')
+    expect(rungs[2]?.comment).toContain('System start/stop')
+  })
 })
 
 describe('draft handles', () => {
