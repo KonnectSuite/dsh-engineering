@@ -11,6 +11,7 @@ import { diffObjects } from './objects-diff.ts'
 import { tagDiff } from './tag-diff.ts'
 import { liveMapOf } from './live.ts'
 import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
+import { documentApplication } from './document.ts'
 import { designFindings } from './design.ts'
 import { themeAudit } from './theme-audit.ts'
 import { SCAFFOLD_THEME } from './edit/scaffold.ts'
@@ -22,7 +23,7 @@ import { parseTagCsv } from './model.ts'
 import { capabilities } from './capabilities.ts'
 import { crossReference, readAlarms, readL5x } from './cross.ts'
 import { tmpdir } from 'node:os'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, join, resolve } from 'node:path'
 import type { ViewSession } from './session.ts'
 
@@ -593,6 +594,43 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           `Tag snapshot for ${application}: ${snapshot.tags} tag(s), ${snapshot.folders} folder(s), ${snapshot.bytes} byte(s) at ${snapshot.path}, read from ${snapshot.instance}.`,
           snapshot,
           [],
+          COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'ftview_document',
+      description: 'Write a documentation bundle for an opened export into a NEW folder: overview.md, displays.csv, tags.csv and bindings.csv. The bundle states object counts per display, which tags each display reads and which bindings name a tag the export does not declare, so a panel builder or reviewer gets a handover without opening Studio. Read-only over the export; writes only the new folder.',
+      parameters: object({
+        view_id: VIEW_ID,
+        output_root: string('New folder for the bundle. It must not exist. Example: "C:/Projects/Line/documentation".'),
+      }, ['output_root']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const requested = requiredString(args, 'output_root').replace(/[\\/]+$/u, '')
+        const probe = resolve(requested)
+        if (existsSync(probe)) {
+          throw new EngineeringError('OUTPUT_EXISTS', `${probe} already exists.`, 'Name a new folder; this tool never overwrites a previous bundle.')
+        }
+        const bundle = documentApplication(view.app)
+        const written: string[] = []
+        mkdirSync(probe, { recursive: true })
+        for (const [name, content] of Object.entries({
+          'overview.md': bundle.overview,
+          'displays.csv': bundle.displays,
+          'tags.csv': bundle.tags,
+          'bindings.csv': bundle.bindings,
+        })) {
+          const path = join(probe, name)
+          writeFileSync(path, content, 'utf8')
+          written.push(path)
+        }
+        return success(
+          `Documentation for ${view.app.name}: ${bundle.counts.displays} display(s), ${bundle.counts.tags} tag(s), ${bundle.counts.bindings} binding(s) (${bundle.counts.missing} naming an undeclared tag) in ${written.length} file(s) at ${probe}.`,
+          { application: view.app.name, output_root: probe, counts: bundle.counts, files: written },
+          [
+            { tool: 'ftview_check', why: 'Confirm the findings the bundle summarises before sending it on.' },
+          ],
           COVERAGE,
         )
       },

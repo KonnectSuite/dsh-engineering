@@ -132,6 +132,9 @@
 
 ### Added
 
+- **`ftview_document`** writes one readable document for a display — objects, tags they read or write,
+  alarm tags, navigation, and the findings already computed — so people who do not run the tools can
+  review a screen without reading XML.
 - **`ftview_apply` takes `package: "delta" | "full"`.** A delta (default) lists only the displays
   the draft changed, which is what an application that already holds the screens needs. A full
   package lists every display in the export and copies the artwork those untouched displays name,

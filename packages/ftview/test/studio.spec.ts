@@ -42,7 +42,7 @@ async function opened(withStudio = true) {
 describe('studio registration', () => {
   it('mounts the three studio tools after the read surface', () => {
     const { definitions } = harness(files(true), { studio: true })
-    expect(definitions.map(definition => definition.name).slice(21)).toEqual([
+    expect(definitions.map(definition => definition.name).slice(22)).toEqual([
       'ftview_studio_status', 'ftview_studio_preflight', 'ftview_studio_handoff',
     ])
   })
