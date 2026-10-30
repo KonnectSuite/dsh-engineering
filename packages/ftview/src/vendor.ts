@@ -61,20 +61,56 @@ function runPowerShell(executable: string, script: string, payload: unknown): Pr
   })
 }
 
+/** Decode the entities PowerShell uses inside a CLIXML error string. */
+function decodeClixml(text: string): string {
+  return text
+    .replace(/_x000D__x000A_/gu, '\n')
+    .replace(/_x000D_/gu, '\r')
+    .replace(/_x000A_/gu, '\n')
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&amp;/gu, '&')
+}
+
+/**
+ * The vendor servers report a COM failure as a CLIXML document on stderr.
+ * A caller needs the sentence, not the document, so this keeps the `<S S="Error">`
+ * strings (decoded) and drops the rest, with a cap so one dump cannot flood an answer.
+ *
+ * @param stderr - Raw standard error from the PowerShell host.
+ * @returns One line naming the failure, or an empty string when there was no output.
+ */
+export function vendorFailure(stderr: string): string {
+  const decoded = decodeClixml(stderr)
+  const parts = [...decoded.matchAll(/<S S="Error">([\s\S]*?)<\/S>/gu)].map(match => decodeClixml(match[1] ?? ''))
+  const text = (parts.length > 0 ? parts.join(' ') : decoded.replace(/<[^>]+>/gu, ' '))
+    .split(/\r?\n/u)
+    .map(line => line.trim())
+    .filter(line => line !== '')
+    .join(' ')
+  return text.length > 400 ? `${text.slice(0, 397)}...` : text
+}
+
 /** Script that lists applications through the export server. */
 const LIST_SCRIPT = `
 $ErrorActionPreference = 'Stop'
 $p = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $t = [Type]::GetTypeFromCLSID([guid]$p.clsid)
 $o = [Activator]::CreateInstance($t)
-$names = @($o.GetMEAppNames())
-$apps = @()
-foreach ($name in $names) {
-  $platform = $null; $version = $null
-  try { $info = @($o.GetAppInfo([string]$name)); if ($info.Count -gt 0) { $platform = [string]$info[0] }; if ($info.Count -gt 1) { $version = [string]$info[1] } } catch { }
-  $apps += [pscustomobject]@{ name = [string]$name; platform = $platform; version = $version }
+try {
+  $names = @($o.GetMEAppNames())
+  $apps = @()
+  foreach ($name in $names) {
+    $platform = $null; $version = $null
+    try { $info = @($o.GetAppInfo([string]$name)); if ($info.Count -gt 0) { $platform = [string]$info[0] }; if ($info.Count -gt 1) { $version = [string]$info[1] } } catch { }
+    $apps += [pscustomobject]@{ name = [string]$name; platform = $platform; version = $version }
+  }
+  [pscustomobject]@{ apps = $apps } | ConvertTo-Json -Depth 4 -Compress
+} finally {
+  [void][Runtime.InteropServices.Marshal]::ReleaseComObject($o)
 }
-[pscustomobject]@{ apps = $apps } | ConvertTo-Json -Depth 4 -Compress
 `
 
 /** Script that exports one application's displays. */
@@ -83,8 +119,12 @@ $ErrorActionPreference = 'Stop'
 $p = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $t = [Type]::GetTypeFromCLSID([guid]$p.clsid)
 $o = [Activator]::CreateInstance($t)
-$o.LoadMEApp([string]$p.app)
-try { $o.ExportAll([string]$p.dest) } finally { $o.UnloadMEApp() }
+try {
+  $o.LoadMEApp([string]$p.app)
+  try { $o.ExportAll([string]$p.dest) } finally { $o.UnloadMEApp() }
+} finally {
+  [void][Runtime.InteropServices.Marshal]::ReleaseComObject($o)
+}
 [pscustomobject]@{ ok = $true } | ConvertTo-Json -Compress
 `
 
@@ -94,7 +134,7 @@ $ErrorActionPreference = 'Stop'
 $p = [Console]::In.ReadToEnd() | ConvertFrom-Json
 $t = [Type]::GetTypeFromCLSID([guid]$p.clsid)
 $o = [Activator]::CreateInstance($t)
-$o.BackupLocal([string]$p.app, [string]$p.zip, '', 'ME')
+try { $o.BackupLocal([string]$p.app, [string]$p.zip, '', 'ME') } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($o) }
 [pscustomobject]@{ ok = $true } | ConvertTo-Json -Compress
 `
 
@@ -105,7 +145,8 @@ $o.BackupLocal([string]$p.app, [string]$p.zip, '', 'ME')
  */
 export async function listApplications(): Promise<VendorResult<readonly MeApplication[]>> {
   const result = await runPowerShell('powershell.exe', LIST_SCRIPT, { clsid: EXPORT_CLSID })
-  if (result.code !== 0) return { error: `The ME export server is unavailable: ${result.stderr.trim() || `exit ${result.code}`}` }
+  const reason = vendorFailure(result.stderr) || `exit ${result.code}`
+  if (result.code !== 0) return { error: `The ME export server is unavailable: ${reason}` }
   try {
     const parsed = JSON.parse(result.stdout) as { apps?: readonly MeApplication[] }
     return { value: parsed.apps ?? [] }
@@ -138,8 +179,14 @@ export async function exportApplication(application: string, destination: string
   // The vendor exporter returns "Value does not fall within the expected range"
   // when the destination's parent folder is absent, so create it first.
   mkdirSync(dirname(destination), { recursive: true })
-  const result = await runPowerShell('powershell.exe', EXPORT_SCRIPT, { clsid: EXPORT_CLSID, app: application, dest: destination })
-  if (result.code !== 0) return { error: `Export failed: ${result.stderr.trim() || `exit ${result.code}`}` }
+  let result = await runPowerShell('powershell.exe', EXPORT_SCRIPT, { clsid: EXPORT_CLSID, app: application, dest: destination })
+  // The export server refuses `LoadMEApp` with ME_ERROR (0x80040301) while an
+  // earlier instance still holds the engine: a fresh process usually succeeds.
+  if (result.code !== 0 && /0x80040301/u.test(result.stderr)) {
+    await new Promise(resolvePromise => { setTimeout(resolvePromise, 1_500) })
+    result = await runPowerShell('powershell.exe', EXPORT_SCRIPT, { clsid: EXPORT_CLSID, app: application, dest: destination })
+  }
+  if (result.code !== 0) return { error: `Export failed: ${vendorFailure(result.stderr) || `exit ${result.code}`}` }
   if (!existsSync(destination)) return { error: 'The engine reported success but wrote no folder.' }
   const extras = copyProjectExtras(application, destination, documentsRoot)
   const files: string[] = []
@@ -348,7 +395,7 @@ export function copyProjectExtras(application: string, destination: string, docu
 export async function backupApplication(application: string, zipPath: string): Promise<VendorResult<string>> {
   if (existsSync(zipPath)) return { error: `A file already exists at ${zipPath}.` }
   const result = await runPowerShell(powershell32(), BACKUP_SCRIPT, { clsid: APP_MANAGER_CLSID, app: application, zip: zipPath })
-  if (result.code !== 0) return { error: `Backup failed: ${result.stderr.trim() || `exit ${result.code}`}` }
+  if (result.code !== 0) return { error: `Backup failed: ${vendorFailure(result.stderr) || `exit ${result.code}`}` }
   if (!existsSync(zipPath)) return { error: 'The application manager reported success but wrote no zip.' }
   return { value: zipPath }
 }

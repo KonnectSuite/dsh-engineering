@@ -89,7 +89,7 @@ export function vendorTools(fs: FsService, session?: ViewSession): readonly Tool
         }
         const exported = await exportApplication(application, destination)
         if (exported.error !== undefined) {
-          throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Check that the application is not open in Studio, then retry with a new output_root.')
+          throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Close Studio if it has the application open, then retry with a new output_root; the export server sometimes needs a second attempt after a previous call.')
         }
         const files = exported.value?.files ?? []
         const warnings = exported.value?.warnings ?? []

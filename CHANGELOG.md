@@ -27,6 +27,11 @@
 
 ### Fixed
 
+- **A vendor COM failure is reported as a sentence, not as CLIXML.** When the ME export server refused
+  `LoadMEApp` the tool returned the raw PowerShell serialisation (`#< CLIXML ... 0x80040301 ...`), which buries
+  the one line a caller needs. `ftview_apps`, `ftview_export` and `ftview_backup` now decode the error strings
+  and pass them on as one capped line, release their COM object before the process ends, and retry one export
+  once when the engine reports `0x80040301` — the failure a previous export call leaves behind.
 - **Controller system flags are not called unresolved.** `S:` and `R:` addresses are defined by the controller and
   absent from an export, so the review's unresolved-reference pass still reported them: a valid rung using
   `S:FS` produced `UNRESOLVED_REFERENCE` and `draft_validate` warned `Symbol MainProgram::S:FS could not be
