@@ -80,3 +80,16 @@ to check before you promise a result.
 - **`ApplicationManager.exe`**, **`FactoryTalk View ME Application Documenter.exe`**, **`Icedbe.exe`**, **`LegacyTagDBConvertTool.exe`** are GUI tools with no documented command line; the Documenter can produce a human-readable report but not an importable XML export.
 - **Display import still needs a running Studio.** `ftview_capabilities` reports that per host instead of leaving it to assumption.
 
+
+## Handover without Studio
+
+`ftview_document` writes a bundle a panel builder can read without the tools or an XML editor:
+
+- `overview.md` - display count, object counts per screen, a navigation table (screen, object, target)
+  built from the export, and a note when the export carries no tag table.
+- `displays.csv`, `tags.csv`, `bindings.csv` - one row per display, tag and connection; `bindings.csv`
+  marks each connection `hmi tag`, `missing`, `unverified` (no tag table travelled) or `literal`.
+
+Read the bundle with `ftview_check` in hand: the bundle summarises what the export proves, and the
+checks state what it cannot. A `missing` binding is not yet a fault - the tag may live in a tag file the
+export did not include, which is exactly what `unverified` distinguishes.
