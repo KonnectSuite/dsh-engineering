@@ -203,3 +203,17 @@ describe('compose_batch', () => {
     expect(staged.error?.code).toBe('INVALID_ARGUMENT')
   })
 })
+
+describe('composition payload', () => {
+  const spec = '{"series":[{"instr":"XIC","args":["Motor_1.Running"]},{"instr":"OTE","args":["Motor_1.RunCommand"]}]}'
+
+  it('answers with a document the host can carry when no pattern was named', async () => {
+    const l5x = await opened()
+    const composed = await l5x.call('compose_rung', { spec_json: spec })
+    expect(composed.error).toBeUndefined()
+    expect(Object.keys(composed.data as Record<string, unknown>)).toEqual(['rungs'])
+    // The host serialises this document as lossless JSON; an empty member is
+    // refused outright, so the round trip has to return the same document.
+    expect(JSON.parse(JSON.stringify(composed))).toEqual(composed)
+  })
+})

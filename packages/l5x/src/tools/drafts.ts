@@ -219,7 +219,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         if (!staged) {
           return success(
             `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}; pass program and routine to stage it.`,
-            { pattern: composed.pattern, rungs: composed.rungs },
+            { ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs },
             [{ tool: 'compose_rung', args: { spec_json: '{"series":[]}' }, why: 'Adjust the structure, or stage this text with draft_rung.' }],
             COMPOSED_COVERAGE,
           )
@@ -238,7 +238,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const stagedDraft = draft as Draft
         return success(
           `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
-          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, pattern: composed.pattern, rungs: composed.rungs },
+          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs },
           [{ tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' }],
           COMPOSED_COVERAGE,
         )

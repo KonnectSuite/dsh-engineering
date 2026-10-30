@@ -137,7 +137,7 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
     )
   }
   const type = (resolution.data_type ?? '').toUpperCase()
-  const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, data_type: type === '' ? undefined : type }
+  const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, ...(type === '' ? {} : { data_type: type }) }
   seen.push(operand)
   if (kind === 'BOOL' && type !== 'BOOL') {
     throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a BOOL tag.`, 'Use a BOOL tag, or an alias that resolves to BOOL.', [])

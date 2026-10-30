@@ -72,7 +72,33 @@ export function errorEnvelope(error: unknown): { error: { code: string; message:
 
 /** Build one success document. */
 export function success(summary: string, data: unknown, next: readonly NextStep[], coverage: Coverage): Success {
-  return { summary, data, next, coverage }
+  return lossless({ summary, data, next, coverage })
+}
+
+/**
+ * Drop the one value the host will not carry.
+ *
+ * Tool answers cross the host as lossless JSON, which refuses a document that
+ * holds `undefined` anywhere — the whole call fails, not just the field. An
+ * optional member that has nothing to say must therefore be absent rather than
+ * present and empty; a suggested call that omits the view handle used to fail
+ * `ftview_list` outright. The guarantee is applied once, here, instead of at
+ * every return.
+ *
+ * @param value - The document about to be returned.
+ * @returns The same document, with members that hold `undefined` removed and array holes replaced by `null`.
+ */
+function lossless<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(entry => lossless(entry ?? null)) as T
+  if (value !== null && typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value) as unknown
+    if (prototype === Object.prototype || prototype === null) {
+      const copy: Record<string, unknown> = {}
+      for (const [key, entry] of Object.entries(value)) if (entry !== undefined) copy[key] = lossless(entry)
+      return copy as T
+    }
+  }
+  return value
 }
 
 /** One JSON Schema property, always described. */

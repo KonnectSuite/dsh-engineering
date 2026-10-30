@@ -162,7 +162,8 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         ...PAGE,
       }, ['kind']),
       async run(args, exec) {
-        const { app } = session.require(optionalString(args, 'view_id'), exec)
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const { app } = view
         const kind = requiredString(args, 'kind')
         const filter = optionalString(args, 'filter')?.toLowerCase()
         const rows = kind === 'tag'
@@ -172,7 +173,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         return success(
           `${sliced.total} ${kind === 'tag' ? 'tags' : 'displays'}${sliced.truncated ? `; showing ${sliced.offset + 1}-${sliced.offset + sliced.rows.length}` : ''}.`,
           { kind, ...sliced },
-          [{ tool: 'ftview_get', args: { view_id: optionalString(args, 'view_id'), kind, name: 'NAME' }, why: 'Read one row in full.' }],
+          [{ tool: 'ftview_get', args: { view_id: view.id, kind, name: 'NAME' }, why: 'Read one row in full.' }],
           COVERAGE,
         )
       },
@@ -220,7 +221,8 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         limit: integer('Most rows and findings to return. Default 50, maximum 200.', { minimum: 1, maximum: 200, default: 50 }),
       }, ['l5x_path']),
       async run(args, exec) {
-        const { app } = session.require(optionalString(args, 'view_id'), exec)
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const { app } = view
         const path = requiredString(args, 'l5x_path')
         const limit = optionalInteger(args, 'limit') ?? 50
         if (read === undefined) {
@@ -257,7 +259,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           `${counts.linked} of ${counts.hmiTags} HMI tags resolve to ${counts.plcTags} PLC tags: ${counts.unlinked} unlinked, ${counts.memory} memory, ${counts.unsupported} data-table; ${counts.plcUnreferencedByHmi} PLC tags are neither referenced by logic nor pointed at${counts.alarmTriggers === 0 ? '' : `; ${counts.alarmTriggers} alarm trigger(s) watch tags, ${counts.alarmOnly.length} of them on no display${counts.alarmUnresolved.length === 0 ? '' : `, and ${counts.alarmUnresolved.length} watch ${counts.alarmUnresolved.length === 1 ? 'a tag' : 'tags'} the tag CSV does not declare (${counts.alarmUnresolved.slice(0, 3).join(', ')})`}`}.`,
           report,
           [
-            { tool: 'ftview_cross_reference', args: { view_id: optionalString(args, 'view_id'), l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },
+            { tool: 'ftview_cross_reference', args: { view_id: view.id, l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },
             { tool: 'find_references', args: { symbol: 'PLC_TAG' }, why: 'Read the rungs behind one PLC tag in the L5X project.' },
           ],
           {
@@ -548,7 +550,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           [
             {
               tool: 'ftview_live_map',
-              args: { view_id: optionalString(args, 'view_id') ?? '', live_only: 'true' },
+              args: { view_id: view.id, live_only: 'true' },
               why: 'A live preview reads these controller tags over EtherNet/IP once a route is configured; memory tags are shown as not-live rather than made up.',
             },
           ],

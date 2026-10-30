@@ -53,5 +53,32 @@ export function success<T>(
   next: readonly NextStep[] = [],
   coverage?: Coverage,
 ): Success<T> {
-  return coverage === undefined ? { summary, data, next } : { summary, data, coverage, next }
+  const document: Success<T> = coverage === undefined ? { summary, data, next } : { summary, data, coverage, next }
+  return lossless(document)
+}
+
+/**
+ * Drop the one value the host will not carry.
+ *
+ * Tool answers cross the host as lossless JSON, which refuses a document that
+ * holds `undefined` anywhere — the whole call fails, not just the field. An
+ * optional member that has nothing to say must therefore be absent rather than
+ * present and empty. Payload builders are written by hand and will keep
+ * producing `pattern: undefined` and `data_type: undefined`, so the guarantee
+ * is applied once, here, instead of at every return.
+ *
+ * @param value - The document about to be returned.
+ * @returns The same document, with members that hold `undefined` removed and array holes replaced by `null`.
+ */
+function lossless<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(entry => lossless(entry ?? null)) as T
+  if (value !== null && typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value) as unknown
+    if (prototype === Object.prototype || prototype === null) {
+      const copy: Record<string, unknown> = {}
+      for (const [key, entry] of Object.entries(value)) if (entry !== undefined) copy[key] = lossless(entry)
+      return copy as T
+    }
+  }
+  return value
 }

@@ -34,6 +34,14 @@
   or the number of tag rows checked) and `alarms` (the setup file it reviewed, or that the export has none), and
   the summary states that display bindings and alarm tags were not checked. The description also claimed the
   alarm setup is read only when `alarms` is supplied, while it has long been read from the export automatically.
+- **A tool answer never carries an empty member, so the host can carry it.** Every answer crosses the host as
+  lossless JSON, which refuses a document holding `undefined`; one empty optional field failed the whole call.
+  `compose_rung` with an explicit `spec_json` tree returned `pattern: undefined` and was rejected as
+  `value is not lossless JSON`, so the structure path failed while pattern composition worked. `ftview_list`
+  failed the same way whenever the caller omitted `view_id`, because its suggested `ftview_get` call carried an
+  empty handle. The success envelope now drops empty members (and turns array holes into `null`) once, for both
+  packages; `ftview_list`, `ftview_cross_reference` and `ftview_live_map` also name the view they actually used
+  in the calls they suggest.
 
 ## [0.70.0] - 2026-10-29
 

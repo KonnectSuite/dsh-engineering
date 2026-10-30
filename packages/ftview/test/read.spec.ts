@@ -93,6 +93,17 @@ describe('open and read', () => {
     expect(tags.data?.total).toBe(3)
   })
 
+  it('names the view it used in its suggested call', async () => {
+    const { l5x, view } = await opened()
+    const listed = await l5x.call('ftview_list', { kind: 'display' })
+    expect(listed.error).toBeUndefined()
+    const next = listed.next?.[0] as { args?: Record<string, unknown> } | undefined
+    expect(next?.args?.view_id).toBe(view)
+    // The host serialises this document as lossless JSON; an empty member is
+    // refused outright, so the round trip has to return the same document.
+    expect(JSON.parse(JSON.stringify(listed))).toEqual(listed)
+  })
+
   it('reads one display with its objects and one tag row', async () => {
     const { l5x, view } = await opened()
     const display = await l5x.call('ftview_get', { view_id: view, kind: 'display', name: 'Main' })
