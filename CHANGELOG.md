@@ -24,6 +24,12 @@
   looked like a screenshot instead of something to paste. It now returns `paste_text` — the validated rungs, one
   per line — and draws a diagram only when `diagram: "yes"` is passed. The preview L5X document is still written
   for the sidebar viewer.
+- **An inserted rung takes the number it names.** `draft_rung` with `mode: "insert"` refused any rung number the
+  routine already used, so a rung could only be appended, never put above an existing one. An insert now places
+  the new rung at the position it is given — 0 through the current rung count — and renumbers the rungs below it;
+  a delete closes the gap the same way, so the routine stays numbered 0..n-1. `before_rung` is accepted only when
+  it equals `rung`. Proven on the CarpenterThickness ACD: a rung inserted at position 0 built through the Studio
+  SDK with the existing rung renumbered to 1.
 
 ### Fixed
 

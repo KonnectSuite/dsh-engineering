@@ -119,14 +119,14 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
   return [
     tool({
       name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
         mode: choice('replace rewrites an existing rung, insert adds one, delete removes one.', ['replace', 'insert', 'delete']),
-        rung: integer('Rung number the operation targets. Required for replace and delete; for insert it is the new rung number.', { minimum: 0 }),
+        rung: integer('Rung number the operation targets. Required for replace and delete; for insert it is the position the new rung takes, 0..the current rung count.', { minimum: 0 }),
         text: string('NeutralText for replace or insert. Omit for delete. Example: "XIC(Start)OTE(Run);"'),
-        before_rung: integer('For insert only: insert before this rung number instead of after rung.', { minimum: 0 }),
+        before_rung: integer('For insert only: put the new rung immediately before this rung; it must equal rung.', { minimum: 0 }),
         comment: string('Optional rung comment, written above the rung in Studio. Omit to leave an existing comment unchanged.'),
         project_id: PROJECT_ID,
       }, ['program', 'routine', 'mode']),

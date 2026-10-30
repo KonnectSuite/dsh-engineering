@@ -97,6 +97,57 @@ describe('validate and apply', () => {
   })
 })
 
+describe('rung numbering', () => {
+  it('inserts at the top and renumbers the rungs below it', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 0,
+      text: 'XIC(StartPB)XIO(StopPB)OTE(SystemRunning);', comment: 'Inserted first.',
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'inserted-top.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('inserted-top.L5X') ?? ''
+    const reopened = harness(new Map([['inserted-top.L5X', new TextEncoder().encode(written)]]), { editing: true })
+    await reopened.call('open_project', { path: 'inserted-top.L5X' })
+    const routine = await reopened.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'MainProgram' })
+    const rungs = (routine.data?.component as { body: { rungs: { number: number, text: string, comment?: string }[] } }).body.rungs
+    expect(rungs.map(row => row.number)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
+    expect(rungs[0]?.text).toContain('OTE(SystemRunning)')
+    expect(rungs[1]?.comment).toContain('System start/stop')
+  })
+
+  it('closes the numbering after deleting a middle rung', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'delete', rung: 1,
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'deleted-middle.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('deleted-middle.L5X') ?? ''
+    const reopened = harness(new Map([['deleted-middle.L5X', new TextEncoder().encode(written)]]), { editing: true })
+    await reopened.call('open_project', { path: 'deleted-middle.L5X' })
+    const routine = await reopened.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'MainProgram' })
+    const rungs = (routine.data?.component as { body: { rungs: { number: number, text: string }[] } }).body.rungs
+    expect(rungs.map(row => row.number)).toEqual([0, 1, 2, 3, 4, 5])
+    expect(rungs[1]?.text).toContain('FaultActive')
+  })
+
+  it('refuses a position past the last rung and says where it may go', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 9,
+      text: 'XIC(StartPB)OTE(SystemRunning);',
+    })
+    expect(staged.error).toBeUndefined()
+    const validated = await l5x.call('draft_validate', {})
+    expect(validated.error?.code).toBe('INVALID_OPERATION')
+    expect(validated.error?.message).toContain('0..7')
+    expect(validated.error?.fix).toContain('append')
+  })
+})
+
 describe('draft handles', () => {
   it('refuses an unknown draft id and lists the chat drafts', async () => {
     const l5x = await opened()

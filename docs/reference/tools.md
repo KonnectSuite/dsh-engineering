@@ -239,16 +239,16 @@ Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source 
 
 #### `draft_rung`
 
-Append one ladder rung operation to the chat draft: replace, insert or delete. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.
+Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `program` | string | yes | Program that owns the routine. Example: "MainProgram". |
 | `routine` | string | yes | Routine the rung belongs to. Example: "MainRoutine". |
 | `mode` | string (replace \| insert \| delete) | yes | replace rewrites an existing rung, insert adds one, delete removes one. |
-| `rung` | integer | no | Rung number the operation targets. Required for replace and delete; for insert it is the new rung number. |
+| `rung` | integer | no | Rung number the operation targets. Required for replace and delete; for insert it is the position the new rung takes, 0..the current rung count. |
 | `text` | string | no | NeutralText for replace or insert. Omit for delete. Example: "XIC(Start)OTE(Run);" |
-| `before_rung` | integer | no | For insert only: insert before this rung number instead of after rung. |
+| `before_rung` | integer | no | For insert only: put the new rung immediately before this rung; it must equal rung. |
 | `comment` | string | no | Optional rung comment, written above the rung in Studio. Omit to leave an existing comment unchanged. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 

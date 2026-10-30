@@ -35,7 +35,7 @@ describe('patterns', () => {
     const result = await l5x.call('compose_rung', {
       pattern: 'fault_latch',
       arguments_json: JSON.stringify({ fault: 'FaultActive', reset: 'StartPB', latched: 'FaultActive' }),
-      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 8,
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 7,
     })
     expect(result.error).toBeUndefined()
     expect(result.data?.operation_count).toBe(2)

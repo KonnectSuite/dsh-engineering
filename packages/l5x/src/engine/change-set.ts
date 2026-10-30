@@ -1,4 +1,4 @@
-/** Validate and stage coordinated edits while retaining untouched XML bytes. */
+﻿/** Validate and stage coordinated edits while retaining untouched XML bytes. */
 import { createHash, randomUUID } from 'node:crypto'
 import { loadL5x } from '../model/index.ts'
 import type { L5xDocument } from '../model/types.ts'
@@ -28,7 +28,7 @@ const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set
 /** Compact contract returned with validation errors and embedded in tool descriptions. */
 export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
 replace_rung {program,routine,rung,text,comment?}
-insert_rung {program,routine,rung,text,before_rung?,comment?}
+insert_rung {program,routine,rung,text,before_rung?,comment?} — rung is the position the new rung takes (0..count); rungs below it renumber
 delete_rung {program,routine,rung}
 set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
@@ -311,17 +311,20 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   const rungs = content.children.filter(child => child.kind === 'Rung')
   const targets = rungs.filter(rung => Number(rung.attributes.Number) === operation.rung)
   if (operation.operation === 'insert_rung') {
-    if (targets.length !== 0) throw new EngineeringError('NAME_COLLISION', 'Rung number already exists; no automatic renumbering is performed')
     checkRungText(operation.text)
-    const newRung = `<Rung Number="${operation.rung}" Type="N">${commentXml(operation.comment)}<Text>${cdata(operation.text)}</Text></Rung>`
-    if (operation.before_rung === undefined) return insert(xml, content, newRung)
-    const before = rungs.filter(rung => Number(rung.attributes.Number) === operation.before_rung)
-    if (before.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Insertion target rung is absent or ambiguous')
-    return replace(xml, before[0]!.start, before[0]!.start, newRung)
+    const numbers = rungs.map(rung => Number(rung.attributes.Number))
+    const before = operation.before_rung
+    const index = before === undefined ? operation.rung : numbers.indexOf(before)
+    if (before !== undefined && index < 0) throw new EngineeringError('AMBIGUOUS_TARGET', 'Insertion target rung is absent or ambiguous')
+    if (before !== undefined && operation.rung !== index) throw new EngineeringError('INVALID_OPERATION', `A rung inserted before rung ${before} takes number ${index}; pass "${index}" as rung.`, 'Pass the rung number the new rung occupies; the rungs at and below that number shift down by one.')
+    if (!Number.isInteger(index) || index < 0 || index > rungs.length) throw new EngineeringError('INVALID_OPERATION', `Cannot insert a rung at ${operation.rung}: this routine has ${rungs.length} rung(s), so the position is 0..${rungs.length}.`, `Pass rung 0 to put it first, or rung ${rungs.length} to append it.`)
+    const newRung = `<Rung Number="${index}" Type="N">${commentXml(operation.comment)}<Text>${cdata(operation.text)}</Text></Rung>`
+    const inserted = index < rungs.length ? replace(xml, rungs[index]!.start, rungs[index]!.start, newRung) : insert(xml, content, newRung)
+    return renumberRungs(inserted, operation.program, operation.routine)
   }
   if (targets.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', 'Selected rung is absent or ambiguous')
   const target = targets[0]!
-  if (operation.operation === 'delete_rung') return replace(xml, target.start, target.end, '')
+  if (operation.operation === 'delete_rung') return renumberRungs(replace(xml, target.start, target.end, ''), operation.program, operation.routine)
   if (operation.operation === 'set_rung_comment') {
     return replace(xml, target.start, target.end, rungWith(target, retainedText(xml, target), operation.comment))
   }
@@ -332,6 +335,33 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   checkRungText(operation.text)
   const contentText = uniqueRegion(target.children, 'Text')
   return replace(xml, contentText.start, contentText.end, `<Text>${cdata(operation.text)}</Text>`)
+}
+
+/**
+ * Rewrite every rung number in one routine to its document position.
+ * Studio keeps a ladder routine numbered 0..n-1, so inserting or deleting a rung
+ * in the middle renumbers the rungs below it; the edit is applied right to left so
+ * the earlier offsets stay valid.
+ */
+function renumberRungs(xml: string, programName: string, routineName: string): string {
+  const root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
+  const programs = root.children.find(child => child.kind === 'Controller')?.children.find(child => child.kind === 'Programs')
+  const owner = programs?.children.find(child => child.kind === 'Program' && child.attributes.Name?.toLowerCase() === programName.toLowerCase())
+  const routine = owner?.children.find(child => child.kind === 'Routines')?.children.find(child => child.kind === 'Routine' && child.attributes.Name?.toLowerCase() === routineName.toLowerCase())
+  const rungs = routine?.children.find(child => child.kind === 'RLLContent')?.children.filter(child => child.kind === 'Rung') ?? []
+  let output = xml
+  for (let index = rungs.length - 1; index >= 0; index -= 1) {
+    const rung = rungs[index]!
+    if (Number(rung.attributes.Number) === index) continue
+    const element = output.slice(rung.start, rung.end)
+    const close = element.indexOf('>')
+    if (close < 0) continue
+    const head = element.slice(0, close + 1)
+    const rewritten = head.replace(/\bNumber="[^"]*"/u, `Number="${index}"`)
+    if (rewritten === head) continue
+    output = output.slice(0, rung.start) + rewritten + element.slice(close + 1) + output.slice(rung.end)
+  }
+  return output
 }
 
 /** A comment element, or nothing when the comment is cleared. */
