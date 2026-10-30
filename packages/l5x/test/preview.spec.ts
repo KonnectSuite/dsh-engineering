@@ -143,6 +143,15 @@ describe('ladder diagram layout', () => {
     expect(raster.svg).toContain('XIC(Auto)')
     expect(raster.svg).toContain('XIC(Bypass)')
   })
+
+  it('draws a rung comment clear of a stacked branch', () => {
+    const raster = renderLadderSvg([{ number: 0, text: 'XIC(Permit)[XIC(Auto),XIC(Bypass)]OTE(Run);', comment: 'Auto or bypass' }], 'branch comment')
+    const comment = /<text x="[\d.]+" y="([\d.]+)" font-size="11\.5"[^>]*>Auto or bypass</u.exec(raster.svg)
+    expect(comment).not.toBeNull()
+    const boxes = [...raster.svg.matchAll(/<rect x="[\d.]+" y="([\d.]+)" width="[\d.]+" height="[\d.]+" rx="3"/gu)].map(match => Number(match[1]))
+    expect(boxes.length).toBeGreaterThan(0)
+    expect(Number(comment?.[1])).toBeLessThan(Math.min(...boxes))
+  })
 })
 describe('l5x_routine_diagram', () => {
   /** A harness whose project is the open fixture. */

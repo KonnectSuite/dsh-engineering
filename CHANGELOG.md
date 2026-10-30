@@ -42,6 +42,10 @@
   empty handle. The success envelope now drops empty members (and turns array holes into `null`) once, for both
   packages; `ftview_list`, `ftview_cross_reference` and `ftview_live_map` also name the view they actually used
   in the calls they suggest.
+- **A rung comment is no longer covered by a stacked branch.** The diagram centred the row on the
+  comment's band, so a branch's first stacked path was drawn over the comment text. The row now
+  descends by the branch's height before drawing, which keeps the comment in its own band and grows
+  the canvas to match. Rungs without a branch are unchanged.
 
 ## [0.70.0] - 2026-10-29
 

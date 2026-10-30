@@ -103,6 +103,33 @@ function rightEdge(cells: readonly Cell[]): number {
 }
 
 /**
+ * How far above its row centre the sequence reaches when laid out.
+ *
+ * A branch stacks its paths around the centre, so a rung whose comment sits at
+ * the centre would have the comment covered by the first stacked path. The
+ * row is pushed down by this extent so the comment keeps its own band.
+ *
+ * @param nodes - Parsed nodes in source order.
+ * @returns Distance from the row centre to the highest drawn edge.
+ */
+function topExtent(nodes: readonly LadderNode[]): number {
+  let extent = 0
+  let hasInstruction = false
+  for (const node of nodes) {
+    if (node.kind === 'instruction') {
+      hasInstruction = true
+      continue
+    }
+    const step = BOX_HEIGHT + 8
+    node.paths.forEach((path, index) => {
+      const above = ((node.paths.length - 1) * step) / 2 - index * step
+      extent = Math.max(extent, above + topExtent(path))
+    })
+  }
+  return Math.max(extent, hasInstruction ? BOX_HEIGHT / 2 : 0)
+}
+
+/**
  * Lay one sequence of nodes along a row.
  * @param nodes - Parsed nodes in source order.
  * @param startX - Left edge of the sequence.
@@ -170,7 +197,7 @@ function drawRung(rung: RungSpec, top: number, left: number, right: number, flat
     }
     cursor += 4
   }
-  const centre = cursor + BOX_HEIGHT / 2 + 6
+  const centre = cursor + topExtent(parsed.nodes) + 6
   const laid = laySequence(parsed.nodes, left + 26, centre, flattened)
   const height = Math.max(centre + BOX_HEIGHT / 2 - top + ROW_GAP, ...laid.cells.map(cell => cell.y + cell.height - top + ROW_GAP / 2))
   shapes.push(`<line x1="${left}" y1="${centre}" x2="${right}" y2="${centre}" stroke="#334155" stroke-width="1"/>`)
