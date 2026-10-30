@@ -40,10 +40,18 @@ export interface AlarmFinding {
 }
 
 /** What the report states and what it cannot prove. */
+/** The tag an alarm expression watches, without folder, bit or array suffix. */
+export function tagOf(expression: string): string {
+  const bare = expression.replace(/^\{/u, '').replace(/^\[[^\]]*\]\s*/u, '')
+  const match = /^[A-Za-z_][A-Za-z0-9_]*/u.exec(bare)
+  return match === null ? '' : match[0]
+}
+
 export interface AlarmReport {
   readonly triggers: readonly AlarmTrigger[]
   readonly messages: readonly AlarmMessage[]
   readonly findings: readonly AlarmFinding[]
+  readonly unresolvedTags: readonly string[]
   readonly counts: {
     readonly triggers: number
     readonly messages: number
@@ -52,6 +60,7 @@ export interface AlarmReport {
     readonly blankTexts: number
     readonly duplicateExpressions: number
     readonly orphanMessages: number
+    readonly tagsNotInHmi: number
   }
 }
 
@@ -84,8 +93,9 @@ function isPlaceholder(label: string): boolean {
  * Review one Alarms.xml document.
  *
  * @param xml - The wizard XML.
+ * @param hmiTags - Optional HMI tag names; triggers watching anything else are reported as unresolved.
  */
-export function alarmReport(xml: string): AlarmReport {
+export function alarmReport(xml: string, hmiTags?: ReadonlySet<string>): AlarmReport {
   const { triggers: triggerNodes, messages: messageNodes } = rowsOf(xml)
   const perTrigger = new Map<string, number>()
   for (const message of messageNodes) {
@@ -168,6 +178,21 @@ export function alarmReport(xml: string): AlarmReport {
     })
   }
 
+  const unresolved = new Set<string>()
+  if (hmiTags !== undefined && hmiTags.size > 0) {
+    for (const trigger of triggers) {
+      const tag = tagOf(trigger.expression)
+      if (tag === '' || hmiTags.has(tag)) continue
+      unresolved.add(tag)
+      findings.push({
+        rule: 'ALARM_TAG_NOT_IN_HMI',
+        severity: 'warning',
+        subject: trigger.id,
+        detail: `Trigger ${trigger.id} watches ${trigger.expression}, but the HMI tag database has no tag ${tag}, so the alarm cannot read it.`,
+      })
+    }
+  }
+
   return {
     triggers,
     messages,
@@ -180,6 +205,8 @@ export function alarmReport(xml: string): AlarmReport {
       blankTexts: blanks.length,
       duplicateExpressions: [...byExpression.values()].filter(ids => ids.length > 1).length,
       orphanMessages: orphans.length,
+      tagsNotInHmi: unresolved.size,
     },
+    unresolvedTags: [...unresolved],
   }
 }

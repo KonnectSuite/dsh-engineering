@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alarmReport } from '../src/alarm-report.ts'
+import { alarmReport, tagOf } from '../src/alarm-report.ts'
 
 /** A small configuration with one of each defect the report looks for. */
 const XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -58,6 +58,28 @@ describe('alarmReport', () => {
     expect(blank?.subject).toBe('M2')
     expect(report.counts.orphanMessages).toBe(1)
     expect(report.counts.blankTexts).toBe(1)
+  })
+
+  it('resolves trigger tags against the HMI database when one is supplied', () => {
+    const report = alarmReport(XML, new Set(['Alarm_Word']))
+    expect(report.findings.filter(entry => entry.rule === 'ALARM_TAG_NOT_IN_HMI')).toEqual([])
+    expect(report.counts.tagsNotInHmi).toBe(0)
+  })
+
+  it('flags a trigger watching a tag the HMI database does not define', () => {
+    const report = alarmReport(XML, new Set(['SomethingElse']))
+    const finding = report.findings.find(entry => entry.rule === 'ALARM_TAG_NOT_IN_HMI')
+    expect(finding?.subject).toBe('T1')
+    expect(finding?.detail).toContain('Alarm_Word')
+    expect(report.unresolvedTags).toEqual(['Alarm_Word'])
+    expect(report.counts.tagsNotInHmi).toBe(1)
+  })
+
+  it('reads the tag name out of a folder-qualified expression', () => {
+    expect(tagOf('{[Cutter]Alarm_Word.0}')).toBe('Alarm_Word')
+    expect(tagOf('[Cutter]Alarm_Word[3]')).toBe('Alarm_Word')
+    expect(tagOf('Alarm_Word.1')).toBe('Alarm_Word')
+    expect(tagOf('{[Cutter]}')).toBe('')
   })
 
   it('reports a clean configuration with no findings', () => {

@@ -2,6 +2,10 @@
 
 ### Changed
 
+- **`ftview_alarm_report` resolves trigger tags against the HMI database.** Pass `tags` (the application
+  tag CSV) and every trigger is checked: a trigger watching a tag the database does not define is reported as
+  `ALARM_TAG_NOT_IN_HMI` with the tag name. On the commissioning export it found two such tags
+  (`Alarm_Word`, `Alarm_Word2`) that the file alone could not reveal.
 - **`l5x_routine_diagram` pages like `l5x_diagram` does.** It accepted no offset, so a long routine
   truncated at `max_rungs` with no way to see the rest. It now takes `start_rung` and `max_rungs`, returns
   `start_rung` and `next_start`, and its summary names the rung range drawn and the offset for the next page.

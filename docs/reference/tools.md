@@ -823,6 +823,7 @@ Review an Alarms.xml: every trigger and message, plus findings a reviewer can ac
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `path` | string | yes | Alarms.xml path, or a folder that contains it (an export, or <project store>\<application>). |
+| `tags` | string | no | Optional HMI tag CSV for the same application; every trigger watching a tag it does not define is reported as unresolved. |
 | `limit` | integer | no | Most triggers and messages to list. Defaults to 50, at most 200. |
 
 #### `ftview_studio_import_prepare`
