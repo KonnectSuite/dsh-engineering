@@ -90,6 +90,7 @@ const RENDER_COVERAGE: Coverage = {
     'animations, global objects and vendor widgets are placeholders',
     'an image is inlined only when its file is present in the Images folder; many ME exports ship none',
     'no controller binding or runtime behaviour is shown',
+    'a problem outline marks the object box only; it does not prove the runtime renders it that way',
   ],
 }
 

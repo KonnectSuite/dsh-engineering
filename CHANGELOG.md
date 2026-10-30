@@ -2,6 +2,10 @@
 
 ### Changed
 
+- **A render marks the objects it complains about.** `problems` named overflowing objects in the result,
+  but the image itself showed nothing, so a reviewer had to cross-reference names by hand. Each problem
+  object now carries a dashed red outline in both a single render and the review sheet, and the render
+  coverage says the outline marks the declared box rather than proving runtime appearance.
 - **The renderer contract no longer claims images are placeholders.** Artwork has been inlined since
   0.27.0 when `Images/<file>` is present, and tests cover it, but the module header, the reference text
   and the `ftview_render` description still said images were drawn as placeholders. A model reading the

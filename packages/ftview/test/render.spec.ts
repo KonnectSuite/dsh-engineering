@@ -240,6 +240,14 @@ describe('layout problems', () => {
     expect(result.problems).toEqual([expect.objectContaining({ object: 'Note', kind: 'outside' })])
     expect(result.problems[0]?.detail).toContain('640x480')
   })
+  it('outlines a problem object so the image shows where it is', () => {
+    const outside = [{ type: 'panel', name: 'Wide', attributes: { left: '600', top: '10', width: '300', height: '40', backColor: '#334155' } }]
+    const result = renderDisplaySvg('Main', outside, { width: 640, height: 480, backColor: '#FFFFFF' })
+    expect(result.problems.length).toBe(1)
+    expect(result.svg).toContain('stroke="#FF5A5F"')
+    expect(result.drawn).toBe(1)
+  })
+
 
   it('reports text that cannot fit its box', () => {
     const caption = 'a caption far too long for this small box'

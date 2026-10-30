@@ -243,6 +243,7 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
   const skipped: string[] = []
   const problems: RenderProblem[] = []
   const shapes: string[] = []
+  const marks: string[] = []
   for (const object of objects) {
     if (STRUCTURAL.has(object.type.toLowerCase()) || STRUCTURAL.has(kindOf(object))) continue
     if (geometry(object, 'width', 0) === 0 && geometry(object, 'height', 0) === 0) {
@@ -250,13 +251,20 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
       continue
     }
     shapes.push(draw(object, images))
-    problems.push(...problemsOf(object, settings))
+    const found = problemsOf(object, settings)
+    if (found.length > 0) {
+      marks.push(
+        `<rect x="${geometry(object, 'left', 0)}" y="${geometry(object, 'top', 0)}" width="${geometry(object, 'width', 0)}" height="${geometry(object, 'height', 0)}" fill="none" stroke="#FF5A5F" stroke-width="2" stroke-dasharray="5 3"/>`,
+      )
+    }
+    problems.push(...found)
   }
   const svg = [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<svg xmlns="http://www.w3.org/2000/svg" width="${settings.width}" height="${settings.height}" viewBox="0 0 ${settings.width} ${settings.height}">`,
     `<rect x="0" y="0" width="${settings.width}" height="${settings.height}" fill="${settings.backColor}"/>`,
     ...shapes,
+    ...marks,
     `</svg>`,
     '',
   ].join('\n')
