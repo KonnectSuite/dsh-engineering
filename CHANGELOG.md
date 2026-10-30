@@ -2,6 +2,9 @@
 
 ### Changed
 
+- **`l5x_routine_diagram` pages like `l5x_diagram` does.** It accepted no offset, so a long routine
+  truncated at `max_rungs` with no way to see the rest. It now takes `start_rung` and `max_rungs`, returns
+  `start_rung` and `next_start`, and its summary names the rung range drawn and the offset for the next page.
 - **The review sheet states what it is.** A sheet titled its drawings but carried no totals, so someone
   looking only at the PNG could not tell how many displays it covered, how many problems were marked, or
   whether it came from the export or a staged draft. `composeSheet` takes a footer line and

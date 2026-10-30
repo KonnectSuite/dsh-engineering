@@ -179,6 +179,33 @@ describe('l5x_routine_diagram', () => {
     expect(result.error?.message).toContain('ST')
   })
 
+  it('pages through a long routine with start_rung and reports the next page', async () => {
+    const l5x = await opened()
+    const whole = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'MainRoutine' })
+    const total = Number(whole.data?.rungs)
+    expect(total).toBeGreaterThan(1)
+    const first = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'MainRoutine', max_rungs: 1 })
+    expect(first.data?.rungs).toBe(1)
+    expect(typeof first.data?.next_start).toBe('number')
+    const second = await l5x.call('l5x_routine_diagram', {
+      program: 'MainProgram',
+      routine: 'MainRoutine',
+      max_rungs: 1,
+      start_rung: Number(first.data?.next_start),
+    })
+    const firstList = first.data?.rung_list as { number: number }[]
+    const secondList = second.data?.rung_list as { number: number }[]
+    expect(secondList[0]?.number).toBeGreaterThan(firstList[0]?.number ?? -1)
+    expect(String(second.summary)).toContain('Next page start_rung')
+  })
+
+  it('refuses a start_rung past the last rung and names the range', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram', routine: 'MainRoutine', start_rung: 9999 })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+    expect(result.error?.message).toContain('No rung at or after 9999')
+  })
+
   it('requires both program and routine', async () => {
     const l5x = await opened()
     const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram' })

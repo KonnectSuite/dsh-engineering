@@ -13,14 +13,14 @@
 
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
-import { choice, object, string } from '../core/params.ts'
+import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
 import { dirname, isAbsolute } from 'node:path'
 import type { ProjectSession } from '../session.ts'
-import { optionalString, tool } from './common.ts'
+import { optionalNumber, optionalString, tool } from './common.ts'
 
 /** What a rendered preview cannot establish. */
 const PREVIEW_COVERAGE: Coverage = {
@@ -215,6 +215,8 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine to draw. Example: "MainRoutine".'),
         output: string('Optional folder for the diagram, relative to the workspace. Defaults to ".l5x-preview".'),
+        start_rung: integer('Optional rung number to start drawing at, for a second page of a long routine.', { minimum: 0 }),
+        max_rungs: integer('Most rungs to draw on one page. Defaults to 40.', { minimum: 1, maximum: 200 }),
       }, ['program', 'routine']),
       async run(args, exec) {
         const program = optionalString(args, 'program')
@@ -244,10 +246,20 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         if (rungs.length === 0) {
           throw new L5xError('NOT_FOUND', `Routine ${program}/${routineName} has no rungs.`, 'Pick a routine that carries logic.')
         }
+        const cap = Math.max(1, Math.trunc(optionalNumber(args, 'max_rungs') ?? 40))
+        const from = Math.max(0, Math.trunc(optionalNumber(args, 'start_rung') ?? 0))
+        const first = rungs.findIndex(rung => rung.number >= from)
+        const start = first === -1 ? rungs.length : first
+        const page = rungs.slice(start, start + cap)
+        const nextStart = start + page.length < rungs.length ? rungs[start + page.length]?.number : undefined
+        if (page.length === 0) {
+          throw new L5xError('INVALID_ARGUMENT', `No rung at or after ${from} in ${program}/${routineName}, whose rungs run ${rungs[0]?.number} to ${rungs.at(-1)?.number}.`, 'Pass start_rung within that range.')
+        }
+
         const slug = `${program}-${routineName}`.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Routine'
         const folder = optionalString(args, 'output') ?? '.l5x-preview'
         const probe = await session.resolvePath(`${folder}/${slug}.svg`, exec)
-        const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
+        const raster = renderLadderSvg(page.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
         let image: { svg: string; png?: string } = { svg: '' }
         let rasterError: string | undefined
         if (!isAbsolute(probe)) {
@@ -266,13 +278,15 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
             : `No PNG diagram: ${rasterError}.`
           : `Drew the rungs as ${png}.`
         return success(
-          `Drew ${rungs.length} rung(s) of ${program}/${routineName} as ${png ?? (image.svg === '' ? 'the rung list' : image.svg)}. ${drawing}`,
+          `Drew ${page.length} rung(s) of ${program}/${routineName} (${page[0]?.number}-${page.at(-1)?.number} of ${rungs.length}) as ${png ?? (image.svg === '' ? 'the rung list' : image.svg)}.${nextStart === undefined ? '' : ` Next page start_rung ${nextStart}.`} ${drawing}`,
           {
             program,
             routine: routineName,
-            rungs: rungs.length,
-            instructions: [...new Set(rungs.flatMap(rung => rung.instructions))],
-            rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
+            rungs: page.length,
+            start_rung: page[0]?.number,
+            ...(nextStart === undefined ? {} : { next_start: nextStart }),
+            instructions: [...new Set(page.flatMap(rung => rung.instructions))],
+            rung_list: page.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
             diagram_svg: image.svg,
             ...(png === undefined ? {} : { diagram_png: png }),
             note: 'The diagram is a schematic drawn from the parsed rungs, not a Studio screenshot.',

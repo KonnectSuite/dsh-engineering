@@ -213,6 +213,8 @@ Draw a routine that already exists in the project as a ladder diagram, so an ans
 | `program` | string | yes | Program that owns the routine. Example: "MainProgram". |
 | `routine` | string | yes | Routine to draw. Example: "MainRoutine". |
 | `output` | string | no | Optional folder for the diagram, relative to the workspace. Defaults to ".l5x-preview". |
+| `start_rung` | integer | no | Optional rung number to start drawing at, for a second page of a long routine. |
+| `max_rungs` | integer | no | Most rungs to draw on one page. Defaults to 40. |
 
 ### L5X diagrams
 
