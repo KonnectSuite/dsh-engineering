@@ -19,7 +19,7 @@ function app(displays: DisplayFile[]): Application {
     tags: [],
     tagFiles: [],
     tagErrors: [],
-    alarmFiles: [],
+    alarmFiles: [], manifestFiles: [],
     diagnostics: [],
     files: [],
   }

@@ -43,6 +43,12 @@ export interface DisplayFile {
    * records it instead of reporting an unparsed display.
    */
   readonly alarmSetup?: true
+  /**
+   * True when the file is a Studio graphics-import batch manifest (`<gfxImport>`
+   * root). Studio writes it beside the displays it imports, so a folder this
+   * plugin applied contains one; it is not a display and not a defect.
+   */
+  readonly importManifest?: true
 }
 
 /** One file the scan read, with its content hash. */
@@ -62,6 +68,8 @@ export interface Application {
   readonly tagErrors: readonly string[]
   /** The ME alarm setup files (`<alarms>` root), which are part of an export but not displays. */
   readonly alarmFiles: readonly string[]
+  /** Studio graphics-import batch manifests (`<gfxImport>` root) found beside the displays. */
+  readonly manifestFiles: readonly string[]
   readonly diagnostics: readonly string[]
   readonly files: readonly ScannedFile[]
   /** File names inside `Images/`; the walker does not read their bytes. */
@@ -328,6 +336,10 @@ export function parseDisplay(file: string, text: string): DisplayFile {
     // sits beside the displays but is not one, so the scan must not report it as
     // an unparsed display.
     if (/^alarms$/iu.test(rootKey)) return { file, name: fallbackName, objects: [], alarmSetup: true }
+    // Studio's Graphics Import Export Wizard writes a batch manifest named
+    // BatchImport_<application>.xml into Displays/. It has a <gfxImport> root and
+    // is the import instruction, not a display, so it is never a parse defect.
+    if (/^gfximport$/iu.test(rootKey)) return { file, name: fallbackName, objects: [], importManifest: true }
     // ME display files use <gfx> (Gfx-ME17.xsd) in a Studio export; some hand-made
     // or older files use a <display> root. Both are display files.
     if (!/display/iu.test(rootKey) && !/^gfx$/iu.test(rootKey)) {
@@ -415,6 +427,7 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
   const tagFiles: string[] = []
   const tagErrors: string[] = []
   const alarmFiles: string[] = []
+  const manifestFiles: string[] = []
   const diagnostics: string[] = []
   const files: ScannedFile[] = []
   const images: string[] = []
@@ -438,6 +451,10 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
       alarmFiles.push(file)
       return
     }
+    if (display.importManifest === true) {
+      manifestFiles.push(file)
+      return
+    }
     if (display.parseError !== undefined) {
       diagnostics.push(`${file}: ${display.parseError}`)
       return
@@ -445,5 +462,5 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
     displays.push(display)
   }, { count: 0, max: maxFiles }, images)
   const name = base.replace(/[\\/]$/u, '').split(/[\\/]/u).pop() ?? base
-  return { root: base, name, displays, tags, tagFiles, tagErrors, alarmFiles, diagnostics, files, images }
+  return { root: base, name, displays, tags, tagFiles, tagErrors, alarmFiles, manifestFiles, diagnostics, files, images }
 }

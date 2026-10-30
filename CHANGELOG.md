@@ -33,6 +33,11 @@
   instead: `ftview_open` returns it in `alarm_files` and says how many there are, and `UNPARSED_FILE` names only
   files that really failed to parse. The alarm findings are unchanged — the CarpenterPilot export still reports
   its 145 alarm findings, and `ftview_check` there now returns 154 findings instead of 223.
+- **A Studio import manifest is no longer reported as an unparsed display.** `ftview_apply` writes
+  `Displays/BatchImport_<application>.xml` so Studio's Graphics Import Export Wizard can import the displays it
+  changed; reopening that folder reported `Root element gfxImport is not an ME display.` The scan now records the
+  file as an import manifest: `ftview_open` and `ftview_reload` return it in `manifest_files`, the display count
+  is unaffected, and `UNPARSED_FILE` names only files that really failed to parse.
 - **`ftview_check` says which checks could not run.** `coverage` carried only `schema` and `plc_binding`, so an
   export with no HMI tag CSV returned no `TAG_NOT_BOUND` and no alarm tag findings, with nothing to distinguish
   that from bindings that all resolve. It now carries `tag_binding` (`not run: this export has no HMI tag CSV`,

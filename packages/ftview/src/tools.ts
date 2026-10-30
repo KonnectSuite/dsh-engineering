@@ -93,7 +93,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
   return [
     tool({
       name: 'ftview_open',
-      description: 'Open one FactoryTalk View ME export folder and return its application summary: displays, tag rows, alarm setup files, structural diagnostics and coverage. Read-only; does not decode MER, contact a terminal, or change files.',
+      description: 'Open one FactoryTalk View ME export folder and return its application summary: displays, tag rows, alarm setup files, Studio import manifests, structural diagnostics and coverage. Read-only; does not decode MER, contact a terminal, or change files.',
       parameters: object({
         root: string('Export folder containing the display XML files and the HMI tag CSV. Example: "C:/Projects/Line/ME Export".'),
       }, ['root']),
@@ -101,8 +101,9 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         const view = await session.open(requiredString(args, 'root'), exec)
         const { app } = view
         const alarms = app.alarmFiles.length === 0 ? '' : `, ${app.alarmFiles.length} alarm setup file(s)`
+        const manifests = app.manifestFiles.length === 0 ? '' : `, ${app.manifestFiles.length} import manifest(s)`
         return success(
-          `${app.name}: ${app.displays.length} displays, ${app.tags.length} tags, ${app.diagnostics.length + app.tagErrors.length} diagnostic(s)${alarms}.`,
+          `${app.name}: ${app.displays.length} displays, ${app.tags.length} tags, ${app.diagnostics.length + app.tagErrors.length} diagnostic(s)${alarms}${manifests}.`,
           {
             view_id: view.id,
             root: app.root,
@@ -111,6 +112,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
             tags: app.tags.length,
             tag_files: app.tagFiles,
             alarm_files: app.alarmFiles,
+            manifest_files: app.manifestFiles,
             diagnostics: app.diagnostics,
             tag_errors: app.tagErrors,
             files: app.files.length,
@@ -143,6 +145,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
             added: refreshed.added,
             removed: refreshed.removed,
             alarm_files: refreshed.view.app.alarmFiles,
+            manifest_files: refreshed.view.app.manifestFiles,
             diagnostics: refreshed.view.app.diagnostics,
           },
           [

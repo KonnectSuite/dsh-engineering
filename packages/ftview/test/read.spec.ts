@@ -222,6 +222,28 @@ describe('alarm setup file', () => {
   })
 })
 
+describe('Studio import manifest', () => {
+  it('reads <gfxImport> as a manifest instead of an unparsed display', async () => {
+    const files = new Map([
+      ['export/Main.xml', '<Display name="Main"><Object name="StartPB"/></Display>'],
+      ['export/Displays/BatchImport_Line.xml', '<?xml version="1.0" encoding="UTF-8"?><gfxImport><Display name="Main"/></gfxImport>'],
+      ['export/tags.csv', STUDIO_CSV],
+    ])
+    const l5x = harness(files)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    expect(open.summary).toContain('1 displays')
+    expect(open.summary).toContain('0 diagnostic(s)')
+    expect(open.summary).toContain('1 import manifest(s)')
+    expect(open.data?.displays).toBe(1)
+    expect(open.data?.manifest_files).toEqual(['Displays/BatchImport_Line.xml'])
+    expect(open.data?.diagnostics).toEqual([])
+    const checked = await l5x.call('ftview_check', { view_id: open.data?.view_id })
+    expect((checked.data?.by_rule as Record<string, number>).UNPARSED_FILE).toBeUndefined()
+    const reloaded = await l5x.call('ftview_reload', { view_id: open.data?.view_id })
+    expect(reloaded.data?.manifest_files).toEqual(['Displays/BatchImport_Line.xml'])
+  })
+})
+
 describe('compare', () => {
   it('reports changed files between two exports', async () => {
     const files = exportFiles()
