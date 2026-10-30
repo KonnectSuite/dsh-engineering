@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.71.0] - 2026-10-30
+
 ### Added
 
 - **`ftview_document`** writes a handover bundle for an opened export — `overview.md`, `displays.csv`,
