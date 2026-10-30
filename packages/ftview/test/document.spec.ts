@@ -92,4 +92,18 @@ describe('documentation bundle', () => {
     })
     expect(written.error?.code).toBe('OUTPUT_EXISTS')
   })
+  it('says nothing can be verified when the export carries no tag table', async () => {
+    const l5x = harness(new Map([['app/Displays/Main.xml', DISPLAY]]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'app' })
+    const target = join(mkdtempSync(join(tmpdir(), 'ftview-no-tags-')), 'bundle')
+    const written = await l5x.call('ftview_document', {
+      view_id: opened.data?.view_id,
+      output_root: target,
+    })
+    expect(written.error).toBeUndefined()
+    expect(written.summary).toContain('No tag table travelled with this export')
+    const bindings = readFileSync(join(target, 'bindings.csv'), 'utf8')
+    expect(bindings).toContain('unverified')
+    expect(bindings).not.toContain(',missing')
+  })
 })

@@ -13,6 +13,7 @@ export interface DocumentCounts {
   readonly tags: number
   readonly bindings: number
   readonly missing: number
+  readonly unverified: number
 }
 
 export interface DocumentBundle {
@@ -113,7 +114,7 @@ export function bindingsOf(application: Application): {
         const tag = expressionTag(expression)
         const status = tag === undefined
           ? 'literal'
-          : known.has(tag.toLowerCase()) ? 'hmi tag' : 'missing'
+          : known.size === 0 ? 'unverified' : known.has(tag.toLowerCase()) ? 'hmi tag' : 'missing'
         rows.push({
           display: display.name,
           object: object.name ?? object.type,
@@ -132,6 +133,7 @@ export function bindingsOf(application: Application): {
 export function documentApplication(application: Application): DocumentBundle {
   const bindings = bindingsOf(application)
   const missing = bindings.rows.filter(row => row.status === 'missing')
+  const unverified = bindings.rows.filter(row => row.status === 'unverified')
   const summaries = application.displays.map(display => ({ display, ...summaryOf(display) }))
 
   const displayRows = summaries.map(({ display, buttons, numeric, indicators, text, unparsed }) => [
@@ -181,7 +183,9 @@ export function documentApplication(application: Application): DocumentBundle {
     '',
     `- ${application.displays.length} display(s), ${unparsed.length === 0 ? 'all parsed' : `${unparsed.length} could not be parsed: ${unparsed.join(', ')}`}`,
     `- ${application.tags.length} HMI tag(s) from ${application.tagFiles.length} tag file(s)`,
-    `- ${bindings.rows.length} binding(s), ${missing.length} naming a tag this export does not declare`,
+    unverified.length > 0
+      ? `- ${bindings.rows.length} binding(s); this export carries no tag table, so none can be verified`
+      : `- ${bindings.rows.length} binding(s), ${missing.length} naming a tag this export does not declare`,
     '',
     '| Display | Objects | Buttons | Numeric | Indicators | Text | Unparsed | Missing bindings |',
     '| --- | --- | --- | --- | --- | --- | --- | --- |',
@@ -211,6 +215,7 @@ export function documentApplication(application: Application): DocumentBundle {
       tags: application.tags.length,
       bindings: bindings.rows.length,
       missing: missing.length,
+      unverified: unverified.length,
     },
   }
 }
