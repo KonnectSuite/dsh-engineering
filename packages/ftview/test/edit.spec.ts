@@ -554,6 +554,46 @@ describe('verify against a hand-made export', () => {
     expect(verified.summary).toContain('staged objects all landed')
   })
 
+  it('refuses to guess when the vendor export cannot run', async () => {
+    const l5x = harness(new Map([
+      ['base/Displays/Main.xml', DISPLAY('Before')],
+      ['base/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'base' })
+    await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    const verified = await l5x.call('ftview_verify_import', { application: 'AnyApp' })
+    expect(verified.error?.code).toBe('NO_IMPORT_PROOF')
+    expect(verified.error?.fix).toContain('export_root')
+  })
+
+  it('names the export it compared against', async () => {
+    const l5x = harness(new Map([
+      ['base/Displays/Main.xml', DISPLAY('Before')],
+      ['base/Tags/Tags.csv', CSV],
+      ['landed/Displays/Main.xml', DISPLAY('After')],
+      ['landed/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'base' })
+    await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    const verified = await l5x.call('ftview_verify_import', {
+      application: 'AnyApp',
+      export_root: 'landed',
+    })
+    expect(verified.summary).toContain('Compared against the export you passed')
+  })
+
   it('reports a display that did not land as staged', async () => {
     const l5x = harness(new Map([
       ['base/Displays/Main.xml', DISPLAY('Before')],

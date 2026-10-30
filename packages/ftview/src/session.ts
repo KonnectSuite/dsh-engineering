@@ -54,6 +54,20 @@ export class ViewSession {
    *
    * @param display - Display name as the export spells it.
    */
+  // The last export this chat made of an application is remembered by name so a
+  // later verification can say where its proof came from.
+  private readonly snapshots = new Map<string, string>()
+
+  /** Remember the export folder this chat produced for one application. */
+  recordSnapshot(application: string, root: string): void {
+    this.snapshots.set(application.toLowerCase(), root)
+  }
+
+  /** The most recent export folder this chat produced for an application. */
+  snapshotOf(application: string): string | undefined {
+    return this.snapshots.get(application.toLowerCase())
+  }
+
   recordRendered(display: string): void {
     this.rendered.add(display)
   }

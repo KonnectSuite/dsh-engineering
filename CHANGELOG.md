@@ -59,6 +59,10 @@
   and the `ftview_render` description still said images were drawn as placeholders. A model reading the
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
+- **Verification never guesses.** When the vendor export cannot run, `ftview_verify_import`
+  fails with `NO_IMPORT_PROOF` and asks for a folder exported after the import, instead of
+  reporting a comparison it did not make; a successful run names what it compared against.
+
 
 - **`ftview_alarm_report` reviews an alarm configuration.** `ftview_alarm_snapshot` produced the wizard
   XML but nothing read it, so a configuration with 17 triggers that raise no message looked exactly like a

@@ -1182,14 +1182,21 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         if (expected.size === 0) {
           throw new EngineeringError('NOTHING_TO_VERIFY', 'This draft changes no display, so there is nothing to compare.', 'Stage a display edit first, import it in Studio, then run this again.')
         }
+        const application = requiredString(args, 'application')
         const manual = optionalString(args, 'export_root')
         const handMade = manual === undefined ? undefined : await session.open(manual, exec)
+        const proof = handMade === undefined ? 'a vendor export' : 'the export you passed'
         const root = handMade?.app.root ?? join(tmpdir(), `ftview-verify-${randomUUID()}`)
         if (handMade === undefined) {
-          const exported = await exportApplication(requiredString(args, 'application'), root)
+          const exported = await exportApplication(application, root)
           if (exported.error !== undefined) {
-            throw new EngineeringError('VENDOR_EXPORT_FAILED', exported.error, 'Close the application in Studio if it is open, then retry — or pass export_root with a folder you exported by hand after the import.')
+            throw new EngineeringError(
+              'NO_IMPORT_PROOF',
+              `The vendor export did not run, so this chat cannot prove the import landed: ${exported.error}`,
+              'In Studio choose File > Export for the application after importing the package, then pass that folder as export_root. That export is the proof; a folder exported before the import is not.',
+            )
           }
+          session.recordSnapshot(application, root)
         }
         const results = await verifyDisplays(fs, root, expected)
         const matched = results.filter(result => result.matched).length
@@ -1197,7 +1204,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const reopened = handMade ?? await session.open(root, exec)
         const drift = verifyDraft(draft, reopened.app)
         return success(
-          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}. Export kept at ${root}.`,
+          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}. Compared against ${proof}, kept at ${root}.`,
           { application: requiredString(args, 'application'), export_root: root, displays: results, differences, matched: allMatched(results), drift },
           matched === results.length
             ? [{ tool: 'ftview_draft_display_create', why: 'Author the next screen against the verified export.' }]
