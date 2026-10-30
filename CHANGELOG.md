@@ -27,6 +27,8 @@
 
 ### Fixed
 
+- **An export creates the folder it writes into.** `export_acd_to_l5x`, `verify_offline_l5x`, `build_acd_from_draft` and the snapshot tools refused an output path whose folder did not exist (`Output directory does not exist`, with the unhelpful advice to call `project_overview`). The caller has already named the file it wants, so the folder is now created instead of refused; the error remains only when it cannot be created.
+- **A module-defined tag is not called unused.** `run_checks` reported module I/O tags such as `Local:1:C` and `TopCutter_MP2600iec:I` as `UNUSED_TAG`, but the module wires them and indexed logic never names them: on the CarpenterThickness export that was 40 of 104 unused-tag rows. Tags whose name ends in a module member suffix (`:I`, `:O`, `:C`, `:S`, `:R`) are now left out, and the finding count there falls from 271 to 230.
 - **A vendor COM failure is reported as a sentence, not as CLIXML.** When the ME export server refused
   `LoadMEApp` the tool returned the raw PowerShell serialisation (`#< CLIXML ... 0x80040301 ...`), which buries
   the one line a caller needs. `ftview_apps`, `ftview_export` and `ftview_backup` now decode the error strings

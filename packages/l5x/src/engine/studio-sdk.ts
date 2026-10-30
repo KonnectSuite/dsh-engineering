@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+﻿import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -133,6 +133,19 @@ function requireLiveDependencies(availability: SdkStatus): void {
     'FactoryTalk Linx is not running; the Logix Designer SDK does not support RSLinx Classic communications')
 }
 
+/**
+ * An export writes a new file, so a missing folder is created for it: the caller named the
+ * output it wants, and refusing the folder only made it create one first.
+ */
+async function createOutputFolder(path: string): Promise<void> {
+  const folder = dirname(path)
+  if (existsSync(folder)) return
+  await mkdir(folder, { recursive: true }).catch(() => {
+    throw new EngineeringError('OUTPUT_DIRECTORY', `The folder ${folder} could not be created.`,
+      'Pass an output path under a folder this process can write, such as a workspace folder.')
+  })
+}
+
 /** Export one existing ACD as a new full L5X; this never connects to a controller. */
 export async function exportAcdToL5x(acdPath: string, outputPath: string, signal?: AbortSignal): Promise<object> {
   const availability = await studioSdkStatus()
@@ -144,7 +157,7 @@ export async function exportAcdToL5x(acdPath: string, outputPath: string, signal
   const sourceInfo = await stat(source).catch(() => { throw new EngineeringError('FILE_NOT_FOUND', 'ACD file not found') })
   if (!sourceInfo.isFile()) throw new EngineeringError('INVALID_ACD', 'ACD path must name a file')
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'L5X output must be a new file')
-  if (!existsSync(dirname(output))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Output directory does not exist')
+  await createOutputFolder(output)
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   await ensureBridge(availability, signal)
   let result = await runBridge([bridgeDll, 'export-l5x', source, output], 240_000, signal)
@@ -211,7 +224,7 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
   const output = resolve(outputPath)
   if (source.toLowerCase() === output.toLowerCase()) throw new EngineeringError('SOURCE_OVERWRITE', 'Output must differ from source')
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'Output must be a new file')
-  if (!existsSync(dirname(output))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Output directory does not exist')
+  await createOutputFolder(output)
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   if (sourceHash !== project.sha256) throw new EngineeringError('STALE_EXPORT', 'Source L5X changed since open_project')
   await ensureBridge(availability, signal)
@@ -253,7 +266,7 @@ export async function editOfflineAcd(acdPath: string, draft: ProjectSnapshot, pr
     throw new EngineeringError('INVALID_OUTPUT', 'Source/output must be ACD and result export must be L5X')
   for (const path of [output, exported, `${output}.routine.l5x`]) {
     if (existsSync(path)) throw new EngineeringError('OUTPUT_EXISTS', `Output must be new: ${path}`)
-    if (!existsSync(dirname(path))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Output directory does not exist')
+    await createOutputFolder(path)
   }
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   if (createHash('sha256').update(await readFile(draft.path)).digest('hex') !== draft.sha256) throw new EngineeringError('STALE_EXPORT', 'Draft changed since open_project')
@@ -501,7 +514,7 @@ export async function captureControllerSnapshot(commPath: string, outputPath: st
   if (extname(outputPath).toLowerCase() !== '.acd') throw new EngineeringError('INVALID_OUTPUT', 'Snapshot path must end in .acd')
   const output = resolve(outputPath)
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'Snapshot must be a new file')
-  if (!existsSync(dirname(output))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Snapshot directory does not exist')
+  await createOutputFolder(output)
   await ensureBridge(availability, signal)
   const result = await run('dotnet', [bridgeDll, 'upload-new', output, commPath], 900_000, signal)
   if (result.code !== 0 || !result.output.includes('UPLOAD_TO_NEW_ACD_SUCCEEDED')) throw new EngineeringError('CONTROLLER_UPLOAD_FAILED', result.output)
@@ -516,7 +529,7 @@ export async function controllerUploadPreflight(commPath: string, outputPath: st
   if (extname(outputPath).toLowerCase() !== '.acd') throw new EngineeringError('INVALID_OUTPUT', 'Snapshot path must end in .acd')
   const output = resolve(outputPath)
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'Snapshot must be a new file')
-  if (!existsSync(dirname(output))) throw new EngineeringError('OUTPUT_DIRECTORY', 'Snapshot directory does not exist')
+  await createOutputFolder(output)
   return output
 }
 

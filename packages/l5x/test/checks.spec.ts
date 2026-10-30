@@ -49,6 +49,18 @@ describe('run_checks', () => {
     expect(messages).toContain('NotDeclared')
   })
 
+  it('does not call a module-defined tag unused', async () => {
+    const text = Buffer.from(fixtureBytes()).toString('utf8').replace(
+      '<Tag Name="SystemClock"',
+      '<Tag Name="Local:1:C" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="Module I/O counter" />\n            <Tag Name="SystemClock"',
+    )
+    const l5x = harness(new Map([['sample.l5x', new TextEncoder().encode(text)]]))
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const checks = await l5x.call('run_checks', { rule: 'UNUSED_TAG' })
+    const messages = (checks.data?.findings as { message: string }[]).map(row => row.message).join('\n')
+    expect(messages).not.toContain('Local:1:C')
+  })
+
   it('accepts a baseline project for I/O change checks', async () => {
     const files = new Map<string, Uint8Array>([
       ['before.l5x', fixtureBytes()],

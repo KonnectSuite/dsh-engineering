@@ -19,7 +19,7 @@ not a simulation and not a terminal test.
 | `UNDOCUMENTED_PROGRAM` | info | A program with no description. | CRAFT-COMMENT-02 |
 | `UNSCHEDULED_PROGRAM` | warning | A program no task calls; its logic never runs. | — |
 | `MULTIPLE_SCHEDULES` | warning | A program scheduled by more than one task. | — |
-| `UNUSED_TAG` | info | A declared tag with no indexed logic reference (low confidence: indexed operands only). | — |
+| `UNUSED_TAG` | info | A declared tag with no indexed logic reference (low confidence: indexed operands only; a module-defined tag such as `Local:1:C` is excluded because the module wires it, not the logic). | — |
 | `UNRESOLVED_REFERENCE` | info | A symbol whose base is declared nowhere in the export (low confidence; module-defined members and `S:`/`R:` flags are excluded). | — |
 | `IO_MODULE_CHANGED` | warning | With `baseline_id`: an I/O module added, removed or changed since the baseline. | — |
 

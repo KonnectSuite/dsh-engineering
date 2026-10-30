@@ -80,6 +80,10 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     used.add(`controller::${rawBase}`.toLowerCase())
   }
   for (const tag of doc.tags) {
+    // A module-defined tag such as `Local:1:C` or `TopCutter_MP2600iec:I` is
+    // wired by the module, not by indexed logic, so "no reference" proves nothing
+    // and buried the real findings: 20 such rows on one export.
+    if (/:[A-Z]+$/u.test(tag.name)) continue
     const key = `${tag.scope}::${tag.name}`.toLowerCase()
     if (!used.has(key)) report('UNUSED_TAG', 'info', `No indexed logic reference to ${tag.scope}::${tag.name}`, { scope: tag.scope, tag: tag.name }, 'low')
   }
