@@ -208,7 +208,9 @@ export function documentApplication(application: Application): DocumentBundle {
     '## Contents',
     '',
     `- ${application.displays.length} display(s), ${unparsed.length === 0 ? 'all parsed' : `${unparsed.length} could not be parsed: ${unparsed.join(', ')}`}`,
-    `- ${application.tags.length} HMI tag(s) from ${application.tagFiles.length} tag file(s)`,
+    application.tagFiles.length === 0
+      ? '- no tag table in this export: bindings below carry no tag and cannot be verified'
+      : `- ${application.tags.length} HMI tag(s) from ${application.tagFiles.length} tag file(s)`,
     unverified.length > 0
       ? `- ${bindings.rows.length} binding(s); this export carries no tag table, so none can be verified`
       : `- ${bindings.rows.length} binding(s), ${missing.length} naming a tag this export does not declare`,

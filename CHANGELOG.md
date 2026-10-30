@@ -132,6 +132,9 @@
 
 ### Added
 
+- **`ftview_document` lists screen jumps and admits an absent tag table.** `overview.md` gains a
+  navigation table (screen, object, target) built from the export, and an export without a tag CSV now says
+  so instead of reporting "0 HMI tag(s)" as if the application had none.
 - **`ftview_document`** writes a handover bundle for an opened export — `overview.md`, `displays.csv`,
   `tags.csv` and `bindings.csv` — stating object counts per display, which tags each display reads, and
   which bindings name a tag the export does not declare, so a panel builder can review without Studio.
