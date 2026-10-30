@@ -177,7 +177,7 @@ describe('crossReference', () => {
 
   it('runs directly on a parsed application and its tags', async () => {
     const plc = readL5x(L5X)
-    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], alarmFiles: [], diagnostics: [], files: [] }
     const direct = crossReference(app, plc)
     expect(direct.counts.hmiTags).toBe(4)
     expect(direct.rows.map(row => row.status)).toEqual(['linked', 'unlinked', 'unsupported'])
@@ -186,7 +186,7 @@ describe('crossReference', () => {
 
 describe('alarm expressions that name no HMI tag', () => {
   it('reports the tag and its trigger ids', () => {
-    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], alarmFiles: [], diagnostics: [], files: [] }
     const report = crossReference(app, readL5x(L5X), {
       alarms: '<alarms><triggers><trigger id="T7" exp="{[Line]Ghost_Word.3}"/><trigger id="T8" exp="{[Line]Motor_Run.0}"/></triggers></alarms>',
     })
@@ -197,7 +197,7 @@ describe('alarm expressions that name no HMI tag', () => {
   })
 
   it('stays quiet when every alarm expression resolves', () => {
-    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+    const app = { root: 'export', name: 'App', displays: [], tags: parseTagCsv(CSV).rows, tagFiles: [], tagErrors: [], alarmFiles: [], diagnostics: [], files: [] }
     const report = crossReference(app, readL5x(L5X), {
       alarms: '<alarms><triggers><trigger id="T1" exp="{[Line]Motor_Run.0}"/></triggers></alarms>',
     })

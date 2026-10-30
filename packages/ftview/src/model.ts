@@ -37,6 +37,12 @@ export interface DisplayFile {
   readonly name: string
   readonly objects: readonly DisplayObject[]
   readonly parseError?: string
+  /**
+   * True when the file is the ME alarm setup (`<alarms>` root) rather than a
+   * display. The alarm setup is a legitimate part of an export, so the scan
+   * records it instead of reporting an unparsed display.
+   */
+  readonly alarmSetup?: true
 }
 
 /** One file the scan read, with its content hash. */
@@ -54,6 +60,8 @@ export interface Application {
   readonly tags: readonly TagRow[]
   readonly tagFiles: readonly string[]
   readonly tagErrors: readonly string[]
+  /** The ME alarm setup files (`<alarms>` root), which are part of an export but not displays. */
+  readonly alarmFiles: readonly string[]
   readonly diagnostics: readonly string[]
   readonly files: readonly ScannedFile[]
   /** File names inside `Images/`; the walker does not read their bytes. */
@@ -316,6 +324,10 @@ export function parseDisplay(file: string, text: string): DisplayFile {
     const rootKey = Object.keys(parsed).find(key => !key.startsWith('?'))
     if (rootKey === undefined) return { file, name: fallbackName, objects: [], parseError: 'The file has no root element.' }
     const rootNode = parsed[rootKey]
+    // The ME alarm setup is a first-class export file with an <alarms> root. It
+    // sits beside the displays but is not one, so the scan must not report it as
+    // an unparsed display.
+    if (/^alarms$/iu.test(rootKey)) return { file, name: fallbackName, objects: [], alarmSetup: true }
     // ME display files use <gfx> (Gfx-ME17.xsd) in a Studio export; some hand-made
     // or older files use a <display> root. Both are display files.
     if (!/display/iu.test(rootKey) && !/^gfx$/iu.test(rootKey)) {
@@ -402,6 +414,7 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
   const tags: TagRow[] = []
   const tagFiles: string[] = []
   const tagErrors: string[] = []
+  const alarmFiles: string[] = []
   const diagnostics: string[] = []
   const files: ScannedFile[] = []
   const images: string[] = []
@@ -421,6 +434,10 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
       return
     }
     const display = parseDisplay(file, text)
+    if (display.alarmSetup === true) {
+      alarmFiles.push(file)
+      return
+    }
     if (display.parseError !== undefined) {
       diagnostics.push(`${file}: ${display.parseError}`)
       return
@@ -428,5 +445,5 @@ export async function scanApplication(fs: FsService, root: string | FsTarget, si
     displays.push(display)
   }, { count: 0, max: maxFiles }, images)
   const name = base.replace(/[\\/]$/u, '').split(/[\\/]/u).pop() ?? base
-  return { root: base, name, displays, tags, tagFiles, tagErrors, diagnostics, files, images }
+  return { root: base, name, displays, tags, tagFiles, tagErrors, alarmFiles, diagnostics, files, images }
 }

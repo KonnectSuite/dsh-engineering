@@ -63,11 +63,21 @@ export function findingsOf(app: Checkable): Finding[] {
   for (const display of app.displays) {
     if (displayNames.has(display.name)) findings.push({ rule: 'DUPLICATE_DISPLAY_NAME', severity: 'warning', message: `Two displays are named ${JSON.stringify(display.name)}.`, evidence: { display: display.name, file: display.file } })
     displayNames.add(display.name)
-    const objectNames = new Set<string>()
+    // One finding per duplicated name, with how many objects carry it: a display
+    // with eight "Value" objects is one defect, not eight nearly identical rows.
+    const objectCounts = new Map<string, number>()
     for (const object of display.objects) {
       if (object.name === undefined) continue
-      if (objectNames.has(object.name)) findings.push({ rule: 'DUPLICATE_OBJECT_NAME', severity: 'warning', message: `Display ${JSON.stringify(display.name)} has more than one object named ${JSON.stringify(object.name)}.`, evidence: { display: display.name, object: object.name } })
-      objectNames.add(object.name)
+      objectCounts.set(object.name, (objectCounts.get(object.name) ?? 0) + 1)
+    }
+    for (const [object, count] of objectCounts) {
+      if (count < 2) continue
+      findings.push({
+        rule: 'DUPLICATE_OBJECT_NAME',
+        severity: 'warning',
+        message: `Display ${JSON.stringify(display.name)} has ${count} objects named ${JSON.stringify(object)}.`,
+        evidence: { display: display.name, object, count },
+      })
     }
   }
   for (const display of app.displays) {

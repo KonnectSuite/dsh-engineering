@@ -49,6 +49,7 @@ function mapOfExport(root: string) {
     tags: parsed.rows,
     tagFiles: [csv],
     tagErrors: parsed.errors,
+    alarmFiles: [],
     diagnostics: [],
     files: [],
   })

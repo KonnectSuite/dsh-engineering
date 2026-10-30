@@ -661,7 +661,7 @@ Open a FactoryTalk View ME export and read displays and HMI tags.
 
 #### `ftview_open`
 
-Open one FactoryTalk View ME export folder and return its application summary: displays, tag rows, structural diagnostics and coverage. Read-only; does not decode MER, contact a terminal, or change files.
+Open one FactoryTalk View ME export folder and return its application summary: displays, tag rows, alarm setup files, structural diagnostics and coverage. Read-only; does not decode MER, contact a terminal, or change files.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

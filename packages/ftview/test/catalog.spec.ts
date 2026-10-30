@@ -15,7 +15,7 @@ function display(name: string, objects: readonly DisplayObject[]): DisplayFile {
 
 /** The minimum application the checks read. */
 function appWith(displays: readonly DisplayFile[]): Application {
-  return { root: 'C:/export', name: 'App', displays, tags: [], tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+  return { root: 'C:/export', name: 'App', displays, tags: [], tagFiles: [], tagErrors: [], alarmFiles: [], diagnostics: [], files: [] }
 }
 
 describe('the object catalog', () => {

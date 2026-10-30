@@ -15,7 +15,7 @@ function display(name: string, objects: readonly DisplayObject[]): DisplayFile {
 
 /** The minimum application the audit reads. */
 function appWith(displays: readonly DisplayFile[]): Application {
-  return { root: 'C:/export', name: 'App', displays, tags: [], tagFiles: [], tagErrors: [], diagnostics: [], files: [] }
+  return { root: 'C:/export', name: 'App', displays, tags: [], tagFiles: [], tagErrors: [], alarmFiles: [], diagnostics: [], files: [] }
 }
 
 /** A display with the given backdrop and optional bands. */

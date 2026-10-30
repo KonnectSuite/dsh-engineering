@@ -26,6 +26,7 @@ function appWith(tags: readonly TagRow[]): Application {
     tags,
     tagFiles: [],
     tagErrors: [],
+    alarmFiles: [],
     diagnostics: [],
     files: [],
   }

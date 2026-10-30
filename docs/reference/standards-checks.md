@@ -43,6 +43,11 @@ latch result as "somewhere there is a reset", not as "this latch is safe".
 | `DRAFT_OVERLAP` | `ftview_validate` | Two objects this draft places partly over each other, with both names and the overlap area. Whole-display backdrops and panels containing their children are excluded. | VIEW-LAYOUT-01 |
 | `TAG_CSV`, `UNPARSED_FILE`, `DUPLICATE_*` | `ftview_check` | Structural problems in the export itself, before any design question. | — |
 
+Each `DUPLICATE_OBJECT_NAME` finding states how many objects share the name and carries that
+`count` in its evidence, so a display with eight `Value` objects is one finding rather than eight
+near-identical rows. The ME alarm setup file (`<alarms>` root) is an alarm configuration, not a
+display: `ftview_open` returns it in `alarm_files`, and it is never reported as an `UNPARSED_FILE`.
+
 ## Workflow
 
 Call `ftview_check` first for structural health, then `ftview_design_check` for the

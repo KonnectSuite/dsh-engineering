@@ -139,9 +139,46 @@ describe('check', () => {
     const checked = await l5x.call('ftview_check', { view_id: view })
     const rules = (checked.data?.by_rule as Record<string, number>) ?? {}
     expect(rules.DUPLICATE_TAG_NAME).toBeGreaterThan(0)
-    expect(rules.DUPLICATE_OBJECT_NAME).toBeGreaterThan(0)
+    expect(rules.DUPLICATE_OBJECT_NAME).toBe(1)
     expect(rules.UNPARSED_FILE).toBeGreaterThan(0)
     expect((checked.data?.coverage as { schema: string }).schema).toBe('not run')
+  })
+
+  it('reports one finding per duplicated object name, with its count', async () => {
+    const files = new Map([
+      ['export/Main.xml', '<Display name="Main"><Object name="Value"/><Object name="Value"/><Object name="Value"/><Object name="Chart"/></Display>'],
+      ['export/tags.csv', CSV],
+    ])
+    const l5x = harness(files)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: open.data?.view_id })
+    const duplicates = (checked.data?.findings as { rule: string; message: string; evidence: { count: number } }[])
+      .filter(finding => finding.rule === 'DUPLICATE_OBJECT_NAME')
+    expect(duplicates).toHaveLength(1)
+    expect(duplicates[0]?.message).toContain('3 objects named "Value"')
+    expect(duplicates[0]?.evidence.count).toBe(3)
+  })
+})
+
+describe('alarm setup file', () => {
+  it('reads <alarms> as an alarm file instead of an unparsed display', async () => {
+    const files = new Map([
+      ['export/Main.xml', '<Display name="Main"><Object name="StartPB"/></Display>'],
+      ['export/Alarms/Alarms.xml', '<?xml version="1.0" encoding="UTF-8"?><alarms display-name="Main"/>'],
+      ['export/tags.csv', STUDIO_CSV],
+    ])
+    const l5x = harness(files)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    expect(open.summary).toContain('1 displays')
+    expect(open.summary).toContain('0 diagnostic(s)')
+    expect(open.summary).toContain('1 alarm setup file(s)')
+    expect(open.data?.displays).toBe(1)
+    expect(open.data?.alarm_files).toEqual(['Alarms/Alarms.xml'])
+    expect(open.data?.diagnostics).toEqual([])
+    const checked = await l5x.call('ftview_check', { view_id: open.data?.view_id })
+    expect((checked.data?.by_rule as Record<string, number>).UNPARSED_FILE).toBeUndefined()
+    const reloaded = await l5x.call('ftview_reload', { view_id: open.data?.view_id })
+    expect(reloaded.data?.alarm_files).toEqual(['Alarms/Alarms.xml'])
   })
 })
 

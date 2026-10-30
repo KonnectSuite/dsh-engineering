@@ -11,6 +11,24 @@
 - **`ftview_document` explains every binding status.** `overview.md` documents what
   `hmi tag`, `missing`, `unverified` and `literal` mean in `bindings.csv`, so a reviewer can tell "the export
   had no tag table" from "the export names a tag that does not exist".
+
+### Changed
+
+- **`ftview_check` reports one duplicate-name finding per display and object name, with the count.** A display
+  with sixteen objects called `Value` produced sixteen nearly identical warnings, so the number of duplicated
+  names could not be read from the result. Each collision is now one `DUPLICATE_OBJECT_NAME` warning naming the
+  count and carrying `count` in its evidence. On the CarpenterPilot export the 77 duplicate rows become 9
+  findings.
+
+### Fixed
+
+- **The ME alarm setup file is no longer reported as an unparsed display.** `Alarms/Alarms.xml` has an
+  `<alarms>` root, so `ftview_open` listed `Root element alarms is not an ME display.` as a structural diagnostic
+  even though `ftview_check` reads the same file for its alarm findings. The scan records it as an alarm setup file
+  instead: `ftview_open` returns it in `alarm_files` and says how many there are, and `UNPARSED_FILE` names only
+  files that really failed to parse. The alarm findings are unchanged — the CarpenterPilot export still reports
+  its 145 alarm findings, and `ftview_check` there now returns 154 findings instead of 223.
+
 ## [0.70.0] - 2026-10-29
 
 ### Changed
