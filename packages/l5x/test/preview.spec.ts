@@ -22,6 +22,8 @@ describe('l5x_rung_preview', () => {
     expect(result.data?.path).toBe('.l5x-preview/PumpStart.L5X')
     expect(result.data?.rungs).toBe(2)
     expect(result.data?.instructions).toEqual(expect.arrayContaining(['XIC', 'OTE', 'XIO', 'TON']))
+    expect(result.data?.paste_text).toBe('XIC(Start)OTE(Run);\nXIO(Stop)TON(Timer1,?,?);')
+    expect(result.data?.diagram_svg).toBeUndefined()
 
     const document = l5x.written.get('.l5x-preview/PumpStart.L5X') ?? ''
     expect(document.startsWith('<?xml version="1.0" encoding="UTF-8"')).toBe(true)
@@ -41,6 +43,17 @@ describe('l5x_rung_preview', () => {
     await l5x.call('l5x_rung_preview', { rungs: 'XIC(Start)OTE(Run);\nXIC(Auto)OTE(Run);', comments: '\nsecond only' })
     const document = l5x.written.get('.l5x-preview/Preview.L5X') ?? ''
     expect((document.match(/<Comment>/gu) ?? []).length).toBe(1)
+  })
+
+  it('draws a diagram only when it is asked for', async () => {
+    const l5x = preview()
+    const quiet = await l5x.call('l5x_rung_preview', { rungs: 'XIC(Start)OTE(Run);' })
+    expect(quiet.error).toBeUndefined()
+    expect(quiet.data?.diagram_svg).toBeUndefined()
+    expect(quiet.summary ?? '').toContain('No diagram was requested')
+
+    const drawn = await l5x.call('l5x_rung_preview', { rungs: 'XIC(Start)OTE(Run);', diagram: 'yes' })
+    expect(drawn.error).toBeUndefined()
   })
 
   it('refuses a rung that does not parse and writes nothing', async () => {

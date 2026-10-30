@@ -192,7 +192,7 @@ Render proposed rungs as a viewer document so a chat answer shows ladder, not Ne
 
 #### `l5x_rung_preview`
 
-Render proposed ladder rungs as a diagram: writes one minimal L5X preview document into the workspace so the project viewer draws the rungs, validates every rung with the same parser draft_rung uses, and refuses a rung that does not parse. Nothing is imported and no project is modified.
+Return proposed ladder rungs as paste-ready Studio neutral text, and write one minimal L5X preview document so the project viewer can show them. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. The answer carries the exact block to paste into a ladder routine (`paste_text`); the diagram is drawn only when asked for. Nothing is imported and no project is modified.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -201,7 +201,7 @@ Render proposed ladder rungs as a diagram: writes one minimal L5X preview docume
 | `comments` | string | no | Optional rung comments, one per line, blank for a rung without a comment. |
 | `title` | string | no | Optional document and controller name, for example "PumpStart". |
 | `output` | string | no | Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X". |
-| `diagram` | string (yes \| no) | no | Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to yes. |
+| `diagram` | string (yes \| no) | no | Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to no: the answer carries the paste-ready text, and a picture is only for review. |
 
 #### `l5x_routine_diagram`
 

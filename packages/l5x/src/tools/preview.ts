@@ -122,14 +122,14 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
   return [
     tool({
       name: 'l5x_rung_preview',
-      description: 'Render proposed ladder rungs as a diagram: writes one minimal L5X preview document into the workspace so the project viewer draws the rungs, validates every rung with the same parser draft_rung uses, and refuses a rung that does not parse. Nothing is imported and no project is modified.',
+      description: 'Return proposed ladder rungs as paste-ready Studio neutral text, and write one minimal L5X preview document so the project viewer can show them. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. The answer carries the exact block to paste into a ladder routine (`paste_text`); the diagram is drawn only when asked for. Nothing is imported and no project is modified.',
       parameters: object({
         rungs: string('NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);". Pass this or rungs_file.'),
         rungs_file: string('Optional text file whose lines are the NeutralText rungs, one per line. Use it when the rungs are already written to disk.'),
         comments: string('Optional rung comments, one per line, blank for a rung without a comment.'),
         title: string('Optional document and controller name, for example "PumpStart".'),
         output: string('Optional .L5X path to write, relative to the workspace. Defaults to ".l5x-preview/<title>.L5X".'),
-        diagram: choice('Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to yes.', ['yes', 'no']),
+        diagram: choice('Draw the rungs as an SVG, plus a PNG when Chrome or Edge is installed. Defaults to no: the answer carries the paste-ready text, and a picture is only for review.', ['yes', 'no']),
       }, []),
       async run(args, exec) {
         const inline = optionalString(args, 'rungs')
@@ -163,10 +163,11 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         const slug = title.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Preview'
         const path = optionalString(args, 'output') ?? `.l5x-preview/${slug}.L5X`
         const written = await session.writeTextAt(path, documentOf(slug, rungs), exec)
+        const pasteText = rungs.map(rung => rung.text).join('\n')
         let image: { svg: string; png?: string } = { svg: '' }
         let rasterError: string | undefined
         let skipped = false
-        if (optionalString(args, 'diagram') !== 'no') {
+        if (optionalString(args, 'diagram') === 'yes') {
           const raster = renderLadderSvg(rungs.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
           try {
             const absolute = await session.resolvePath(path, exec)
@@ -190,15 +191,16 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
               : `No PNG diagram: ${rasterError}.`
             : `Drew the rungs as ${png}.`
         return success(
-          `Rendered ${rungs.length} rung(s) to ${written}. ${drawing}`,
+          `Wrote ${rungs.length} rung(s) to ${written}. paste_text carries the block to paste into a ladder routine. ${drawing}`,
           {
             path: written,
             rungs: rungs.length,
             instructions: [...new Set(rungs.flatMap(rung => rung.instructions))],
+            paste_text: pasteText,
             rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
             ...(image.svg === '' ? {} : { diagram_svg: image.svg }),
             ...(png === undefined ? {} : { diagram_png: png }),
-            note: 'The diagram is a schematic drawn from the parsed rungs; the L5X preview document is what the sidebar viewer draws. Neither is an importable project.',
+            note: 'paste_text is the block to paste into a ladder routine; the diagram is a schematic drawn from the parsed rungs, and the L5X preview document is what the sidebar viewer draws. Neither is an importable project.',
           },
           png === undefined
             ? [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }]

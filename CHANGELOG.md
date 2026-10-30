@@ -19,6 +19,11 @@
   names could not be read from the result. Each collision is now one `DUPLICATE_OBJECT_NAME` warning naming the
   count and carrying `count` in its evidence. On the CarpenterPilot export the 77 duplicate rows become 9
   findings.
+- **`l5x_rung_preview` leads with the paste-ready text, not the picture.** The tool exists to hand back logic
+  that goes into a ladder routine, but it drew a diagram by default and reported the image first, so the answer
+  looked like a screenshot instead of something to paste. It now returns `paste_text` — the validated rungs, one
+  per line — and draws a diagram only when `diagram: "yes"` is passed. The preview L5X document is still written
+  for the sidebar viewer.
 
 ### Fixed
 
