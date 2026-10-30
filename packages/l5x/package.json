@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering-l5x",
-  "version": "0.56.0",
+  "version": "0.70.0",
   "description": "Studio 5000 L5X: the rebuilt offline read surface for the AryaCode engineering suite.",
   "license": "MIT",
   "type": "module",
