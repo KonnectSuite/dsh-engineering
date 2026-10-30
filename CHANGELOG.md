@@ -1,3 +1,16 @@
+## [Unreleased]
+
+### Added
+
+- **`ftview_document`** writes a handover bundle for an opened export — `overview.md`, `displays.csv`,
+  `tags.csv` and `bindings.csv` — stating object counts per display, which tags each display reads, and
+  which bindings name a tag the export does not declare, so a panel builder can review without Studio.
+- **`ftview_document` lists screen jumps and admits an absent tag table.** `overview.md` gains a
+  navigation table (screen, object, target) built from the export, and an export without a tag CSV now says
+  so instead of reporting "0 HMI tag(s)" as if the application had none.
+- **`ftview_document` explains every binding status.** `overview.md` documents what
+  `hmi tag`, `missing`, `unverified` and `literal` mean in `bindings.csv`, so a reviewer can tell "the export
+  had no tag table" from "the export names a tag that does not exist".
 ## [0.70.0] - 2026-10-29
 
 ### Changed
@@ -132,12 +145,6 @@
 
 ### Added
 
-- **`ftview_document` lists screen jumps and admits an absent tag table.** `overview.md` gains a
-  navigation table (screen, object, target) built from the export, and an export without a tag CSV now says
-  so instead of reporting "0 HMI tag(s)" as if the application had none.
-- **`ftview_document`** writes a handover bundle for an opened export — `overview.md`, `displays.csv`,
-  `tags.csv` and `bindings.csv` — stating object counts per display, which tags each display reads, and
-  which bindings name a tag the export does not declare, so a panel builder can review without Studio.
 - **`ftview_apply` takes `package: "delta" | "full"`.** A delta (default) lists only the displays
   the draft changed, which is what an application that already holds the screens needs. A full
   package lists every display in the export and copies the artwork those untouched displays name,
