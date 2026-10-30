@@ -1401,7 +1401,8 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         let sheet: string | undefined
         if (sheetWanted && screens.length > 1) {
           const width = Math.max(...screens.map(screen => screen.width))
-          const composed = composeSheet(screens.map(screen => ({ name: screen.display, svg: screen.svg })), width)
+          const footer = `${screens.length} display(s) from the ${fromDraft ? 'staged draft' : 'export'}; ${problems.length === 0 ? 'no layout problems' : `${problems.length} layout problem(s) marked in red`}`
+          const composed = composeSheet(screens.map(screen => ({ name: screen.display, svg: screen.svg })), width, footer)
           const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
           const written = await writeRender(outputRoot, 'sheet', { ...composed, drawn: 0, problems: [], skipped: [] })
           sheet = written.png ?? written.svg

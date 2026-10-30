@@ -288,7 +288,7 @@ export interface SheetEntry {
  * @param width - Sheet width in pixels; narrower drawings are centred.
  * @returns The sheet document and its size.
  */
-export function composeSheet(entries: readonly SheetEntry[], width: number): { readonly svg: string; readonly width: number; readonly height: number } {
+export function composeSheet(entries: readonly SheetEntry[], width: number, footer?: string): { readonly svg: string; readonly width: number; readonly height: number } {
   const TITLE = 26
   const GAP = 10
   const rows = entries.map(entry => {
@@ -297,7 +297,8 @@ export function composeSheet(entries: readonly SheetEntry[], width: number): { r
     const h = size === null ? Math.round(width * 0.75) : Number(size[2])
     return { entry, w, h }
   })
-  const height = rows.reduce((total, row) => total + TITLE + row.h + GAP, GAP)
+  const FOOTER = footer === undefined ? 0 : 34
+  const height = rows.reduce((total, row) => total + TITLE + row.h + GAP, GAP) + FOOTER
   const parts: string[] = [
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
     `<rect x="0" y="0" width="${width}" height="${height}" fill="#0B1220"/>`,
@@ -309,6 +310,10 @@ export function composeSheet(entries: readonly SheetEntry[], width: number): { r
     const encoded = Buffer.from(row.entry.svg, 'utf8').toString('base64')
     parts.push(`<image x="${x}" y="${y + TITLE}" width="${row.w}" height="${row.h}" href="data:image/svg+xml;base64,${encoded}"/>`)
     y += TITLE + row.h + GAP
+  }
+  if (footer !== undefined) {
+    parts.push(`<rect x="0" y="${height - FOOTER}" width="${width}" height="${FOOTER}" fill="#13232F"/>`)
+    parts.push(`<text x="12" y="${height - 12}" font-family="Segoe UI, Arial, sans-serif" font-size="13" fill="#9FB6CC">${encodeEntities(footer)}</text>`)
   }
   parts.push('</svg>')
   return { svg: parts.join('\n'), width, height }

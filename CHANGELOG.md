@@ -2,6 +2,10 @@
 
 ### Changed
 
+- **The review sheet states what it is.** A sheet titled its drawings but carried no totals, so someone
+  looking only at the PNG could not tell how many displays it covered, how many problems were marked, or
+  whether it came from the export or a staged draft. `composeSheet` takes a footer line and
+  `ftview_render` fills it with those three facts.
 - **A render marks the objects it complains about.** `problems` named overflowing objects in the result,
   but the image itself showed nothing, so a reviewer had to cross-reference names by hand. Each problem
   object now carries a dashed red outline in both a single render and the review sheet, and the render

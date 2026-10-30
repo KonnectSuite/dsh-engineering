@@ -304,7 +304,9 @@ describe('ftview_render batch', { timeout: 60_000 }, () => {
     const sheet = String(result.data?.sheet ?? '')
     expect(sheet.endsWith('sheet.svg') || sheet.endsWith('sheet.png')).toBe(true)
     expect(existsSync(sheet)).toBe(true)
-    expect(readFileSync(sheet.replace(/\.png$/u, '.svg'), 'utf8')).toContain('data:image/svg+xml;base64,')
+    const drawn = readFileSync(sheet.replace(/\.png$/u, '.svg'), 'utf8')
+    expect(drawn).toContain('data:image/svg+xml;base64,')
+    expect(drawn).toContain('display(s) from the export')
   })
 
   it('refuses more than eight displays in one call', async () => {
@@ -330,12 +332,13 @@ describe('review sheet', () => {
   it('stacks drawings with a title each and embeds their documents', () => {
     const one = '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"></svg>'
     const two = '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480"></svg>'
-    const sheet = composeSheet([{ name: 'Main', svg: one }, { name: 'Alarms', svg: two }], 640)
+    const sheet = composeSheet([{ name: 'Main', svg: one }, { name: 'Alarms', svg: two }], 640, '2 display(s) from the export; no layout problems')
     expect(sheet.width).toBe(640)
     expect(sheet.height).toBeGreaterThan(300 + 480)
     expect(sheet.svg).toContain('>Main<')
     expect(sheet.svg).toContain('>Alarms<')
     expect(sheet.svg).toContain('data:image/svg+xml;base64,')
     expect(sheet.svg.split('<image ').length - 1).toBe(2)
+    expect(sheet.svg).toContain('2 display(s) from the export')
   })
 })
