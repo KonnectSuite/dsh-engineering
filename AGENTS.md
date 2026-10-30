@@ -21,6 +21,8 @@ A change is not finished until the documentation it invalidates is updated in th
 | `docs/examples.md` | End-to-end sessions for L5X and FactoryTalk View, with call shapes and reporting reminders |
 | `docs/reference/tools.md` | Every registered tool, its description and parameters (generated) |
 | `docs/reference/tools.json` | The machine-readable tool and group inventory (generated) |
+| `components.json` | The component manifest: kind, capability class, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents |
+| `docs/reference/components.md` | What a component is, the capability classes, the manifest fields and the checklist for adding one |
 | `CHANGELOG.md` | Released and unreleased changes, one entry per version |
 | `cordis.patch.yml` | The composed behavior, with comments explaining why each entry has its shape |
 | `package.json` | Name, version, bundle patch path, dependencies, peer compatibility |
@@ -28,6 +30,7 @@ A change is not finished until the documentation it invalidates is updated in th
 | `test/patch.spec.mjs` | Invariants of the patch file itself |
 | `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only dependencies |
 | `test/tool-reference.spec.mjs` | The reference freshness, tool count and unique tool names |
+| `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, README counts and owning documents |
 | `docs/port/*.md` | Port decisions and measurements, kept as design history |
 
 ## Documentation is checked
@@ -41,7 +44,8 @@ A change is not finished until the documentation it invalidates is updated in th
 - the declared bundle patch path does not exist,
 - a dependency, optional dependency or peer is a URL, git or workspace spec,
 - the committed `lib/client.js` is stale against the faces it is built from,
-- `docs/reference/tools.md` or `tools.json` is stale.
+- `docs/reference/tools.md` or `tools.json` is stale,
+- `components.json` disagrees with the patch rows, a tool count, a skill budget or body, a tool name cited by a skill, a README table number or a document a component owns.
 
 When one of these fails, fix the documentation — not the test — unless the documented behavior itself is what changed.
 

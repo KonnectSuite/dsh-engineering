@@ -1,0 +1,217 @@
+{
+  "catalog": 1,
+  "skillPolicy": {
+    "defaultBudget": 8000,
+    "note": "A skill body is injected into the request when the skill is invoked, so the budget is a context-cost ceiling. Depth belongs in docs/ and is linked, not embedded. The tested pair cost is the sum of two product bodies: l5x 7981 + ftview 7975 = 15956 characters (about 4k tokens), so a workflow skill must stay near 3k to keep a three-skill load near 6k."
+  },
+  "components": [
+    {
+      "id": "l5x",
+      "title": "Studio 5000 L5X",
+      "kind": "product",
+      "capability": "offline-file",
+      "row": "l5x",
+      "rowName": "@aryacode/dsh-engineering/l5x",
+      "entry": "entries/l5x.js",
+      "package": "packages/l5x",
+      "tools": {
+        "product": "L5X",
+        "count": 51,
+        "inReference": true
+      },
+      "skill": {
+        "name": "rockwell-l5x",
+        "file": "packages/l5x/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "project_id",
+          "verification_id",
+          "spec_json",
+          "start_stop_latch",
+          "fault_latch",
+          "ton_delay",
+          "live_logic_matches_export",
+          "untested_revision"
+        ]
+      },
+      "probe": "studio_sdk_status",
+      "gate": {
+        "tool": "verify_offline_l5x",
+        "why": "a draft is only safe once the Studio SDK imports and builds the changed L5X"
+      },
+      "docs": [
+        "docs/port/l5x.md"
+      ],
+      "vendor": true
+    },
+    {
+      "id": "ftview",
+      "title": "FactoryTalk View ME",
+      "kind": "product",
+      "capability": "offline-file",
+      "row": "ftview",
+      "rowName": "@aryacode/dsh-engineering/ftview",
+      "entry": "entries/ftview.js",
+      "package": "packages/ftview",
+      "tools": {
+        "product": "FactoryTalk View",
+        "count": 47,
+        "inReference": true
+      },
+      "skill": {
+        "name": "factorytalk-view",
+        "file": "packages/ftview/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "view_id",
+          "displays_json",
+          "export_root",
+          "states_json",
+          "animations_json",
+          "current_export"
+        ]
+      },
+      "probe": "ftview_capabilities",
+      "gate": {
+        "tool": "ftview_verify_import",
+        "why": "an applied display is only proven once a fresh export matches it object by object"
+      },
+      "docs": [
+        "docs/port/ftview.md",
+        "docs/reference/ftview-any-app.md",
+        "docs/reference/ftview-cross.md"
+      ],
+      "vendor": true
+    },
+    {
+      "id": "mwi",
+      "title": "MotionWorks IEC",
+      "kind": "product",
+      "capability": "live-ide",
+      "row": "mwi",
+      "rowName": "@aryacode/dsh-engineering/mwi",
+      "entry": "entries/mwi.js",
+      "package": "packages/mwi",
+      "tools": {
+        "product": "MotionWorks IEC",
+        "count": 24,
+        "inReference": true
+      },
+      "skill": {
+        "name": "motionworks-iec",
+        "file": "packages/mwi/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "mw_edit",
+          "already_open",
+          "text_body_sha256"
+        ]
+      },
+      "probe": "mw_ide_status",
+      "gate": {
+        "tool": "mw_compile",
+        "why": "a saved-project edit is only accepted once the vendor compiler reports clean"
+      },
+      "docs": [
+        "docs/port/mwi.md"
+      ],
+      "vendor": true
+    },
+    {
+      "id": "optix",
+      "title": "FactoryTalk Optix",
+      "kind": "product",
+      "capability": "live-ide",
+      "row": "optix",
+      "rowName": "@aryacode/dsh-engineering/optix",
+      "entry": "entries/optix.js",
+      "package": "packages/optix",
+      "vendored": true,
+      "tools": {
+        "product": "FactoryTalk Optix",
+        "count": 9,
+        "inReference": false
+      },
+      "skill": {
+        "name": "factorytalk-optix",
+        "file": "packages/optix/SKILL.md",
+        "budget": null,
+        "allow": [
+          "optix_status",
+          "optix_read",
+          "optix_edit",
+          "optix_action",
+          "optix_validate_expression",
+          "optix_netlogic",
+          "optix_preview",
+          "optix_screenshot",
+          "optix_template",
+          "dry_run"
+        ]
+      },
+      "probe": "optix_status",
+      "gate": {
+        "tool": "optix_read",
+        "why": "an authoring call is only accepted once the live model reads back the change"
+      },
+      "docs": [
+        "docs/optix-netlogic.md"
+      ],
+      "vendor": true
+    },
+    {
+      "id": "engineering-resources",
+      "title": "Engineering resources",
+      "kind": "support",
+      "capability": "offline-file",
+      "row": "engineering-resources",
+      "rowName": "@aryacode/dsh-engineering/resources",
+      "entry": "entries/resources.js",
+      "package": "packages/resources",
+      "tools": {
+        "product": "Engineering resources",
+        "count": 2,
+        "inReference": true
+      },
+      "skill": {
+        "name": "engineering-standards",
+        "file": "packages/resources/SKILL.md",
+        "budget": 4000,
+        "allow": [
+          "engineering_review"
+        ]
+      },
+      "probe": null,
+      "gate": null,
+      "docs": [
+        "docs/resources.md"
+      ],
+      "vendor": true
+    },
+    {
+      "id": "viewers",
+      "title": "Ladder and display previews",
+      "kind": "surface",
+      "capability": "none",
+      "row": "viewers",
+      "rowName": "@aryacode/dsh-engineering",
+      "entry": null,
+      "package": [
+        "packages/viewer",
+        "packages/ftview-viewer"
+      ],
+      "tools": {
+        "product": null,
+        "count": 0,
+        "inReference": false
+      },
+      "skill": null,
+      "probe": null,
+      "gate": null,
+      "docs": [
+        "docs/architecture.md"
+      ],
+      "vendor": false
+    }
+  ]
+}

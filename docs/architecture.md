@@ -26,7 +26,7 @@ dependencies — their built bundles are folded into `lib/client.js`.
 
 ## Row model
 
-The patch inserts five rows with stable ids. Ids are the contract: a profile, a patch or the Plugins
+The patch inserts six rows with stable ids (four product rows and two support rows). Ids are the contract: a profile, a patch or the Plugins
 page addresses a row by id, so the implementation behind a row can be rebuilt without resetting the
 user's enabled state.
 

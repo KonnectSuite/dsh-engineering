@@ -52,12 +52,12 @@ describe('motionworks-iec skill', () => {
     expect(inject).toEqual(['skills'])
   })
 
-  it('keeps the guidance inside the 8k budget and free of frontmatter', () => {
+  it('registers the guidance body free of frontmatter', () => {
     const { registrations, ctx } = harness()
     apply(ctx)
     const content = registrations[0]?.content ?? ''
     expect(content.length).toBeGreaterThan(500)
-    expect(content.length).toBeLessThanOrEqual(8000)
+    // The numeric budget is a component policy: test/components.spec.mjs owns it.
     expect(content.startsWith('---')).toBe(false)
     for (const tool of ['mw_project_find', 'mw_project_stage', 'mw_project_open', 'mw_validate', 'mw_apply']) {
       expect(content).toContain(tool)

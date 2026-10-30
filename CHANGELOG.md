@@ -1,5 +1,24 @@
 ## [Unreleased]
 
+### Added
+
+- **One manifest describes every component.** `components.json` is now the single statement of what a component is:
+  its kind (`product`, `support`, `surface`), its capability class (`offline-file`, `live-ide`, `gateway-api`), its patch
+  row, bundle entry, package, tool product, skill and body budget, capability probe, evidence gate and owning documents.
+  `test/components.spec.mjs` fails when the manifest and `cordis.patch.yml` disagree, when a tool count or README number
+  is stale, when a skill cites a tool that no longer exists, or when a component loses one of its files.
+- **`docs/reference/components.md` states the contract** — what a component is, what each capability class means for
+  verification, the manifest fields, the ten-step checklist for adding one, and what the checks enforce.
+- **The README tool counts are corrected** to the registered surfaces (133 tools: 51 L5X, 47 FactoryTalk View, 24
+  MotionWorks IEC, 9 Optix, 2 engineering resources), with a known-gap line for the 9 vendored Optix tools that the
+  generated reference cannot build from source here.
+
+### Changed
+
+- **Skill budgets live in the manifest.** The 8000-character assertion moved from the three package skill tests to
+  `test/components.spec.mjs`, which reads each budget from `components.json`; the package tests keep registration,
+  identity and frontmatter checks only. One fact, one home — changing a budget is now a manifest edit, not three.
+
 ## [0.71.0] - 2026-10-30
 
 ### Added

@@ -39,12 +39,12 @@ describe('rockwell-l5x skill', () => {
     expect(skill?.description).toBe(SKILL.description)
   })
 
-  it('keeps the guidance body inside the 8k budget and free of frontmatter', () => {
+  it('registers the guidance body free of frontmatter', () => {
     const { registrations, ctx } = harness()
     apply(ctx)
     const content = registrations[0]?.content ?? ''
     expect(content.length).toBeGreaterThan(500)
-    expect(content.length).toBeLessThanOrEqual(8000)
+    // The numeric budget is a component policy: test/components.spec.mjs owns it.
     expect(content.startsWith('---')).toBe(false)
     expect(content).toContain('open_project')
     expect(content).toContain('find_references')

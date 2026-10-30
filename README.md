@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 106 tools · 6 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 133 tools · 6 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -54,19 +54,19 @@ bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 44 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
-| **FactoryTalk View ME** | 22 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
+| **Studio 5000 L5X** | 51 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **FactoryTalk View ME** | 47 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 10 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 
 Tool groups, by product:
 
-- **L5X** — 13 read (`open_project` … `document_project`), 11 staged drafts (`draft_*`, `compose_rung`), 6 Logix
-  Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes)
+- **L5X** — 13 read (`open_project` … `document_project`), 15 staged edits (`draft_*`, `compose_rung`, `compose_batch`), 6 Logix
+  Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes), 2 preview and 1 diagram
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
-- **Optix** — 10 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the 9 bridge tools need Studio
+- **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
@@ -89,7 +89,7 @@ down:
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
-switches"*), so a group switch is a shell feature, not a bundle one. Five product rows with config is
+switches"*), so a group switch is a shell feature, not a bundle one. Four product rows and two support rows with config is
 what a bundle can do on its own — no harness change to carry across DSH upgrades.
 
 **No capability policy.** Earlier releases also carried a per-skill tool filter (`policyOnly` /
@@ -140,6 +140,7 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
+- The generated tool reference covers the 124 tools built from this repository; the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README
 
 **Not in this repository** — CAD mounts as an independent plugin.
 
@@ -261,9 +262,11 @@ even when the implementation behind a row is replaced.
 | [Engineering resources](docs/resources.md) | The 34-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
+| [Components](docs/reference/components.md) | What a component is, the capability classes, the manifest fields, and the checklist for adding one |
 | [Examples](docs/examples.md) | End-to-end sessions per product |
 | [Any FTView application](docs/reference/ftview-any-app.md) | What is generic, what varies per application, and the import/verify loop |
 | [Cross-referencing HMI against PLC](docs/reference/ftview-cross.md) | Join an export's tags to a Studio 5000 L5X: device addresses, display usage, logic usage, one-sided tags |
+| [Optix NetLogic](docs/optix-netlogic.md) | The pinned NetLogic cheat-sheet snapshot: what it covers, its risk flags, and how one page is read |
 | [Standards checks](docs/reference/standards-checks.md) | Every PLC and HMI rule a review reports, its severity, the corpus rule behind it and what a clean result does not prove |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |
