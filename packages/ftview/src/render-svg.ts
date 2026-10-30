@@ -263,6 +263,49 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
   return { svg, width: settings.width, height: settings.height, drawn: shapes.length, skipped, problems }
 }
 
+/** One drawing on a review sheet: the display name and its own SVG document. */
+export interface SheetEntry {
+  readonly name: string
+  readonly svg: string
+}
+
+/**
+ * Stack finished display drawings onto one image so a reviewer can look at a set
+ * in a single glance instead of opening a dozen files.
+ *
+ * Each display is embedded as an `<image>` holding its SVG document, which every
+ * browser draws, so the sheet stays a plain SVG that the same rasteriser accepts.
+ *
+ * @param entries - Rendered displays in review order.
+ * @param width - Sheet width in pixels; narrower drawings are centred.
+ * @returns The sheet document and its size.
+ */
+export function composeSheet(entries: readonly SheetEntry[], width: number): { readonly svg: string; readonly width: number; readonly height: number } {
+  const TITLE = 26
+  const GAP = 10
+  const rows = entries.map(entry => {
+    const size = /width="(\d+)" height="(\d+)"/u.exec(entry.svg)
+    const w = size === null ? width : Number(size[1])
+    const h = size === null ? Math.round(width * 0.75) : Number(size[2])
+    return { entry, w, h }
+  })
+  const height = rows.reduce((total, row) => total + TITLE + row.h + GAP, GAP)
+  const parts: string[] = [
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<rect x="0" y="0" width="${width}" height="${height}" fill="#0B1220"/>`,
+  ]
+  let y = GAP
+  for (const row of rows) {
+    parts.push(`<text x="12" y="${y + 17}" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#7FA8C9">${encodeEntities(row.entry.name)}</text>`)
+    const x = Math.max(0, Math.round((width - row.w) / 2))
+    const encoded = Buffer.from(row.entry.svg, 'utf8').toString('base64')
+    parts.push(`<image x="${x}" y="${y + TITLE}" width="${row.w}" height="${row.h}" href="data:image/svg+xml;base64,${encoded}"/>`)
+    y += TITLE + row.h + GAP
+  }
+  parts.push('</svg>')
+  return { svg: parts.join('\n'), width, height }
+}
+
 /** Whether a headless browser exists to rasterise the SVG. */
 export function findBrowser(): string | undefined {
   return BROWSERS.find(candidate => existsSync(candidate))

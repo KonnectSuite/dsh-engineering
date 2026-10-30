@@ -8,6 +8,10 @@
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
 
+- **`ftview_render` can put a set of screens on one review sheet.** `sheet: "yes"` stacks up to eight
+  drawings on a single image with a title per display, so a reviewer (or the model) judges a set in one
+  look instead of opening a dozen PNGs. The sheet is a plain SVG that embeds each drawing and is
+  rasterised by the same headless browser, so it needs no extra tooling.
 - **`ftview_verify_import` accepts an export you made by hand.** Verification used to depend on the
   vendor export engine, so when that export failed (closed Studio, safety project, COM trouble) the
   proof that an import landed was simply unavailable. `export_root` points the same object-level

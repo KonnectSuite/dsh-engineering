@@ -27,7 +27,7 @@ import { selectBulk } from './bulk.ts'
 import type { BulkMatch } from './bulk.ts'
 import { screenLayout, type ScreenCard, type ScreenNav, type ScreenSpec } from './screen.ts'
 import { popupLayout, type PopupButton, type PopupSpec } from './popup.ts'
-import { findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
+import { composeSheet, findBrowser, renderDisplaySvg, settingsFromXml, writeRender, type RasterImage, type RenderSettings } from '../render-svg.ts'
 import { parseDisplay } from '../model.ts'
 
 /** Export files that are bytes, not text: artwork and other vendored binaries. */
@@ -1339,6 +1339,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         displays_json: string('JSON array of up to 8 display names to draw in one call. Example: ["Main","Alarms"].'),
         output: string('Folder for the render. Defaults to a "renders" folder beside the export.'),
         source: choice('Draw the committed export file or the staged draft that has not been applied yet.', ['export', 'draft']),
+        sheet: choice('Stack every drawing on one review image with a title per display, so a set can be judged in a single look.', ['no', 'yes']),
       }, []),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
@@ -1383,6 +1384,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           const written = await writeRender(outputRoot, name, result)
           return { display: name, svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, problems: result.problems }
         }
+        const sheetWanted = optionalString(args, 'sheet') === 'yes'
         const browser = findBrowser()
         const note = browser === undefined
           ? 'No Chrome or Edge was found, so only the SVG was written; open it in a browser to see the screen.'
@@ -1395,9 +1397,17 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           ? 'No object leaves the canvas or overflows its box.'
           : `${problems.length} layout problem(s): ${problems.slice(0, 3).map(problem => `${problem.object} ${problem.kind === 'outside' ? 'leaves the canvas' : 'overflows its box'}`).join('; ')}${problems.length > 3 ? ' and more' : ''}.`
         const written = screens.map(screen => screen.png ?? screen.svg).join(', ')
+        let sheet: string | undefined
+        if (sheetWanted && screens.length > 1) {
+          const width = Math.max(...screens.map(screen => screen.width))
+          const composed = composeSheet(screens.map(screen => ({ name: screen.display, svg: screen.svg })), width)
+          const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
+          const written = await writeRender(outputRoot, 'sheet', { ...composed, drawn: 0, problems: [], skipped: [] })
+          sheet = written.png ?? written.svg
+        }
         const first = screens[0] as { svg: string; png?: string; width: number; height: number; drawn: number }
         return success(
-          `Rendered ${screens.length === 1 ? first === undefined ? 'one display' : names[0] : `${screens.length} displays (${names.join(', ')})`} from the ${fromDraft ? 'staged draft' : 'export'} to ${written}. ${note ?? `PNG written by ${browser}.`} ${trouble}`,
+          `Rendered ${screens.length === 1 ? first === undefined ? 'one display' : names[0] : `${screens.length} displays (${names.join(', ')})`} from the ${fromDraft ? 'staged draft' : 'export'} to ${written}. ${note ?? `PNG written by ${browser}.`}${sheet === undefined ? '' : ` Sheet: ${sheet}.`} ${trouble}`,
           {
             source: fromDraft ? 'draft' : 'export',
             ...(screens.length === 1 ? {} : { screens }),
@@ -1407,6 +1417,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             height: first.height,
             drawn: screens.reduce((total, screen) => total + screen.drawn, 0),
             problems,
+            ...(sheet === undefined ? {} : { sheet }),
             browser: browser ?? null,
           },
           [

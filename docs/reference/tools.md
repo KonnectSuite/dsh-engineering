@@ -1108,6 +1108,7 @@ Draw one display, or up to eight in one call, of the open export as SVG files an
 | `displays_json` | string | no | JSON array of up to 8 display names to draw in one call. Example: ["Main","Alarms"]. |
 | `output` | string | no | Folder for the render. Defaults to a "renders" folder beside the export. |
 | `source` | string (export \| draft) | no | Draw the committed export file or the staged draft that has not been applied yet. |
+| `sheet` | string (no \| yes) | no | Stack every drawing on one review image with a title per display, so a set can be judged in a single look. |
 
 ### FTView Studio
 
