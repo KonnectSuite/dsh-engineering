@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **`ftview_validate` now says when apply will refuse the draft.** A vendor-schema error used to appear only as
+  a count in the summary, and the suggested next step was still `ftview_apply`, which then failed with
+  `SCHEMA_INVALID`. The result now carries `schema_errors` and `apply_blocked`, the summary reads
+  "schema FAILED with N error(s), so ftview_apply will refuse this draft", and the next step points back at
+  validation instead of at apply. A clean draft still says "schema ran with no error".
 - **Integration coverage for the scaffold and popup paths.** `test/workflow.spec.ts` now also scaffolds an
   existing display and stages (then applies) a popup, so the three authoring entry points that write vendor XML
   — screen, scaffold, popup — are each proven against the installed `Gfx-ME17.xsd`, not only against layout unit

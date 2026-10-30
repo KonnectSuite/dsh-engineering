@@ -38,6 +38,32 @@ function files(): Map<string, string> {
 }
 
 describe('the authoring workflow end to end', () => {
+  it('stops a draft whose XML the vendor schema rejects', async () => {
+    const l5x = harness(files(), { edit: true, studio: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+
+    // `foreColor` is not a gotoButton attribute; its caption carries `color`.
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view,
+      display: 'Setup',
+      type: 'gotoButton',
+      name: 'BadNav',
+      attributes_json: JSON.stringify({ left: '20', top: '300', width: '120', height: '48', foreColor: '#FFFFFF' }),
+      caption: 'BAD',
+      connections_json: JSON.stringify({ display: 'Main Screen' }),
+    })
+    expect(staged.error).toBeUndefined()
+
+    const validated = await l5x.call('ftview_validate', { view_id: view })
+    expect(validated.data?.apply_blocked).toBe(true)
+    expect((validated.data?.schema_errors as readonly unknown[]).length).toBeGreaterThan(0)
+    expect(String(validated.summary)).toContain('schema FAILED')
+
+    const applied = await l5x.call('ftview_apply', { output_root: 'out-bad' })
+    expect(applied.error?.code).toBe('SCHEMA_INVALID')
+  })
+
   it('scaffolds an existing display that the schema accepts', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
     const open = await l5x.call('ftview_open', { root: 'export' })

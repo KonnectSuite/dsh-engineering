@@ -1139,8 +1139,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const byRule: Record<string, number> = {}
         for (const finding of prepared.findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
         const schemaErrors = prepared.schema.findings.filter(finding => finding.error)
+        // A schema error means apply will refuse the draft, so say that before suggesting apply.
+        const blocked = schemaErrors.length > 0
         return success(
-          `${draft.operations.length} operation(s); ${prepared.texts.size} file(s) change; ${prepared.findings.length} finding(s); schema ${prepared.schema.ran ? `ran (${schemaErrors.length} error(s))` : 'unavailable'}.`,
+          blocked
+            ? `${draft.operations.length} operation(s); ${prepared.texts.size} file(s) change; ${prepared.findings.length} finding(s); schema FAILED with ${schemaErrors.length} error(s), so ftview_apply will refuse this draft.`
+            : `${draft.operations.length} operation(s); ${prepared.texts.size} file(s) change; ${prepared.findings.length} finding(s); schema ${prepared.schema.ran ? 'ran with no error' : 'unavailable'}.`,
           {
             draft_id: draft.id,
             draft_sha256: prepared.hash,
@@ -1151,8 +1155,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             findings_truncated: prepared.findings.length > limit,
             by_rule: byRule,
             schema: prepared.schema,
+            schema_errors: schemaErrors,
+            apply_blocked: blocked,
           },
-          [{ tool: 'ftview_apply', args: { draft_id: draft.id }, why: 'Write the prepared export to a new folder.' }],
+          blocked
+            ? [{ tool: 'ftview_validate', args: { draft_id: draft.id }, why: 'Fix the schema errors above, then validate again before applying.' }]
+            : [{ tool: 'ftview_apply', args: { draft_id: draft.id }, why: 'Write the prepared export to a new folder.' }],
           EDIT_COVERAGE,
         )
       },
