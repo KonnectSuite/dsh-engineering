@@ -152,7 +152,7 @@ export function screenLayout(spec: ScreenSpec): ScreenLayout {
     }
     cardSlots.push(slot)
     const name = `Card${index + 1}`
-    objects.push({ type: 'panel', name, attributes: { ...box(slot), backColor: theme.surface, borderStyle: 'solid', borderColor: '#2C4557' } })
+    objects.push({ type: 'panel', name, attributes: { ...box(slot), backColor: theme.surface, borderStyle: 'line', borderColor: '#2C4557' } })
     objects.push({
       type: 'text',
       name: `${name}Title`,
@@ -173,7 +173,7 @@ export function screenLayout(spec: ScreenSpec): ScreenLayout {
         objects.push({
           type: 'numericDisplay',
           name: `${name}Row${rowIndex + 1}Value`,
-          attributes: { ...box({ left: valueLeft, top, width: valueWidth, height: ROW - 6 }), backColor: '#0B1620', foreColor: '#E2E8F0', borderStyle: 'none', horizontalAlignment: 'center', verticalAlignment: 'middle' },
+          attributes: { ...box({ left: valueLeft, top, width: valueWidth, height: ROW - 6 }), backColor: '#0B1620', foreColor: '#E2E8F0', borderStyle: 'none' },
           connections: { Value: item.tag },
         })
         return
@@ -200,7 +200,7 @@ export function screenLayout(spec: ScreenSpec): ScreenLayout {
       objects.push({
         type: 'gotoButton',
         name: `Nav${index + 1}`,
-        attributes: { ...box(slot), backColor: '#1D3A4C', foreColor: '#FFFFFF', borderStyle: 'solid', borderColor: '#2F5A73', display: button.display },
+        attributes: { ...box(slot), backColor: '#DCE4EC', borderStyle: 'line', borderColor: '#2F5A73', display: button.display },
         caption: button.label,
       })
     })

@@ -2,6 +2,18 @@
 
 ### Changed
 
+- **Fixed: authored screens and popups were rejected by schema validation.** `ftview_draft_screen` wrote
+  `borderStyle="solid"` on panels and navigation buttons (not in `borderStyleEnums`),
+  `horizontalAlignment`/`verticalAlignment` on numeric displays (not declared), and `foreColor` on a
+  `gotoButton` (caption colour lives on its `<caption>` child). `ftview_apply` correctly refused all of it, so
+  every screen from that tool failed at apply. Panels and navigation now use `line`, the numeric display keeps
+  the attributes the vendor declares, and navigation buttons carry a light face so the default text stays
+  readable.
+- **New: `test/workflow.spec.ts` runs the steps a model actually takes** — create a display, author a screen,
+  validate, apply, reopen what was written, run `ftview_check` — in one test. It found the three schema defects
+  above, which the layout unit tests could not see because they never validate against the vendor XSD.
+- **Test harness: files a tool writes are readable again** (`textOf`, separator normalisation, directory
+  listing over both maps), so a test can reopen its own output the way the real filesystem allows.
 - **A full-screen display whose canvas differs from the rest is named.** `ftview_design_check` adds
   `VIEW-LAYOUT-02` (info) for a `replace` display whose pixel size is not the common one, with the common
   size and how many displays share it; popups (`onTop`) are excluded because they are sized on purpose.

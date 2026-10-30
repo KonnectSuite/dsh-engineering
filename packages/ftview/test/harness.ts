@@ -29,27 +29,33 @@ export function harness(files: ReadonlyMap<string, string>, options: { edit?: bo
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
   const normalized = new Map([...files].map(([path, text]) => [path.replace(/\\/gu, '/'), text]))
-  const directoryOf = (path: string): boolean => [...normalized.keys()].some(key => key.startsWith(`${path}/`))
+  // Files written by a tool are readable again, so a test can reopen what it wrote.
+  const textOf = (path: string): string | undefined => written.get(path) ?? normalized.get(path)
+  const directoryOf = (path: string): boolean => [...new Set([...normalized.keys(), ...written.keys()])].some(key => key.startsWith(`${path}/`))
   const ctx = {
     tools: { register(definition: ToolDefinition) { definitions.push(definition) } },
     fs: {
       async resolve(path: string) { return path.replace(/\\/gu, '/').replace(/\/+$/u, '') },
-      async stat(path: string) {
-        if (normalized.has(path)) return { type: 'file' }
+      // Tools may join with either separator; the fixture keys use forward slashes.
+      async stat(rawPath: string) {
+        const path = rawPath.replace(/\\/gu, '/')
+        if (textOf(path) !== undefined) return { type: 'file' }
         if (directoryOf(path)) return { type: 'directory' }
         return undefined
       },
-      async readBytes(path: string) {
-        const text = normalized.get(path)
+      async readBytes(rawPath: string) {
+        const path = rawPath.replace(/\\/gu, '/')
+        const text = textOf(path)
         if (text === undefined) throw new Error(`missing ${path}`)
         return new TextEncoder().encode(text)
       },
       async writeText(path: string, text: string) { written.set(path, text) },
     async writeBytes(path: string, bytes: Uint8Array) { written.set(path, new TextDecoder('latin1').decode(bytes)) },
-      async listDir(path: string) {
+      async listDir(rawPath: string) {
+        const path = rawPath.replace(/\\/gu, '/')
         const prefix = `${path}/`
         const children = new Map<string, string>()
-        for (const key of normalized.keys()) {
+        for (const key of new Set([...normalized.keys(), ...written.keys()])) {
           if (!key.startsWith(prefix)) continue
           const rest = key.slice(prefix.length)
           const separator = rest.indexOf('/')
