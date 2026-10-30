@@ -311,7 +311,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_check',
-      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), artwork a display names but the export does not ship (IMAGE_MISSING), and — when a decoded Alarms.xml is supplied — an alarm setup whose display-name is not in the export (ALARM_DISPLAY_MISSING). Vendor XSD validation and controller binding are not performed.',
+      description: 'Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), artwork a display names but the export does not ship (IMAGE_MISSING), and the alarm setup — a display-name that is missing from the export, a trigger with no message, a placeholder label, a trigger whose tag the HMI database lacks — read from Alarms/Alarms.xml or Alarms.xml when `alarms` is omitted. `coverage` names every check that did not run, such as tag binding on an export that carries no tag CSV. Vendor XSD validation and controller binding are not performed.',
       parameters: object({
         view_id: VIEW_ID,
         alarms: string('Path to an Alarms.xml for this application, from ftview_alarm_snapshot or ftview_studio_export_accept. When omitted, an Alarms.xml shipped inside the export is read automatically.'),
@@ -347,9 +347,32 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         }
         const byRule: Record<string, number> = {}
         for (const finding of findings) byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
+        // A check that could not run reads as a clean result unless the result says
+        // so: an export without the tag CSV skips TAG_NOT_BOUND and the alarm tag
+        // rule, so the summary and coverage both name the gap.
+        const noTagCsv = app.tagFiles.length === 0
+        // The alarm file is named relative to the export so coverage stays readable.
+        const relative = (path: string): string => {
+          for (const slash of ['/', '\\']) {
+            const prefix = `${app.root.replace(/[\\/]$/u, '')}${slash}`
+            if (path.startsWith(prefix)) return path.slice(prefix.length)
+          }
+          return path
+        }
+        const coverage = {
+          schema: 'not run',
+          plc_binding: 'not run',
+          tag_binding: noTagCsv ? 'not run: this export has no HMI tag CSV' : `checked ${app.tags.length} tag row(s)`,
+          alarms: alarmsFile !== undefined
+            ? `reviewed ${relative(alarmsFile)}`
+            : requested === undefined || requested === ''
+              ? 'not run: this export has no alarm setup file'
+              : 'not run: the supplied alarm file could not be read',
+        }
+        const note = noTagCsv ? ' No HMI tag CSV, so display bindings and alarm tags were not checked.' : ''
         return success(
-          `${findings.length} finding(s) in ${app.name}.`,
-          { total: findings.length, by_rule: byRule, findings, coverage: { schema: 'not run', plc_binding: 'not run' } },
+          `${findings.length} finding(s) in ${app.name}.${note}`,
+          { total: findings.length, by_rule: byRule, findings, coverage },
           [],
           COVERAGE,
         )

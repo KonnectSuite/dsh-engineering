@@ -48,6 +48,13 @@ Each `DUPLICATE_OBJECT_NAME` finding states how many objects share the name and 
 near-identical rows. The ME alarm setup file (`<alarms>` root) is an alarm configuration, not a
 display: `ftview_open` returns it in `alarm_files`, and it is never reported as an `UNPARSED_FILE`.
 
+`ftview_check` reports what it could not check. `coverage.tag_binding` says
+`not run: this export has no HMI tag CSV` when the export carries no tag table, because
+`TAG_NOT_BOUND` and the alarm tag rule read that table and would otherwise be silent; the
+summary says the same in words rather than leaving zero findings that look like a clean bill
+of health. `coverage.alarms` names the alarm setup file it reviewed, or says there was none,
+so an export with no `Alarms.xml` is distinguishable from one whose alarms are all sound.
+
 ## Workflow
 
 Call `ftview_check` first for structural health, then `ftview_design_check` for the

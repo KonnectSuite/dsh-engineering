@@ -28,6 +28,12 @@
   instead: `ftview_open` returns it in `alarm_files` and says how many there are, and `UNPARSED_FILE` names only
   files that really failed to parse. The alarm findings are unchanged — the CarpenterPilot export still reports
   its 145 alarm findings, and `ftview_check` there now returns 154 findings instead of 223.
+- **`ftview_check` says which checks could not run.** `coverage` carried only `schema` and `plc_binding`, so an
+  export with no HMI tag CSV returned no `TAG_NOT_BOUND` and no alarm tag findings, with nothing to distinguish
+  that from bindings that all resolve. It now carries `tag_binding` (`not run: this export has no HMI tag CSV`,
+  or the number of tag rows checked) and `alarms` (the setup file it reviewed, or that the export has none), and
+  the summary states that display bindings and alarm tags were not checked. The description also claimed the
+  alarm setup is read only when `alarms` is supplied, while it has long been read from the export automatically.
 
 ## [0.70.0] - 2026-10-29
 

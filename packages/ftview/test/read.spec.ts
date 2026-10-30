@@ -142,6 +142,35 @@ describe('check', () => {
     expect(rules.DUPLICATE_OBJECT_NAME).toBe(1)
     expect(rules.UNPARSED_FILE).toBeGreaterThan(0)
     expect((checked.data?.coverage as { schema: string }).schema).toBe('not run')
+    const coverage = checked.data?.coverage as { tag_binding: string; alarms: string }
+    expect(coverage.tag_binding).toBe('checked 3 tag row(s)')
+    expect(coverage.alarms).toBe('not run: this export has no alarm setup file')
+    expect(checked.summary).not.toContain('No HMI tag CSV')
+  })
+
+  it('says that tag binding and alarms were not checked when the export has neither', async () => {
+    const files = new Map([
+      ['export/Main.xml', '<Display name="Main"><Object name="StartPB" Tag="{[PLC]StartPB}"/></Display>'],
+    ])
+    const l5x = harness(files)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: open.data?.view_id })
+    expect(checked.summary).toContain('No HMI tag CSV, so display bindings and alarm tags were not checked.')
+    const coverage = checked.data?.coverage as { tag_binding: string; alarms: string }
+    expect(coverage.tag_binding).toBe('not run: this export has no HMI tag CSV')
+    expect(coverage.alarms).toBe('not run: this export has no alarm setup file')
+    expect((checked.data?.by_rule as Record<string, number>).TAG_NOT_BOUND).toBeUndefined()
+  })
+
+  it('names the alarm setup file it reviewed', async () => {
+    const files = new Map([
+      ['export/Main.xml', '<Display name="Main"><Object name="StartPB"/></Display>'],
+      ['export/Alarms/Alarms.xml', '<?xml version="1.0" encoding="UTF-8"?><alarms display-name="Main"/>'],
+    ])
+    const l5x = harness(files)
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const checked = await l5x.call('ftview_check', { view_id: open.data?.view_id })
+    expect((checked.data?.coverage as { alarms: string }).alarms).toBe('reviewed Alarms/Alarms.xml')
   })
 
   it('reports one finding per duplicated object name, with its count', async () => {

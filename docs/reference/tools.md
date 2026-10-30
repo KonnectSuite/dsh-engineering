@@ -720,7 +720,7 @@ Search one opened export by name or text across displays, display objects and HM
 
 #### `ftview_check`
 
-Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), artwork a display names but the export does not ship (IMAGE_MISSING), and — when a decoded Alarms.xml is supplied — an alarm setup whose display-name is not in the export (ALARM_DISPLAY_MISSING). Vendor XSD validation and controller binding are not performed.
+Run structural checks over one opened export: tag CSV integrity, duplicate names within displays and the tag file, files that did not parse, screens whose connection names a tag the CSV does not declare (TAG_NOT_BOUND), artwork a display names but the export does not ship (IMAGE_MISSING), and the alarm setup — a display-name that is missing from the export, a trigger with no message, a placeholder label, a trigger whose tag the HMI database lacks — read from Alarms/Alarms.xml or Alarms.xml when `alarms` is omitted. `coverage` names every check that did not run, such as tag binding on an export that carries no tag CSV. Vendor XSD validation and controller binding are not performed.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
