@@ -244,18 +244,52 @@ function describeOperation(operation: EditOperation): { readonly kind: string; r
   return { kind: operation.kind, target: field === undefined ? target : `${target} ${field}` }
 }
 
+/**
+ * Connection tags that the export tag database does not declare.
+ *
+ * A connection may address a member (`Motor.Speed`), so only the root name is compared,
+ * the same way `TAG_NOT_BOUND` in the checks does it.
+ */
+function unresolvedIn(
+  app: { readonly tags: readonly { readonly name: string }[] } | undefined,
+  operation: EditOperation,
+): string[] {
+  if (app === undefined || app.tags.length === 0) return []
+  const record = operation as unknown as { connections?: Readonly<Record<string, string>> }
+  const declared = new Set(app.tags.map(tag => tag.name))
+  const roots = Object.values(record.connections ?? {}).map(value => value.split(/[.[:]/u)[0]?.trim() ?? '')
+  return [...new Set(roots.filter(root => root !== '' && !declared.has(root)))]
+}
+
 export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown): readonly ToolDefinition[] {
+  /** Where each draft came from, so a result can judge its connections against that export. */
+  const apps = new Map<string, { readonly tags: readonly { readonly name: string }[] }>()
+
   /** Resolve the view and append one operation. */
   const stage = (exec: ExecContext | undefined, viewId: string | undefined, operation: EditOperation) => {
     const view = session.require(viewId, exec)
-    return { view, draft: drafts.append(exec, view.id, operation, maxOperations) }
+    const draft = drafts.append(exec, view.id, operation, maxOperations)
+    apps.set(draft.id, view.app)
+    return { view, draft }
   }
-  const staged = (draft: { readonly id: string; readonly operations: readonly unknown[] }, operation: EditOperation, profileId?: string) => success(
-    `Draft ${draft.id}: ${draft.operations.length} ${draft.operations.length === 1 ? 'operation' : 'operations'}.`,
-    { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation, ...(profileId === undefined ? {} : { profile_applied: profileId }) },
-    nextValidate(draft.id),
-    EDIT_COVERAGE,
-  )
+  const staged = (draft: { readonly id: string; readonly operations: readonly unknown[] }, operation: EditOperation, profileId?: string) => {
+    const unknown = unresolvedIn(apps.get(draft.id), operation)
+    const note = unknown.length === 0
+      ? ''
+      : ` ${unknown.length} connection tag(s) are not declared in this export tag CSV: ${unknown.join(', ')}. The draft still stages; ftview_check reports the rest at validate time.`
+    return success(
+      `Draft ${draft.id}: ${draft.operations.length} ${draft.operations.length === 1 ? 'operation' : 'operations'}.${note}`,
+      {
+        draft_id: draft.id,
+        operation_count: draft.operations.length,
+        last_operation: operation,
+        ...(unknown.length === 0 ? {} : { unresolved_tags: unknown }),
+        ...(profileId === undefined ? {} : { profile_applied: profileId }),
+      },
+      nextValidate(draft.id),
+      EDIT_COVERAGE,
+    )
+  }
   return [
     tool({
       name: 'ftview_draft_display_set',

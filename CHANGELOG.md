@@ -2,6 +2,11 @@
 
 ### Changed
 
+- **A draft says when a connection names an unknown tag.** Every authoring tool (object add and set, screen,
+  popup, restyle) now compares the connection roots it stages against the export tag database and reports
+  `unresolved_tags` in the result, with a sentence naming them. A member such as `Motor.Speed` resolves
+  against its root, so only genuinely undeclared tags are named. The draft still stages — the point is to
+  learn it now rather than after `ftview_apply` and `ftview_check`.
 - **`ftview_check` reads the alarm setup without being asked.** An `Alarms.xml` shipped inside the export
   (`Alarms/Alarms.xml`, the layout the wizard writes) is now read automatically, so one call covers the
   display checks and the alarm review: silent triggers, placeholder labels, duplicate expressions, orphaned

@@ -96,6 +96,41 @@ describe('authoring', { timeout: 30_000 }, () => {
     expect(group).toContain('expression="SystemRunning"')
   })
 
+  it('says nothing when a connection tag is declared in the export', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'numericDisplay', name: 'Count',
+      attributes_json: JSON.stringify({ height: '24', width: '120', left: '20', top: '150' }),
+      connections_json: JSON.stringify({ Value: 'SystemRunning' }),
+    })
+    expect(staged.error).toBeUndefined()
+    expect(staged.data?.unresolved_tags).toBeUndefined()
+    expect(String(staged.summary)).not.toContain('not declared')
+  })
+
+  it('names a connection tag the export tag CSV does not declare', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'numericDisplay', name: 'Ghost',
+      attributes_json: JSON.stringify({ height: '24', width: '120', left: '20', top: '180' }),
+      connections_json: JSON.stringify({ Value: 'GhostTag' }),
+    })
+    expect(staged.error).toBeUndefined()
+    expect(staged.data?.unresolved_tags).toEqual(['GhostTag'])
+    expect(String(staged.summary)).toContain('GhostTag')
+    expect(String(staged.summary)).toContain('not declared')
+  })
+
+  it('accepts a member of a declared tag without warning', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'numericDisplay', name: 'Member',
+      attributes_json: JSON.stringify({ height: '24', width: '120', left: '20', top: '210' }),
+      connections_json: JSON.stringify({ Value: 'SystemRunning.0' }),
+    })
+    expect(staged.data?.unresolved_tags).toBeUndefined()
+  })
+
   it('changes a caption and a connection', async () => {
     const { l5x, view } = await opened()
     await l5x.call('ftview_draft_object_add', {
