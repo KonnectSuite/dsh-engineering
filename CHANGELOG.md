@@ -43,6 +43,10 @@
 
 - **The organizer no longer keys sibling modules by name alone,** which emitted a duplicate-key warning twelve times
   on an export that lists the same module under `A1`/`A2` Ethernet; the key now includes the module's seat in the tree.
+- **Three dead rules left the ladder stylesheet,** and a new spec (`test/viewer-face-css.spec.mjs`) keeps the
+  stylesheet and the renderer in step: a class the renderer never reads fails the build's tests, and so does a
+  `css.<name>` the stylesheet does not define — both used to be invisible, one as dead intent and the other as an
+  unstyled element with no error anywhere.
 
 ## [0.72.1] - 2026-10-31
 

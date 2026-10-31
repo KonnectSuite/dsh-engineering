@@ -17,9 +17,7 @@
 .selected,.leafButton:hover,.reference:hover { background:var(--dsw-alias-interactive-bg-hover); }
 .leafButton small,.selected small { color:var(--dsw-alias-label-secondary); margin-left:5px; }
 .main { overflow:auto; min-width:0; min-height:0; padding:0 12px 24px; }
-.routineHeader { display:flex; gap:10px; align-items:center; position:sticky; top:0; padding:12px 0; background:var(--dsw-alias-bg-document-preview); z-index:1; border-bottom:0.5px solid var(--dsw-alias-border-l2); }
-.routineHeader span,.description { color:var(--dsw-alias-label-secondary); }
-.description { margin:12px 4px; }
+.description { margin:12px 4px; color:var(--dsw-alias-label-secondary); }
 .rung { display:grid; grid-template-columns:32px minmax(0,1fr); border-bottom:0.5px solid var(--dsw-alias-border-l2); min-height:110px; }
 .rungNumber { color:var(--dsw-alias-label-secondary); padding-top:36px; }
 .rungBody { border-left:2px solid var(--dsw-alias-label-primary); border-right:2px solid var(--dsw-alias-label-primary); min-width:0; padding:12px; }
@@ -84,7 +82,6 @@
 .rungBody { padding:12px 15px; }.comment { text-align:center; font-size:11px; }
 .rail { min-height:70px; }.branch { border-left-width:2px; border-right-width:2px; }.branchPath { min-height:68px; }
 .instruction { min-width:132px; text-align:center; }.instruction::before { top:31px; height:2px; }
-.instructionDescription { color:var(--dsw-alias-label-secondary); font-size:10px; line-height:1.2; }
 .glyph { font-size:20px; height:28px; min-width:54px; line-height:28px; }.functionBlock .glyph { border:1px solid var(--dsw-alias-label-primary); min-width:70px; font-size:12px; font-weight:700; }
 .instruction code { max-width:none; overflow:visible; text-overflow:clip; }
 .path { min-width:100%; width:max-content; }.outputInstruction { margin-left:auto; }
@@ -106,7 +103,6 @@
 .finding { display:flex; gap:10px; align-items:baseline; border-bottom:0.5px solid var(--dsw-alias-border-l2); padding:5px 1px; font-size:11px; }.finding strong { flex:none; min-width:160px; }.finding code { margin-left:auto; max-width:30%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--dsw-alias-label-secondary); }
 .warning,.info { text-transform:uppercase; font-size:9px; font-weight:800; }.warning { color:#bb7426; }.info { color:#3983c9; }
 .searchLabel { flex-direction:row; align-items:center; }.searchLabel input { width:min(410px,100%); }.reference { flex-direction:row; align-items:baseline; gap:12px; }.reference strong { min-width:160px; }.reference span { min-width:65px; }
-.watchRow { display:flex; align-items:center; gap:12px; padding:5px 2px; border-bottom:0.5px solid var(--dsw-alias-border-l2); }.watchRow code { min-width:160px; }.watchRow span { color:var(--dsw-alias-label-secondary); }.watchRow button { margin-left:auto; border:0; background:transparent; color:inherit; cursor:pointer; }
 .watchTable { border-collapse:collapse; width:100%; min-width:670px; font-size:11px; }.watchTable th,.watchTable td { text-align:left; border:0.5px solid var(--dsw-alias-border-l2); padding:5px 7px; }.watchTable thead { background:color-mix(in srgb,var(--dsw-alias-bg-document-preview) 70%,#a4bed4); }.watchTable .noValue { color:var(--dsw-alias-label-secondary); font-style:italic; }
 /* Ladder canvas: Studio 5000 geometry — one wire per row, comments above it. */
 .main { background:#fff; color:#1d2730; overflow:auto; }
