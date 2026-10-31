@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.72.1] - 2026-10-31
+
 ### Changed
 
 - **A build error gets three probes, not a session.** The `legacy-to-logix-migration` skill and the row's reference
