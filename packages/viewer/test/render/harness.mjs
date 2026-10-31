@@ -314,6 +314,11 @@ export function judge(measurement, options = {}) {
     failures.push(`${measurement.clipped.length} clipped text node(s): ${measurement.clipped.slice(0, 6).map(item => `"${item.text}"`).join(', ')}`)
   }
   for (const line of measurement.logged ?? []) failures.push(`console: ${line}`)
+  // A routine that defines or calls an AOI must label its pins from the definition, never "Operand 1".
+  if (options.requirePinLabels === true
+    && !measurement.blocks.some(block => block.rows.some(row => !/^Operand \d+$/u.test(row.label)))) {
+    failures.push('every block fell back to "Operand N", so no instruction or AOI labelled its pins')
+  }
   const timers = measurement.blocks.filter(block => ['TON', 'TOF', 'RTO'].includes(block.mnemonic))
   for (const timer of timers) {
     const labels = timer.rows.map(row => row.label)

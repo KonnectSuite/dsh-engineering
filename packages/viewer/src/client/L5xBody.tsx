@@ -5,6 +5,7 @@ import { MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import { exportedDatum, findReferences, ladderSegments, parseProject, type ExportedDatum, type LadderSegment, type Module, type Program, type Project, type Routine, type Rung, type Tag, timerState, type TimerState } from './model.ts'
+import { instructionPins } from './instructions.ts'
 import { inspectProject } from './inspection.ts'
 import type { L5xPreviewKey } from './locales.ts'
 import css from './L5xBody.module.css'
@@ -167,6 +168,8 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   const detailFor = (value: string): OperandDetail | undefined => project === undefined
     ? undefined : operandDetail(project, tagIndex, value)
   const describeOperand = (value: string): string => detailFor(value)?.tag?.description ?? ''
+  /** Pins of an AOI call, read from the definition the export carries, so its own parameter names label the block. */
+  const pinsFor = (mnemonic: string): readonly string[] | undefined => project?.aoiPins.get(mnemonic) ?? project?.aoiPins.get(mnemonic.toUpperCase())
   const resolveTimer = (value: string): TimerState | undefined => project === undefined
     ? undefined : timerState(project, selectedProgram?.name ?? 'controller', value)
   const focusedOperands = focused === undefined ? [] : displayOperands(focused.mnemonic, focused.operands)
@@ -399,7 +402,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
               {selected.description !== '' && <p className={css.description}>{selected.description}</p>}
               {selected.type === 'RLL' && (selected.rungs.length === 0 ? <div className={css.status}>{t('noRungs')}</div> : <>
                 {selected.rungs.slice(0, rungLimit).map(rung => <RungView key={rung.number} rung={rung}
-                  showSource={showSource} describeOperand={describeOperand} detailFor={detailFor} resolveTimer={resolveTimer}
+                  showSource={showSource} describeOperand={describeOperand} detailFor={detailFor} resolveTimer={resolveTimer} pinsFor={pinsFor}
                   focused={focused} focusedRung={focusedRung}
                   onFocusRung={focusRung}
                   onFocusInstruction={focusInstruction} onContext={contextFor} t={t} />)}
@@ -613,9 +616,11 @@ const timerMnemonics = ['TON', 'TOF', 'RTO']
  * @returns One row per operand, in export order.
  */
 function pinRows(mnemonic: string, operands: string, detailFor: (value: string) => OperandDetail | undefined,
-  resolveTimer: (value: string) => TimerState | undefined, t: PropsLocale<'sidebarL5x'>['t']): PinRow[] {
+  resolveTimer: (value: string) => TimerState | undefined,
+  pinsFor: (mnemonic: string) => readonly string[] | undefined, t: PropsLocale<'sidebarL5x'>['t']): PinRow[] {
   const upper = mnemonic.toUpperCase()
-  const keys = operandKeys[upper]
+  // An AOI call answers from its own parameters first: a project may define an AOI named like a built-in.
+  const keys: readonly string[] | undefined = pinsFor(upper) ?? operandKeys[upper] ?? instructionPins[upper]
   const parts = displayOperands(mnemonic, operands)
   const timer = timerMnemonics.includes(upper) ? resolveTimer(parts[0] ?? '') : undefined
   const rows = parts.map((operand, index) => {
@@ -627,7 +632,7 @@ function pinRows(mnemonic: string, operands: string, detailFor: (value: string) 
     const datum = resolved === '' || resolved === '?' ? undefined : detailFor(resolved)?.datum
     const literal = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/u.test(resolved)
     return {
-      label: key === undefined ? `${t('operand.operand')} ${index + 1}` : t(key),
+      label: key === undefined ? `${t('operand.operand')} ${index + 1}` : key.startsWith('operand.') ? t(key as L5xPreviewKey) : key,
       text: resolved === '' || resolved === '?' ? t('noExportedValue') : resolved,
       value: datum?.value ?? (literal ? resolved : ''),
       title: resolved === '' || resolved === '?'
@@ -701,12 +706,13 @@ function rungBand(segments: readonly LadderSegment[], describeOperand: (value: s
     : Math.max(tallest, commentBand(describeOperand, segment)), 24)
 }
 
-function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, focused, focusedRung, onFocusRung, onFocusInstruction, onContext, t }: {
+function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, pinsFor, focused, focusedRung, onFocusRung, onFocusInstruction, onContext, t }: {
   readonly rung: Rung
   readonly showSource: boolean
   readonly describeOperand: (value: string) => string
   readonly detailFor: (value: string) => OperandDetail | undefined
   readonly resolveTimer: (value: string) => TimerState | undefined
+  readonly pinsFor: (mnemonic: string) => readonly string[] | undefined
   readonly focused: FocusedInstruction | undefined
   readonly focusedRung: string | undefined
   readonly onFocusRung: (number: string) => void
@@ -726,7 +732,7 @@ function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, 
       {rung.comment !== '' && <div className={css.comment} data-l5x-rung-comment>{rung.comment}</div>}
       {segments === null ? <code className={css.neutral}>{rung.text}</code> :
         <div className={css.rail}><LadderPath segments={segments} path={rung.number} rung={rung.number}
-          depth={0} resolveTimer={resolveTimer}
+          depth={0} resolveTimer={resolveTimer} pinsFor={pinsFor}
           describeOperand={describeOperand} detailFor={detailFor} focused={focused}
           onFocusInstruction={onFocusInstruction} onContext={onContext} t={t} /></div>}
       {showSource && <code className={css.source}>{rung.text}</code>}
@@ -734,7 +740,7 @@ function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, 
   </section>
 }
 
-function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, resolveTimer, focused, onFocusInstruction, onContext, t }: {
+function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, resolveTimer, pinsFor, focused, onFocusInstruction, onContext, t }: {
   readonly segments: readonly LadderSegment[]
   readonly path: string
   readonly rung: string
@@ -742,6 +748,7 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, r
   readonly describeOperand: (value: string) => string
   readonly detailFor: (value: string) => OperandDetail | undefined
   readonly resolveTimer: (value: string) => TimerState | undefined
+  readonly pinsFor: (mnemonic: string) => readonly string[] | undefined
   readonly focused: FocusedInstruction | undefined
   readonly onFocusInstruction: (instruction: FocusedInstruction) => void
   readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number) => void
@@ -751,7 +758,7 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, r
     ? <div className={css.branch} key={`branch-${path}-${index}`}>{segment.paths.map((branchSegments, pathIndex) =>
       <div className={css.branchPath} key={`branch-path-${path}-${index}-${pathIndex}`}>
         <LadderPath segments={branchSegments} path={`${path}/${index}/${pathIndex}`} rung={rung}
-          depth={depth + 1} resolveTimer={resolveTimer}
+          depth={depth + 1} resolveTimer={resolveTimer} pinsFor={pinsFor}
           describeOperand={describeOperand} detailFor={detailFor} focused={focused}
           onFocusInstruction={onFocusInstruction} onContext={onContext} t={t} />
       </div>)}</div>
@@ -765,7 +772,7 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, r
       const detail = symbol === undefined ? undefined : detailFor(symbol)
       const selected = focused?.id === id
       const description = describeOperand(symbol ?? segment.operands)
-      const rows = isBoolean ? [] : pinRows(segment.mnemonic, segment.operands, detailFor, resolveTimer, t)
+      const rows = isBoolean ? [] : pinRows(segment.mnemonic, segment.operands, detailFor, resolveTimer, pinsFor, t)
       return <button type="button" data-l5x-instruction data-instruction-id={id} aria-pressed={selected}
         aria-label={`${segment.mnemonic} ${segment.operands}${description === '' ? '' : ` — ${description}`}`}
         className={`${css.instruction} ${isBoolean ? '' : css.functionBlock} ${index === segments.length - 1 && terminalInstructions.has(upper) ? css.outputInstruction : ''} ${selected ? css.focusedInstruction : ''}`} key={id}

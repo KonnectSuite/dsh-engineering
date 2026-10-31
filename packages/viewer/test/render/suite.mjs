@@ -34,6 +34,8 @@ const cases = [
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'Cutter_StopControl', width: 1680, height: 1200, requireValues: false },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'TopCutter_Comms', width: 1680, height: 1200 },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'CutterMain', width: 1680, height: 1200, requireValues: false },
+  // Frequency_Calc calls AOI_EncoderLinear, so this case proves an AOI's own pins label the block.
+  { file: '../_e2e/out/CT9-Source.L5X', routine: 'Frequency_Calc', width: 1680, height: 1200, requireValues: false, requirePinLabels: true },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'BottomCutter_Comms', width: 1680, height: 1200, bundle: true },
   { file: '../_e2e/out/CT10-Source.L5X', routine: 'BottomCutter_Comms', width: 1680, height: 1200 },
   { file: '../_e2e/out/Century-fixed.L5X', routine: '_2_MAIN', width: 1680, height: 1200 },

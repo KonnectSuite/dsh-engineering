@@ -52,6 +52,8 @@ export interface Project {
   readonly tags: readonly Tag[]
   readonly modules: readonly Module[]
   readonly aois: readonly string[]
+  /** Pin names of each AOI in declaration order, so a call can label its own pins. */
+  readonly aoiPins: ReadonlyMap<string, readonly string[]>
   readonly types: readonly string[]
   readonly exportedData: ReadonlyMap<string, ExportedDatum>
 }
@@ -162,11 +164,16 @@ export function parseProject(xml: string): Project {
     name: attr(module, 'Name'), catalog: attr(module, 'CatalogNumber'), parent: attr(module, 'ParentModule'), description: description(module),
     slot: attr(child(module, 'Ports'), 'Address') || attr(child(child(module, 'Ports'), 'Port'), 'Address'),
   }))
+  const aoiDefinitions = children(child(controller, 'AddOnInstructionDefinitions'), 'AddOnInstructionDefinition')
+  // EnableIn and EnableOut are drawn by the block itself, never as pins, so a call's pins start after them.
+  const aoiPins = new Map(aoiDefinitions.map(definition => [attr(definition, 'Name').toUpperCase(),
+    children(child(definition, 'Parameters'), 'Parameter').map(parameter => attr(parameter, 'Name'))
+      .filter(name => name !== '' && name !== 'EnableIn' && name !== 'EnableOut')]))
   return {
     name: attr(controller, 'Name'), processor: attr(controller, 'ProcessorType'), exportRevision: attr(root, 'SoftwareRevision'),
     revision: [attr(controller, 'MajorRev'), attr(controller, 'MinorRev')].filter(Boolean).join('.'),
-    programs, tasks, tags: tagsOf(controller, 'controller'), modules, exportedData,
-    aois: children(child(controller, 'AddOnInstructionDefinitions'), 'AddOnInstructionDefinition').map(aoi => attr(aoi, 'Name')),
+    programs, tasks, tags: tagsOf(controller, 'controller'), modules, exportedData, aoiPins,
+    aois: aoiDefinitions.map(aoi => attr(aoi, 'Name')),
     types: children(child(controller, 'DataTypes'), 'DataType').map(type => attr(type, 'Name')),
   }
 }

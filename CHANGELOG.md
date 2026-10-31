@@ -2,6 +2,14 @@
 
 ### Added
 
+- **Contacts look like contacts, and every block names its pins.** XIC is drawn as two short bars on the wire and XIO
+  adds the slash; a coil is two facing arcs with the latch letter between them — the shapes Studio 5000 draws, not
+  boxes. Blocks label their operands from a catalogue of the instructions a Logix export carries
+  (`packages/viewer/src/client/instructions.ts`), and an **add-on instruction call labels its pins from its own
+  definition** in the export, so `AOI_EncoderLinear` reads `RawCounts`, `PPR`, `RollerDiameterIn`, `GearRatio` rather
+  than `Operand 1`..`Operand 7`. Measured over the 57 exports in `_e2e/out`: **68 distinct mnemonics, 68 labelled**
+  (was 42), and 200 AOI calls now label themselves; `e2e:ladder` grew a `Frequency_Calc` case that fails if every
+  block falls back to `Operand N`.
 - **The ladder face has an end-to-end suite.** `npm run e2e:ladder` mounts the built
   `packages/viewer/lib/client.js` in a real headless Chrome, opens a routine the way a reader clicks it in the
   organizer, and asserts on the rendered DOM: no clipped text anywhere in the pane, one tag label per instruction, no

@@ -128,11 +128,17 @@
 .path > .branch:last-child:has(.outputInstruction) { margin-left:auto; }
 .branchPath:has(.outputInstruction) { justify-content:flex-end; }
 .outputInstruction { margin-left:auto; }
-.glyph { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) + 52px); display:flex; align-items:center; justify-content:center; height:16px; transform:translate(-50%,-50%); background:#fff; padding:0 1px; }
+.glyph { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) + 52px); display:flex; align-items:center; justify-content:center; height:16px; transform:translate(-50%,-50%); padding:0 1px; }
+/* Studio draws a contact as two short bars with the wire running into them, and a slash across a negated one. */
+.glyph:has(.contact) { background:#fff; }
 .wireLead { display:block; width:14px; height:1px; background:#333; }
-.contact { display:block; width:16px; height:11px; border:1.5px solid #17703a; border-radius:1px; background:#fff; position:relative; }
-.contact.negated::after { content:''; position:absolute; top:4px; left:-2px; width:18px; height:1.5px; transform:rotate(-18deg); background:#17703a; }
-.coil { display:flex; align-items:center; justify-content:center; width:17px; height:11px; border:1.5px solid #17703a; border-radius:5px; background:#fff; color:#17703a; font:700 8px/1 monospace; }
+.contact { display:block; width:11px; height:15px; border:0; border-left:1.5px solid #17703a; border-right:1.5px solid #17703a; background:transparent; position:relative; }
+.contact.negated::after { content:''; position:absolute; left:-4px; top:6px; width:19px; height:1.5px; transform:rotate(-35deg); background:#17703a; }
+/* A coil is two facing arcs, so the wire reads as continuous through the gap. */
+.coil { position:relative; display:flex; align-items:center; justify-content:center; width:26px; height:16px; background:transparent; color:#17703a; font:700 8px/16px Segoe UI, sans-serif; }
+.coil::before, .coil::after { content:''; position:absolute; top:0; width:8px; height:16px; box-sizing:border-box; border:1.5px solid #17703a; }
+.coil::before { left:0; border-right:0; border-radius:8px 0 0 8px; }
+.coil::after { right:0; border-left:0; border-radius:0 8px 8px 0; }
 .tagBlock { position:static; display:flex; flex-direction:column; align-items:center; gap:1px; max-width:100%; }
 .outputInstruction .tagBlock { align-items:flex-end; }
 .instruction .tagName { width:auto; color:#12233a; font-family:inherit; font-size:11px; font-weight:700; line-height:1.25; text-align:center; white-space:normal; overflow-wrap:anywhere; }
@@ -171,7 +177,7 @@
 .menuHeading { padding:5px 9px; border-bottom:0.5px solid var(--dsw-alias-border-l2); font-size:10px; font-weight:700; color:var(--dsw-alias-label-secondary); }
 .blockCard { position:absolute; left:50%; top:52px; transform:translate(-50%,-50%); z-index:2; width:max-content; min-width:118px; max-width:340px; border:1px solid #6f767d; background:#ececec; box-shadow:none; text-align:left; }
 .blockCard>strong { display:block; padding:1px 6px; background:#dcdcdc; border-bottom:1px solid #6f767d; color:#14181c; font-size:10px; font-weight:700; letter-spacing:.02em; }
-.blockCard>span { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:baseline; gap:2px 8px; padding:2px 6px; border-bottom:0.5px solid #d5d8db; }
+.blockCard>span { display:grid; grid-template-columns:auto minmax(0,1fr) auto; column-gap:6px; align-items:baseline; gap:2px 8px; padding:2px 6px; border-bottom:0.5px solid #d5d8db; }
 .blockCard>span:last-child { border-bottom:0; }
 .blockCard small { color:#4b5563; font-family:inherit; font-size:10px; font-weight:400; line-height:1.25; white-space:nowrap; }
 .blockCard code { max-width:none; color:#14181c; font-family:inherit; font-size:11px; font-weight:700; line-height:1.25; white-space:normal; overflow-wrap:anywhere; overflow:visible; text-overflow:clip; }

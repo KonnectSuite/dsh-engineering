@@ -59,6 +59,7 @@ export const en = {
   askRung: 'Ask Arya about rung', watchRung: 'Watch every tag on this rung', editRungComment: 'Ask Arya to change the rung comment',
   showNeutralText: 'Show NeutralText', hideNeutralText: 'Hide NeutralText', openRoutine: 'Open this routine',
   askProgram: 'Ask Arya about program', askModule: 'Ask Arya about module',
+  'operand.expression': 'Expression',
   controllerFault: 'Controller Fault Handler', powerUp: 'Power-Up Handler', motionGroups: 'Motion Groups',
   alarmManager: 'Alarm Manager', assets: 'Assets', logicalModel: 'Logical Model', notExported: 'Not included in this L5X export', none: 'None',
 } satisfies Record<string, string>
@@ -125,6 +126,7 @@ export const zh = {
   askRung: '询问 Arya 此梯级', watchRung: '监视此梯级上的所有标签', editRungComment: '请 Arya 修改梯级注释',
   showNeutralText: '显示中性文本', hideNeutralText: '隐藏中性文本', openRoutine: '打开此例程',
   askProgram: '询问 Arya 此程序', askModule: '询问 Arya 此模块',
+  'operand.expression': '表达式',
   controllerFault: '控制器故障处理程序', powerUp: '上电处理程序', motionGroups: '运动组',
   alarmManager: '报警管理器', assets: '资产', logicalModel: '逻辑模型', notExported: '此 L5X 导出中未包含', none: '无',
 } satisfies Record<L5xPreviewKey, string>
