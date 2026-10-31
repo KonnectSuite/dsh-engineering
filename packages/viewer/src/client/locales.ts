@@ -57,7 +57,7 @@ export const en = {
   askInstruction: 'Ask Arya about instruction', copyOperand: 'Copy operand', copyInstruction: 'Copy instruction',
   copyRung: 'Copy rung source', openCalledRoutine: 'Open called routine',
   askRung: 'Ask Arya about rung', watchRung: 'Watch every tag on this rung', editRungComment: 'Ask Arya to change the rung comment',
-  showNeutralText: 'Show NeutralText', hideNeutralText: 'Hide NeutralText',
+  showNeutralText: 'Show NeutralText', hideNeutralText: 'Hide NeutralText', openRoutine: 'Open this routine',
   controllerFault: 'Controller Fault Handler', powerUp: 'Power-Up Handler', motionGroups: 'Motion Groups',
   alarmManager: 'Alarm Manager', assets: 'Assets', logicalModel: 'Logical Model', notExported: 'Not included in this L5X export', none: 'None',
 } satisfies Record<string, string>
@@ -122,7 +122,7 @@ export const zh = {
   askInstruction: '询问 Arya 此指令', copyOperand: '复制操作数', copyInstruction: '复制指令',
   copyRung: '复制梯级源代码', openCalledRoutine: '打开调用的例程',
   askRung: '询问 Arya 此梯级', watchRung: '监视此梯级上的所有标签', editRungComment: '请 Arya 修改梯级注释',
-  showNeutralText: '显示中性文本', hideNeutralText: '隐藏中性文本',
+  showNeutralText: '显示中性文本', hideNeutralText: '隐藏中性文本', openRoutine: '打开此例程',
   controllerFault: '控制器故障处理程序', powerUp: '上电处理程序', motionGroups: '运动组',
   alarmManager: '报警管理器', assets: '资产', logicalModel: '逻辑模型', notExported: '此 L5X 导出中未包含', none: '无',
 } satisfies Record<L5xPreviewKey, string>

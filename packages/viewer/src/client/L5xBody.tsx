@@ -31,6 +31,8 @@ type ContextItem = {
   readonly instruction?: FocusedInstruction
   /** Set when the menu was opened on the rung itself, not on one of its parts. */
   readonly rung?: number
+  /** Set when the menu was opened on a routine row in the organiser. */
+  readonly routineTarget?: { readonly program: string; readonly routine: string }
 }
 type Inspector = { readonly kind: 'tag'; readonly tag: Tag } | { readonly kind: 'module'; readonly module: Module } | undefined
 type BottomPane = 'diagnostics' | 'search' | 'watch'
@@ -228,13 +230,14 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
     setFocusedRung(number)
     setInspector(undefined)
   }
-  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number): void => {
+  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number, routineTarget?: { readonly program: string; readonly routine: string }): void => {
     event.preventDefault()
     if (instruction !== undefined) setFocused(instruction)
     setContext({ x: event.clientX, y: event.clientY, text,
       ...(symbol === undefined ? {} : { symbol }),
       ...(instruction === undefined ? {} : { instruction }),
-      ...(rung === undefined ? {} : { rung }) })
+      ...(rung === undefined ? {} : { rung }),
+      ...(routineTarget === undefined ? {} : { routineTarget }) })
   }
   /**
    * Every symbol a rung mentions, in rung order. A rung's own text is the only
@@ -284,7 +287,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
     </button>}
     {orderedRoutines(program).filter(routine => matches(program.name) || matches(routine.name)).map(routine => <button type="button"
       className={current?.program === program.name && current.routine === routine.name ? css.selected : css.leafButton}
-      key={routine.name} onClick={() => { select(program, routine) }} onContextMenu={(event) => { contextFor(event, `${program.name}/${routine.name}`) }}>
+      key={routine.name} onClick={() => { select(program, routine) }} onContextMenu={(event) => { contextFor(event, `${program.name}/${routine.name}`, undefined, undefined, undefined, { program: program.name, routine: routine.name }) }}>
       <span className={css.routineIcon}>{routine.type === 'RLL' ? '≡' : routine.type === 'ST' ? '{ }' : '◇'}</span>{routine.name} <small>{routine.type}</small>
     </button>)}
     {program.routines.length === 0 && <span className={css.leaf}>{t('noRoutines')}</span>}
@@ -478,6 +481,17 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
       </div>
     </section>
     {context !== undefined && createPortal(<MenuSurface className={css.menu} role="menu" style={{ left: context.x, top: context.y }} onPointerDown={(event) => { event.stopPropagation() }}>
+      {context.routineTarget !== undefined && <div className={css.menuHeading}>{context.routineTarget.program}/{context.routineTarget.routine}</div>}
+      {context.routineTarget !== undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-routine" onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain routine ${context.routineTarget?.routine} of program ${context.routineTarget?.program} in this offline L5X export: what it does, what it calls, which tags it reads and writes, and what the export recorded about them. Do not present a saved value as the controller's current state.`))
+        setContext(undefined)
+      }}>{t('askRoutine')}</button>}
+      {context.routineTarget !== undefined && (current?.program !== context.routineTarget.program || current.routine !== context.routineTarget.routine) && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        const program = project?.programs.find(item => item.name === context.routineTarget?.program)
+        const routine = program?.routines.find(item => item.name === context.routineTarget?.routine)
+        if (program !== undefined && routine !== undefined) select(program, routine)
+        setContext(undefined)
+      }}>{t('openRoutine')}</button>}
       {context.instruction !== undefined && <div className={css.menuHeading}>{context.instruction.mnemonic} · {t('rung')} {context.instruction.rung}</div>}
       {context.rung !== undefined && context.instruction === undefined && <div className={css.menuHeading}>{t('rung')} {context.rung} · {current?.program}/{current?.routine}</div>}
       {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-rung" onClick={() => {
@@ -498,7 +512,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
         setChatUnavailable(!ask(resourceAddress, `Propose a new rung comment for rung ${context.rung} of ${current?.program}/${current?.routine} in this L5X export, in the voice the surrounding comments already use. Show the exact before/after text and where it would be written. Do not connect online or download.`))
         setContext(undefined)
       }}>{t('editRungComment')}</button>}
-      {context.instruction === undefined && context.rung === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+      {context.instruction === undefined && context.rung === undefined && context.routineTarget === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
         setChatUnavailable(!ask(resourceAddress, `Context: ${context.text}`))
         setContext(undefined)
       }}>{t('ask')}</button>}

@@ -17,6 +17,8 @@
   tag it touches in one action, show or hide its NeutralText, copy its source, or ask Arya for a new rung comment -
   instead of the operand menu with the rung text pasted into it. The prompt names the program, routine and rung, so
   the answer is about the rung a reader pointed at.
+- **A routine row answers for itself too.** Right-clicking a routine in the organizer names the routine in the menu
+  and in its prompt, and can open it, instead of asking Arya about the two words "Program/Routine".
 - **The pane is driven, not only read.** `npm run e2e:actions` clicks and types with a real browser: a click focuses an
   instruction, arrow keys walk the rung, a rung number selects its rung, the source view shows the exported
   NeutralText, the organizer filter narrows the tree, the tag table opens and sends a tag to the offline watch pane, the

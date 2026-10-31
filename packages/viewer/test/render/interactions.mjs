@@ -196,7 +196,24 @@ async function scenario(tab) {
   })
   record('watching a rung adds every tag it touches', rungWatch === true && rungWatchCount !== null && Number.parseInt(/\((\d+)\)/u.exec(rungWatchCount)?.[1] ?? '0', 10) >= 2, `watch tab ${String(rungWatchCount)}`)
 
-  // 8. The bottom panes switch to the cross-reference list.
+  // 8. A routine row in the organiser answers with the routine's own actions.
+  const routineMenu = await tab.evaluate(name => {
+    const row = [...document.querySelectorAll('[data-l5x-project-view] button')]
+      .find(element => (element.textContent ?? '').replace(/^\W+/u, '').trim().startsWith(`${name} `))
+    if (row === undefined) return null
+    const box = row.getBoundingClientRect()
+    row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: Math.round(box.left) + 20, clientY: Math.round(box.top) + 5 }))
+    return true
+  }, routine)
+  await tab.waitForTimeout(250)
+  const routineItems = await tab.evaluate(() => {
+    const menu = document.querySelector('[role="menu"]')
+    if (menu === null) return null
+    return { heading: menu.querySelector('div')?.textContent ?? '', ask: menu.querySelector('[data-l5x-menu="ask-routine"]') !== null }
+  })
+  record('a routine row opens its own menu', routineMenu === true && routineItems !== null && routineItems.ask, JSON.stringify(routineItems))
+
+  // 9. The bottom panes switch to the cross-reference list.
   const panes = await tab.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find(element => /^Cross References/ui.test((element.textContent ?? '').trim()))
     if (button === undefined) return null
