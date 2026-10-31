@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.72.0] - 2026-10-31
+
 ### Added
 
 - **The migration row carries its own answers.** `packages/migration/src/knowledge/instructions.ts` maps 58 legacy
