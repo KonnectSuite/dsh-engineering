@@ -1,10 +1,11 @@
-# SLC 500 to Logix migration
+# SLC 500 and PLC-5 to Logix migration
 
-The `migration` row is a support row for one job: bringing an RSLogix 500 /
-SLC 500 (or PLC-5) program into Studio 5000 with evidence instead of hope. It
-adds five tools and the `slc-to-logix-migration` skill. It never drives Studio or
-a controller; the one vendor call it makes opens RSLogix 500 (or RSLogix 5 for a
-PLC-5 `.RSP`) hidden, reads the project and closes it without saving.
+The `migration` row is a support row for one job: bringing an RSLogix 500
+(SLC 500) or RSLogix 5 (PLC-5) program into Studio 5000 with evidence instead of
+hope. It adds seven tools and the `legacy-to-logix-migration` skill. It never
+drives Studio or a controller; the one vendor call it makes opens RSLogix 500
+(or RSLogix 5 for a PLC-5 `.RSP`) hidden, reads the project and closes it
+without saving.
 
 ## Tools
 

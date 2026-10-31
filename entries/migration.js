@@ -1,7 +1,7 @@
 /**
  * The migration support row: the legacy assessment, the `.L5K` linter, the
  * conversion comparison, the marker resolver, the migration report and the
- * `slc-to-logix-migration` skill.
+ * `legacy-to-logix-migration` skill.
  *
  * The `.L5K`, `.L5X` and `.SLC` readers are pure file readers. `slc_read` and
  * `migration_compare` also open an `.RSS`, `.ACH` or `.RSP` through the vendor

@@ -47,7 +47,7 @@
 
     # SLC 500 / PLC-5 migration support: the assessment, the .L5K linter, the
     # conversion comparison and marker resolver, the signed migration report,
-    # the resumable plan, and the slc-to-logix-migration skill. The readers open
+    # the resumable plan, and the legacy-to-logix-migration skill. The readers open
     # RSLogix 500 or RSLogix 5 hidden and never save; no controller is touched,
     # and nothing claims a file is migrated.
     - id: migration

@@ -1,5 +1,5 @@
 /**
- * The slc-to-logix-migration skill, mounted as its own plugin.
+ * The legacy-to-logix-migration skill, mounted as its own plugin.
  *
  * It tells a model to interview the engineer before proposing a migration, and
  * to treat the wizard's output as text that has to be proved, not a finished
@@ -20,9 +20,9 @@ export const inject = ['skills']
 
 /** The skill metadata. */
 export const SKILL = {
-  name: 'slc-to-logix-migration',
+  name: 'legacy-to-logix-migration',
   description:
-    'Move an RSLogix 500 / SLC 500 program into Studio 5000: interview the engineer for the target controller and I/O strategy, assess the legacy export, lint the .L5K the migration wizard writes, and refuse to call the result migrated while a finding or an uncovered reference remains.',
+    'Move an RSLogix 500 (SLC 500) or RSLogix 5 (PLC-5) program into Studio 5000: interview the engineer for the target controller and I/O strategy, assess the legacy export, lint the .L5K the migration wizard writes, resolve the conversion markers, and refuse to call the result migrated while a finding or an uncovered reference remains.',
   whenToUse:
     'When a machine runs an SLC 500 or PLC-5 and the work is to bring its program into Logix, or when a migrated .L5K / .ACD has to be reviewed before commissioning.',
 }

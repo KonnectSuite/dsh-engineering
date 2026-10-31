@@ -190,7 +190,7 @@
     },
     {
       "id": "migration",
-      "title": "SLC 500 to Logix migration",
+      "title": "SLC 500 and PLC-5 to Logix migration",
       "kind": "support",
       "capability": "offline-file",
       "row": "migration",
@@ -203,7 +203,7 @@
         "inReference": true
       },
       "skill": {
-        "name": "slc-to-logix-migration",
+        "name": "legacy-to-logix-migration",
         "file": "packages/migration/SKILL.md",
         "budget": 8000,
         "allow": [

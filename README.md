@@ -59,7 +59,7 @@ bundle.
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
-| **SLC 500 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
+| **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
 
 Tool groups, by product:
 
@@ -68,7 +68,7 @@ Tool groups, by product:
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
-- **Migration** — 7 tools and the `slc-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
+- **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
@@ -87,7 +87,7 @@ down:
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
-| `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `slc-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
+| `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
@@ -263,7 +263,7 @@ even when the implementation behind a row is replaced.
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
 | [Engineering resources](docs/resources.md) | The 34-page standards corpus, its rule IDs, the generated index, and the house-style profile |
-| [SLC 500 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
+| [SLC 500 and PLC-5 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Components](docs/reference/components.md) | What a component is, the capability classes, the manifest fields, and the checklist for adding one |

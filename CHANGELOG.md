@@ -17,7 +17,7 @@
   wizard writes and states the controller, tags, routines, rungs and what a migration still has to change;
   `l5k_lint` reports every import blocker with its line number (`TRAILING_COMMA`, `DUPLICATE_TAG`,
   `ROUTINE_UNBALANCED`, `INDIRECT_ADDRESS`, `PLACEHOLDER_TAG`, and a revision gate note). The row also carries
-  the `slc-to-logix-migration` skill: interview the engineer for target, I/O strategy, HMI scope and validation
+  the `legacy-to-logix-migration` skill: interview the engineer for target, I/O strategy, HMI scope and validation
   window, never edit the source `.RSS`, and never call a file migrated while a finding is open. Read-only in every
   path: no controller, and the one vendor start (`slc_read`) opens hidden and never saves.
 - **`slc_read` reads an RSLogix 500 project headlessly.** It starts the 32-bit Windows PowerShell, opens the

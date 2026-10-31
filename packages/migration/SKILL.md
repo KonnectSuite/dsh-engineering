@@ -1,9 +1,9 @@
 ---
-name: slc-to-logix-migration
-description: Move an RSLogix 500 / SLC 500 program into Studio 5000 — interview the engineer, assess the legacy export, lint the .L5K the wizard writes, and prove the result.
+name: legacy-to-logix-migration
+description: Move an RSLogix 500 (SLC 500) or RSLogix 5 (PLC-5) program into Studio 5000 — interview the engineer, assess the legacy export, lint the .L5K the wizard writes, and prove the result.
 ---
 
-# SLC 500 to Logix migration
+# SLC 500 and PLC-5 to Logix migration
 
 A migration is an evidence exercise, not a conversion button. The wizard maps
 most of the program and silently changes the rest; your job is to find out which

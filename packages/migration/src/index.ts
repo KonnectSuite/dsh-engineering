@@ -3,7 +3,7 @@
  * assess a saved legacy export, lint the `.L5K` the migration wizard writes,
  * compare the migrated Logix export with the legacy structure, resolve the
  * conversion errors the wizard left behind, and keep the resumable plan, with
- * the `slc-to-logix-migration` skill that says to interview and prove rather
+ * the `legacy-to-logix-migration` skill that says to interview and prove rather
  * than assume.
  *
  * The readers read local files only. `slc_read` and `migration_compare` open
