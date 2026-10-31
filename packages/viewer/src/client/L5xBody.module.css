@@ -84,9 +84,9 @@
 .rungBody { padding:12px 15px; }.comment { text-align:center; font-size:11px; }
 .rail { min-height:70px; }.branch { border-left-width:2px; border-right-width:2px; }.branchPath { min-height:68px; }
 .instruction { min-width:132px; text-align:center; }.instruction::before { top:31px; height:2px; }
-.instructionDescription { color:var(--dsw-alias-label-secondary); font-size:10px; line-height:1.15; min-height:24px; max-width:160px; overflow:hidden; text-overflow:ellipsis; }
+.instructionDescription { color:var(--dsw-alias-label-secondary); font-size:10px; line-height:1.2; }
 .glyph { font-size:20px; height:28px; min-width:54px; line-height:28px; }.functionBlock .glyph { border:1px solid var(--dsw-alias-label-primary); min-width:70px; font-size:12px; font-weight:700; }
-.instruction code { max-width:170px; overflow:hidden; text-overflow:ellipsis; }
+.instruction code { max-width:none; overflow:visible; text-overflow:clip; }
 .path { min-width:100%; width:max-content; }.outputInstruction { margin-left:auto; }
 .blockCard { z-index:1; min-width:128px; max-width:220px; border:1px solid var(--dsw-alias-label-primary); background:var(--dsw-alias-bg-document-preview); text-align:left; box-shadow:0 1px 2px #0002; }
 .blockCard>strong { display:block; padding:3px 6px; background:color-mix(in srgb,var(--dsw-alias-bg-document-preview) 75%,#8399ad); border-bottom:0.5px solid var(--dsw-alias-border-l2); font-size:11px; }
@@ -108,26 +108,44 @@
 .searchLabel { flex-direction:row; align-items:center; }.searchLabel input { width:min(410px,100%); }.reference { flex-direction:row; align-items:baseline; gap:12px; }.reference strong { min-width:160px; }.reference span { min-width:65px; }
 .watchRow { display:flex; align-items:center; gap:12px; padding:5px 2px; border-bottom:0.5px solid var(--dsw-alias-border-l2); }.watchRow code { min-width:160px; }.watchRow span { color:var(--dsw-alias-label-secondary); }.watchRow button { margin-left:auto; border:0; background:transparent; color:inherit; cursor:pointer; }
 .watchTable { border-collapse:collapse; width:100%; min-width:670px; font-size:11px; }.watchTable th,.watchTable td { text-align:left; border:0.5px solid var(--dsw-alias-border-l2); padding:5px 7px; }.watchTable thead { background:color-mix(in srgb,var(--dsw-alias-bg-document-preview) 70%,#a4bed4); }.watchTable .noValue { color:var(--dsw-alias-label-secondary); font-style:italic; }
-/* Ladder canvas follows Studio's full-width wire and right-aligned output geometry. */
-.main { background:#fff; color:#1d2730; }
-.rung { min-height:88px; border-bottom:1px solid #d0d5da; }
-.rungNumber { padding-top:13px; color:#89939c; }
-.rungBody { padding:8px 14px; border-left:1px solid #89939c; border-right:1px solid #89939c; }
-.comment { font-size:10px; margin:0 0 6px; color:#697681; }
-.rail { position:relative; min-height:47px; padding:5px 0; overflow-x:auto; overflow-y:hidden; }
-.rail::before { content:''; position:absolute; left:0; right:0; top:37px; height:1px; background:#89939c; }
-.instruction { min-width:115px; padding:0 6px; }.instruction::before { top:32px; height:1px; background:#89939c; }
-.instructionDescription { min-height:25px; max-height:25px; color:#7e8994; font-size:9px; }
-.glyph { background:#fff; height:25px; }.wireLead { height:1px; background:#3d4852; }.contact { height:22px; border-color:#3d4852; }.contact.negated::after { background:#3d4852; }.coil { height:23px; border-color:#3d4852; }
-.functionBlock { min-width:150px; }.functionBlock .instructionDescription { min-height:25px; }
-.blockCard { min-width:145px; max-width:190px; background:#fff; border:1px solid #a4abb1; box-shadow:none; }.blockCard>strong { padding:2px 5px; background:#e1e2e3; border-bottom:1px solid #a4abb1; font-size:10px; }.blockCard>div { grid-template-columns:68px minmax(50px,1fr); padding:1px 4px; gap:3px; }.blockCard small { color:#77828b; font-size:9px; }.blockCard code { color:#1d2730; font-size:10px; }
-.instruction code { font-size:10px; }
-@container (max-width:900px) { .layout { grid-template-columns:180px minmax(0,1fr); }.inspector { display:none; }.toolbar span:not(.productMark):not(.offline) { display:none; }.sourceBar span:last-child { display:none; } }
-@container (max-width:650px) { .layout { grid-template-columns:170px minmax(0,1fr); }.toolbar { gap:5px; padding:5px 7px; }.toolbar button { padding:3px 5px; font-size:10px; }.sourceBar { gap:8px; padding:0 7px; }.sourceBar span:nth-child(2) { display:none; }.treeHeading { padding:8px 6px 5px; }.organizerSearch { width:calc(100% - 12px); margin:0 6px 6px; }.treeScroll { padding:0 2px 10px; }.main { padding:0 7px 18px; }.rungBody { padding:7px; }.editorTools { gap:4px; padding:2px 5px; }.editorTools button { padding:3px 5px; }.bottomPanel { height:155px; }.bottomTabs button { padding:6px 7px; }.bottomContent { padding:4px 7px; } }
-@container (max-width:500px) { .productMark { display:none; }.toolbar .offline { display:none; }.sourceBar { display:none; }.layout { grid-template-columns:145px minmax(0,1fr); }.editorTools button:last-child { display:none; } }
-@media (max-width:1000px) { .layout { grid-template-columns:minmax(170px,25%) minmax(0,1fr); }.inspector { display:none; }.sourceBar span:last-child { display:none; } }
-@media (max-height:600px) { .bottomPanel { height:125px; }.toolbar { min-height:34px; }.sourceBar { display:none; } }
-
+/* Ladder canvas: Studio 5000 geometry — one wire per row, comments above it. */
+.main { background:#fff; color:#1d2730; overflow:auto; }
+.rung { position:relative; min-height:96px; border-bottom:1px solid #d7dbdf; }
+.rung.focusedRung { box-shadow:inset 3px 0 #0a5c99; }
+.rung.focusedRung .rail .path::before { background:#0066cc; }
+.rung.focusedRung .rungNumber { background:#0a5c99; color:#fff; }
+.rungNumber { padding-top:12px; min-width:34px; color:#6d7780; font-variant-numeric:tabular-nums; }
+.rungBody { padding:8px 16px; border-left:1px solid #9aa3ab; border-right:1px solid #9aa3ab; }
+.comment { margin:0 0 8px; color:#3f4750; font-size:11px; line-height:1.3; text-align:center; white-space:pre-wrap; }
+.rail { position:relative; min-height:0; margin-top:0; }
+.rail::before { display:none; }
+.path { position:relative; display:flex; align-items:flex-start; min-height:calc(var(--l5x-band, 24px) + 104px); min-width:100%; width:max-content; }
+.path::before { content:''; position:absolute; left:0; right:0; top:calc(var(--l5x-band, 24px) + 52px); height:1px; background:#333; }
+.nestedPath { min-width:max-content; width:max-content; }
+.instruction { position:relative; flex:0 0 auto; display:flex; flex-direction:column; align-items:center; height:auto; min-height:calc(var(--l5x-band, 24px) + 104px); width:auto; min-width:96px; max-width:215px; padding:calc(var(--l5x-band, 24px) + 60px) 8px 4px; }
+.instruction::before { display:none; }
+.branch { position:relative; display:flex; flex-direction:column; flex:0 0 auto; }
+.branch::before,.branch::after { content:''; position:absolute; top:calc(var(--l5x-band, 24px) + 52px); bottom:52px; width:1px; background:#333; }
+.branch::before { left:0; }
+.branch::after { right:0; }
+.branchPath { display:flex; align-items:flex-start; }
+.path > .branch:last-child:has(.outputInstruction) { margin-left:auto; }
+.branchPath:has(.outputInstruction) { justify-content:flex-end; }
+.outputInstruction { margin-left:auto; }
+.glyph { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) + 52px); display:flex; align-items:center; justify-content:center; height:16px; transform:translate(-50%,-50%); background:#fff; padding:0 1px; }
+.wireLead { display:block; width:14px; height:1px; background:#333; }
+.contact { display:block; width:16px; height:11px; border:1.5px solid #17703a; border-radius:1px; background:#fff; position:relative; }
+.contact.negated::after { content:''; position:absolute; top:4px; left:-2px; width:18px; height:1.5px; transform:rotate(-18deg); background:#17703a; }
+.coil { display:flex; align-items:center; justify-content:center; width:17px; height:11px; border:1.5px solid #17703a; border-radius:5px; background:#fff; color:#17703a; font:700 8px/1 monospace; }
+.tagBlock { position:static; display:flex; flex-direction:column; align-items:center; gap:1px; max-width:100%; }
+.outputInstruction .tagBlock { align-items:flex-end; }
+.instruction .tagName { width:auto; color:#12233a; font-family:inherit; font-size:11px; font-weight:700; line-height:1.25; text-align:center; white-space:normal; overflow-wrap:anywhere; }
+.outputInstruction .tagName { text-align:right; }
+.instruction .tagValue { display:inline-flex; align-items:center; gap:2px; color:#0b5cad; font-family:inherit; font-size:10px; font-weight:700; line-height:1.2; white-space:nowrap; }
+.tagValue i,.blockCard b i { font-style:normal; font-size:9px; }
+.instructionComment { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) - 2px); transform:translate(-50%,-100%); width:158px; color:#3f4750; font-size:10px; line-height:1.2; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; }
+.functionBlock { justify-content:flex-start; max-width:none; padding-top:calc(var(--l5x-band, 24px) + 38px); }
+.functionBlock .blockCard { position:relative; left:auto; top:auto; transform:none; margin:0 auto; }
 /* Instruction selection is visual evidence only; wire colors never imply live controller state. */
 .tree .leafButton small { float:right; }
 .instruction { box-sizing:border-box; border:0; border-radius:2px; background:transparent; color:inherit; font:inherit; cursor:pointer; }
@@ -155,11 +173,16 @@
 .operandDetails strong { text-align:right; }
 .operandDetails span,.operandDetails p { grid-column:1/-1; margin:0; color:var(--dsw-alias-label-secondary); font-size:10px; }
 .menuHeading { padding:5px 9px; border-bottom:0.5px solid var(--dsw-alias-border-l2); font-size:10px; font-weight:700; color:var(--dsw-alias-label-secondary); }
-.blockCard>span { display:grid; grid-template-columns:65px minmax(52px,1fr) auto; align-items:baseline; gap:3px; padding:2px 5px; border-bottom:0.5px solid var(--dsw-alias-border-l2); }
+.blockCard { position:absolute; left:50%; top:52px; transform:translate(-50%,-50%); z-index:2; width:max-content; min-width:118px; max-width:340px; border:1px solid #7d848b; background:#fff; box-shadow:none; text-align:left; }
+.blockCard>strong { display:block; padding:1px 6px; background:#e6e7e8; border-bottom:1px solid #7d848b; color:#14181c; font-size:10px; font-weight:700; letter-spacing:.02em; }
+.blockCard>span { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:baseline; gap:2px 8px; padding:2px 6px; border-bottom:0.5px solid #d5d8db; }
 .blockCard>span:last-child { border-bottom:0; }
-.blockCard>span small { color:var(--dsw-alias-label-secondary); font-size:9px; }
-.blockCard>span code { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.blockCard>span b { font-size:10px; font-weight:700; }
-.exportedChip { max-width:180px; margin-top:2px; padding:1px 4px; border:0.5px solid var(--dsw-alias-border-l2); border-radius:2px; background:var(--dsw-alias-bg-document-preview); color:var(--dsw-alias-label-secondary); font-size:9px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.blockCard small { color:#4b5563; font-family:inherit; font-size:10px; font-weight:400; line-height:1.25; white-space:nowrap; }
+.blockCard code { max-width:none; color:#14181c; font-family:inherit; font-size:11px; font-weight:700; line-height:1.25; white-space:normal; overflow-wrap:anywhere; overflow:visible; text-overflow:clip; }
+.blockCard b { display:inline-flex; align-items:center; gap:2px; color:#0b5cad; font-size:11px; font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pinTail { display:inline-flex; align-items:baseline; justify-content:flex-end; gap:4px; }
+.pinTail i { font-style:normal; font-size:9px; font-weight:700; padding:0 2px; border-radius:2px; }
+.flagOn { background:#17703a; color:#fff; }
+.flagOff { background:#e6e7e8; color:#9aa3ab; }
 .nestedPath { min-width:max-content; width:max-content; }
 .outputInstruction .instructionTooltip { left:auto; right:0; transform:none; }

@@ -62,9 +62,11 @@
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
     "resources:build": "node scripts/resources.mjs",
     "resources:check": "node scripts/resources.mjs --check",
-    "build:client": "node scripts/build-client.mjs",
+    "build:faces": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs",
+    "build:client": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs",
+    "e2e:ladder": "node packages/viewer/test/render/suite.mjs",
     "assemble": "node scripts/assemble.mjs",
-    "prepack": "node scripts/build-client.mjs && node scripts/assemble.mjs"
+    "prepack": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs && node scripts/assemble.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "5.11.1",

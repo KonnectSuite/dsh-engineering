@@ -284,8 +284,9 @@ even when the implementation behind a row is replaced.
 
 ```sh
 pnpm install
-pnpm build:client  # regenerate lib/client.js from the committed face bundles
+pnpm build:client  # build both client faces from source, then lib/client.js
 pnpm test          # patch, docs, tool-reference, manifest and client-face checks
+pnpm e2e:ladder    # render the built ladder face in headless Chrome and assert on the DOM
 pnpm docs:tools    # regenerate the tool reference from the registered definitions
 pnpm docs:check    # fail if the committed reference has drifted
 python scripts/gen-diagrams.py   # regenerate docs/diagrams/*.svg and *.png

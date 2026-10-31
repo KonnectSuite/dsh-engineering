@@ -12,15 +12,15 @@
  *   window.__ModuleLoader__.load({ id: '@aryacode/dsh-engineering', factory })
  *
  * Each face keeps its own closure - every body declares its own `React`, ids,
- * stylesheets and helpers - and nothing is re-authored: the previews are the
- * committed build artifacts of `packages/viewer` and `packages/ftview-viewer`,
- * the settings pages are written directly in `scripts/faces/settings.js`, and
- * this script only moves their factories under one registration and merges the
- * declared surfaces.
+ * stylesheets and helpers - and nothing is re-authored: the previews are built
+ * from this repository's own sources by `scripts/build-viewer-face.mjs` and
+ * `scripts/build-ftview-face.mjs`, the settings pages are written directly in
+ * `scripts/faces/settings.js`, and this script only moves their factories under
+ * one registration and merges the declared surfaces.
  *
- * The FTView face has no source anywhere (see docs/handoff-one-package.md); its
- * committed closure bundle is the only form it exists in, which is why this
- * build wraps artifacts instead of compiling sources.
+ * Run those two face builds first; `npm run build:client` does, and this script
+ * fails loudly if an artifact it needs is missing rather than shipping a bundle
+ * whose preview tab draws nothing.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'

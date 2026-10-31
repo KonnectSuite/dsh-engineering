@@ -161,12 +161,19 @@ carries both engineering previews in its single `./client` bundle:
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
 - the ME display preview draws an exported display instead of its XML.
 
-`scripts/build-client.mjs` produces that bundle from the two committed face bundles in
-`packages/viewer/lib` and `packages/ftview-viewer/lib`. Each face body is copied verbatim into its
-own closure inside the one registration — both declare their own `React` binding, document-preview
-id, stylesheet text and helpers — and the merged plugin exports the union of the two faces'
-`inject` lists and an `apply` that runs both. Nothing is re-authored, retransformed or re-hashed: the
-FTView face has no source anywhere, so its closure bundle is the only form it exists in.
+`scripts/build-client.mjs` produces that bundle from the two face bundles in `packages/viewer/lib`
+and `packages/ftview-viewer/lib`, which `scripts/build-viewer-face.mjs` and
+`scripts/build-ftview-face.mjs` build from this repository's own sources first (`npm run build:client`
+runs all three in that order). Each face body is copied verbatim into its own closure inside the one
+registration — both declare their own `React` binding, document-preview id, stylesheet text and
+helpers — and the merged plugin exports the union of the two faces' `inject` lists and an `apply`
+that runs both. Nothing is re-authored, retransformed or re-hashed.
+
+The face builds carry the two transforms AryaCode's client toolchain used to supply: a CSS-module
+transform (a scoped class map plus a one-shot `<style data-plugin-css=…>`) and the workspace-address
+helpers, vendored at `packages/viewer/src/client/vendor/workspace-path.ts` because the harness package
+that provided them is not published. React, react-dom and the client primitives stay external, as the
+Shell provides them.
 
 Two consequences worth stating:
 
@@ -240,7 +247,8 @@ it partially.
 
 ```sh
 pnpm test          # patch invariants, docs agreement, tool reference, client face
-pnpm build:client  # regenerate lib/client.js from the committed face bundles
+pnpm build:client  # build both faces from source, then lib/client.js
+pnpm e2e:ladder    # render the built ladder face in headless Chrome and assert on the DOM
 pnpm docs:tools    # regenerate docs/reference/tools.md and tools.json
 pnpm docs:check    # fail when the generated reference is stale
 ```
@@ -251,3 +259,9 @@ switches section, row ids or changelog heading drift from the patch or manifest.
 `test/client-face.spec.mjs` fails when the committed `lib/client.js` is stale, when its registration
 id stops matching the package name, when a face stops materializing, or when `apply` stops mounting
 either preview.
+
+`packages/viewer/test/render/suite.mjs` is the ladder face's end-to-end evidence: it mounts the built
+`packages/viewer/lib/client.js` in headless Chrome, opens a routine the way a reader does and measures
+the rendered document — no clipped text, one label per instruction, no label escaping its cell, no
+overlapping labels, no index used as a pin name, and every recorded exported value on screen. It needs
+Chrome or Edge installed and is kept out of `pnpm test` for that reason.

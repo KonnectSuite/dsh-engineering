@@ -80,6 +80,30 @@ export function exportedDatum(project: Project, scope: string, symbol: string): 
     ?? (scope === 'controller' ? undefined : project.exportedData.get(dataKey('controller', symbol)))
 }
 
+/** Timer structure members the export records for one TIMER tag. */
+export interface TimerState {
+  readonly preset: string
+  readonly accum: string
+  readonly enabled: boolean
+  readonly timing: boolean
+  readonly done: boolean
+}
+/**
+ * Read the timer members a saved export carries, so a rung that stores `?` for
+ * preset and accumulated time can still show the recorded values.
+ * @param project - Saved controller export projection.
+ * @param scope - Controller or program scope containing the timer tag.
+ * @param symbol - Timer tag name to look up.
+ * @returns Recorded timer members, or undefined when the export has no timer data.
+ */
+export function timerState(project: Project, scope: string, symbol: string): TimerState | undefined {
+  const read = (member: string): string | undefined => exportedDatum(project, scope, `${symbol}.${member}`)?.value
+  const preset = read('PRE')
+  const accum = read('ACC')
+  if (preset === undefined && accum === undefined) return undefined
+  return { preset: preset ?? '', accum: accum ?? '', enabled: read('EN') === '1', timing: read('TT') === '1', done: read('DN') === '1' }
+}
+
 /**
  * Parse a controller export without retaining XML nodes or customer source text.
  * @param xml - L5X XML text to parse.

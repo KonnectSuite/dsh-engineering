@@ -1,10 +1,10 @@
 /** Offline Logix project browser: navigation, rung evidence, and context actions. */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
-import { exportedDatum, findReferences, ladderSegments, parseProject, type ExportedDatum, type LadderSegment, type Module, type Program, type Project, type Routine, type Rung, type Tag } from './model.ts'
+import { exportedDatum, findReferences, ladderSegments, parseProject, type ExportedDatum, type LadderSegment, type Module, type Program, type Project, type Routine, type Rung, type Tag, timerState, type TimerState } from './model.ts'
 import { inspectProject } from './inspection.ts'
 import type { L5xPreviewKey } from './locales.ts'
 import css from './L5xBody.module.css'
@@ -53,14 +53,18 @@ function displayOperands(mnemonic: string, operands: string): string[] {
 
 const operandKeys: Record<string, readonly L5xPreviewKey[]> = {
   MOV: ['operand.source', 'operand.destination'], MOVE: ['operand.source', 'operand.destination'], COP: ['operand.source', 'operand.destination', 'operand.length'], CPS: ['operand.source', 'operand.destination', 'operand.length'],
-  TON: ['operand.timer'], TOF: ['operand.timer'], RTO: ['operand.timer'], RES: ['operand.timer'],
+  TON: ['operand.timer', 'operand.preset', 'operand.accum'], TOF: ['operand.timer', 'operand.preset', 'operand.accum'], RTO: ['operand.timer', 'operand.preset', 'operand.accum'], RES: ['operand.timer'],
   ADD: ['operand.a', 'operand.b', 'operand.destination'], SUB: ['operand.a', 'operand.b', 'operand.destination'], MUL: ['operand.a', 'operand.b', 'operand.destination'], DIV: ['operand.a', 'operand.b', 'operand.destination'],
   EQU: ['operand.sourceA', 'operand.sourceB'], EQ: ['operand.sourceA', 'operand.sourceB'], NEQ: ['operand.sourceA', 'operand.sourceB'], NE: ['operand.sourceA', 'operand.sourceB'],
   GRT: ['operand.sourceA', 'operand.sourceB'], GT: ['operand.sourceA', 'operand.sourceB'], LES: ['operand.sourceA', 'operand.sourceB'], LT: ['operand.sourceA', 'operand.sourceB'],
   GEQ: ['operand.sourceA', 'operand.sourceB'], GE: ['operand.sourceA', 'operand.sourceB'], LEQ: ['operand.sourceA', 'operand.sourceB'], LE: ['operand.sourceA', 'operand.sourceB'],
   JSR: ['operand.routine', 'operand.parameter'],
+  /* Migrated PLC-5 and SLC instructions, which is where a bare index reads worst. */
+  FLL: ['operand.source', 'operand.destination', 'operand.length'], FIL: ['operand.source', 'operand.destination', 'operand.control', 'operand.length', 'operand.position'],
+  OSR: ['operand.storage'], OSF: ['operand.storage'], CTU: ['operand.counter', 'operand.preset', 'operand.accum'], CTD: ['operand.counter', 'operand.preset', 'operand.accum'],
+  CLR: ['operand.destination'], MSG: ['operand.message'],
 }
-const terminalInstructions = new Set(['OTE', 'OTL', 'OTU', 'JSR', 'MOV', 'MOVE', 'COP', 'CPS', 'CLR', 'FLL', 'RES', 'MSG', 'GSV', 'SSV', 'TON', 'TOF', 'RTO', 'ADD', 'SUB', 'MUL', 'DIV'])
+const terminalInstructions = new Set(['OTE', 'OTL', 'OTU', 'JSR', 'MOV', 'MOVE', 'COP', 'CPS', 'CLR', 'FLL', 'FIL', 'RES', 'MSG', 'GSV', 'SSV', 'TON', 'TOF', 'RTO', 'ADD', 'SUB', 'MUL', 'DIV', 'CTU', 'CTD'])
 
 interface OperandDetail { readonly text: string; readonly tag?: Tag; readonly datum?: ExportedDatum }
 interface TagIndex { readonly controller: ReadonlyMap<string, Tag>; readonly program: ReadonlyMap<string, Tag> }
@@ -154,6 +158,8 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   const detailFor = (value: string): OperandDetail | undefined => project === undefined
     ? undefined : operandDetail(project, tagIndex, value)
   const describeOperand = (value: string): string => detailFor(value)?.tag?.description ?? ''
+  const resolveTimer = (value: string): TimerState | undefined => project === undefined
+    ? undefined : timerState(project, selectedProgram?.name ?? 'controller', value)
   const focusedOperands = focused === undefined ? [] : displayOperands(focused.mnemonic, focused.operands)
     .map(operand => detailFor(operand)).filter((item): item is OperandDetail => item !== undefined)
   const references = useMemo(() => project === undefined ? [] : findReferences(project, query), [project, query])
@@ -258,16 +264,19 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   </details>
   const unscheduled = project.programs.filter(program => !scheduled.has(program.name.toLowerCase()))
   const moduleNames = new Set(project.modules.map(module => module.name.toLowerCase()))
-  const treeModule = (module: Module, ancestors: readonly string[] = []): ReactNode => {
+  // A module name is not unique in an export: the same catalog appears under each
+  // network, so a React key is the chassis path plus the seat the module sits in.
+  const treeModule = (module: Module, ancestors: readonly string[] = [], seat = '0'): ReactNode => {
+    const key = `${seat}:${module.name}`
     const descendants = project.modules.filter(childModule => childModule.parent.toLowerCase() === module.name.toLowerCase()
       && !ancestors.includes(childModule.name.toLowerCase()) && childModule.name !== module.name)
     const shown = descendants.filter(childModule => matches(childModule.name) || matches(childModule.catalog) || filter === '')
-    if (shown.length === 0) return <button type="button" className={css.leafButton} key={module.name}
+    if (shown.length === 0) return <button type="button" className={css.leafButton} key={key}
       onClick={() => { setInspector({ kind: 'module', module }) }} title={module.catalog}>{module.name} <small>{module.catalog}</small></button>
-    return <details key={module.name} className={css.nested} open={filter !== '' ? true : undefined}>
+    return <details key={key} className={css.nested} open={filter !== '' ? true : undefined}>
       <summary title={module.catalog}>{module.name}<small>{module.catalog}</small></summary>
       <button type="button" className={css.leafButton} onClick={() => { setInspector({ kind: 'module', module }) }}>{t('inspect')}</button>
-      {shown.map(childModule => treeModule(childModule, [...ancestors, module.name.toLowerCase()]))}
+      {shown.map((childModule, index) => treeModule(childModule, [...ancestors, module.name.toLowerCase()], `${seat}.${index}`))}
     </details>
   }
   const rootModules = project.modules.filter(module => module.parent === '' || !moduleNames.has(module.parent.toLowerCase()) || module.parent === module.name)
@@ -315,7 +324,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
               {rootModules.filter(module => filter === '' || matches(module.name) || matches(module.catalog)
                 || project.modules.some(childModule => childModule.parent === module.name
                   && (matches(childModule.name) || matches(childModule.catalog))))
-                .map(module => treeModule(module))}
+                .map((module, index) => treeModule(module, [], String(index)))}
             </details>
             <details className={css.nested} open={filter !== '' ? true : undefined}><summary>{t('aois')} ({project.aois.length})</summary>{project.aois.filter(matches).map(name => <div className={css.leaf} key={name}>{name}</div>)}</details>
             <details className={css.nested} open={filter !== '' ? true : undefined}><summary>{t('types')} ({project.types.length})</summary>{project.types.filter(matches).map(name => <div className={css.leaf} key={name}>{name}</div>)}</details>
@@ -354,7 +363,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
               {selected.description !== '' && <p className={css.description}>{selected.description}</p>}
               {selected.type === 'RLL' && (selected.rungs.length === 0 ? <div className={css.status}>{t('noRungs')}</div> : <>
                 {selected.rungs.slice(0, rungLimit).map(rung => <RungView key={rung.number} rung={rung}
-                  showSource={showSource} describeOperand={describeOperand} detailFor={detailFor}
+                  showSource={showSource} describeOperand={describeOperand} detailFor={detailFor} resolveTimer={resolveTimer}
                   focused={focused} focusedRung={focusedRung}
                   onFocusRung={focusRung}
                   onFocusInstruction={focusInstruction} onContext={contextFor} t={t} />)}
@@ -502,11 +511,105 @@ function TagTable({ tags, filter, setFilter, onContext, onWatch, onFind, getDatu
   </div>
 }
 
-function RungView({ rung, showSource, describeOperand, detailFor, focused, focusedRung, onFocusRung, onFocusInstruction, onContext, t }: {
+interface PinRow {
+  readonly label: string
+  readonly text: string
+  readonly value: string
+  readonly title: string
+  readonly flags?: readonly { readonly label: string; readonly on: boolean }[]
+}
+const booleanMnemonics = ['XIC', 'XIO', 'OTE', 'OTL', 'OTU']
+const timerMnemonics = ['TON', 'TOF', 'RTO']
+/**
+ * Lay one instruction out the way Studio 5000 lays out a function block: a label,
+ * the operand, and the recorded value on the right. A timer preset or accumulator
+ * the export stored as `?` is filled from the timer structure the export carries.
+ * @param mnemonic - Instruction mnemonic as the export writes it.
+ * @param operands - Comma separated operand text.
+ * @param detailFor - Operand evidence lookup the caller owns.
+ * @param resolveTimer - Timer member lookup the caller owns.
+ * @param t - Locale binder for pin labels.
+ * @returns One row per operand, in export order.
+ */
+function pinRows(mnemonic: string, operands: string, detailFor: (value: string) => OperandDetail | undefined,
+  resolveTimer: (value: string) => TimerState | undefined, t: PropsLocale<'sidebarL5x'>['t']): PinRow[] {
+  const upper = mnemonic.toUpperCase()
+  const keys = operandKeys[upper]
+  const parts = displayOperands(mnemonic, operands)
+  const timer = timerMnemonics.includes(upper) ? resolveTimer(parts[0] ?? '') : undefined
+  const rows = parts.map((operand, index) => {
+    const raw = operand.trim()
+    const missing = raw === '' || raw === '?'
+    const resolved = index === 1 && missing && timer !== undefined ? timer.preset
+      : index === 2 && missing && timer !== undefined ? timer.accum : raw
+    const key = keys?.[index]
+    const datum = resolved === '' || resolved === '?' ? undefined : detailFor(resolved)?.datum
+    const literal = /^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/u.test(resolved)
+    return {
+      label: key === undefined ? `${t('operand.operand')} ${index + 1}` : t(key),
+      text: resolved === '' || resolved === '?' ? t('noExportedValue') : resolved,
+      value: datum?.value ?? (literal ? resolved : ''),
+      title: resolved === '' || resolved === '?'
+        ? t('exportedValueScope')
+        : datum === undefined ? resolved : `${resolved} · ${t('exportedValue')}: ${datum.value} ${t('exportedValueScope')}`,
+    }
+  })
+  if (timer === undefined) return rows
+  const flags = [{ label: 'EN', on: timer.enabled }, { label: 'TT', on: timer.timing }, { label: 'DN', on: timer.done }]
+  return rows.map((row, index) => index === 0 ? { ...row, flags } : row)
+}
+/**
+ * Break an instruction description into the narrow column Studio 5000 uses above
+ * a glyph, so the rung can reserve exactly the height the text needs.
+ * @param text - Description text.
+ * @param width - Characters per line.
+ * @returns Wrapped lines; empty when there is no description.
+ */
+function commentLines(text: string, width: number): string[] {
+  const trimmed = text.trim()
+  if (trimmed === '') return []
+  const lines: string[] = []
+  for (const word of trimmed.split(/\s+/u)) {
+    const last = lines.at(-1)
+    if (last !== undefined && last.length + 1 + word.length <= width) lines[lines.length - 1] = `${last} ${word}`
+    else lines.push(word)
+  }
+  return lines
+}
+/**
+ * Height a rung must reserve above the wire for one instruction description.
+ * @param describeOperand - Description lookup the caller owns.
+ * @param segment - Instruction to measure.
+ * @returns Pixel height between the comment floor and the ceiling of the band.
+ */
+function commentBand(describeOperand: (value: string) => string, segment: LadderSegment): number {
+  const symbol = instructionSymbols(segment.mnemonic, segment.operands)[0]
+  const lines = commentLines(describeOperand(symbol ?? segment.operands), 30)
+  return Math.max(24, Math.min(190, Math.round(lines.length * 12.4 + 10)))
+}
+/**
+ * Tallest comment band across an instruction tree, including nested branches.
+ *
+ * One band per rung, shared by every row: rows then sit on a uniform pitch and
+ * a branch's first row shares the wire of the row it branches from, which is
+ * what keeps every glyph in a rung on the wire it belongs to.
+ *
+ * @param segments - Segments of one path.
+ * @param describeOperand - Description lookup the caller owns.
+ * @returns The band height every path of this rung shares.
+ */
+function rungBand(segments: readonly LadderSegment[], describeOperand: (value: string) => string): number {
+  return segments.reduce((tallest, segment) => 'paths' in segment
+    ? segment.paths.reduce((inner, branch) => Math.max(inner, rungBand(branch, describeOperand)), tallest)
+    : Math.max(tallest, commentBand(describeOperand, segment)), 24)
+}
+
+function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, focused, focusedRung, onFocusRung, onFocusInstruction, onContext, t }: {
   readonly rung: Rung
   readonly showSource: boolean
   readonly describeOperand: (value: string) => string
   readonly detailFor: (value: string) => OperandDetail | undefined
+  readonly resolveTimer: (value: string) => TimerState | undefined
   readonly focused: FocusedInstruction | undefined
   readonly focusedRung: string | undefined
   readonly onFocusRung: (number: string) => void
@@ -515,16 +618,18 @@ function RungView({ rung, showSource, describeOperand, detailFor, focused, focus
   readonly t: PropsLocale<'sidebarL5x'>['t']
 }): ReactNode {
   const segments = ladderSegments(rung.text)
+  const band = segments === null ? 24 : rungBand(segments, describeOperand)
   return <section className={`${css.rung} ${focusedRung === rung.number ? css.focusedRung : ''}`} data-rung={rung.number}
+    data-l5x-rung={rung.number} style={{ '--l5x-band': `${band}px` } as CSSProperties}
     onContextMenu={(event) => { onContext(event, rung.text) }}>
     <button type="button" className={css.rungNumber} aria-pressed={focusedRung === rung.number && focused === undefined}
       aria-label={`${t('focusRung')} ${rung.number}`} onClick={() => { onFocusRung(rung.number) }}
       onContextMenu={(event) => { event.stopPropagation(); onFocusRung(rung.number); onContext(event, rung.text) }}>{rung.number}</button>
     <div className={css.rungBody}>
-      {rung.comment !== '' && <div className={css.comment}>{rung.comment}</div>}
+      {rung.comment !== '' && <div className={css.comment} data-l5x-rung-comment>{rung.comment}</div>}
       {segments === null ? <code className={css.neutral}>{rung.text}</code> :
         <div className={css.rail}><LadderPath segments={segments} path={rung.number} rung={rung.number}
-          depth={0}
+          depth={0} resolveTimer={resolveTimer}
           describeOperand={describeOperand} detailFor={detailFor} focused={focused}
           onFocusInstruction={onFocusInstruction} onContext={onContext} t={t} /></div>}
       {showSource && <code className={css.source}>{rung.text}</code>}
@@ -532,36 +637,41 @@ function RungView({ rung, showSource, describeOperand, detailFor, focused, focus
   </section>
 }
 
-function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, focused, onFocusInstruction, onContext, t }: {
+function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, resolveTimer, focused, onFocusInstruction, onContext, t }: {
   readonly segments: readonly LadderSegment[]
   readonly path: string
   readonly rung: string
   readonly depth: number
   readonly describeOperand: (value: string) => string
   readonly detailFor: (value: string) => OperandDetail | undefined
+  readonly resolveTimer: (value: string) => TimerState | undefined
   readonly focused: FocusedInstruction | undefined
   readonly onFocusInstruction: (instruction: FocusedInstruction) => void
   readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction) => void
   readonly t: PropsLocale<'sidebarL5x'>['t']
 }): ReactNode {
   return <div className={`${css.path} ${depth > 0 ? css.nestedPath : ''}`}>{segments.map((segment, index) => 'paths' in segment
-    ? <div className={css.branch} key={index}>{segment.paths.map((branchSegments, pathIndex) =>
-      <div className={css.branchPath} key={pathIndex}>
+    ? <div className={css.branch} key={`branch-${path}-${index}`}>{segment.paths.map((branchSegments, pathIndex) =>
+      <div className={css.branchPath} key={`branch-path-${path}-${index}-${pathIndex}`}>
         <LadderPath segments={branchSegments} path={`${path}/${index}/${pathIndex}`} rung={rung}
-          depth={depth + 1}
+          depth={depth + 1} resolveTimer={resolveTimer}
           describeOperand={describeOperand} detailFor={detailFor} focused={focused}
           onFocusInstruction={onFocusInstruction} onContext={onContext} t={t} />
       </div>)}</div>
     : (() => {
       const id = `${path}/${index}`
+      const upper = segment.mnemonic.toUpperCase()
+      const isBoolean = booleanMnemonics.includes(upper)
       const symbol = instructionSymbols(segment.mnemonic, segment.operands)[0]
       const instruction: FocusedInstruction = { id, rung, mnemonic: segment.mnemonic, operands: segment.operands,
         ...(symbol === undefined ? {} : { symbol }) }
       const detail = symbol === undefined ? undefined : detailFor(symbol)
       const selected = focused?.id === id
+      const description = describeOperand(symbol ?? segment.operands)
+      const rows = isBoolean ? [] : pinRows(segment.mnemonic, segment.operands, detailFor, resolveTimer, t)
       return <button type="button" data-l5x-instruction data-instruction-id={id} aria-pressed={selected}
-        aria-label={`${segment.mnemonic} ${segment.operands}`}
-        className={`${css.instruction} ${['XIC', 'XIO', 'OTE', 'OTL', 'OTU'].includes(segment.mnemonic.toUpperCase()) ? '' : css.functionBlock} ${index === segments.length - 1 && terminalInstructions.has(segment.mnemonic.toUpperCase()) ? css.outputInstruction : ''} ${selected ? css.focusedInstruction : ''}`} key={id}
+        aria-label={`${segment.mnemonic} ${segment.operands}${description === '' ? '' : ` — ${description}`}`}
+        className={`${css.instruction} ${isBoolean ? '' : css.functionBlock} ${index === segments.length - 1 && terminalInstructions.has(upper) ? css.outputInstruction : ''} ${selected ? css.focusedInstruction : ''}`} key={id}
         onFocus={() => { onFocusInstruction(instruction) }}
         onClick={() => { onFocusInstruction(instruction) }}
         onKeyDown={(event) => {
@@ -579,34 +689,34 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, f
           event.currentTarget.focus()
           onContext(event, `${segment.mnemonic}(${segment.operands})`, symbol, instruction)
         }}>
-        <span className={css.instructionDescription} title={describeOperand(segment.operands)}>{describeOperand(segment.operands)}</span>
-        {['XIC', 'XIO', 'OTE', 'OTL', 'OTU'].includes(segment.mnemonic.toUpperCase()) ? <span className={css.glyph} aria-hidden="true">
+        {description !== '' && <span className={css.instructionComment} data-l5x-instruction-comment title={description}>{description}</span>}
+        {isBoolean ? <span className={css.glyph} aria-hidden="true">
           <i className={css.wireLead} />
-          {segment.mnemonic.toUpperCase().startsWith('X') ? <i className={`${css.contact} ${segment.mnemonic.toUpperCase() === 'XIO' ? css.negated : ''}`} />
-            : <i className={css.coil}>{segment.mnemonic.toUpperCase() === 'OTL' ? t('latchGlyph') : segment.mnemonic.toUpperCase() === 'OTU' ? t('unlatchGlyph') : ''}</i>}
+          {upper.startsWith('X') ? <i className={`${css.contact} ${upper === 'XIO' ? css.negated : ''}`} />
+            : <i className={css.coil}>{upper === 'OTL' ? t('latchGlyph') : upper === 'OTU' ? t('unlatchGlyph') : ''}</i>}
           <i className={css.wireLead} />
         </span>
-          : <span className={css.blockCard}><strong>{segment.mnemonic}</strong>
-            {displayOperands(segment.mnemonic, segment.operands).map((operand, operandIndex) => {
-              const operandKey = operandKeys[segment.mnemonic.toUpperCase()]?.[operandIndex]
-              const datum = detailFor(operand)?.datum
-              const value = datum?.value ?? (/^[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?$/u.test(operand) ? operand : '')
-              const operandSymbol = /^[A-Za-z_][\w:]*/u.test(operand) ? operand : undefined
-              const operandInstruction: FocusedInstruction = { id, rung, mnemonic: segment.mnemonic, operands: segment.operands,
-                ...(operandSymbol === undefined ? {} : { symbol: operandSymbol }) }
-              return <span key={operandIndex}><small>{operandKey === undefined ? `${operandIndex + 1}` : t(operandKey)}</small>
-                <code title={datum === undefined ? operand : `${operand} · ${t('exportedValue')}: ${datum.value}\n${t('exportedValueScope')}`} onClick={(event) => {
-                  event.stopPropagation()
-                  event.currentTarget.closest('button')?.focus()
-                  onFocusInstruction(operandInstruction)
-                }} onContextMenu={(event) => {
-                  event.stopPropagation()
-                  event.currentTarget.closest('button')?.focus()
-                  onContext(event, `${segment.mnemonic}(${segment.operands})`, operandSymbol, operandInstruction)
-                }}>{operand}</code>{value !== '' && <b title={datum === undefined ? operand : t('exportedValueScope')}>{value}</b>}</span>
-            })}</span>}
-        {['XIC', 'XIO', 'OTE', 'OTL', 'OTU'].includes(segment.mnemonic.toUpperCase()) && <><strong>{segment.mnemonic}</strong><code title={segment.operands}>{segment.operands}</code>
-          {detail?.datum !== undefined && <span className={css.exportedChip} title={t('exportedValueScope')}>{t('exportedValue')}: {detail.datum.value}</span>}</>}
+          : <span className={css.blockCard} data-l5x-block><strong>{segment.mnemonic}</strong>
+            {rows.map((row, rowIndex) => <span key={`${id}-pin-${rowIndex}`} data-l5x-operand-row>
+              <small data-l5x-operand-label>{row.label}</small>
+              <code data-l5x-operand title={row.title} onClick={(event) => {
+                event.stopPropagation()
+                event.currentTarget.closest('button')?.focus()
+                onFocusInstruction(instruction)
+              }} onContextMenu={(event) => {
+                event.stopPropagation()
+                event.currentTarget.closest('button')?.focus()
+                onContext(event, `${segment.mnemonic}(${segment.operands})`, symbol, instruction)
+              }}>{row.text}</code>
+              <span className={css.pinTail}>
+                {row.flags?.map(flag => <i key={`${id}-pin-${rowIndex}-${flag.label}`} className={flag.on ? css.flagOn : css.flagOff}>{flag.label}</i>)}
+                {row.value !== '' && <b data-l5x-operand-value title={row.title}><i aria-hidden="true">◀</i>{row.value}</b>}
+              </span>
+            </span>)}</span>}
+        {isBoolean && <span className={css.tagBlock}>
+          <code className={css.tagName} data-l5x-tag-name title={detail?.tag?.description ?? segment.operands}>{segment.operands}</code>
+          {detail?.datum !== undefined && <span className={css.tagValue} data-l5x-operand-value title={t('exportedValueScope')}><i aria-hidden="true">◀</i>{detail.datum.value}</span>}
+        </span>}
         <span className={css.instructionTooltip} role="tooltip"><strong>{segment.mnemonic}({segment.operands})</strong>
           <span>{t('rung')} {rung}</span>
           {detail?.tag !== undefined && <span>{t('scope')}: {detail.tag.scope} · {t('type')}: {detail.datum?.type ?? detail.tag.type}</span>}

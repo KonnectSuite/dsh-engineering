@@ -32,6 +32,16 @@ does not rediscover the constraints.
 > factory materializes, `apply` mounts both previews, `lib/client.js` is not stale, and no
 > `@aryacode/*` dependency remains.
 
+> **Update (0.73.0).** Wrapping artifacts was the right call for 0.4.0, but it left `packages/*/lib/`
+> gitignored and unbuildable from a clean clone: a checkout could not reproduce the face it tested.
+> Both faces now build from this repository's own sources - `scripts/build-viewer-face.mjs` and
+> `scripts/build-ftview-face.mjs` run before `scripts/build-client.mjs` - so the reason recorded above
+> no longer holds: the CSS-module transform and the workspace-address helpers are supplied by the face
+> build (the helpers vendored at `packages/viewer/src/client/vendor/workspace-path.ts`), and the FTView
+> face does have a source, `packages/ftview-viewer/face/face.ts`. The ladder face also gained an
+> end-to-end DOM suite (`npm run e2e:ladder`), which is what proves a rendering change rather than
+> asserting the bundle exists.
+
 
 ---
 

@@ -1,5 +1,39 @@
 ## [Unreleased]
 
+### Added
+
+- **The ladder face has an end-to-end suite.** `npm run e2e:ladder` mounts the built
+  `packages/viewer/lib/client.js` in a real headless Chrome, opens a routine the way a reader clicks it in the
+  organizer, and asserts on the rendered DOM: no clipped text anywhere in the pane, one tag label per instruction, no
+  label escaping its cell, no two labels overlapping, and every value the export records actually on screen. Ten cases
+  cover three exports and two controller families (`_e2e/out/CT9-Source.L5X`, `CT10-Source.L5X`, `Century-fixed.L5X`)
+  at 1680x1200 and 1280x900, including a 95-instruction rung list. `test/render/e2e.mjs` renders one routine,
+  `diag.mjs` dumps the measurement and `probe.mjs` one instruction's computed style.
+
+### Changed
+
+- **The ladder pane draws like Studio 5000.** Each rung reserves the band its longest instruction comment needs, so
+  every glyph in a rung sits on one wire; contact and coil glyphs are green boxes with the tag name beneath; function
+  blocks carry a header band and Studio's `label | operand | value` rows with a `◀` value marker; the parallel output
+  branch sits on the right rail; values are right-aligned; the wire, rung comment and rung number follow Studio's
+  layout. Nothing is ellipsized: long tags wrap instead of truncating, which is what made the old pane show
+  `BottomKnife_MP…` and a number that read as part of the tag name.
+- **Timer pins are named and filled from the export.** `TON`/`TOF`/`RTO` render `Timer`, `Preset` and `Accum` (with
+  `EN`/`TT`/`DN` badges) and read the recorded `PRE`/`ACC`, so the `TON(…,?,?)` an export stores no longer reaches the
+  screen as two rows labelled `2` and `3`. Migrated instructions gained the same treatment: `FLL`/`FIL`, `OSR`/`OSF`,
+  `CTU`/`CTD`, `CLR` and `MSG` name their pins in English and Chinese.
+- **Both client faces build from this repository.** `scripts/build-viewer-face.mjs` and
+  `scripts/build-ftview-face.mjs` run before `scripts/build-client.mjs`, so the committed
+  `packages/*/lib/client.js` artifacts are output of `npm run build:client` (and `prepack`) rather than
+  files nothing here could reproduce. The CSS-module and workspace-path transforms the AryaCode workspace
+  used to supply are now in the face build, with the workspace address helpers vendored at
+  `packages/viewer/src/client/vendor/workspace-path.ts`.
+
+### Fixed
+
+- **The organizer no longer keys sibling modules by name alone,** which emitted a duplicate-key warning twelve times
+  on an export that lists the same module under `A1`/`A2` Ethernet; the key now includes the module's seat in the tree.
+
 ## [0.72.1] - 2026-10-31
 
 ### Changed
