@@ -1,4 +1,4 @@
-﻿## [Unreleased]
+## [Unreleased]
 
 ### Added
 
@@ -61,6 +61,11 @@
 - **`migration_compare` says RSLogix 5 where it always meant it.** The tool read `.RSP` already, but its description
   and its unsupported-format refusal named `.RSS`/`.ACH` only; both now name RSLogix 5 and `.RSP`, and the generated
   tool reference is regenerated.
+- **The migration reference records the SLC 500 side.** The resolution section gained the RSLogix 500 evidence, because
+  a SLC 500 conversion numbers its markers differently (105, 109, 110, 114, 134, 135, 160 on
+  `SLITTER10_PLC1S0_08JUL2026_0953.RSS`) and yet every one of its 65 sites was answerable from the legacy rungs:
+  11 rung rewrites and 44 operand repairs, no markers and no unknown operands left, and a file that imports with
+  0 warnings and 0 errors.
 
 ## [0.71.0] - 2026-10-30
 

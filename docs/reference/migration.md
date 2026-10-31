@@ -1,4 +1,4 @@
-﻿# SLC 500 to Logix migration
+# SLC 500 to Logix migration
 
 The `migration` row is a support row for one job: bringing an RSLogix 500 /
 SLC 500 (or PLC-5) program into Studio 5000 with evidence instead of hope. It
@@ -79,6 +79,15 @@ instruction touching the right power rail that is not an output) on that file,
 and on the wizard's own export before any rewrite, so that audit is not this
 resolver's to answer: a rung-level and branch-level scan of both files finds no
 rail violation.
+
+An RSLogix 500 program answers the same way, with its own code numbers: on
+`SLITTER10_PLC1S0_08JUL2026_0953.RSS` the export carried 15 markers across
+55 rungs and 50 rungs with an unknown operand, numbered 105, 109, 110, 114, 134,
+135 and 160 rather than the PLC-5 set. Every one of those 65 sites was answerable
+from the legacy rungs — 11 rung rewrites and 44 operand repairs — taking the
+export to no markers and no unknown operands, and that file imports with 0
+warnings and 0 errors. Its build stops later, at `RxCMP_E_AUDIT_INVALIDOPTYPE`,
+which the SDK reports without naming the instruction.
 
 `migration_plan` writes `.migration/plan.json` (schema 1): the project and source
 hash, five decisions (`target_cpu`, `target_revision`, `io_strategy`,
