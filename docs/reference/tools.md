@@ -662,7 +662,7 @@ Read an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project headlessly through its 3
 
 #### `migration_compare`
 
-Compare an RSLogix 500 project read headlessly with the Logix .L5X export the migration produced: matched ladder files and routines, rung totals, symbol and data-file coverage, indirect addressing that survived, and every difference classified expected, real or cosmetic. Read-only; it does not claim runtime equivalence.
+Compare an RSLogix 500 (.RSS, .ACH) or RSLogix 5 (.RSP) project read headlessly with the Logix .L5X export the migration produced: matched ladder files and routines, rung totals, symbol and data-file coverage, indirect addressing that survived, and every difference classified expected, real or cosmetic. Read-only; it does not claim runtime equivalence.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

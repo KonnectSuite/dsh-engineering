@@ -3,18 +3,18 @@
 The `migration` row is a support row for one job: bringing an RSLogix 500 /
 SLC 500 (or PLC-5) program into Studio 5000 with evidence instead of hope. It
 adds five tools and the `slc-to-logix-migration` skill. It never drives Studio or
-a controller; the one vendor call it makes opens RSLogix 500 hidden, reads the
-project and closes it without saving.
+a controller; the one vendor call it makes opens RSLogix 500 (or RSLogix 5 for a
+PLC-5 `.RSP`) hidden, reads the project and closes it without saving.
 
 ## Tools
 
 | Tool | Reads | Answers |
 |---|---|---|
 | `migration_plan` | `.migration/plan.json` | the interview decisions, the stage evidence and the exceptions, in one resumable file |
-| `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH` | what the file is, which controller it describes, and what a migration still has to change |
+| `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH`, `.RSP` | what the file is, which controller it describes, and what a migration still has to change |
 | `l5k_lint` | `.L5K` | will Studio import this file, and what will bite after it does |
 | `slc_read` | `.RSS`, `.ACH`, `.RSP` | program files, rung counts, rung text, symbols and data files read headlessly through the 32-bit RSLogix 500 or RSLogix 5 automation server |
-| `migration_compare` | `.RSS`, `.ACH` + `.L5X` | which legacy ladder files reached which routines, how many rungs survived, which symbols and data files were carried, and which differences are real |
+| `migration_compare` | `.RSS`, `.ACH`, `.RSP` + `.L5X` | which legacy ladder files reached which routines, how many rungs survived, which symbols and data files were carried, and which differences are real |
 
 `migration_assess` on an `.L5K` returns the lint verdict too. `l5k_lint` exists
 separately because the finding list is the repair worklist: rule, severity and
@@ -33,6 +33,14 @@ data files of type `I`, `O` and `S` to become tags if the conversion carried
 them; on Slitter 8 that moved 3,409 symbol records and 209 data files to 64
 matched files, 1,398 of 1,426 legacy rungs, 2 real differences and 2 expected
 ones, with 259 indirect expressions left for engineering.
+
+A data file whose header names no type at all — a PLC-5 file the reader cannot
+label, so `B3` and `T4` style records arrive with an empty type — is left out of
+the data-file check rather than reported unmapped. The wizard's tag spelling for
+such a file is not predictable, so calling it "missing" would be a guess. On the
+staged EN049 PLC-5 program that yields 34 matched files, 306 of 320 legacy
+rungs, 90 data files all accounted for, 1 real difference (131 indirect
+expressions) and 2 expected ones (6 added routines and 1 split rung).
 
 `migration_plan` writes `.migration/plan.json` (schema 1): the project and source
 hash, five decisions (`target_cpu`, `target_revision`, `io_strategy`,
@@ -72,11 +80,22 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
    five decisions. Target controller and firmware, I/O strategy (keep the 1746
    chassis behind a 1747-AENTR or replace it), HMI scope and the acceptance
    bar. The skill asks; nothing assumes a default.
-2. **Assess the source** with `migration_assess`. For an `.RSS`, `slc_read`
-   lists the program files, rung counts, symbols and data files headlessly
-   first, so the estimate and the later comparison use the real structure.
-3. **Convert.** RSLogix 500's migration wizard (Save As Logix Designer / `.ACD`)
-   writes an `.L5K`. `Failed to export to ACD` is a lint result, not a dead end.
+2. **Assess the source** with `migration_assess`. For an `.RSS` or `.RSP`,
+   `slc_read` lists the program files, rung counts, symbols and data files
+   headlessly first, so the estimate and the later comparison use the real
+   structure.
+3. **Convert.** RSLogix 500's (or RSLogix 5's) migration wizard — File > Save
+   As, save-as-type "Logix Designer Files (\*.ACD)" — asks two questions. First
+   the target: ControlLogix or CompactLogix, catalogue number and revision, and
+   the wizard offers revisions 30 to 32 only. Then the I/O strategy:
+   **Keep Existing I/O** places the new controller in a rack beside a single
+   EN2T or embedded Ethernet port and leaves the legacy chassis in a separate
+   rack, while **Update All I/O** maps each legacy module to a replacement from
+   the drop-down list. Modules it cannot map become placeholder tags — the
+   `PLACEHOLDER_TAG` lint rule. The wizard writes a `.l5k` while it exports and
+   removes it once the `.ACD` is written, so keep a copy if the lint report is
+   wanted, and export the `.ACD` to `.L5X` for the comparison. `Failed to export
+   to ACD` is a lint result, not a dead end.
 4. **Lint and repair** the `.L5K` with `l5k_lint`. Repair a copy; never the
    customer's `.RSS` or the wizard's first output.
 5. **Import and compare.** Open the imported `.L5X`, run `migration_compare`,
@@ -95,7 +114,9 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 
 - A text reader cannot prove runtime behaviour, I/O wiring or HMI bindings.
 - A revision 37 or newer target supports an offline build proof; older targets
-  support an "import succeeded" statement only.
+  support an "import succeeded" statement only. The wizard is the ceiling on
+  that: it offers revisions 30 to 32 and nothing newer, so wizard output is
+  import-verified until someone retargets it in Studio 5000 revision 37 or later.
 - Conversion itself is the wizard, not this row: `SaveAs` through the automation
   API writes a native copy, and the translator DLLs are undocumented.
 - Nothing in this row contacts a controller or writes a live tag.

@@ -615,7 +615,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
   const compareTool: ToolDefinition = {
     name: 'migration_compare',
     description:
-      'Compare an RSLogix 500 project read headlessly with the Logix .L5X export the migration produced: matched ladder files and routines, rung totals, symbol and data-file coverage, indirect addressing that survived, and every difference classified expected, real or cosmetic. Read-only; it does not claim runtime equivalence.',
+      'Compare an RSLogix 500 (.RSS, .ACH) or RSLogix 5 (.RSP) project read headlessly with the Logix .L5X export the migration produced: matched ladder files and routines, rung totals, symbol and data-file coverage, indirect addressing that survived, and every difference classified expected, real or cosmetic. Read-only; it does not claim runtime equivalence.',
     parameters: {
       type: 'object',
       properties: {
@@ -634,8 +634,8 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
         if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
           throw new MigrationError(
             'UNSUPPORTED_FORMAT',
-            `${baseName(source)} is not an .RSS or .ACH file.`,
-            'Pass the RSLogix 500 project itself; the comparison reads it headlessly.',
+            `${baseName(source)} is not an .RSS, .ACH or .RSP file.`,
+            'Pass the RSLogix 500 or RSLogix 5 project itself; the comparison reads it headlessly.',
           )
         }
         if (extensionOf(logixPath) !== 'l5x') {

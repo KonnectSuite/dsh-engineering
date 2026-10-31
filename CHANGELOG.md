@@ -42,6 +42,16 @@
 - **Skill budgets live in the manifest.** The 8000-character assertion moved from the three package skill tests to
   `test/components.spec.mjs`, which reads each budget from `components.json`; the package tests keep registration,
   identity and frontmatter checks only. One fact, one home — changing a budget is now a manifest edit, not three.
+- **The migration reference states what the wizard actually asks.** `docs/reference/migration.md` now names the two
+  wizard questions (target controller and firmware; keep-existing-I/O versus update-all-I/O, with the placeholder
+  tags the second path avoids), the revision 30–32 ceiling that leaves wizard output import-verified until someone
+  retargets it in Studio 5000 revision 37 or later, and the typeless-data-file rule that keeps an unlabelled PLC-5
+  data file out of the unmapped list. The compare evidence for the EN049 PLC-5 program is recorded there: 34 matched
+  files, 306 of 320 legacy rungs, 90 data files accounted for, 1 real difference (131 indirect expressions) and
+  2 expected ones.
+- **`migration_compare` says RSLogix 5 where it always meant it.** The tool read `.RSP` already, but its description
+  and its unsupported-format refusal named `.RSS`/`.ACH` only; both now name RSLogix 5 and `.RSP`, and the generated
+  tool reference is regenerated.
 
 ## [0.71.0] - 2026-10-30
 
