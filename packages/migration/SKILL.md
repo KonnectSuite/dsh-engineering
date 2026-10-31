@@ -9,6 +9,16 @@ A migration is an evidence exercise, not a conversion button. The wizard maps
 most of the program and silently changes the rest; your job is to find out which
 is which before anyone commissions the machine.
 
+This row knows the subject without a network round trip: `migration_assess` names
+the Logix candidate for each legacy instruction it flags, `migration_resolve`
+appends the instruction's row (replacement, operand shape, citation) to the advice
+for every review site, and `engineering_reference` answers with the seven migration
+pages — `migration-pce-markers`, `migration-wizard-and-revisions`,
+`migration-placeholder-tags`, `migration-unknown-operands`,
+`migration-indirect-addressing`, `migration-instruction-map`,
+`migration-arrival-points`. Read the page before reasoning about a marker; cite the
+manual section the page names, never a remembered paragraph.
+
 ## 1. Interview and start the plan
 
 Create the plan first, then answer its five decisions with `migration_plan`:

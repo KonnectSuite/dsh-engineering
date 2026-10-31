@@ -148,7 +148,7 @@ export function search(query: string, limit = 8, domain?: string): readonly Corp
 }
 
 /** Domain order for the contents listing. */
-export const DOMAINS = ['iec', 'rockwell', 'yaskawa', 'view', 'optix', 'craft'] as const
+export const DOMAINS = ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'craft'] as const
 
 /** The contents, grouped by domain, with word counts. */
 export function contents(): { domains: readonly string[]; pages: readonly { id: string; title: string; domain: string; level: string; words: number }[] } {

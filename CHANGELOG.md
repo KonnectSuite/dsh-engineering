@@ -2,6 +2,14 @@
 
 ### Added
 
+- **The migration row carries its own answers.** `packages/migration/src/knowledge/instructions.ts` maps 58 legacy
+  mnemonics to their Logix candidate, operand shape, work class and a citation (1747-RM001, 1785-6.1, 1756-RM003, or
+  `observed` plus the export that showed it). `migration_assess` names the replacement beside each
+  `LEGACY_INSTRUCTION` it reports and `migration_resolve` appends the row to every review site's advice, so a marker
+  arrives with its answer rather than a research task. Seven new corpus pages in a `migration` domain
+  (`packages/resources/corpus/migration/`) cover the arrival points, the PCE codes, the wizard and its revision
+  ceiling, placeholder tags, unknown operands, indirect addressing and the instruction map; the corpus is 41 pages.
+  `docs/reference/migration.md` documents the layer under "What it knows without research".
 - **One manifest describes every component.** `components.json` is now the single statement of what a component is:
   its kind (`product`, `support`, `surface`), its capability class (`offline-file`, `live-ide`, `gateway-api`), its patch
   row, bundle entry, package, tool product, skill and body budget, capability probe, evidence gate and owning documents.

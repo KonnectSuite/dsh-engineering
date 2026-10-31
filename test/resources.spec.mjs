@@ -54,7 +54,7 @@ test('an unknown page returns a repairable failure', async () => {
 
 test('the contents lists every domain', async () => {
   const contents = await referenceTool.execute({})
-  assert.deepEqual(contents.data.domains, ['iec', 'rockwell', 'yaskawa', 'view', 'optix', 'craft'])
+  assert.deepEqual(contents.data.domains, ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'craft'])
 })
 
 test('the standards skill mounts through the skills service', () => {

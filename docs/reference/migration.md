@@ -192,6 +192,28 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
    import-verified, every difference explained, and the golden trio (`.RSS`,
    `.L5K`, `.L5X`) archived together with the report.
 
+## What it knows without research
+
+The row carries its own answers, so a session does not go looking for a vendor manual mid-migration. Two
+layers, both local:
+
+- **The instruction map** — `packages/migration/src/knowledge/instructions.ts`, one row per legacy mnemonic
+  (58 of them) with the Logix candidate, the operand shape, a work class and a citation. `migration_assess`
+  names the replacement beside each `LEGACY_INSTRUCTION` it counts (`IIM x1 -> no Logix counterpart`,
+  `PID x1 -> PID`), and `migration_resolve` appends the row to the advice of every review site, so
+  `PCE(150,PCE028)` arrives with `BTW -> MSG (review): … Basis: PLC-5 Instruction Set Reference 1785-6.1 …`.
+- **The corpus pages** — `packages/resources/corpus/migration/` (seven pages, domain `migration`), read with
+  `engineering_reference`: `migration-pce-markers` (the code table and what each code means),
+  `migration-wizard-and-revisions` (the 30–31 and 30–32 ceilings, why a retarget precedes any build verdict),
+  `migration-placeholder-tags` (what a placeholder tag is, and the `1747-SDN` → `1756-DNB` case),
+  `migration-unknown-operands`, `migration-indirect-addressing`, `migration-instruction-map` and
+  `migration-arrival-points`.
+
+Citations name a manual and its section — *SLC 500 Instruction Set Reference Manual* 1747-RM001, *PLC-5
+Instruction Set Reference* 1785-6.1, *Logix 5000 Controllers General Instructions Reference Manual*
+1756-RM003 — or say `observed` and name the export that showed it. No manual text is reproduced, and a rule ID
+such as `MIGRATION-PCE-02` is this bundle's own, not a clause number.
+
 ## Limits
 
 - A text reader cannot prove runtime behaviour, I/O wiring or HMI bindings.

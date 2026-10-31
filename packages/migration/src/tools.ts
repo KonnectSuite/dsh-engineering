@@ -18,6 +18,7 @@ import { readSlcProject, SlcError, type SlcProject } from './engine/rslogix500.t
 import { compareSides, readLogix, type LegacySide } from './engine/compare.ts'
 import { resolvePces } from './engine/pce.ts'
 import { buildMigrationReport } from './engine/report.ts'
+import { lookupInstruction } from './knowledge/instructions.ts'
 import { renderDocx } from './engine/docx.ts'
 import {
   createPlan,
@@ -236,8 +237,8 @@ function slcRisks(project: SlcProject): SlcRisk[] {
       rule: 'LEGACY_INSTRUCTION',
       severity: 'warning',
       count: ordered.reduce((sum, entry) => sum + entry[1], 0),
-      detail: `SLC-specific instructions appear in the sampled rungs: ${ordered.map(([name, count]) => `${name} x${count}`).join(', ')}. Each needs its Logix replacement chosen, not assumed.`,
-      evidence: ordered.slice(0, EVIDENCE).map(([name, count]) => `${name} x${count}`),
+      detail: `SLC-specific instructions appear in the sampled rungs: ${ordered.map(([name, count]) => `${name} x${count}`).join(', ')}. Each needs its Logix replacement chosen, not assumed; the row's instruction map names the candidate for each, and engineering_reference page migration-instruction-map carries the long form.`,
+      evidence: ordered.slice(0, EVIDENCE).map(([name, count]) => `${name} x${count} -> ${lookupInstruction(name)?.logix ?? 'no Logix counterpart'}`),
     })
   }
   const longSymbols = project.symbols.filter(symbol => symbol.symbol.trim() !== '' && symbol.symbol.trim().length > 15)

@@ -320,6 +320,200 @@
       "sha256": "fcd9c1517662f572bd446213b9b265f603cfa9e5ae5bf9eab708edad4a259c2c"
     },
     {
+      "id": "migration-arrival-points",
+      "title": "What a migration has to answer",
+      "domain": "migration",
+      "level": "practitioner",
+      "basis": [
+        "field practice",
+        "Rockwell conversion guide"
+      ],
+      "tags": [
+        "migration",
+        "workflow",
+        "evidence",
+        "acceptance"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-WORK-01",
+        "MIGRATION-WORK-02",
+        "MIGRATION-WORK-03"
+      ],
+      "words": 236,
+      "bytes": 1841,
+      "sha256": "04cf209bf8416bfa31425e347fc0b7a37d458db094e4a97b1df67a0208dc4031"
+    },
+    {
+      "id": "migration-indirect-addressing",
+      "title": "Indirect addressing after the conversion",
+      "domain": "migration",
+      "level": "specialist",
+      "basis": [
+        "Logix 5000 instruction set",
+        "observed exports"
+      ],
+      "tags": [
+        "migration",
+        "indirect",
+        "arrays",
+        "aliases"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-INDEX-01",
+        "MIGRATION-INDEX-02",
+        "MIGRATION-INDEX-03"
+      ],
+      "words": 251,
+      "bytes": 1894,
+      "sha256": "fe624688fc8ac6ddb54c761327cac7425f43e59d52bc78d2fdc628f39a41b6ce"
+    },
+    {
+      "id": "migration-instruction-map",
+      "title": "The instruction map: legacy mnemonic to Logix answer",
+      "domain": "migration",
+      "level": "practitioner",
+      "basis": [
+        "SLC 500 Instruction Set Reference 1747-RM001",
+        "PLC-5 Instruction Set Reference 1785-6.1",
+        "Logix 5000 General Instructions 1756-RM003"
+      ],
+      "tags": [
+        "migration",
+        "instructions",
+        "mnemonic",
+        "mapping"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-MAP-01",
+        "MIGRATION-MAP-02",
+        "MIGRATION-MAP-03"
+      ],
+      "words": 423,
+      "bytes": 2971,
+      "sha256": "ef8e2532a00f720d06b8b59ac3eb8ae035ab86f3e8b453846b39cde49fe502d7"
+    },
+    {
+      "id": "migration-pce-markers",
+      "title": "PCE markers and what their codes mean",
+      "domain": "migration",
+      "level": "specialist",
+      "basis": [
+        "Rockwell conversion guide",
+        "observed exports"
+      ],
+      "tags": [
+        "migration",
+        "pce",
+        "conversion",
+        "markers"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-PCE-01",
+        "MIGRATION-PCE-02",
+        "MIGRATION-PCE-03",
+        "MIGRATION-PCE-04",
+        "MIGRATION-PCE-05"
+      ],
+      "words": 525,
+      "bytes": 3395,
+      "sha256": "89e2a0e877c8455566ba5da85f2ef86dfa5288e8e15417ae86e83886e1075774"
+    },
+    {
+      "id": "migration-placeholder-tags",
+      "title": "Placeholder tags are the right answer for an unmodelled module",
+      "domain": "migration",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell conversion guide",
+        "observed wizard runs"
+      ],
+      "tags": [
+        "migration",
+        "io",
+        "devicenet",
+        "placeholder",
+        "modules"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-IO-01",
+        "MIGRATION-IO-02",
+        "MIGRATION-IO-03"
+      ],
+      "words": 334,
+      "bytes": 2375,
+      "sha256": "8ba9ac1275c522d810ff69dc49c1d2ef903254bdfb045a82a1d47e9fbe947d34"
+    },
+    {
+      "id": "migration-unknown-operands",
+      "title": "The question mark operands",
+      "domain": "migration",
+      "level": "specialist",
+      "basis": [
+        "Rockwell conversion guide",
+        "observed exports"
+      ],
+      "tags": [
+        "migration",
+        "operands",
+        "timers",
+        "counters"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-OPERAND-01",
+        "MIGRATION-OPERAND-02",
+        "MIGRATION-OPERAND-03"
+      ],
+      "words": 233,
+      "bytes": 1753,
+      "sha256": "a67bd0a79fe1f205ac5f73cea6f78d665642ad68071cd6815a63ca51f1c0a576"
+    },
+    {
+      "id": "migration-wizard-and-revisions",
+      "title": "The conversion wizard, its two questions and its revision ceiling",
+      "domain": "migration",
+      "level": "specialist",
+      "basis": [
+        "Rockwell conversion guide",
+        "observed wizard runs"
+      ],
+      "tags": [
+        "migration",
+        "wizard",
+        "revision",
+        "io"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-WIZARD-01",
+        "MIGRATION-WIZARD-02",
+        "MIGRATION-WIZARD-03",
+        "MIGRATION-WIZARD-04"
+      ],
+      "words": 336,
+      "bytes": 2369,
+      "sha256": "e4aa2bb1326911d92525af7ec993fd873e585b6699f477378265663002f7bda7"
+    },
+    {
       "id": "optix-alarms-and-trends",
       "title": "Alarms and trends in Optix",
       "domain": "optix",

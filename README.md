@@ -70,7 +70,7 @@ Tool groups, by product:
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
 - **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
-  local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
+  local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
 
 ## Switches
@@ -262,7 +262,7 @@ even when the implementation behind a row is replaced.
 | Document | Owns |
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
-| [Engineering resources](docs/resources.md) | The 34-page standards corpus, its rule IDs, the generated index, and the house-style profile |
+| [Engineering resources](docs/resources.md) | The 41-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [SLC 500 and PLC-5 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |

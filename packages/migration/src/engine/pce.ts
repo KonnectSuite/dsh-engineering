@@ -18,6 +18,7 @@
  */
 
 import { matchRoutine, type LogixRoutine } from './compare.ts'
+import { instructionAdvice } from '../knowledge/instructions.ts'
 
 /** One rung text as the headless legacy reader reported it. */
 export interface LegacyRungRef {
@@ -112,6 +113,18 @@ const TIMERS = ['TON', 'TOF', 'RTO'] as const
 const COUNTERS = ['CTU', 'CTD'] as const
 
 /** Strip the CDATA wrapper a rung text may arrive in. */
+/** The knowledge-layer note for the instruction in question, else the first legacy instruction with a row. */
+function knowledgeNote(calls: readonly LegacyCall[], instruction?: string): string {
+  if (instruction !== undefined) {
+    const advice = instructionAdvice(instruction)
+    if (advice !== undefined) return ` ${advice}`
+  }
+  for (const call of calls) {
+    const advice = instructionAdvice(call.name)
+    if (advice !== undefined) return ` ${advice}`
+  }
+  return ''
+}
 function bareText(text: string): string {
   return text.replace(/^<!\[CDATA\[/u, '').replace(/\]\]>$/u, '').trim()
 }
@@ -445,7 +458,7 @@ export function resolvePces(
         resolution = {
           kind: 'review',
           work: 'review',
-          advice: `The migrated rung does not carry the same instructions as the legacy rung: legacy ${wanted.join(', ') || '(none)'}; migrated ${found.join(', ') || '(none)'}${missing.length > 0 ? `; missing ${[...new Set(missing)].join(', ')}` : ''}${extra.length > 0 ? `; extra ${[...new Set(extra)].join(', ')}` : ''}.`,
+          advice: `The migrated rung does not carry the same instructions as the legacy rung: legacy ${wanted.join(', ') || '(none)'}; migrated ${found.join(', ') || '(none)'}${missing.length > 0 ? `; missing ${[...new Set(missing)].join(', ')}` : ''}${extra.length > 0 ? `; extra ${[...new Set(extra)].join(', ')}` : ''}.` + knowledgeNote(legacy),
         }
       }
       markers.push({ routine: pair.routine, rung: pair.rung, code, label, legacy: pair.legacy, migrated: pair.migrated, resolution })
@@ -461,13 +474,13 @@ export function resolvePces(
         resolution = {
           kind: 'unknown-operand',
           work: 'review',
-          advice: `${name} kept its expression but lost ${entry.positions.length} operand(s) the wizard could not type. The legacy rung is the only record of what they were; read it before writing the Logix expression by hand.`,
+          advice: `${name} kept its expression but lost ${entry.positions.length} operand(s) the wizard could not type. The legacy rung is the only record of what they were; read it before writing the Logix expression by hand.` + knowledgeNote(legacy, name),
         }
       } else {
         resolution = {
           kind: 'unknown-operand',
           work: 'review',
-          advice: `${name} has ${entry.positions.length} operand(s) the wizard could not type. Read the legacy rung and fill them in; the instruction itself exists in Logix.`,
+          advice: `${name} has ${entry.positions.length} operand(s) the wizard could not type. Read the legacy rung and fill them in; the instruction itself exists in Logix.` + knowledgeNote(legacy, name),
         }
       }
       const repaired = resolution.work === 'mechanical' && markerCalls.length === 0

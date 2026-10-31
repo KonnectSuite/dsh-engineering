@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url'
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const PACKAGE = join(ROOT, 'packages', 'resources')
 const CORPUS = join(PACKAGE, 'corpus')
-export const DOMAINS = ['iec', 'rockwell', 'yaskawa', 'view', 'optix', 'craft']
+export const DOMAINS = ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'craft']
 export const LEVELS = ['intro', 'practitioner', 'specialist']
 const MAX_WORDS = 900
 const MAX_BYTES = 12 * 1024
