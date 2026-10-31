@@ -13,8 +13,6 @@
   MotionWorks IEC, 9 Optix, 2 engineering resources), with a known-gap line for the 9 vendored Optix tools that the
   generated reference cannot build from source here.
 
-### Added
-
 - **A migration support row.** `migration_assess` reads an RSLogix 500 `.SLC` export or the `.L5K` the migration
   wizard writes and states the controller, tags, routines, rungs and what a migration still has to change;
   `l5k_lint` reports every import blocker with its line number (`TRAILING_COMMA`, `DUPLICATE_TAG`,
@@ -27,6 +25,14 @@
   rung text, then quits without saving: no window appears and no click is needed. On the Slitter 8 project it
   returns 76 program files (69 ladder), 1,495 rungs and rung text in about four seconds. It needs RSLogix 500 on
   the host and refuses a path that is not a file; without the vendor product, Save As `.SLC` and read that export.
+- **`migration_compare` scores the converted project against the legacy one.** It matches ladder file names to
+  routines, counts rungs with the terminal `END` left out, maps symbol records and data files to tags, and
+  classifies each difference as expected, real or cosmetic. On Slitter 8 it reports 64 matched files, 1,398 of
+  1,426 legacy rungs, two real differences and 259 indirect expressions still to engineer, which is the
+  exception list the plan records.
+- **`migration_plan` keeps the migration resumable.** `create`, `read`, `answer`, `stage` and `exception` act on
+  `.migration/plan.json` (schema 1): five interview decisions, eight stages with evidence, and exceptions marked
+  `open`, `accepted` or `fixed`. A plan blocks until every decision is answered and `next_action` names what to do.
 
 ### Changed
 

@@ -54,6 +54,8 @@
     "migration_assess",
     "l5k_lint",
     "slc_read",
+    "migration_compare",
+    "migration_plan",
     "engineering_reference",
     "engineering_profile",
     "ftview_open",
@@ -246,7 +248,9 @@
       "tools": [
         "migration_assess",
         "l5k_lint",
-        "slc_read"
+        "slc_read",
+        "migration_compare",
+        "migration_plan"
       ]
     },
     {

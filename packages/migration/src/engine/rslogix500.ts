@@ -21,6 +21,13 @@ export interface SlcFile {
   /** The RSLogix 500 file type; 1 is a ladder file. */
   readonly type: number
   readonly rungs: number
+  /**
+   * The text of the last rung, when the read asked for rungs.
+   *
+   * SLC ladder files end in a terminal `END` rung that the migration does not
+   * reproduce, so counting it as a lost rung would be a false alarm.
+   */
+  readonly lastRung?: string
 }
 
 /** One rung read from a ladder file. */
@@ -28,6 +35,22 @@ export interface SlcRung {
   readonly file: string
   readonly rung: number
   readonly text: string
+}
+
+/** One address/symbol record from the RSLogix 500 database. */
+export interface SlcSymbol {
+  readonly address: string
+  readonly symbol: string
+  readonly description: string
+  readonly scope: number
+}
+
+/** One integer, timer, counter, control, bit, float or I/O data file. */
+export interface SlcDataFile {
+  readonly number: number
+  readonly type: string
+  readonly name: string
+  readonly elements: number
 }
 
 /** What a headless read returned. */
@@ -39,6 +62,12 @@ export interface SlcProject {
   readonly files: readonly SlcFile[]
   readonly totalRungs: number
   readonly rungs: readonly SlcRung[]
+  /** How many address/symbol records the database holds, whether or not they were read. */
+  readonly symbolCount: number
+  readonly symbols: readonly SlcSymbol[]
+  /** How many data files the project declares, whether or not they were read. */
+  readonly dataFileCount: number
+  readonly dataFiles: readonly SlcDataFile[]
   /** True when the rung limit stopped the walk before every requested rung. */
   readonly truncated: boolean
 }
@@ -88,6 +117,8 @@ function Fail($code, $message) {
 $path = $env:DSH_SLC_PATH
 $limit = [int]$env:DSH_SLC_LIMIT
 $withRungs = $env:DSH_SLC_RUNGS -eq '1'
+$symbolLimit = [int]$env:DSH_SLC_SYMBOLS
+$withData = $env:DSH_SLC_DATA -eq '1'
 
 try {
   $app = New-Object -ComObject RSLogix500.Application
@@ -135,9 +166,13 @@ try {
     $rungCount = 0
     try { $rungCount = [int]$file.NumberOfRungs() } catch {}
     $total = $total + $rungCount
-    $files += @{ number = $number; name = $name; type = $type; rungs = $rungCount }
+    $lastRung = ''
+    if ($rungCount -gt 0) {
+      try { $lastRung = ([string]$file.GetRungAsNeutralText($rungCount - 1)).Trim() } catch { $lastRung = '' }
+    }
+    $files += @{ number = $number; name = $name; type = $type; rungs = $rungCount; lastRung = $lastRung }
     if ($withRungs -and -not $budgetSpent -and $rungCount -gt 0) {
-      for ($rung = 1; $rung -le $rungCount; $rung++) {
+      for ($rung = 0; $rung -lt $rungCount; $rung++) {
         if ($limit -ge 0 -and $rungs.Count -ge $limit) { $truncated = $true; $budgetSpent = $true; break }
         $text = ''
         try { $text = [string]$file.GetRungAsNeutralText($rung) } catch { $text = '' }
@@ -150,9 +185,55 @@ try {
   Fail 'SLC_READ_FAILED' ($_.Exception.Message)
 }
 
+$symbolCount = 0
+$symbols = @()
+try {
+  $records = $project.AddrSymRecords
+  $symbolCount = [int]$records.Count()
+  if ($symbolLimit -gt 0) {
+    $take = [Math]::Min($symbolLimit, $symbolCount)
+    for ($index = 1; $index -le $take; $index++) {
+      $record = $records.GetRecordViaIndex($index)
+      $address = ''
+      $symbol = ''
+      $description = ''
+      $scope = 0
+      try { $address = [string]$record.Address() } catch {}
+      try { $symbol = [string]$record.Symbol() } catch {}
+      try { $description = [string]$record.Description() } catch {}
+      try { $scope = [int]$record.Scope() } catch {}
+      if ($address -ne '' -or $symbol -ne '' -or $description -ne '') {
+        $symbols += @{ address = $address; symbol = $symbol; description = $description; scope = $scope }
+      }
+    }
+  }
+} catch {}
+
+$dataFileCount = 0
+$dataFiles = @()
+if ($withData) {
+  try {
+    $dataTable = $project.DataFiles
+    $dataFileCount = [int]$dataTable.Count()
+    for ($index = 1; $index -le $dataFileCount; $index++) {
+      $file = $dataTable.Item($index)
+      $number = 0
+      $type = ''
+      $name = ''
+      $elements = 0
+      try { $number = [int]$file.FileNumber } catch {}
+      try { $type = [string]$file.TypeAsString } catch {}
+      try { $name = [string]$file.Name } catch {}
+      try { $elements = [int]$file.NumberOfElements } catch {}
+      $dataFiles += @{ number = $number; type = $type; name = $name; elements = $elements }
+    }
+  } catch {}
+} else {
+  try { $dataFileCount = [int]$project.DataFiles.Count() } catch {}
+}
+
 $revision = $null
-try { $revision = [int]$project.Revision } catch {}
-$projectName = ''
+try { $revision = [int]$project.Revision } catch {}$projectName = ''
 try { $projectName = [string]$project.Name } catch {}
 $version = ''
 try { $version = [string]$app.Version } catch {}
@@ -167,6 +248,10 @@ Emit @{
   files = @($files)
   totalRungs = $total
   rungs = @($rungs)
+  symbolCount = $symbolCount
+  symbols = @($symbols)
+  dataFileCount = $dataFileCount
+  dataFiles = @($dataFiles)
   truncated = $truncated
 }
 `
@@ -179,14 +264,25 @@ interface RawAnswer {
   readonly version?: string
   readonly projectName?: string
   readonly revision?: number | null
-  readonly files?: readonly { readonly number?: number; readonly name?: string; readonly type?: number; readonly rungs?: number }[]
+  readonly files?: readonly { readonly number?: number; readonly name?: string; readonly type?: number; readonly rungs?: number; readonly lastRung?: string }[]
   readonly totalRungs?: number
   readonly rungs?: readonly { readonly file?: string; readonly rung?: number; readonly text?: string }[]
+  readonly symbolCount?: number
+  readonly symbols?: readonly { readonly address?: string; readonly symbol?: string; readonly description?: string; readonly scope?: number }[]
+  readonly dataFileCount?: number
+  readonly dataFiles?: readonly { readonly number?: number; readonly type?: string; readonly name?: string; readonly elements?: number }[]
   readonly truncated?: boolean
 }
 
 /** Run the read script in the 32-bit host and return its answer. */
-async function runRead(path: string, limit: number, withRungs: boolean, timeoutMs: number): Promise<RawAnswer> {
+async function runRead(
+  path: string,
+  limit: number,
+  withRungs: boolean,
+  symbolLimit: number,
+  withData: boolean,
+  timeoutMs: number,
+): Promise<RawAnswer> {
   const executable = powershell32()
   const script = path
   const encoded = Buffer.from(READ_SCRIPT, 'utf16le').toString('base64')
@@ -201,6 +297,8 @@ async function runRead(path: string, limit: number, withRungs: boolean, timeoutM
           DSH_SLC_PATH: script,
           DSH_SLC_LIMIT: String(limit),
           DSH_SLC_RUNGS: withRungs ? '1' : '0',
+          DSH_SLC_SYMBOLS: String(symbolLimit),
+          DSH_SLC_DATA: withData ? '1' : '0',
         },
       },
     )
@@ -264,10 +362,12 @@ async function runRead(path: string, limit: number, withRungs: boolean, timeoutM
  */
 export async function readSlcProject(
   path: string,
-  options: { readonly rungs?: number; readonly timeoutMs?: number } = {},
+  options: { readonly rungs?: number; readonly symbols?: number; readonly dataFiles?: boolean; readonly timeoutMs?: number } = {},
 ): Promise<SlcProject> {
   const limit = Math.max(0, Math.min(options.rungs ?? 0, 200))
   const withRungs = limit > 0
+  const symbolLimit = Math.max(0, Math.min(options.symbols ?? 0, 5000))
+  const withData = options.dataFiles === true
   try {
     if (!statSync(path).isFile()) throw new Error('not a file')
   } catch {
@@ -277,7 +377,7 @@ export async function readSlcProject(
       'Pass the path of an existing .RSS or .ACH project; the reader only opens that file.',
     )
   }
-  const answer = await runRead(path, limit, withRungs, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
+  const answer = await runRead(path, limit, withRungs, symbolLimit, withData, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   if (answer.ok !== true) {
     const code = typeof answer.code === 'string' ? answer.code : 'SLC_READ_FAILED'
     const message = typeof answer.message === 'string' ? answer.message : 'RSLogix 500 could not read the project.'
@@ -295,11 +395,24 @@ export async function readSlcProject(
     name: file.name ?? '',
     type: file.type ?? 0,
     rungs: file.rungs ?? 0,
+    lastRung: file.lastRung ?? '',
   }))
   const rungs = (answer.rungs ?? []).map(rung => ({
     file: rung.file ?? '',
     rung: rung.rung ?? 0,
     text: rung.text ?? '',
+  }))
+  const symbols = (answer.symbols ?? []).map(symbol => ({
+    address: symbol.address ?? '',
+    symbol: symbol.symbol ?? '',
+    description: symbol.description ?? '',
+    scope: symbol.scope ?? 0,
+  }))
+  const dataFiles = (answer.dataFiles ?? []).map(file => ({
+    number: file.number ?? 0,
+    type: file.type ?? '',
+    name: file.name ?? '',
+    elements: file.elements ?? 0,
   }))
   return {
     path,
@@ -309,6 +422,10 @@ export async function readSlcProject(
     files,
     totalRungs: answer.totalRungs ?? files.reduce((sum, file) => sum + file.rungs, 0),
     rungs,
+    symbolCount: answer.symbolCount ?? symbols.length,
+    symbols,
+    dataFileCount: answer.dataFileCount ?? dataFiles.length,
+    dataFiles,
     truncated: answer.truncated === true,
   }
 }

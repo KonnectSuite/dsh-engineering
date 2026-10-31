@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 136 tools · 7 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 138 tools · 7 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -59,7 +59,7 @@ bundle.
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
-| **SLC 500 to Logix migration** | 3 | all on | none; reads an RSLogix 500 project hidden if RSLogix 500 is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
+| **SLC 500 to Logix migration** | 5 | all on | none; reads an RSLogix 500 project hidden if RSLogix 500 is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
 
 Tool groups, by product:
 
@@ -68,7 +68,7 @@ Tool groups, by product:
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
-- **Migration** — 3 tools and the `slc-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH hidden through the RSLogix 500 automation server and returns program files and rung text without a window; `migration_assess` reads an .SLC, .RSS/.ACH or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers
+- **Migration** — 5 tools and the `slc-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH hidden through the RSLogix 500 automation server and returns program files and rung text without a window; `migration_assess` reads an .SLC, .RSS/.ACH or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
@@ -87,7 +87,7 @@ down:
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
-| `migration` | legacy SLC 500 / PLC-5 assessment and the .L5K linter, with the `slc-to-logix-migration` skill | `assess` (on), `lint` (on) |
+| `migration` | legacy SLC 500 / PLC-5 assessment and the .L5K linter, with the `slc-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `plan` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`

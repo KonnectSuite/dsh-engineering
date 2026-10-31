@@ -1,12 +1,13 @@
 /**
  * The migration support row: read a legacy RSLogix 500 project headlessly,
- * assess a saved legacy export, and lint the `.L5K` the migration wizard writes,
- * with the `slc-to-logix-migration` skill that says to interview and prove
- * rather than assume.
+ * assess a saved legacy export, lint the `.L5K` the migration wizard writes,
+ * compare the migrated Logix export with the legacy structure, and keep the
+ * resumable plan, with the `slc-to-logix-migration` skill that says to
+ * interview and prove rather than assume.
  *
- * The readers read local files only. `slc_read` opens the project through
- * RSLogix 500's 32-bit automation server, hidden and read-only, and quits
- * without saving; no tool claims a file is migrated.
+ * The readers read local files only. `slc_read` and `migration_compare` open
+ * the project through RSLogix 500's 32-bit automation server, hidden and
+ * read-only, and quit without saving; no tool claims a file is migrated.
  *
  * @module dsh-engineering-migration
  */
@@ -29,6 +30,10 @@ export interface Config {
   readonly assess?: boolean
   /** Whether the `.L5K` linter is registered. Defaults to true. */
   readonly lint?: boolean
+  /** Whether the legacy-to-Logix comparison is registered. Defaults to true. */
+  readonly compare?: boolean
+  /** Whether the plan tool is registered. Defaults to true. */
+  readonly plan?: boolean
 }
 
 /**
@@ -43,6 +48,8 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
       if (definition.name === 'slc_read' && config.read === false) continue
       if (definition.name === 'migration_assess' && config.assess === false) continue
       if (definition.name === 'l5k_lint' && config.lint === false) continue
+      if (definition.name === 'migration_compare' && config.compare === false) continue
+      if (definition.name === 'migration_plan' && config.plan === false) continue
       ctx.tools.register(definition)
     }
     skill.apply(ctx)
@@ -59,5 +66,9 @@ export { migrationTools } from './tools.ts'
 export { SKILL } from './skill.ts'
 export { decodeL5k, readL5k, lintL5k } from './engine/l5k.ts'
 export { readSlcProject, SlcError } from './engine/rslogix500.ts'
-export type { SlcFile, SlcProject, SlcRung } from './engine/rslogix500.ts'
+export { compareSides, readLogix } from './engine/compare.ts'
+export { STAGES, createPlan, parsePlan, planState, nextAction, openQuestions, summarize } from './engine/plan.ts'
+export type { SlcFile, SlcProject, SlcRung, SlcDataFile, SlcSymbol } from './engine/rslogix500.ts'
 export type { L5kFacts, L5kFinding, L5kReport, L5kText, L5kEncoding } from './engine/l5k.ts'
+export type { Comparison, Difference, LegacySide, LogixSide, MatchedRoutine } from './engine/compare.ts'
+export type { MigrationPlan, PlanDecisions, PlanException, PlanSource, StageId, StageStatus } from './engine/plan.ts'

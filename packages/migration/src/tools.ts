@@ -11,11 +11,32 @@
  */
 
 import { decodeL5k, lintL5k, type L5kFacts, type L5kFinding } from './engine/l5k.ts'
-import { readSlcProject } from './engine/rslogix500.ts'
+import { readSlcProject, SlcError, type SlcProject } from './engine/rslogix500.ts'
+import { compareSides, readLogix, type LegacySide } from './engine/compare.ts'
+import {
+  createPlan,
+  currentStage,
+  nextAction,
+  openQuestions,
+  parsePlan,
+  planState,
+  readDecisions,
+  summarize,
+  withDecisions,
+  withException,
+  withStage,
+  type MigrationPlan,
+  type PlanSource,
+  type StageId,
+  type StageStatus,
+} from './engine/plan.ts'
 import { jsonText, type FsService, type ToolDefinition, type ToolExec } from './core/tool.ts'
 
 /** The largest file these tools will read. */
 const MAX_BYTES = 64 * 1024 * 1024
+
+/** How a recorded exception stands. */
+type PlanExceptionStatus = 'open' | 'accepted' | 'fixed'
 
 /** How many findings one answer carries before it summarises the rest. */
 const MAX_FINDINGS = 50
@@ -167,6 +188,164 @@ function severities(findings: readonly L5kFinding[]): { error: number; warning: 
   return { error, warning, info }
 }
 
+/** Instructions whose behaviour a migration changes or cannot carry over directly. */
+const LEGACY_ONLY = ['MSG', 'SVC', 'IIM', 'IOM', 'BSL', 'BSR', 'SQO', 'SQC', 'SQI', 'COP', 'FLL', 'PID', 'TOD', 'DTR', 'DCD', 'HSC', 'AFI'] as const
+
+/** One risk the assessment reports. */
+interface SlcRisk {
+  readonly rule: string
+  readonly severity: 'error' | 'warning' | 'info'
+  readonly count: number
+  readonly detail: string
+  readonly evidence: readonly string[]
+}
+
+/** The sample bound for evidence in an assessment. */
+const EVIDENCE = 3
+
+/** What the headless read suggests a migration will still have to change. */
+function slcRisks(project: SlcProject): SlcRisk[] {
+  const risks: SlcRisk[] = []
+  const texts = project.rungs.map(rung => rung.text)
+  const indirect = texts.flatMap(text => text.match(/\b[A-Z]{1,2}\d*\[\s*[A-Za-z_][\w]*\s*\]/gu) ?? [])
+  if (indirect.length > 0) {
+    risks.push({
+      rule: 'INDIRECT_ADDRESS',
+      severity: 'error',
+      count: indirect.length,
+      detail: 'A rung indexes a data file with another tag. Logix cannot express that, so each one is engineering work.',
+      evidence: indirect.slice(0, EVIDENCE),
+    })
+  }
+  const instructionHits = new Map<string, number>()
+  for (const text of texts) {
+    for (const match of text.matchAll(/\b([A-Z]{2,3})\b/gu)) {
+      const mnemonic = match[1] ?? ''
+      if ((LEGACY_ONLY as readonly string[]).includes(mnemonic)) instructionHits.set(mnemonic, (instructionHits.get(mnemonic) ?? 0) + 1)
+    }
+  }
+  if (instructionHits.size > 0) {
+    const ordered = [...instructionHits.entries()].sort((a, b) => b[1] - a[1])
+    risks.push({
+      rule: 'LEGACY_INSTRUCTION',
+      severity: 'warning',
+      count: ordered.reduce((sum, entry) => sum + entry[1], 0),
+      detail: `SLC-specific instructions appear in the sampled rungs: ${ordered.map(([name, count]) => `${name} x${count}`).join(', ')}. Each needs its Logix replacement chosen, not assumed.`,
+      evidence: ordered.slice(0, EVIDENCE).map(([name, count]) => `${name} x${count}`),
+    })
+  }
+  const longSymbols = project.symbols.filter(symbol => symbol.symbol.trim() !== '' && symbol.symbol.trim().length > 15)
+  if (longSymbols.length > 0) {
+    risks.push({
+      rule: 'SYMBOL_TOO_LONG',
+      severity: 'warning',
+      count: longSymbols.length,
+      detail: 'RSLogix 500 stores at most 15 characters in a symbol; the migrated tag name was cut, so the old and new names must be mapped before a comparison can mean anything.',
+      evidence: longSymbols.slice(0, EVIDENCE).map(symbol => symbol.symbol),
+    })
+  }
+  const named = project.symbols.filter(symbol => symbol.symbol.trim() !== '')
+  if (project.symbols.length > 0 && named.length === 0) {
+    risks.push({
+      rule: 'ADDRESS_ONLY_DATABASE',
+      severity: 'info',
+      count: project.symbolCount,
+      detail: 'The symbol database carries descriptions but no symbolic names; the wizard will migrate addresses and comments, and every reference in the new program is address-based.',
+      evidence: project.symbols.slice(0, EVIDENCE).map(symbol => `${symbol.address}: ${symbol.description.split(/\r?\n/u)[0] ?? ''}`),
+    })
+  }
+  if (project.dataFileCount > 0) {
+    risks.push({
+      rule: 'DATA_FILES_CARRIED',
+      severity: 'info',
+      count: project.dataFileCount,
+      detail: `The project declares ${project.dataFileCount} data file(s); Logix carries them as tag arrays or individual tags, and the mapping must be checked element by element.`,
+      evidence: project.dataFiles.slice(0, EVIDENCE).map(file => `${file.type}${file.number} ${file.name} (${file.elements})`),
+    })
+  }
+  if (project.truncated) {
+    risks.push({
+      rule: 'RUNGS_SAMPLED',
+      severity: 'info',
+      count: project.rungs.length,
+      detail: `Only ${project.rungs.length} rung text(s) were read out of ${project.totalRungs}; the instruction and indirect-address counts are a sample, not a census.`,
+      evidence: [],
+    })
+  }
+  return risks
+}
+
+/** Build the legacy side of a comparison from a headless read. */
+function legacySideOf(project: SlcProject): LegacySide {
+  const files = project.files
+    .filter(file => file.type === 1)
+    .map(file => ({ name: file.name, rungs: file.rungs, lastRung: file.lastRung }))
+  // A file's terminal `END` rung is not logic; leave it out of the rung total.
+  const totalRungs = files.reduce(
+    (sum, file) => sum + Math.max(0, file.rungs - (/^END\b/iu.test(file.lastRung ?? '') ? 1 : 0)),
+    0,
+  )
+  return {
+    project: project.projectName,
+    controller: '',
+    files,
+    totalRungs,
+    symbols: project.symbols,
+    symbolCount: project.symbolCount,
+    dataFiles: project.dataFiles,
+    dataFileCount: project.dataFileCount,
+  }
+}
+
+/** Where the plan lives when the caller does not say. */
+const DEFAULT_PLAN = '.migration/plan.json'
+
+/** Resolve the plan path against the caller's working directory. */
+function planPathOf(args: Readonly<Record<string, unknown>>, exec: ToolExec): string {
+  const supplied = typeof args.path === 'string' ? args.path.trim() : ''
+  if (supplied !== '') return supplied
+  const cwd = exec.cwd ?? '.'
+  return `${cwd.replace(/[\\/]+$/u, '')}/${DEFAULT_PLAN}`
+}
+
+/** Read the plan document from the filesystem. */
+async function readPlanFile(fs: FsService, path: string, exec: ToolExec): Promise<MigrationPlan> {
+  const target = await fs.resolve(path, { cwd: exec.cwd })
+  const stat = await fs.stat(target, exec.signal)
+  if (stat === undefined) {
+    throw new MigrationError(
+      'PLAN_MISSING',
+      `No migration plan at ${path}.`,
+      'Run migration_plan with action "create" first; the plan is the record every later stage adds evidence to.',
+    )
+  }
+  const bytes = await fs.readBytes(target, exec.signal, MAX_BYTES)
+  try {
+    return parsePlan(new TextDecoder('utf-8').decode(bytes))
+  } catch (error) {
+    throw new MigrationError(
+      'PLAN_UNREADABLE',
+      `The plan at ${path} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      'Restore the plan from version control, or create a new one; do not hand-edit it into a shape this tool cannot read.',
+    )
+  }
+}
+
+/** Write the plan document back. */
+async function writePlanFile(fs: FsService, path: string, plan: MigrationPlan, exec: ToolExec): Promise<void> {
+  const target = await fs.resolve(path, { cwd: exec.cwd })
+  try {
+    await fs.writeText(target, `${JSON.stringify(plan, undefined, 2)}\n`, exec.signal)
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
+    throw new MigrationError(
+      'PLAN_UNWRITABLE',
+      `The plan could not be written to ${path}${code === undefined ? '' : ` (${String(code)})`}.`,
+      'Choose a path inside the workspace the chat can write, for example ".migration/plan.json".',
+    )
+  }
+}
+
 /**
  * Build the migration tools.
  *
@@ -300,18 +479,52 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
 
         if (extension === 'rss' || extension === 'ach') {
           const bytes = await readFile(fs, path, exec)
-          return {
-            summary: `${name}: RSLogix 500 container, ${bytes.length} bytes. RSLogix 500 owns this format; save it as .SLC or run the migration wizard to get text this package can read.`,
-            data: {
-              file: path,
-              format: extension.toUpperCase(),
-              facts: { bytes: bytes.length },
-              checks: { text_readable: false, needs_rslogix_500: true },
-            },
-            next: [
-              { tool: 'migration_assess', why: 'Assess the .SLC or .L5K once RSLogix 500 has written it.' },
-            ],
-            coverage: COVERAGE,
+          const target = await fs.resolve(path, { cwd: exec.cwd })
+          try {
+            const project = await readSlcProject(target.displayPath, { rungs: 200, symbols: 500, dataFiles: true })
+            const ladder = project.files.filter(file => file.type === 1)
+            const risks = slcRisks(project)
+            const blocking = risks.filter(risk => risk.severity === 'error')
+            return {
+              summary: `${name}: read headlessly — ${project.files.length} program file(s) (${ladder.length} ladder), ${project.totalRungs} rung(s), ${project.symbolCount} symbol record(s), ${project.dataFileCount} data file(s); ${blocking.length} blocking risk(s) in the sampled rungs.`,
+              data: {
+                file: path,
+                format: extension.toUpperCase(),
+                host: { product: 'RSLogix 500', version: project.version },
+                facts: {
+                  project: project.projectName,
+                  program_files: project.files.length,
+                  ladder_files: ladder.length,
+                  rungs: project.totalRungs,
+                  symbols: project.symbolCount,
+                  data_files: project.dataFileCount,
+                  sampled_rungs: project.rungs.length,
+                },
+                risks,
+                checks: { headless: true, read_only: true, saved: false, sampled_rungs: project.rungs.length },
+              },
+              next: [
+                { tool: 'migration_plan', why: 'Record the target, I/O strategy and acceptance before converting, and keep the plan with the evidence.' },
+                { tool: 'slc_read', why: 'Read the rung text and symbol table when you are ready to compare.' },
+              ],
+              coverage: COVERAGE,
+            }
+          } catch (error) {
+            const reason = error instanceof SlcError ? `${error.code}: ${error.message}` : error instanceof Error ? error.message : String(error)
+            return {
+              summary: `${name}: RSLogix 500 container, ${bytes.length} bytes. Headless read did not run here (${reason}), so save it as .SLC or run the migration wizard to get text this package can read.`,
+              data: {
+                file: path,
+                format: extension.toUpperCase(),
+                facts: { bytes: bytes.length },
+                checks: { text_readable: false, needs_rslogix_500: true, headless: false, headless_error: reason },
+              },
+              next: [
+                { tool: 'slc_read', why: 'Retry the headless read on the engineering PC with RSLogix 500 installed and activated.' },
+                { tool: 'migration_assess', why: 'Assess the .SLC or .L5K once RSLogix 500 has written it.' },
+              ],
+              coverage: COVERAGE,
+            }
           }
         }
 
@@ -333,12 +546,14 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
   const slcReadTool: ToolDefinition = {
     name: 'slc_read',
     description:
-      'Read an RSLogix 500 .RSS or .ACH project headlessly through its 32-bit automation server: program files with rung counts, the controller revision and optionally rung text. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 on the 32-bit host.',
+      'Read an RSLogix 500 .RSS or .ACH project headlessly through its 32-bit automation server: program files with rung counts, the controller revision, optionally rung text, the symbol table and the data-file table. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 on the 32-bit host.',
     parameters: {
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Absolute path to the RSLogix 500 project, for example "RSS 500 Programs\\Slitter8.RSS".' },
         rungs: { type: 'integer', description: 'How many rung texts to include, 0 to 200. Defaults to 0 for counts only.', minimum: 0, maximum: 200 },
+        symbols: { type: 'integer', description: 'How many symbol records to include, 0 to 5000. Defaults to 0 for the count only.', minimum: 0, maximum: 5000 },
+        data_files: { type: 'boolean', description: 'Include the data-file table (number, type, name, element count). Defaults to false.' },
       },
       required: ['path'],
       additionalProperties: false,
@@ -361,12 +576,14 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
           throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .RSS or .ACH path; this tool does not create files.')
         }
         const requested = typeof args.rungs === 'number' ? args.rungs : 0
-        const project = await readSlcProject(target.displayPath, { rungs: requested })
+        const symbolsRequested = typeof args.symbols === 'number' ? args.symbols : 0
+        const withData = args.data_files === true
+        const project = await readSlcProject(target.displayPath, { rungs: requested, symbols: symbolsRequested, dataFiles: withData })
         const name = baseName(path)
         const ladderFiles = project.files.filter(file => file.type === 1)
         const host = project.version === '' ? 'an unknown RSLogix 500 version' : `RSLogix 500 ${project.version}`
         return {
-          summary: `${name}: ${project.projectName === '' ? 'unnamed project' : project.projectName} on ${host} — ${project.files.length} program file(s) (${ladderFiles.length} ladder), ${project.totalRungs} rung(s)${project.truncated ? ', rung text truncated' : ''}. Opened hidden, read-only, not saved.`,
+          summary: `${name}: ${project.projectName === '' ? 'unnamed project' : project.projectName} on ${host} — ${project.files.length} program file(s) (${ladderFiles.length} ladder), ${project.totalRungs} rung(s), ${project.symbolCount} symbol record(s), ${project.dataFileCount} data file(s)${project.truncated ? ', rung text truncated' : ''}. Opened hidden, read-only, not saved.`,
           data: {
             file: path,
             format: extension.toUpperCase(),
@@ -377,7 +594,11 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
             total_rungs: project.totalRungs,
             rungs: project.rungs,
             truncated: project.truncated,
-            checks: { headless: true, read_only: true, saved: false },
+            symbol_count: project.symbolCount,
+            symbols: project.symbols,
+            data_file_count: project.dataFileCount,
+            data_files: project.dataFiles,
+            checks: { headless: true, read_only: true, saved: false, symbols_requested: symbolsRequested, data_tables: withData },
           },
           next: [
             { tool: 'l5k_lint', why: 'Lint the .L5K the migration wizard writes from this project before Studio imports it.' },
@@ -391,5 +612,210 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     },
   }
 
-  return [assessTool, lintTool, slcReadTool]
+  const compareTool: ToolDefinition = {
+    name: 'migration_compare',
+    description:
+      'Compare an RSLogix 500 project read headlessly with the Logix .L5X export the migration produced: matched ladder files and routines, rung totals, symbol and data-file coverage, indirect addressing that survived, and every difference classified expected, real or cosmetic. Read-only; it does not claim runtime equivalence.',
+    parameters: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'The RSLogix 500 .RSS or .ACH project.' },
+        logix: { type: 'string', description: 'The .L5X Studio exported after importing the migrated project.' },
+      },
+      required: ['source', 'logix'],
+      additionalProperties: false,
+    },
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
+    async execute(args, exec) {
+      try {
+        const source = stringArg(args, 'source')
+        const logixPath = stringArg(args, 'logix')
+        const extension = extensionOf(source)
+        if (extension !== 'rss' && extension !== 'ach') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(source)} is not an .RSS or .ACH file.`,
+            'Pass the RSLogix 500 project itself; the comparison reads it headlessly.',
+          )
+        }
+        if (extensionOf(logixPath) !== 'l5x') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(logixPath)} is not an .L5X export.`,
+            'Pass the .L5X Studio exported after the import, not the .L5K; the .L5K is checked by l5k_lint.',
+          )
+        }
+        const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
+        const sourceStat = await fs.stat(sourceTarget, exec.signal)
+        if (sourceStat === undefined) {
+          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS or .ACH path; this tool does not create files.')
+        }
+        const logixBytes = await readFile(fs, logixPath, exec)
+        let logixText = new TextDecoder('utf-8').decode(logixBytes)
+        if (logixText.startsWith('\uFEFF')) logixText = logixText.slice(1)
+        const project = await readSlcProject(sourceTarget.displayPath, { rungs: 200, symbols: 500, dataFiles: true })
+        const logix = readLogix(logixText)
+        const comparison = compareSides(legacySideOf(project), logix)
+        const real = comparison.differences.filter(difference => difference.kind === 'real')
+        const expected = comparison.differences.filter(difference => difference.kind === 'expected')
+        const cosmetic = comparison.differences.filter(difference => difference.kind === 'cosmetic')
+        return {
+          summary: `${baseName(source)} vs ${baseName(logixPath)}: ${comparison.matched.length} file(s) matched, ${comparison.rungTotals.matchedLegacy}/${comparison.rungTotals.legacy} legacy rung(s) accounted for; ${real.length} real, ${expected.length} expected, ${cosmetic.length} cosmetic difference(s).`,
+          data: {
+            source: { file: source, project: project.projectName },
+            logix: { file: logixPath, controller: logix.controller, revision: logix.revision, routines: logix.routines.length, tags: logix.tags.length },
+            matched: comparison.matched,
+            rung_totals: comparison.rungTotals,
+            missing_in_logix: comparison.missingInLogix,
+            extra_routines: comparison.extraRoutines,
+            symbols: comparison.symbols,
+            data_files: comparison.dataFiles,
+            indirect_in_logix: comparison.indirectReferencesInLogix,
+            differences: comparison.differences,
+            checks: { real: real.length, expected: expected.length, cosmetic: cosmetic.length },
+          },
+          next: [
+            { tool: 'migration_plan', why: 'Record each real difference as an exception, and the build that proves the fix as evidence.' },
+            { tool: 'draft_rung', why: 'Rewrite the rungs a real difference points at, one rung at a time, then build to prove it.' },
+          ],
+          coverage: COVERAGE,
+        }
+      } catch (error) {
+        return failure(error)
+      }
+    },
+  }
+
+  const planTool: ToolDefinition = {
+    name: 'migration_plan',
+    description:
+      'Record and read the resumable migration plan: the five decisions the intake interview must answer, the eight gated stages, the exceptions that remain and the evidence for each claim. Actions: create, read (default), answer, stage, exception. Writes only the plan JSON.',
+    parameters: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['create', 'read', 'answer', 'stage', 'exception'], description: 'What to do with the plan. Defaults to read.' },
+        path: { type: 'string', description: 'Plan path. Defaults to .migration/plan.json under the workspace.' },
+        source: { type: 'string', description: 'For create: the legacy project path the plan is about.' },
+        family: { type: 'string', enum: ['slc500', 'plc5', 'unknown'], description: 'For create: which legacy family the source is.' },
+        target_cpu: { type: 'string', description: 'Target Logix controller, for example 5069-L330ER.' },
+        target_revision: { type: 'integer', minimum: 1, maximum: 40, description: 'Target firmware revision; 37 or newer can be proved by an offline build.' },
+        io_strategy: { type: 'string', description: 'Keep the 1746 chassis behind a 1747-AENTR bridge, or replace the modules.' },
+        hmi_scope: { type: 'string', description: 'Whether the HMI is in scope now or recorded for later.' },
+        acceptance: { type: 'string', description: 'What proves the migration is accepted.' },
+        stage: { type: 'string', enum: ['intake', 'assess', 'convert', 'lint', 'import', 'compare', 'engineer', 'commission'], description: 'For stage: which stage to set.' },
+        status: { type: 'string', enum: ['pending', 'active', 'done', 'blocked'], description: 'For stage: the state to record. Defaults to done.' },
+        evidence: { type: 'string', description: 'For stage: one line of evidence per entry, newline separated.' },
+        note: { type: 'string', description: 'For stage: a short note that survives with the stage.' },
+        id: { type: 'string', description: 'For exception: a stable id, for example "indirect-N7-130".' },
+        kind: { type: 'string', description: 'For exception: what class of difference it is.' },
+        description: { type: 'string', description: 'For exception: the difference in one sentence.' },
+        rationale: { type: 'string', description: 'For exception: why it is accepted or how it was fixed.' },
+        exception_status: { type: 'string', enum: ['open', 'accepted', 'fixed'], description: 'For exception: its state. Defaults to open.' },
+      },
+      additionalProperties: false,
+    },
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
+    async execute(args, exec) {
+      try {
+        const action = typeof args.action === 'string' && args.action !== '' ? args.action : 'read'
+        const path = planPathOf(args, exec)
+        const decisions = (): ReturnType<typeof readDecisions> => {
+          try {
+            return readDecisions(args)
+          } catch (error) {
+            throw new MigrationError(
+              'INVALID_DECISION',
+              error instanceof Error ? error.message : String(error),
+              'Answer in sentences: target_cpu, io_strategy, hmi_scope and acceptance need text, target_revision a whole number 1..40.',
+            )
+          }
+        }
+        if (action === 'create') {
+          const source = stringArg(args, 'source')
+          const family = typeof args.family === 'string' && (['slc500', 'plc5', 'unknown'] as const).includes(args.family as PlanSource['family'])
+            ? args.family as PlanSource['family']
+            : 'unknown'
+          let plan = createPlan({ project: baseName(source).replace(/\.[^.]+$/u, ''), source: { family, path: source } })
+          plan = withDecisions(plan, decisions())
+          await writePlanFile(fs, path, plan, exec)
+          return {
+            summary: `Created ${path} for ${plan.project}: ${openQuestions(plan).length} interview question(s) remain before the plan is unblocked.`,
+            data: { path, plan, state: planState(plan), next: nextAction(plan) },
+            next: [{ tool: 'migration_plan', why: 'Answer the open decisions with action "answer"; the plan stays blocked until all five are recorded.' }],
+            coverage: COVERAGE,
+          }
+        }
+        const plan = await readPlanFile(fs, path, exec)
+        if (action === 'read') {
+          return {
+            summary: `${summarize(plan)} ${nextAction(plan)}`,
+            data: { path, plan, state: planState(plan), stage: currentStage(plan), next: nextAction(plan), open_questions: openQuestions(plan) },
+            next: [{ tool: 'migration_plan', why: 'Answer a decision or move a stage with its evidence.' }],
+            coverage: COVERAGE,
+          }
+        }
+        if (action === 'answer') {
+          const answered = withDecisions(plan, decisions())
+          await writePlanFile(fs, path, answered, exec)
+          return {
+            summary: `Recorded the decisions in ${path}; ${openQuestions(answered).length} question(s) still open. ${nextAction(answered)}`,
+            data: { path, plan: answered, state: planState(answered), open_questions: openQuestions(answered) },
+            next: [{ tool: 'migration_plan', why: 'Read the plan, then move the stage you just finished.' }],
+            coverage: COVERAGE,
+          }
+        }
+        if (action === 'stage') {
+          const stage = typeof args.stage === 'string' ? args.stage as StageId : undefined
+          if (stage === undefined || !['intake', 'assess', 'convert', 'lint', 'import', 'compare', 'engineer', 'commission'].includes(stage)) {
+            throw new MigrationError(
+              'INVALID_ARGUMENT',
+              'stage is required for action "stage".',
+              'Pass one of intake, assess, convert, lint, import, compare, engineer, commission.',
+            )
+          }
+          const status = typeof args.status === 'string' ? args.status as StageStatus : 'done'
+          if (!['pending', 'active', 'done', 'blocked'].includes(status)) {
+            throw new MigrationError('INVALID_ARGUMENT', `Unknown stage status ${status}.`, 'Pass pending, active, done or blocked.')
+          }
+          const evidence = typeof args.evidence === 'string' ? args.evidence.split(/\r?\n/u).map(line => line.trim()).filter(line => line !== '') : []
+          const note = typeof args.note === 'string' && args.note.trim() !== '' ? args.note.trim() : undefined
+          const staged = withStage(plan, stage, status, evidence, note)
+          await writePlanFile(fs, path, staged, exec)
+          return {
+            summary: `Stage ${stage} recorded as ${status} in ${path}${evidence.length === 0 ? '' : `, with ${evidence.length} evidence line(s)`}. ${nextAction(staged)}`,
+            data: { path, plan: staged, state: planState(staged), stage: currentStage(staged) },
+            next: [{ tool: 'migration_plan', why: 'Move the next gate, or record the difference that blocks this one as an exception.' }],
+            coverage: COVERAGE,
+          }
+        }
+        if (action === 'exception') {
+          const id = stringArg(args, 'id')
+          const kind = stringArg(args, 'kind')
+          const description = stringArg(args, 'description')
+          const rationale = stringArg(args, 'rationale')
+          const exceptionStatus = typeof args.exception_status === 'string' && ['open', 'accepted', 'fixed'].includes(args.exception_status)
+            ? args.exception_status as PlanExceptionStatus
+            : 'open'
+          const excepted = withException(plan, { id, kind, description, rationale, status: exceptionStatus })
+          await writePlanFile(fs, path, excepted, exec)
+          const open = excepted.exceptions.filter(entry => entry.status === 'open').length
+          return {
+            summary: `Recorded exception ${id} as ${exceptionStatus} in ${path}; ${open} exception(s) remain open. ${nextAction(excepted)}`,
+            data: { path, plan: excepted, state: planState(excepted), open_exceptions: open },
+            next: [{ tool: 'migration_compare', why: 'Re-run the comparison after a fix, and record the build as evidence.' }],
+            coverage: COVERAGE,
+          }
+        }
+        throw new MigrationError(
+          'INVALID_ARGUMENT',
+          `Unknown action ${action}.`,
+          'Pass create, read, answer, stage or exception.',
+        )
+      } catch (error) {
+        return failure(error)
+      }
+    },
+  }
+
+  return [assessTool, lintTool, slcReadTool, compareTool, planTool]
 }

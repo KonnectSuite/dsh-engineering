@@ -9,10 +9,13 @@ A migration is an evidence exercise, not a conversion button. The wizard maps
 most of the program and silently changes the rest; your job is to find out which
 is which before anyone commissions the machine.
 
-## 1. Interview before touching anything
+## 1. Interview and start the plan
 
-Ask these four questions and record the answers in the plan. Do **not** assume a
-default: a wrong target controller or I/O strategy invalidates every later proof.
+Create the plan first, then answer its five decisions with `migration_plan`:
+target controller and revision, I/O strategy, HMI scope, acceptance bar. Do **not**
+assume a default: a wrong target controller or I/O strategy invalidates every
+later proof. The plan refuses to advance while a decision is missing, and its
+next_action field names what to do next.
 
 1. **Target** — which controller and firmware revision? A revision 37 or newer
    target can be proved by an offline build; older targets can only be proved as
@@ -31,8 +34,10 @@ Call `migration_assess` on the file the customer gave you.
 
 - `.RSS` / `.ACH` are containers only RSLogix 500 reads. Call `slc_read` first:
   it opens the project hidden through the 32-bit automation server and returns
-  program files, rung counts and rung text without a window. Use `.SLC` only as
-  the fallback when RSLogix 500 is not installed.
+  program files, rung counts, rung text, symbol records and data files without a
+  window. Ask for the symbol and data-file detail when you need the addressing
+  truth; thousands of symbol records are normal. Use `.SLC` only as the fallback
+  when RSLogix 500 is not installed.
 - `.SLC` is the text export: count ladder files, rungs, racks and data files, and
   treat it as the read-only truth for the old logic.
 - `.L5K` is what the wizard writes: assess it, then `l5k_lint` it.
@@ -59,6 +64,12 @@ edit the customer's `.RSS` or the wizard's first output.
 ## 4. Prove the import
 
 - Open the imported `.L5X`, not only the `.ACD`.
+- Run `migration_compare` with the legacy `.RSS` and the imported `.L5X`. It
+  matches ladder file names to routines, counts rungs (a terminal `END` is not
+  logic), maps symbols and data files, and classifies each difference as
+  expected, real or cosmetic. On Slitter 8 the honest result was 64 files
+  matched, 1,398 of 1,426 rungs, 259 indirect expressions still to engineer and
+  two real differences; quote the numbers you actually get, not these.
 - Compare before and after: program layout, task rates, tag count, module count,
   data files carried verbatim.
 - Run the structural checks and triage them by migration cause. A migrated SLC

@@ -54,6 +54,8 @@ export interface FsService {
   resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget>
   stat(target: FsTarget, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(target: FsTarget, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
+  /** Write one UTF-8 text file; the provider creates missing parents. */
+  writeText(target: FsTarget, text: string, signal?: AbortSignal): Promise<void>
 }
 
 /** The services a composition must provide before this plugin loads. */
