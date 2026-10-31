@@ -2,8 +2,9 @@
 
 The `migration` row is a support row for one job: bringing an RSLogix 500 /
 SLC 500 (or PLC-5) program into Studio 5000 with evidence instead of hope. It
-adds two offline tools and the `slc-to-logix-migration` skill. It never drives
-RSLogix 500, Studio or a controller.
+adds three tools and the `slc-to-logix-migration` skill. It never drives Studio or
+a controller; the one vendor call it makes opens RSLogix 500 hidden, reads the
+project and closes it without saving.
 
 ## Tools
 
@@ -11,10 +12,16 @@ RSLogix 500, Studio or a controller.
 |---|---|---|
 | `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH` | what the file is, which controller it describes, and what a migration still has to change |
 | `l5k_lint` | `.L5K` | will Studio import this file, and what will bite after it does |
+| `slc_read` | `.RSS`, `.ACH` | program files, rung counts and rung text read headlessly through the 32-bit RSLogix 500 automation server |
 
 `migration_assess` on an `.L5K` returns the lint verdict too. `l5k_lint` exists
 separately because the finding list is the repair worklist: rule, severity and
 1-based line, ordered by line.
+
+`slc_read` is the only tool here that starts another program, and even it opens
+the project hidden, reads it and closes it without saving: no window, no click,
+no change to the customer's file. It needs RSLogix 500 on a 32-bit-capable
+host; without it, Save As `.SLC` and read the export instead.
 
 ## Formats
 
@@ -22,7 +29,7 @@ separately because the finding list is the repair worklist: rule, severity and
 |---|---|---|
 | `.L5K` | the text the migration wizard writes and Studio imports (UTF-16LE from Studio, UTF-8 after a hand repair) | decodes either encoding, reads declarations, lints the text |
 | `.SLC` | RSLogix 500 text export: `LADDER n`, `% Rung: n %`, SLC ASCII mnemonics, `DATA B3:0` tables | counts ladder files, rungs, racks and data files; read-only truth for the old logic |
-| `.RSS`, `.ACH` | OLE2 containers RSLogix 500 owns | states the size and that RSLogix 500 must Save As `.SLC` or run the wizard |
+| `.RSS`, `.ACH` | OLE2 containers RSLogix 500 owns | `slc_read` opens them hidden and returns program files and rung text; `migration_assess` states what the container is and what a conversion still needs |
 
 An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 `open_project`.
@@ -46,8 +53,9 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 1. **Interview.** Target controller and firmware, I/O strategy (keep the 1746
    chassis behind a 1747-AENTR or replace it), HMI scope, validation window. The
    skill asks; nothing assumes a default.
-2. **Assess the source** with `migration_assess`. `.RSS` needs RSLogix 500 to
-   write `.SLC` first.
+2. **Assess the source** with `migration_assess`. For an `.RSS`, `slc_read`
+   lists the program files and rung counts headlessly first, so the estimate and
+   the later comparison use the real structure rather than a guess.
 3. **Convert.** RSLogix 500's migration wizard (Save As Logix Designer / `.ACD`)
    writes an `.L5K`. `Failed to export to ACD` is a lint result, not a dead end.
 4. **Lint and repair** the `.L5K` with `l5k_lint`. Repair a copy; never the

@@ -199,7 +199,7 @@
       "package": "packages/migration",
       "tools": {
         "product": "Migration",
-        "count": 2,
+        "count": 3,
         "inReference": true
       },
       "skill": {
@@ -208,7 +208,8 @@
         "budget": 8000,
         "allow": [
           "migration_assess",
-          "l5k_lint"
+          "l5k_lint",
+          "slc_read"
         ]
       },
       "probe": "migration_assess",

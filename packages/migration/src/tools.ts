@@ -11,6 +11,7 @@
  */
 
 import { decodeL5k, lintL5k, type L5kFacts, type L5kFinding } from './engine/l5k.ts'
+import { readSlcProject } from './engine/rslogix500.ts'
 import { jsonText, type FsService, type ToolDefinition, type ToolExec } from './core/tool.ts'
 
 /** The largest file these tools will read. */
@@ -34,14 +35,13 @@ class MigrationError extends Error {
 
 /** The failure envelope every engineering tool returns. */
 function failure(error: unknown): unknown {
-  const code = error instanceof MigrationError
-    ? error.code
-    : typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string'
-      ? (error as { code: string }).code
-      : 'INTERNAL'
+  const structural = typeof error === 'object' && error !== null ? error as { code?: unknown; fix?: unknown } : {}
+  const code = typeof structural.code === 'string'
+    ? structural.code
+    : 'INTERNAL'
   const message = error instanceof Error ? error.message : String(error)
-  const fix = error instanceof MigrationError
-    ? error.fix
+  const fix = typeof structural.fix === 'string'
+    ? structural.fix
     : 'Correct the path and retry; these tools read local files only.'
   return { error: { code, message, fix, candidates: [] } }
 }
@@ -330,5 +330,66 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     },
   }
 
-  return [assessTool, lintTool]
+  const slcReadTool: ToolDefinition = {
+    name: 'slc_read',
+    description:
+      'Read an RSLogix 500 .RSS or .ACH project headlessly through its 32-bit automation server: program files with rung counts, the controller revision and optionally rung text. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 on the 32-bit host.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Absolute path to the RSLogix 500 project, for example "RSS 500 Programs\\Slitter8.RSS".' },
+        rungs: { type: 'integer', description: 'How many rung texts to include, 0 to 200. Defaults to 0 for counts only.', minimum: 0, maximum: 200 },
+      },
+      required: ['path'],
+      additionalProperties: false,
+    },
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
+    async execute(args, exec) {
+      try {
+        const path = stringArg(args, 'path')
+        const extension = extensionOf(path)
+        if (extension !== 'rss' && extension !== 'ach') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(path)} is not an .RSS or .ACH file.`,
+            'Pass the RSLogix 500 project itself; a saved .SLC text export is read by migration_assess, and the .L5K the wizard writes by l5k_lint.',
+          )
+        }
+        const target = await fs.resolve(path, { cwd: exec.cwd })
+        const stat = await fs.stat(target, exec.signal)
+        if (stat === undefined) {
+          throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .RSS or .ACH path; this tool does not create files.')
+        }
+        const requested = typeof args.rungs === 'number' ? args.rungs : 0
+        const project = await readSlcProject(target.displayPath, { rungs: requested })
+        const name = baseName(path)
+        const ladderFiles = project.files.filter(file => file.type === 1)
+        const host = project.version === '' ? 'an unknown RSLogix 500 version' : `RSLogix 500 ${project.version}`
+        return {
+          summary: `${name}: ${project.projectName === '' ? 'unnamed project' : project.projectName} on ${host} — ${project.files.length} program file(s) (${ladderFiles.length} ladder), ${project.totalRungs} rung(s)${project.truncated ? ', rung text truncated' : ''}. Opened hidden, read-only, not saved.`,
+          data: {
+            file: path,
+            format: extension.toUpperCase(),
+            host: { product: 'RSLogix 500', version: project.version },
+            project: { name: project.projectName, revision: project.revision },
+            program_files: project.files,
+            ladder_files: ladderFiles.length,
+            total_rungs: project.totalRungs,
+            rungs: project.rungs,
+            truncated: project.truncated,
+            checks: { headless: true, read_only: true, saved: false },
+          },
+          next: [
+            { tool: 'l5k_lint', why: 'Lint the .L5K the migration wizard writes from this project before Studio imports it.' },
+            { tool: 'migration_assess', why: 'Compare the source counts with the migrated project.' },
+          ],
+          coverage: COVERAGE,
+        }
+      } catch (error) {
+        return failure(error)
+      }
+    },
+  }
+
+  return [assessTool, lintTool, slcReadTool]
 }

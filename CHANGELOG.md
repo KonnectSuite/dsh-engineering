@@ -20,8 +20,13 @@
   `l5k_lint` reports every import blocker with its line number (`TRAILING_COMMA`, `DUPLICATE_TAG`,
   `ROUTINE_UNBALANCED`, `INDIRECT_ADDRESS`, `PLACEHOLDER_TAG`, and a revision gate note). The row also carries
   the `slc-to-logix-migration` skill: interview the engineer for target, I/O strategy, HMI scope and validation
-  window, never edit the source `.RSS`, and never call a file migrated while a finding is open. Offline readers
-  only — no controller, no vendor automation, no write.
+  window, never edit the source `.RSS`, and never call a file migrated while a finding is open. Read-only in every
+  path: no controller, and the one vendor start (`slc_read`) opens hidden and never saves.
+- **`slc_read` reads an RSLogix 500 project headlessly.** It starts the 32-bit Windows PowerShell, opens the
+  `.RSS`/`.ACH` hidden through `RSLogix500.Application`, walks `ProgramFiles` and asks each ladder file for its
+  rung text, then quits without saving: no window appears and no click is needed. On the Slitter 8 project it
+  returns 76 program files (69 ladder), 1,495 rungs and rung text in about four seconds. It needs RSLogix 500 on
+  the host and refuses a path that is not a file; without the vendor product, Save As `.SLC` and read that export.
 
 ### Changed
 

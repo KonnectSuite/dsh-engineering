@@ -29,8 +29,10 @@ default: a wrong target controller or I/O strategy invalidates every later proof
 
 Call `migration_assess` on the file the customer gave you.
 
-- `.RSS` / `.ACH` are containers: RSLogix 500 must Save As `.SLC`, or run the
-  migration wizard. Nothing here can read the binary.
+- `.RSS` / `.ACH` are containers only RSLogix 500 reads. Call `slc_read` first:
+  it opens the project hidden through the 32-bit automation server and returns
+  program files, rung counts and rung text without a window. Use `.SLC` only as
+  the fallback when RSLogix 500 is not installed.
 - `.SLC` is the text export: count ladder files, rungs, racks and data files, and
   treat it as the read-only truth for the old logic.
 - `.L5K` is what the wizard writes: assess it, then `l5k_lint` it.

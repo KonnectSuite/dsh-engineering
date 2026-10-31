@@ -53,6 +53,7 @@
     "start_plc_trend",
     "migration_assess",
     "l5k_lint",
+    "slc_read",
     "engineering_reference",
     "engineering_profile",
     "ftview_open",
@@ -244,7 +245,8 @@
       "group": "Migration",
       "tools": [
         "migration_assess",
-        "l5k_lint"
+        "l5k_lint",
+        "slc_read"
       ]
     },
     {
