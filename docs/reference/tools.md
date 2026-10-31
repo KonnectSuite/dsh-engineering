@@ -635,11 +635,11 @@ Assess a legacy RSLogix 500 export and lint the .L5K a migration wizard writes. 
 
 #### `migration_assess`
 
-Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS or .ACH container it states what the binary needs (RSLogix 500, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.
+Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `path` | string | yes | Path to the legacy file to assess (.l5k, .slc, .rss or .ach). |
+| `path` | string | yes | Path to the legacy file to assess (.l5k, .slc, .rss, .ach or .rsp). |
 
 #### `l5k_lint`
 
@@ -651,11 +651,11 @@ Lint a Logix .L5K file before Studio imports it: report every import blocker (tr
 
 #### `slc_read`
 
-Read an RSLogix 500 .RSS or .ACH project headlessly through its 32-bit automation server: program files with rung counts, the controller revision, optionally rung text, the symbol table and the data-file table. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 on the 32-bit host.
+Read an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project headlessly through its 32-bit automation server: program files with rung counts, the controller revision, optionally rung text, the symbol table and the data-file table. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 or RSLogix 5 on the 32-bit host.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `path` | string | yes | Absolute path to the RSLogix 500 project, for example "RSS 500 Programs\Slitter8.RSS". |
+| `path` | string | yes | Absolute path to the legacy project, for example "RSS 500 Programs\Slitter8.RSS" or "RSS 5 Programs\EN-032.RSP". |
 | `rungs` | integer | no | How many rung texts to include, 0 to 200. Defaults to 0 for counts only. |
 | `symbols` | integer | no | How many symbol records to include, 0 to 5000. Defaults to 0 for the count only. |
 | `data_files` | boolean | no | Include the data-file table (number, type, name, element count). Defaults to false. |
@@ -666,7 +666,7 @@ Compare an RSLogix 500 project read headlessly with the Logix .L5X export the mi
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `source` | string | yes | The RSLogix 500 .RSS or .ACH project. |
+| `source` | string | yes | The legacy .RSS, .ACH or .RSP project. |
 | `logix` | string | yes | The .L5X Studio exported after importing the migrated project. |
 
 #### `migration_plan`

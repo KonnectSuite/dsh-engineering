@@ -1,10 +1,11 @@
 /**
- * Read an RSLogix 500 `.RSS` / `.ACH` project headlessly.
+ * Read an RSLogix 500 `.RSS`/`.ACH` or RSLogix 5 `.RSP` project headlessly.
  *
- * RSLogix 500 exposes a 32-bit COM automation server (`RSLogix500.Application`).
- * A 64-bit process cannot activate it, so this module starts the 32-bit Windows
- * PowerShell, opens the project hidden, walks `ProgramFiles` and asks each ladder
- * file for its rung text, then quits. No window is shown and nothing is saved.
+ * Both products expose a 32-bit COM automation server (`RSLogix500.Application`
+ * and `RSLogix5.Application`). A 64-bit process cannot activate either, so this
+ * module starts the 32-bit Windows PowerShell, opens the project hidden, walks
+ * `ProgramFiles` and asks each ladder file for its rung text, then quits. No
+ * window is shown and nothing is saved.
  *
  * Read-only by design: `SaveAs` and the insert methods exist, but a migration is
  * proved by reading the old program and comparing it with the new one, and a
@@ -57,6 +58,7 @@ export interface SlcDataFile {
 export interface SlcProject {
   readonly path: string
   readonly version: string
+  readonly product: string
   readonly projectName: string
   readonly revision: number | undefined
   readonly files: readonly SlcFile[]
@@ -121,7 +123,9 @@ $symbolLimit = [int]$env:DSH_SLC_SYMBOLS
 $withData = $env:DSH_SLC_DATA -eq '1'
 
 try {
-  $app = New-Object -ComObject RSLogix500.Application
+  $progId = [string]$env:DSH_SLC_PROGID
+  if ($progId -eq '') { $progId = 'RSLogix500.Application' }
+  $app = New-Object -ComObject $progId
 } catch {
   Fail 'SLC_COM_UNAVAILABLE' ($_.Exception.Message)
 }
@@ -237,6 +241,8 @@ try { $revision = [int]$project.Revision } catch {}$projectName = ''
 try { $projectName = [string]$project.Name } catch {}
 $version = ''
 try { $version = [string]$app.Version } catch {}
+$productName = ''
+try { $productName = [string]$app.Name } catch {}
 
 try { $app.Quit($true, $false) } catch {}
 
@@ -274,6 +280,11 @@ interface RawAnswer {
   readonly truncated?: boolean
 }
 
+/** The automation ProgID for the legacy product that owns this file. */
+function progIdOf(path: string): string {
+  return /\.rsp$/iu.test(path) ? 'RSLogix5.Application' : 'RSLogix500.Application'
+}
+
 /** Run the read script in the 32-bit host and return its answer. */
 async function runRead(
   path: string,
@@ -295,6 +306,7 @@ async function runRead(
         env: {
           ...process.env,
           DSH_SLC_PATH: script,
+          DSH_SLC_PROGID: progIdOf(path),
           DSH_SLC_LIMIT: String(limit),
           DSH_SLC_RUNGS: withRungs ? '1' : '0',
           DSH_SLC_SYMBOLS: String(symbolLimit),
@@ -316,8 +328,8 @@ async function runRead(
       child.kill()
       finish(undefined, new SlcError(
         'SLC_TIMEOUT',
-        `RSLogix 500 did not answer within ${Math.round(timeoutMs / 1000)} seconds for ${path}.`,
-        'Close any RSLogix 500 window (including a hidden instance from an earlier attempt), then retry; a first open of a large project can take a minute.',
+        `The legacy editor did not answer within ${Math.round(timeoutMs / 1000)} seconds for ${path}.`,
+        'Close any legacy-editor window (including a hidden instance from an earlier attempt), then retry; a first open of a large project can take a minute.',
       ))
     }, timeoutMs)
     child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString('utf8') })
@@ -374,19 +386,19 @@ export async function readSlcProject(
     throw new SlcError(
       'SLC_FILE_MISSING',
       `No file at ${path}.`,
-      'Pass the path of an existing .RSS or .ACH project; the reader only opens that file.',
+      'Pass the path of an existing .RSS, .ACH or .RSP project; the reader only opens that file.',
     )
   }
   const answer = await runRead(path, limit, withRungs, symbolLimit, withData, options.timeoutMs ?? DEFAULT_TIMEOUT_MS)
   if (answer.ok !== true) {
     const code = typeof answer.code === 'string' ? answer.code : 'SLC_READ_FAILED'
-    const message = typeof answer.message === 'string' ? answer.message : 'RSLogix 500 could not read the project.'
+    const message = typeof answer.message === 'string' ? answer.message : 'The legacy editor could not read the project.'
     const fix = code === 'SLC_COM_UNAVAILABLE'
-      ? 'Install and activate RSLogix 500 on this 32-bit automation host; without it, Save As .SLC in the application and read the text export instead.'
+      ? 'Install and activate RSLogix 500 or RSLogix 5 on this 32-bit automation host; without it, Save As .SLC (or run the migration wizard) and read that output instead.'
       : code === 'SLC_NO_PROJECT'
-        ? 'Check that the file is an RSLogix 500 project this installation can open, and that no RSLogix 500 dialog is waiting.'
+        ? 'Check that the file is a project this installation can open (an .RSS/.ACH for RSLogix 500, an .RSP for RSLogix 5), and that no legacy-editor dialog is waiting.'
         : code === 'SLC_OPEN_FAILED'
-          ? 'Close any RSLogix 500 window, check the file is not locked or corrupt, then retry.'
+          ? 'Close any RSLogix window, check the file is not locked or corrupt, then retry.'
           : 'Correct the path and retry; the reader only opens the project and never saves it.'
     throw new SlcError(code, message, fix)
   }
@@ -417,6 +429,7 @@ export async function readSlcProject(
   return {
     path,
     version: answer.version ?? '',
+    product: progIdOf(path) === 'RSLogix5.Application' ? 'RSLogix 5' : 'RSLogix 500',
     projectName: answer.projectName ?? '',
     revision: typeof answer.revision === 'number' ? answer.revision : undefined,
     files,

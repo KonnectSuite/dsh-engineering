@@ -370,7 +370,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
       try {
         const path = stringArg(args, 'path')
         if (extensionOf(path) !== 'l5k') {
-          throw new MigrationError('UNSUPPORTED_FORMAT', `${baseName(path)} is not an .L5K file.`, 'Call migration_assess for an .SLC or .RSS file; l5k_lint reads only the text Studio imports.')
+          throw new MigrationError('UNSUPPORTED_FORMAT', `${baseName(path)} is not an .L5K file.`, 'Call migration_assess for an .SLC, .RSS or .RSP file; l5k_lint reads only the text Studio imports.')
         }
         const bytes = await readFile(fs, path, exec)
         const { text, encoding } = decodeL5k(bytes)
@@ -407,11 +407,11 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
   const assessTool: ToolDefinition = {
     name: 'migration_assess',
     description:
-      'Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS or .ACH container it states what the binary needs (RSLogix 500, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.',
+      'Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Path to the legacy file to assess (.l5k, .slc, .rss or .ach).' },
+        path: { type: 'string', description: 'Path to the legacy file to assess (.l5k, .slc, .rss, .ach or .rsp).' },
       },
       required: ['path'],
       additionalProperties: false,
@@ -477,7 +477,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
           }
         }
 
-        if (extension === 'rss' || extension === 'ach') {
+        if (extension === 'rss' || extension === 'ach' || extension === 'rsp') {
           const bytes = await readFile(fs, path, exec)
           const target = await fs.resolve(path, { cwd: exec.cwd })
           try {
@@ -534,8 +534,8 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
 
         throw new MigrationError(
           'UNSUPPORTED_FORMAT',
-          `${name} is not an .L5K, .SLC, .RSS or .ACH file.`,
-          'Pass the file the migration writes (.L5K) or the RSLogix 500 export (.SLC, .RSS, .ACH).',
+          `${name} is not an .L5K, .SLC, .RSS, .ACH or .RSP file.`,
+          'Pass the file the migration writes (.L5K) or the legacy export (.SLC, .RSS, .ACH, .RSP).',
         )
       } catch (error) {
         return failure(error)
@@ -546,11 +546,11 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
   const slcReadTool: ToolDefinition = {
     name: 'slc_read',
     description:
-      'Read an RSLogix 500 .RSS or .ACH project headlessly through its 32-bit automation server: program files with rung counts, the controller revision, optionally rung text, the symbol table and the data-file table. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 on the 32-bit host.',
+      'Read an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project headlessly through its 32-bit automation server: program files with rung counts, the controller revision, optionally rung text, the symbol table and the data-file table. The project is opened hidden, read only and closed without saving, so no window appears and no click is needed. Requires RSLogix 500 or RSLogix 5 on the 32-bit host.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Absolute path to the RSLogix 500 project, for example "RSS 500 Programs\\Slitter8.RSS".' },
+        path: { type: 'string', description: 'Absolute path to the legacy project, for example "RSS 500 Programs\\Slitter8.RSS" or "RSS 5 Programs\\EN-032.RSP".' },
         rungs: { type: 'integer', description: 'How many rung texts to include, 0 to 200. Defaults to 0 for counts only.', minimum: 0, maximum: 200 },
         symbols: { type: 'integer', description: 'How many symbol records to include, 0 to 5000. Defaults to 0 for the count only.', minimum: 0, maximum: 5000 },
         data_files: { type: 'boolean', description: 'Include the data-file table (number, type, name, element count). Defaults to false.' },
@@ -563,17 +563,17 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
       try {
         const path = stringArg(args, 'path')
         const extension = extensionOf(path)
-        if (extension !== 'rss' && extension !== 'ach') {
+        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
           throw new MigrationError(
             'UNSUPPORTED_FORMAT',
-            `${baseName(path)} is not an .RSS or .ACH file.`,
+            `${baseName(path)} is not an .RSS, .ACH or .RSP file.`,
             'Pass the RSLogix 500 project itself; a saved .SLC text export is read by migration_assess, and the .L5K the wizard writes by l5k_lint.',
           )
         }
         const target = await fs.resolve(path, { cwd: exec.cwd })
         const stat = await fs.stat(target, exec.signal)
         if (stat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .RSS or .ACH path; this tool does not create files.')
+          throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
         }
         const requested = typeof args.rungs === 'number' ? args.rungs : 0
         const symbolsRequested = typeof args.symbols === 'number' ? args.symbols : 0
@@ -581,7 +581,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
         const project = await readSlcProject(target.displayPath, { rungs: requested, symbols: symbolsRequested, dataFiles: withData })
         const name = baseName(path)
         const ladderFiles = project.files.filter(file => file.type === 1)
-        const host = project.version === '' ? 'an unknown RSLogix 500 version' : `RSLogix 500 ${project.version}`
+        const host = project.version === '' ? 'an unknown legacy-editor version' : `${project.product === '' ? 'a legacy editor' : project.product} ${project.version}`
         return {
           summary: `${name}: ${project.projectName === '' ? 'unnamed project' : project.projectName} on ${host} — ${project.files.length} program file(s) (${ladderFiles.length} ladder), ${project.totalRungs} rung(s), ${project.symbolCount} symbol record(s), ${project.dataFileCount} data file(s)${project.truncated ? ', rung text truncated' : ''}. Opened hidden, read-only, not saved.`,
           data: {
@@ -619,7 +619,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     parameters: {
       type: 'object',
       properties: {
-        source: { type: 'string', description: 'The RSLogix 500 .RSS or .ACH project.' },
+        source: { type: 'string', description: 'The legacy .RSS, .ACH or .RSP project.' },
         logix: { type: 'string', description: 'The .L5X Studio exported after importing the migrated project.' },
       },
       required: ['source', 'logix'],
@@ -631,7 +631,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
         const source = stringArg(args, 'source')
         const logixPath = stringArg(args, 'logix')
         const extension = extensionOf(source)
-        if (extension !== 'rss' && extension !== 'ach') {
+        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
           throw new MigrationError(
             'UNSUPPORTED_FORMAT',
             `${baseName(source)} is not an .RSS or .ACH file.`,
@@ -648,7 +648,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
         const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
         const sourceStat = await fs.stat(sourceTarget, exec.signal)
         if (sourceStat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS or .ACH path; this tool does not create files.')
+          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
         }
         const logixBytes = await readFile(fs, logixPath, exec)
         let logixText = new TextDecoder('utf-8').decode(logixBytes)

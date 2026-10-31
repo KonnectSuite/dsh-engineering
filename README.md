@@ -59,7 +59,7 @@ bundle.
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
-| **SLC 500 to Logix migration** | 5 | all on | none; reads an RSLogix 500 project hidden if RSLogix 500 is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
+| **SLC 500 to Logix migration** | 5 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
 
 Tool groups, by product:
 
@@ -68,7 +68,7 @@ Tool groups, by product:
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
-- **Migration** — 5 tools and the `slc-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH hidden through the RSLogix 500 automation server and returns program files and rung text without a window; `migration_assess` reads an .SLC, .RSS/.ACH or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
+- **Migration** — 5 tools and the `slc-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level

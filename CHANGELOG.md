@@ -25,6 +25,9 @@
   rung text, then quits without saving: no window appears and no click is needed. On the Slitter 8 project it
   returns 76 program files (69 ladder), 1,495 rungs and rung text in about four seconds. It needs RSLogix 500 on
   the host and refuses a path that is not a file; without the vendor product, Save As `.SLC` and read that export.
+- **`slc_read` reads a PLC-5 `.RSP` too.** RSLogix 5 exposes the same automation surface, so the reader picks
+  `RSLogix5.Application` for an `.RSP` and leaves the rest of the walk unchanged: on the staged EN-032 program it
+  returns 53 program files (38 ladder), 358 rungs, 2,206 symbol records and 141 data files, hidden and unsaved.
 - **`migration_compare` scores the converted project against the legacy one.** It matches ladder file names to
   routines, counts rungs with the terminal `END` left out, maps symbol records and data files to tags, and
   classifies each difference as expected, real or cosmetic. On Slitter 8 it reports 64 matched files, 1,398 of

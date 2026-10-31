@@ -13,7 +13,7 @@ project and closes it without saving.
 | `migration_plan` | `.migration/plan.json` | the interview decisions, the stage evidence and the exceptions, in one resumable file |
 | `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH` | what the file is, which controller it describes, and what a migration still has to change |
 | `l5k_lint` | `.L5K` | will Studio import this file, and what will bite after it does |
-| `slc_read` | `.RSS`, `.ACH` | program files, rung counts, rung text, symbols and data files read headlessly through the 32-bit RSLogix 500 automation server |
+| `slc_read` | `.RSS`, `.ACH`, `.RSP` | program files, rung counts, rung text, symbols and data files read headlessly through the 32-bit RSLogix 500 or RSLogix 5 automation server |
 | `migration_compare` | `.RSS`, `.ACH` + `.L5X` | which legacy ladder files reached which routines, how many rungs survived, which symbols and data files were carried, and which differences are real |
 
 `migration_assess` on an `.L5K` returns the lint verdict too. `l5k_lint` exists
@@ -22,8 +22,10 @@ separately because the finding list is the repair worklist: rule, severity and
 
 `slc_read` is the only tool here that starts another program, and even it opens
 the project hidden, reads it and closes it without saving: no window, no click,
-no change to the customer's file. It needs RSLogix 500 on a 32-bit-capable
-host; without it, Save As `.SLC` and read the export instead.
+no change to the customer's file. It needs RSLogix 500 (for `.RSS`/`.ACH`) or
+RSLogix 5 (for `.RSP`) on a 32-bit-capable host; without it, Save As `.SLC` and
+read the export instead. On a staged PLC-5 program it returned 53 program files
+(38 ladder), 358 rungs, 2,206 symbol records and 141 data files in a few seconds.
 
 `migration_compare` reads the legacy side the same headless way. It treats a
 file's terminal `END` rung as the end marker, not as logic, and it only expects
@@ -45,7 +47,7 @@ answered, and `next_action` names the one thing to do next.
 |---|---|---|
 | `.L5K` | the text the migration wizard writes and Studio imports (UTF-16LE from Studio, UTF-8 after a hand repair) | decodes either encoding, reads declarations, lints the text |
 | `.SLC` | RSLogix 500 text export: `LADDER n`, `% Rung: n %`, SLC ASCII mnemonics, `DATA B3:0` tables | counts ladder files, rungs, racks and data files; read-only truth for the old logic |
-| `.RSS`, `.ACH` | OLE2 containers RSLogix 500 owns | `slc_read` opens them hidden and returns program files, rung text, symbols and data files; `migration_assess` states what the container is and what a conversion still needs |
+| `.RSS`, `.ACH`, `.RSP` | OLE2 containers RSLogix 500 (`.RSS`, `.ACH`) or RSLogix 5 (`.RSP`) owns | `slc_read` opens them hidden and returns program files, rung text, symbols and data files; `migration_assess` states what the container is and what a conversion still needs |
 
 An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 `open_project`.

@@ -32,7 +32,8 @@ next_action field names what to do next.
 
 Call `migration_assess` on the file the customer gave you.
 
-- `.RSS` / `.ACH` are containers only RSLogix 500 reads. Call `slc_read` first:
+- `.RSS` / `.ACH` (RSLogix 500) and `.RSP` (RSLogix 5) are containers only their
+  own product reads. Call `slc_read` first:
   it opens the project hidden through the 32-bit automation server and returns
   program files, rung counts, rung text, symbol records and data files without a
   window. Ask for the symbol and data-file detail when you need the addressing
