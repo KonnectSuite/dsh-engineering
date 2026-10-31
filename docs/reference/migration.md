@@ -7,6 +7,33 @@ drives Studio or a controller; the one vendor call it makes opens RSLogix 500
 (or RSLogix 5 for a PLC-5 `.RSP`) hidden, reads the project and closes it
 without saving.
 
+## End-to-end flow
+
+```mermaid
+flowchart TD
+  A["1 Plan and interview<br/>migration_plan create"] --> B["2 Assess the source<br/>migration_assess / slc_read"]
+  B --> C["3 Convert (GUI)<br/>RSLogix 500/5 Save As → Logix Designer ACD"]
+  C --> D["4 Lint and repair<br/>l5k_lint"]
+  D --> E["5 Import and compare<br/>migration_compare + run_checks"]
+  E --> F["6 Resolve markers<br/>migration_resolve"]
+  F --> G["7 Report<br/>migration_report"]
+  G --> H{"Open items left?"}
+  H -- "decisions (placeholder tag, I/O image, retarget)" --> I["8 Engineer exceptions<br/>plan: accepted / fixed"]
+  H -- "none" --> J["9 Commission<br/>build-verified or import-verified"]
+  I --> J
+```
+
+| Stage | Gate to leave it | Artifact it leaves |
+|---|---|---|
+| intake | all five decisions answered | `plan.json` with source hash |
+| assess | headless read or lint completed | risk list, counts |
+| convert | wizard wrote an `.ACD` (engineer's choices) | `.ACD`, optional `.l5k` |
+| lint | no `error` findings | repaired `.L5K` copy |
+| import | project opens in Studio | `.L5X` export |
+| compare | every real difference named | comparison table |
+| engineer | each exception `accepted` or `fixed` | corrected `.L5X`, plan evidence |
+| commission | acceptance bar met (rev 37+ build, or import-verified) | `.docx`/`.md` report + golden trio |
+
 ## Tools
 
 | Tool | Reads | Answers |
