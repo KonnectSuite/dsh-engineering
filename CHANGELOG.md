@@ -13,6 +13,10 @@
   organizer lists — 256 routines across the CT9, CT10, CT8, Slitter and PLC-5-migrated fixtures plus the Century SLC
   migration — in one browser and applies the same assertions to each, so a ladder shape that only occurs in an
   unscheduled program or a migrated routine cannot slip through.
+- **A rung answers for itself.** Right-clicking a rung opens its own menu - ask Arya about that rung, watch every
+  tag it touches in one action, show or hide its NeutralText, copy its source, or ask Arya for a new rung comment -
+  instead of the operand menu with the rung text pasted into it. The prompt names the program, routine and rung, so
+  the answer is about the rung a reader pointed at.
 - **The pane is driven, not only read.** `npm run e2e:actions` clicks and types with a real browser: a click focuses an
   instruction, arrow keys walk the rung, a rung number selects its rung, the source view shows the exported
   NeutralText, the organizer filter narrows the tree, the tag table opens and sends a tag to the offline watch pane, the

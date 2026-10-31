@@ -677,7 +677,7 @@ function L5xBody(props) {
     setFocusedRung(number);
     setInspector(void 0);
   };
-  const contextFor = (event, text, symbol, instruction) => {
+  const contextFor = (event, text, symbol, instruction, rung) => {
     event.preventDefault();
     if (instruction !== void 0) setFocused(instruction);
     setContext({
@@ -685,8 +685,31 @@ function L5xBody(props) {
       y: event.clientY,
       text,
       ...symbol === void 0 ? {} : { symbol },
-      ...instruction === void 0 ? {} : { instruction }
+      ...instruction === void 0 ? {} : { instruction },
+      ...rung === void 0 ? {} : { rung }
     });
+  };
+  const rungSymbols = (number) => {
+    const rung = selected?.rungs.find((item) => item.number === number);
+    if (rung === void 0) return [];
+    const segments = ladderSegments(rung.text);
+    if (segments === null) return [];
+    const found = [];
+    const walk = (list) => {
+      for (const segment of list) {
+        if ("paths" in segment) {
+          for (const path of segment.paths) walk(path);
+          continue;
+        }
+        for (const operand of displayOperands(segment.mnemonic, segment.operands)) {
+          const symbol = operand.trim();
+          if (symbol === "" || symbol === "?" || /^-?\d/u.test(symbol)) continue;
+          found.push(symbol);
+        }
+      }
+    };
+    walk(segments);
+    return [...new Set(found)];
   };
   if (request === void 0) return null;
   if (isAcd) return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: L5xBody_default.status, role: "status", children: [
@@ -1297,10 +1320,43 @@ function L5xBody(props) {
         " ",
         context.instruction.rung
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
-        setChatUnavailable(!ask(resourceAddress, context.instruction === void 0 ? `Context: ${context.text}` : `Explain ${context.text} at ${current?.program}/${current?.routine} rung ${context.instruction.rung} using the offline L5X engineering tools. Identify symbols, scope, and evidence. Do not assume exported values are live.`));
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: L5xBody_default.menuHeading, children: [
+        t("rung"),
+        " ",
+        context.rung,
+        " \xB7 ",
+        current?.program,
+        "/",
+        current?.routine
+      ] }),
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "ask-rung", onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Explain rung ${context.rung} of ${current?.program}/${current?.routine} in this offline L5X export. Its NeutralText is:
+${context.text}
+Name every symbol it touches, say which values the export recorded, and do not present a saved value as the controller's current state.`));
         setContext(void 0);
-      }, children: context.instruction === void 0 ? t("ask") : t("askInstruction") }),
+      }, children: t("askRung") }),
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "watch-rung", onClick: () => {
+        const symbols = rungSymbols(context.rung ?? -1);
+        setWatch((previous) => [...previous, ...symbols.filter((symbol) => !previous.includes(symbol))]);
+        setBottomPane("watch");
+        setContext(void 0);
+      }, children: t("watchRung") }),
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        setShowSource(!showSource);
+        setContext(void 0);
+      }, children: showSource ? t("hideNeutralText") : t("showNeutralText") }),
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Propose a new rung comment for rung ${context.rung} of ${current?.program}/${current?.routine} in this L5X export, in the voice the surrounding comments already use. Show the exact before/after text and where it would be written. Do not connect online or download.`));
+        setContext(void 0);
+      }, children: t("editRungComment") }),
+      context.instruction === void 0 && context.rung === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Context: ${context.text}`));
+        setContext(void 0);
+      }, children: t("ask") }),
+      context.instruction !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Explain ${context.text} at ${current?.program}/${current?.routine} rung ${context.instruction?.rung} using the offline L5X engineering tools. Identify symbols, scope, and evidence. Do not assume exported values are live.`));
+        setContext(void 0);
+      }, children: t("askInstruction") }),
       context.instruction?.mnemonic.toUpperCase() === "JSR" && selectedProgram?.routines.some((routine) => routine.name === displayOperands("JSR", context.instruction?.operands ?? "")[0]) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         "button",
         {
@@ -1315,7 +1371,7 @@ function L5xBody(props) {
           children: t("openCalledRoutine")
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+      context.rung === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
         find(context.symbol ?? context.text);
       }, children: t("references") }),
       context.symbol !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -1338,12 +1394,16 @@ function L5xBody(props) {
         void navigator.clipboard.writeText(context.symbol ?? "");
         setContext(void 0);
       }, children: t("copyOperand") }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+      context.rung === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
         void navigator.clipboard.writeText(context.text);
         setContext(void 0);
       }, children: context.instruction === void 0 ? t("copy") : t("copyInstruction") }),
       context.instruction !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
         void navigator.clipboard.writeText(selected?.rungs.find((rung) => rung.number === context.instruction?.rung)?.text ?? context.text);
+        setContext(void 0);
+      }, children: t("copyRung") }),
+      context.rung !== void 0 && context.instruction === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        void navigator.clipboard.writeText(context.text);
         setContext(void 0);
       }, children: t("copyRung") }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
@@ -1458,7 +1518,7 @@ function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, 
       "data-l5x-rung": rung.number,
       style: { "--l5x-band": `${band}px` },
       onContextMenu: (event) => {
-        onContext(event, rung.text);
+        onContext(event, rung.text, void 0, void 0, rung.number);
       },
       children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
@@ -1474,7 +1534,7 @@ function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, 
             onContextMenu: (event) => {
               event.stopPropagation();
               onFocusRung(rung.number);
-              onContext(event, rung.text);
+              onContext(event, rung.text, void 0, void 0, rung.number);
             },
             children: rung.number
           }
@@ -1752,6 +1812,11 @@ var en = {
   copyInstruction: "Copy instruction",
   copyRung: "Copy rung source",
   openCalledRoutine: "Open called routine",
+  askRung: "Ask Arya about rung",
+  watchRung: "Watch every tag on this rung",
+  editRungComment: "Ask Arya to change the rung comment",
+  showNeutralText: "Show NeutralText",
+  hideNeutralText: "Hide NeutralText",
   controllerFault: "Controller Fault Handler",
   powerUp: "Power-Up Handler",
   motionGroups: "Motion Groups",
@@ -1877,6 +1942,11 @@ var zh = {
   copyInstruction: "\u590D\u5236\u6307\u4EE4",
   copyRung: "\u590D\u5236\u68AF\u7EA7\u6E90\u4EE3\u7801",
   openCalledRoutine: "\u6253\u5F00\u8C03\u7528\u7684\u4F8B\u7A0B",
+  askRung: "\u8BE2\u95EE Arya \u6B64\u68AF\u7EA7",
+  watchRung: "\u76D1\u89C6\u6B64\u68AF\u7EA7\u4E0A\u7684\u6240\u6709\u6807\u7B7E",
+  editRungComment: "\u8BF7 Arya \u4FEE\u6539\u68AF\u7EA7\u6CE8\u91CA",
+  showNeutralText: "\u663E\u793A\u4E2D\u6027\u6587\u672C",
+  hideNeutralText: "\u9690\u85CF\u4E2D\u6027\u6587\u672C",
   controllerFault: "\u63A7\u5236\u5668\u6545\u969C\u5904\u7406\u7A0B\u5E8F",
   powerUp: "\u4E0A\u7535\u5904\u7406\u7A0B\u5E8F",
   motionGroups: "\u8FD0\u52A8\u7EC4",

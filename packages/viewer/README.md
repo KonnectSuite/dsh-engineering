@@ -46,7 +46,9 @@ Three more entry points cover what the case table cannot:
 - `npm run e2e:actions` (`test/render/interactions.mjs`) drives the pane the way an engineer does:
   click focuses an instruction, arrow keys walk the rung, a rung number selects its rung, the source
   view shows the exported NeutralText, the organiser filter narrows the tree, the tag table opens and
-  sends a tag to the offline watch pane, the bottom panes switch, and no console output appears.
+  sends a tag to the offline watch pane, an operand menu opens where the pointer was and watches its
+  tag, a rung opens its own menu and watching it adds every tag the rung touches, the bottom panes
+  switch, and no console output appears.
 - `test/render/e2e.mjs` renders one routine and writes a screenshot; `test/render/diag.mjs` dumps the
   measurement; `test/render/probe.mjs` dumps one instruction's computed style.
 

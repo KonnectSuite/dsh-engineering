@@ -157,7 +157,46 @@ async function scenario(tab) {
   })
   record('a tag can be sent to the watch pane', watched && added !== null && watchCount !== null && !/\(0\)/u.test(watchCount), `menu ${String(added)}, watch tab ${String(watchCount)}`)
 
-  // 7. The bottom panes switch to the cross-reference list.
+  // 7. A rung answers for itself: right-clicking it offers the rung's own
+  // actions, and watching the rung adds every tag it touches at once.
+  // The tag table replaced the ladder a moment ago, so go back to the routine
+  // before asking a rung for its menu.
+  await tab.evaluate(name => {
+    const row = [...document.querySelectorAll('[data-l5x-project-view] button')]
+      .find(element => (element.textContent ?? '').replace(/^\W+/u, '').trim().startsWith(`${name} `))
+    row?.click()
+  }, routine)
+  await tab.waitForTimeout(400)
+  const rungMenu = await tab.evaluate(() => {
+    const rung = document.querySelector('[data-l5x-rung]')
+    if (rung === null) return null
+    const box = rung.getBoundingClientRect()
+    rung.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: Math.round(box.left) + 60, clientY: Math.round(box.top) + 80 }))
+    return true
+  })
+  await tab.waitForTimeout(250)
+  const rungItems = await tab.evaluate(() => {
+    const menu = document.querySelector('[role="menu"]')
+    if (menu === null) return null
+    const heading = menu.querySelector('div')?.textContent ?? ''
+    const watch = menu.querySelector('[data-l5x-menu="watch-rung"]')
+    return { heading, ask: menu.querySelector('[data-l5x-menu="ask-rung"]') !== null, watch: watch !== null, count: menu.querySelectorAll('button').length }
+  })
+  record('a rung opens its own menu', rungMenu === true && rungItems !== null && rungItems.ask && rungItems.watch, JSON.stringify(rungItems))
+  const rungWatch = await tab.evaluate(() => {
+    const button = document.querySelector('[data-l5x-menu="watch-rung"]')
+    if (button === null) return null
+    button.click()
+    return true
+  })
+  await tab.waitForTimeout(300)
+  const rungWatchCount = await tab.evaluate(() => {
+    const tab = [...document.querySelectorAll('button')].find(element => /^Offline watch/u.test((element.textContent ?? '').trim()))
+    return tab === null ? null : (tab.textContent ?? '').trim()
+  })
+  record('watching a rung adds every tag it touches', rungWatch === true && rungWatchCount !== null && Number.parseInt(/\((\d+)\)/u.exec(rungWatchCount)?.[1] ?? '0', 10) >= 2, `watch tab ${String(rungWatchCount)}`)
+
+  // 8. The bottom panes switch to the cross-reference list.
   const panes = await tab.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find(element => /^Cross References/ui.test((element.textContent ?? '').trim()))
     if (button === undefined) return null
@@ -167,7 +206,7 @@ async function scenario(tab) {
   await tab.waitForTimeout(200)
   record('bottom panes switch', panes !== null, 'no Cross References tab')
 
-  // 8. No console noise accumulated while all of that happened.
+  // 9. No console noise accumulated while all of that happened.
   const logged = await tab.evaluate(() => window.__CONSOLE__ ?? [])
   record('no console output while interacting', logged.length === 0, `${logged.length} message(s): ${logged.slice(0, 2).join(' | ')}`)
 

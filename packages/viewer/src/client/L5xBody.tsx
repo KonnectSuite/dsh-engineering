@@ -29,6 +29,8 @@ type ContextItem = {
   readonly text: string
   readonly symbol?: string
   readonly instruction?: FocusedInstruction
+  /** Set when the menu was opened on the rung itself, not on one of its parts. */
+  readonly rung?: number
 }
 type Inspector = { readonly kind: 'tag'; readonly tag: Tag } | { readonly kind: 'module'; readonly module: Module } | undefined
 type BottomPane = 'diagnostics' | 'search' | 'watch'
@@ -226,12 +228,37 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
     setFocusedRung(number)
     setInspector(undefined)
   }
-  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction) => {
+  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number): void => {
     event.preventDefault()
     if (instruction !== undefined) setFocused(instruction)
     setContext({ x: event.clientX, y: event.clientY, text,
       ...(symbol === undefined ? {} : { symbol }),
-      ...(instruction === undefined ? {} : { instruction }) })
+      ...(instruction === undefined ? {} : { instruction }),
+      ...(rung === undefined ? {} : { rung }) })
+  }
+  /**
+   * Every symbol a rung mentions, in rung order. A rung's own text is the only
+   * source that stays correct when the export's tag table is incomplete, so this
+   * reads the same segments the ladder draws rather than the tag index.
+   */
+  const rungSymbols = (number: number): string[] => {
+    const rung = selected?.rungs.find(item => item.number === number)
+    if (rung === undefined) return []
+    const segments = ladderSegments(rung.text)
+    if (segments === null) return []
+    const found: string[] = []
+    const walk = (list: readonly LadderSegment[]): void => {
+      for (const segment of list) {
+        if ('paths' in segment) { for (const path of segment.paths) walk(path); continue }
+        for (const operand of displayOperands(segment.mnemonic, segment.operands)) {
+          const symbol = operand.trim()
+          if (symbol === '' || symbol === '?' || /^-?\d/u.test(symbol)) continue
+          found.push(symbol)
+        }
+      }
+    }
+    walk(segments)
+    return [...new Set(found)]
   }
   if (request === undefined) return null
   if (isAcd) return <div className={css.status} role="status">{t('acd')}
@@ -452,11 +479,33 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
     </section>
     {context !== undefined && createPortal(<MenuSurface className={css.menu} role="menu" style={{ left: context.x, top: context.y }} onPointerDown={(event) => { event.stopPropagation() }}>
       {context.instruction !== undefined && <div className={css.menuHeading}>{context.instruction.mnemonic} · {t('rung')} {context.instruction.rung}</div>}
-      <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
-        setChatUnavailable(!ask(resourceAddress, context.instruction === undefined ? `Context: ${context.text}`
-          : `Explain ${context.text} at ${current?.program}/${current?.routine} rung ${context.instruction.rung} using the offline L5X engineering tools. Identify symbols, scope, and evidence. Do not assume exported values are live.`))
+      {context.rung !== undefined && context.instruction === undefined && <div className={css.menuHeading}>{t('rung')} {context.rung} · {current?.program}/{current?.routine}</div>}
+      {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-rung" onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain rung ${context.rung} of ${current?.program}/${current?.routine} in this offline L5X export. Its NeutralText is:\n${context.text}\nName every symbol it touches, say which values the export recorded, and do not present a saved value as the controller's current state.`))
         setContext(undefined)
-      }}>{context.instruction === undefined ? t('ask') : t('askInstruction')}</button>
+      }}>{t('askRung')}</button>}
+      {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="watch-rung" onClick={() => {
+        const symbols = rungSymbols(context.rung ?? -1)
+        setWatch(previous => [...previous, ...symbols.filter(symbol => !previous.includes(symbol))])
+        setBottomPane('watch')
+        setContext(undefined)
+      }}>{t('watchRung')}</button>}
+      {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        setShowSource(!showSource)
+        setContext(undefined)
+      }}>{showSource ? t('hideNeutralText') : t('showNeutralText')}</button>}
+      {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Propose a new rung comment for rung ${context.rung} of ${current?.program}/${current?.routine} in this L5X export, in the voice the surrounding comments already use. Show the exact before/after text and where it would be written. Do not connect online or download.`))
+        setContext(undefined)
+      }}>{t('editRungComment')}</button>}
+      {context.instruction === undefined && context.rung === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Context: ${context.text}`))
+        setContext(undefined)
+      }}>{t('ask')}</button>}
+      {context.instruction !== undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain ${context.text} at ${current?.program}/${current?.routine} rung ${context.instruction?.rung} using the offline L5X engineering tools. Identify symbols, scope, and evidence. Do not assume exported values are live.`))
+        setContext(undefined)
+      }}>{t('askInstruction')}</button>}
       {context.instruction?.mnemonic.toUpperCase() === 'JSR' && selectedProgram?.routines.some(routine =>
         routine.name === displayOperands('JSR', context.instruction?.operands ?? '')[0]) && <button
         type="button" role="menuitem" className={css.menuItem} onClick={() => {
@@ -464,7 +513,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
           if (called !== undefined) select(selectedProgram, called)
           setContext(undefined)
         }}>{t('openCalledRoutine')}</button>}
-      <button type="button" role="menuitem" className={css.menuItem} onClick={() => { find(context.symbol ?? context.text) }}>{t('references')}</button>
+      {context.rung === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => { find(context.symbol ?? context.text) }}>{t('references')}</button>}
       {context.symbol !== undefined && <button type="button" role="menuitem" className={css.menuItem}
         onClick={() => { addWatch(context.symbol ?? '') }}>{t('addWatch')}</button>}
       {context.symbol !== undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
@@ -475,9 +524,13 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
         void navigator.clipboard.writeText(context.symbol ?? '')
         setContext(undefined)
       }}>{t('copyOperand')}</button>}
-      <button type="button" role="menuitem" className={css.menuItem} onClick={() => { void navigator.clipboard.writeText(context.text); setContext(undefined) }}>{context.instruction === undefined ? t('copy') : t('copyInstruction')}</button>
+      {context.rung === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => { void navigator.clipboard.writeText(context.text); setContext(undefined) }}>{context.instruction === undefined ? t('copy') : t('copyInstruction')}</button>}
       {context.instruction !== undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
         void navigator.clipboard.writeText(selected?.rungs.find(rung => rung.number === context.instruction?.rung)?.text ?? context.text)
+        setContext(undefined)
+      }}>{t('copyRung')}</button>}
+      {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        void navigator.clipboard.writeText(context.text)
         setContext(undefined)
       }}>{t('copyRung')}</button>}
       <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
@@ -630,17 +683,17 @@ function RungView({ rung, showSource, describeOperand, detailFor, resolveTimer, 
   readonly focusedRung: string | undefined
   readonly onFocusRung: (number: string) => void
   readonly onFocusInstruction: (instruction: FocusedInstruction) => void
-  readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction) => void
+  readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number) => void
   readonly t: PropsLocale<'sidebarL5x'>['t']
 }): ReactNode {
   const segments = ladderSegments(rung.text)
   const band = segments === null ? 24 : rungBand(segments, describeOperand)
   return <section className={`${css.rung} ${focusedRung === rung.number ? css.focusedRung : ''}`} data-rung={rung.number}
     data-l5x-rung={rung.number} style={{ '--l5x-band': `${band}px` } as CSSProperties}
-    onContextMenu={(event) => { onContext(event, rung.text) }}>
+    onContextMenu={(event) => { onContext(event, rung.text, undefined, undefined, rung.number) }}>
     <button type="button" className={css.rungNumber} aria-pressed={focusedRung === rung.number && focused === undefined}
       aria-label={`${t('focusRung')} ${rung.number}`} onClick={() => { onFocusRung(rung.number) }}
-      onContextMenu={(event) => { event.stopPropagation(); onFocusRung(rung.number); onContext(event, rung.text) }}>{rung.number}</button>
+      onContextMenu={(event) => { event.stopPropagation(); onFocusRung(rung.number); onContext(event, rung.text, undefined, undefined, rung.number) }}>{rung.number}</button>
     <div className={css.rungBody}>
       {rung.comment !== '' && <div className={css.comment} data-l5x-rung-comment>{rung.comment}</div>}
       {segments === null ? <code className={css.neutral}>{rung.text}</code> :
@@ -663,7 +716,7 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, r
   readonly resolveTimer: (value: string) => TimerState | undefined
   readonly focused: FocusedInstruction | undefined
   readonly onFocusInstruction: (instruction: FocusedInstruction) => void
-  readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction) => void
+  readonly onContext: (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number) => void
   readonly t: PropsLocale<'sidebarL5x'>['t']
 }): ReactNode {
   return <div className={`${css.path} ${depth > 0 ? css.nestedPath : ''}`}>{segments.map((segment, index) => 'paths' in segment
