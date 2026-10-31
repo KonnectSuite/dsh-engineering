@@ -128,6 +128,7 @@
 
 ## [0.70.0] - 2026-10-29
 
+- **A data file with no type letter is not called unmapped.** The comparator only claims files whose prefix could exist; PLC-5 I/O-structure files carry no letter and used to appear as ?0.
 ### Changed
 
 - **`ftview_validate` now says when apply will refuse the draft.** A vendor-schema error used to appear only as

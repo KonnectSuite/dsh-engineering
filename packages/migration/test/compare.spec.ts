@@ -73,6 +73,16 @@ describe('compareSides', () => {
     expect(comparison.differences.find(entry => entry.rule === 'SYMBOL_MISSING')?.kind).toBe('real')
   })
 
+  it('does not claim a data file that carries no type letter', () => {
+    const withTypeless = legacy()
+    const comparison = compareSides(
+      { ...withTypeless, dataFiles: [...withTypeless.dataFiles, { number: 46, type: '', name: '', elements: 4 }] },
+      readLogix(LOGIX),
+    )
+    expect(comparison.dataFiles.missing).toEqual([])
+    expect(comparison.differences.map(entry => entry.rule)).not.toContain('DATA_FILE_UNMAPPED')
+  })
+
   it('calls a ladder file with no routine a real difference', () => {
     const orphaned = legacy()
     const comparison = compareSides({ ...orphaned, files: [...orphaned.files, { name: 'PUSHBUTONS', rungs: 45 }] }, readLogix(LOGIX))

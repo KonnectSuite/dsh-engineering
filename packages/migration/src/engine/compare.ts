@@ -157,6 +157,7 @@ export function readLogix(text: string): LogixSide {
 /** Whether this data file is expected to become tags in the Logix project. */
 function migratableDataFile(file: LegacyDataFile): boolean {
   const type = file.type.toUpperCase()
+  if (!/^[A-Z]$/u.test(type)) return false
   return type !== 'I' && type !== 'O' && type !== 'S'
 }
 
