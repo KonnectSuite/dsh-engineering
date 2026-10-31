@@ -92,9 +92,24 @@ async function ensureVendor() {
   }
 }
 
-const PRIMITIVES = `window.__PRIMITIVES__ = {
-  MenuSurface: props => props.children ?? null,
-  MenuItem: props => props.children ?? null,
+/**
+ * The shell primitives the face imports, as the page provides them.
+ *
+ * `MenuSurface` is drawn rather than passed through: it is the portal a
+ * right-click opens, and a stub that only forwarded children would hide both the
+ * menu role and its position, which is exactly what the interaction run asserts.
+ * It is deliberately a plain element — the shell's own styling is not under test.
+ */
+const PRIMITIVES = `const primitivesReact = () => window.__REACT__
+window.__PRIMITIVES__ = {
+  MenuSurface: props => {
+    const { className, style, children, ...rest } = props
+    return primitivesReact().createElement('div', { ...rest, className, style, role: props.role ?? 'menu' }, children)
+  },
+  MenuItem: props => {
+    const { className, style, children, ...rest } = props
+    return primitivesReact().createElement('button', { type: 'button', ...rest, className, style }, children)
+  },
 }
 `
 

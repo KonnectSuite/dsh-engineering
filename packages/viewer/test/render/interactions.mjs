@@ -135,11 +135,17 @@ async function scenario(tab) {
     return true
   })
   await tab.waitForTimeout(300)
-  // The harness mounts the shipped face against the shell's real primitives
-  // except the menu surface, which is a plain passthrough, so the item is found
-  // by its locale label rather than by a menu role.
+  const menuAt = await tab.evaluate(() => {
+    const menu = document.querySelector('[role="menu"]')
+    if (menu === null) return null
+    const rect = menu.getBoundingClientRect()
+    return { left: Math.round(rect.left), top: Math.round(rect.top), items: menu.querySelectorAll('button').length }
+  })
+  record('the operand menu opens where the pointer was', menuAt !== null && menuAt.items > 0 && menuAt.left >= 0 && menuAt.left < 200, JSON.stringify(menuAt))
+  // The menu surface is the shell's primitive, mounted by the harness as a plain
+  // portal; the item is found by its locale label rather than by a menu role.
   const added = await tab.evaluate(() => {
-    const item = [...document.querySelectorAll('button')].find(element => /add to offline watch/iu.test(element.textContent ?? ''))
+    const item = [...document.querySelectorAll('[role="menu"] button')].find(element => /add to offline watch/iu.test(element.textContent ?? ''))
     if (item === undefined) return null
     item.click()
     return (item.textContent ?? '').trim()
