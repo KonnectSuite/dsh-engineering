@@ -16,6 +16,7 @@ PLC-5 `.RSP`) hidden, reads the project and closes it without saving.
 | `slc_read` | `.RSS`, `.ACH`, `.RSP` | program files, rung counts, rung text, symbols and data files read headlessly through the 32-bit RSLogix 500 or RSLogix 5 automation server |
 | `migration_compare` | `.RSS`, `.ACH`, `.RSP` + `.L5X` | which legacy ladder files reached which routines, how many rungs survived, which symbols and data files were carried, and which differences are real |
 | `migration_resolve` | `.RSS`, `.ACH`, `.RSP` + `.L5X` | every `PCE` marker and every `?` operand in the converted ladder, the legacy instruction behind each, and a proposed replacement marked mechanical or review |
+| `migration_report` | `.RSS`, `.ACH`, `.RSP` + `.L5X` (and optionally the corrected `.L5X`) | the report a person signs off from: the two programs side by side, the census before and after, the corrections rung by rung, and the open items that need a decision |
 
 `migration_assess` on an `.L5K` returns the lint verdict too. `l5k_lint` exists
 separately because the finding list is the repair worklist: rule, severity and
@@ -89,6 +90,22 @@ export to no markers and no unknown operands, and that file imports with 0
 warnings and 0 errors. Its build stops later, at `RxCMP_E_AUDIT_INVALIDOPTYPE`,
 which the SDK reports without naming the instruction.
 
+`migration_report` turns those facts into the document a customer reads. It pairs
+the legacy project, the wizard's `.L5X` and — when it exists — the corrected
+`.L5X`, then writes one file: the two programs side by side, the marker census by
+code with the legacy instruction behind each site, the corrections rung by rung
+(only the text around each change), the comparison in full, and a section of open
+items that are decisions rather than defects — a placeholder tag standing in for a
+module with no Logix equivalent, a legacy I/O image left as a plain tag array, an
+array indexed by a tag, sites still unanswered, legacy files with no counterpart,
+and a revision below 37. Name the output `.docx` and it is a formatted Word
+document (A4, banded tables, page numbers, no dependency and no vendor
+application); name it `.md` and it is the same content as plain text. On
+`SLITTER10_PLC1S0_08JUL2026_0953.RSS` the report reads 15 markers before and 0
+after, 55 rungs corrected, and 3 open items: the `SLOT12_1747_SDN_Placeholder`
+tag with its 33 logic references, `F[N7_120]` as a mechanical alias substitution,
+and the revision-31 ceiling the wizard left.
+
 `migration_plan` writes `.migration/plan.json` (schema 1): the project and source
 hash, five decisions (`target_cpu`, `target_revision`, `io_strategy`,
 `hmi_scope`, `acceptance`), eight stages (`intake`, `assess`, `convert`, `lint`,
@@ -161,13 +178,18 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
    rung replaced when the resolver offers one. Re-import and confirm the count
    fell; the review sites (MSG parameters, loop index, flattened expressions)
    stay in the plan as exception work.
-7. **Engineer the exceptions**, recording each in the plan as `accepted` or
+7. **Write the report** with `migration_report`, naming a `.docx` for the Word
+   document or `.md` for plain text: the census before and after, the corrections
+   rung by rung, and the open items a person decides (the placeholder tag and its
+   replacement module, the I/O image that has no owner yet, the array indexed by a
+   tag, the revision retarget).
+8. **Engineer the exceptions**, recording each in the plan as `accepted` or
    `fixed`, with the rung or project that proves it. Resolve indirect addressing
    and unmapped modules; a revision 37 or newer target allows an offline build
    proof.
-8. **Commission against the plan's acceptance bar**: build-verified or
+9. **Commission against the plan's acceptance bar**: build-verified or
    import-verified, every difference explained, and the golden trio (`.RSS`,
-   `.L5K`, `.L5X`) archived together.
+   `.L5K`, `.L5X`) archived together with the report.
 
 ## Limits
 
@@ -183,6 +205,9 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
   proposal is only mechanical because the legacy rung still records what the
   wizard dropped — where it does not, the site is review, and a made-up tag or
   operand fails the import instead of proving the conversion.
+- `migration_report` writes the report and nothing else; it reads the legacy
+  project and both exports, and its Word output carries no runtime claim the
+  Markdown copy does not.
 - Nothing in this row contacts a controller or writes a live tag.
 
 ## Related

@@ -1,19 +1,24 @@
 /**
- * The two migration tools: assess a legacy export, and lint the `.L5K` a
- * migration wizard produced.
+ * The migration tools: assess a legacy export, lint the `.L5K` a wizard
+ * produced, compare it with the migrated project, resolve what the conversion
+ * could not translate, and write the report a person signs off from.
  *
- * They are deliberately thin readers. Nothing here contacts a controller, runs
- * RSLogix 500, or claims a migration is correct: the tools describe what the
- * file says and what will stop Studio from importing it, so the engineer decides
- * with evidence in hand.
+ * They are deliberately thin readers. Only `migration_report` writes, and it
+ * writes the report alone — never the project. Nothing here contacts a
+ * controller, and nothing claims a migration is correct: the tools describe what
+ * the files say, so the engineer decides with evidence in hand.
  *
  * @module dsh-engineering-migration/tools
  */
+
+import { writeFile } from 'node:fs/promises'
 
 import { decodeL5k, lintL5k, type L5kFacts, type L5kFinding } from './engine/l5k.ts'
 import { readSlcProject, SlcError, type SlcProject } from './engine/rslogix500.ts'
 import { compareSides, readLogix, type LegacySide } from './engine/compare.ts'
 import { resolvePces } from './engine/pce.ts'
+import { buildMigrationReport } from './engine/report.ts'
+import { renderDocx } from './engine/docx.ts'
 import {
   createPlan,
   currentStage,
@@ -900,5 +905,159 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     },
   }
 
-  return [assessTool, lintTool, slcReadTool, compareTool, resolveTool, planTool]
+  const reportTool: ToolDefinition = {
+    name: 'migration_report',
+    description:
+      'Write the migration report a person reads before signing a conversion off: the two programs side by side, every PCE (program conversion error) marker and unknown "?" operand the wizard left with what it stands for, what a corrected export changed rung by rung, and the open items that need a human decision — a placeholder tag standing in for a module with no Logix equivalent (a 1747-SDN, say), a legacy I/O image kept as a plain tag array, an array indexed by a tag, sites still unanswered, legacy files with no counterpart, and a revision below the 37 an offline build needs. Writes a formatted Word document (.docx) or the same text as Markdown (.md), built from the legacy project, the wizard\'s .L5X and optionally the corrected .L5X; writes only the report.',
+    parameters: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'The legacy .RSS, .ACH or .RSP project the migration started from.' },
+        logix: { type: 'string', description: 'The .L5X Studio exported after importing the wizard\'s project.' },
+        corrected: { type: 'string', description: 'The .L5X after the markers were answered, when one exists; the report then shows what changed.' },
+        output: { type: 'string', description: 'Path for the report: ".docx" for the Word document, ".md" for Markdown. Example: "migration-report.docx".' },
+        title: { type: 'string', description: 'Heading to use instead of the controller type.' },
+        limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Rows per table before the rest are counted. Defaults to 20.' },
+        overwrite: { type: 'boolean', description: 'Replace an existing report at that path. Defaults to false, so a report is never lost by accident.' },
+      },
+      required: ['source', 'logix', 'output'],
+      additionalProperties: false,
+    },
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
+    async execute(args, exec) {
+      try {
+        const source = stringArg(args, 'source')
+        const logixPath = stringArg(args, 'logix')
+        const outputPath = stringArg(args, 'output')
+        const extension = extensionOf(source)
+        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(source)} is not an .RSS, .ACH or .RSP file.`,
+            'Pass the legacy project itself; the report pairs its rungs with the migrated export.',
+          )
+        }
+        for (const path of [logixPath, typeof args.corrected === 'string' ? args.corrected : undefined]) {
+          if (path === undefined || path.trim() === '') continue
+          if (extensionOf(path) !== 'l5x') {
+            throw new MigrationError(
+              'UNSUPPORTED_FORMAT',
+              `${baseName(path)} is not an .L5X export.`,
+              'Pass the .L5X Studio exported after the import; the .L5K the wizard writes has no markers in it.',
+            )
+          }
+        }
+        const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
+        const sourceStat = await fs.stat(sourceTarget, exec.signal)
+        if (sourceStat === undefined) {
+          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create the legacy project.')
+        }
+        const target = await fs.resolve(outputPath, { cwd: exec.cwd })
+        if (args.overwrite !== true) {
+          const existing = await fs.stat(target, exec.signal)
+          if (existing !== undefined) {
+            throw new MigrationError(
+              'REPORT_EXISTS',
+              `A file already exists at ${outputPath}.`,
+              'Pass a new path, or set overwrite to true when replacing a report this chat wrote.',
+            )
+          }
+        }
+        const preBytes = await readFile(fs, logixPath, exec)
+        let preText = new TextDecoder('utf-8').decode(preBytes)
+        if (preText.startsWith('\uFEFF')) preText = preText.slice(1)
+        const correctedPath = typeof args.corrected === 'string' && args.corrected.trim() !== '' ? args.corrected.trim() : undefined
+        let post: { file: string; bytes: number; text: string } | undefined
+        if (correctedPath !== undefined) {
+          const postBytes = await readFile(fs, correctedPath, exec)
+          let postText = new TextDecoder('utf-8').decode(postBytes)
+          if (postText.startsWith('\uFEFF')) postText = postText.slice(1)
+          post = { file: correctedPath, bytes: postBytes.length, text: postText }
+        }
+        const project = await readSlcProject(sourceTarget.displayPath, { rungs: 100_000, symbols: 0, dataFiles: true })
+        const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(args.limit, 500)) : 20
+        const report = buildMigrationReport({
+          sourceFile: source,
+          legacy: legacySideOf(project),
+          legacyRungs: project.rungs,
+          legacyProduct: project.product,
+          legacyRevision: project.revision,
+          legacyRungsRead: project.rungs.length,
+          legacyTruncated: project.truncated,
+          pre: { file: logixPath, bytes: preBytes.length, text: preText },
+          ...(post === undefined ? {} : { post }),
+          generatedAt: new Date().toISOString(),
+          limit,
+        })
+        const markdown = typeof args.title === 'string' && args.title.trim() !== ''
+          ? report.markdown.replace(/^# Migration report — .*$/mu, `# ${args.title.trim()}`)
+          : report.markdown
+        const { facts, comparison, pce } = report
+        const outputExtension = extensionOf(outputPath)
+        if (outputExtension !== 'md' && outputExtension !== 'markdown' && outputExtension !== 'docx') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(outputPath)} is not a .docx or .md path.`,
+            'Name the report with a .docx extension for the Word document a person signs, or .md for the plain-text copy.',
+          )
+        }
+        let written = facts.characters
+        let writtenUnit = 'character(s)'
+        try {
+          if (outputExtension === 'docx') {
+            const document = renderDocx(report.model, new Date())
+            await writeFile(target.displayPath, document)
+            written = document.length
+            writtenUnit = 'byte(s)'
+          } else {
+            await fs.writeText(target, markdown, exec.signal)
+          }
+        } catch (error) {
+          const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
+          throw new MigrationError(
+            'REPORT_UNWRITABLE',
+            `The report could not be written to ${outputPath}${code === undefined ? '' : ` (${String(code)})`}.`,
+            'Choose a path inside the workspace the chat can write, for example "migration-report.docx".',
+          )
+        }
+        const openItems: string[] = []
+        if (facts.placeholders.length > 0) openItems.push(`Placeholder tag(s) ${facts.placeholders.join(', ')} stand in for a module; the replacement is an engineering decision`)
+        if (facts.ioImages.length > 0) openItems.push(`The legacy I/O image is a plain tag array (${facts.ioImages.join(', ')}); the wiring route decides what it becomes`)
+        if (facts.indirect > 0) openItems.push(`${facts.indirect} array reference(s) are indexed by a tag; ${facts.indirectMechanical} are a mechanical alias substitution`)
+        if (facts.unknownOperandsAfter !== undefined && facts.unknownOperandsAfter > 0) openItems.push(`${facts.unknownOperandsAfter} rung(s) in the corrected export still carry an unknown operand`)
+        if (facts.markersAfter !== undefined && facts.markersAfter > 0) openItems.push(`${facts.markersAfter} conversion marker(s) in the corrected export are still unanswered`)
+        if (comparison.missingInLogix.length > 0) openItems.push(`${comparison.missingInLogix.length} legacy file(s) matched no routine`)
+        if (comparison.dataFiles.missing.length > 0) openItems.push(`${comparison.dataFiles.missing.length} data file(s) have no declared tag`)
+        if ((report.logix.revision ?? 0) < 37) openItems.push(`The project is at revision ${report.logix.revision ?? 'unknown'}; retarget it to 37 or newer before a build verdict`)
+        const markersAfter = facts.markersAfter === undefined ? '' : `, ${facts.markersAfter} after`
+        const correctedText = facts.corrections === 0 ? '' : ` ${facts.corrections} rung(s) corrected`
+        return {
+          summary: `Wrote ${outputPath} (${written} ${writtenUnit}): ${facts.markers} PCE marker(s) before${markersAfter}, ${facts.openItems} open item(s) for a person.${correctedText}`,
+          data: {
+            output: { file: outputPath, bytes: written, format: outputExtension === 'docx' ? 'docx' : 'markdown' },
+            source: { file: source, project: project.projectName, revision: project.revision },
+            logix: { file: logixPath, controller: report.logix.controller, revision: report.logix.revision },
+            facts,
+            open_items: openItems,
+            comparison: {
+              matched: comparison.matched.length,
+              rung_totals: comparison.rungTotals,
+              differences: comparison.differences,
+            },
+            pce: { counts: pce.counts },
+            checks: { headless: true, read_only_legacy: true, wrote: 'report only', rungs_read: project.rungs.length, truncated: project.truncated },
+          },
+          next: [
+            { tool: 'migration_resolve', why: 'Answer the mechanical sites first; the report names them per rung.' },
+            { tool: 'migration_plan', why: 'Record each open item as an exception with the decision that closes it.' },
+          ],
+          coverage: COVERAGE,
+        }
+      } catch (error) {
+        return failure(error)
+      }
+    },
+  }
+
+  return [assessTool, lintTool, slcReadTool, compareTool, resolveTool, reportTool, planTool]
 }

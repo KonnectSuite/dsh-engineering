@@ -45,6 +45,16 @@
   wizard flattened stay review, each with the reason. On EN049 it classified 214 sites, 201 of them answerable from
   the rung texts alone; applying those took 177 markers to 22 and 54 rungs with `?` to 9, and the file imported
   into Studio 5000 with no warnings and no errors.
+- **`migration_report` writes the document a customer signs.** It pairs the legacy project, the wizard's `.L5X` and
+  the corrected `.L5X`, then writes one file: the two programs side by side, the marker census by code with the
+  legacy instruction behind each site, the corrections rung by rung with only the text around each change, the
+  comparison in full, and the open items that are decisions rather than defects (a placeholder tag standing in for a
+  module with no Logix equivalent, a legacy I/O image left as a plain tag array, an array indexed by a tag, sites
+  still unanswered, a revision below 37). Name the output `.docx` for a formatted Word document and the row writes
+  the OOXML package itself — A4, navy headings, banded tables with a repeating header row, page numbers in the
+  footer, no dependency and no vendor application — or `.md` for the same content as plain text. On the Slitter 10
+  program it reads 15 markers before and 0 after, 55 rungs corrected and 3 open items, and it writes only the
+  report.
 
 ### Changed
 

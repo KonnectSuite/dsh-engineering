@@ -35,6 +35,8 @@ export interface Config {
   readonly compare?: boolean
   /** Whether the conversion-error resolver is registered. Defaults to true. */
   readonly resolve?: boolean
+  /** Whether the migration report writer is registered. Defaults to true. */
+  readonly report?: boolean
   /** Whether the plan tool is registered. Defaults to true. */
   readonly plan?: boolean
 }
@@ -53,6 +55,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
       if (definition.name === 'l5k_lint' && config.lint === false) continue
       if (definition.name === 'migration_compare' && config.compare === false) continue
       if (definition.name === 'migration_resolve' && config.resolve === false) continue
+      if (definition.name === 'migration_report' && config.report === false) continue
       if (definition.name === 'migration_plan' && config.plan === false) continue
       ctx.tools.register(definition)
     }
@@ -73,8 +76,10 @@ export { readSlcProject, SlcError } from './engine/rslogix500.ts'
 export { compareSides, matchRoutine, readLogix } from './engine/compare.ts'
 export { legacyCalls, logixCalls, pairRungs, repairOperands, resolvePces, stripMarkers } from './engine/pce.ts'
 export { STAGES, createPlan, parsePlan, planState, nextAction, openQuestions, summarize } from './engine/plan.ts'
+export { buildMigrationReport, correctionsBetween, indirectSites, readModules, readTags } from './engine/report.ts'
 export type { SlcFile, SlcProject, SlcRung, SlcDataFile, SlcSymbol } from './engine/rslogix500.ts'
 export type { L5kFacts, L5kFinding, L5kReport, L5kText, L5kEncoding } from './engine/l5k.ts'
 export type { Comparison, Difference, LegacySide, LogixSide, MatchedRoutine } from './engine/compare.ts'
 export type { LegacyRungRef, MarkerSite, OperandSite, PceReport, Resolution, ResolutionKind } from './engine/pce.ts'
+export type { Correction, IndirectSite, ReportFacts, ReportModule, ReportResult, ReportTag } from './engine/report.ts'
 export type { MigrationPlan, PlanDecisions, PlanException, PlanSource, StageId, StageStatus } from './engine/plan.ts'

@@ -56,6 +56,7 @@
     "slc_read",
     "migration_compare",
     "migration_resolve",
+    "migration_report",
     "migration_plan",
     "engineering_reference",
     "engineering_profile",
@@ -252,6 +253,7 @@
         "slc_read",
         "migration_compare",
         "migration_resolve",
+        "migration_report",
         "migration_plan"
       ]
     },

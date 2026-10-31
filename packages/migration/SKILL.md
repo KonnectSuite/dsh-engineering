@@ -101,7 +101,20 @@ half took 177 markers to 22 and 54 rungs with `?` to 9, and the file imported
 with no warnings; what was left was MSG parameters, one loop index and three
 flattened expressions.
 
-## 6. Report honestly
+## 6. Write the report
+
+`migration_report` writes the document the customer reads: the two programs side
+by side, the pre-correction census by code, the corrections rung by rung (only
+the text around each change), and the open items that are a decision rather than
+a defect — a placeholder tag standing in for a module with no Logix equivalent, a
+legacy I/O image left as a plain tag array, an array indexed by a tag, sites
+still unanswered, a revision below 37. Name the output `.docx` for the formatted
+Word document or `.md` for plain text; the two carry the same content.
+
+Quote the numbers it prints, and read its open items before you say the
+conversion is ready — the report is evidence for a signature, not the signature.
+
+## 7. Report honestly
 
 State the proof class (`build-verified` or `import-verified`), the exception list
 (indirect addressing, unmapped modules, HMI deferred), and the checks that could
