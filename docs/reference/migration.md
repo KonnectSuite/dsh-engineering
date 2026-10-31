@@ -259,6 +259,10 @@ such as `MIGRATION-PCE-02` is this bundle's own, not a clause number.
   project and both exports, and its Word output carries no runtime claim the
   Markdown copy does not.
 - Nothing in this row contacts a controller or writes a live tag.
+- A build error gets three probes, not a session. One hypothesis per build; when
+  the third does not move the error, the finding is written down — what the error
+  survived, the routine and rung the bisect narrowed it to — and handed on. The
+  vendor's own Errors tab names the rung the SDK message withholds.
 
 ## Related
 

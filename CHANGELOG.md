@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+### Changed
+
+- **A build error gets three probes, not a session.** The `legacy-to-logix-migration` skill and the row's reference
+  now say it plainly: one hypothesis per offline build, and when the third does not move the error, the finding is
+  written down — what the error survived, the routine and rung the bisect narrowed it to, the operands still suspect —
+  and handed on. A narrowed finding beats a fourth guess, and Studio 5000's own Errors tab names the rung the SDK
+  message withholds. The rule came out of CENTURY CABINETS, where the arity error survived an OSR repair, ASCII
+  stubbing, a dropped `JSR` operand and two operand swaps before the bisect left one rung.
+
 ## [0.72.0] - 2026-10-31
 
 ### Added

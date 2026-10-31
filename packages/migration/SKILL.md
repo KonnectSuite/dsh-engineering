@@ -131,10 +131,17 @@ State the proof class (`build-verified` or `import-verified`), the exception lis
 not run. Do not say "migrated" while a finding is open or a reference is
 unresolved. The machine is commissioned by an engineer, not by a green report.
 
+**A build error gets three probes, not a session.** One hypothesis per build.
+When the third does not move the error, stop and write the finding down: what the
+error survived, the routine and rung the bisect narrowed it to, and the operands
+still suspect. A narrowed finding handed on beats a fourth guess — and the
+vendor's own Errors tab names the rung the SDK message withholds.
+
 ## Safety rules
 
 - Never modify the source `.RSS`, `.SLC` or the first wizard `.L5K`.
 - Write new files; keep the original hash for the record.
 - No live controller writes during a migration review.
+- Three probes per defect, then report the finding and move on.
 - If the evidence is missing, stop and ask — a silent default is a commissioning
   risk, not a convenience.
