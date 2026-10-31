@@ -74,11 +74,13 @@ async function scenario(tab) {
   }
 
   // 2. Arrow keys walk the instructions of the routine.
+  const total = await tab.locator('[data-l5x-instruction]').count()
   const before = await tab.evaluate(() => document.activeElement?.getAttribute('data-instruction-id') ?? null)
   await tab.keyboard.press('ArrowRight')
   await tab.waitForTimeout(120)
   const after = await tab.evaluate(() => document.activeElement?.getAttribute('data-instruction-id') ?? null)
-  record('arrow key walks the rung', before !== null && after !== null && before !== after, `still on ${String(after)}`)
+  if (total < 2) record('arrow key walks the rung', true, `skipped: the routine has ${total} instruction(s), so there is nowhere to walk`)
+  else record('arrow key walks the rung', before !== null && after !== null && before !== after, `still on ${String(after)}`)
   await tab.keyboard.press('ArrowLeft')
   await tab.waitForTimeout(120)
 
@@ -94,7 +96,8 @@ async function scenario(tab) {
   // 4. The source toggle reveals the NeutralText the export carries.
   const toggled = await clickLabel(tab, 'Source')
   const source = await tab.evaluate(() => {
-    const code = [...document.querySelectorAll('code')].find(element => /(?:XIC|XIO|OTE|OTL|OTU|TON|MOVE|JSR|NE)\(/u.test(element.textContent ?? ''))
+    // any instruction call the export writes, not only the mnemonics this suite happens to name
+    const code = [...document.querySelectorAll('code')].find(element => /[A-Z][A-Z0-9]{1,7}\(/u.test(element.textContent ?? ''))
     return code === undefined ? null : (code.textContent ?? '').slice(0, 80)
   })
   record('source view shows NeutralText', toggled && source !== null, toggled ? 'no instruction text appeared' : 'no Source button')
@@ -213,7 +216,23 @@ async function scenario(tab) {
   })
   record('a routine row opens its own menu', routineMenu === true && routineItems !== null && routineItems.ask, JSON.stringify(routineItems))
 
-  // 9. The bottom panes switch to the cross-reference list.
+  // 9. A program row and a module row open menus of their own.
+  const openMenuOn = async (finder) => {
+    const found = await tab.evaluate(finder, routine)
+    await tab.waitForTimeout(250)
+    const items = await tab.evaluate(() => [...document.querySelectorAll('[role="menu"] [data-l5x-menu]')].map(item => item.getAttribute('data-l5x-menu')))
+    await tab.keyboard.press('Escape')
+    await tab.waitForTimeout(150)
+    return { found, items }
+  }
+  const fire = `const box = row.getBoundingClientRect(); row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: Math.round(box.left) + 20, clientY: Math.round(box.top) + 5 })); return true`
+  const programMenu = await openMenuOn(new Function('name', `return (() => { const selected = [...document.querySelectorAll('[data-l5x-project-view] button')].find(element => (element.textContent ?? '').replace(/^\\W+/u, '').trim().startsWith(name + ' ')); const row = selected?.closest('details')?.querySelector(':scope > summary'); if (row === undefined || row === null) return false; ${fire}; })()`))
+  record('a program row opens its own menu', programMenu.found && programMenu.items.includes('ask-program'), JSON.stringify(programMenu))
+  // A module row carries a catalog such as 1746-IB16 whether or not the export also names it.
+  const moduleMenu = await openMenuOn(new Function(`return (() => { const row = [...document.querySelectorAll('[data-l5x-project-view] button, [data-l5x-project-view] summary')].find(element => /\\b\\d{4}-[A-Z]/u.test((element.textContent ?? '').trim())); if (row === undefined) return false; ${fire}; })()`))
+  record('a module row opens its own menu', moduleMenu.found && moduleMenu.items.includes('ask-module'), JSON.stringify(moduleMenu))
+
+  // 10. The bottom panes switch to the cross-reference list.
   const panes = await tab.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find(element => /^Cross References/ui.test((element.textContent ?? '').trim()))
     if (button === undefined) return null

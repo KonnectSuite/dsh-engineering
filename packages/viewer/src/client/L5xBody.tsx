@@ -23,6 +23,11 @@ type FocusedInstruction = {
   readonly operands: string
   readonly symbol?: string
 }
+/** The organiser row a context menu was opened on, when it was not the ladder. */
+type ContextTarget =
+  | { readonly kind: 'routine'; readonly program: string; readonly routine: string }
+  | { readonly kind: 'program'; readonly program: string }
+  | { readonly kind: 'module'; readonly module: string }
 type ContextItem = {
   readonly x: number
   readonly y: number
@@ -31,8 +36,8 @@ type ContextItem = {
   readonly instruction?: FocusedInstruction
   /** Set when the menu was opened on the rung itself, not on one of its parts. */
   readonly rung?: number
-  /** Set when the menu was opened on a routine row in the organiser. */
-  readonly routineTarget?: { readonly program: string; readonly routine: string }
+  /** Set when the menu was opened on an organiser row rather than on the ladder. */
+  readonly target?: ContextTarget
 }
 type Inspector = { readonly kind: 'tag'; readonly tag: Tag } | { readonly kind: 'module'; readonly module: Module } | undefined
 type BottomPane = 'diagnostics' | 'search' | 'watch'
@@ -230,14 +235,14 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
     setFocusedRung(number)
     setInspector(undefined)
   }
-  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number, routineTarget?: { readonly program: string; readonly routine: string }): void => {
+  const contextFor = (event: React.MouseEvent, text: string, symbol?: string, instruction?: FocusedInstruction, rung?: number, target?: ContextTarget): void => {
     event.preventDefault()
     if (instruction !== undefined) setFocused(instruction)
     setContext({ x: event.clientX, y: event.clientY, text,
       ...(symbol === undefined ? {} : { symbol }),
       ...(instruction === undefined ? {} : { instruction }),
       ...(rung === undefined ? {} : { rung }),
-      ...(routineTarget === undefined ? {} : { routineTarget }) })
+      ...(target === undefined ? {} : { target }) })
   }
   /**
    * Every symbol a rung mentions, in rung order. A rung's own text is the only
@@ -280,14 +285,14 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   const orderedRoutines = (program: Program): Routine[] => [...program.routines].sort((left, right) =>
     left.name === program.main ? -1 : right.name === program.main ? 1 : left.name.localeCompare(right.name))
   const treeProgram = (program: Program): ReactNode => <details key={program.name} className={css.nested} open={filter !== '' || program.name === current?.program}>
-    <summary title={program.description}>{program.name}<small>{program.routines.length}</small></summary>
+    <summary title={program.description} onContextMenu={(event) => { contextFor(event, program.name, undefined, undefined, undefined, { kind: 'program', program: program.name }) }}>{program.name}<small>{program.routines.length}</small></summary>
     {(filter === '' || program.tags.some(tag => matches(tag.name))) && <button type="button" className={css.leafButton}
       onClick={() => { setChoice({ program: program.name, routine: program.main || program.routines[0]?.name || '' }); openTags('program', filter) }}>
       {t('programTags')} <small>{program.tags.length}</small>
     </button>}
     {orderedRoutines(program).filter(routine => matches(program.name) || matches(routine.name)).map(routine => <button type="button"
       className={current?.program === program.name && current.routine === routine.name ? css.selected : css.leafButton}
-      key={routine.name} onClick={() => { select(program, routine) }} onContextMenu={(event) => { contextFor(event, `${program.name}/${routine.name}`, undefined, undefined, undefined, { program: program.name, routine: routine.name }) }}>
+      key={routine.name} onClick={() => { select(program, routine) }} onContextMenu={(event) => { contextFor(event, `${program.name}/${routine.name}`, undefined, undefined, undefined, { kind: 'routine', program: program.name, routine: routine.name }) }}>
       <span className={css.routineIcon}>{routine.type === 'RLL' ? '≡' : routine.type === 'ST' ? '{ }' : '◇'}</span>{routine.name} <small>{routine.type}</small>
     </button>)}
     {program.routines.length === 0 && <span className={css.leaf}>{t('noRoutines')}</span>}
@@ -302,9 +307,10 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
       && !ancestors.includes(childModule.name.toLowerCase()) && childModule.name !== module.name)
     const shown = descendants.filter(childModule => matches(childModule.name) || matches(childModule.catalog) || filter === '')
     if (shown.length === 0) return <button type="button" className={css.leafButton} key={key}
-      onClick={() => { setInspector({ kind: 'module', module }) }} title={module.catalog}>{module.name} <small>{module.catalog}</small></button>
+      onClick={() => { setInspector({ kind: 'module', module }) }} title={module.catalog}
+      onContextMenu={(event) => { contextFor(event, module.name, undefined, undefined, undefined, { kind: 'module', module: module.name }) }}>{module.name} <small>{module.catalog}</small></button>
     return <details key={key} className={css.nested} open={filter !== '' ? true : undefined}>
-      <summary title={module.catalog}>{module.name}<small>{module.catalog}</small></summary>
+      <summary title={module.catalog} onContextMenu={(event) => { contextFor(event, module.name, undefined, undefined, undefined, { kind: 'module', module: module.name }) }}>{module.name}<small>{module.catalog}</small></summary>
       <button type="button" className={css.leafButton} onClick={() => { setInspector({ kind: 'module', module }) }}>{t('inspect')}</button>
       {shown.map((childModule, index) => treeModule(childModule, [...ancestors, module.name.toLowerCase()], `${seat}.${index}`))}
     </details>
@@ -481,17 +487,25 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
       </div>
     </section>
     {context !== undefined && createPortal(<MenuSurface className={css.menu} role="menu" style={{ left: context.x, top: context.y }} onPointerDown={(event) => { event.stopPropagation() }}>
-      {context.routineTarget !== undefined && <div className={css.menuHeading}>{context.routineTarget.program}/{context.routineTarget.routine}</div>}
-      {context.routineTarget !== undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-routine" onClick={() => {
-        setChatUnavailable(!ask(resourceAddress, `Explain routine ${context.routineTarget?.routine} of program ${context.routineTarget?.program} in this offline L5X export: what it does, what it calls, which tags it reads and writes, and what the export recorded about them. Do not present a saved value as the controller's current state.`))
+      {context.target !== undefined && <div className={css.menuHeading}>{context.target.kind === 'routine' ? `${context.target.program}/${context.target.routine}` : context.target.kind === 'program' ? context.target.program : context.target.module}</div>}
+      {context.target?.kind === 'routine' && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-routine" onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain routine ${context.target?.kind === 'routine' ? context.target.routine : ''} of program ${context.target?.kind === 'routine' ? context.target.program : ''} in this offline L5X export: what it does, what it calls, which tags it reads and writes, and what the export recorded about them. Do not present a saved value as the controller's current state.`))
         setContext(undefined)
       }}>{t('askRoutine')}</button>}
-      {context.routineTarget !== undefined && (current?.program !== context.routineTarget.program || current.routine !== context.routineTarget.routine) && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
-        const program = project?.programs.find(item => item.name === context.routineTarget?.program)
-        const routine = program?.routines.find(item => item.name === context.routineTarget?.routine)
+      {context.target?.kind === 'routine' && (current?.program !== context.target.program || current.routine !== context.target.routine) && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+        const program = project?.programs.find(item => item.name === (context.target?.kind === 'routine' ? context.target.program : ''))
+        const routine = program?.routines.find(item => item.name === (context.target?.kind === 'routine' ? context.target.routine : ''))
         if (program !== undefined && routine !== undefined) select(program, routine)
         setContext(undefined)
       }}>{t('openRoutine')}</button>}
+      {context.target?.kind === 'program' && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-program" onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain program ${context.target?.kind === 'program' ? context.target.program : ''} in this offline L5X export: its routines, the tags it owns, how its scans are scheduled, and what the export recorded. Do not present a saved value as the controller's current state.`))
+        setContext(undefined)
+      }}>{t('askProgram')}</button>}
+      {context.target?.kind === 'module' && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-module" onClick={() => {
+        setChatUnavailable(!ask(resourceAddress, `Explain the I/O module ${context.target?.kind === 'module' ? context.target.module : ''} in this offline L5X export: its catalog, slot, parent chassis, the controller tags that alias its points, and what the export recorded. Do not connect to the controller.`))
+        setContext(undefined)
+      }}>{t('askModule')}</button>}
       {context.instruction !== undefined && <div className={css.menuHeading}>{context.instruction.mnemonic} · {t('rung')} {context.instruction.rung}</div>}
       {context.rung !== undefined && context.instruction === undefined && <div className={css.menuHeading}>{t('rung')} {context.rung} · {current?.program}/{current?.routine}</div>}
       {context.rung !== undefined && context.instruction === undefined && <button type="button" role="menuitem" className={css.menuItem} data-l5x-menu="ask-rung" onClick={() => {
@@ -512,7 +526,7 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
         setChatUnavailable(!ask(resourceAddress, `Propose a new rung comment for rung ${context.rung} of ${current?.program}/${current?.routine} in this L5X export, in the voice the surrounding comments already use. Show the exact before/after text and where it would be written. Do not connect online or download.`))
         setContext(undefined)
       }}>{t('editRungComment')}</button>}
-      {context.instruction === undefined && context.rung === undefined && context.routineTarget === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
+      {context.instruction === undefined && context.rung === undefined && context.target === undefined && <button type="button" role="menuitem" className={css.menuItem} onClick={() => {
         setChatUnavailable(!ask(resourceAddress, `Context: ${context.text}`))
         setContext(undefined)
       }}>{t('ask')}</button>}

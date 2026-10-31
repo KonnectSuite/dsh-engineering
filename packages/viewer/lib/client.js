@@ -677,7 +677,7 @@ function L5xBody(props) {
     setFocusedRung(number);
     setInspector(void 0);
   };
-  const contextFor = (event, text, symbol, instruction, rung, routineTarget) => {
+  const contextFor = (event, text, symbol, instruction, rung, target) => {
     event.preventDefault();
     if (instruction !== void 0) setFocused(instruction);
     setContext({
@@ -687,7 +687,7 @@ function L5xBody(props) {
       ...symbol === void 0 ? {} : { symbol },
       ...instruction === void 0 ? {} : { instruction },
       ...rung === void 0 ? {} : { rung },
-      ...routineTarget === void 0 ? {} : { routineTarget }
+      ...target === void 0 ? {} : { target }
     });
   };
   const rungSymbols = (number) => {
@@ -731,7 +731,9 @@ function L5xBody(props) {
   const programMatches = (program) => matches(program.name) || program.routines.some((routine) => matches(routine.name)) || program.tags.some((tag) => matches(tag.name));
   const orderedRoutines = (program) => [...program.routines].sort((left, right) => left.name === program.main ? -1 : right.name === program.main ? 1 : left.name.localeCompare(right.name));
   const treeProgram = (program) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { className: L5xBody_default.nested, open: filter !== "" || program.name === current?.program, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("summary", { title: program.description, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("summary", { title: program.description, onContextMenu: (event) => {
+      contextFor(event, program.name, void 0, void 0, void 0, { kind: "program", program: program.name });
+    }, children: [
       program.name,
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: program.routines.length })
     ] }),
@@ -760,7 +762,7 @@ function L5xBody(props) {
           select(program, routine);
         },
         onContextMenu: (event) => {
-          contextFor(event, `${program.name}/${routine.name}`, void 0, void 0, void 0, { program: program.name, routine: routine.name });
+          contextFor(event, `${program.name}/${routine.name}`, void 0, void 0, void 0, { kind: "routine", program: program.name, routine: routine.name });
         },
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: L5xBody_default.routineIcon, children: routine.type === "RLL" ? "\u2261" : routine.type === "ST" ? "{ }" : "\u25C7" }),
@@ -788,6 +790,9 @@ function L5xBody(props) {
           setInspector({ kind: "module", module: module2 });
         },
         title: module2.catalog,
+        onContextMenu: (event) => {
+          contextFor(event, module2.name, void 0, void 0, void 0, { kind: "module", module: module2.name });
+        },
         children: [
           module2.name,
           " ",
@@ -797,7 +802,9 @@ function L5xBody(props) {
       key
     );
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("details", { className: L5xBody_default.nested, open: filter !== "" ? true : void 0, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("summary", { title: module2.catalog, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("summary", { title: module2.catalog, onContextMenu: (event) => {
+        contextFor(event, module2.name, void 0, void 0, void 0, { kind: "module", module: module2.name });
+      }, children: [
         module2.name,
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("small", { children: module2.catalog })
       ] }),
@@ -1314,21 +1321,25 @@ function L5xBody(props) {
     context !== void 0 && (0, import_react_dom.createPortal)(/* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_dsh_client_ui_primitives.MenuSurface, { className: L5xBody_default.menu, role: "menu", style: { left: context.x, top: context.y }, onPointerDown: (event) => {
       event.stopPropagation();
     }, children: [
-      context.routineTarget !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: L5xBody_default.menuHeading, children: [
-        context.routineTarget.program,
-        "/",
-        context.routineTarget.routine
-      ] }),
-      context.routineTarget !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "ask-routine", onClick: () => {
-        setChatUnavailable(!ask(resourceAddress, `Explain routine ${context.routineTarget?.routine} of program ${context.routineTarget?.program} in this offline L5X export: what it does, what it calls, which tags it reads and writes, and what the export recorded about them. Do not present a saved value as the controller's current state.`));
+      context.target !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: L5xBody_default.menuHeading, children: context.target.kind === "routine" ? `${context.target.program}/${context.target.routine}` : context.target.kind === "program" ? context.target.program : context.target.module }),
+      context.target?.kind === "routine" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "ask-routine", onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Explain routine ${context.target?.kind === "routine" ? context.target.routine : ""} of program ${context.target?.kind === "routine" ? context.target.program : ""} in this offline L5X export: what it does, what it calls, which tags it reads and writes, and what the export recorded about them. Do not present a saved value as the controller's current state.`));
         setContext(void 0);
       }, children: t("askRoutine") }),
-      context.routineTarget !== void 0 && (current?.program !== context.routineTarget.program || current.routine !== context.routineTarget.routine) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
-        const program = project?.programs.find((item) => item.name === context.routineTarget?.program);
-        const routine = program?.routines.find((item) => item.name === context.routineTarget?.routine);
+      context.target?.kind === "routine" && (current?.program !== context.target.program || current.routine !== context.target.routine) && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+        const program = project?.programs.find((item) => item.name === (context.target?.kind === "routine" ? context.target.program : ""));
+        const routine = program?.routines.find((item) => item.name === (context.target?.kind === "routine" ? context.target.routine : ""));
         if (program !== void 0 && routine !== void 0) select(program, routine);
         setContext(void 0);
       }, children: t("openRoutine") }),
+      context.target?.kind === "program" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "ask-program", onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Explain program ${context.target?.kind === "program" ? context.target.program : ""} in this offline L5X export: its routines, the tags it owns, how its scans are scheduled, and what the export recorded. Do not present a saved value as the controller's current state.`));
+        setContext(void 0);
+      }, children: t("askProgram") }),
+      context.target?.kind === "module" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, "data-l5x-menu": "ask-module", onClick: () => {
+        setChatUnavailable(!ask(resourceAddress, `Explain the I/O module ${context.target?.kind === "module" ? context.target.module : ""} in this offline L5X export: its catalog, slot, parent chassis, the controller tags that alias its points, and what the export recorded. Do not connect to the controller.`));
+        setContext(void 0);
+      }, children: t("askModule") }),
       context.instruction !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: L5xBody_default.menuHeading, children: [
         context.instruction.mnemonic,
         " \xB7 ",
@@ -1365,7 +1376,7 @@ Name every symbol it touches, say which values the export recorded, and do not p
         setChatUnavailable(!ask(resourceAddress, `Propose a new rung comment for rung ${context.rung} of ${current?.program}/${current?.routine} in this L5X export, in the voice the surrounding comments already use. Show the exact before/after text and where it would be written. Do not connect online or download.`));
         setContext(void 0);
       }, children: t("editRungComment") }),
-      context.instruction === void 0 && context.rung === void 0 && context.routineTarget === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
+      context.instruction === void 0 && context.rung === void 0 && context.target === void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", role: "menuitem", className: L5xBody_default.menuItem, onClick: () => {
         setChatUnavailable(!ask(resourceAddress, `Context: ${context.text}`));
         setContext(void 0);
       }, children: t("ask") }),
@@ -1834,6 +1845,8 @@ var en = {
   showNeutralText: "Show NeutralText",
   hideNeutralText: "Hide NeutralText",
   openRoutine: "Open this routine",
+  askProgram: "Ask Arya about program",
+  askModule: "Ask Arya about module",
   controllerFault: "Controller Fault Handler",
   powerUp: "Power-Up Handler",
   motionGroups: "Motion Groups",
@@ -1965,6 +1978,8 @@ var zh = {
   showNeutralText: "\u663E\u793A\u4E2D\u6027\u6587\u672C",
   hideNeutralText: "\u9690\u85CF\u4E2D\u6027\u6587\u672C",
   openRoutine: "\u6253\u5F00\u6B64\u4F8B\u7A0B",
+  askProgram: "\u8BE2\u95EE Arya \u6B64\u7A0B\u5E8F",
+  askModule: "\u8BE2\u95EE Arya \u6B64\u6A21\u5757",
   controllerFault: "\u63A7\u5236\u5668\u6545\u969C\u5904\u7406\u7A0B\u5E8F",
   powerUp: "\u4E0A\u7535\u5904\u7406\u7A0B\u5E8F",
   motionGroups: "\u8FD0\u52A8\u7EC4",
