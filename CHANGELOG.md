@@ -2,6 +2,14 @@
 
 ### Added
 
+- **The whole instruction set renders, not just the ones an export happens to use.** The catalogue the composer
+  validates against (`packages/l5x/src/engine/instructions.ts`) grew from 42 instructions to **121 entries / 118
+  distinct names** — math, file and array, sequencer, ASCII, string, process, alarm, motion, program control and the
+  migrated PLC-5/SLC set — and the ladder now derives its pin labels from that one catalogue, so an instruction that
+  exists cannot be drawn without a label. `npm run e2e:instructions` builds an export with **one rung per catalogued
+  instruction** and renders it in the real browser: `121/121 instructions rendered, 132 blocks, clipped 0, generic
+  labels 0`. `test/instruction-coverage.spec.mjs` holds the same invariant in the fast suite, where the failure mode
+  (a block silently reading `Operand 1`) is one missing map entry away.
 - **Contacts look like contacts, and every block names its pins.** XIC is drawn as two short bars on the wire and XIO
   adds the slash; a coil is two facing arcs with the latch letter between them — the shapes Studio 5000 draws, not
   boxes. Blocks label their operands from a catalogue of the instructions a Logix export carries

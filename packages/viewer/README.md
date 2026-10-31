@@ -49,6 +49,8 @@ Three more entry points cover what the case table cannot:
   sends a tag to the offline watch pane, an operand menu opens where the pointer was and watches its
   tag, a rung opens its own menu and watching it adds every tag the rung touches, the bottom panes
   switch, a routine row, a program row and a module row each open their own menu, and no console output appears.
+- `npm run e2e:instructions` (`test/render/instructions.mjs`) generates an export with one rung per
+  catalogued instruction and renders it, so an instruction the composer offers cannot be drawn without a label.
 - `test/render/e2e.mjs` renders one routine and writes a screenshot; `test/render/diag.mjs` dumps the
   measurement; `test/render/probe.mjs` dumps one instruction's computed style.
 

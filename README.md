@@ -289,6 +289,7 @@ pnpm test          # patch, docs, tool-reference, manifest and client-face check
 pnpm e2e:ladder    # render the built ladder face in headless Chrome and assert on the DOM
 pnpm e2e:routines  # the same judgement for every routine of one export
 pnpm e2e:actions   # click and key through the pane and assert it answers
+pnpm e2e:instructions  # one rung per catalogued instruction, rendered and judged
 pnpm docs:tools    # regenerate the tool reference from the registered definitions
 pnpm docs:check    # fail if the committed reference has drifted
 python scripts/gen-diagrams.py   # regenerate docs/diagrams/*.svg and *.png

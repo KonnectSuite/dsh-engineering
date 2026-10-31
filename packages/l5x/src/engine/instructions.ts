@@ -45,13 +45,14 @@ export const TIMER_TYPES: ReadonlySet<string> = new Set(['TIMER', 'TON', 'TOF', 
 /** Counter data types. */
 export const COUNTER_TYPES: ReadonlySet<string> = new Set(['COUNTER', 'CTU', 'CTD', 'CTUD'])
 
+import { MORE_INSTRUCTIONS } from './instruction-set.ts'
+
 /** Slot helpers kept terse: the table reads as data, not code. */
 const bool = (name = 'Tag'): InstructionOperand => ({ name, kind: 'BOOL' })
 const num = (name = 'Source'): InstructionOperand => ({ name, kind: 'NUMBER' })
 
 /** The catalog, in category order. */
-export const INSTRUCTIONS: readonly InstructionInfo[] = [
-  // Contacts and coils
+export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'XIC', category: 'Contacts and coils', summary: 'Examine if closed: true when the BOOL tag is true.', operands: [bool()] },
   { name: 'XIO', category: 'Contacts and coils', summary: 'Examine if open: true when the BOOL tag is false.', operands: [bool()] },
   { name: 'OTE', category: 'Contacts and coils', summary: 'Output energize: sets the BOOL tag to the rung condition.', operands: [bool()] },
@@ -106,6 +107,14 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [
   { name: 'NOT', category: 'Bit', summary: 'Bitwise complement of the source into the destination.', operands: [num('Source'), num('Destination')] },
   { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Length')] },
   { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Length')] },
+
+  // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
+  ...MORE_INSTRUCTIONS.map(instruction => ({
+    name: instruction.name,
+    category: instruction.category,
+    summary: `${instruction.name} from the Logix instruction set.`,
+    operands: instruction.slots,
+  })),
 ]
 
 /** Alias spellings accepted for a catalog name. */

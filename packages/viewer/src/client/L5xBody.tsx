@@ -621,7 +621,9 @@ function pinRows(mnemonic: string, operands: string, detailFor: (value: string) 
   const upper = mnemonic.toUpperCase()
   // An AOI call answers from its own parameters first: a project may define an AOI named like a built-in.
   const keys: readonly string[] | undefined = pinsFor(upper) ?? operandKeys[upper] ?? instructionPins[upper]
-  const parts = displayOperands(mnemonic, operands)
+  // The catalogue knows the arity, so a stray trailing comma cannot invent a pin row.
+  const shown = displayOperands(mnemonic, operands)
+  const parts = keys === undefined ? shown : shown.slice(0, keys.length)
   const timer = timerMnemonics.includes(upper) ? resolveTimer(parts[0] ?? '') : undefined
   const rows = parts.map((operand, index) => {
     const raw = operand.trim()

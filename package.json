@@ -56,7 +56,7 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/instruction-coverage.spec.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
@@ -67,6 +67,7 @@
     "e2e:ladder": "node packages/viewer/test/render/suite.mjs",
     "e2e:routines": "node packages/viewer/test/render/routines.mjs",
     "e2e:actions": "node packages/viewer/test/render/interactions.mjs",
+    "e2e:instructions": "node packages/viewer/test/render/instructions.mjs",
     "assemble": "node scripts/assemble.mjs",
     "prepack": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs && node scripts/assemble.mjs"
   },

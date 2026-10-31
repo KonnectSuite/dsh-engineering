@@ -208,7 +208,11 @@ const MEASURE = `(() => {
     }
   }
   const blocks = [...pane.querySelectorAll('[data-l5x-instruction]')].map(element => {
-    const mnemonic = element.querySelector('strong')?.textContent?.trim() ?? ''
+    // A contact or a coil draws no block card, so its mnemonic comes from the aria label rather than
+    // from the tooltip, whose <strong> carries the whole call text.
+    const card = element.querySelector('[data-l5x-block]')
+    const mnemonic = card?.querySelector('strong')?.textContent?.trim()
+      ?? (element.getAttribute('aria-label') ?? '').trim().split(' ')[0]
     const tags = element.querySelectorAll('[data-l5x-tag-name]').length
     const rows = [...element.querySelectorAll('[data-l5x-operand-row]')].map(row => ({
       label: row.querySelector('[data-l5x-operand-label]')?.textContent?.trim() ?? '',
@@ -432,12 +436,14 @@ export async function renderLadderFace(options = {}) {
     if (options.routine !== undefined) await openRoutine(options.routine)
     await tab.waitForTimeout(400)
     const probe = options.probe === undefined ? undefined : await tab.evaluate(options.probe)
+    // The scenario drives the pane, so it runs before the page is measured: a click that loads the
+    // rest of the rungs has to be visible to the measurement, not made after it.
+    const scenario = options.scenario === undefined ? undefined : await options.scenario(tab)
     if (shot !== undefined) {
       mkdirSync(dirname(shot), { recursive: true })
       await tab.screenshot({ path: shot, fullPage: false })
     }
     const measurement = await tab.evaluate(MEASURE)
-    const scenario = options.scenario === undefined ? undefined : await options.scenario(tab)
     const cases = [{ routine: options.routine ?? '(default view)', measurement, failures: judge(measurement, options) }]
     // One browser per batch: every routine of an export is visited in this page.
     const queue = options.routines === '*' ? discovered : (options.routines ?? [])
