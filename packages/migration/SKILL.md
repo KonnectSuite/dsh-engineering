@@ -79,7 +79,29 @@ edit the customer's `.RSS` or the wizard's first output.
 - A revision 37+ target can be built offline for a real proof; a lower revision
   only supports an "import succeeded" statement.
 
-## 5. Report honestly
+## 5. Resolve the conversion's markers
+
+The wizard writes `PCE(code,label)` where it could not translate an instruction
+and `?` where it could not type an operand. `migration_resolve` pairs each site
+with the legacy rung it came from and says what that legacy rung still records:
+
+- **mechanical** — a marker on a rung that already carries the legacy
+  instructions in order (delete it), a timer or counter `?` whose preset and
+  accumulator the legacy operand list still names, and any rung the tool offers
+  as whole text. Apply these with `draft_rung`; this is the easy half, and the
+  proposal comes from the legacy rung, not from imagination.
+- **review** — `PCE(150,…)` or `PCE(210,…)` before `MSG` (set the block
+  transfer's rack, group, slot, control, table and length on the MSG),
+  `PCE(116,…)` before `FOR` (the loop index was a status word: declare the DINT
+  tag and point the FOR at it), `PCE(152,…)` alone on a rung (a status word with
+  no Logix equivalent), and expressions the wizard flattened.
+
+Re-import after applying, and quote the count you got. On EN049 the mechanical
+half took 177 markers to 22 and 54 rungs with `?` to 9, and the file imported
+with no warnings; what was left was MSG parameters, one loop index and three
+flattened expressions.
+
+## 6. Report honestly
 
 State the proof class (`build-verified` or `import-verified`), the exception list
 (indirect addressing, unmapped modules, HMI deferred), and the checks that could

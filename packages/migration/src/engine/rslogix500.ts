@@ -376,7 +376,10 @@ export async function readSlcProject(
   path: string,
   options: { readonly rungs?: number; readonly symbols?: number; readonly dataFiles?: boolean; readonly timeoutMs?: number } = {},
 ): Promise<SlcProject> {
-  const limit = Math.max(0, Math.min(options.rungs ?? 0, 200))
+  // The rung text a caller asks for is bounded by the tool schema, not here: a
+  // conversion audit needs the whole ladder (a PLC-5 file can run past 300
+  // rungs), while `slc_read` keeps its own summary-sized limit.
+  const limit = Math.max(0, Math.min(options.rungs ?? 0, 100_000))
   const withRungs = limit > 0
   const symbolLimit = Math.max(0, Math.min(options.symbols ?? 0, 5000))
   const withData = options.dataFiles === true

@@ -1,9 +1,12 @@
 /**
- * The migration support row: the legacy assessment, the `.L5K` linter and the
- * `slc-to-logix-migration` skill.
+ * The migration support row: the legacy assessment, the `.L5K` linter, the
+ * conversion comparison and marker resolver, and the `slc-to-logix-migration`
+ * skill.
  *
- * Neither tool touches a controller or a vendor application; the row is a set of
- * offline readers over the files a migration already produced.
+ * The `.L5K`, `.L5X` and `.SLC` readers are pure file readers. `slc_read` and
+ * `migration_compare` also open an `.RSS`, `.ACH` or `.RSP` through the vendor
+ * automation server, hidden and without saving, because only that product can
+ * read those containers. No controller is touched.
  */
 import * as migration from '../vendor/migration/lib/index.js'
 
@@ -15,7 +18,8 @@ export const inject = ['tools', 'fs']
 /**
  * Mount the migration surface.
  * @param ctx - plugin context.
- * @param config - `assess` and `lint` (both default true) control the two tools.
+ * @param config - `assess`, `lint`, `compare`, `resolve` and `plan` (all
+ * default true) control the tools, one flag each.
  */
 export function apply(ctx, config = {}) {
   migration.apply(ctx, config)

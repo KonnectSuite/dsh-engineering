@@ -13,6 +13,7 @@
 import { decodeL5k, lintL5k, type L5kFacts, type L5kFinding } from './engine/l5k.ts'
 import { readSlcProject, SlcError, type SlcProject } from './engine/rslogix500.ts'
 import { compareSides, readLogix, type LegacySide } from './engine/compare.ts'
+import { resolvePces } from './engine/pce.ts'
 import {
   createPlan,
   currentStage,
@@ -686,6 +687,88 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     },
   }
 
+  const resolveTool: ToolDefinition = {
+    name: 'migration_resolve',
+    description:
+      'Turn every PCE (program conversion error) marker and every unknown "?" operand the migration left in a Logix export into a work item: the legacy rung it came from, the instruction or operand the wizard could not carry, and a proposed Logix rewrite classified mechanical or review. Mechanical answers delete a marker whose rung already matches the legacy rung, fold a legacy timer/counter operand list into the timer or counter structure, or name the DINT tag a FOR loop needs; review answers a block transfer that became MSG, a rung that only cleared a status word, or a rung whose instructions no longer line up. Reads the legacy project headlessly and the .L5X; writes nothing.',
+    parameters: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'The legacy .RSS, .ACH or .RSP project the migration started from.' },
+        logix: { type: 'string', description: 'The .L5X Studio exported after importing the migrated project.' },
+        routine: { type: 'string', description: 'Only report this routine, for example "_16_SPLICE".' },
+        limit: { type: 'integer', minimum: 1, maximum: 500, description: 'Most work items to list. Defaults to 50.' },
+      },
+      required: ['source', 'logix'],
+      additionalProperties: false,
+    },
+    output: { schema: { type: 'object', additionalProperties: true }, render: jsonText },
+    async execute(args, exec) {
+      try {
+        const source = stringArg(args, 'source')
+        const logixPath = stringArg(args, 'logix')
+        const extension = extensionOf(source)
+        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(source)} is not an .RSS, .ACH or .RSP file.`,
+            'Pass the legacy project itself; the resolver pairs its rungs with the migrated export.',
+          )
+        }
+        if (extensionOf(logixPath) !== 'l5x') {
+          throw new MigrationError(
+            'UNSUPPORTED_FORMAT',
+            `${baseName(logixPath)} is not an .L5X export.`,
+            'Pass the .L5X Studio exported after the import; the .L5K the wizard writes has no markers in it.',
+          )
+        }
+        const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
+        const sourceStat = await fs.stat(sourceTarget, exec.signal)
+        if (sourceStat === undefined) {
+          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
+        }
+        const logixBytes = await readFile(fs, logixPath, exec)
+        let logixText = new TextDecoder('utf-8').decode(logixBytes)
+        if (logixText.startsWith('\uFEFF')) logixText = logixText.slice(1)
+        const project = await readSlcProject(sourceTarget.displayPath, { rungs: 100_000, symbols: 0, dataFiles: false })
+        const logix = readLogix(logixText)
+        const filter = typeof args.routine === 'string' && args.routine.trim() !== '' ? args.routine.trim().toUpperCase() : ''
+        const report = resolvePces(project.rungs, logix.routines)
+        const keep = <T extends { routine: string }>(entry: T): boolean => filter === '' || entry.routine.toUpperCase() === filter
+        const markers = report.markers.filter(keep)
+        const operands = report.operands.filter(keep)
+        const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(args.limit, 500)) : 50
+        const mechanical = [...markers, ...operands].filter(entry => entry.resolution.work === 'mechanical').length
+        const review = markers.length + operands.length - mechanical
+        const shownMarkers = markers.slice(0, limit)
+        const shownOperands = operands.slice(0, limit)
+        const omitted = markers.length - shownMarkers.length + operands.length - shownOperands.length
+        const rungs = new Set([...markers, ...operands].map(entry => `${entry.routine}#${entry.rung}`)).size
+        return {
+          summary: `${baseName(source)} vs ${baseName(logixPath)}: ${markers.length} PCE marker(s) and ${operands.length} rung(s) with an unknown operand, across ${rungs} rung(s) — ${mechanical} answerable from the rung texts, ${review} for engineering review.${report.unmatchedRungs.length === 0 ? '' : ` ${report.unmatchedRungs.length} legacy file(s) matched no routine.`}`,
+          data: {
+            source: { file: source, project: project.projectName },
+            logix: { file: logixPath, controller: logix.controller, revision: logix.revision },
+            counts: { ...report.counts, markers: markers.length, operands: operands.length, mechanical, review },
+            markers: shownMarkers,
+            operands: shownOperands,
+            ...(omitted === 0 ? {} : { omitted }),
+            translated: report.translated,
+            unmatched_files: report.unmatchedRungs,
+            checks: { headless: true, read_only: true, saved: false, rungs_read: project.rungs.length, truncated: project.truncated },
+          },
+          next: [
+            { tool: 'draft_rung', why: 'Stage the proposed rung text on the .L5X the export came from, then prove it with verify_offline_l5x.' },
+            { tool: 'migration_plan', why: 'Record each answer that needs a decision as an exception with its rationale.' },
+          ],
+          coverage: COVERAGE,
+        }
+      } catch (error) {
+        return failure(error)
+      }
+    },
+  }
+
   const planTool: ToolDefinition = {
     name: 'migration_plan',
     description:
@@ -817,5 +900,5 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
     },
   }
 
-  return [assessTool, lintTool, slcReadTool, compareTool, planTool]
+  return [assessTool, lintTool, slcReadTool, compareTool, resolveTool, planTool]
 }

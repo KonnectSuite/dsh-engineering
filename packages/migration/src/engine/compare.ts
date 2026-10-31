@@ -173,7 +173,7 @@ function dataFileTagPattern(file: LegacyDataFile): RegExp {
 }
 
 /** Match one legacy file name to a routine name: exact, then suffix, then contains. */
-function matchRoutine(file: string, routines: readonly LogixRoutine[]): LogixRoutine | undefined {
+export function matchRoutine(file: string, routines: readonly LogixRoutine[]): LogixRoutine | undefined {
   const wanted = normalise(file)
   if (wanted === '') return undefined
   const exact = routines.find(routine => normalise(routine.name) === wanted)

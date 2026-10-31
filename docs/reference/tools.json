@@ -55,6 +55,7 @@
     "l5k_lint",
     "slc_read",
     "migration_compare",
+    "migration_resolve",
     "migration_plan",
     "engineering_reference",
     "engineering_profile",
@@ -250,6 +251,7 @@
         "l5k_lint",
         "slc_read",
         "migration_compare",
+        "migration_resolve",
         "migration_plan"
       ]
     },

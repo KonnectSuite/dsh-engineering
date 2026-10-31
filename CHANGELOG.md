@@ -1,4 +1,4 @@
-## [Unreleased]
+﻿## [Unreleased]
 
 ### Added
 
@@ -36,6 +36,15 @@
 - **`migration_plan` keeps the migration resumable.** `create`, `read`, `answer`, `stage` and `exception` act on
   `.migration/plan.json` (schema 1): five interview decisions, eight stages with evidence, and exceptions marked
   `open`, `accepted` or `fixed`. A plan blocks until every decision is answered and `next_action` names what to do.
+- **`migration_resolve` answers the conversion's own markers.** The wizard writes `PCE(code,label)` where it could
+  not translate an instruction and `?` where it could not type an operand; this tool pairs each site with the
+  legacy rung it came from and returns a worklist entry instead of a count. A marker on a rung that already carries
+  the legacy instructions in order is a delete; a timer or counter `?` whose preset and accumulator the legacy
+  operand list still names is filled from that list, and a rung whose every unknown is answerable carries the whole
+  replacement text. `MSG` parameters, a status-word loop index, a status word alone on a rung and expressions the
+  wizard flattened stay review, each with the reason. On EN049 it classified 214 sites, 201 of them answerable from
+  the rung texts alone; applying those took 177 markers to 22 and 54 rungs with `?` to 9, and the file imported
+  into Studio 5000 with no warnings and no errors.
 
 ### Changed
 

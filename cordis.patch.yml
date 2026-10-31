@@ -45,9 +45,10 @@
     - id: engineering-resources
       name: '@aryacode/dsh-engineering/resources'
 
-    # SLC 500 / legacy migration support: the .L5K linter, the legacy export
-    # assessment and the slc-to-logix-migration skill. Offline file readers; no
-    # vendor application, no controller and no claim that a file is migrated.
+    # SLC 500 / PLC-5 migration support: the assessment, the .L5K linter, the
+    # conversion comparison and marker resolver, and the slc-to-logix-migration
+    # skill. The readers open RSLogix 500 or RSLogix 5 hidden and never save; no
+    # controller is touched and nothing claims a file is migrated.
     - id: migration
       name: '@aryacode/dsh-engineering/migration'
 
