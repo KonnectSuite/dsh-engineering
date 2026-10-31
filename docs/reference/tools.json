@@ -51,6 +51,8 @@
     "write_live_tag",
     "write_controller_clock",
     "start_plc_trend",
+    "migration_assess",
+    "l5k_lint",
     "engineering_reference",
     "engineering_profile",
     "ftview_open",
@@ -235,6 +237,14 @@
         "write_live_tag",
         "write_controller_clock",
         "start_plc_trend"
+      ]
+    },
+    {
+      "product": "Migration",
+      "group": "Migration",
+      "tools": [
+        "migration_assess",
+        "l5k_lint"
       ]
     },
     {

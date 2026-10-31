@@ -189,6 +189,36 @@
       "vendor": true
     },
     {
+      "id": "migration",
+      "title": "SLC 500 to Logix migration",
+      "kind": "support",
+      "capability": "offline-file",
+      "row": "migration",
+      "rowName": "@aryacode/dsh-engineering/migration",
+      "entry": "entries/migration.js",
+      "package": "packages/migration",
+      "tools": {
+        "product": "Migration",
+        "count": 2,
+        "inReference": true
+      },
+      "skill": {
+        "name": "slc-to-logix-migration",
+        "file": "packages/migration/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "migration_assess",
+          "l5k_lint"
+        ]
+      },
+      "probe": "migration_assess",
+      "gate": null,
+      "docs": [
+        "docs/reference/migration.md"
+      ],
+      "vendor": true
+    },
+    {
       "id": "viewers",
       "title": "Ladder and display previews",
       "kind": "surface",

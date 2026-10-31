@@ -23,6 +23,7 @@ A change is not finished until the documentation it invalidates is updated in th
 | `docs/reference/tools.json` | The machine-readable tool and group inventory (generated) |
 | `components.json` | The component manifest: kind, capability class, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents |
 | `docs/reference/components.md` | What a component is, the capability classes, the manifest fields and the checklist for adding one |
+| `docs/reference/migration.md` | The migration row: the two tools, the formats, the lint rules, the five-step workflow and its limits |
 | `CHANGELOG.md` | Released and unreleased changes, one entry per version |
 | `cordis.patch.yml` | The composed behavior, with comments explaining why each entry has its shape |
 | `package.json` | Name, version, bundle patch path, dependencies, peer compatibility |

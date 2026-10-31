@@ -13,6 +13,16 @@
   MotionWorks IEC, 9 Optix, 2 engineering resources), with a known-gap line for the 9 vendored Optix tools that the
   generated reference cannot build from source here.
 
+### Added
+
+- **A migration support row.** `migration_assess` reads an RSLogix 500 `.SLC` export or the `.L5K` the migration
+  wizard writes and states the controller, tags, routines, rungs and what a migration still has to change;
+  `l5k_lint` reports every import blocker with its line number (`TRAILING_COMMA`, `DUPLICATE_TAG`,
+  `ROUTINE_UNBALANCED`, `INDIRECT_ADDRESS`, `PLACEHOLDER_TAG`, and a revision gate note). The row also carries
+  the `slc-to-logix-migration` skill: interview the engineer for target, I/O strategy, HMI scope and validation
+  window, never edit the source `.RSS`, and never call a file migrated while a finding is open. Offline readers
+  only — no controller, no vendor automation, no write.
+
 ### Changed
 
 - **Skill budgets live in the manifest.** The 8000-character assertion moved from the three package skill tests to

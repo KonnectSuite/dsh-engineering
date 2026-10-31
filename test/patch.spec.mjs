@@ -35,6 +35,7 @@ test('is one row per product plus the component rows', () => {
     { id: 'mwi', name: '@aryacode/dsh-engineering/mwi' },
     { id: 'viewers', name: '@aryacode/dsh-engineering' },
     { id: 'engineering-resources', name: '@aryacode/dsh-engineering/resources' },
+    { id: 'migration', name: '@aryacode/dsh-engineering/migration' },
     { id: 'optix', name: '@aryacode/dsh-engineering/optix' },
   ])
 })
@@ -60,6 +61,6 @@ test('row ids cannot shadow a harness service name', () => {
   const reserved = new Set(['resources', 'tools', 'skills', 'fs', 'approval', 'session', 'storage', 'workspace', 'http'])
   for (const row of inserted.insert) {
     assert.ok(!reserved.has(row.id), `${row.id} would shadow the harness service of the same name`)
-    assert.match(row.id, /^(l5x|ftview|mwi|optix|viewers|engineering-[a-z-]+)$/u, `${row.id} is not a namespaced row id`)
+    assert.match(row.id, /^(l5x|ftview|mwi|optix|viewers|migration|engineering-[a-z-]+)$/u, `${row.id} is not a namespaced row id`)
   }
 })

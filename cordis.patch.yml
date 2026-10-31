@@ -1,6 +1,6 @@
 # AryaCode engineering bundle.
 #
-# Four product rows and two support rows, one switch each. A row mounts a product's whole surface —
+# Four product rows and three support rows, one switch each. A row mounts a product's whole surface —
 # its read tools, its guidance and its optional parts — so the Plugins page
 # shows a product per row instead of a surface per row.
 #
@@ -44,6 +44,12 @@
     # before authoring. Disable it in a lean profile; it adds no product row.
     - id: engineering-resources
       name: '@aryacode/dsh-engineering/resources'
+
+    # SLC 500 / legacy migration support: the .L5K linter, the legacy export
+    # assessment and the slc-to-logix-migration skill. Offline file readers; no
+    # vendor application, no controller and no claim that a file is migrated.
+    - id: migration
+      name: '@aryacode/dsh-engineering/migration'
 
     # FactoryTalk Optix: vendored like the other three products, so one install
     # carries every surface and no component package is a dependency.

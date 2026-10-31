@@ -20,7 +20,8 @@ export const COMPONENTS = [
   "ftview",
   "mwi",
   "resources",
-  "optix"
+  "optix",
+  "migration"
 ]
 
 /** The newest modification time under a directory, or undefined when it is absent. */

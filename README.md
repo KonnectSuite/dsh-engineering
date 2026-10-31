@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 133 tools · 6 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 135 tools · 7 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -59,6 +59,7 @@ bundle.
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
+| **SLC 500 to Logix migration** | 2 | all on | none; reads an RSLogix 500 export or the .L5K a migration wizard writes |
 
 Tool groups, by product:
 
@@ -67,6 +68,7 @@ Tool groups, by product:
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
+- **Migration** — 2 tools and the `slc-to-logix-migration` skill: `migration_assess` reads an .SLC, .RSS/.ACH or .L5K file and states what it is, and `l5k_lint` reports the import blockers in the .L5K with line numbers. Offline readers only
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 34-page corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
@@ -85,11 +87,12 @@ down:
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `viewers` | ladder + ME display previews | — |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
+| `migration` | legacy SLC 500 / PLC-5 assessment and the .L5K linter, with the `slc-to-logix-migration` skill | `assess` (on), `lint` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
-switches"*), so a group switch is a shell feature, not a bundle one. Four product rows and two support rows with config is
+switches"*), so a group switch is a shell feature, not a bundle one. Four product rows and three support rows with config is
 what a bundle can do on its own — no harness change to carry across DSH upgrades.
 
 **No capability policy.** Earlier releases also carried a per-skill tool filter (`policyOnly` /
@@ -260,6 +263,7 @@ even when the implementation behind a row is replaced.
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
 | [Engineering resources](docs/resources.md) | The 34-page standards corpus, its rule IDs, the generated index, and the house-style profile |
+| [SLC 500 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Components](docs/reference/components.md) | What a component is, the capability classes, the manifest fields, and the checklist for adding one |

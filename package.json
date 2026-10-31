@@ -105,6 +105,7 @@
     "./mwi/skill": "./vendor/mwi/lib/skill.js",
     "./mwi/verify": "./vendor/mwi/lib/verify.js",
     "./mwi/edit": "./vendor/mwi/lib/edit.js",
-    "./resources": "./entries/resources.js"
+    "./resources": "./entries/resources.js",
+    "./migration": "./entries/migration.js"
   }
 }
