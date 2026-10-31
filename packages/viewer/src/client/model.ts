@@ -23,6 +23,19 @@ export interface Tag {
   readonly scope: string
   readonly description: string
   readonly alias: string
+  /** Array dimensions as the export writes them ("10", "4 2"); empty for a scalar. */
+  readonly dimensions: string
+}
+/** One member of a user-defined type, or one parameter of an add-on instruction. */
+export interface TypeMember {
+  readonly name: string
+  readonly type: string
+  readonly dimensions: string
+  readonly description: string
+}
+/** An add-on instruction parameter keeps the usage that decides which way its value flows. */
+export interface AoiParameter extends TypeMember {
+  readonly usage: string
 }
 /** Exported task scheduling and assigned programs. */
 export interface Task {
@@ -54,6 +67,10 @@ export interface Project {
   readonly aois: readonly string[]
   /** Pin names of each AOI in declaration order, so a call can label its own pins. */
   readonly aoiPins: ReadonlyMap<string, readonly string[]>
+  /** Members of each user-defined type, so the tag organizer can drill into an instance. */
+  readonly dataTypes: ReadonlyMap<string, readonly TypeMember[]>
+  /** Parameters of each AOI, typed and ordered, keyed by upper-case name. */
+  readonly aoiParameters: ReadonlyMap<string, readonly AoiParameter[]>
   readonly types: readonly string[]
   readonly exportedData: ReadonlyMap<string, ExportedDatum>
 }
@@ -107,6 +124,17 @@ export function timerState(project: Project, scope: string, symbol: string): Tim
 }
 
 /**
+ * Array dimensions as the export writes them. Element declarations carry `Dimension="0"` for a
+ * scalar, so a zero is "no dimension" rather than an array of length zero.
+ * @param element - Tag, member or parameter element.
+ * @returns Dimensions, empty for a scalar.
+ */
+function dimensionsOf(element: Element): string {
+  const written = attr(element, 'Dimensions') || attr(element, 'Dimension')
+  return written === '0' ? '' : written
+}
+
+/**
  * Parse a controller export without retaining XML nodes or customer source text.
  * @param xml - L5X XML text to parse.
  * @returns Parsed read-only controller export.
@@ -141,7 +169,7 @@ export function parseProject(xml: string): Project {
   const tagsOf = (element: Element | null, scope: string): Tag[] => children(child(element, 'Tags'), 'Tag').map((tag) => {
     collectValues(tag, scope)
     return { name: attr(tag, 'Name'), type: attr(tag, 'DataType'), scope,
-      description: description(tag), alias: attr(tag, 'AliasFor') }
+      description: description(tag), alias: attr(tag, 'AliasFor'), dimensions: dimensionsOf(tag) }
   })
   const programs = children(child(controller, 'Programs'), 'Program').map((program) => {
     const name = attr(program, 'Name')
@@ -169,10 +197,23 @@ export function parseProject(xml: string): Project {
   const aoiPins = new Map(aoiDefinitions.map(definition => [attr(definition, 'Name').toUpperCase(),
     children(child(definition, 'Parameters'), 'Parameter').map(parameter => attr(parameter, 'Name'))
       .filter(name => name !== '' && name !== 'EnableIn' && name !== 'EnableOut')]))
+  const dataTypes = new Map(children(child(controller, 'DataTypes'), 'DataType').map(type => [attr(type, 'Name'),
+    children(child(type, 'Members'), 'Member').map(member => ({
+      name: attr(member, 'Name'), type: attr(member, 'DataType'), dimensions: dimensionsOf(member), description: description(member),
+    }))]))
+  // The same parameters the block draws as pins, but kept with their type and usage so an instance
+  // can be drilled into in the tag organizer.
+  const aoiParameters = new Map(aoiDefinitions.map(definition => [attr(definition, 'Name').toUpperCase(),
+    children(child(definition, 'Parameters'), 'Parameter')
+      .filter(parameter => attr(parameter, 'Name') !== 'EnableIn' && attr(parameter, 'Name') !== 'EnableOut')
+      .map(parameter => ({
+        name: attr(parameter, 'Name'), type: attr(parameter, 'DataType'), dimensions: dimensionsOf(parameter),
+        description: description(parameter), usage: attr(parameter, 'Usage'),
+      }))]))
   return {
     name: attr(controller, 'Name'), processor: attr(controller, 'ProcessorType'), exportRevision: attr(root, 'SoftwareRevision'),
     revision: [attr(controller, 'MajorRev'), attr(controller, 'MinorRev')].filter(Boolean).join('.'),
-    programs, tasks, tags: tagsOf(controller, 'controller'), modules, exportedData, aoiPins,
+    programs, tasks, tags: tagsOf(controller, 'controller'), modules, exportedData, aoiPins, dataTypes, aoiParameters,
     aois: aoiDefinitions.map(aoi => attr(aoi, 'Name')),
     types: children(child(controller, 'DataTypes'), 'DataType').map(type => attr(type, 'Name')),
   }

@@ -110,6 +110,8 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   const [showSource, setShowSource] = useState(false)
   const [tagView, setTagView] = useState<TagView>()
   const [tagFilter, setTagFilter] = useState('')
+  // Which organizer rows are drilled open, keyed scope/name so the same tag in two scopes stays distinct.
+  const [expandedTags, setExpandedTags] = useState<ReadonlySet<string>>(new Set())
   const [targetRung, setTargetRung] = useState<string>()
   const [focused, setFocused] = useState<FocusedInstruction>()
   const [focusedRung, setFocusedRung] = useState<string>()
@@ -172,6 +174,42 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   const pinsFor = (mnemonic: string): readonly string[] | undefined => project?.aoiPins.get(mnemonic) ?? project?.aoiPins.get(mnemonic.toUpperCase())
   const resolveTimer = (value: string): TimerState | undefined => project === undefined
     ? undefined : timerState(project, selectedProgram?.name ?? 'controller', value)
+  /**
+   * What a tag organizer row drills into: array elements first, then the members of its user-defined
+   * type, then the parameters of its add-on instruction. Studio shows the same three shapes, and a
+   * reader needs them because a saved value always lives one or two levels below the tag name.
+   * @param tag - Row to expand.
+   * @returns Child rows, empty when the tag has nothing below it.
+   */
+  const tagChildren = (tag: Tag): Tag[] => {
+    const dimensions = tag.dimensions.split(/\s+/u).filter(part => part !== '')
+    if (dimensions.length > 0) {
+      const count = Math.min(Number(dimensions[0]) || 0, 64)
+      const rest = dimensions.slice(1).join(' ')
+      return Array.from({ length: count }, (_, index) => ({
+        name: `${tag.name}[${index}]`, type: tag.type, scope: tag.scope, description: '', alias: '', dimensions: rest,
+      }))
+    }
+    const members = project?.dataTypes.get(tag.type) ?? project?.aoiParameters.get(tag.type.toUpperCase())
+    return (members ?? []).map(member => ({
+      name: `${tag.name}.${member.name}`, type: member.type, scope: tag.scope,
+      description: member.description, alias: '', dimensions: member.dimensions,
+    }))
+  }
+  /** Depth a reader may drill to; deeper than this the organizer stops pretending to be a browser. */
+  const TAG_DEPTH = 4
+  const tagRows = (tags: readonly Tag[]): { tag: Tag; depth: number; expandable: boolean; open: boolean }[] => {
+    const rows: { tag: Tag; depth: number; expandable: boolean; open: boolean }[] = []
+    const walk = (tag: Tag, depth: number): void => {
+      if (rows.length >= 400) return
+      const children = depth < TAG_DEPTH ? tagChildren(tag) : []
+      const open = expandedTags.has(`${tag.scope}/${tag.name}`)
+      rows.push({ tag, depth, expandable: children.length > 0, open })
+      if (open) for (const member of children) walk(member, depth + 1)
+    }
+    for (const tag of tags) walk(tag, 0)
+    return rows
+  }
   const focusedOperands = focused === undefined ? [] : displayOperands(focused.mnemonic, focused.operands)
     .map(operand => detailFor(operand)).filter((item): item is OperandDetail => item !== undefined)
   const references = useMemo(() => project === undefined ? [] : findReferences(project, query), [project, query])
@@ -365,7 +403,19 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
                   && (matches(childModule.name) || matches(childModule.catalog))))
                 .map((module, index) => treeModule(module, [], String(index)))}
             </details>
-            <details className={css.nested} open={filter !== '' ? true : undefined}><summary>{t('aois')} ({project.aois.length})</summary>{project.aois.filter(matches).map(name => <div className={css.leaf} key={name}>{name}</div>)}</details>
+            <details className={css.nested} open={filter !== '' ? true : undefined}><summary>{t('aois')} ({project.aois.length})</summary>
+              {project.aois.filter(matches).map(name => {
+                // An add-on instruction opens onto its own parameters, typed and ordered as declared,
+                // because that is what a call's pins are labelled from.
+                const parameters = project.aoiParameters.get(name.toUpperCase()) ?? []
+                return <details className={css.nested} key={name}><summary>{name}</summary>
+                  {parameters.map(parameter => <div className={css.leaf} key={parameter.name} title={parameter.description}>
+                    {parameter.name} <small>{parameter.type}{parameter.dimensions !== '' && `[${parameter.dimensions}]`}{parameter.usage !== '' && ` · ${parameter.usage}`}</small>
+                  </div>)}
+                  {parameters.length === 0 && <span className={css.leaf}>{t('none')}</span>}
+                </details>
+              })}
+            </details>
             <details className={css.nested} open={filter !== '' ? true : undefined}><summary>{t('types')} ({project.types.length})</summary>{project.types.filter(matches).map(name => <div className={css.leaf} key={name}>{name}</div>)}</details>
           </details>
         </div>
@@ -397,6 +447,17 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
         <main className={css.main} ref={scrollportRef}>
           {tagView !== undefined ? <TagTable tags={tagView === 'controller' ? project.tags : selectedProgram?.tags ?? []}
             filter={tagFilter} setFilter={setTagFilter} onContext={contextFor} onWatch={addWatch} onFind={find}
+            rows={tagRows((tagView === 'controller' ? project.tags : selectedProgram?.tags ?? []).filter((tag) => {
+              const needle = tagFilter.trim().toLowerCase()
+              return needle === '' || tag.name.toLowerCase().includes(needle) || tag.type.toLowerCase().includes(needle)
+            }))}
+            onToggle={(tag) => { setExpandedTags((previous) => {
+              const key = `${tag.scope}/${tag.name}`
+              const next = new Set(previous)
+              if (next.has(key)) next.delete(key)
+              else next.add(key)
+              return next
+            }) }}
             getDatum={tag => exportedDatum(project, tag.scope, tag.name)} t={t} />
             : selected === undefined ? <div className={css.status}>{t('noSelection')}</div> : <>
               {selected.description !== '' && <p className={css.description}>{selected.description}</p>}
@@ -572,24 +633,31 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
   </div>
 }
 
-function TagTable({ tags, filter, setFilter, onContext, onWatch, onFind, getDatum, t }: {
+function TagTable({ tags, rows, filter, setFilter, onContext, onWatch, onFind, onToggle, getDatum, t }: {
   readonly tags: readonly Tag[]
+  readonly rows: readonly { tag: Tag; depth: number; expandable: boolean; open: boolean }[]
   readonly filter: string
   readonly setFilter: (value: string) => void
   readonly onContext: (event: React.MouseEvent, text: string, symbol?: string) => void
   readonly onWatch: (symbol: string) => void
   readonly onFind: (symbol: string) => void
+  readonly onToggle: (tag: Tag) => void
   readonly getDatum: (tag: Tag) => ExportedDatum | undefined
   readonly t: PropsLocale<'sidebarL5x'>['t']
 }): ReactNode {
-  const needle = filter.trim().toLowerCase()
-  const visible = tags.filter(tag => needle === '' || tag.name.toLowerCase().includes(needle) || tag.type.toLowerCase().includes(needle)).slice(0, 250)
+  // The rows are already filtered by their root tag, so a child never outlives the tag it belongs to.
+  const visible = rows
   return <div className={css.tagTableView}>
-    <div className={css.tagTableToolbar}><label>{t('find')} <input value={filter} onChange={(event) => { setFilter(event.target.value) }} placeholder={t('findTag')} /></label><span>{visible.length} / {tags.length}</span><span>{t('exportedValueScope')}</span></div>
+    <div className={css.tagTableToolbar}><label>{t('find')} <input data-l5x-tag-filter value={filter} onChange={(event) => { setFilter(event.target.value) }} placeholder={t('findTag')} /></label><span>{visible.filter(row => row.depth === 0).length} / {tags.length}</span><span>{t('exportedValueScope')}</span></div>
     <table className={css.tagTable}><thead><tr><th>{t('name')}</th><th>{t('exportedValue')}</th><th>{t('type')}</th><th>{t('alias')}</th><th>{t('description')}</th><th>{t('context')}</th></tr></thead>
-      <tbody>{visible.map(tag => <tr key={`${tag.scope}/${tag.name}`} onContextMenu={(event) => { onContext(event, tag.name, tag.name) }}>
-        <th title={tag.scope}>{tag.name}</th><td className={css.noValue}>{getDatum(tag)?.value ?? t('noExportedValue')}</td><td>{tag.type}</td><td>{tag.alias}</td><td title={tag.description}>{tag.description}</td>
-        <td className={css.tagActions}><button type="button" onClick={() => { onWatch(tag.name) }}>{t('addWatch')}</button><button type="button" onClick={() => { onFind(tag.name) }}>{t('references')}</button></td>
+      <tbody>{visible.slice(0, 400).map(row => <tr key={`${row.tag.scope}/${row.tag.name}`} onContextMenu={(event) => { onContext(event, row.tag.name, row.tag.name) }}>
+        <th title={row.depth === 0 ? row.tag.scope : row.tag.name} style={{ paddingLeft: `${8 + row.depth * 14}px` }} data-l5x-tag-row={row.depth}>
+          {row.expandable
+            ? <button type="button" className={css.tagToggle} aria-expanded={row.open} aria-label={row.open ? t('collapse') : t('expand')} onClick={() => { onToggle(row.tag) }}>{row.open ? '▾' : '▸'}</button>
+            : <span className={css.tagToggle} aria-hidden="true" />}
+          {row.tag.name}
+        </th><td className={css.noValue}>{getDatum(row.tag)?.value ?? t('noExportedValue')}</td><td>{row.tag.type}{row.tag.dimensions !== '' && `[${row.tag.dimensions}]`}</td><td>{row.tag.alias}</td><td title={row.tag.description}>{row.tag.description}</td>
+        <td className={css.tagActions}><button type="button" onClick={() => { onWatch(row.tag.name) }}>{t('addWatch')}</button><button type="button" onClick={() => { onFind(row.tag.name) }}>{t('references')}</button></td>
       </tr>)}</tbody></table>
     {tags.length > 250 && <p className={css.panelNote}>{t('filterMore')}</p>}
   </div>

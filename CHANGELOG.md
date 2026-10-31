@@ -1,7 +1,15 @@
 ## [Unreleased]
 
+## [0.73.0] - 2026-10-31
+
 ### Added
 
+- **A tag row drills into what is under it.** The tag organizer now expands an array into its elements, a
+  user-defined type into its members, and an add-on instruction instance into its own parameters — typed,
+  indented, searchable, and each child carrying the value the export recorded for it. The add-on instruction
+  node in the controller organizer opens onto its parameter list the same way, so a block's pins can be traced
+  back to the definition they come from. Covered by `e2e:actions`, which expands a `DINT[5]` and an
+  `AOI_Alarm` instance in the real browser and reads the rows that appear.
 - **The whole instruction set renders, not just the ones an export happens to use.** The catalogue the composer
   validates against (`packages/l5x/src/engine/instructions.ts`) grew from 42 instructions to **121 entries / 118
   distinct names** — math, file and array, sequencer, ASCII, string, process, alarm, motion, program control and the

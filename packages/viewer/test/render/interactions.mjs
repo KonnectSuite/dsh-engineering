@@ -160,6 +160,25 @@ async function scenario(tab) {
   })
   record('a tag can be sent to the watch pane', watched && added !== null && watchCount !== null && !/\(0\)/u.test(watchCount), `menu ${String(added)}, watch tab ${String(watchCount)}`)
 
+  // 7. A tag row drills into what is under it: an array into its elements, a
+  //    user-defined type or an add-on instruction instance into its members.
+  const drill = async (needle, expected) => {
+    await tab.locator('[data-l5x-tag-filter]').fill(needle)
+    await tab.waitForTimeout(350)
+    const toggle = tab.locator('button[aria-expanded="false"]').first()
+    if (await toggle.count() === 0) return { name: needle, children: [] }
+    const name = await toggle.evaluate(node => (node.parentElement?.textContent ?? '').replace(/^[▸▾]/u, '').trim())
+    await toggle.click()
+    await tab.waitForTimeout(300)
+    const children = await tab.$$eval('[data-l5x-tag-row="1"]', nodes => nodes.map(node => (node.textContent ?? '').trim()))
+    return { name, children, expected }
+  }
+  const array = await drill('KP_Test_Bits', 5)
+  record('an array tag drills into its elements', array.children.length === array.expected && array.children.every(child => /^KP_Test_Bits\[\d+\]/u.test(child)), `${array.name}: ${array.children.length} row(s)`)
+  const aoi = await drill('ALM_ABPower_AOI', 1)
+  record('an add-on instruction instance drills into its parameters', aoi.children.length >= aoi.expected && aoi.children.every(child => child.startsWith('ALM_ABPower_AOI.')), `${aoi.name}: ${aoi.children.slice(0, 2).join(', ')}`)
+
+
   // 7. A rung answers for itself: right-clicking it offers the rung's own
   // actions, and watching the rung adds every tag it touches at once.
   // The tag table replaced the ladder a moment ago, so go back to the routine
