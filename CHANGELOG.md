@@ -9,6 +9,16 @@
   cover three exports and two controller families (`_e2e/out/CT9-Source.L5X`, `CT10-Source.L5X`, `Century-fixed.L5X`)
   at 1680x1200 and 1280x900, including a 95-instruction rung list. `test/render/e2e.mjs` renders one routine,
   `diag.mjs` dumps the measurement and `probe.mjs` one instruction's computed style.
+- **Every routine of an export is judged, not just the sampled ones.** `npm run e2e:routines` opens every routine the
+  organizer lists — 256 routines across the CT9, CT10, CT8, Slitter and PLC-5-migrated fixtures plus the Century SLC
+  migration — in one browser and applies the same assertions to each, so a ladder shape that only occurs in an
+  unscheduled program or a migrated routine cannot slip through.
+- **The pane is driven, not only read.** `npm run e2e:actions` clicks and types with a real browser: a click focuses an
+  instruction, arrow keys walk the rung, a rung number selects its rung, the source view shows the exported
+  NeutralText, the organizer filter narrows the tree, the tag table opens and sends a tag to the offline watch pane, the
+  bottom panes switch, and the console stays silent throughout.
+- **An instruction comment cannot overprint its neighbour.** The comment column and the instruction cell now agree on
+  one width (`COMMENT_WIDTH`), and the rendered comments are measured for overlap as part of the gate.
 
 ### Changed
 

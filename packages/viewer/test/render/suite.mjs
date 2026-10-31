@@ -28,6 +28,7 @@ const SHOTS = join(REPO, '.harness/shots')
 const cases = [
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'BottomCutter_Comms', width: 1680, height: 1200 },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'BottomCutter_Comms', width: 1280, height: 900 },
+  { file: '../_e2e/out/CT9-Source.L5X', routine: 'BottomCutter_Comms', width: 640, height: 900 },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'BottomCutter_Axis', width: 1680, height: 1200, requireValues: false },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'Cutter_AxisInterlocks', width: 1680, height: 1200, requireValues: false },
   { file: '../_e2e/out/CT9-Source.L5X', routine: 'Cutter_StopControl', width: 1680, height: 1200, requireValues: false },

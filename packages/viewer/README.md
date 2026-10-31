@@ -35,7 +35,19 @@ the shell provides them.
 `node packages/viewer/test/render/suite.mjs` (`npm run e2e:ladder`) renders this package's built
 `lib/client.js` in a real headless Chrome against the exports under `_e2e/out/`, measures the DOM, and
 fails on a render defect a reader would notice: clipped text, a label escaping its cell, two labels
-overlapping, an instruction painting two tag labels, an index used as a pin name, or a recorded
-exported value that never reaches the screen. `test/render/e2e.mjs` renders one routine and writes a
-screenshot; `test/render/diag.mjs` dumps the measurement; `test/render/probe.mjs` dumps one
-instruction's computed style. The harness needs Chrome or Edge installed; it downloads nothing.
+overlapping, an instruction painting two tag labels, an instruction comment overprinting its
+neighbour, an index used as a pin name, or a recorded exported value that never reaches the screen.
+
+Three more entry points cover what the case table cannot:
+
+- `npm run e2e:routines` (`test/render/routines.mjs`) opens *every* routine the organiser lists in one
+  export and judges each, so a ladder shape that only occurs in one unscheduled program or one
+  migrated routine cannot slip through. `--file`, `--limit`, `--shots` and `--width` are accepted.
+- `npm run e2e:actions` (`test/render/interactions.mjs`) drives the pane the way an engineer does:
+  click focuses an instruction, arrow keys walk the rung, a rung number selects its rung, the source
+  view shows the exported NeutralText, the organiser filter narrows the tree, the tag table opens and
+  sends a tag to the offline watch pane, the bottom panes switch, and no console output appears.
+- `test/render/e2e.mjs` renders one routine and writes a screenshot; `test/render/diag.mjs` dumps the
+  measurement; `test/render/probe.mjs` dumps one instruction's computed style.
+
+The harness needs Chrome or Edge installed; it downloads nothing.

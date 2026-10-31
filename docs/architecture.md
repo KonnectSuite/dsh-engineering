@@ -249,6 +249,8 @@ it partially.
 pnpm test          # patch invariants, docs agreement, tool reference, client face
 pnpm build:client  # build both faces from source, then lib/client.js
 pnpm e2e:ladder    # render the built ladder face in headless Chrome and assert on the DOM
+pnpm e2e:routines  # the same judgement for every routine of one export
+pnpm e2e:actions   # click and key through the pane and assert it answers
 pnpm docs:tools    # regenerate docs/reference/tools.md and tools.json
 pnpm docs:check    # fail when the generated reference is stale
 ```
@@ -263,5 +265,15 @@ either preview.
 `packages/viewer/test/render/suite.mjs` is the ladder face's end-to-end evidence: it mounts the built
 `packages/viewer/lib/client.js` in headless Chrome, opens a routine the way a reader does and measures
 the rendered document — no clipped text, one label per instruction, no label escaping its cell, no
-overlapping labels, no index used as a pin name, and every recorded exported value on screen. It needs
-Chrome or Edge installed and is kept out of `pnpm test` for that reason.
+overlapping labels, no instruction comment overprinting its neighbour, no index used as a pin name, and
+every recorded exported value on screen. It needs Chrome or Edge installed and is kept out of
+`pnpm test` for that reason.
+
+Two companion runs cover what a case table cannot. `packages/viewer/test/render/routines.mjs` opens
+every routine the organiser lists in one export — 256 routines across the CT9, CT10, CT8, Slitter,
+PLC-5-migrated and Century fixtures at the time of writing — so a shape that only occurs in one
+unscheduled program or one migrated routine is judged too. `packages/viewer/test/render/interactions.mjs`
+drives the pane instead of only reading it: a click focuses an instruction, arrow keys walk the rung, a
+rung number selects its rung, the source view shows the exported NeutralText, the organiser filter
+narrows the tree, the tag table opens and sends a tag to the offline watch pane, the bottom panes
+switch, and the console stays silent throughout.

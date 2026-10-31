@@ -176,7 +176,9 @@ const MEASURE = `(() => {
   const pane = document.querySelector('[data-l5x-project-view]')
   if (pane === null) return { error: 'no ladder pane' }
   const clipped = []
-  for (const element of pane.querySelectorAll('*')) {
+  /* The sweep covers the rungs, not the navigator: a tree row or a table cell is
+     allowed to shorten a name (Studio's organizer does), a rung is not. */
+  for (const element of pane.querySelectorAll('[data-l5x-rung] *')) {
     if (element.children.length > 0) continue
     const text = (element.textContent ?? '').trim()
     if (text === '') continue
@@ -250,11 +252,30 @@ const MEASURE = `(() => {
       if (across > 1 && down > 1) overlaps.push(a.text + ' / ' + b.text)
     }
   }
+  const comments = [...pane.querySelectorAll('[data-l5x-instruction-comment]')].map(element => {
+    const rect = element.getBoundingClientRect()
+    return {
+      text: (element.textContent ?? '').trim(),
+      left: Math.round(rect.left), right: Math.round(rect.right),
+      top: Math.round(rect.top), bottom: Math.round(rect.bottom),
+    }
+  })
+  const commentOverlaps = []
+  for (let first = 0; first < comments.length; first += 1) {
+    for (let second = first + 1; second < comments.length; second += 1) {
+      const a = comments[first]
+      const b = comments[second]
+      const across = Math.min(a.right, b.right) - Math.max(a.left, b.left)
+      const down = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)
+      if (across > 4 && down > 4) commentOverlaps.push(a.text.slice(0, 40) + ' / ' + b.text.slice(0, 40))
+    }
+  }
   return {
     width: pane.clientWidth,
     documentHeight: document.documentElement.scrollHeight,
     labels,
     overlaps,
+    commentOverlaps,
     escaped: labels.filter(label => label.ownerLeft !== null && (label.left < label.ownerLeft - 1 || label.right > label.ownerRight + 1)).map(label => label.text),
     layout,
     paneHeight: Math.round(pane.getBoundingClientRect().height),
@@ -291,6 +312,9 @@ export function judge(measurement, options = {}) {
   const doubled = measurement.blocks.filter(block => block.tags > 1)
   if (doubled.length > 0) failures.push(`${doubled.length} instruction(s) painted more than one tag label: ${doubled.map(block => block.mnemonic).join(', ')}`)
   if (measurement.overlaps.length > 0) failures.push(`${measurement.overlaps.length} overlapping tag label(s): ${measurement.overlaps.slice(0, 4).join(' | ')}`)
+  if ((measurement.commentOverlaps ?? []).length > 0) {
+    failures.push(`${measurement.commentOverlaps.length} instruction comment(s) overprinting a neighbour: ${measurement.commentOverlaps.slice(0, 3).join(' | ')}`)
+  }
   if (measurement.escaped.length > 0) failures.push(`${measurement.escaped.length} tag label(s) escaping their cell: ${measurement.escaped.slice(0, 4).join(' | ')}`)
   return failures
 }
@@ -358,23 +382,34 @@ export async function renderLadderFace(options = {}) {
     }
     if (state.status !== 'mounted') throw new Error(`harness: ${state.status}: ${state.detail ?? ''}`)
     await tab.waitForFunction(() => document.querySelectorAll('[data-l5x-instruction]').length > 0, undefined, { timeout: 30_000 })
-    if (options.routine !== undefined) {
+    // Every routine the organizer lists: the row prints an icon, the name and a
+    // language tag, which is what separates a routine from a program or a task.
+    const discovered = await tab.evaluate(() => [...document.querySelectorAll('[data-l5x-project-view] button')]
+      .map(button => (button.textContent ?? '').trim())
+      .filter(text => /^(?:\W+)?\S+ (?:RLL|ST|FBD|SFC|IL)$/u.test(text))
+      .map(text => text.replace(/^\W+/u, '').split(/\s+/u)[0]))
+    /**
+     * Select one routine the way a reader does: click its organizer row.
+     * @param {string} name Routine name as the organizer prints it.
+     */
+    const openRoutine = async name => {
       // The organizer labels a routine with its name plus a language tag, so the
       // row is matched on the leading name and clicked the way a reader would.
-      const clicked = await tab.evaluate(name => {
+      const clicked = await tab.evaluate(routineName => {
         const buttons = [...document.querySelectorAll('button')]
-        const row = buttons.find(element => (element.textContent ?? '').replace(/^\W+/u, '').trim().startsWith(`${name} `))
+        const row = buttons.find(element => (element.textContent ?? '').replace(/^\W+/u, '').trim().startsWith(`${routineName} `))
         if (row === undefined) return { ok: false, sample: buttons.map(button => (button.textContent ?? '').trim().slice(0, 40)).slice(0, 60) }
         row.click()
         return { ok: true }
-      }, options.routine)
-      if (!clicked.ok) throw new Error(`harness: no organizer row for routine ${options.routine}; buttons: ${clicked.sample.join(' | ')}`)
-      await tab.waitForFunction(name => {
+      }, name)
+      if (!clicked.ok) throw new Error(`harness: no organizer row for routine ${name}; buttons: ${clicked.sample.join(' | ')}`)
+      await tab.waitForFunction(routineName => {
         const current = document.querySelector('[data-l5x-project-view]')
-        return current !== null && (current.textContent ?? '').includes(`/ ${name}`)
-      }, options.routine, { timeout: 10_000 })
+        return current !== null && (current.textContent ?? '').includes(`/ ${routineName}`)
+      }, name, { timeout: 10_000 })
       await tab.waitForTimeout(400)
     }
+    if (options.routine !== undefined) await openRoutine(options.routine)
     await tab.waitForTimeout(400)
     const probe = options.probe === undefined ? undefined : await tab.evaluate(options.probe)
     if (shot !== undefined) {
@@ -382,7 +417,22 @@ export async function renderLadderFace(options = {}) {
       await tab.screenshot({ path: shot, fullPage: false })
     }
     const measurement = await tab.evaluate(MEASURE)
-    return { measurement, probe, failures: [...problems, ...judge(measurement, options)], shot, address }
+    const scenario = options.scenario === undefined ? undefined : await options.scenario(tab)
+    const cases = [{ routine: options.routine ?? '(default view)', measurement, failures: judge(measurement, options) }]
+    // One browser per batch: every routine of an export is visited in this page.
+    const queue = options.routines === '*' ? discovered : (options.routines ?? [])
+    for (const [index, name] of queue.entries()) {
+      if (name === options.routine) continue
+      await openRoutine(name)
+      const other = await tab.evaluate(MEASURE)
+      const routineShot = options.shots === undefined ? undefined : join(options.shots, `routine-${String(index).padStart(2, '0')}.png`)
+      if (routineShot !== undefined) {
+        mkdirSync(dirname(routineShot), { recursive: true })
+        await tab.screenshot({ path: routineShot, fullPage: false })
+      }
+      cases.push({ routine: name, measurement: other, shot: routineShot, failures: judge(other, options) })
+    }
+    return { measurement, cases, discovered, probe, scenario, failures: [...problems, ...cases.flatMap(item => item.failures), ...(scenario?.failures ?? [])], shot, address }
   } finally {
     await browser.close()
     await new Promise(done => server.close(done))

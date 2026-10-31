@@ -559,6 +559,22 @@ function pinRows(mnemonic: string, operands: string, detailFor: (value: string) 
   return rows.map((row, index) => index === 0 ? { ...row, flags } : row)
 }
 /**
+ * Width of an instruction's comment column, in pixels.
+ *
+ * The same number is `.instructionComment`'s width and `.instruction`'s
+ * minimum width in `L5xBody.module.css`: the comment is drawn above the glyph
+ * without taking room in the row, so the cell has to be at least as wide as it
+ * or two neighbouring comments would overprint each other.
+ */
+const COMMENT_WIDTH = 140
+/**
+ * Characters that fit in {@link COMMENT_WIDTH} at the pane's comment size.
+ *
+ * A wrapping estimate only; it decides the reserved band, and the band is what
+ * keeps a comment from reaching the wire above the next row.
+ */
+const COMMENT_CHARS = 27
+/**
  * Break an instruction description into the narrow column Studio 5000 uses above
  * a glyph, so the rung can reserve exactly the height the text needs.
  * @param text - Description text.
@@ -584,7 +600,7 @@ function commentLines(text: string, width: number): string[] {
  */
 function commentBand(describeOperand: (value: string) => string, segment: LadderSegment): number {
   const symbol = instructionSymbols(segment.mnemonic, segment.operands)[0]
-  const lines = commentLines(describeOperand(symbol ?? segment.operands), 30)
+  const lines = commentLines(describeOperand(symbol ?? segment.operands), COMMENT_CHARS)
   return Math.max(24, Math.min(190, Math.round(lines.length * 12.4 + 10)))
 }
 /**
@@ -715,6 +731,7 @@ function LadderPath({ segments, path, rung, depth, describeOperand, detailFor, r
             </span>)}</span>}
         {isBoolean && <span className={css.tagBlock}>
           <code className={css.tagName} data-l5x-tag-name title={detail?.tag?.description ?? segment.operands}>{segment.operands}</code>
+          {detail?.tag?.alias ? <span className={css.tagAlias} data-l5x-operand-alias title={t('alias')}>{detail.tag.alias}</span> : null}
           {detail?.datum !== undefined && <span className={css.tagValue} data-l5x-operand-value title={t('exportedValueScope')}><i aria-hidden="true">◀</i>{detail.datum.value}</span>}
         </span>}
         <span className={css.instructionTooltip} role="tooltip"><strong>{segment.mnemonic}({segment.operands})</strong>

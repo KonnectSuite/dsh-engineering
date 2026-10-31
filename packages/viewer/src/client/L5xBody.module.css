@@ -23,7 +23,7 @@
 .rung { display:grid; grid-template-columns:32px minmax(0,1fr); border-bottom:0.5px solid var(--dsw-alias-border-l2); min-height:110px; }
 .rungNumber { color:var(--dsw-alias-label-secondary); padding-top:36px; }
 .rungBody { border-left:2px solid var(--dsw-alias-label-primary); border-right:2px solid var(--dsw-alias-label-primary); min-width:0; padding:12px; }
-.comment { color:var(--dsw-alias-label-secondary); white-space:pre-wrap; margin-bottom:10px; }
+.comment { color:var(--dsw-alias-label-secondary); white-space:pre-wrap; margin-bottom:10px; overflow-wrap:anywhere; }
 .rail { display:flex; align-items:center; gap:0; overflow:auto; padding:8px 0; }
 .path { display:flex; align-items:center; min-width:max-content; }
 .branch { display:flex; flex-direction:column; border-left:1px solid var(--dsw-alias-label-primary); border-right:1px solid var(--dsw-alias-label-primary); }
@@ -122,7 +122,7 @@
 .path { position:relative; display:flex; align-items:flex-start; min-height:calc(var(--l5x-band, 24px) + 104px); min-width:100%; width:max-content; }
 .path::before { content:''; position:absolute; left:0; right:0; top:calc(var(--l5x-band, 24px) + 52px); height:1px; background:#333; }
 .nestedPath { min-width:max-content; width:max-content; }
-.instruction { position:relative; flex:0 0 auto; display:flex; flex-direction:column; align-items:center; height:auto; min-height:calc(var(--l5x-band, 24px) + 104px); width:auto; min-width:96px; max-width:215px; padding:calc(var(--l5x-band, 24px) + 60px) 8px 4px; }
+.instruction { position:relative; flex:0 0 auto; display:flex; flex-direction:column; align-items:center; height:auto; min-height:calc(var(--l5x-band, 24px) + 104px); width:auto; min-width:140px; max-width:215px; padding:calc(var(--l5x-band, 24px) + 60px) 8px 4px; }
 .instruction::before { display:none; }
 .branch { position:relative; display:flex; flex-direction:column; flex:0 0 auto; }
 .branch::before,.branch::after { content:''; position:absolute; top:calc(var(--l5x-band, 24px) + 52px); bottom:52px; width:1px; background:#333; }
@@ -143,7 +143,7 @@
 .outputInstruction .tagName { text-align:right; }
 .instruction .tagValue { display:inline-flex; align-items:center; gap:2px; color:#0b5cad; font-family:inherit; font-size:10px; font-weight:700; line-height:1.2; white-space:nowrap; }
 .tagValue i,.blockCard b i { font-style:normal; font-size:9px; }
-.instructionComment { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) - 2px); transform:translate(-50%,-100%); width:158px; color:#3f4750; font-size:10px; line-height:1.2; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; }
+.instructionComment { position:absolute; left:50%; top:calc(var(--l5x-band, 24px) - 2px); transform:translate(-50%,-100%); width:140px; overflow-wrap:anywhere; color:#3f4750; font-size:10px; line-height:1.2; text-align:center; white-space:pre-wrap; overflow-wrap:anywhere; }
 .functionBlock { justify-content:flex-start; max-width:none; padding-top:calc(var(--l5x-band, 24px) + 38px); }
 .functionBlock .blockCard { position:relative; left:auto; top:auto; transform:none; margin:0 auto; }
 /* Instruction selection is visual evidence only; wire colors never imply live controller state. */
@@ -186,3 +186,17 @@
 .flagOff { background:#e6e7e8; color:#9aa3ab; }
 .nestedPath { min-width:max-content; width:max-content; }
 .outputInstruction .instructionTooltip { left:auto; right:0; transform:none; }
+
+/* A document pane is often narrower than a desktop; the ladder is the point, so
+   the navigator and the inspector give way before it does. */
+@container (max-width: 980px) {
+  .layout { grid-template-columns:minmax(150px,18%) minmax(0,1fr); }
+  .inspector { display:none; }
+}
+@container (max-width: 700px) {
+  .layout { grid-template-columns:minmax(0,1fr); }
+  .tree { display:none; }
+}
+/* Studio prints the tag an alias resolves to under the name it was written with. */
+.instruction .tagAlias { max-width:100%; color:#5b6570; font-family:inherit; font-size:9px; font-weight:400; line-height:1.15; text-align:center; white-space:normal; overflow-wrap:anywhere; }
+.outputInstruction .tagAlias { text-align:right; }
