@@ -169,8 +169,8 @@
 .operandDetails strong { text-align:right; }
 .operandDetails span,.operandDetails p { grid-column:1/-1; margin:0; color:var(--dsw-alias-label-secondary); font-size:10px; }
 .menuHeading { padding:5px 9px; border-bottom:0.5px solid var(--dsw-alias-border-l2); font-size:10px; font-weight:700; color:var(--dsw-alias-label-secondary); }
-.blockCard { position:absolute; left:50%; top:52px; transform:translate(-50%,-50%); z-index:2; width:max-content; min-width:118px; max-width:340px; border:1px solid #7d848b; background:#fff; box-shadow:none; text-align:left; }
-.blockCard>strong { display:block; padding:1px 6px; background:#e6e7e8; border-bottom:1px solid #7d848b; color:#14181c; font-size:10px; font-weight:700; letter-spacing:.02em; }
+.blockCard { position:absolute; left:50%; top:52px; transform:translate(-50%,-50%); z-index:2; width:max-content; min-width:118px; max-width:340px; border:1px solid #6f767d; background:#ececec; box-shadow:none; text-align:left; }
+.blockCard>strong { display:block; padding:1px 6px; background:#dcdcdc; border-bottom:1px solid #6f767d; color:#14181c; font-size:10px; font-weight:700; letter-spacing:.02em; }
 .blockCard>span { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:baseline; gap:2px 8px; padding:2px 6px; border-bottom:0.5px solid #d5d8db; }
 .blockCard>span:last-child { border-bottom:0; }
 .blockCard small { color:#4b5563; font-family:inherit; font-size:10px; font-weight:400; line-height:1.25; white-space:nowrap; }
