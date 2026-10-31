@@ -116,7 +116,7 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 | `TAG_NAME_TOO_LONG` | error | a name is over 40 characters |
 | `ROUTINE_PAREN` | warning | a routine header ends with a stray `)` |
 | `ROUTINE_UNBALANCED` | error | ROUTINE and END_ROUTINE counts differ: truncated or malformed |
-| `PLACEHOLDER_TAG` | warning | a tag stands in for a module the wizard could not map |
+| `PLACEHOLDER_TAG` | warning | a tag stands in for a module with no Logix equivalent (a 1747-SDN, say): correct output, and the replacement is an engineering decision |
 | `INDIRECT_ADDRESS` | warning | a rung indexes an array with another tag (`N[N7_130]`), which Logix cannot express |
 | `REVISION_BELOW_TARGET` | info | the controller revision is below 37, so only an import can be proven |
 | `BOM` | warning | the file starts with a byte-order mark |
@@ -133,13 +133,19 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
    structure.
 3. **Convert.** RSLogix 500's (or RSLogix 5's) migration wizard — File > Save
    As, save-as-type "Logix Designer Files (\*.ACD)" — asks two questions. First
-   the target: ControlLogix or CompactLogix, catalogue number and revision, and
-   the wizard offers revisions 30 to 32 only. Then the I/O strategy:
+   the target: ControlLogix or CompactLogix, catalogue number and revision. The
+   wizard cannot emit anything newer than the revisions it ships with — 30 to 31
+   in the RSLogix 500 wizard, 30 to 32 in the RSLogix 5 one — which is a limit of
+   the tool, not a choice; the project is retargeted to 37 or newer in Studio 5000
+   before any offline build is claimed. Then the I/O strategy:
    **Keep Existing I/O** places the new controller in a rack beside a single
    EN2T or embedded Ethernet port and leaves the legacy chassis in a separate
    rack, while **Update All I/O** maps each legacy module to a replacement from
-   the drop-down list. Modules it cannot map become placeholder tags — the
-   `PLACEHOLDER_TAG` lint rule. The wizard writes a `.l5k` while it exports and
+   the drop-down list. A module with no Logix equivalent becomes a placeholder
+   tag — a 1747-SDN DeviceNet scanner, for instance — and that is the correct
+   outcome, reported as `PLACEHOLDER_TAG`: the tag keeps the addresses compiling
+   until an engineer chooses the replacement. The wizard writes a `.l5k` while it
+   exports and
    removes it once the `.ACD` is written, so keep a copy if the lint report is
    wanted, and export the `.ACD` to `.L5X` for the comparison. `Failed to export
    to ACD` is a lint result, not a dead end.
@@ -168,8 +174,9 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 - A text reader cannot prove runtime behaviour, I/O wiring or HMI bindings.
 - A revision 37 or newer target supports an offline build proof; older targets
   support an "import succeeded" statement only. The wizard is the ceiling on
-  that: it offers revisions 30 to 32 and nothing newer, so wizard output is
-  import-verified until someone retargets it in Studio 5000 revision 37 or later.
+  that: it cannot emit revision 37 or newer at all, so its output is
+  import-verified until the project is retargeted in Studio 5000 revision 37 or
+  later — one setting, and the first step before a build verdict is quoted.
 - Conversion itself is the wizard, not this row: `SaveAs` through the automation
   API writes a native copy, and the translator DLLs are undocumented.
 - `migration_resolve` proposes; it never writes to the project. A mechanical

@@ -61,6 +61,11 @@
 - **`migration_compare` says RSLogix 5 where it always meant it.** The tool read `.RSP` already, but its description
   and its unsupported-format refusal named `.RSS`/`.ACH` only; both now name RSLogix 5 and `.RSP`, and the generated
   tool reference is regenerated.
+- **A placeholder tag is the right answer, not a failure.** The migration reference now says so: a module with no Logix
+  equivalent (a 1747-SDN DeviceNet scanner is the worked example) becomes a placeholder tag by design, the lint rule
+  reports it as `PLACEHOLDER_TAG`, and choosing the replacement belongs to the engineer. The same pass states the
+  revision ceiling as what it is — the installed wizard cannot emit 37 or newer, so retargeting the imported project
+  in Studio 5000 is the first step before any build verdict is quoted, not an alternative workflow.
 - **The migration reference records the SLC 500 side.** The resolution section gained the RSLogix 500 evidence, because
   a SLC 500 conversion numbers its markers differently (105, 109, 110, 114, 134, 135, 160 on
   `SLITTER10_PLC1S0_08JUL2026_0953.RSS`) and yet every one of its 65 sites was answerable from the legacy rungs:
