@@ -26,16 +26,16 @@
   engine now refuses it with the fix spelled out (*"wire the blocks to each other directly, or move the read to another
   sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
   passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
-- **Sequential function charts can be created, staged, and built.** `draft_routine` accepts `language: "SFC"` and
-  writes an empty `SFCContent`; the new `draft_sfc` stages steps, transitions and directed links in the shape a
-  production export uses (`Step` with `InitialStep` and `<Action>`, `Transition` with a Structured Text condition,
-  `DirectedLink`, and no `Sheet` wrapper — the test fixture has one; a real project does not). A step is backed by an
-  `SFC_STEP` tag whose `Structure` must list every state member, and a transition by a plain BOOL tag; the tool states
-  that where a caller reads it. Verification by build: a chart of one initial step and one transition with condition
-  `Step_1.DN` imported and built with **0 warnings, 0 errors and an ACD written**. Two rules found on the way: an empty
-  `Structure` imports with `XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM`, and a condition that is not a tag reference — my first
-  attempt used `TRUE` — is read as an undefined tag (`RxSTX_E_TAG_NOT_FOUND`), which is how the first chart failed to
-  build. Six tests cover creation, the generated XML and the refusals.
+- **An SFC chart creates the tags it needs, and Studio builds the result.** `draft_sfc` now declares every step as an
+  `SFC_STEP` structure tag, every transition as a BOOL tag and every action as an `SFC_ACTION` structure tag when the
+  project does not already have it — with the member set Studio writes (`Status`, `X`, `FS`, `SA`, `LS`, `DN`, `OV`,
+  `AlarmEn`, `AlarmLow`, `AlarmHigh`, `Reset`, `PauseTimer`, `PRE`, `T`, `TMax`, `Count`, `LimitLow`, `LimitHigh`), the
+  initial step's `Status` at `16#a020_0201` and the others at `16#0020_0201`. A `<Tags>` region is created when the
+  program has none, in the position the schema requires (before `Routines`). Verification: on a project with no SFC tags
+  at all, `draft_routine` + `draft_sfc` + `draft_apply` produced a chart that Logix Designer imported and built with
+  **0 warnings, 0 errors and an ACD written**. Two build facts were needed to get there: a transition condition must
+  reference a tag or member (the literal `TRUE` is read as an undefined tag), and an empty `Structure` is rejected with
+  `XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM`. Eight tests now cover creation, generated tags, the XML and the refusals.
 
 ## [0.74.0] - 2026-11-01
 

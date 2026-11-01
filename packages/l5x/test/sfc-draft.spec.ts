@@ -95,3 +95,38 @@ describe('sequential function charts', () => {
     expect(result.error?.code).toBe('UNSUPPORTED_TARGET')
   })
 })
+
+
+describe('tags a chart needs are created with it', () => {
+  it('declares steps as SFC_STEP and transitions as BOOL when they are missing', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', CHART)
+    expect(chart.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'tags.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('tags.L5X') ?? ''
+    // This chart, with these generated tags, built in Logix Designer with 0 warnings.
+    expect(written).toContain('<Tag Name="Step_1" TagType="Base" DataType="SFC_STEP"')
+    expect(written).toContain('<DataValueMember Name="Status" DataType="DINT" Radix="Hex" Value="16#a020_0201"/>')
+    expect(written).toContain('<DataValueMember Name="X" DataType="BOOL" Value="1"/>')
+    expect(written).toContain('<Tag Name="Tran_1" TagType="Base" DataType="BOOL"')
+  })
+
+  it('does not redeclare a tag the project already has', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_tag', { scope: 'controller', name: 'Tran_1', data_type: 'BOOL', description: 'existing' })
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', {
+      ...CHART,
+      steps: JSON.stringify([{ id: 0, name: 'Step_1', initial: true }]),
+      transitions: JSON.stringify([{ id: 2, name: 'Tran_1', condition: 'Step_1.DN' }]),
+      links: JSON.stringify([{ from: 0, to: 2 }, { from: 2, to: 0 }]),
+    })
+    expect(chart.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'existing.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('existing.L5X') ?? ''
+    expect((written.match(/<Tag Name="Tran_1"/gu) ?? []).length).toBe(1)
+  })
+})

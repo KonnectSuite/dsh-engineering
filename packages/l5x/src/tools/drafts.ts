@@ -417,7 +417,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'draft_sfc',
-      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. The step tags (SFC_STEP) and transition tags (BOOL) must already exist; generating their state is not supported yet. Nothing is written until draft_apply.',
+      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the SFC routine. Example: "MainProgram".'),
         routine: string('Sequential function chart routine to extend. Example: "Chart".'),
@@ -431,6 +431,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const program = requiredString(args, 'program')
         const routineName = requiredString(args, 'routine')
         const draft = drafts.forProject(exec, project.id)
+        const view = withStagedTags(project, stagedFromDraft(draft.operations, project))
         const stagedRoutine = draft.operations.some(operation => operation.operation === 'add_routine'
           && String(operation.program) === program
           && String(operation.name).toLowerCase() === routineName.toLowerCase()
@@ -438,14 +439,40 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const routine = project.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
         if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine", or stage the routine first with draft_routine language "SFC".')
         if (routine !== undefined && routine.type !== 'SFC') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a sequential function chart.`, 'Extend a routine that is already SFC, or create one with draft_routine language "SFC".')
+        const steps = jsonArrayArg(args, 'steps')
+        const transitions = jsonArrayArg(args, 'transitions')
+        const links = jsonArrayArg(args, 'links')
+
+        // A chart's steps, transitions and actions are tags. Create the missing ones in this draft,
+        // with the structure Studio writes, so a chart can start in a project that has none.
+        const staged = new Set(draft.operations
+          .filter(entry => entry.operation === 'add_tag' || entry.operation === 'add_sfc_tag')
+          .map(entry => String(entry.name).toLowerCase()))
+        const has = (name: string): boolean => staged.has(name.toLowerCase())
+          || view.document.tags.some(entry => entry.name.toLowerCase() === name.toLowerCase())
+        const tagOperations: DraftOperation[] = []
+        const ensure = (name: string, kind: 'step' | 'transition' | 'action', initial: boolean): void => {
+          if (has(name)) return
+          tagOperations.push({ operation: 'add_sfc_tag', scope: program, name, kind, ...(initial ? { initial: true } : {}) })
+        }
+        for (const step of steps) {
+          const row = step as Record<string, unknown>
+          ensure(String(row.name ?? ''), 'step', row.initial === true)
+          const actions = Array.isArray(row.actions) ? row.actions : []
+          for (const action of actions) ensure(String((action as Record<string, unknown>).name ?? ''), 'action', false)
+        }
+        for (const transition of transitions) ensure(String((transition as Record<string, unknown>).name ?? ''), 'transition', false)
+
         const operation: DraftOperation = {
           operation: 'insert_sfc_sheet',
           program,
           routine: routineName,
-          steps: jsonArrayArg(args, 'steps'),
-          transitions: jsonArrayArg(args, 'transitions'),
-          links: jsonArrayArg(args, 'links'),
+          steps,
+          transitions,
+          links,
         }
+        let updated: Draft = draft
+        for (const tagOperation of tagOperations) updated = drafts.append(exec, project.id, tagOperation, maxOperations)
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },
     }),

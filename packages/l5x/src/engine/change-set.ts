@@ -64,6 +64,14 @@ export interface SfcLinkOp {
   readonly show?: boolean
 }
 
+/** One SFC tag to create: a step or action structure, or a BOOL transition tag. */
+export interface SfcTagOp {
+  readonly scope: string
+  readonly name: string
+  readonly kind: 'step' | 'transition' | 'action'
+  readonly initial?: boolean
+}
+
 type Operation =
   | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly comment?: string }
   | { readonly operation: 'delete_rung'; readonly program: string; readonly routine: string; readonly rung: number }
@@ -76,13 +84,14 @@ type Operation =
   | { readonly operation: 'add_udt_member'; readonly udt: string; readonly name: string; readonly data_type: string; readonly description: string }
   | { readonly operation: 'set_udt_description'; readonly udt: string; readonly description: string }
   | { readonly operation: 'set_udt_member_description'; readonly udt: string; readonly member: string; readonly description: string }
+| { readonly operation: 'add_sfc_tag'; readonly scope: string; readonly name: string; readonly kind: 'step' | 'transition' | 'action'; readonly initial?: boolean }
 | { readonly operation: 'insert_sfc_sheet'; readonly program: string; readonly routine: string; readonly steps: readonly SfcStepOp[]; readonly transitions: readonly SfcTransitionOp[]; readonly links: readonly SfcLinkOp[] }
 | { readonly operation: 'insert_fbd_sheet'; readonly program: string; readonly routine: string; readonly sheet: number; readonly blocks: readonly FbdBlockOp[]; readonly refs: readonly FbdRefOp[]; readonly wires: readonly FbdWireOp[] }
 
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Operation names accepted by a version-1 change set. */
-const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description', 'insert_fbd_sheet', 'insert_sfc_sheet'] as const
+const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description', 'insert_fbd_sheet', 'insert_sfc_sheet', 'add_sfc_tag'] as const
 /** Compact contract returned with validation errors and embedded in tool descriptions. */
 export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
 replace_rung {program,routine,rung,text,comment?}
@@ -91,6 +100,7 @@ delete_rung {program,routine,rung}
 set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
 add_routine {program,name,language:"RLL"|"ST"|"FBD"|"SFC",code} — an FBD routine takes an empty code; add sheets with insert_fbd_sheet
+add_sfc_tag {scope,name,kind:"step"|"transition"|"action",initial?} — creates the SFC_STEP or SFC_ACTION structure tag, or a BOOL transition tag
 insert_sfc_sheet {program,routine,steps:[{id,name,initial?,actions?:[{id,name,qualifier,boolean?}]}],transitions:[{id,name,condition}],links:[{from,to,show?}]} — one initial step, condition is Structured Text
 insert_fbd_sheet {program,routine,sheet,blocks,refs,wires} — blocks {id,type,tag,structure,pins}, refs {id,direction,tag}, wires {from,to,from_pin?,to_pin?}; the block tag must carry the structure type Studio expects (FBD_MATH for ADD)
 add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
@@ -226,6 +236,11 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
     if (row.language === 'FBD' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An FBD routine takes no code; create it empty and add sheets with draft_fbd')
     if (row.language === 'SFC' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An SFC routine takes no code; create it empty and add the chart with draft_sfc')
       return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
+    }
+    case 'add_sfc_tag': {
+      fields(row, ['operation', 'scope', 'name', 'kind', 'initial'])
+      if (row.kind !== 'step' && row.kind !== 'transition' && row.kind !== 'action') throw new EngineeringError('INVALID_CHANGE_SET', 'kind must be "step", "transition" or "action"')
+      return { operation: row.operation, scope: identifier(row, 'scope'), name: identifier(row, 'name'), kind: row.kind, ...(row.initial === undefined ? {} : { initial: row.initial === true }) }
     }
     case 'insert_sfc_sheet': {
       fields(row, ['operation', 'program', 'routine', 'steps', 'transitions', 'links'])
@@ -368,6 +383,21 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     const radix = scalar ? (dataType === 'REAL' || dataType === 'LREAL' ? 'Float' : 'Decimal') : 'NullType'
     const description = operation.description === '' ? '' : ` Description="${escape(operation.description)}"`
     return insert(xml, members, `<Member Name="${operation.name}" DataType="${operation.data_type}" Dimension="0" Radix="${radix}" Hidden="false" ExternalAccess="Read/Write"${description}/>`)
+  }
+  if (operation.operation === 'add_sfc_tag') {
+    const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
+    requireIdentifier(operation.name, 'Tag')
+    // A program may have no Tags region yet: create it with the first SFC tag inside.
+    const existingTags = owner.children.find(child => child.kind === 'Tags')
+    if (existingTags === undefined) {
+      // Element order matters: Tags precedes Routines in a program.
+      const routines = owner.children.find(child => child.kind === 'Routines')
+      if (routines !== undefined) return replace(xml, routines.start, routines.start, `<Tags>${sfcTagXml(operation)}</Tags>`)
+      return insert(xml, owner, `<Tags>${sfcTagXml(operation)}</Tags>`)
+    }
+    const tags = existingTags
+    if (tags.children.some(tag => tag.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Tag already exists in this scope')
+    return insert(xml, tags, sfcTagXml(operation))
   }
   if (operation.operation === 'add_tag' || operation.operation === 'set_tag_description') {
     const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
@@ -878,4 +908,46 @@ function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_shee
     parts.push(`<DirectedLink FromID="${link.from}" ToID="${link.to}" Show="${link.show === false ? 'false' : 'true'}"/>`)
   }
   return parts.join('')
+}
+
+
+/** Member values of an SFC tag, in the order Studio writes them. */
+function sfcTagXml(operation: Extract<Operation, { operation: 'add_sfc_tag' }>): string {
+  const member = (name: string, type: string, value: string, radix?: string): string =>
+    `<DataValueMember Name="${name}" DataType="${type}"${radix === undefined ? '' : ` Radix="${radix}"`} Value="${value}"/>`
+  if (operation.kind === 'transition') {
+    return `<Tag Name="${operation.name}" TagType="Base" DataType="BOOL" Radix="Decimal" Constant="false" ExternalAccess="Read/Write"/>`
+  }
+  const members = operation.kind === 'step'
+    ? [
+        member('Status', 'DINT', operation.initial === true ? '16#a020_0201' : '16#0020_0201', 'Hex'),
+        member('X', 'BOOL', operation.initial === true ? '1' : '0'),
+        member('FS', 'BOOL', '0'),
+        member('SA', 'BOOL', operation.initial === true ? '1' : '0'),
+        member('LS', 'BOOL', '0'),
+        member('DN', 'BOOL', '0'),
+        member('OV', 'BOOL', '0'),
+        member('AlarmEn', 'BOOL', '0'),
+        member('AlarmLow', 'BOOL', '0'),
+        member('AlarmHigh', 'BOOL', '0'),
+        member('Reset', 'BOOL', '0'),
+        member('PauseTimer', 'BOOL', '1'),
+        member('PRE', 'DINT', '0'),
+        member('T', 'DINT', '0'),
+        member('TMax', 'DINT', '0'),
+        member('Count', 'DINT', '0'),
+        member('LimitLow', 'DINT', '0'),
+        member('LimitHigh', 'DINT', '0'),
+      ].join('')
+    : [
+        member('Status', 'DINT', '16#0020_0000', 'Hex'),
+        member('A', 'BOOL', '0'),
+        member('Q', 'BOOL', '0'),
+        member('PauseTimer', 'BOOL', '1'),
+        member('PRE', 'DINT', '100'),
+        member('T', 'DINT', '0'),
+        member('Count', 'DINT', '0'),
+      ].join('')
+  const type = operation.kind === 'step' ? 'SFC_STEP' : 'SFC_ACTION'
+  return `<Tag Name="${operation.name}" TagType="Base" DataType="${type}" Constant="false" ExternalAccess="Read/Write"><Data Format="Decorated"><Structure DataType="${type}">${members}</Structure></Data></Tag>`
 }

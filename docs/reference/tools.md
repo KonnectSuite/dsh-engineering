@@ -323,7 +323,7 @@ Append one function block diagram sheet to the chat draft: blocks, references an
 
 #### `draft_sfc`
 
-Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. The step tags (SFC_STEP) and transition tags (BOOL) must already exist; generating their state is not supported yet. Nothing is written until draft_apply.
+Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Nothing is written until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
