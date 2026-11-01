@@ -626,6 +626,15 @@
   reads every later empty result as bad news about their own project; the fix is to say it once, first. The test asserts the
   summary and the payload field on an encrypted-routine project, alongside the editor, reader, listing and search answers.
 
+- **The skill now lists every composer pattern with its exact argument names.** It named four of seven - `analog_scale`, `totalizer`
+  and `run_hour_meter` were missing - and no arguments at all. Round 86 proved the cost: a `ton_delay` call was wrong three ways
+  (`tag`/`seconds` instead of `timer`/`preset_ms`, and `enable` omitted) and came back `INVALID_ARGUMENT` after a round trip. The
+  skill now carries `start_stop_latch` start/stop/run, `fault_latch` fault/reset/latched (two rungs), `ton_delay`
+  enable/timer/preset_ms, `interlock` conditions+output, `analog_scale` source/destination/in_min/in_max/out_min/out_max,
+  `totalizer` enable/rate/total and `run_hour_meter` run/timer/hours plus the optional preset_ms. Body 7126 of its 8000-character
+  budget, 406 tests pass. Documentation a model reads before composing is a **product surface**; a missing argument name is a
+  failed edit, not a cosmetic omission.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

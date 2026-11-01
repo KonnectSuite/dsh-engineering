@@ -80,8 +80,12 @@ truth. Never write to `<workspace>/_backups`.
 ## Compose
 
 - `list_instructions` lists slots and kinds; read it before composing.
-- `compose_rung` builds one rung from `spec_json` or a pattern (start_stop_latch, fault_latch, ton_delay,
-  interlock). Pass `program`, `routine`, `mode` and `rung` to stage it.
+- `compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
+  `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
+  `ton_delay` enable/timer/preset_ms; `interlock` conditions (array) and output;
+  `analog_scale` source/destination/in_min/in_max/out_min/out_max;
+  `totalizer` enable/rate/total; `run_hour_meter` run/timer/hours (plus preset_ms, default one hour; two rungs).
+  Stage with `program`, `routine`, `mode` and `rung`.
 - `l5x_rung_preview` validates rungs and draws them; `l5x_routine_diagram` draws existing logic.
 - Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in a v36+ project. Compose through
   `compose_rung`: it writes the spelling the project publishes.
