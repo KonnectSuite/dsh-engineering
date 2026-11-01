@@ -259,6 +259,13 @@
   import aborts on safety controllers. Its 7 uncatalogued "instructions" (`MAM_YASKAWA`, `MCFG_YASKAWA`, …) are Yaskawa
   add-on-profile instructions rather than AOIs, so reporting them as unmodelled is correct.
 
+- **The analysis tools now name the scope that declares a symbol.** On the supplied project, `trace_dependencies` resolved a
+  tag that `usage_map` then called "not declared in scope"; and a program-scoped symbol read in controller scope was
+  reported as *"Declaration is absent from the export"* — a statement about the export that was false. Both refusals now
+  say where the declaration lives and which `scope` to pass (*"Tag "Prg_CutSpeedUp_Cmd" is not declared in scope
+  "MainTask_10ms"; it is declared in controller."*), backed by a new `declaringScopes` helper that answers controller,
+  program and AOI scopes.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -270,7 +277,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-322 package tests and 70 bundle tests pass.
+326 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

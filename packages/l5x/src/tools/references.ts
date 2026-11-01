@@ -11,7 +11,7 @@
  */
 
 import type { L5xDocument } from '../model/index.ts'
-import { findReferences } from '../engine/analysis.ts'
+import { declaringScopes, findReferences } from '../engine/analysis.ts'
 import { traceDependencies } from '../engine/project-analysis.ts'
 import { resolveTag } from '../engine/tag-resolution.ts'
 import { usageMap } from '../engine/usage.ts'
@@ -155,13 +155,21 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         })
         const resolution = graph.resolution as { readonly resolved?: boolean; readonly reason?: string } | undefined
         if (resolution !== undefined && resolution.resolved === false) {
-          const declarations = [...project.document.aois.map(aoi => aoi.name), ...project.document.programs.map(program => program.name)]
-          throw new L5xError(
-            'UNRESOLVED_SYMBOL',
-            `${requested} does not resolve in scope ${scope}: ${resolution.reason ?? 'not declared in this export'}.`,
-            'Pass scope with the declaring program or AOI. For an AOI member, write "AOI_Name::Member" or pass scope "AOI_Name" with the member name.',
-            declarations.slice(0, 5),
-          )
+        const declarations = [...project.document.aois.map(aoi => aoi.name), ...project.document.programs.map(program => program.name)]
+        // Say where it does resolve, when it resolves somewhere: on a real project a
+        // program-scoped tag read in controller scope was reported as absent from the export.
+        const elsewhere = declaringScopes(project.document, requested).filter(name => name !== scope)
+        const where = elsewhere.length === 0 ? null : elsewhere.slice(0, 3).join(', ')
+        throw new L5xError(
+          'UNRESOLVED_SYMBOL',
+          where === null
+            ? `${requested} does not resolve in scope ${scope}: ${resolution.reason ?? 'not declared in this export'}.`
+            : `${requested} is not declared in scope ${scope}; it is declared in ${where}.`,
+          where === null
+            ? 'Pass scope with the declaring program or AOI. For an AOI member, write "AOI_Name::Member" or pass scope "AOI_Name" with the member name.'
+            : `Pass scope: "${elsewhere[0]}", or the program that declares it.`,
+          elsewhere.length === 0 ? declarations.slice(0, 5) : elsewhere,
+        )
         }
         const nodes = graph.nodes as readonly unknown[]
         const edges = graph.edges as readonly unknown[]
@@ -228,17 +236,26 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const tag = requiredString(args, 'tag')
         const scope = optionalString(args, 'scope') ?? 'controller'
         const declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
-        if (declared === undefined) {
-          const declaredHere = project.document.tags
-            .filter(entry => entry.scope.toLowerCase() === scope.toLowerCase())
-            .map(entry => entry.name)
-          throw new L5xError(
-            'COMPONENT_NOT_FOUND',
-            `Tag ${JSON.stringify(tag)} is not declared in scope ${JSON.stringify(scope)}.`,
-            'Call list_components with kind "tag" to see the declared names in this scope.',
-            declaredHere.slice(0, 5),
-          )
-        }
+      if (declared === undefined) {
+        const declaredHere = project.document.tags
+          .filter(entry => entry.scope.toLowerCase() === scope.toLowerCase())
+          .map(entry => entry.name)
+        // The same tag can be declared in another scope. On a real project a program-scoped read
+        // said "not declared in scope X" for a tag that trace_dependencies had just resolved.
+        const elsewhere = [...new Set(project.document.tags
+          .filter(entry => entry.name.toLowerCase() === tag.toLowerCase())
+          .map(entry => entry.scope))]
+        throw new L5xError(
+          'COMPONENT_NOT_FOUND',
+          elsewhere.length === 0
+            ? `Tag ${JSON.stringify(tag)} is not declared in scope ${JSON.stringify(scope)}.`
+            : `Tag ${JSON.stringify(tag)} is not declared in scope ${JSON.stringify(scope)}; it is declared in ${elsewhere.slice(0, 3).join(', ')}.`,
+          elsewhere.length === 0
+            ? 'Call list_components with kind "tag" to see the declared names in this scope.'
+            : `Pass scope: ${JSON.stringify(elsewhere[0])}.`,
+          elsewhere.length === 0 ? declaredHere.slice(0, 5) : elsewhere,
+        )
+      }
         const map = usageMap(project, scope, tag) as {
           indexes?: readonly unknown[]
           whole_element?: unknown
@@ -319,3 +336,5 @@ function logicMatches(document: L5xDocument, query: string): readonly LogicMatch
   }
   return matches
 }
+
+

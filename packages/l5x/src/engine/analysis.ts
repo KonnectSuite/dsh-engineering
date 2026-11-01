@@ -105,6 +105,28 @@ function tableOf(document: L5xDocument): SymbolTable {
  * references are proven by the export, not missing. Fall back to the canonical
  * resolver (the one behind `resolve_tag`) before declaring a symbol unresolved.
  */
+/**
+ * Scopes in which one symbol resolves.
+ *
+ * A refusal that says a symbol is "absent from the export" when it is declared in another scope
+ * sends a reader looking for a missing declaration that is not missing. This answers where it is.
+ *
+ * @param document - The open project.
+ * @param symbol - The symbol as written.
+ * @returns Declaring scopes, controller first, then programs, then AOIs.
+ */
+export function declaringScopes(document: L5xDocument, symbol: string): string[] {
+  const found: string[] = []
+  if (resolveSymbol(document, 'controller', symbol) !== undefined) found.push('controller')
+  for (const program of document.programs) {
+    if (resolveSymbol(document, program.name, symbol) !== undefined) found.push(program.name)
+  }
+  for (const aoi of document.aois) {
+    if (resolveSymbol(document, aoi.name, symbol) !== undefined) found.push(`AOI ${aoi.name}`)
+  }
+  return found
+}
+
 export function resolveSymbol(document: L5xDocument, scope: string, symbol: string): string | undefined {
   const direct = resolveSymbolDirect(document, scope, symbol)
   if (direct !== undefined) return direct

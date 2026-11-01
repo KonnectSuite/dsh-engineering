@@ -126,3 +126,45 @@ describe('usage_map', () => {
     expect(mapped.error?.candidates.length).toBeGreaterThan(0)
   })
 })
+
+
+describe('a symbol declared in another scope', () => {
+  it('names that scope instead of saying it is absent from the export', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    // VFD_SpeedRef is a program tag of MotorProgram, not a controller tag.
+    const result = await l5x.call('trace_dependencies', { symbol: 'VFD_SpeedRef' })
+    expect(result.error?.code).toBe('UNRESOLVED_SYMBOL')
+    expect(String(result.error?.message)).toContain('declared in')
+    expect(String(result.error?.message)).toContain('MotorProgram')
+    expect(String(result.error?.fix)).toContain('scope')
+  })
+
+  it('traces it once the declaring scope is passed', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('trace_dependencies', { symbol: 'VFD_SpeedRef', scope: 'MotorProgram' })
+    expect(result.error).toBeUndefined()
+  })
+})
+
+
+describe('usage_map with the wrong scope', () => {
+  it('names the scope that declares the tag', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    // VFD_SpeedRef is declared by MotorProgram, not by the controller.
+    const result = await l5x.call('usage_map', { tag: 'VFD_SpeedRef' })
+    expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
+    expect(String(result.error?.message)).toContain('declared in')
+    expect(String(result.error?.message)).toContain('MotorProgram')
+    expect(String(result.error?.fix)).toContain('MotorProgram')
+  })
+
+  it('maps it when the declaring scope is passed', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('usage_map', { tag: 'VFD_SpeedRef', scope: 'MotorProgram' })
+    expect(result.error).toBeUndefined()
+  })
+})
