@@ -156,6 +156,38 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     if (tasks.length > 1) report('MULTIPLE_SCHEDULES', 'warning', `Program ${program.name} is scheduled in ${tasks.length} tasks: ${tasks.join(', ')}`, { program: program.name, tasks })
     if (program.description.trim() === '') report('UNDOCUMENTED_PROGRAM', 'info', `Program ${program.name} has no description`, { program: program.name })
   }
+  // Binding pass: a program's main routine and a task's scheduled programs are named, so a
+  // reference to something the export does not declare is provable without a vendor table.
+  const programNames = new Set(doc.programs.map(program => program.name.toUpperCase()))
+  for (const program of doc.programs) {
+    const own = doc.routines.filter(routine => routine.program === program.name)
+    if (program.mainRoutine !== '') {
+      const declared = own.some(routine => routine.name.toUpperCase() === program.mainRoutine.toUpperCase())
+      if (!declared) {
+        report('MAIN_ROUTINE_MISSING', 'warning',
+          `${program.name} names ${program.mainRoutine} as its main routine, and declares no routine of that name`,
+          { program: program.name, mainRoutine: program.mainRoutine, routines: own.map(routine => routine.name).slice(0, 10) })
+      }
+    }
+    const firstSpelling = new Map<string, string>()
+    const duplicates = new Map<string, string>()
+    for (const routine of own) {
+      const key = routine.name.toUpperCase()
+      const first = firstSpelling.get(key)
+      // Report the spelling declared first: naming the later one points a reader at the copy.
+      if (first === undefined) firstSpelling.set(key, routine.name)
+      else duplicates.set(key, first)
+    }
+    for (const name of duplicates.values()) {
+      report('DUPLICATE_ROUTINE_NAME', 'warning', `${program.name} declares more than one routine named ${name}`, { program: program.name, routine: name })
+    }
+  }
+  for (const task of doc.tasks) {
+    for (const name of task.programs) {
+      if (programNames.has(name.toUpperCase())) continue
+      report('SCHEDULED_PROGRAM_MISSING', 'warning', `Task ${task.name} schedules ${name}, and this export declares no program of that name`, { task: task.name, program: name })
+    }
+  }
   for (const routine of doc.routines) {
     if (routine.description.trim() === '') report('UNDOCUMENTED_ROUTINE', 'info', `Routine ${routine.name} has no description`, { program: routine.program, routine: routine.name })
     if (routine.body.type === 'RLL') {

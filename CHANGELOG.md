@@ -207,6 +207,12 @@
   JSR can only call a routine in its own program"*), and `LABEL_NOT_FOUND` names the label and rung. A `JSR` to a routine
   in its own program and a `JMP` with a matching `LBL` stay silent, which the tests assert.
 
+- **Three named bindings that point at nothing are now reported.** A program that names a main routine it does not
+  declare (`MAIN_ROUTINE_MISSING`), a task that schedules a program the export does not declare
+  (`SCHEDULED_PROGRAM_MISSING`) and two routines in one program whose names differ only in case
+  (`DUPLICATE_ROUTINE_NAME`, reported under the spelling declared first) all previously passed `run_checks` clean,
+  though none of them builds. Each name is written in the export, so these need no vendor table.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -218,7 +224,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-307 package tests and 70 bundle tests pass.
+311 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

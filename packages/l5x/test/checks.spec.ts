@@ -329,3 +329,44 @@ describe('control transfer', () => {
     expect(rows[0]?.message).not.toContain('Skip')
   })
 })
+
+
+/** An export with a missing main routine, a duplicate routine name and an unscheduled program. */
+const BINDING_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Binding\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"P\" MainRoutineName=\"Ghost\">\n        <Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n          <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n        </RLLContent></Routine></Routines>\n      </Program>\n      <Program Name=\"Q\" MainRoutineName=\"R1\">\n        <Routines>\n          <Routine Name=\"R1\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n          <Routine Name=\"r1\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/><ScheduledProgram Name=\"NoProg\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('named bindings that point at nothing', () => {
+  async function findingsFor(rule: string) {
+    const l5x = harness(new Map([['binding.l5x', new TextEncoder().encode(BINDING_L5X)]]))
+    await l5x.call('open_project', { path: 'binding.l5x' })
+    const result = await l5x.call('run_checks', { rule })
+    return (result.data?.findings ?? []) as { message: string }[]
+  }
+
+  it('reports a program whose main routine it does not declare', async () => {
+    const rows = await findingsFor('MAIN_ROUTINE_MISSING')
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Ghost')
+  })
+
+  it('reports a duplicate routine name under the spelling declared first', async () => {
+    const rows = await findingsFor('DUPLICATE_ROUTINE_NAME')
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('R1')
+    expect(rows[0]?.message).not.toContain('named r1')
+  })
+
+  it('reports a task that schedules a program the export does not declare', async () => {
+    const rows = await findingsFor('SCHEDULED_PROGRAM_MISSING')
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('NoProg')
+    expect(rows[0]?.message).toContain('T')
+  })
+
+  it('stays quiet on a project whose bindings all resolve', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('run_checks', {})
+    const noisy = ((result.data?.findings ?? []) as { rule: string }[]).filter(finding => ['MAIN_ROUTINE_MISSING', 'DUPLICATE_ROUTINE_NAME', 'SCHEDULED_PROGRAM_MISSING'].includes(finding.rule))
+    expect(noisy).toEqual([])
+  })
+})
