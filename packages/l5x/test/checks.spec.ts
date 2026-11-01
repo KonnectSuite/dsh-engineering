@@ -282,3 +282,21 @@ describe('logic the catalogue could not check', () => {
     expect(result.data?.findings).toEqual([])
   })
 })
+
+
+describe('a staged rung the catalogue cannot check', () => {
+  it('says so when the draft is validated', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const staged = await l5x.call('draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace',
+      text: 'XIC(StartPB)CROUT(FaultCount,5);',
+    })
+    expect(staged.error).toBeUndefined()
+    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    expect(validated.error).toBeUndefined()
+    const checks = validated.data?.checks as { new_findings?: { rule: string }[] } | undefined
+    const rules = (checks?.new_findings ?? []).map(finding => finding.rule)
+    expect(rules).toContain('UNCATALOGUED_INSTRUCTION')
+  })
+})

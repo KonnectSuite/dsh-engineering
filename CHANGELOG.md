@@ -191,6 +191,15 @@
   may still be valid and Studio remains the arity gate. An AOI the export declares is excluded — the committed fixture
   calls `Motor_Control` and stays silent.
 
+- **The skill no longer tells a reader to avoid the text path.** `packages/l5x/SKILL.md` said *"Write ladder through the
+  composer, not by inventing NeutralText"* — advice that the unmodelled-operand change made wrong, because for an
+  instruction the catalogue does not model the text path is the only way. It now reads *"Compose through `compose_rung`;
+  for an instruction it does not model, use `draft_rung` text."* The body still fits its 8000-character budget (7975
+  after the edit, rebalanced by shortening the `list_instructions` bullet).
+- **The coverage finding reaches the draft path.** A staged rung naming an uncatalogued instruction reports
+  `UNCATALOGUED_INSTRUCTION` in `draft_validate`'s `new_findings`, so the reader learns which part of their own edit
+  went unexamined before it is written.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -202,7 +211,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-304 package tests and 70 bundle tests pass.
+305 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

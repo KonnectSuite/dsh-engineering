@@ -99,12 +99,12 @@ Editing uses the `draft_*` family. It may be disabled in this profile; if a draf
 
 ## Generate
 
-Write ladder through the composer, not by inventing NeutralText.
+Compose through `compose_rung`; for an instruction it does not model, use `draft_rung` text.
 
 ### Show proposed rungs as ladder
 `l5x_rung_preview` validates rungs like `draft_rung`, writes a viewer document and draws a PNG. For existing logic, `l5x_diagram` draws every rung of the project (or one `program`): start there when reviewing a controller you did not write, before reading rungs one by one.
 
-- `list_instructions` gives the mnemonic, category and operand slots with their kinds; read it before composing.
+- `list_instructions` lists operand slots and kinds; read it before composing.
 - `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves and type-checks every operand, refusing anything unknown or mistyped before staging. compose_batch does the same for 200 rungs in one call, refusing the batch if a rung fails.
 - Pass `program`, `routine`, `mode` and `rung` to stage it (plus `comment`); without them it returns text only.
 - `fault_latch` stages two rungs at `rung` and `rung + 1`; rung numbers are not renumbered, so pick free ones.
