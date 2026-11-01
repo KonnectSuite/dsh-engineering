@@ -478,6 +478,13 @@
   explicit scope is still taken at its word. That completes the rule across `find_references` (which always searched every
   scope), `trace_dependencies`, `usage_map` and `resolve_tag`: the `scope` argument is an override, not a prerequisite.
 
+- **Two FBD sheets in one routine build, closing a gap left open since the first FBD round.** `draft_fbd` was verified with one sheet
+  only, and "multiple sheets per FBD routine" sat on the open list for forty rounds. Two sheets, one `ADD` block each, composed in
+  one draft and built: **0 warnings, 0 errors, an ACD written**, and the applied export carries exactly two `<Sheet>` elements
+  with both block tags. The block tag on the second sheet is a second `FBD_MATH` instance, so the path also proves that
+  `draft_tag` can create more than one function-block instance in the same draft. A test pins the composed export, so the
+  multi-sheet shape cannot regress silently the way the single-sheet shape once could.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

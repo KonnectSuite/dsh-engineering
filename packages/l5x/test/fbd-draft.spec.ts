@@ -213,3 +213,34 @@ describe('a block tag staged in the same draft', () => {
     expect(staged.error).toBeUndefined()
   })
 })
+
+
+describe('two sheets in one FBD routine', () => {
+  it('keeps both sheets and both blocks', async () => {
+    // A build proved this shape: two sheets, one ADD block each, 0 warnings and 0 errors.
+    const l5x = await opened()
+    const one = await l5x.call('draft_fbd', SHEET)
+    expect(one.error).toBeUndefined()
+    const two = await l5x.call('draft_fbd', {
+      program: 'Main', routine: 'F', sheet: 2,
+      blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'add2', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'], x: 300, y: 20 }]),
+      refs: JSON.stringify([
+        { id: 0, direction: 'in', tag: 'r1', x: 120, y: 20 },
+        { id: 1, direction: 'in', tag: 'r2', x: 120, y: 80 },
+        { id: 3, direction: 'out', tag: 'r3', x: 520, y: 50 },
+      ]),
+      wires: JSON.stringify([
+        { from: 0, to: 2, to_pin: 'SourceA' },
+        { from: 1, to: 2, to_pin: 'SourceB' },
+        { from: 2, to: 3, from_pin: 'Dest' },
+      ]),
+    })
+    expect(two.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'two.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = String(l5x.written.get('two.L5X') ?? '')
+    expect((written.match(/<Sheet /gu) ?? []).length).toBe(2)
+    expect(written).toContain('add1')
+    expect(written).toContain('add2')
+  })
+})
