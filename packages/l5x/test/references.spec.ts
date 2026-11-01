@@ -158,15 +158,22 @@ describe('a symbol declared in another scope', () => {
 
 
 describe('usage_map with the wrong scope', () => {
-  it('names the scope that declares the tag', async () => {
+  it('adopts the declaring scope when none is named', async () => {
     const l5x = harness()
     await l5x.call('open_project', { path: 'sample.l5x' })
     // VFD_SpeedRef is declared by MotorProgram, not by the controller.
     const result = await l5x.call('usage_map', { tag: 'VFD_SpeedRef' })
+    expect(result.error).toBeUndefined()
+    expect(String(result.summary)).toContain('declared in MotorProgram')
+    expect(String(result.summary)).toContain('scope adopted')
+  })
+
+  it('still refuses an explicit scope that does not declare it', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('usage_map', { tag: 'VFD_SpeedRef', scope: 'NoSuchProgram' })
     expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
-    expect(String(result.error?.message)).toContain('declared in')
     expect(String(result.error?.message)).toContain('MotorProgram')
-    expect(String(result.error?.fix)).toContain('MotorProgram')
   })
 
   it('maps it when the declaring scope is passed', async () => {

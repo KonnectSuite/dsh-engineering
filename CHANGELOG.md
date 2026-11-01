@@ -462,6 +462,14 @@
   common case. The test that pinned the old refusal now asserts adoption plus a second case that an explicit bad scope is
   still an error.
 
+- **`usage_map` now adopts a unique declaring scope, the same way `trace_dependencies` does.** Called as `usage_map {tag: "Std_Alarms"}`
+  it used to answer `COMPONENT_NOT_FOUND` because the tag belongs to program `SYSTEM` - correct, and useless to a caller who never
+  named a scope. It now resolves the declaration when exactly one program declares the name and says so:
+  `Std_Alarms: 6 indexed elements used (declared in SYSTEM; scope adopted)`. An **explicit** scope that does not declare the tag
+  still refuses with the scope named, so the escape hatch is unchanged; only the omitted-scope case got smarter. Two tests pin
+  both sides. `resolve_tag` is the remaining tool with the same shape - it still answers "not in scope controller; declared in
+  SYSTEM" when called without a scope - and it is next.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

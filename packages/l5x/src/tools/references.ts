@@ -245,8 +245,22 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
       async run(args, exec) {
         const project = await projectOf(session, args, exec)
         const tag = requiredString(args, 'tag')
-        const scope = optionalString(args, 'scope') ?? 'controller'
-        const declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
+        const requestedScope = optionalString(args, 'scope')
+        let scope = requestedScope ?? 'controller'
+        let adoptedFrom = ''
+        let declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
+        // Omitting the scope means "find it", not "only look in the controller". Adopt a scope when
+        // exactly one program declares the name; an explicit wrong scope still refuses.
+        if (declared === undefined && requestedScope === undefined) {
+          const elsewhere = [...new Set(project.document.tags
+            .filter(entry => entry.name.toLowerCase() === tag.toLowerCase())
+            .map(entry => entry.scope))]
+          if (elsewhere.length === 1 && elsewhere[0] !== undefined) {
+            scope = elsewhere[0]
+            adoptedFrom = scope
+            declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
+          }
+        }
       if (declared === undefined) {
         const declaredHere = project.document.tags
           .filter(entry => entry.scope.toLowerCase() === scope.toLowerCase())
@@ -275,7 +289,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         }
         const indexes = map.indexes ?? []
         return success(
-          `${declared.name}: ${indexes.length} indexed ${indexes.length === 1 ? 'element' : 'elements'} used${map.whole_element ? ', plus whole-tag use' : ''}.`,
+          `${declared.name}: ${indexes.length} indexed ${indexes.length === 1 ? 'element' : 'elements'} used${map.whole_element ? ', plus whole-tag use' : ''}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}.`,
           map,
           [{ tool: 'find_references', args: { symbol: declared.name, scope }, why: 'See every occurrence behind these counts.' }],
           {
