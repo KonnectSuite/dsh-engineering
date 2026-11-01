@@ -848,6 +848,12 @@
   parameter that plainly exists. It now refuses with `INVALID_ARGUMENT: P is a member of add-on instruction AOI_P; usage_map maps declared tags, not AOI internals.`
   and points at `find_references` with `AOI_P::P`. The tool that cannot do the job now says so and names the tool that can. 434 package tests.
 
+- **A fixture builder, because the same typo cost three rounds.** Hand-written fixture XML closed `AddOnInstructionDefinitions` with `</AddOnInstructions>` in rounds 125, 129 and
+  131 - each time surfacing as a parse error or `NO_PROJECT` far from the mistake. `test/l5x-build.ts` now owns the envelope and element names (`l5x`, `tag`, `rllRoutine`,
+  `program`, `task`, `aoi`, `parameter`, `module`), so a test supplies content only. A new spec builds an export with a safety AOI whose parameter aliases a tag, a safety
+  module with a network and a normal module, opens it and asserts every part arrives - AOI safety, the alias target, the AOI's own Logic routine by the AOI name, and the
+  safety module - which proves the builder emits what the readers expect. 435 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
