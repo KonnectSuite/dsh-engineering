@@ -235,6 +235,7 @@ describe('documenting an AOI routine', () => {
     const documented = await l5x.call('document_project', { output_root: 'docs-aoi', include: ['rungs'] })
     expect(documented.error).toBeUndefined()
     // The count must include what the bundle writes; "1 routine" alone hid the AOI's logic.
+    expect(documented.data?.counts?.aois).toBe(1)
     expect(documented.data?.counts?.aoiRoutines).toBe(1)
     // The one AOI rung the file documents must be counted too.
     expect(documented.data?.counts?.aoiRungs).toBe(1)

@@ -979,6 +979,11 @@
   **0 blank names, 91 rows**, e.g. `RC_1_FAN_1102VFD:1` (`RHINOBP-DRIVE-PERIPHERAL-MODULE`) reads back with its catalog number. The builder can now write an
   unnamed module, and a test pins the identity and the lookup. 451 package tests.
 
+- **The bundle now counts the AOI definitions it lists.** `counts` had programs, tasks, routines, AOI routines, AOI rungs, rungs, comments, tags,
+  modules and data types - but no count of the add-on instructions whose table the same document writes, so an audit keyed on `counts.aois` found
+  nothing. `counts.aois` is now present and the counts line ends `add-on instructions: 26` on `Seco_Homogenizer`, matching the 26 AOI rows and
+  `open_project`'s own count. The AOI-docs test asserts it. 451 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
