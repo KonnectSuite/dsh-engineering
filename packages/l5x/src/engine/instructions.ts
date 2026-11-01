@@ -150,6 +150,15 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'FAL', category: 'File and array', summary: 'File arithmetic and logic: evaluate the expression across Length elements.', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), any('Dest'), expression()] },
   { name: 'FSC', category: 'File and array', summary: 'File search and compare: evaluate the expression across Length elements and report the position.', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), expression()] },
 
+  // Operand lists the vendor fields give in full. One-shot storage/output, a masked
+  // compare and the bit-distribute and average forms each had too few operands, which the
+  // composer's own arity check then defended.
+  { name: 'OSR', category: 'Contacts and coils', summary: 'One shot rising: true for one scan when the storage bit goes false to true.', operands: [{ name: 'Storage', kind: 'BOOL' }, { name: 'Dest', kind: 'BOOL' }] },
+  { name: 'OSF', category: 'Contacts and coils', summary: 'One shot falling: true for one scan when the storage bit goes true to false.', operands: [{ name: 'Storage', kind: 'BOOL' }, { name: 'Dest', kind: 'BOOL' }] },
+  { name: 'MEQ', category: 'Comparison', summary: 'Masked equal: true when source and compare agree through the mask.', operands: [num('Source'), num('Mask'), num('Compare')] },
+  { name: 'BTD', category: 'Move', summary: 'Bit distribute: copy Length bits from the source bit position to the destination bit position.', operands: [num('Source'), num('Source bit'), num('Dest'), num('Dest bit'), num('Length')] },
+  { name: 'AVE', category: 'File and array', summary: 'Average: average the array along one dimension into the destination.', operands: [any('Array'), num('Dimension'), any('Dest'), any('Control'), num('Length'), num('Position')] },
+
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({
     name: instruction.name,

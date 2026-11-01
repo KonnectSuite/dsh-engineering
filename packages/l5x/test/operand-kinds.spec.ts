@@ -171,3 +171,33 @@ describe('a keyword is not a tag', () => {
     expect(result.error?.message).toContain('keyword')
   })
 })
+
+
+describe('nine more operand counts, from the systematic audit', () => {
+  it('catalogues the full operand list for the five the audit flagged', () => {
+    const expected: readonly (readonly [string, number])[] = [
+      ['BTD', 5], ['MEQ', 3], ['OSR', 2], ['OSF', 2], ['AVE', 6],
+    ]
+    for (const [name, count] of expected) {
+      expect(instructionByName(name)?.operands.length, name).toBe(count)
+    }
+  })
+
+  it('composes a masked compare', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'MEQ', args: ['FaultCount', '255', 'LineSpeed'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('MEQ(FaultCount,255,LineSpeed)OTE(SystemRunning);')
+  })
+
+  it('composes a one-shot with its storage and output bit', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'OSR', args: ['StartPB', 'SystemRunning'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('XIC(StartPB)OSR(StartPB,SystemRunning);')
+  })
+})

@@ -12,11 +12,10 @@
 import type { OperandKind } from './instructions.ts'
 
 const TABLE: readonly (readonly [string, string])[] = [
-  ['Contacts and coils', 'OSF=B OSR=B UID= UIE='],
-  ['Comparison', 'MEQ=AB'],
+  ['Contacts and coils', 'UID= UIE='],
   ['Math', 'NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD SCL=SD'],
-  ['Move', 'CPS=SDL BTD=SDL SWPB=SD'],
-  ['File and array', 'SRT=DLX AVE=DL STD=DL SIZE=D'],
+  ['Move', 'CPS=SDL SWPB=SD'],
+  ['File and array', 'SRT=DLX STD=DL SIZE=D'],
   ['Sequencer', 'SQC=KLP'],
   ['Program control', 'JXR=R FOR=RBX BRK= NOP= TND= EOT= SFR= SFP='],
   ['Communications', 'MSG=K'],

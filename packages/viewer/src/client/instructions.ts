@@ -37,7 +37,7 @@ const SLOT_KEYS: Readonly<Record<string, PinKey>> = {
 
 /** Per-mnemonic overrides where the catalogue name is right but a better label exists. */
 const OVERRIDES: Readonly<Record<string, readonly string[]>> = {
-  OSR: ['operand.storage' as PinKey], OSF: ['operand.storage' as PinKey], ONS: ['operand.storage' as PinKey],
+  OSR: ['operand.storage' as PinKey, 'operand.destination' as PinKey], OSF: ['operand.storage' as PinKey, 'operand.destination' as PinKey], ONS: ['operand.storage' as PinKey],
   TON: ['operand.timer', 'operand.preset', 'operand.accum'],
   TOF: ['operand.timer', 'operand.preset', 'operand.accum'],
   RTO: ['operand.timer', 'operand.preset', 'operand.accum'],

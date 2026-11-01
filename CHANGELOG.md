@@ -76,6 +76,14 @@
   instead of resolving them against the tag table — which refused every GSV and SSV even once the operand count was
   right.
 
+- **An audit of every shared instruction caught five more wrong operand counts.** Comparing all 100 instructions
+  both catalogues know against the vendor operand fields found 38 differences; most were their block-pin lists
+  (a timer's `.PRE`/`.ACC` are structure fields, not operands, so our two-operand `TON` is right). Five were real:
+  `BTD` takes five operands, not three (source bit and destination bit sit inside it), `MEQ` takes three, not two
+  (a mask), `AVE` takes six, not two, and `OSR`/`OSF` take a storage bit **and** an output bit, not one operand.
+  The audit is repeatable: it reports 33 remaining differences, which is the motion family and the block-pin
+  instructions, both of which need their own pass rather than a mechanical fix.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -87,7 +95,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-246 package tests and 70 bundle tests pass.
+249 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
