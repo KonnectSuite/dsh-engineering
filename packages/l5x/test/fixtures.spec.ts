@@ -448,3 +448,23 @@ describe('a FOR loop index', () => {
     expect(rungs?.[0]?.neutral_text).toBe('FOR(Loop,Count,0,10,1);')
   })
 })
+
+describe('a SIZE result', () => {
+  it('must be a tag or array element, not a literal', async () => {
+    const project = l5x({
+      name: 'SizeGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['size.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'size.l5x' })).error).toBeUndefined()
+    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', '5'] }] }) })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('writable size')
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', 'Arr[0]'] }] }) })
+    expect(good.error).toBeUndefined()
+    const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
+    expect(rungs?.[0]?.neutral_text).toBe('SIZE(Arr,0,Arr[0]);')
+  })
+})

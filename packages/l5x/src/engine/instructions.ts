@@ -24,6 +24,8 @@ export interface InstructionOperand {
   readonly kind: OperandKind
   /** True when the instruction accepts the slot but does not require it. */
   readonly optional?: boolean
+  /** True when Studio requires a tag here: a literal is refused at build with RxCMP_E_AUDIT_INVALIDOPKIND. */
+  readonly writable?: boolean
   /** True when this slot repeats for each remaining operand, as a JSR parameter list does. */
   readonly rest?: boolean
 }
@@ -61,6 +63,8 @@ import { MNEMONIC_PAIRS } from './mnemonics.ts'
 const bool = (name = 'Tag'): InstructionOperand => ({ name, kind: 'BOOL' })
 const num = (name = 'Source'): InstructionOperand => ({ name, kind: 'NUMBER' })
 const any = (name: string): InstructionOperand => ({ name, kind: 'ANY' })
+/** A numeric slot that must be a tag: Studio refuses a literal destination, index or size. */
+const numW = (name: string): InstructionOperand => ({ name, kind: 'NUMBER', writable: true })
 const str = (name: string): InstructionOperand => ({ name, kind: 'STRING' })
 /** A computed expression: text with operators, not an address. */
 const expression = (name = 'Expression'): InstructionOperand => ({ name, kind: 'EXPRESSION' })
@@ -106,16 +110,16 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'AWT', category: 'ASCII', summary: 'Write characters to the serial port buffer.', operands: [num('Channel'), str('Source'), any('Serial Port Control'), num('Serial Port Control Length'), num('Characters Sent')] },
 
   // Math
-  { name: 'ADD', category: 'Math', summary: 'Add source A and source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'SUB', category: 'Math', summary: 'Subtract source B from source A into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'MUL', category: 'Math', summary: 'Multiply source A by source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'DIV', category: 'Math', summary: 'Divide source A by source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'MOD', category: 'Math', summary: 'Remainder of source A divided by source B.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), num('Destination')] },
-  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination; the destination comes first in the rung text.', operands: [num('Destination'), expression()] },
+  { name: 'ADD', category: 'Math', summary: 'Add source A and source B into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'SUB', category: 'Math', summary: 'Subtract source B from source A into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'MUL', category: 'Math', summary: 'Multiply source A by source B into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'DIV', category: 'Math', summary: 'Divide source A by source B into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'MOD', category: 'Math', summary: 'Remainder of source A divided by source B.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), numW('Destination')] },
+  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination; the destination comes first in the rung text.', operands: [numW('Destination'), expression()] },
 
-  { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), num('Destination'), any('Control'), num('Length'), num('Position')] },
-  { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [any('Source'), num('Dimension to Vary'), num('Size')] },
+  { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), numW('Destination'), any('Control'), num('Length'), num('Position')] },
+  { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [any('Source'), num('Dimension to Vary'), numW('Size')] },
   { name: 'JXR', category: 'Program control', summary: 'Run an external routine; parameters and a return tag may follow the control structure.', operands: [routine('External routine name'), any('External routine control')] },
   { name: 'PID', category: 'Process', summary: 'PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.', operands: [any('PID'), num('Process variable'), num('Tieback'), num('Control variable'), any('PID master loop'), bool('Inhold bit'), num('Inhold value')] },
   { name: 'ALMA', category: 'Alarm', summary: 'Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.', operands: [any('Alarm'), num('In'), bool('ProgAckAll'), bool('ProgDisable'), bool('ProgEnable')] },
@@ -125,12 +129,12 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SWPB', category: 'Move', summary: 'Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.', operands: [num('Source'), num('Order Mode'), num('Dest')] },
   { name: 'STOD', category: 'String', summary: 'Convert a string to an integer value in the destination.', operands: [str('Source'), num('Dest')] },
   { name: 'DTOS', category: 'String', summary: 'Convert an integer value to its decimal string in the destination.', operands: [num('Source'), str('Dest')] },
-  { name: 'STOR', category: 'String', summary: 'Convert a string to a REAL value in the destination.', operands: [str('Source'), num('Destination')] },
+  { name: 'STOR', category: 'String', summary: 'Convert a string to a REAL value in the destination.', operands: [str('Source'), numW('Destination')] },
 
   // Move
-  { name: 'MOV', category: 'Move', summary: 'Move the source value into the destination.', operands: [num('Source'), num('Destination')] },
+  { name: 'MOV', category: 'Move', summary: 'Move the source value into the destination.', operands: [num('Source'), numW('Destination')] },
   { name: 'COP', category: 'Move', summary: 'Copy elements from the source to the destination.', operands: [{ name: 'Source', kind: 'ANY' }, { name: 'Destination', kind: 'ANY' }, num('Length')] },
-  { name: 'CLR', category: 'Move', summary: 'Clear the destination to zero.', operands: [num('Destination')] },
+  { name: 'CLR', category: 'Move', summary: 'Clear the destination to zero.', operands: [numW('Destination')] },
 
   // Timer and counter
   { name: 'TON', category: 'Timer and counter', summary: 'Timer on delay: accumulates while the rung is true; the accumulator operand is written as 0.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset'), num('Accum')] },
@@ -148,10 +152,10 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'MCR', category: 'Program control', summary: 'Master control relay zone boundary.', operands: [] },
 
   // Bit
-  { name: 'AND', category: 'Bit', summary: 'Bitwise AND of two sources into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'OR', category: 'Bit', summary: 'Bitwise OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'XOR', category: 'Bit', summary: 'Bitwise exclusive OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
-  { name: 'NOT', category: 'Bit', summary: 'Bitwise complement of the source into the destination.', operands: [num('Source'), num('Destination')] },
+  { name: 'AND', category: 'Bit', summary: 'Bitwise AND of two sources into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'OR', category: 'Bit', summary: 'Bitwise OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'XOR', category: 'Bit', summary: 'Bitwise exclusive OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
+  { name: 'NOT', category: 'Bit', summary: 'Bitwise complement of the source into the destination.', operands: [num('Source'), numW('Destination')] },
   { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Source bit'), num('Length')] },
   { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Source bit'), num('Length')] },
 
@@ -216,7 +220,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   // FOR runs a named routine until the index passes the terminal value, so its first
   // operand is a routine, not an address. The compact table had a routine name, a source
   // and an expression, which is neither the right count nor the right meaning.
-  { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), num('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
+  { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), numW('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
 
   // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
   // source for, and the compact table's empty slot list made them claim "takes 0 operands" -

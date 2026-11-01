@@ -1110,6 +1110,10 @@
   `FOR(Loop,Count,0,10,1)` built 0/0. The composer refuses a literal FOR index while composing, with a fix naming the DINT tag the index needs, and leaves
   the initial, terminal and step values free to be literals. Two tests hold both sides. 480 package tests.
 
+- **Writable operands are now a property of the catalogue, not a name guess.** `SIZE(Arr,0,5)` failed a Studio build with `RxCMP_E_AUDIT_INVALIDOPKIND`
+  while `SIZE(Arr,0,Arr[0])` built 0/0, so the `Size` slot joined `Destination` and `FOR`'s `Index` as explicitly `writable`. The composer refuses a literal in
+  any such slot and names it. Both SIZE cases are held by tests. 481 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

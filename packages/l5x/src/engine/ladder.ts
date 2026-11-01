@@ -300,17 +300,17 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. Catch it while composing and
       // state the written order, so the caller never learns the order from a failed build.
       const slot = instruction.operands[index] ?? restSlot
-      const destination = slot !== undefined && /dest/i.test(slot.name)
-      // FOR's index is the other slot Studio requires to be a tag; its bounds may be literals.
-      const forIndex = instruction.name === 'FOR' && slot?.name === 'Index'
-      if (slot !== undefined && (destination || forIndex) && isLiteral(text)) {
-        throw new L5xError(
-          'INVALID_OPERAND',
-          `${text} is a literal where ${instruction.name} needs a writable ${destination ? 'destination' : 'index'}.`,
-          destination
-            ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
-            : 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.',
-        )
+      // Studio refuses a literal in a writable slot only at build time, with
+      // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
+      // composer can refuse them and state the written order instead.
+      if (slot?.writable === true && isLiteral(text)) {
+        const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
+        const fix = slot.name === 'Destination'
+          ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
+          : slot.name === 'Index'
+            ? 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.'
+            : `Pass a declared tag for the ${slot.name} slot; Studio refuses a literal there.`
+        throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a writable ${what}.`, fix)
       }
       return text
     })
