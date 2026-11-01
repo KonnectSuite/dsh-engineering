@@ -20,7 +20,7 @@ import type { L5xDocument, L5xRoutine, L5xRung, L5xTag } from '../model/types.ts
 import { aliasesOf } from './configuration.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { resolveTag } from './tag-resolution.ts'
-import { runChecks } from './review.ts'
+import { remedyFor, runChecks } from './review.ts'
 
 /** One documentation part a caller can ask for. */
 export type DocumentPart = 'project' | 'io' | 'tags' | 'rungs'
@@ -207,6 +207,9 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
     text += '\n## Review findings\n\nHeuristic; absence of findings does not prove controller safety. Run run_checks for sites.\n\n| Severity | Count |\n|---|---|\n'
     text += severityRow
     text += `\nTop rules: ${rules}.${byRule.size > 8 ? ` And ${byRule.size - 8} more rule(s).` : ''}\n`
+    const topRule = [...byRule].sort((left, right) => right[1] - left[1])[0]?.[0]
+    const topRemedy = topRule === undefined ? undefined : remedyFor(topRule)
+    if (topRemedy !== undefined) text += `\nMost common rule, ${topRule}: ${topRemedy}\n`
   }
   text += '\n## Coverage\n\nThis document is generated from the saved export. It does not prove construction of the program,'
   text += ' compiled behaviour, runtime behaviour, or anything outside the export (HMI, produced/consumed tags, driver consumers).\n'

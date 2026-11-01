@@ -504,3 +504,8 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   }
   return { project_id: project.id, baseline_id: baseline?.id, findings, count: findings.length, summary: { byRule, bySeverity }, coverage: project.features, ...(skippedReadings.length === 0 ? {} : { skipped_readings: skippedReadings }), note: 'Heuristic findings require engineering review; absence of findings does not prove controller safety.' }
 }
+
+/** The remedy for a rule, when the map has one. */
+export function remedyFor(rule: string): string | undefined {
+  return REMEDIES[rule]
+}

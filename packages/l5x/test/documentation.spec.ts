@@ -282,6 +282,9 @@ describe('the review summary', () => {
     expect(project).toContain('## Review findings')
     expect(project).toContain('UNUSED_TAG')
     expect(project).toContain('absence of findings does not prove controller safety')
+    // A reviewer reading only the bundle must be able to act on the most common rule.
+    expect(project).toContain('Most common rule, UNUSED_TAG:')
+    expect(project).toContain('HMI-only')
   })
 })
 

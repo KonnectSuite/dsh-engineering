@@ -933,6 +933,11 @@
   `src/engine/review.ts`, extracts every `report('RULE' …)` and every remedy key, and fails when a rule has no remedy - so a future rule cannot ship
   without one. This is the third consistency guard of the same kind: capability names (141), next-step names (142), and now rules (153). 445 package tests.
 
+- **The handover bundle now gives the remedy for the most common finding.** `PROJECT.md` reported counts and top rules, so a reviewer holding only the document
+  could see 257 undocumented routines and still not know what to change. It now ends the section with the top rule and its remedy: on `Seco_Homogenizer`,
+  *"Most common rule, UNDOCUMENTED_ROUTINE: Add a routine description saying what it does and when it runs."* `remedyFor` is exported from the check engine, so
+  the document and the tool answer from one source. The bundle test asserts the line. 445 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
