@@ -679,6 +679,10 @@ describe('a file statistic', () => {
       expect(result.error).toBeUndefined()
       expect((result.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe(expected)
     }
+    // SRT(Arr[0],0,Ctrl,10,0) built 0/0, so the array slot accepts one element as well.
+    const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SRT', args: ['Arr[0]', '0', 'Ctrl', '10', '0'] }] }) })
+    expect(element.error).toBeUndefined()
+    expect((element.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SRT(Arr[0],0,Ctrl,10,0);')
     const wrong = [
       ['SRT', ['Arr', '0', 'Ctl2', '10', '0']],
       ['STD', ['Arr', '0', 'Dest', 'Ctl2', '10', '0']],
@@ -836,6 +840,12 @@ describe('a bit shift', () => {
       const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr', 'Ctl2', 'Bit', '10'] }] }) })
       expect(wrong.error?.code).toBe('INVALID_OPERAND')
       expect(wrong.error?.message).toContain('must be CONTROL')
+    }
+    // The array slot accepts one element: BSL(Arr[0],Ctrl,Bit,8) built 0/0, so no whole-array rule.
+    for (const instr of ['BSL', 'BSR']) {
+      const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr[0]', 'Ctrl', 'Bit', '10'] }] }) })
+      expect(element.error).toBeUndefined()
+      expect((element.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe(`${instr}(Arr[0],Ctrl,Bit,10);`)
     }
   })
 })

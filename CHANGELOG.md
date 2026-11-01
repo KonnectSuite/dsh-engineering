@@ -1298,6 +1298,10 @@
 
 - **Generated client faces refreshed** after the SRT/STD control restriction, so repository bytes match the rebuilt artifact.
 
+- **The array slots of SRT and BSL accept one element, so no whole-array rule was added.** `SRT(Arr[0],0,Ctrl,10,0)` and
+  `BSL(Arr[0],Ctrl,Bit,8)` both built 0/0, matching the earlier SQO element build. Regression tests now hold the element forms for SRT, BSL and BSR
+  beside the CONTROL rule, so a future attempt to require the whole array fails a test instead of the vendor. 501 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
