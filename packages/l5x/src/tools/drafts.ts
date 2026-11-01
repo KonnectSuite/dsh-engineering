@@ -458,11 +458,29 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           if (has(name)) return
           tagOperations.push({ operation: 'add_sfc_tag', scope: program, name, kind, ...(initial ? { initial: true } : {}) })
         }
+        const allActions: { name: string; qualifier: string }[] = []
         for (const step of steps) {
           const row = step as Record<string, unknown>
           ensure(String(row.name ?? ''), 'step', row.initial === true)
           const actions = Array.isArray(row.actions) ? row.actions : []
-          for (const action of actions) ensure(String((action as Record<string, unknown>).name ?? ''), 'action', false)
+          for (const action of actions) {
+            const entry = action as Record<string, unknown>
+            const name = String(entry.name ?? '')
+            allActions.push({ name, qualifier: String(entry.qualifier ?? 'NonStored') })
+            ensure(name, 'action', false)
+          }
+        }
+        // Studio refuses Reset without a Stored action on the same operand (RxSFC_E_RESET_WITHOUT_STORED).
+        const stored = new Set(allActions
+          .filter(action => action.qualifier.toLowerCase() === 'stored')
+          .map(action => action.name.toLowerCase()))
+        for (const action of allActions) {
+          if (action.qualifier.toLowerCase() !== 'reset' || stored.has(action.name.toLowerCase())) continue
+          throw new L5xError(
+            'INVALID_ARGUMENT',
+            `Action ${action.name} uses Reset, and no action on ${action.name} uses Stored. Studio refuses it with RxSFC_E_RESET_WITHOUT_STORED.`,
+            'Add a Stored action on the same tag, or use NonStored instead.',
+          )
         }
         for (const transition of transitions) ensure(String((transition as Record<string, unknown>).name ?? ''), 'transition', false)
 

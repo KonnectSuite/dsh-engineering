@@ -485,6 +485,16 @@
   `draft_tag` can create more than one function-block instance in the same draft. A test pins the composed export, so the
   multi-sheet shape cannot regress silently the way the single-sheet shape once could.
 
+- **`draft_sfc` now refuses a `Reset` action that nothing stores, and the round found a larger SFC regression it did not finish.**
+  Studio answers `RxSFC_E_RESET_WITHOUT_STORED` for a Reset with no Stored action on the same operand; the composer now refuses
+  it first and names the fix ("Add a Stored action on the same tag, or use NonStored instead"). Two things surfaced while
+  bisecting qualifiers. First, `NonStored` and `Stored` charts that build in earlier rounds now fail with
+  **`RxSFC_E_SPECIFIER_INVALID_TYPE`**, so something regressed after that evidence was captured. Second, the prime suspect is
+  visible in the code: `sfcTagXml` emits **`SFC_ACTION` for transition tags** (`kind === 'step' ? 'SFC_STEP' : 'SFC_ACTION'`),
+  while a transition is a boolean tag - the same file's own operation help says "a BOOL transition tag". My patch to change that
+  did not land (anchor mismatch, then the build budget ran out), so it is **recorded, not claimed**: next round patches
+  `sfcTagXml`, rebuilds the qualifier bisect, and either confirms the cause or reports the real one.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -163,3 +163,34 @@ describe('actions and numeric conditions', () => {
     expect(l5x.written.get('numeric.L5X')).toContain('<![CDATA[c1 > 5]]>')
   })
 })
+
+
+describe('an SFC Reset action', () => {
+  it('is refused when nothing stores the same tag', async () => {
+    // Studio answers RxSFC_E_RESET_WITHOUT_STORED; catching it at compose time names the fix.
+    const l5x = harness(new Map([['q.l5x', new TextEncoder().encode(RESET_FIXTURE)]]), { editing: true })
+    await l5x.call('open_project', { path: 'q.l5x' })
+    const routine = await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    expect(routine.error).toBeUndefined()
+    const chart = await l5x.call('draft_sfc', {
+      program: 'Main', routine: 'Chart',
+      steps: JSON.stringify([{ id: 0, name: 'S1', initial: true, actions: [{ id: 10, name: 'A1', qualifier: 'Reset' }] }, { id: 1, name: 'S2' }]),
+      transitions: JSON.stringify([{ id: 20, name: 'T1', condition: 'S1.DN' }, { id: 21, name: 'T2', condition: 'c1 > 5' }]),
+      links: JSON.stringify([{ from: 0, to: 20 }, { from: 20, to: 1 }, { from: 1, to: 21 }, { from: 21, to: 0 }]),
+    })
+    expect(chart.error?.code).toBe('INVALID_ARGUMENT')
+    expect(String(chart.error?.message)).toContain('RxSFC_E_RESET_WITHOUT_STORED')
+  })
+})
+
+/** A minimal project for the Reset action case. */
+const RESET_FIXTURE = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="ResetCase" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="a1" TagType="Base" DataType="BOOL"/><Tag Name="c1" TagType="Base" DataType="DINT"/></Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a1);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
