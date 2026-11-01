@@ -642,6 +642,12 @@
   broke is mine and was written for exactly this: never commit with the bundle red. Reading a summary line is not reading the
   verdict; the gate must be checked exit-code first.
 
+- **A pattern call that misses arguments now learns all of them in one refusal.** `requirePatternArgs` checks the full set before any value is
+  read, for string arguments and numeric ones alike, so `ton_delay` with nothing answers
+  `ton_delay needs enable, timer, preset_ms; missing: enable, timer, preset_ms.` and `analog_scale` missing only `out_max` names all six of
+  its arguments and says which one is absent. That is the round-86 lesson made structural: a `ton_delay` call was wrong three ways and
+  each attempt cost a round trip. Two tests pin the complete list for a string pair and a numeric set. 407 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

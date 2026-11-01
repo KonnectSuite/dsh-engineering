@@ -149,6 +149,21 @@ describe('refusals', () => {
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
 
+  it('names every required pattern argument at once', async () => {
+    // A caller that omits two arguments should not need two round trips to learn both.
+    const l5x = await opened()
+    const timer = await l5x.call('compose_rung', { pattern: 'ton_delay', arguments_json: '{}' })
+    expect(timer.error?.code).toBe('INVALID_ARGUMENT')
+    expect(timer.error?.message).toContain('ton_delay needs enable, timer')
+    expect(timer.error?.message).toContain('missing: enable, timer')
+    const scale = await l5x.call('compose_rung', {
+      pattern: 'analog_scale',
+      arguments_json: JSON.stringify({ source: 'SystemRunning', destination: 'SystemRunning', in_min: 0, in_max: 1, out_min: 0 }),
+    })
+    expect(scale.error?.message).toContain('source, destination, in_min, in_max, out_min, out_max')
+    expect(scale.error?.message).toContain('missing: out_max')
+  })
+
   it('refuses a timer slot given a BOOL tag', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {

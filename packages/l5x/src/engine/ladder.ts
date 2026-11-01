@@ -422,6 +422,27 @@ export function composeRung(project: ProjectSnapshot, spec: LadderNodeSpec): Com
 }
 
 /** A required pattern argument. */
+/**
+ * Refuse a pattern call that omits any of its required tag arguments, naming all of them at once.
+ *
+ * @param pattern - Pattern being expanded.
+ * @param args - Caller arguments.
+ * @param names - Every required tag argument, in declaration order.
+ */
+function requirePatternArgs(pattern: string, args: Readonly<Record<string, unknown>>, names: readonly string[], numbers: readonly string[] = []): void {
+  const all = [...names, ...numbers]
+  const missing = [
+    ...names.filter(name => typeof args[name] !== 'string' || String(args[name]).trim() === ''),
+    ...numbers.filter(name => typeof args[name] !== 'number' || !Number.isFinite(args[name])),
+  ]
+  if (missing.length === 0) return
+  throw new L5xError(
+    'INVALID_ARGUMENT',
+    `${pattern} needs ${all.join(', ')}; missing: ${missing.join(', ')}.`,
+    `Pass all of: ${all.join(', ')}; tag names as strings and ranges as numbers.`,
+  )
+}
+
 function arg(args: Readonly<Record<string, unknown>>, name: string): string {
   const value = args[name]
   if (typeof value !== 'string' || value.trim() === '') {
@@ -434,6 +455,7 @@ function arg(args: Readonly<Record<string, unknown>>, name: string): string {
 export function composePattern(project: ProjectSnapshot, pattern: PatternName, args: Readonly<Record<string, unknown>>): ComposedRungs {
   const one = (spec: LadderNodeSpec): ComposedRungs => ({ rungs: [composeRung(project, spec)], pattern })
   if (pattern === 'start_stop_latch') {
+    requirePatternArgs(pattern, args, ['start', 'stop', 'run'])
     const start = arg(args, 'start')
     const stop = arg(args, 'stop')
     const run = arg(args, 'run')
@@ -448,6 +470,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     if (!Array.isArray(conditions) || conditions.length === 0) {
       throw new L5xError('INVALID_ARGUMENT', 'interlock needs conditions: at least one tag.', 'Pass conditions as an array of declared BOOL tag names.')
     }
+    requirePatternArgs(pattern, args, ['output'])
     const output = arg(args, 'output')
     return one({ series: [
       ...conditions.map(condition => ({ instr: 'XIC', args: [String(condition)] })),
@@ -455,6 +478,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     ] })
   }
   if (pattern === 'ton_delay') {
+    requirePatternArgs(pattern, args, ['enable', 'timer'], ['preset_ms'])
     const enable = arg(args, 'enable')
     const timer = arg(args, 'timer')
     const preset = args.preset_ms
@@ -464,6 +488,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     return one({ series: [{ instr: 'XIC', args: [enable] }, { instr: 'TON', args: [timer, String(preset), '0'] }] })
   }
   if (pattern === 'analog_scale') {
+    requirePatternArgs(pattern, args, ['source', 'destination'], ['in_min', 'in_max', 'out_min', 'out_max'])
     const source = arg(args, 'source')
     const destination = arg(args, 'destination')
     const numbers = (name: string): string => {
@@ -486,6 +511,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     }] })
   }
   if (pattern === 'totalizer') {
+    requirePatternArgs(pattern, args, ['enable', 'rate', 'total'])
     const enable = arg(args, 'enable')
     const rate = arg(args, 'rate')
     const total = arg(args, 'total')
@@ -497,6 +523,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     ] })
   }
   if (pattern === 'run_hour_meter') {
+    requirePatternArgs(pattern, args, ['run', 'timer', 'hours'])
     const run = arg(args, 'run')
     const timer = arg(args, 'timer')
     const hours = arg(args, 'hours')
@@ -515,6 +542,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     }
   }
   // fault_latch: set on the fault, clear on the reset — two rungs, never one.
+  requirePatternArgs(pattern, args, ['fault', 'reset', 'latched'])
   const fault = arg(args, 'fault')
   const reset = arg(args, 'reset')
   const latched = arg(args, 'latched')
