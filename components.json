@@ -30,6 +30,8 @@
           "start_stop_latch",
           "fault_latch",
           "ton_delay",
+          "analog_scale",
+          "run_hour_meter",
           "live_logic_matches_export",
           "untested_revision"
         ]

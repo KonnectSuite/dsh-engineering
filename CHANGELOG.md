@@ -635,6 +635,13 @@
   budget, 406 tests pass. Documentation a model reads before composing is a **product surface**; a missing argument name is a
   failed edit, not a cosmetic omission.
 
+- **Fix-forward for `78ed8b5`, which I committed with a red bundle gate.** The package suite was green (406) and I read the bundle summary
+  as green too; it was **89 of 90**. The failure was this repository's own documentation check: the skill may only cite names that are
+  tools or that `components.json` allows, and `analog_scale` and `run_hour_meter` - now correctly named in the pattern list - were
+  not in that allowlist. The allowlist now carries both, `pnpm test` is **90/90**, and `components.json` still parses. The rule I
+  broke is mine and was written for exactly this: never commit with the bundle red. Reading a summary line is not reading the
+  verdict; the gate must be checked exit-code first.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
