@@ -201,9 +201,9 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
                   .map(entry => ({ name: entry.name, program: entry.program, type: 'PROTECTED', rungCount: null, lineCount: null, description: 'Source-protected: the body is encrypted in this export' })),
               ]
             : kind === 'aoi'
-              ? listAois(document).map(aoi => ({ name: aoi.name, revision: aoi.revision, description: aoi.description }))
+              ? listAois(document).map(aoi => ({ name: aoi.name, revision: aoi.revision, description: aoi.description, safety: aoi.safety === true }))
               : kind === 'module'
-                ? listModules(document).map(module => ({ name: module.name, catalogNumber: module.catalogNumber, slot: module.slot ?? '', parentModule: module.parentModule, inhibited: module.inhibited === true, majorFault: module.majorFault === true }))
+                ? listModules(document).map(module => ({ name: module.name, catalogNumber: module.catalogNumber, slot: module.slot ?? '', parentModule: module.parentModule, inhibited: module.inhibited === true, majorFault: module.majorFault === true, safetyEnabled: module.safetyEnabled === true }))
                 : document.alarms.map(alarm => ({ name: alarm.name, kind: alarm.kind, description: alarm.description }))
   const needle = filter.toLowerCase()
   return needle === '' ? rows : rows.filter(row => row.name.toLowerCase().includes(needle))

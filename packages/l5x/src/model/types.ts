@@ -173,6 +173,8 @@ export interface L5xAoiInfo {
   readonly description: string
   /** Revision the export declares, empty string when it declares none. */
   readonly revision: string
+  /** Present and true only when the export declares the instruction `Class="Safety"`. */
+  readonly safety?: boolean
 }
 
 /** One add-on instruction with its interface and internal logic. */
@@ -233,6 +235,10 @@ export interface L5xModule {
   readonly inhibited?: boolean
   /** Present and true only when the export records the module with `MajorFault="true"`. */
   readonly majorFault?: boolean
+  /** Present and true only when the module declares `SafetyEnabled="true"`. */
+  readonly safetyEnabled?: boolean
+  /** Safety network number the module declares, when it declares one. */
+  readonly safetyNetwork?: string
 }
 
 /** Alarm metadata found in an export; trigger semantics are not inferred. */

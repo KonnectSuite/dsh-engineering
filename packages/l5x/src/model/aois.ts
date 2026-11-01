@@ -18,7 +18,7 @@ import { routineBody } from './routines.ts'
  * @returns One entry per instruction, in written order.
  */
 export function listAois(document: L5xDocument): readonly L5xAoiInfo[] {
-  return document.aois.map(aoi => ({ name: aoi.name, description: aoi.description, revision: aoi.revision }))
+  return document.aois.map(aoi => ({ name: aoi.name, description: aoi.description, revision: aoi.revision, ...(aoi.safety === true ? { safety: true } : {}) }))
 }
 
 /**
@@ -54,6 +54,7 @@ export function buildAois(controller: XmlElement): readonly L5xAoiDefinition[] {
     name: optionalAttribute(aoi, 'Name', ''),
     description: descriptionOf(aoi),
     revision: optionalAttribute(aoi, 'Revision', ''),
+    ...(optionalAttribute(aoi, 'Class', '') === 'Safety' ? { safety: true } : {}),
     vendor: optionalAttribute(aoi, 'Vendor', ''),
     parameters: aoiParameters(aoi),
     localTags: aoiLocalTags(aoi),

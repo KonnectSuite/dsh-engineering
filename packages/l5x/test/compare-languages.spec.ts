@@ -340,3 +340,27 @@ describe('program class', () => {
     expect(rows.find(row => row.name === 'Standard')?.safety).toBe(false)
   })
 })
+
+
+/** A safety I/O module and a safety AOI beside standard ones. */
+const SAFETY_KIT_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"SafetyKit\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <Modules>\n      <Module Name=\"SA_DIG_IN_1\" CatalogNumber=\"1756-IB16S/A\" Vendor=\"1\" ProductType=\"35\" ProductCode=\"33\" Major=\"1\" Minor=\"11\" ParentModule=\"Local\" ParentModPortId=\"1\" Inhibited=\"false\" MajorFault=\"false\" SafetyNetwork=\"16#0000_4bc3_04a5_39a3\" SafetyEnabled=\"true\"/>\n      <Module Name=\"Local:3\" CatalogNumber=\"5069-IB16\" Vendor=\"1\" ProductType=\"7\" ProductCode=\"0\" Major=\"1\" Minor=\"1\" ParentModule=\"Local\" ParentModPortId=\"1\" Inhibited=\"false\" MajorFault=\"false\"/>\n    </Modules>\n    <AddOnInstructionDefinitions>\n      <AddOnInstructionDefinition Name=\"FC_SFTY_SSOV\" Class=\"Safety\" Revision=\"1.0\" ExecutePrescan=\"true\" ExecutePostscan=\"false\" ExecuteEnableInFalse=\"true\">\n        <Parameters><Parameter Name=\"In\" Usage=\"Input\" DataType=\"BOOL\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/></Parameters>\n      </AddOnInstructionDefinition>\n      <AddOnInstructionDefinition Name=\"FC_Adj_Ratio_SP\" Class=\"Standard\" Revision=\"1.0\" ExecutePrescan=\"false\" ExecutePostscan=\"false\" ExecuteEnableInFalse=\"false\">\n        <Parameters><Parameter Name=\"In\" Usage=\"Input\" DataType=\"BOOL\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/></Parameters>\n      </AddOnInstructionDefinition>\n    </AddOnInstructionDefinitions>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('safety hardware and safety instructions', () => {
+  it('names the safety module and the safety AOI in their listings', async () => {
+    const l5x = harness(new Map([['sk.l5x', new TextEncoder().encode(SAFETY_KIT_L5X)]]))
+    await l5x.call('open_project', { path: 'sk.l5x' })
+    const safetyModule = await l5x.call('get_component', { kind: 'module', name: 'SA_DIG_IN_1' })
+    expect(safetyModule.data?.component?.safetyEnabled).toBe(true)
+    expect(safetyModule.data?.component?.safetyNetwork).toContain('4bc3')
+    const modules = await l5x.call('list_components', { kind: 'module' })
+    const moduleRows = (modules.data?.rows ?? []) as { name: string; safetyEnabled?: boolean }[]
+    expect(moduleRows.find(row => row.name === 'SA_DIG_IN_1')?.safetyEnabled).toBe(true)
+    expect(moduleRows.find(row => row.name === 'Local:3')?.safetyEnabled).toBe(false)
+    const aoi = await l5x.call('get_component', { kind: 'aoi', name: 'FC_SFTY_SSOV' })
+    expect(aoi.data?.component?.safety).toBe(true)
+    const aois = await l5x.call('list_components', { kind: 'aoi' })
+    const aoiRows = (aois.data?.rows ?? []) as { name: string; safety?: boolean }[]
+    expect(aoiRows.find(row => row.name === 'FC_SFTY_SSOV')?.safety).toBe(true)
+    expect(aoiRows.find(row => row.name === 'FC_Adj_Ratio_SP')?.safety).toBe(false)
+  })
+})

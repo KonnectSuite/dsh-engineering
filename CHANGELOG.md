@@ -730,6 +730,12 @@
   **`COMBUSTION_SAFETY` and `MOTION_SAFETY`** - exactly the programs `SafetyTask` schedules - and the other 21 report false. A test pins the reader and the
   listing for one declared safety program and one standard program. 420 package tests.
 
+- **Safety I/O modules and safety AOIs are now visible.** The export declares `SafetyEnabled="true"` with a `SafetyNetwork` on the one and `Class="Safety"`
+  on the other; neither was modelled, so a GuardLogix guard module looked like ordinary I/O and a certified safety instruction looked like any
+  AOI. `L5xModule` now carries `safetyEnabled` and `safetyNetwork`, `L5xAoiInfo` carries `safety`, and both listings show them. Verified on
+  `Seco_Homogenizer`: **10 safety modules** (starting `SA_DIG_IN_1`) and **2 safety AOIs** (`FC_SFTY_BURNER_DIRECT`, `FC_SFTY_SSOV`), with
+  standard modules and AOIs reporting false. A test covers the safety and standard case for each. 421 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

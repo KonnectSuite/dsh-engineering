@@ -49,6 +49,8 @@ function parseModule(module: XmlElement): L5xModule {
     slot?: string
     inhibited?: boolean
     majorFault?: boolean
+    safetyEnabled?: boolean
+    safetyNetwork?: string
   } = {
     name: optionalAttribute(module, 'Name', ''),
     catalogNumber: optionalAttribute(module, 'CatalogNumber', ''),
@@ -61,5 +63,8 @@ function parseModule(module: XmlElement): L5xModule {
   if (port !== undefined) entry.slot = optionalAttribute(port, 'Address', '')
   if (module.attrs['Inhibited'] === 'true') entry.inhibited = true
   if (module.attrs['MajorFault'] === 'true') entry.majorFault = true
+  if (module.attrs['SafetyEnabled'] === 'true') entry.safetyEnabled = true
+  const safetyNetwork = module.attrs['SafetyNetwork']
+  if (safetyNetwork !== undefined) entry.safetyNetwork = safetyNetwork
   return entry
 }
