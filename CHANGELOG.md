@@ -201,6 +201,15 @@
   either way, so **no build can ever prove it** and the help is the only authority. Order verification is therefore
   complete only for the mixed-kind set, not for the catalogue.
 
+- **The composer's sixth pattern, `totalizer`, builds: `XIC(run)ADD(total,rate,total)`.** It accumulates a rate into a
+  total while an enable is true, and the interesting part is that the source and destination **share a tag** - Studio
+  allows an in-place accumulate for a math instruction, which is what makes a one-rung totalizer possible at all. Verified
+  through our own composer on a 5069: `compose_rung` expanded the pattern, `draft_apply` wrote the export, and Logix
+  Designer built it with **0 warnings, 0 errors and an ACD written**. The rung is pinned in `ladder.spec.ts`, the pattern
+  enumeration is part of the schema so the tool reference regenerated, and `compose_batch` takes it by name too. A note
+  from the previous round applies: `ADD`'s slot order cannot be proved by a build (the sources share a kind, and addition
+  is commutative), so this verifies the **rung shape** and the in-place accumulate, not the operand order.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

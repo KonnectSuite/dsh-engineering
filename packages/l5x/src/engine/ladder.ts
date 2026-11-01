@@ -73,7 +73,7 @@ export interface ComposedRungs {
 }
 
 /** Named patterns the composer can expand. */
-export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock', 'analog_scale'] as const
+export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock', 'analog_scale', 'totalizer'] as const
 /** One pattern name. */
 export type PatternName = (typeof PATTERNS)[number]
 
@@ -474,6 +474,17 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
       instr: 'CPT',
       args: [destination, `(${source} - ${inMin}) / (${inMax} - ${inMin}) * (${outMax} - ${outMin}) + ${outMin}`],
     }] })
+  }
+  if (pattern === 'totalizer') {
+    const enable = arg(args, 'enable')
+    const rate = arg(args, 'rate')
+    const total = arg(args, 'total')
+    // Accumulate in place: ADD(total, rate, total). The source and destination share a tag, which
+    // Studio allows for a math instruction written as a single output.
+    return one({ series: [
+      { instr: 'XIC', args: [enable] },
+      { instr: 'ADD', args: [total, rate, total] },
+    ] })
   }
   // fault_latch: set on the fault, clear on the reset — two rungs, never one.
   const fault = arg(args, 'fault')

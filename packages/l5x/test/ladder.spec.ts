@@ -198,3 +198,34 @@ describe('the analog_scale pattern', () => {
     expect(rungs[0]?.neutral_text).toBe('CPT(scaled,(raw - 0.0) / (100.0 - 0.0) * (50.0 - 0.0) + 0.0);')
   })
 })
+
+
+describe('the totalizer pattern', () => {
+  it('accumulates in place', async () => {
+    // Verified by a Logix Designer build: XIC(run)ADD(total,rate,total); passed with 0 warnings and
+    // 0 errors. Source B and the destination share a tag, which Studio allows for math.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Total" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="run" TagType="Base" DataType="BOOL"/>
+      <Tag Name="rate" TagType="Base" DataType="REAL"/>
+      <Tag Name="total" TagType="Base" DataType="REAL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[OTE(total);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['total.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'total.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', {
+      pattern: 'totalizer',
+      arguments_json: JSON.stringify({ enable: 'run', rate: 'rate', total: 'total' }),
+    })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('XIC(run)ADD(total,rate,total);')
+  })
+})
