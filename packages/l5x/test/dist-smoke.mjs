@@ -46,6 +46,9 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
     assert.equal(copy[1]?.writable, true, name)
     assert.equal(copy[1]?.arrayElement, true, name)
   }
+  const fill = instructionByName('FLL')?.operands.find(operand => operand.name === 'Dest')
+  assert.equal(fill?.writable, true)
+  assert.equal(fill?.arrayElement, true)
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {

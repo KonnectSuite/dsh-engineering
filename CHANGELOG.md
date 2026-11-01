@@ -1199,6 +1199,10 @@
 
 - **Generated client faces refreshed** after the COP element change, so repository bytes match the rebuilt artifact.
 
+- **FLL fills from an array element, not the array tag.** `FLL(5,Arr,10)` failed Studio with `MUSTBEDISCRETE`; `FLL(5,Arr[0],10)` built
+  0/0. FLL's Dest is now element-addressed, the composer refuses the whole-array form, the older FLL composition test was moved to an array
+  fixture, and tests plus the dist smoke hold FLL beside CPS and COP. 492 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

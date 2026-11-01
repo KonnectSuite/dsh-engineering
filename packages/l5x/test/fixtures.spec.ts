@@ -670,6 +670,13 @@ describe('a tag-only operand slot', () => {
     const copGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
     expect(copGood.error).toBeUndefined()
     expect((copGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('COP(Arr[0],Arr2[0],10);')
+    // Studio answered MUSTBEDISCRETE for FLL(5,Arr,10); FLL(5,Arr[0],10) built 0/0.
+    const fllWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr', '10'] }] }) })
+    expect(fllWhole.error?.code).toBe('INVALID_OPERAND')
+    expect(fllWhole.error?.message).toContain('array element')
+    const fllGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr[0]', '10'] }] }) })
+    expect(fllGood.error).toBeUndefined()
+    expect((fllGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('FLL(5,Arr[0],10);')
   })
 })
 

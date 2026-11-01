@@ -178,7 +178,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'RTOS', category: 'String', summary: 'Real to string: convert a REAL value into the destination string.', operands: [num('Source'), { name: 'Dest', kind: 'STRING', writable: true }] },
 
   // File and array
-  { name: 'FLL', category: 'File and array', summary: 'File fill: fill Length elements at the destination with the source value.', operands: [num('Source'), { name: 'Dest', kind: 'ANY', writable: true }, num('Length')] },
+  { name: 'FLL', category: 'File and array', summary: 'File fill: fill Length elements at the destination with the source value.', operands: [num('Source'), { name: 'Dest', kind: 'ANY', writable: true, arrayElement: true }, num('Length')] },
 
   // Program control. SBR carries no operands: its parameters are the JSR arguments.
   { name: 'SBR', category: 'Program control', summary: 'Subroutine label a JSR calls; its parameters are the arguments the JSR passes.', operands: [] },

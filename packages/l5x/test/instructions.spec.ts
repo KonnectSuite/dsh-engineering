@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { INSTRUCTIONS, instructionByName, nearestInstructions, canonicalInstruction, NUMERIC_TYPES, TIMER_TYPES } from '../src/engine/instructions.ts'
 import { fixtureBytes, harness } from './harness.ts'
+import { l5x, program, rllRoutine, tag, task } from './l5x-build.ts'
 
 /** Instructions the committed fixture rungs actually use. */
 const FIXTURE_INSTRUCTIONS = ['XIC', 'XIO', 'OTE', 'TON', 'CTU', 'MOV']
@@ -125,14 +126,21 @@ describe('newly catalogued instructions', () => {
 
 describe('composing with a newly catalogued instruction', () => {
   it('composes a file fill rung', async () => {
-    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'FLL', args: ['LineSpeed', 'FaultCount', '5'] }] }),
+    const project = l5x({
+      name: 'FllCompose',
+      tags: tag('FillValue', 'DINT') + tag('FaultCount', 'DINT', ' Dimensions="10"'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const tool = harness(new Map([['fll.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await tool.call('open_project', { path: 'fll.l5x' })).error).toBeUndefined()
+    // Studio answered MUSTBEDISCRETE for the array tag; the element form built 0/0.
+    const result = await tool.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['FillValue', 'FaultCount[0]', '5'] }] }),
     })
     expect(result.error).toBeUndefined()
     const rungs = result.data?.rungs as { neutral_text: string }[]
-    expect(rungs[0]?.neutral_text).toBe('XIC(StartPB)FLL(LineSpeed,FaultCount,5);')
+    expect(rungs[0]?.neutral_text).toBe('FLL(FillValue,FaultCount[0],5);')
   })
 
   it('composes the serial ASCII rungs Studio built on a 5570', async () => {
