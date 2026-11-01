@@ -147,5 +147,8 @@ describe('documenting a source-protected export', () => {
     expect(String(result.summary)).toContain('2 source-protected')
     const all = [...l5x.written.values()].map(value => String(value)).join('\n')
     expect(all).toContain('Source-protected routines: 2')
+    // A handover bundle names them, not just the count.
+    expect(all).toContain('## Source-protected routines')
+    expect(all).toMatch(/\| P \| [RS] \|/)
   })
 })

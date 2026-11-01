@@ -611,6 +611,14 @@
   reader and listing asserts the two search answers as well. That is the last of the "silent absence" surfaces for a protected
   export: a zero now distinguishes *nothing matched* from *nothing could be read*.
 
+- **The handover bundle now names the protected routines, not just counts them.** Round 70 made `document_project` say "plus 144
+  source-protected"; an engineer still could not tell *which* code was vendor-owned. `PROJECT.md` now carries a
+  **`## Source-protected routines`** table listing program and routine for every encrypted body (bounded at 200 rows with a
+  remainder line), verified on `Seco_Cooler`, whose overview lists `BLOWERS/MainRoutine` and its 143 siblings. The test that
+  pinned the count now asserts the table and a program/routine row, so the bundle's claim and its detail cannot drift. This is
+  the difference between a warning and a work order: "144 bodies are encrypted" tells an engineer something is missing;
+  a table tells them what to ask the vendor for.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

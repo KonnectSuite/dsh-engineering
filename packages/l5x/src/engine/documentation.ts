@@ -3,7 +3,7 @@
  *
  * Everything here is derived from the parsed project: the generator provides the
  * structure and the citations, and the narrative prose stays the caller's job.
- * That split is deliberate — a generated narrative would be an unsourced claim,
+ * That split is deliberate â€” a generated narrative would be an unsourced claim,
  * while a rung with its number, comment, text and referenced tags is evidence a
  * reviewer can check in one click.
  *
@@ -148,7 +148,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   const document = project.document
   const { controller } = document
   let text = `# ${controller.name} project documentation\n\n`
-  text += `Generated from \`${project.path}\` (sha256 \`${project.sha256.slice(0, 16)}…\`) at ${new Date().toISOString()}.\n\n`
+  text += `Generated from \`${project.path}\` (sha256 \`${project.sha256.slice(0, 16)}â€¦\`) at ${new Date().toISOString()}.\n\n`
   text += `- Processor: ${controller.processorType}\n- Revision: ${document.controller.majorRev}.${document.controller.minorRev}\n`
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}\n\n`
@@ -159,6 +159,11 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   for (const program of document.programs) {
     const routines = listRoutines(document, program.name)
     text += mdRow(program.name, program.mainRoutine, routines.length, program.description)
+  }
+  if (project.document.protectedRoutines.length > 0) {
+    text += '\n## Source-protected routines\n\nTheir bodies are encrypted in this export and are not documented here.\n\n| Program | Routine |\n|---|---|\n'
+    for (const entry of project.document.protectedRoutines.slice(0, 200)) text += mdRow(entry.program, entry.name)
+    if (project.document.protectedRoutines.length > 200) text += `\n${project.document.protectedRoutines.length - 200} more are not listed.\n`
   }
   text += '\n## Coverage\n\nThis document is generated from the saved export. It does not prove construction of the program,'
   text += ' compiled behaviour, runtime behaviour, or anything outside the export (HMI, produced/consumed tags, driver consumers).\n'
@@ -175,8 +180,8 @@ const DIAGRAM_LANGUAGE: Readonly<Record<string, string>> = {
 /**
  * Document one non-ladder routine from the elements the reader decoded.
  *
- * Execution semantics remain unverified, so this lists what the export records — an element,
- * the reference it carries and the wires between ids — and never claims what runs.
+ * Execution semantics remain unverified, so this lists what the export records â€” an element,
+ * the reference it carries and the wires between ids â€” and never claims what runs.
  *
  * @param info - The routine's listing entry.
  * @param routine - The routine whose body is not ladder.
@@ -210,7 +215,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
   for (const programName of programs) {
     const program = document.programs.find(entry => entry.name === programName)
     if (program === undefined) continue
-    let section = `# ${programName} — rung documentation\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
+    let section = `# ${programName} â€” rung documentation\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
     let part = 1
     let inFile = 0
     let headingWritten = false
@@ -240,7 +245,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
           part += 1
           inFile = 0
           headingWritten = true
-          section = `# ${programName} — rung documentation (continued)\n`
+          section = `# ${programName} â€” rung documentation (continued)\n`
         }
       }
     }
