@@ -777,6 +777,11 @@
   nothing. One test now changes all three in one fixture and asserts each line. My first version of the test asserted a string the test itself never built
   (`aoi AOI_X changed`), so it failed for my reason, not the product's - found by printing the map rather than guessing. 425 package tests.
 
+- **The handover bundle now has a Safety section.** A new engineer receiving `PROJECT.md` could not tell which task, programs, I/O or instructions were safety - the
+  bundle named the protected routines and the processor, and stopped there. It now carries a table built from the declared facts:
+  `Safety task | SafetyTask`, `Safety program | COMBUSTION_SAFETY, MOTION_SAFETY`, `Safety I/O module | 10: SA_DIG_IN_1, …`,
+  `Safety AOI | FC_SFTY_BURNER_DIRECT, FC_SFTY_SSOV` - verified on `Seco_Homogenizer`, and a test pins every row. 426 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

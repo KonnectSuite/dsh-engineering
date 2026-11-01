@@ -162,6 +162,18 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
     const routines = listRoutines(document, program.name)
     text += mdRow(program.name, program.mainRoutine, routines.length, program.description)
   }
+  // A handover reader must know which parts of the project are safety before touching anything.
+  const safetyTasks = document.tasks.filter(task => task.safety)
+  const safetyPrograms = document.programs.filter(program => program.safety)
+  const safetyModules = document.modules.filter(module => module.safetyEnabled === true)
+  const safetyAois = document.aois.filter(aoi => aoi.safety === true)
+  if (safetyTasks.length + safetyPrograms.length + safetyModules.length + safetyAois.length > 0) {
+    text += '\n## Safety\n\n| Kind | Names |\n|---|---|\n'
+    if (safetyTasks.length > 0) text += mdRow('Safety task', safetyTasks.map(task => task.name).join(', '))
+    if (safetyPrograms.length > 0) text += mdRow('Safety program', safetyPrograms.map(program => program.name).join(', '))
+    if (safetyModules.length > 0) text += mdRow('Safety I/O module', `${safetyModules.length}: ${safetyModules.slice(0, 20).map(module => module.name).join(', ')}${safetyModules.length > 20 ? ', ...' : ''}`)
+    if (safetyAois.length > 0) text += mdRow('Safety AOI', safetyAois.map(aoi => aoi.name).join(', '))
+  }
   if (project.document.protectedRoutines.length > 0) {
     text += '\n## Source-protected routines\n\nTheir bodies are encrypted in this export and are not documented here.\n\n| Program | Routine |\n|---|---|\n'
     for (const entry of project.document.protectedRoutines.slice(0, 200)) text += mdRow(entry.program, entry.name)

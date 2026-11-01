@@ -173,3 +173,37 @@ describe('documenting a routed project', () => {
     expect(all).toContain('saved path: CIM_Prep/10.211.100.100/Backplane/0')
   })
 })
+
+/** One project with every kind of safety fact the export can declare. */
+const DOC_SAFETY_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="DocSafety" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags/>
+    <Modules>
+      <Module Name="SA_DIG_IN_1" CatalogNumber="1756-IB16S/A" Vendor="1" ProductType="35" ProductCode="33" Major="1" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false" SafetyEnabled="true" SafetyNetwork="16#0000_4bc3"/>
+    </Modules>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="FC_SFTY_SSOV" Class="Safety" Revision="1.0" ExecutePrescan="true" ExecutePostscan="false" ExecuteEnableInFalse="true">
+        <Parameters><Parameter Name="In" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs>
+      <Program Name="Guard" MainRoutineName="R" Class="Safety"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program>
+    </Programs>
+    <Tasks><Task Name="SafetyTask" Type="PERIODIC" Rate="20" Priority="10" Class="Safety"><ScheduledPrograms><ScheduledProgram Name="Guard"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('documenting a safety project', () => {
+  it('names the safety task, program, I/O module and AOI', async () => {
+    const l5x = harness(new Map([['ds.l5x', new TextEncoder().encode(DOC_SAFETY_L5X)]]), { editing: true })
+    await l5x.call('open_project', { path: 'ds.l5x' })
+    expect((await l5x.call('document_project', { output_root: 'docs-safety' })).error).toBeUndefined()
+    const all = [...l5x.written.values()].map(value => String(value)).join('\n')
+    expect(all).toContain('## Safety')
+    expect(all).toContain('| Safety task | SafetyTask |')
+    expect(all).toContain('| Safety program | Guard |')
+    expect(all).toContain('| Safety I/O module | 1: SA_DIG_IN_1 |')
+    expect(all).toContain('| Safety AOI | FC_SFTY_SSOV |')
+  })
+})
