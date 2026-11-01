@@ -141,7 +141,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         }
         const blockers = [
           ...review.blockers,
-          ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat']),
+          ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat; export the ACD with export_acd_to_l5x and open that L5X']),
         ]
         const abort = importAbortAdvice(`${build.sdk_error ?? ''}\n${build.log ?? ''}`)
         const advice = build.offline_build === 'failed'

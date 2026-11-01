@@ -1076,6 +1076,11 @@
 - **The skill names the batch reader and member reads.** Live reads now read `poll_live_tags`, `read_live_tags` (IPv4, 1-16 scalars or members) and
   `start_plc_trend` in one line, so an assistant sees the batch tool and the member form without a separate lookup. Skill body 7,976 of 8,000.
 
+- **The live controller workflow is documented.** `docs/live-controller.md` records what this bench taught: the two transports, reading the route out of
+  `RSLinxNG.xml`, the `WORKSTATION!DRIVER\IP` form, capture-first restore points, the Program-mode gate before download, member reads, and why a safety
+  project has no download path. The baseline blocker now says how to repair it (export the ACD, open that L5X). Also proven offline in one project: RLL + ST +
+  FBD + SFC all build together with **0 warnings / 0 errors**.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

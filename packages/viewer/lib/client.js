@@ -518,7 +518,7 @@ var INSTRUCTIONS = [
   // and an expression, which is neither the right count nor the right meaning.
   { name: "FOR", category: "Program control", summary: "For loop: run the named routine, adding the step to the index, until the index passes the terminal value.", operands: [routine(), num("Index"), num("Initial value"), num("Terminal value"), num("Step size")] },
   // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
-  // source for, and the compact table's empty slot list made them claim "takes 0 operands" ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â
+  // source for, and the compact table's empty slot list made them claim "takes 0 operands" -
   // a confident wrong answer with no way forward. Drafting the rung text still works.
   { name: "EOT", category: "Program control", summary: "End of transition, for a Sequential Function Chart step.", operands: [], notModelled: true },
   { name: "SFR", category: "Program control", summary: "Reset an SFC routine to a target state.", operands: [], notModelled: true },
