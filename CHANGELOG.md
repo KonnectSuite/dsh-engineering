@@ -92,6 +92,15 @@
   purpose: this catalogue cannot verify `AXIS`, `MOTION_GROUP` or the unit enumerations, so it validates presence and
   order and never claims a type it cannot check.
 
+- **The write path was probed end to end and found sound, so its contract is now tested.** Driving
+  `draft_rung` → `draft_validate` → `draft_apply` → reopen showed renumbering closes correctly (0…7 after an
+  insert at the top), the rung comment survives, an array tag carries `Dimensions="4 2"`, and a two-line
+  Structured Text body becomes exactly two `<Line>` elements with **no newline inside any CDATA** — the shape
+  Studio refuses. None of that was covered by a test (`drafts.spec.ts` covers renumbering, not declaration
+  dimensions or ST line splitting), so `packages/l5x/test/write-contract.spec.ts` now holds all four: the
+  array attribute, its absence on a scalar, the one-line-per-`<Line>` rule, and that the written file reopens
+  with the new routine listed.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -103,7 +112,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-253 package tests and 70 bundle tests pass.
+257 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
