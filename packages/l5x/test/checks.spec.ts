@@ -31,6 +31,20 @@ describe('run_checks', () => {
     expect(rows.every(row => row.rule === rule)).toBe(true)
   })
 
+  it('refuses a misspelled rule instead of reporting a clean project', async () => {
+    const l5x = await opened()
+    const unknown = await l5x.call('run_checks', { rule: 'UNUSED_TAGS' })
+    expect(unknown.error?.code).toBe('INVALID_ARGUMENT')
+    expect(unknown.error?.message).toContain('Unknown rule "UNUSED_TAGS"')
+    expect(unknown.error?.candidates).toEqual(expect.arrayContaining(['UNUSED_TAG']))
+    // The rule name is matched without case; the summary states the canonical spelling.
+    const upper = await l5x.call('run_checks', { rule: 'UNUSED_TAG' })
+    const lower = await l5x.call('run_checks', { rule: 'unused_tag' })
+    expect(lower.error).toBeUndefined()
+    expect(lower.data?.total).toBe(upper.data?.total)
+    expect(lower.summary).toContain('rule UNUSED_TAG')
+  })
+
   it('filters by severity', async () => {
     const l5x = await opened()
     const filtered = await l5x.call('run_checks', { severity: 'warning' })

@@ -9,7 +9,8 @@
  * @module dsh-engineering-l5x/tools/checks
  */
 
-import { changedFields, runChecks, compareProjects } from '../engine/review.ts'
+import { changedFields, FINDING_RULES, runChecks, compareProjects } from '../engine/review.ts'
+import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -87,7 +88,12 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         const baselineId = optionalString(args, 'baseline_id')
         const baseline = baselineId === undefined ? undefined : await session.require(baselineId, exec)
         const result = runChecks(project, baseline) as ChecksResult
-        const rule = optionalString(args, 'rule')
+        const requestedRule = optionalString(args, 'rule')
+        // A misspelled rule name would match no finding and read as a clean project.
+        const rule = requestedRule === undefined ? undefined : requestedRule.trim().toUpperCase()
+        if (rule !== undefined && !FINDING_RULES.includes(rule)) {
+          throw new L5xError('INVALID_ARGUMENT', `Unknown rule "${requestedRule}".`, 'Pass one of the rule names run_checks reports, for example "UNUSED_TAG".', FINDING_RULES)
+        }
         const severity = optionalString(args, 'severity')
         const rank: Record<string, number> = { critical: 0, warning: 1, info: 2 }
         // A production export returned 701 findings, and the unfiltered page showed 100 unused-tag rows

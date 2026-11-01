@@ -1427,6 +1427,11 @@
   unknown name with `COMPONENT_NOT_FOUND` and routine candidates; nothing is written. Tests cover the refusal and a valid filter that documents one
   routine. 527 package tests.
 
+- **`run_checks` refuses a misspelled rule instead of reporting a clean project.** The rule list is now explicit and complete - 37 rules,
+  including the four chosen by an expression inside `report(...)` and the ones the remedy map never lists (`SERIAL_PORT_INSTRUCTION_UNSUPPORTED`,
+  `IREF_TAG_NOT_PROVIDED`, `OREF_TAG_NOT_PROVIDED`). An unknown rule answers `INVALID_ARGUMENT` with the rule candidates, and the name is
+  matched without case. A drift test scans the source for every emitted rule and fails if the list falls behind. 529 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
