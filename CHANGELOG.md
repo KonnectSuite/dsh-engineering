@@ -1325,6 +1325,10 @@
   caller. It now delegates to `checkIdentifier`, and a single failed operation keeps its own fix instead of the generic help text. Tests hold all
   three codes, the `_1Pump` repair, an unknown scope (COMPONENT_NOT_FOUND) and a duplicate (NAME_COLLISION). 507 package tests.
 
+- **Scalar initial-value bounds are pinned.** BOOL accepts 0/1 and refuses 2; INT accepts 32767 and refuses 32768 and a fraction; USINT refuses a negative;
+  UDINT accepts its maximum; DINT refuses 2147483648; REAL accepts 1.5 and refuses 1e39. Each case stages a tag and checks the apply result, so the
+  boundary is proven from the caller's side. 508 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

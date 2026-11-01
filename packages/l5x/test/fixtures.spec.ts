@@ -773,6 +773,41 @@ describe('draft tag validation', () => {
   })
 })
 
+describe('tag initial value bounds', () => {
+  it('accepts a value that fits and refuses one that does not', async () => {
+    const project = l5x({
+      name: 'ValueGuard',
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const cases: readonly (readonly [string, string, number, boolean])[] = [
+      ['BoolOk', 'BOOL', 1, true],
+      ['BoolBad', 'BOOL', 2, false],
+      ['IntOk', 'INT', 32767, true],
+      ['IntHigh', 'INT', 32768, false],
+      ['IntFraction', 'INT', 1.5, false],
+      ['UsintOk', 'USINT', 255, true],
+      ['UsintNegative', 'USINT', -1, false],
+      ['UdintMax', 'UDINT', 4294967295, true],
+      ['DintHigh', 'DINT', 2147483648, false],
+      ['RealOk', 'REAL', 1.5, true],
+      ['RealHigh', 'REAL', 1e39, false],
+    ]
+    for (const [name, dataType, value, fits] of cases) {
+      const tool = harness(new Map([['values.l5x', new TextEncoder().encode(project)]]), { editing: true })
+      expect((await tool.call('open_project', { path: 'values.l5x' })).error).toBeUndefined()
+      const added = await tool.call('draft_tag', { scope: 'controller', name, data_type: dataType, value, description: name })
+      const applied = added.error === undefined ? await tool.call('draft_apply', { output_path: `${name}.l5x` }) : added
+      if (fits) {
+        expect(applied.error, `${name}`).toBeUndefined()
+      } else {
+        expect(applied.error?.code, `${name}`).toBe('INVALID_CHANGE_SET')
+        expect(applied.error?.message, `${name}`).toContain('does not fit')
+      }
+    }
+  })
+})
+
 describe('tag array dimensions', () => {
   it('accepts one to three positive sizes and refuses the rest', async () => {
     const project = l5x({
