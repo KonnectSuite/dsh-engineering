@@ -376,6 +376,15 @@
   **one** (`CABLE`, still undefined) respectively. This also corrects round 50's claim that `AOI56MCM` was not defined in
   the export: it was, as encoded data, and my grep pattern was the thing that was wrong.
 
+- **The last known false-positive class is gone: writes inside an AOI body are not call-site writers.** An Add-On Instruction's
+  own `Logic` writes its output parameters as often as its algorithm needs, and the rule counted those as multiple drivers.
+  It now keys the exclusion on `document.aois[].routines` rather than on a routine name, so an AOI called `Level` is exempt
+  while a program routine called `Level` is not. The effect on the two production projects is decisive: `Seco` went from
+  701 to **687** findings with warnings **12 → 8**, and `Carpenter` from 271 to **262** with warnings **9 → 1**;
+  `MULTIPLE_OUTPUT_WRITES` is **zero on both**. What remains is seven `DUPLICATE_OUTPUT` rows on Seco and one on Carpenter -
+  an output driven from two rungs in one routine, which is legal but worth a reader's attention - plus one
+  `LATCH_WITHOUT_RESET`. A test pins the AOI case with three branches writing one output parameter.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

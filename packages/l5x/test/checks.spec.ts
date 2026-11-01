@@ -562,3 +562,16 @@ describe('a source-protected AOI', () => {
     expect(result.data?.findings).toEqual([])
   })
 })
+
+
+/** An AOI body that writes its output parameter on every branch, which is normal. */
+const AOI_WRITERS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"AoiWrites\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <AddOnInstructionDefinitions>\n      <AddOnInstructionDefinition Name=\"AOI_X\" Class=\"Standard\" Revision=\"1.0\">\n        <Parameters><Parameter Name=\"Out_Param\" DataType=\"BOOL\" Usage=\"Output\" Required=\"false\" Visible=\"true\"/></Parameters>\n        <Routines><Routine Name=\"Logic\" Type=\"RLL\"><RLLContent>\n          <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out_Param);]]></Text></Rung>\n          <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out_Param);]]></Text></Rung>\n          <Rung Number=\"2\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out_Param);]]></Text></Rung>\n        </RLLContent></Routine></Routines>\n      </AddOnInstructionDefinition>\n    </AddOnInstructionDefinitions>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(A);]]></Text></Rung></RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('an output parameter written inside an AOI', () => {
+  it('is not a multiple-writer finding', async () => {
+    const l5x = harness(new Map([['aoi.l5x', new TextEncoder().encode(AOI_WRITERS_L5X)]]))
+    await l5x.call('open_project', { path: 'aoi.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    expect(result.data?.findings).toEqual([])
+  })
+})

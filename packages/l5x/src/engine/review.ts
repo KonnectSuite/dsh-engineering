@@ -261,8 +261,13 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   // An AOI forces its output parameters in EnableInFalse and Prescan on purpose: a production project
   // produced five "multiple writers" findings that were exactly that documented pattern.
   const presetRoutine = /^(?:EnableInFalse|Prescan|Postscan)$/iu
+  // An AOI's own body writes its output parameters as often as its algorithm needs; a production
+  // project produced eight such findings, every one inside Logic.
+  const aoiRoutines = new Set<string>()
+  for (const aoi of doc.aois) for (const routine of aoi.routines) aoiRoutines.add(`${routine.program}::${routine.name}`.toUpperCase())
   for (const [symbol, allSites] of writers) {
-    const locations = allSites.filter(site => !presetRoutine.test(site.routine))
+    const locations = allSites.filter(site =>
+      !presetRoutine.test(site.routine) && !aoiRoutines.has(`${site.scope}::${site.routine}`.toUpperCase()))
     if (locations.length <= 1) continue
     if (!/(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) continue
     report('MULTIPLE_OUTPUT_WRITES', 'warning', `Output-like symbol ${symbol} is written from ${locations.length} sites: ${siteList(locations)}`, locations, 'medium')
