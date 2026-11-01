@@ -148,6 +148,11 @@ export function encodedAoi(name: string, options: { readonly vendor?: string; re
   return `<EncodedData EncodedType="AddOnInstructionDefinition" Name="${name}" Class="Standard" Revision="1.0"${vendor} EncryptionConfig="9">${description}</EncodedData>`
 }
 
+/** One vendor or product-defined data type: readable, not editable. */
+export function vendorType(name: string, members: readonly string[]): string {
+  return `<DataType Name="${name}" Family="ProductDefined" Class="ProductDefined"><Members>${members.join('')}</Members></DataType>`
+}
+
 /** One I/O module. */
 export function module(
   name: string,

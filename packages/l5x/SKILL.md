@@ -33,6 +33,8 @@ truth. Never write to `<workspace>/_backups`.
 
 - Program-scoped tags and routines need `scope`.
 - AOI members are written `AOI_Name::Member`; `find_references` accepts that spelling.
+- Vendor and product data types are readable: `get_component kind="udt"` returns them with `vendorOwned`;
+  `list_components` lists them only with `include_vendor: true`.
 - An unresolved symbol is refused with `UNRESOLVED_SYMBOL` plus candidate scopes. Fix the scope, do not guess.
 
 ## Checks and comparison

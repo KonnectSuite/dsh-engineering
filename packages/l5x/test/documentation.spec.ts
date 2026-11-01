@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fixtureBytes, harness } from './harness.ts'
-import { l5x, member, module, program, rllRoutine, tag, task, userType } from './l5x-build.ts'
+import { l5x, member, module, program, rllRoutine, tag, task, userType, vendorType } from './l5x-build.ts'
 
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
@@ -246,6 +246,27 @@ describe('documenting an AOI routine', () => {
     expect(doc).toContain('## Logic')
     expect(doc).toContain('### Rung 0')
     expect(doc).toContain('AOI logic rung')
+  })
+})
+
+describe('vendor data types', () => {
+  it('are counted in the summary but not listed as user types', async () => {
+    const built = l5x({
+      name: 'VendorTypes',
+      dataTypes: userType('MY_UDT', [member('A')]) + vendorType('ALARM_LIKE', [member('X', { dataType: 'BOOL' })]),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['vt.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'vt.l5x' })).error).toBeUndefined()
+    const documented = await l5xTool.call('document_project', { output_root: 'docs-vt', include: ['project'] })
+    expect(documented.error).toBeUndefined()
+    expect(Number(documented.data?.counts?.udts)).toBe(1)
+    expect(Number(documented.data?.counts?.vendorTypes)).toBe(1)
+    const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
+    expect(project).toContain('vendor/product-defined data types: 1 (not listed)')
+    expect(project).toContain('| MY_UDT | 1 |')
+    expect(project).not.toContain('| ALARM_LIKE |')
   })
 })
 

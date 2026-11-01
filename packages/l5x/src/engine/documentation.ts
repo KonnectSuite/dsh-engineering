@@ -43,6 +43,8 @@ export interface DocumentBundle {
     udts: number
     /** Add-on instruction definitions the export declares. */
     aois: number
+    /** Vendor and product-defined data types, counted but not documented. */
+    vendorTypes: number
     tasks: number
     routines: number
     rungs: number
@@ -165,7 +167,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   // The saved route and project serial are what a handover reader needs to reach and identify the machine.
   text += `- Project serial: ${controller.projectSerialNumber ?? 'not declared'}; saved path: ${controller.commPath ?? 'not declared'}\n`
-  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines} (${counts.aoiRungs} rungs); rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}; data types: ${counts.udts}; add-on instructions: ${counts.aois}\n\n`
+  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines} (${counts.aoiRungs} rungs); rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}; data types: ${counts.udts}; vendor/product-defined data types: ${counts.vendorTypes} (not listed); add-on instructions: ${counts.aois}\n\n`
   if ((project.protectedRoutines ?? 0) > 0) text += `- Source-protected routines: ${project.protectedRoutines}. Their bodies are encrypted in this export and were not documented.\n`
   text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Safety | Programs |\n|---|---|---|---|---|---|\n'
   for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.safety === true, task.programs.join(', '))
@@ -362,6 +364,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
       : 0,
     udts: document.udts.length,
     aois: document.aois.length,
+    vendorTypes: document.vendorUdts.length,
     routines: 0,
     rungs: 0,
     comments: 0,

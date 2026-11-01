@@ -1029,6 +1029,12 @@
   contradicts the listing (`including 266 vendor-owned (not editable)`). Verified on Showcase2's SDK export; tests cover read, listing and the
   staging refusal. 456 package tests, docs regenerated for the new parameter.
 
+- **The handover bundle now states how many built-in types it is not documenting.** `PROJECT.md` counted user data types only; on Showcase2 that read
+  `data types: 0` while the export declares 266 product/IO types. The counts line now continues `vendor/product-defined data types: 266 (not listed)`, and
+  `counts.vendorTypes` carries the number. The skill also names the new read path (`get_component kind="udt"` returns them with `vendorOwned`;
+  `list_components` lists them only with `include_vendor: true`). Test pins user count 1 vs vendor count 1 and that the vendor type stays out of the user
+  table. 457 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
