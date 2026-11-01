@@ -82,6 +82,18 @@
   export, and Logix Designer built it with **0 warnings, 0 errors and an ACD written**. The test that pins the ASCII text
   now covers all eight instructions, so a later operand edit cannot silently change what Studio approved.
 
+- **The compact table is audited against the help, and three more arities were wrong.** Comparing every entry in
+  `instruction-set.ts` with the operand lists extracted from the installed help found 22 disagreements; the ladder-shaped
+  ones were judged by build. `SRT` takes **five** slots (`Array`, `Dimension to Vary`, `Control`, `Length`, `Position`),
+  not three; `SWPB` takes **three** (`Source`, `Order Mode`, `Dest`), not two; `STOR` takes **two** (`Source`,
+  `Destination`), not three. All three are now declared explicitly in `instructions.ts` and gone from the compact table,
+  which keeps 41 → 38 rows. A rule worth writing down came out of the same build: `SWPB`'s order mode is a **number**
+  (0 or 1) — the help says to enter `HIGHLOW`, but Studio reads that as a tag and fails with
+  `RxCMP_E_OPERAND_TAGNOTFOUND`, while `SWPB(d1,0,d2)` builds. Verification is a Studio build of the composed rungs
+  `XIC(a1)SRT(arr,0,ctl,10,0)OTE(a2)`, `XIC(a1)SWPB(d1,0,d2)OTE(a2)` and `XIC(a1)STOR(text,r1)OTE(a2)`: **0 warnings,
+  0 errors and an ACD written**. Two tests pin the audited slot counts and the accepted text so the compact table cannot
+  quietly drift back.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

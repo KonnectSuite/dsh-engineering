@@ -258,3 +258,48 @@ describe('string operands are typed', () => {
     expect((result.data?.rungs as { neutral_text: string }[])[0]?.neutral_text).toBe('MID(TextA,Count,Count,TextOut);')
   })
 })
+
+
+describe('arities a Studio build proved', () => {
+  it('keeps the audited slot counts', () => {
+    // Each of these was wrong in the compact table and is pinned here after a build.
+    expect(instructionByName('SRT')?.operands.length).toBe(5)
+    expect(instructionByName('SWPB')?.operands.length).toBe(3)
+    expect(instructionByName('STOR')?.operands.length).toBe(2)
+    expect(instructionByName('ABL')?.operands.length).toBe(3)
+    expect(instructionByName('AHL')?.operands.length).toBe(5)
+    expect(instructionByName('ACL')?.operands.length).toBe(3)
+    expect(instructionByName('ARD')?.operands.length).toBe(5)
+  })
+
+  it('composes the sort, byte swap and string-to-real rungs that built', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="AuditTest" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="a1" TagType="Base" DataType="BOOL"/><Tag Name="a2" TagType="Base" DataType="BOOL"/>
+      <Tag Name="arr" TagType="Base" DataType="DINT" Dimensions="10"/>
+      <Tag Name="ctl" TagType="Base" DataType="CONTROL"/>
+      <Tag Name="d1" TagType="Base" DataType="DINT"/><Tag Name="d2" TagType="Base" DataType="DINT"/>
+      <Tag Name="text" TagType="Base" DataType="STRING"/><Tag Name="r1" TagType="Base" DataType="REAL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['audit.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'audit.l5x' })).error).toBeUndefined()
+    for (const [spec, expected] of [
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SRT', args: ['arr', '0', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SRT(arr,0,ctl,10,0)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SWPB', args: ['d1', '0', 'd2'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SWPB(d1,0,d2)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'STOR', args: ['text', 'r1'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)STOR(text,r1)OTE(a2);'],
+    ] as const) {
+      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      expect(result.error).toBeUndefined()
+      const rungs = result.data?.rungs as { neutral_text: string }[]
+      expect(rungs[0]?.neutral_text).toBe(expected)
+    }
+  })
+})

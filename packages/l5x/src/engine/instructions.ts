@@ -114,6 +114,11 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), num('Destination')] },
   { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination.', operands: [expression(), num('Destination')] },
 
+  // Audited against the installed help and a Studio build: the compact table had these wrong.
+  { name: 'SRT', category: 'File and array', summary: 'Sort the elements of an array in place, using a control structure for length and position.', operands: [any('Array'), num('Dimension to Vary'), any('Control'), num('Length'), num('Position')] },
+  { name: 'SWPB', category: 'Move', summary: 'Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.', operands: [num('Source'), num('Order Mode'), num('Dest')] },
+  { name: 'STOR', category: 'String', summary: 'Convert a string to a REAL value in the destination.', operands: [str('Source'), num('Destination')] },
+
   // Move
   { name: 'MOV', category: 'Move', summary: 'Move the source value into the destination.', operands: [num('Source'), num('Destination')] },
   { name: 'COP', category: 'Move', summary: 'Copy elements from the source to the destination.', operands: [{ name: 'Source', kind: 'ANY' }, { name: 'Destination', kind: 'ANY' }, num('Length')] },
