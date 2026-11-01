@@ -484,4 +484,14 @@ describe('a JSR naming a routine the program does not declare', () => {
     expect(rows[0]?.severity).toBe('critical')
     expect(rows.some(row => row.rule === 'JSR_ROUTINE_MISSING')).toBe(true)
   })
+
+  it('reports the severity split in the summary', async () => {
+    const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
+    await l5x.call('open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('run_checks', { limit: 1 })
+    expect(result.summary).toContain('critical')
+    expect(result.summary).toContain('warning')
+    expect(result.summary).toContain('info')
+    expect(result.summary).toContain('ordered by severity')
+  })
 })

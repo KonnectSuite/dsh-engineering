@@ -328,6 +328,16 @@
   re-run is stable. A test pins it on a project carrying both an undeclared `JSR` and an unused tag: the first row is the
   critical one. Summary counts were already by severity, so nothing else moved.
 
+- **The production export's 701 findings break down as 0 critical, 14 warning, 687 info - and the summary now says so.** With
+  the real distribution measured (23 programs, 2651 tags, 257 routines) the numbers are honest but the headline was not:
+  `run_checks` said "701 findings" and left a caller to discover the split by paging. The message now reads
+  `701 findings in Seco_Homogenizer (0 critical, 14 warning, 687 info), ordered by severity.` That is the difference between
+  a number and a verdict - a project with zero criticals can ship, and a caller can see that without opening anything.
+  Two catalogue observations came out of the same run: the only uncatalogued mnemonics on this real project are `DCM`
+  (62 rungs), `CROUT` (7), `DCS` (4), `CABLE` (2) and `AOI56MCM` (1), and **none of them is an AOI defined in the export**,
+  so `DCM`/`DCS`/`CROUT` are a genuine motion-catalogue gap to close next; the 8 `UNRESOLVED_REFERENCE` rows sit in a
+  program that really is named `RECIPE`, so they are likely legitimate rather than resolver noise.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

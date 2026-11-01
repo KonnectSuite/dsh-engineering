@@ -104,7 +104,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         const byRule = countBy(filtered, finding => finding.rule)
         const symbol = firstSymbol(page)
         return success(
-          `${filtered.length} ${filtered.length === 1 ? 'finding' : 'findings'}${rule === undefined ? '' : ` for rule ${rule}`} in ${project.document.controller.name}.`,
+          `${filtered.length} ${filtered.length === 1 ? 'finding' : 'findings'}${rule === undefined ? '' : ` for rule ${rule}`} in ${project.document.controller.name} (${bySeverity.critical ?? 0} critical, ${bySeverity.warning ?? 0} warning, ${bySeverity.info ?? 0} info), ordered by severity.`,
           {
             total: result.count,
             filtered_total: filtered.length,
