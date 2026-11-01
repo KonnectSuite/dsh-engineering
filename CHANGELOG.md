@@ -1370,6 +1370,10 @@
   and both paths call it after the operand type check; a raw-text test asserts the literal-destination refusal. No rule is stated twice, so the two
   entry points cannot drift. 513 package tests.
 
+- **Two outputs in series are legal, and the tests now say so.** `XIC(B)OTE(B)OTE(C);` composed and imported, and Studio built it 0/0
+  (ACD sha 5147a2ed...), so a rule forbidding a second output would be stricter than the vendor. Both the raw rung and the composer must accept it;
+  a regression test holds both. 514 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

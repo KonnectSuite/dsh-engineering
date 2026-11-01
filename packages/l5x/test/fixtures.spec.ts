@@ -773,6 +773,29 @@ describe('draft tag validation', () => {
   })
 })
 
+describe('two output instructions in series', () => {
+  it('is accepted, because Studio built it', async () => {
+    // XIC(B)OTE(B)OTE(C); imported and built 0/0 (twooutputs-bad.L5X, ACD sha 5147a2ed...). A rule
+    // forbidding a second output would be stricter than the vendor.
+    const project = l5x({
+      name: 'TwoOutputs',
+      tags: tag('B', 'BOOL') + tag('C', 'BOOL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['outputs.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'outputs.l5x' })).error).toBeUndefined()
+    const raw = await l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(B)OTE(B)OTE(C);' })
+    expect(raw.error).toBeUndefined()
+    const composed = await l5xTool.call('compose_rung', {
+      program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 1,
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['B'] }, { instr: 'OTE', args: ['B'] }, { instr: 'OTE', args: ['C'] }] }),
+    })
+    expect(composed.error).toBeUndefined()
+    expect((composed.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('XIC(B)OTE(B)OTE(C);')
+  })
+})
+
 describe('a raw rung operand count', () => {
   it('refuses a modelled instruction with too few or too many operands', async () => {
     // TON(T,500) fails Studio with RxCMP_E_AUDIT_INVALIDNOOFOPS; the raw path now refuses it too.
