@@ -362,8 +362,8 @@ interface ApplyContext {
 }
 
 function applyOperation(xml: string, operation: Operation, context: ApplyContext): string {
-  const root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
-  const controller = uniqueRegion(root.children, 'Controller')
+  let root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
+  let controller = uniqueRegion(root.children, 'Controller')
   const program = (name: string): XmlRegion => {
     const found = uniqueRegion(uniqueRegion(controller.children, 'Programs').children, 'Program', name)
     if (/safety/iu.test(found.attributes.Class ?? '') || /^safety$/iu.test(name)) throw new EngineeringError('PROTECTED_TARGET', 'Safety programs cannot be changed')
@@ -411,8 +411,20 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     return insert(xml, tags, sfcTagXml(operation))
   }
   if (operation.operation === 'add_tag' || operation.operation === 'set_tag_description') {
-    const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
-    const tags = uniqueRegion(owner.children, 'Tags')
+    let owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
+    let tags = owner.children.find(child => child.kind === 'Tags')
+    if (tags === undefined && operation.operation === 'add_tag') {
+      // A project may omit the Tags element; the first tag still needs a place to go. Element
+      // order matters: Tags precedes Routines in a program and Programs in the controller.
+      const anchor = owner.children.find(child => child.kind === (owner.kind === 'Program' ? 'Routines' : 'Programs'))
+      const at = anchor?.start ?? owner.contentEnd
+      xml = replace(xml, at, at, '<Tags></Tags>')
+      root = uniqueRegion(xmlRegions(xml), 'RSLogix5000Content')
+      controller = uniqueRegion(root.children, 'Controller')
+      owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
+      tags = owner.children.find(child => child.kind === 'Tags')
+    }
+    if (tags === undefined) tags = uniqueRegion(owner.children, 'Tags')
     if (operation.operation === 'add_tag') {
       requireIdentifier(operation.name, 'Tag')
       if (tags.children.some(tag => tag.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Tag already exists in the selected scope')

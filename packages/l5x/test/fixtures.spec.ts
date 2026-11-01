@@ -76,3 +76,25 @@ describe('adding a UDT member', () => {
     expect(text).not.toMatch(/<Member Name="B"[^>]*Description="/u)
   })
 })
+
+describe('a project with no Tags element', () => {
+  it('gets one when the first tag is added', async () => {
+    const built = l5x({
+      name: 'NoTags',
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    // The program helper always writes its own Tags; only the controller lacks one here.
+    const controllerHead = built.slice(built.indexOf('<Controller'), built.indexOf('<Programs>'))
+    expect(controllerHead).not.toContain('<Tags>')
+    const l5xTool = harness(new Map([['nt.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'nt.l5x' })).error).toBeUndefined()
+    const staged = await l5xTool.call('draft_tag', { scope: 'controller', name: 'FirstTag', data_type: 'BOOL', description: 'first', value: 0 })
+    expect(staged.error).toBeUndefined()
+    expect((await l5xTool.call('draft_apply', { output_path: 'nt-edited.l5x' })).error).toBeUndefined()
+    const text = String(l5xTool.written.get('nt-edited.l5x') ?? '')
+    expect(text).toContain('<Tags><Tag Name="FirstTag"')
+    // Tags must precede Programs for Studio's element order.
+    expect(text.indexOf('<Tags>')).toBeLessThan(text.indexOf('<Programs>'))
+  })
+})

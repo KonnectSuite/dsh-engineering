@@ -903,6 +903,12 @@
   **My round-143 fixture was the problem, not the edit** - a minimal DataType is not importable at all, which is why the first attempt aborted.
   441 package tests.
 
+- **`add_tag` now creates the Tags element when the project has none.** `add_sfc_tag` always knew how to do this; `add_tag` assumed the
+  region existed and refused with `COMPONENT_NOT_FOUND: No Tags in this scope` on a controller without `<Tags>` - which the fixture builder
+  writes whenever no tags are supplied. The region is now created before `Routines` in a program and before `Programs` in the controller
+  (Studio's element order), the cached regions are re-read, and the tag is inserted. SDK-proven: the same fixture that failed now builds
+  with **0 warnings, 0 errors**, one tag added. 442 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
