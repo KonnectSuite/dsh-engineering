@@ -25,7 +25,14 @@
   SFC routine is never judged by these rules, because its DirectedLink elements are a different language.
   Covered by packages/l5x/test/fbd.spec.ts, which drives the mutation through un_checks on the committed
   synthetic export and the loop and connector rules through the checker directly: 210 package tests pass.
-### Fixed
+- **A rung that drives nothing is reported, not left for the build.** packages/l5x/src/engine/rung-rules.ts judges
+  the rungs an export already contains, reusing the same parser compose_rung trusts: RUNG_NO_OUTPUT when a rung's
+  last instruction reads the condition and never drives the right power rail (XIC, EQU, ONS and the rest of that
+  set, including a trailing branch whose every path reads), and SBR_NOT_FIRST when a routine declares SBR but its
+  first rung does not open with it. A rung the parser could not read is left to the parse finding rather than reported
+  twice, and any instruction whose rail behaviour needs a pin model is left alone rather than guessed at.
+  packages/l5x/test/rung-rules.spec.ts covers both rules directly and asserts they stay silent on the committed
+  fixture: 220 package tests pass.### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
   composed rung naming `SQRT`, `EXPT`, `MOVE`, `LIMIT`, `ACOS`, `ASIN`, `ATAN`, `TO_BCD`, `BCD_TO` or `TRN` was

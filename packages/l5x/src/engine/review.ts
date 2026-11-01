@@ -4,6 +4,7 @@ import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn } from './mnemonics.ts'
 import { validateDiagram } from './fbd.ts'
+import { rungFindings } from './rung-rules.ts'
 
 export interface Change {
   readonly kind: 'added' | 'removed' | 'changed'
@@ -195,11 +196,11 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         { used: entry.used, preferred: entry.preferred, majorVersion: majorRev, rungs: entry.rungs, truncated: entry.rungs.length >= 20 }, 'high')
     }
   }
-  // Structure pass: an FBD routine is a wire graph, and an export states no rule for
-  // it, so a diagram Studio refuses looks exactly like one it accepts.
+  // Structure pass: an export states no rule for a diagram's wire graph or a rung's
+  // shape, so a document Studio refuses looks exactly like one it accepts.
   for (const routine of doc.routines) {
-    if (routine.body.type !== 'FBD') continue
-    findings.push(...validateDiagram(routine))
+    if (routine.body.type === 'FBD') findings.push(...validateDiagram(routine))
+    else if (routine.body.type === 'RLL') findings.push(...rungFindings(routine))
   }
   const byRule: Record<string, number> = {}
   const bySeverity: Record<string, number> = {}

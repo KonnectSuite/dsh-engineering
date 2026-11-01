@@ -138,7 +138,7 @@ Evidence-backed structural checks and export comparison.
 
 #### `run_checks`
 
-Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT), and a rung written in an instruction spelling from the other revision (MNEMONIC_VERSION_MISMATCH), and the structure of every function block diagram (FBD_DANGLING_WIRE, OREF_DUPLICATE_DESTINATION, ICON_NO_MATCHING_OCON, FBD_FEEDBACK_CYCLE). Pass baseline_id to add I/O change checks against an earlier export.
+Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT), and a rung written in an instruction spelling from the other revision (MNEMONIC_VERSION_MISMATCH), and the structure of every function block diagram (FBD_DANGLING_WIRE, OREF_DUPLICATE_DESTINATION, ICON_NO_MATCHING_OCON, FBD_FEEDBACK_CYCLE), and the rungs Studio refuses (RUNG_NO_OUTPUT, SBR_NOT_FIRST). Pass baseline_id to add I/O change checks against an earlier export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
