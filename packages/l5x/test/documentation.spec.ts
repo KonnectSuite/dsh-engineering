@@ -205,5 +205,8 @@ describe('documenting a safety project', () => {
     expect(all).toContain('| Safety program | Guard |')
     expect(all).toContain('| Safety I/O module | 1: SA_DIG_IN_1 |')
     expect(all).toContain('| Safety AOI | FC_SFTY_SSOV |')
+    // The bundle must list the AOI definition, not only its safety row.
+    expect(all).toContain('## Add-On Instructions')
+    expect(all).toContain('| FC_SFTY_SSOV | 1.0 | yes | 1 | 0 |')
   })
 })

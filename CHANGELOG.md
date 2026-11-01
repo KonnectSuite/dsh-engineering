@@ -804,6 +804,11 @@
   the whole AOI and pick from its array. Both tools now resolve a scope that names an AOI: the real call returns `3 routines` and reads `Logic`. A test covers
   an AOI with a Logic and a Prescan routine. 430 package tests.
 
+- **The handover bundle lists the add-on instructions.** `PROJECT.md` described programs and routines and said nothing about the 25 AOIs in `Seco_Homogenizer` -
+  the definitions where much of the project's behaviour lives. It now carries an Add-On Instructions table: name, revision, safety flag, parameter count,
+  routine count, description - verified on the real export (`FC_Adj_Ratio_SP` 11 parameters 1 routine, and so on), with a test asserting the section and a row.
+  The AOI routine count is the fact round 120 made reachable; this round puts it in the handover. 430 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
