@@ -34,7 +34,7 @@ test('the catalogue covers every instruction family', () => {
   const names = new Set(INSTRUCTIONS.map(instruction => instruction.name))
   assert.ok(names.size >= 118, `the catalogue covers the Logix set (has ${names.size})`)
   // One instruction from each family the renderer used to fall back on.
-  for (const name of ['XIC', 'EQU', 'ADD', 'MOV', 'TON', 'CTU', 'JSR', 'MSG', 'COP', 'SQO', 'GSV', 'ACN', 'PID', 'MAJ', 'OSR']) {
+  for (const name of ['XIC', 'EQU', 'ADD', 'MOV', 'TON', 'CTU', 'JSR', 'MSG', 'COP', 'SQO', 'GSV', 'ACL', 'PID', 'MAJ', 'OSR']) {
     assert.ok(names.has(name), `${name} is in the catalogue`)
   }
 })
