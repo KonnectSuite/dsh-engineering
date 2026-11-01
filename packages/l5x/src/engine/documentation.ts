@@ -267,9 +267,9 @@ function diagramSection(info: { readonly name: string; readonly description: str
   const sheets = [...new Set(nodes.map(node => node.sheet))].sort((left, right) => left - right)
   let text = `\n## ${info.name}\n\n${info.description || 'No routine description.'}\n\n${language}; ${nodes.length} element(s) on ${sheets.length} sheet(s).\n`
   for (const sheet of sheets) {
-    text += `\n### Sheet ${sheet}\n\n| Element | Reference | From | From pin | To | To pin |\n|---|---|---|---|---|---|\n`
+    text += `\n### Sheet ${sheet}\n\n| Element | Reference | Pins | From | From pin | To | To pin |\n|---|---|---|---|---|---|---|\n`
     for (const node of nodes.filter(entry => entry.sheet === sheet)) {
-      text += mdRow(node.kind, node.operand ?? node.name ?? node.text ?? '', node.fromId ?? '', node.fromParam ?? '', node.toId ?? '', node.toParam ?? '')
+      text += mdRow(node.kind, node.operand ?? node.name ?? node.text ?? '', node.pins ?? '', node.fromId ?? '', node.fromParam ?? '', node.toId ?? '', node.toParam ?? '')
     }
   }
   return text

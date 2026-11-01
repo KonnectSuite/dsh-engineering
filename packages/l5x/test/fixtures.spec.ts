@@ -860,6 +860,33 @@ describe('comparing alarm definitions', () => {
   })
 })
 
+describe('comparing diagram pins', () => {
+  it('reports a block visible-pins change', async () => {
+    const project = (pins: string): string => {
+      const fbd = '<Routine Name="Fb" Type="FBD"><FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape"><Sheet Number="1">'
+        + `<Block Type="ADD" ID="1" X="300" Y="20" Operand="Add1" VisiblePins="${pins}" HideDesc="false"/>`
+        + '</Sheet></FBDContent></Routine>'
+      return l5x({
+        name: 'PinCompare',
+        tags: tag('Add1', 'FBD_MATH'),
+        programs: program('Main', fbd, { mainRoutine: 'Fb' }),
+        tasks: task('MainTask', ['Main']),
+      })
+    }
+    const l5xTool = harness(new Map([
+      ['pins-before.L5X', new TextEncoder().encode(project('SourceA SourceB Dest'))],
+      ['pins-after.L5X', new TextEncoder().encode(project('SourceA SourceB'))],
+    ]), {})
+    const before = await l5xTool.call('open_project', { path: 'pins-before.L5X' })
+    const after = await l5xTool.call('open_project', { path: 'pins-after.L5X' })
+    expect(before.error).toBeUndefined()
+    expect(after.error).toBeUndefined()
+    const compared = await l5xTool.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    expect(compared.data?.count).toBe(1)
+    expect((compared.data?.changes as { component: string; kind: string }[])[0]).toMatchObject({ component: 'diagram', kind: 'changed' })
+  })
+})
+
 describe('a denied draft write', () => {
   it('reports WRITE_DENIED with the provider reason, not an internal defect', async () => {
     const project = l5x({

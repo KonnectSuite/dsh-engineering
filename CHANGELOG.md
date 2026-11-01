@@ -1436,6 +1436,10 @@
   37-rule scope in one sentence (tags, scheduling, rungs, FBD wiring, serial support, I/O change, safety), that each finding names its rule, severity,
   evidence and fix, and that an unknown rule filter is rejected. Regenerated `docs/reference/tools.md`. 529 package tests.
 
+- **A block's visible pins are part of the model, the bundle and the comparison.** FBD decoding dropped `VisiblePins`, so a pin edit was invisible
+  to `compare_projects` and missing from the diagram table. The model now carries `pins`; the `rungs/<program>.md` table gained a Pins column; and a
+  VisiblePins change is reported as a diagram change. Tests cover the documented column and the comparison. 531 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

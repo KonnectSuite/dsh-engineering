@@ -50,6 +50,24 @@ describe('document_project', () => {
     expect(text).toContain('SourceA')
   })
 
+  it('documents the visible pins of a function block', async () => {
+    const fbd = '<Routine Name="Fb" Type="FBD"><FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape"><Sheet Number="1">'
+      + '<Block Type="ADD" ID="1" X="300" Y="20" Operand="Add1" VisiblePins="SourceA SourceB Dest" HideDesc="false"/>'
+      + '</Sheet></FBDContent></Routine>'
+    const xml = l5x({
+      name: 'PinsDoc',
+      tags: tag('Add1', 'FBD_MATH'),
+      programs: program('Main', fbd, { mainRoutine: 'Fb' }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['pins.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'pins.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    const text = l5xTool.written.get('docs/rungs/Main.md') ?? ''
+    expect(text).toContain('| Element | Reference | Pins | From | From pin | To | To pin |')
+    expect(text).toContain('SourceA SourceB Dest')
+  })
+
   it('summarises the project with its tasks and programs', async () => {
     const l5x = await opened()
     await l5x.call('document_project', { output_root: 'docs' })

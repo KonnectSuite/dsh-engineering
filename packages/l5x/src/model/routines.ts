@@ -141,6 +141,8 @@ function decodeDiagram(routine: XmlElement, contentName: string): readonly L5xDi
           kind: child.name, sheet: number,
           ...(child.attrs['ID'] === undefined ? {} : { id: child.attrs['ID'] }),
           ...(child.attrs['Operand'] === undefined ? {} : { operand: child.attrs['Operand'] }),
+          // A block's visible pins are what its wires can address; dropping them hid a pin edit.
+          ...(child.attrs['VisiblePins'] === undefined ? {} : { pins: child.attrs['VisiblePins'] }),
           ...(child.attrs['FromID'] === undefined ? {} : { fromId: child.attrs['FromID'] }),
           ...(child.attrs['ToID'] === undefined ? {} : { toId: child.attrs['ToID'] }),
           ...(child.attrs['FromParam'] === undefined ? {} : { fromParam: child.attrs['FromParam'] }),
