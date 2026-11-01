@@ -6,6 +6,7 @@
  * it does see them — component `structured_text` for a body, `diagram` for FBD and SFC — and no
  * test held any of it, so this does.
  */
+import { rmSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { fixtureBytes, harness } from './harness.ts'
@@ -283,11 +284,13 @@ describe('a paginated routine diagram', () => {
   it('writes each page to its own absolute path', async () => {
     const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(SIX_RUNGS_L5X)]]), { editing: true })
     await l5x.call('open_project', { path: 'p.l5x' })
-    const first = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3 })
+    // Keep test artifacts out of the repository and remove them afterwards.
+    const folder = '.l5x-preview-test'
+    const first = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3, output: folder })
     expect(first.error).toBeUndefined()
     expect(String(first.data?.diagram_svg ?? '').length).toBeGreaterThan(0)
     expect(String(first.summary)).toContain('0-2')
-    const second = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3, start_rung: 3 })
+    const second = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3, start_rung: 3, output: folder })
     expect(second.error).toBeUndefined()
     expect(String(second.summary)).toContain('3-5')
     const firstPng = first.data?.diagram_png
@@ -298,5 +301,6 @@ describe('a paginated routine diagram', () => {
       expect(firstPng).toContain('r0-2')
       expect(secondPng).toContain('r3-5')
     }
+    rmSync(folder, { recursive: true, force: true })
   })
 })

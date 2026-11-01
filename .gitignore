@@ -20,3 +20,7 @@ __pycache__/
 # packages/optix is the published build, so its lib/ is the source of truth and
 # must be tracked. The other components' lib/ is output of `pnpm build`.
 !packages/optix/lib/
+
+# ladder preview artifacts
+.l5x-preview/
+.l5x-preview-test/
