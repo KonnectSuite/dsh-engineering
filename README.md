@@ -262,6 +262,7 @@ even when the implementation behind a row is replaced.
 | Document | Owns |
 |---|---|
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
+| [Capabilities, shown](docs/capabilities.md) | Figures per surface, the exact call behind each one, and what a picture cannot prove |
 | [Engineering resources](docs/resources.md) | The 41-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [SLC 500 and PLC-5 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |

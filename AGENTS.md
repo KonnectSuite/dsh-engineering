@@ -19,6 +19,7 @@ A change is not finished until the documentation it invalidates is updated in th
 | `README.md` | Purpose, the component table and defaults, composition diagrams, the switch table, install, tools summary, requirements, safety, documentation map, known gaps |
 | `docs/architecture.md` | Row model, service injection, configuration, row switches, client faces, distribution, compatibility |
 | `docs/examples.md` | End-to-end sessions for L5X and FactoryTalk View, with call shapes and reporting reminders |
+| `docs/capabilities.md` | The figures: which call produced each one, and what an image cannot prove |
 | `docs/reference/tools.md` | Every registered tool, its description and parameters (generated) |
 | `docs/reference/tools.json` | The machine-readable tool and group inventory (generated) |
 | `components.json` | The component manifest: kind, capability class, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents |
