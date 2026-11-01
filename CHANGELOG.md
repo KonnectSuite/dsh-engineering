@@ -1073,6 +1073,9 @@
   first (identity fallback when absent), so a baseline exported in one turn still authorises a build in the next. Four tests: cross-turn reuse, verified build,
   session isolation, identity fallback. 469 package tests.
 
+- **The skill names the batch reader and member reads.** Live reads now read `poll_live_tags`, `read_live_tags` (IPv4, 1-16 scalars or members) and
+  `start_plc_trend` in one line, so an assistant sees the batch tool and the member form without a separate lookup. Skill body 7,976 of 8,000.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -48,7 +48,7 @@ truth. Never write to `<workspace>/_backups`.
 
 ## Live reads
 
-- `poll_live_tags` (IPv4, slot, 1-16 declared scalars, timestamped sweeps) and `start_plc_trend` read over
+- `poll_live_tags`, `read_live_tags` (IPv4, 1-16 scalars or members) and `start_plc_trend` read over
   EtherNet/IP with no Studio, Linx or SDK.
 - Reads are safe. Writes (`write_live_tag`, `write_controller_clock`) need allowWrites and human approval; never
   force tags or edit online. A read proves a moment, not that the controller runs this export.
