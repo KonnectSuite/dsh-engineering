@@ -1203,6 +1203,8 @@
   0/0. FLL's Dest is now element-addressed, the composer refuses the whole-array form, the older FLL composition test was moved to an array
   fixture, and tests plus the dist smoke hold FLL beside CPS and COP. 492 package tests.
 
+- **Generated client faces refreshed** after the FLL element change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
