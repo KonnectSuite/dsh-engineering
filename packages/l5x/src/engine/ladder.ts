@@ -73,7 +73,7 @@ export interface ComposedRungs {
 }
 
 /** Named patterns the composer can expand. */
-export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock'] as const
+export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock', 'analog_scale'] as const
 /** One pattern name. */
 export type PatternName = (typeof PATTERNS)[number]
 
@@ -452,6 +452,28 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
       throw new L5xError('INVALID_ARGUMENT', 'ton_delay needs preset_ms as a non-negative number.', 'Pass the preset in milliseconds, for example 1500.')
     }
     return one({ series: [{ instr: 'XIC', args: [enable] }, { instr: 'TON', args: [timer, String(preset)] }] })
+  }
+  if (pattern === 'analog_scale') {
+    const source = arg(args, 'source')
+    const destination = arg(args, 'destination')
+    const numbers = (name: string): string => {
+      const value = args[name]
+      if (typeof value !== 'number' || !Number.isFinite(value)) {
+        throw new L5xError('INVALID_ARGUMENT', `analog_scale needs ${name} as a number.`, 'Pass the engineering-range endpoints, for example in_min: 0, in_max: 100.')
+      }
+      // A float literal, or the expression divides as integers at runtime.
+      return Number.isInteger(value) ? `${value}.0` : String(value)
+    }
+    const inMin = numbers('in_min')
+    const inMax = numbers('in_max')
+    const outMin = numbers('out_min')
+    const outMax = numbers('out_max')
+    // CPT takes the destination first: a build refused CPT(expr, dest) with INVALIDOPKIND and
+    // accepted CPT(dest, expr).
+    return one({ series: [{
+      instr: 'CPT',
+      args: [destination, `(${source} - ${inMin}) / (${inMax} - ${inMin}) * (${outMax} - ${outMin}) + ${outMin}`],
+    }] })
   }
   // fault_latch: set on the fault, clear on the reset — two rungs, never one.
   const fault = arg(args, 'fault')

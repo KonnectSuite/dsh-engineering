@@ -180,6 +180,15 @@
   expression slot made the rung look plausible either way, so no build had exercised it. The corrected rung
   `XIC(StartPB)CPT(FaultCount,LineSpeed + 5.0)` is what the test now pins.
 
+- **The composer gained a fifth pattern, and it is a build-verified one: `analog_scale`.** It expands to
+  `CPT(scaled,(raw - 0.0) / (100.0 - 0.0) * (50.0 - 0.0) + 0.0)` from named endpoints, and Logix Designer builds that
+  text with **0 warnings and 0 errors**. Two details make it correct rather than merely plausible: the destination comes
+  first because the previous round proved `CPT`'s order by build, and every endpoint is emitted as a **float literal** -
+  `0.0`, not `0` - because integer literals would make the expression divide as integers at run time, which is the kind
+  of bug that passes a compiler and fails a machine. `compose_rung` and `compose_batch` both accept it by name, and the
+  tool reference regenerated because the pattern enumeration is part of the schema. The rung is pinned in
+  `ladder.spec.ts` so a later edit cannot quietly drop the decimal point.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

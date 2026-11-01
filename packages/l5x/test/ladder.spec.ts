@@ -166,3 +166,35 @@ describe('refusals', () => {
     expect(result.error?.message).toContain('XIC')
   })
 })
+
+
+describe('the analog_scale pattern', () => {
+  it('scales with float literals and the destination first', async () => {
+    // Verified by a Logix Designer build: CPT(scaled,(raw - 0.0) / (100.0 - 0.0) * (50.0 - 0.0) + 0.0);
+    // passed with 0 warnings and 0 errors. Integer literals would divide as integers at runtime.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Scale" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="raw" TagType="Base" DataType="REAL"/>
+      <Tag Name="scaled" TagType="Base" DataType="REAL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[OTE(scaled);]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['scale.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'scale.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', {
+      pattern: 'analog_scale',
+      arguments_json: JSON.stringify({ source: 'raw', destination: 'scaled', in_min: 0, in_max: 100, out_min: 0, out_max: 50 }),
+    })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('CPT(scaled,(raw - 0.0) / (100.0 - 0.0) * (50.0 - 0.0) + 0.0);')
+  })
+})
