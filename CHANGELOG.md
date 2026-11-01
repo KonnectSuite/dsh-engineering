@@ -434,6 +434,17 @@
   written - the compare path simply never called it. A test pins it on two exports whose only difference is a tag description.
   The pair also gave a clean third production project: **0 critical, 1 warning, 262 info**, no uncatalogued instructions.
 
+- **Three more production exports exposed a false claim and two overconfident rules.** The corpus is now six real projects, and
+  the new three each failed a different way. `Seco_Cooler` lists **11 programs and zero routine bodies** - a partial export -
+  and we reported `MAIN_ROUTINE_MISSING` for every one of them, blaming the project for what the export never carried; the
+  rule now stays silent when the export has no routines at all. `GrosfillexLine1` produced **64 `LATCH_WITHOUT_RESET`
+  warnings** on a 118-tag project including `always_on`, and `GrosfillexLine3` produced **65 `MULTIPLE_OUTPUT_WRITES`** on
+  module output words driven from two rungs - both legal patterns whose reset or intent can live in an HMI write or another
+  controller that no export shows. Both rules are now **`info`**, with the limit stated in the message ("an HMI write, a
+  produced tag or another controller can still clear it"; "two rungs may drive one word by design, so read the rungs before
+  changing either"). After the change those three projects report **0 critical and 0 warnings**, and the whole corpus reports
+  no build-fatal finding at all - which is what a set of compiling projects should look like.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -575,3 +575,18 @@ describe('an output parameter written inside an AOI', () => {
     expect(result.data?.findings).toEqual([])
   })
 })
+
+
+/** A partial export: programs listed, routine bodies absent. */
+const PARTIAL_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Partial\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"P\" MainRoutineName=\"R\"><Routines/></Program>\n      <Program Name=\"Q\" MainRoutineName=\"S\"><Routines/></Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/><ScheduledProgram Name=\"Q\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a partial export', () => {
+  it('does not claim every main routine is missing', async () => {
+    // Seco_Cooler.L5X lists 11 programs and zero routine bodies; reporting MAIN_ROUTINE_MISSING for
+    // each one blamed the project for what the export never carried.
+    const l5x = harness(new Map([['partial.l5x', new TextEncoder().encode(PARTIAL_L5X)]]))
+    await l5x.call('open_project', { path: 'partial.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MAIN_ROUTINE_MISSING' })
+    expect(result.data?.findings).toEqual([])
+  })
+})

@@ -166,7 +166,9 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   const programNames = new Set(doc.programs.map(program => program.name.toUpperCase()))
   for (const program of doc.programs) {
     const own = doc.routines.filter(routine => routine.program === program.name)
-    if (program.mainRoutine !== '') {
+    // A partial export lists programs but no routine bodies. Claiming the main routine is missing
+    // then blames the project for what the export never carried.
+    if (program.mainRoutine !== '' && doc.routines.length > 0) {
       const declared = own.some(routine => routine.name.toUpperCase() === program.mainRoutine.toUpperCase())
       if (!declared) {
         report('MAIN_ROUTINE_MISSING', 'warning',
@@ -250,7 +252,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   }
   for (const [tag, entry] of latched) {
     if (reset.has(tag)) continue
-    report('LATCH_WITHOUT_RESET', 'warning', `${entry.program}::${entry.routine} latches ${entry.tag} at rung ${rungList(entry.rungs)}, and nothing in this export resets it`, { program: entry.program, routine: entry.routine, tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
+    report('LATCH_WITHOUT_RESET', 'info', `${entry.program}::${entry.routine} latches ${entry.tag} at rung ${rungList(entry.rungs)}, and no OTU in this export resets it; an HMI write, a produced tag or another controller can still clear it`, { program: entry.program, routine: entry.routine, tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
   }
   for (const entry of driven.values()) {
     if (entry.rungs.length < 2) continue
@@ -270,7 +272,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       !presetRoutine.test(site.routine) && !aoiRoutines.has(`${site.scope}::${site.routine}`.toUpperCase()))
     if (locations.length <= 1) continue
     if (!/(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) continue
-    report('MULTIPLE_OUTPUT_WRITES', 'warning', `Output-like symbol ${symbol} is written from ${locations.length} sites: ${siteList(locations)}`, locations, 'medium')
+    report('MULTIPLE_OUTPUT_WRITES', 'info', `Output-like symbol ${symbol} is written from ${locations.length} sites: ${siteList(locations)}; two rungs may drive one word by design, so read the rungs before changing either`, locations, 'medium')
   }
   if (baseline !== undefined) {
     const difference = compareProjects(baseline, project) as { changes: Change[] }
