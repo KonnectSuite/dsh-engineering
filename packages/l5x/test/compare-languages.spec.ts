@@ -514,13 +514,14 @@ describe('a safety instruction outside a safety program', () => {
     const l5x = harness(new Map([['sc.l5x', new TextEncoder().encode(SAFETY_CONTEXT_L5X)]]))
     await l5x.call('open_project', { path: 'sc.l5x' })
     const checks = await l5x.call('run_checks', { rule: 'SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM' })
-    const findings = (checks.data?.findings ?? []) as { message: string; severity: string }[]
+    const findings = (checks.data?.findings ?? []) as { message: string; severity: string; fix?: string }[]
     expect(findings.length).toBe(1)
     expect(findings[0]?.severity).toBe('warning')
     expect(String(findings[0]?.message)).toContain('standard program Standard')
     expect(String(findings[0]?.message)).not.toContain('Guard')
-    // A finding must say what to do, not only what is wrong.
+    // A finding must say what to do, not only what is wrong - structured, not only in the message.
     expect(String(findings[0]?.message)).toContain('call it from a routine scheduled by a safety task')
+    expect(String(findings[0]?.fix)).toContain('safety program')
   })
 })
 

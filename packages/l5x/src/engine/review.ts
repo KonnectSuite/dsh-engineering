@@ -74,6 +74,18 @@ const REMEDIES: Record<string, string> = {
   DUPLICATE_OUTPUT: 'Confirm intent and keep a single writer per tag, or split the tag.',
   MNEMONIC_VERSION_MISMATCH: 'Use the instruction spelling this project revision builds; list_instructions gives both spellings.',
   RUNG_NO_OUTPUT: 'Give the rung an output instruction, or delete it.',
+  DUPLICATE_ROUTINE_NAME: 'Two routines share a name in one scope; rename one in Studio - the draft tools do not rename.',
+  IO_MODULE_CHANGED: 'This is a baseline difference, not a defect; confirm the module change was intended before applying it.',
+  JSR_ROUTINE_MISSING: 'Declare the routine the JSR names, or correct the target; list_components kind "routine" shows the declared names.',
+  LABEL_NOT_FOUND: 'Declare the label with LBL, or correct the jump target.',
+  MAIN_ROUTINE_MISSING: 'Set the program main routine to a routine that exists, or create that routine.',
+  MULTIPLE_SCHEDULES: 'Remove the program from all but one task; a program scheduled twice runs twice per scan.',
+  SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM: 'Move the safety instruction into a safety program; it cannot run from standard logic.',
+  SAFETY_MODULE_WITHOUT_SAFETY_NETWORK: 'Set a unique SafetyNetwork on the module, or correct the module type.',
+  SAFETY_PROGRAM_NOT_IN_SAFETY_TASK: 'Schedule the safety program in a safety task.',
+  SCHEDULED_PROGRAM_MISSING: 'Correct the scheduled name or create that program; a task cannot schedule a missing program.',
+  UNCATALOGUED_INSTRUCTION: 'Check the abbreviation against the installed help for this revision; the tool will not guess operands.',
+  UNRESOLVED_ROUTINE: 'Declare the routine in the program, or correct the spelling; the reference row names it.',
 }
 
 export interface Finding {

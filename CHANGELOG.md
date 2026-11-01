@@ -924,6 +924,11 @@
   site" - a caller reading either would not know the field exists. Both now name it, and `docs/reference/tools.md` is regenerated. Skill body 7648 of 8000
   characters. 444 package tests, 90 bundle, docs current.
 
+- **Every one of the 22 check rules now carries a remedy.** Round 149 covered the eleven rules that fire on production exports; a sweep of all five exports paged every
+  finding (1280 in total) and confirmed **none without a fix**, then the rule list was compared against the map and the remaining twelve - duplicate routine name,
+  JSR target missing, label missing, main routine missing, multiple schedules, the three safety rules, scheduled program missing, uncatalogued instruction,
+  unresolved routine, I/O module changed - gained one. A test asserts the safety finding carries its structured remedy as well as the message text. 444 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
