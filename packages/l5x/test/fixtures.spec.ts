@@ -117,6 +117,32 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('searching safety logic', () => {
+  it('marks a match inside a safety program and not one in standard logic', async () => {
+    const built = l5x({
+      name: 'SearchSafety',
+      programs: [
+        program('Guard', rllRoutine('MainRoutine', [{ text: 'XIC(SafeTag)OTE(SafeTag);' }]), { safety: true, tags: tag('SafeTag') }),
+        program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(PlainTag)OTE(PlainTag);' }]), { tags: tag('PlainTag') }),
+      ].join(''),
+      tasks: [
+        task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
+        task('MainTask', ['Main']),
+      ].join(''),
+    })
+    const l5xTool = harness(new Map([['ss.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'ss.l5x' })).error).toBeUndefined()
+    const safety = await l5xTool.call('search_logic', { query: 'SafeTag' })
+    const safetyMatches = (safety.data?.matches ?? []) as { safety?: boolean }[]
+    expect(safetyMatches.length).toBeGreaterThan(0)
+    expect(safetyMatches.every(match => match.safety === true)).toBe(true)
+    const plain = await l5xTool.call('search_logic', { query: 'PlainTag' })
+    const plainMatches = (plain.data?.matches ?? []) as { safety?: boolean }[]
+    expect(plainMatches.length).toBeGreaterThan(0)
+    expect(plainMatches.every(match => match.safety === undefined)).toBe(true)
+  })
+})
+
 describe('a project with no Tags element', () => {
   it('gets one when the first tag is added', async () => {
     const built = l5x({

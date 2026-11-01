@@ -55,7 +55,15 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const query = requiredString(args, 'query')
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
         const matches = logicMatches(project.document, query)
-        const page = matches.slice(0, limit)
+        // A match inside a safety program or a safety AOI is safety code; say so.
+        const isSafety = (program: string): boolean => {
+          if (program.startsWith('AOI::')) {
+            const name = program.slice('AOI::'.length)
+            return project.document.aois.some(aoi => aoi.name.toUpperCase() === name.toUpperCase() && aoi.safety === true)
+          }
+          return project.document.programs.some(entry => entry.name.toUpperCase() === program.toUpperCase() && entry.safety === true)
+        }
+        const page = matches.slice(0, limit).map(match => ({ ...match, ...(isSafety(match.program) ? { safety: true } : {}) }))
         const first = page[0]
         return success(
           `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for ${JSON.stringify(query)} in routine logic.${project.document.protectedRoutines.length === 0 ? '' : ` ${project.document.protectedRoutines.length} source-protected routine(s) were not searched.`}`,

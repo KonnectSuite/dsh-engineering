@@ -938,6 +938,11 @@
   *"Most common rule, UNDOCUMENTED_ROUTINE: Add a routine description saying what it does and when it runs."* `remedyFor` is exported from the check engine, so
   the document and the tool answer from one source. The bundle test asserts the line. 445 package tests.
 
+- **`search_logic` results now say which matches are safety code.** A match line named the program, routine and rung but not whether the containing scope is safety; a
+  hit inside a guard program or a safety AOI looked like any other. Each match now carries `safety: true` when its program is `Class="Safety"` or its AOI is, and
+  omits the field otherwise. Verified on `Seco_Homogenizer`: searching `Open_Valve` returns one standard hit (`COMBUSTION/D02_Sfty_HMI`) and four safety hits
+  (`AOI::FC_SFTY_SSOV` EnableInFalse and Logic), flagged accordingly; a built fixture pins both sides. 446 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
