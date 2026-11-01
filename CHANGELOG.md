@@ -16,23 +16,31 @@
   fixes it in one turn instead of at build time.
 - **A function block diagram is checked as a graph, not just drawn.** An FBD routine is a wire graph the export
   never describes, so a sheet Studio refuses is indistinguishable from one it accepts. The new
-  packages/l5x/src/engine/fbd.ts reads the nodes the reference walker already decoded and reports
-  FBD_DANGLING_WIRE (a wire naming an element that is not on the sheet), IREF_TAG_NOT_PROVIDED /
-  OREF_TAG_NOT_PROVIDED, OREF_DUPLICATE_DESTINATION (one tag written from two output references, matched
-  case-insensitively), the connector rules ICON_NAME_NOT_PROVIDED, OCON_NAME_NOT_PROVIDED,
-  ICON_NO_MATCHING_OCON, OCON_DUPLICATE_NAME, ICON_NO_OUTBOUND_WIRE, OCON_NO_INBOUND_WIRE, and
-  FBD_FEEDBACK_CYCLE for a wire loop that cannot be scheduled. un_checks runs it over every FBD routine; an
-  SFC routine is never judged by these rules, because its DirectedLink elements are a different language.
-  Covered by packages/l5x/test/fbd.spec.ts, which drives the mutation through un_checks on the committed
-  synthetic export and the loop and connector rules through the checker directly: 210 package tests pass.
-- **A rung that drives nothing is reported, not left for the build.** packages/l5x/src/engine/rung-rules.ts judges
-  the rungs an export already contains, reusing the same parser compose_rung trusts: RUNG_NO_OUTPUT when a rung's
-  last instruction reads the condition and never drives the right power rail (XIC, EQU, ONS and the rest of that
-  set, including a trailing branch whose every path reads), and SBR_NOT_FIRST when a routine declares SBR but its
-  first rung does not open with it. A rung the parser could not read is left to the parse finding rather than reported
-  twice, and any instruction whose rail behaviour needs a pin model is left alone rather than guessed at.
-  packages/l5x/test/rung-rules.spec.ts covers both rules directly and asserts they stay silent on the committed
-  fixture: 220 package tests pass.### Fixed
+  `packages/l5x/src/engine/fbd.ts` reads the nodes the reference walker already decoded and reports
+  `FBD_DANGLING_WIRE` (a wire naming an element that is not on the sheet), `IREF_TAG_NOT_PROVIDED` /
+  `OREF_TAG_NOT_PROVIDED`, `OREF_DUPLICATE_DESTINATION` (one tag written from two output references, matched
+  case-insensitively), the connector rules `ICON_NAME_NOT_PROVIDED`, `OCON_NAME_NOT_PROVIDED`,
+  `ICON_NO_MATCHING_OCON`, `OCON_DUPLICATE_NAME`, `ICON_NO_OUTBOUND_WIRE`, `OCON_NO_INBOUND_WIRE`, and
+  `FBD_FEEDBACK_CYCLE` for a wire loop that cannot be scheduled. `run_checks` runs it over every FBD routine; an
+  SFC routine is never judged by these rules, because its `DirectedLink` elements are a different language.
+  Covered by `packages/l5x/test/fbd.spec.ts`, which drives the mutation through `run_checks` on the committed
+  synthetic export and the loop and connector rules through the checker directly.
+- **A rung that drives nothing is reported, not left for the build.** `packages/l5x/src/engine/rung-rules.ts`
+  judges the rungs an export already contains, reusing the same parser `compose_rung` trusts: `RUNG_NO_OUTPUT`
+  when a rung's last instruction reads the condition and never drives the right power rail (`XIC`, `EQU`, `ONS`
+  and the rest of that set, including a trailing branch whose every path reads), and `SBR_NOT_FIRST` when a
+  routine declares `SBR` but its first rung does not open with it. A rung the parser could not read is left to the
+  parse finding rather than reported twice, and any instruction whose rail behaviour needs a pin model is left
+  alone rather than guessed at. Covered by `packages/l5x/test/rung-rules.spec.ts`, which also asserts both rules
+  stay silent on the committed fixture.
+- **The instruction catalogue names both published spellings.** Every `list_instructions` row for one of the
+  sixteen instructions Logix Designer 36 renamed now carries `also_published_as` (`SQR` → `SQRT`, `EQU` → `EQ`,
+  `MOV` → `MOVE`), so a caller composing a rung sees that both forms are catalogued and does not have to know
+  which one the project happens to read. `compose_rung` accepts either and writes the spelling the export already
+  uses. `packages/l5x/test/instructions.spec.ts` asserts the field appears for a renamed instruction and is absent
+  for one that was never renamed.
+
+### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
   composed rung naming `SQRT`, `EXPT`, `MOVE`, `LIMIT`, `ACOS`, `ASIN`, `ATAN`, `TO_BCD`, `BCD_TO` or `TRN` was
@@ -43,11 +51,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-Covered by `packages/l5x/test/mnemonics.spec.ts`, `names.spec.ts` and `revision.spec.ts` — the last rewrites one
-attribute of the committed v33 fixture and asserts the real tools: `run_checks` reports `MOV` → `MOVE` on a v36
-copy and stays quiet on the v33 original, and `compose_rung` writes `MOV` into the v33 project, `MOVE` into a copy
-already written that way, and `SQR` for a `SQRT` request the project has never used. 199 package tests and 70
-bundle tests pass.
+222 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

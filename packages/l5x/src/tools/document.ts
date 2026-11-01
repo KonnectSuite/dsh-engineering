@@ -10,6 +10,7 @@
 
 import { DOCUMENT_PARTS, buildDocumentation, type DocumentPart } from '../engine/documentation.ts'
 import { INSTRUCTIONS, type InstructionInfo } from '../engine/instructions.ts'
+import { alternateMnemonic } from '../engine/mnemonics.ts'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, list, object, string } from '../core/params.ts'
@@ -39,11 +40,16 @@ const DOCUMENT_COVERAGE: Coverage = {
 
 /** One catalog row as the tool returns it. */
 function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
+  const alternate = alternateMnemonic(instruction.name)
   return {
     name: instruction.name,
     category: instruction.category,
     summary: instruction.summary,
     operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true })),
+    // Logix Designer 36 renamed sixteen instructions (EQU/EQ, SQR/SQRT, …). The row
+    // carries the other published spelling so a caller does not have to know which
+    // one this export happens to read; compose_rung accepts either.
+    ...(alternate === undefined ? {} : { also_published_as: alternate }),
   }
 }
 
@@ -57,7 +63,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
   return [
     tool({
       name: 'list_instructions',
-      description: 'List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds. Read it before composing a rung instead of guessing operand order.',
+      description: 'List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.',
       parameters: object({
         filter: string('Case-insensitive substring matched against the instruction name, category or summary.'),
         category: string('Only instructions in this category, for example "Comparison".'),

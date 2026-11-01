@@ -69,3 +69,18 @@ describe('list_instructions', () => {
     expect(names).not.toContain('TON')
   })
 })
+
+describe('list_instructions names the other spelling', () => {
+  it('carries the alternate published spelling of a renamed instruction', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'sqr' })).data?.rows as { name: string; also_published_as?: string }[]
+    expect(rows.find(row => row.name === 'SQR')?.also_published_as).toBe('SQRT')
+    expect(rows.find(row => row.name === 'SQR')?.name).toBe('SQR')
+  })
+
+  it('omits the field for an instruction that was never renamed', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'ton' })).data?.rows as { name: string }[]
+    expect(rows.find(row => row.name === 'TON')).not.toHaveProperty('also_published_as')
+  })
+})
