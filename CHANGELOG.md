@@ -690,6 +690,13 @@
   (TRUE = OK)". That is the wiring an engineer must see before changing a permissive: the value comes from a tag array element, not from the
   instruction's own interface. Test covers the parameter record. 413 package tests.
 
+- **A module recorded as faulted now says so; and the safety-signature question was answered by not inventing it.** `L5xModule.majorFault`
+  carries `MajorFault="true"` - a static attribute in the export, exposed by `get_component` and the module listing. Verified on
+  `Seco_Homogenizer`, where 1 of 20 modules records `majorFault: true`. The other candidate from round 98, **safety signature
+  presence, turned out not to exist in the export**: the only `SafetySignature` text is inside rung logic
+  (`GSV(Safety,,SafetySignatureExists,...)`), which is runtime state, so nothing was modelled and no false field ships. The test
+  covers a faulted, inhibited module in both the reader and the listing. 414 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -231,6 +231,8 @@ export interface L5xModule {
   readonly slot?: string
   /** Present and true only when the export marks the module `Inhibited="true"`. */
   readonly inhibited?: boolean
+  /** Present and true only when the export records the module with `MajorFault="true"`. */
+  readonly majorFault?: boolean
 }
 
 /** Alarm metadata found in an export; trigger semantics are not inferred. */

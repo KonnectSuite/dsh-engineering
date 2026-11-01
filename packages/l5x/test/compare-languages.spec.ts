@@ -229,3 +229,21 @@ describe('an AOI parameter that aliases', () => {
     expect(input?.aliasFor).toBe('WRK_PermArray.0')
   })
 })
+
+
+/** One module recorded as faulted and inhibited. */
+const MODULE_FAULT_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Modules\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <Modules>\n      <Module Name=\"Local\" CatalogNumber=\"5069-L320ER\" Vendor=\"1\" ProductType=\"14\" ProductCode=\"0\" Major=\"37\" Minor=\"0\" ParentModule=\"Local\" ParentModPortId=\"1\" Inhibited=\"false\" MajorFault=\"false\"/>\n      <Module Name=\"Local:3\" CatalogNumber=\"5069-IB16\" Vendor=\"1\" ProductType=\"7\" ProductCode=\"0\" Major=\"1\" Minor=\"1\" ParentModule=\"Local\" ParentModPortId=\"1\" Inhibited=\"true\" MajorFault=\"true\"/>\n    </Modules>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a module recorded as faulted', () => {
+  it('reports its fault and inhibit state from the export', async () => {
+    const l5x = harness(new Map([['m.l5x', new TextEncoder().encode(MODULE_FAULT_L5X)]]))
+    await l5x.call('open_project', { path: 'm.l5x' })
+    const module = await l5x.call('get_component', { kind: 'module', name: 'Local:3' })
+    expect(module.data?.component?.majorFault).toBe(true)
+    expect(module.data?.component?.inhibited).toBe(true)
+    const listed = await l5x.call('list_components', { kind: 'module', filter: 'Local:3' })
+    const row = (listed.data?.rows ?? [])[0] as { majorFault?: boolean; inhibited?: boolean } | undefined
+    expect(row?.majorFault).toBe(true)
+    expect(row?.inhibited).toBe(true)
+  })
+})
