@@ -143,6 +143,9 @@ function decodeDiagram(routine: XmlElement, contentName: string): readonly L5xDi
           ...(child.attrs['Operand'] === undefined ? {} : { operand: child.attrs['Operand'] }),
           // A block's visible pins are what its wires can address; dropping them hid a pin edit.
           ...(child.attrs['VisiblePins'] === undefined ? {} : { pins: child.attrs['VisiblePins'] }),
+          // SFC step markers: whether the step is an initial step.
+          ...(child.attrs['InitialStep'] === undefined ? {} : { initialStep: child.attrs['InitialStep'] }),
+          ...(child.attrs['Initial'] === undefined ? {} : { initialStep: child.attrs['Initial'] }),
           ...(child.attrs['FromID'] === undefined ? {} : { fromId: child.attrs['FromID'] }),
           ...(child.attrs['ToID'] === undefined ? {} : { toId: child.attrs['ToID'] }),
           ...(child.attrs['FromParam'] === undefined ? {} : { fromParam: child.attrs['FromParam'] }),

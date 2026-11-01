@@ -132,6 +132,8 @@ export interface L5xDiagramNode {
   readonly operand?: string
   /** Visible block pins as Studio writes them (a Block's VisiblePins), when declared. */
   readonly pins?: string
+  /** An SFC step's InitialStep attribute as written ("true"/"false"). */
+  readonly initialStep?: string
   readonly fromId?: string
   readonly toId?: string
   /** Input pin a wire lands on, when the export names one (SourceA, Dest, ...). */

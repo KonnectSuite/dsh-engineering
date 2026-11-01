@@ -1444,6 +1444,10 @@
   every wire pin with the block's declared pins. A wire to an undeclared pin is `FBD_WIRE_PIN_NOT_VISIBLE` (warning) naming the block, the pin and
   the pins it does show; a wire to a declared pin is clean. The rule list is 38. 533 package tests.
 
+- **SFC charts are checked too.** `run_checks` returned nothing for SFC. The chart decoder now keeps each step's `InitialStep` marker and three rules
+  were added: `SFC_LINK_TARGET_MISSING` (critical, a link to a step or transition the sheet does not hold), `SFC_NO_INITIAL_STEP` and
+  `SFC_MULTIPLE_INITIAL_STEPS` (warning), each with the step ids. Tests cover all three and a clean chart; the rule list is 41. 536 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -4,7 +4,7 @@ import type { L5xDocument, L5xRoutine, L5xTag, L5xTask, L5xUdt } from '../model/
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn, mnemonicsIn } from './mnemonics.ts'
 import { INSTRUCTIONS, instructionByName } from './instructions.ts'
-import { validateDiagram } from './fbd.ts'
+import { validateDiagram, validateSfcDiagram } from './fbd.ts'
 import { rungFindings } from './rung-rules.ts'
 
 export interface Change {
@@ -179,6 +179,9 @@ const REMEDIES: Record<string, string> = {
   UNCATALOGUED_INSTRUCTION: 'Check the abbreviation against the installed help for this revision; the tool will not guess operands.',
   UNRESOLVED_ROUTINE: 'Declare the routine in the program, or correct the spelling; the reference row names it.',
   FBD_WIRE_PIN_NOT_VISIBLE: 'Connect the wire to a pin the block declares, or show that pin on the block in Studio; a pin the block does not show cannot be wired.',
+  SFC_LINK_TARGET_MISSING: 'Add the missing step or transition, or correct the link; a link to an element the chart does not contain cannot be followed.',
+  SFC_NO_INITIAL_STEP: 'Mark exactly one step as the initial step in Studio; a chart needs a step to start at.',
+  SFC_MULTIPLE_INITIAL_STEPS: 'Keep exactly one initial step and clear InitialStep on the others in Studio.',
 }
 
 /** Every rule the checks can emit; a filter outside this set would silently return nothing. */
@@ -214,6 +217,9 @@ export const FINDING_RULES: readonly string[] = [
   'SBR_NOT_FIRST',
   'SCHEDULED_PROGRAM_MISSING',
   'SERIAL_PORT_INSTRUCTION_UNSUPPORTED',
+  'SFC_LINK_TARGET_MISSING',
+  'SFC_MULTIPLE_INITIAL_STEPS',
+  'SFC_NO_INITIAL_STEP',
   'UNCATALOGUED_INSTRUCTION',
   'UNDOCUMENTED_PROGRAM',
   'UNDOCUMENTED_ROUTINE',
@@ -657,6 +663,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   // shape, so a document Studio refuses looks exactly like one it accepts.
   for (const routine of doc.routines) {
     if (routine.body.type === 'FBD') findings.push(...validateDiagram(routine))
+    else if (routine.body.type === 'SFC') findings.push(...validateSfcDiagram(routine))
     else if (routine.body.type === 'RLL') findings.push(...rungFindings(routine, { processorType: doc.controller.processorType }))
   }
   const byRule: Record<string, number> = {}

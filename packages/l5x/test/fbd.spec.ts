@@ -12,7 +12,7 @@
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { validateDiagram } from '../src/engine/fbd.ts'
+import { validateDiagram, validateSfcDiagram } from '../src/engine/fbd.ts'
 import type { L5xDiagramNode, L5xRoutine } from '../src/model/types.ts'
 import { harness, type Envelope } from './harness.ts'
 
@@ -146,6 +146,46 @@ describe('wire loops', () => {
       { kind: 'Add', sheet: 0, id: '2' },
       { kind: 'Wire', sheet: 0, fromId: '1', toId: '2' },
     ])).filter(finding => finding.rule === 'FBD_FEEDBACK_CYCLE')).toEqual([])
+  })
+})
+
+describe('a sequential function chart', () => {
+  const chart = (nodes: readonly L5xDiagramNode[]): L5xRoutine =>
+    ({ program: 'Main', name: 'Chart', type: 'SFC', description: '', body: { type: 'SFC', nodes } })
+
+  it('reports a link to a step or transition the chart does not contain', () => {
+    const found = validateSfcDiagram(chart([
+      { kind: 'Step', sheet: 1, id: '1', operand: 'Step_1', initialStep: 'true' },
+      { kind: 'Transition', sheet: 1, id: '2', operand: 'Tran_1' },
+      { kind: 'DirectedLink', sheet: 1, fromId: '2', toId: '9' },
+    ])).filter(finding => finding.rule === 'SFC_LINK_TARGET_MISSING')
+    expect(found.length).toBe(1)
+    expect(found[0]?.message).toContain('"9"')
+    expect(found[0]?.evidence).toMatchObject({ side: 'ToID', id: '9' })
+  })
+
+  it('reports a chart with no initial step, and a chart with several', () => {
+    const noInitial = validateSfcDiagram(chart([
+      { kind: 'Step', sheet: 1, id: '1', operand: 'A', initialStep: 'false' },
+      { kind: 'Step', sheet: 1, id: '2', operand: 'B', initialStep: 'false' },
+    ])).filter(finding => finding.rule === 'SFC_NO_INITIAL_STEP')
+    expect(noInitial.length).toBe(1)
+    const several = validateSfcDiagram(chart([
+      { kind: 'Step', sheet: 1, id: '1', operand: 'A', initialStep: 'true' },
+      { kind: 'Step', sheet: 1, id: '2', operand: 'B', initialStep: 'true' },
+    ])).filter(finding => finding.rule === 'SFC_MULTIPLE_INITIAL_STEPS')
+    expect(several.length).toBe(1)
+    expect(several[0]?.evidence).toMatchObject({ steps: ['1', '2'] })
+  })
+
+  it('accepts one initial step and links that resolve', () => {
+    expect(validateSfcDiagram(chart([
+      { kind: 'Step', sheet: 1, id: '1', operand: 'A', initialStep: 'true' },
+      { kind: 'Transition', sheet: 1, id: '2', operand: 'T' },
+      { kind: 'Step', sheet: 1, id: '3', operand: 'B', initialStep: 'false' },
+      { kind: 'DirectedLink', sheet: 1, fromId: '1', toId: '2' },
+      { kind: 'DirectedLink', sheet: 1, fromId: '2', toId: '3' },
+    ]))).toEqual([])
   })
 })
 

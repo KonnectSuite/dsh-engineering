@@ -214,3 +214,52 @@ export function validateDiagram(routine: L5xRoutine): readonly DiagramFinding[] 
 
   return findings
 }
+
+/**
+ * Check one Sequential Function Chart routine.
+ *
+ * A chart is a step/transition graph plus links; the export never states reachability, so this
+ * checks only what it records: link targets, and the initial-step markers a chart needs to start.
+ *
+ * @param routine - A routine whose body has already been decoded as `SFC`.
+ * @returns One finding per structural problem, in element order.
+ */
+export function validateSfcDiagram(routine: L5xRoutine): readonly DiagramFinding[] {
+  if (routine.body.type !== 'SFC') return []
+  const nodes = routine.body.nodes
+  const findings: DiagramFinding[] = []
+  const report = (rule: string, severity: DiagramFinding['severity'], message: string, evidence: unknown, confidence: DiagramFinding['confidence'] = 'high'): void => {
+    findings.push({ rule, severity, message, evidence, confidence })
+  }
+  const where = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} id ${node.id ?? '?'}`
+  const ids = idsBySheet(nodes)
+
+  // A link that names an element the chart does not contain cannot be followed.
+  for (const node of nodes) {
+    if (node.kind !== 'DirectedLink') continue
+    const sheetIds = ids.get(node.sheet) ?? new Set<string>()
+    for (const [side, id] of [['FromID', node.fromId], ['ToID', node.toId]] as const) {
+      if (id === undefined || sheetIds.has(id)) continue
+      report('SFC_LINK_TARGET_MISSING', 'critical',
+        `${where(node)}: link ${side}="${id}" names no step or transition on that sheet`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, elements: sheetIds.size })
+    }
+  }
+
+  // A chart starts at exactly one initial step.
+  const steps = nodes.filter(node => node.kind === 'Step')
+  if (steps.length > 0) {
+    const initial = steps.filter(step => step.initialStep === 'true' || step.initialStep === '1')
+    if (initial.length === 0) {
+      report('SFC_NO_INITIAL_STEP', 'warning',
+        `${routine.program}::${routine.name} declares ${steps.length} step(s) but no initial step`,
+        { program: routine.program, routine: routine.name, steps: steps.map(step => step.id ?? '?') })
+    } else if (initial.length > 1) {
+      report('SFC_MULTIPLE_INITIAL_STEPS', 'warning',
+        `${routine.program}::${routine.name} declares ${initial.length} initial steps; one chart starts at one step`,
+        { program: routine.program, routine: routine.name, steps: initial.map(step => step.id ?? '?') })
+    }
+  }
+
+  return findings
+}
