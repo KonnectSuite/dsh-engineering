@@ -1241,6 +1241,8 @@
   tag-only, and the composer refuses both a literal source and an out-of-range dimension. `MID(Str1,0,1,Str2)` with Qty 0 built 0/0, so string
   quantity keeps no minimum. Tests and the dist smoke hold the new bounds. 497 package tests.
 
+- **Generated client faces refreshed** after the array-dimension metadata change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
