@@ -1394,6 +1394,10 @@
   the 5069-L320ER/A at 192.168.1.3 reports `clock_supported: false` with the vendor reason instead of guessing, beside controller identity and host
   time. 518 package tests.
 
+- **Alarm definitions compare like any other component.** `compare_projects` claimed alarms but had no alarm fixture at all. A test now embeds
+  one `<Alarm Name="HiTemp">` in each of two exports, confirms the reader counts it, changes only its description and asserts exactly one
+  `alarm`/`HiTemp`/`changed` result. 519 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

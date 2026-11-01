@@ -796,6 +796,33 @@ describe('two output instructions in series', () => {
   })
 })
 
+describe('comparing alarm definitions', () => {
+  it('reports an alarm description change', async () => {
+    const base = l5x({
+      name: 'AlarmCompare',
+      tags: tag('D', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const withAlarm = (description: string): string => base.replace('</Controller>', `<Alarms><Alarm Name="HiTemp" Description="${description}"/></Alarms></Controller>`)
+    const before = withAlarm('old alarm text')
+    const after = withAlarm('new alarm text')
+    const l5xTool = harness(new Map([['alarm-before.L5X', new TextEncoder().encode(before)], ['alarm-after.L5X', new TextEncoder().encode(after)]]), {})
+    const openedBefore = await l5xTool.call('open_project', { path: 'alarm-before.L5X' })
+    const openedAfter = await l5xTool.call('open_project', { path: 'alarm-after.L5X' })
+    expect(openedBefore.error).toBeUndefined()
+    expect(openedAfter.error).toBeUndefined()
+    expect((openedBefore.data?.counts as { alarms: number }).alarms).toBe(1)
+    const compared = await l5xTool.call('compare_projects', { before_id: openedBefore.data?.project_id, after_id: openedAfter.data?.project_id })
+    expect(compared.error).toBeUndefined()
+    expect(compared.data?.count).toBe(1)
+    const changes = compared.data?.changes as { component: string; kind: string; key?: string }[]
+    expect(changes[0]?.component).toBe('alarm')
+    expect(changes[0]?.key).toBe('HiTemp')
+    expect(changes[0]?.kind).toBe('changed')
+  })
+})
+
 describe('a denied draft write', () => {
   it('reports WRITE_DENIED with the provider reason, not an internal defect', async () => {
     const project = l5x({
