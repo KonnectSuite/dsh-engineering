@@ -1222,6 +1222,8 @@
   the 1-based rule. `UID()` also built 0/0 (no change needed). Tests hold FIND and MID both ways; the dist smoke checks the built catalogue.
   495 package tests.
 
+- **Generated client faces refreshed** after the minimum-position metadata change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
