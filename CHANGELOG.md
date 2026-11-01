@@ -470,6 +470,14 @@
   both sides. `resolve_tag` is the remaining tool with the same shape - it still answers "not in scope controller; declared in
   SYSTEM" when called without a scope - and it is next.
 
+- **`resolve_tag` adopts a unique declaring scope, finishing the consistency pass across four read tools.** Called without a scope,
+  `resolve_tag Std_Alarms` used to answer `resolved: false` with "declared in SYSTEM"; it now returns
+  `Std_Alarms resolves to SYSTEM::Std_Alarms (INT) (declared in SYSTEM; scope adopted)`, and the same for a bit address
+  (`SYSTEM::Std_Alarms[2].8 (BOOL)`). The payload carries `adopted_from`, so a caller that cares which scope answered can see it
+  rather than infer it from prose. A name declared by **two** programs stays unresolved - ambiguity is still an error - and an
+  explicit scope is still taken at its word. That completes the rule across `find_references` (which always searched every
+  scope), `trace_dependencies`, `usage_map` and `resolve_tag`: the `scope` argument is an override, not a prerequisite.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

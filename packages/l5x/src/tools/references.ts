@@ -215,13 +215,24 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
       async run(args, exec) {
         const project = await projectOf(session, args, exec)
         const address = requiredString(args, 'address')
-        const resolution = resolveTag(project.document, optionalString(args, 'scope') ?? 'controller', address)
+        const requestedScope = optionalString(args, 'scope')
+        let resolution = resolveTag(project.document, requestedScope ?? 'controller', address)
+        // Omitting the scope means "find it". Adopt the one program that declares the name; an explicit
+        // or ambiguous scope is still reported unresolved.
+        let adoptedFrom = ''
+        if (requestedScope === undefined && resolution.resolved === false) {
+          const scopes = (resolution as { readonly scopes?: readonly string[] }).scopes ?? []
+          if (scopes.length === 1 && scopes[0] !== undefined) {
+            adoptedFrom = scopes[0]
+            resolution = resolveTag(project.document, adoptedFrom, address)
+          }
+        }
         const canonical = resolution.canonical
         return success(
           resolution.resolved
-            ? `${address} resolves to ${canonical ?? 'its declared type'}${resolution.data_type === undefined ? '' : ` (${resolution.data_type})`}.`
+            ? `${address} resolves to ${canonical ?? 'its declared type'}${resolution.data_type === undefined ? '' : ` (${resolution.data_type})`}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}.`
             : `${address} does not resolve: ${resolution.reason ?? 'not declared in this export'}.`,
-          resolution,
+          adoptedFrom === '' ? resolution : { ...resolution, adopted_from: adoptedFrom },
           [
             { tool: 'find_references', args: { symbol: address }, why: 'See where this address is used.' },
             ...(canonical === undefined

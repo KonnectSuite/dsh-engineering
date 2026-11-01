@@ -278,9 +278,9 @@ describe('a declaration in another scope', () => {
   it('names the scope that declares it instead of calling it absent', async () => {
     const l5x = await opened()
     const result = await l5x.call('resolve_tag', { address: 'MainTimer' })
-    expect(result.data?.resolved).toBe(false)
-    expect(String(result.data?.reason)).toContain('MainProgram')
-    expect(result.data?.scopes).toContain('MainProgram')
+    // One program declares it, so the resolution adopts that scope and says so.
+    expect(result.data?.resolved).toBe(true)
+    expect(result.data?.adopted_from).toBe('MainProgram')
   })
 
   it('resolves the same name when the program scope is given', async () => {
