@@ -271,6 +271,16 @@
   a third operand rather than guessing. `SKILL.md` carries the rule; the variadic test that assumed free-form parameters
   is replaced by the two behaviours a build proves.
 
+- **`MSG`, `COP` and `FLL` are build-verified, and the retry rule is now written down.** One project, three rungs, taken
+  from the shapes a production export actually uses: `XIC(a1)ONS(ons)MSG(msg)` where `msg` is a `MESSAGE` tag - the real
+  project gates its messages exactly that way - plus `COP(arr[0],arr2[0],5)` and `FLL(0,arr2[0],5)`. All three passed with
+  **0 warnings and 0 errors**. A second finding came out of the first attempt: it died with `Server execution failed`
+  before import, and the identical script **passed on retry**, which means that message is transient and a single retry is
+  the right response rather than a diagnosis. Both facts are in `SKILL.md` now (body 6574 of 8000). `FAL` and `FSC` stay
+  **unverified**: their six-slot shape parses but the compiler answers `RxCMP_E_AUDIT_OUTOFRANGE` at mode 0, and dropping
+  the destination slot answers `INVALIDOPKIND`, so the next probe needs mode 1-3 and a `ctl.POS` position rather than my
+  guesses.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

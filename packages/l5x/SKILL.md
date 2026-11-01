@@ -99,6 +99,9 @@ truth. Never write to `<workspace>/_backups`.
   `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
 - Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or
   Studio answers `AUDIT_OUTPUTS`.
+- `MSG(tag)` takes one `MESSAGE` tag and ends the rung; real code gates it with `ONS`. `COP` and `FLL` take
+  `(source element, destination element, length)` and `(value, destination element, length)`.
+- A build that fails with `Server execution failed` is transient: retry it once before reporting it.
 - `JSR` takes the routine **and** a return parameter: `JSR(Sub,0)` builds, and `JSR(Sub)` fails with
   `RxCMP_E_AUDIT_INVALIDNOOFOPS`. A production export writes it the same way.
 - A rung whose only instruction is `SBR()` is refused, because a build fails it: `LgxSrv_E_FATAL_ERROR` alone, and
