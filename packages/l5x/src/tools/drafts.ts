@@ -14,6 +14,8 @@ import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNo
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { getRoutine } from '../model/routines.ts'
+import { instructionByName } from '../engine/instructions.ts'
+import { resolveSymbol } from '../engine/analysis.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -115,6 +117,16 @@ function stagedTags(draft: Draft): { name: string; scope: string; dataType: stri
  * @param maxFileBytes - Byte budget the preparation may read.
  * @returns Tool definitions in registration order.
  */
+/** One JSON array parameter, refused with a repairable message when it is not an array. */
+function jsonArrayArg(args: Record<string, unknown>, field: string): readonly Record<string, unknown>[] {
+  const raw = args[field]
+  if (typeof raw !== 'string' || raw.trim() === '') throw new L5xError('INVALID_ARGUMENT', `${field} must be a JSON array.`, `Pass ${field} as JSON, for example [] or [{"id":1}].`)
+  let parsed: unknown
+  try { parsed = JSON.parse(raw) } catch { throw new L5xError('INVALID_ARGUMENT', `${field} is not valid JSON.`, 'Fix the JSON syntax and retry.') }
+  if (!Array.isArray(parsed)) throw new L5xError('INVALID_ARGUMENT', `${field} must be a JSON array.`, 'Wrap the value in [ ].')
+  return parsed as readonly Record<string, unknown>[]
+}
+
 export function draftTools(session: ProjectSession, drafts: DraftStore, maxOperations: number, maxFileBytes: number): readonly ToolDefinition[] {
   return [
     tool({
@@ -340,6 +352,58 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           program: requiredString(args, 'program'),
           routine: requiredString(args, 'routine'),
           code: requiredString(args, 'code'),
+        }
+        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+      },
+    }),
+    tool({
+      name: 'draft_fbd',
+      description: 'Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Nothing is written until draft_apply.',
+      parameters: object({
+        program: string('Program that owns the FBD routine. Example: "MainProgram".'),
+        routine: string('Function block diagram routine to extend. Example: "LevelLoop".'),
+        sheet: integer('Sheet number to create. Defaults to 0.', { minimum: 0 }),
+        blocks: string('Blocks as JSON: [{"id":1,"type":"ADD","tag":"add1","structure":"FBD_MATH","pins":["SourceA","SourceB","Dest"]}].'),
+        refs: string('References as JSON: [{"id":2,"direction":"in","tag":"Level"},{"id":3,"direction":"out","tag":"Flow"}].'),
+        wires: string('Wires as JSON: [{"from":2,"to":1,"to_pin":"SourceA"},{"from":1,"to":3,"from_pin":"Dest"}].'),
+        project_id: PROJECT_ID,
+      }, ['program', 'routine', 'blocks']),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const program = requiredString(args, 'program')
+        const routineName = requiredString(args, 'routine')
+
+        const routine = project.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
+        if (routine === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine" and program to see the declared names.')
+        if (routine.type !== 'FBD') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a function block diagram.`, 'Create an FBD routine with draft_routine once FBD is offered there, or extend a routine that is already FBD.')
+
+        const blocks = jsonArrayArg(args, 'blocks')
+        const refs = args.refs === undefined ? [] : jsonArrayArg(args, 'refs')
+        const wires = args.wires === undefined ? [] : jsonArrayArg(args, 'wires')
+
+        // A block is an instance: its tag must exist in this scope and carry the structure type.
+        for (const block of blocks) {
+          const type = String((block as Record<string, unknown>).type ?? '').toUpperCase()
+          if (instructionByName(type) === undefined) throw new L5xError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction.`, 'Call list_instructions to see the catalogued names.')
+          const tag = String((block as Record<string, unknown>).tag ?? '')
+          const structure = String((block as Record<string, unknown>).structure ?? '')
+          const declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
+          if (declared === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `The block's tag ${tag} is not declared in ${program} or controller scope.`, `Declare it first: draft_tag scope "${program}" name "${tag}" data_type "${structure}" — a block is an instance of its structure.`)
+          if (declared.dataType.toUpperCase() !== structure.toUpperCase()) throw new L5xError('TYPE_MISMATCH', `Tag ${tag} is ${declared.dataType}, but the block needs a ${structure} instance.`, 'Declare a tag whose data type is the block structure, for example FBD_MATH for ADD.')
+        }
+        for (const [index, ref] of refs.entries()) {
+          const tag = String((ref as Record<string, unknown>).tag ?? '')
+          if (resolveSymbol(project.document, program, tag) === undefined) throw new L5xError('TAG_NOT_FOUND', `refs[${index}] names ${tag}, which does not resolve in scope ${program}.`, 'Reference a declared tag, or declare it with draft_tag first.')
+        }
+
+        const operation: DraftOperation = {
+          operation: 'insert_fbd_sheet',
+          program,
+          routine: routineName,
+          sheet: optionalInteger(args, 'sheet') ?? 0,
+          blocks,
+          refs,
+          wires,
         }
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },

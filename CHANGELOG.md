@@ -278,6 +278,16 @@
   Designer SDK imported and built it — **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
   the exact accepted text, so a later operand edit cannot silently change what Studio approved.
 
+- **Function block diagrams can now be composed, and Studio proved the sheet builds.** `draft_fbd` stages an FBD sheet —
+  blocks, references and wires — and `draft_apply` writes it. The rule that took the longest to find: **a block is an
+  instance**, so its `Operand` must name a tag whose data type is the block's structure (`FBD_MATH` for `ADD`), and wires
+  name the pin on the block side (`ToParam` into an input, `FromParam` out of an output). The tool validates that the
+  backing tag exists in scope and carries that structure, that every reference resolves, and that each wire names a node
+  and a pin the block shows. Verification: `draft_fbd` → `draft_apply` → `verify_offline_l5x` imported and built the sheet
+  with **0 warnings, 0 errors and an ACD written**. Six tests cover the accepted XML plus the refusals (wrong routine
+  language, undeclared backing tag, wrong structure type, unknown node id, unknown pin). This closes the capability gap
+  that mattered most: the competition composes four languages; two are no longer enough.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -289,7 +299,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-334 package tests and 70 bundle tests pass.
+340 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

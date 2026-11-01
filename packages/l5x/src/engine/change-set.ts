@@ -1,5 +1,6 @@
-﻿/** Validate and stage coordinated edits while retaining untouched XML bytes. */
+/** Validate and stage coordinated edits while retaining untouched XML bytes. */
 import { createHash, randomUUID } from 'node:crypto'
+import { instructionByName } from './instructions.ts'
 import { loadL5x } from '../model/index.ts'
 import type { L5xDocument } from '../model/types.ts'
 import { parseLadder, lexLogic, rightRailReader } from './logic-syntax.ts'
@@ -8,6 +9,34 @@ import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { typeInstances, typeIndex, udtDetail } from './details.ts'
 import { uniqueRegion, xmlRegions, type XmlRegion } from './xml-regions.ts'
 import { checkIdentifier } from './names.ts'
+
+/** One block on an inserted FBD sheet: an instance tag, its structure and visible pins. */
+export interface FbdBlockOp {
+  readonly id: number
+  readonly type: string
+  readonly tag: string
+  readonly structure: string
+  readonly pins: readonly string[]
+  readonly x?: number
+  readonly y?: number
+}
+
+/** One reference on the sheet: an input tag or an output tag. */
+export interface FbdRefOp {
+  readonly id: number
+  readonly direction: 'in' | 'out'
+  readonly tag: string
+  readonly x?: number
+  readonly y?: number
+}
+
+/** One wire: references and blocks by id, with the pin named on the block side. */
+export interface FbdWireOp {
+  readonly from: number
+  readonly to: number
+  readonly from_pin?: string
+  readonly to_pin?: string
+}
 
 type Operation =
   | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly comment?: string }
@@ -21,11 +50,12 @@ type Operation =
   | { readonly operation: 'add_udt_member'; readonly udt: string; readonly name: string; readonly data_type: string; readonly description: string }
   | { readonly operation: 'set_udt_description'; readonly udt: string; readonly description: string }
   | { readonly operation: 'set_udt_member_description'; readonly udt: string; readonly member: string; readonly description: string }
+| { readonly operation: 'insert_fbd_sheet'; readonly program: string; readonly routine: string; readonly sheet: number; readonly blocks: readonly FbdBlockOp[]; readonly refs: readonly FbdRefOp[]; readonly wires: readonly FbdWireOp[] }
 
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Operation names accepted by a version-1 change set. */
-const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
+const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description', 'insert_fbd_sheet'] as const
 /** Compact contract returned with validation errors and embedded in tool descriptions. */
 export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
 replace_rung {program,routine,rung,text,comment?}
@@ -34,6 +64,7 @@ delete_rung {program,routine,rung}
 set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
 add_routine {program,name,language:"RLL"|"ST",code}
+insert_fbd_sheet {program,routine,sheet,blocks,refs,wires} — blocks {id,type,tag,structure,pins}, refs {id,direction,tag}, wires {from,to,from_pin?,to_pin?}; the block tag must carry the structure type Studio expects (FBD_MATH for ADD)
 add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
 set_tag_description {scope,name,description}
 add_udt_member {udt,name,data_type,description}
@@ -165,6 +196,18 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       fields(row, ['operation', 'program', 'name', 'language', 'code'])
       if (row.language !== 'RLL' && row.language !== 'ST') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL" or "ST"')
       return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
+    }
+    case 'insert_fbd_sheet': {
+      fields(row, ['operation', 'program', 'routine', 'sheet', 'blocks', 'refs', 'wires'])
+      return {
+        operation: row.operation,
+        program: identifier(row, 'program'),
+        routine: identifier(row, 'routine'),
+        sheet: fbdId(row.sheet, 'sheet'),
+        blocks: fbdBlocks(row.blocks),
+        refs: fbdRefs(row.refs),
+        wires: fbdWires(row.wires),
+      }
     }
     case 'add_tag': {
       fields(row, ['operation', 'scope', 'name', 'data_type', 'value', 'dimensions', 'external_access', 'description'])
@@ -321,6 +364,25 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     return insert(xml, routines, `<Routine Name="${operation.name}" Type="${operation.language}">${body}</Routine>`)
   }
   const routine = uniqueRegion(routines.children, 'Routine', operation.routine); editable(routine)
+  if (operation.operation === 'insert_fbd_sheet') {
+    if (routine.attributes.Type !== 'FBD') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not a function block diagram')
+    const sheet = fbdSheetXml(operation)
+    const content = routine.children.find(child => child.kind === 'FBDContent')
+    if (content === undefined) {
+      const element = xml.slice(routine.start, routine.end)
+      const open = element.indexOf('>')
+      if (open < 0) throw new EngineeringError('INVALID_OPERATION', 'The FBD routine element is malformed')
+      const head = element.slice(0, open).replace(/\/$/u, '')
+      return replace(xml, routine.start, routine.end, `${head}><FBDContent>${sheet}</FBDContent></Routine>`)
+    }
+    if (content.selfClosing) {
+      const element = xml.slice(content.start, content.end)
+      const head = element.replace(/\/>$/u, '>')
+      return replace(xml, content.start, content.end, `${head}${sheet}</FBDContent>`)
+    }
+    const closing = content.end - '</FBDContent>'.length
+    return replace(xml, closing, closing, sheet)
+  }
   if (operation.operation === 'replace_st') {
     if (routine.attributes.Type !== 'ST') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not Structured Text')
     const content = uniqueRegion(routine.children, 'STContent')
@@ -524,3 +586,120 @@ export function prepareUdtComponent(project: ProjectSnapshot, request: string) {
  * @param signal - Cancellation for filesystem operations.
  * @returns Proposal identity, hash-bound changes and static validation; no SDK or controller operations.
  */
+
+
+/** One positive integer field of an FBD node. */
+function fbdId(value: unknown, what: string): number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) throw new EngineeringError('INVALID_CHANGE_SET', `${what} must be a non-negative integer`)
+  return value
+}
+
+/** Validate the block list of an FBD sheet. */
+function fbdBlocks(value: unknown): readonly FbdBlockOp[] {
+  if (!Array.isArray(value) || value.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', 'blocks must be a non-empty array')
+  return value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `blocks[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    const type = String(row.type ?? '').toUpperCase()
+    if (instructionByName(type) === undefined) throw new EngineeringError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction`)
+    const pins = Array.isArray(row.pins) ? row.pins.map(pin => String(pin)) : []
+    if (pins.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', `blocks[${index}].pins must name the pins the block shows`)
+    if (new Set(pins).size !== pins.length) throw new EngineeringError('INVALID_CHANGE_SET', `blocks[${index}].pins repeats a pin`)
+    const structure = String(row.structure ?? '')
+    if (structure === '') throw new EngineeringError('INVALID_CHANGE_SET', `blocks[${index}].structure must name the block's structure type, for example FBD_MATH`)
+    return {
+      id: fbdId(row.id, `blocks[${index}].id`),
+      type,
+      tag: String(row.tag ?? ''),
+      structure,
+      pins,
+      ...(row.x === undefined ? {} : { x: fbdId(row.x, `blocks[${index}].x`) }),
+      ...(row.y === undefined ? {} : { y: fbdId(row.y, `blocks[${index}].y`) }),
+    }
+  })
+}
+
+/** Validate the reference list of an FBD sheet. */
+function fbdRefs(value: unknown): readonly FbdRefOp[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new EngineeringError('INVALID_CHANGE_SET', 'refs must be an array')
+  return value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `refs[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    const direction = row.direction
+    if (direction !== 'in' && direction !== 'out') throw new EngineeringError('INVALID_CHANGE_SET', `refs[${index}].direction must be "in" or "out"`)
+    return {
+      id: fbdId(row.id, `refs[${index}].id`),
+      direction,
+      tag: String(row.tag ?? ''),
+      ...(row.x === undefined ? {} : { x: fbdId(row.x, `refs[${index}].x`) }),
+      ...(row.y === undefined ? {} : { y: fbdId(row.y, `refs[${index}].y`) }),
+    }
+  })
+}
+
+/** Validate the wire list of an FBD sheet. */
+function fbdWires(value: unknown): readonly FbdWireOp[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new EngineeringError('INVALID_CHANGE_SET', 'wires must be an array')
+  return value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `wires[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    return {
+      from: fbdId(row.from, `wires[${index}].from`),
+      to: fbdId(row.to, `wires[${index}].to`),
+      ...(row.from_pin === undefined ? {} : { from_pin: String(row.from_pin) }),
+      ...(row.to_pin === undefined ? {} : { to_pin: String(row.to_pin) }),
+    }
+  })
+}
+
+/**
+ * One FBD sheet, in the shape Studio writes and accepts.
+ *
+ * Verified against Logix Designer 37: a block is an instance, so its tag must carry the block's
+ * structure type (FBD_MATH for ADD); input wires name ToParam, output wires name FromParam.
+ */
+function fbdSheetXml(operation: Extract<Operation, { operation: 'insert_fbd_sheet' }>): string {
+  const ids = new Map<number, 'block' | 'ref'>()
+  const pins = new Map<number, ReadonlySet<string>>()
+  for (const block of operation.blocks) {
+    if (ids.has(block.id)) throw new EngineeringError('INVALID_CHANGE_SET', `Node id ${block.id} is used twice`)
+    ids.set(block.id, 'block')
+    pins.set(block.id, new Set(block.pins))
+  }
+  for (const ref of operation.refs) {
+    if (ids.has(ref.id)) throw new EngineeringError('INVALID_CHANGE_SET', `Node id ${ref.id} is used twice`)
+    ids.set(ref.id, 'ref')
+  }
+  for (const wire of operation.wires) {
+    const from = ids.get(wire.from)
+    const to = ids.get(wire.to)
+    if (from === undefined || to === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `A wire names id ${wire.from} or ${wire.to}, which no node uses`)
+    if (from === 'block' && to === 'block') throw new EngineeringError('INVALID_CHANGE_SET', 'A wire between two blocks does not name an output pin')
+    if (from === 'block' && wire.from_pin === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `The wire from block ${wire.from} must name from_pin`)
+    if (to === 'block' && wire.to_pin === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `The wire into block ${wire.to} must name to_pin`)
+    if (wire.from_pin !== undefined && pins.get(wire.from)?.has(wire.from_pin) !== true) throw new EngineeringError('INVALID_CHANGE_SET', `Block ${wire.from} does not show pin "${wire.from_pin}"`)
+    if (wire.to_pin !== undefined && pins.get(wire.to)?.has(wire.to_pin) !== true) throw new EngineeringError('INVALID_CHANGE_SET', `Block ${wire.to} does not show pin "${wire.to_pin}"`)
+  }
+
+  const parts: string[] = []
+  for (const ref of operation.refs) {
+    const kind = ref.direction === 'in' ? 'IRef' : 'ORef'
+    parts.push(`<${kind} ID="${ref.id}" X="${ref.x ?? 180}" Y="${ref.y ?? 60}" Operand="${escapeXml(ref.tag)}" HideDesc="false"/>`)
+  }
+  for (const block of operation.blocks) {
+    parts.push(`<Block Type="${block.type}" ID="${block.id}" X="${block.x ?? 300}" Y="${block.y ?? 20}" Operand="${escapeXml(block.tag)}" VisiblePins="${escapeXml(block.pins.join(' '))}" HideDesc="false"/>`)
+  }
+  for (const wire of operation.wires) {
+    const fromPin = wire.from_pin === undefined ? '' : ` FromParam="${escapeXml(wire.from_pin)}"`
+    const toPin = wire.to_pin === undefined ? '' : ` ToParam="${escapeXml(wire.to_pin)}"`
+    parts.push(`<Wire FromID="${wire.from}"${fromPin} ToID="${wire.to}"${toPin}/>`)
+  }
+  return `<Sheet Number="${operation.sheet}">${parts.join('')}</Sheet>`
+}
+
+/** Escape an attribute value. */
+function escapeXml(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+}
