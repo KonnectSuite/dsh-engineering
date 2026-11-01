@@ -383,6 +383,11 @@ describe('editing a data type', () => {
     expect(member.error?.code).toBe('PROTECTED_TARGET')
     const description = await l5x.call('draft_udt_description', { udt: 'STRING_5', description: 'x' })
     expect(description.error?.code).toBe('PROTECTED_TARGET')
+    // Reader and listing must agree: the type exists and is vendor-owned.
+    const read = await l5x.call('get_component', { kind: 'udt', name: 'STRING_5' })
+    expect(read.error?.code).toBe('PROTECTED_TARGET')
+    const listed = await l5x.call('list_components', { kind: 'udt' })
+    expect(String(listed.summary)).toContain('1 vendor-owned not listed')
   })
 
   it('still stages an edit to a user type', async () => {

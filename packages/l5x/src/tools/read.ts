@@ -112,7 +112,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         const rows = selectRows(project.document, kind, optionalString(args, 'scope'), filter)
         const page = rows.slice(offset, offset + limit)
         return success(
-          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}${kind !== 'routine' ? '' : (() => { const protectedCount = project.document.protectedRoutines.filter(entry => optionalString(args, 'scope') === undefined || entry.program === optionalString(args, 'scope')).length; return protectedCount === 0 ? '' : `, ${protectedCount} source-protected` })()}.`,
+          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}${kind !== 'udt' ? '' : (project.document.vendorTypes.length === 0 ? '' : `, plus ${project.document.vendorTypes.length} vendor-owned not listed`)}${kind !== 'routine' ? '' : (() => { const protectedCount = project.document.protectedRoutines.filter(entry => optionalString(args, 'scope') === undefined || entry.program === optionalString(args, 'scope')).length; return protectedCount === 0 ? '' : `, ${protectedCount} source-protected` })()}.`,
           { kind, total: rows.length, offset, limit, rows: page },
           pageNext(kind, page, offset, limit, rows.length, filter),
         )
@@ -242,7 +242,19 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
   if (kind === 'udt') {
     const matches = getUdt(document, name)
     const first = matches[0]
-    if (first === undefined) throw notFound(kind, name, document.udts.map(udt => udt.name))
+    if (first === undefined) {
+      // A built-in family type exists in the export; "not found" is the wrong sentence.
+      const vendor = document.vendorTypes.find(entry => entry.toLowerCase() === name.toLowerCase())
+      if (vendor !== undefined) {
+        throw new L5xError(
+          'PROTECTED_TARGET',
+          `Data type ${vendor} is vendor-owned; this tool models user-defined types, not the built-in families.`,
+          'Read the vendor documentation for that family, or add a user-defined type.',
+          [vendor],
+        )
+      }
+      throw notFound(kind, name, document.udts.map(udt => udt.name))
+    }
     return first
   }
   if (kind === 'routine') {

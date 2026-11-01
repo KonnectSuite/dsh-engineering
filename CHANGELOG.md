@@ -596,6 +596,14 @@
   matches the 144 `EncodedData` bodies exactly. A test pins the row and the count alongside the editor's refusal and the reader's
   message, so all three surfaces are checked in one place.
 
+- **Vendor-owned types now get a consistent story from all three surfaces.** Round 78 stopped the editor from changing them; the reader
+  still answered `COMPONENT_NOT_FOUND` for `STRING_1`, and the listing simply omitted the family. `get_component kind:"udt"` now
+  answers `PROTECTED_TARGET: Data type STRING_1 is vendor-owned; this tool models user-defined types, not the built-in families.`,
+  and `list_components kind:"udt"` reports **"166 udts, plus 7 vendor-owned not listed"** - the seven matching the seven
+  `StringFamily` entries in the export. One test checks declaration, refusal, reader and listing together, so the four answers
+  cannot drift. Vendor types are the second protected class to be made consistent; safety programs are legitimately readable, so
+  their read surfaces needed no change.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
