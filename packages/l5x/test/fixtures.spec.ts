@@ -117,6 +117,46 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('reference rows', () => {
+  it('say when the reference is safety code', async () => {
+    const built = l5x({
+      name: 'RefSafety',
+      programs: [
+        program('Guard', rllRoutine('MainRoutine', [{ text: 'XIC(SafeTag)OTE(SafeTag2);' }]), { safety: true, tags: tag('SafeTag') + tag('SafeTag2') }),
+        program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(PlainTag)OTE(PlainTag2);' }]), { tags: tag('PlainTag') + tag('PlainTag2') }),
+      ].join(''),
+      tasks: [
+        task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
+        task('MainTask', ['Main']),
+      ].join(''),
+    })
+    const l5xTool = harness(new Map([['rs.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'rs.l5x' })).error).toBeUndefined()
+    const safe = await l5xTool.call('find_references', { symbol: 'SafeTag', scope: 'Guard', detail: 'evidence' })
+    const safeRows = (safe.data?.evidence ?? []) as { safety?: boolean }[]
+    expect(safeRows.length).toBeGreaterThan(0)
+    expect(safeRows.every(row => row.safety === true)).toBe(true)
+    const plain = await l5xTool.call('find_references', { symbol: 'PlainTag', scope: 'Main', detail: 'evidence' })
+    const plainRows = (plain.data?.evidence ?? []) as { safety?: boolean }[]
+    expect(plainRows.length).toBeGreaterThan(0)
+    expect(plainRows.every(row => row.safety === undefined)).toBe(true)
+    // A reference scan reports an AOI by its plain name, not "AOI::Name".
+    const aoiBuilt = l5x({
+      name: 'RefSafetyAoi',
+      aois: aoi('AOI_SAFE', { safety: true, parameters: [parameter('P')], routines: rllRoutine('Logic', [{ text: 'XIC(P)OTE(P);' }]) }),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const aoiTool = harness(new Map([['rsa.l5x', new TextEncoder().encode(aoiBuilt)]]))
+    expect((await aoiTool.call('open_project', { path: 'rsa.l5x' })).error).toBeUndefined()
+    const member = await aoiTool.call('find_references', { symbol: 'AOI_SAFE::P', detail: 'evidence' })
+    const memberRows = (member.data?.evidence ?? []) as { scope: string; safety?: boolean }[]
+    expect(memberRows.length).toBeGreaterThan(0)
+    expect(memberRows.every(row => row.scope === 'AOI_SAFE')).toBe(true)
+    expect(memberRows.every(row => row.safety === true)).toBe(true)
+  })
+})
+
 describe('searching safety logic', () => {
   it('marks a match inside a safety program and not one in standard logic', async () => {
     const built = l5x({

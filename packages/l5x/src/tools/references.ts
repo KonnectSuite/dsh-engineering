@@ -56,12 +56,12 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
         const matches = logicMatches(project.document, query)
         // A match inside a safety program or a safety AOI is safety code; say so.
-        const isSafety = (program: string): boolean => {
-          if (program.startsWith('AOI::')) {
-            const name = program.slice('AOI::'.length)
-            return project.document.aois.some(aoi => aoi.name.toUpperCase() === name.toUpperCase() && aoi.safety === true)
-          }
-          return project.document.programs.some(entry => entry.name.toUpperCase() === program.toUpperCase() && entry.safety === true)
+        // Search reports an AOI as "AOI::Name"; keep the plain-name form working too.
+        const isSafety = (scopeName: string): boolean => {
+          const plain = scopeName.startsWith('AOI::') ? scopeName.slice('AOI::'.length) : scopeName
+          const instruction = project.document.aois.find(entry => entry.name.toUpperCase() === plain.toUpperCase())
+          if (instruction !== undefined) return instruction.safety === true
+          return project.document.programs.some(entry => entry.name.toUpperCase() === plain.toUpperCase() && entry.safety === true)
         }
         const page = matches.slice(0, limit).map(match => ({ ...match, ...(isSafety(match.program) ? { safety: true } : {}) }))
         const first = page[0]
@@ -86,7 +86,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
     }),
     tool({
       name: 'find_references',
-      description: 'Find where one symbol is read or written in exported logic, with scope, access and confidence. Use trace_dependencies for what feeds a symbol.',
+      description: 'Find where one symbol is read or written in exported logic, with scope, access, confidence and whether the site is safety code. Use trace_dependencies for what feeds a symbol.',
       parameters: object({
         symbol: string('Symbol to follow, as declared or as written in logic. Example: "Motor_1" or "Program:MainProgram.Motor_1".'),
         scope: string('Program scope to search. Omit to search every scope.'),
@@ -102,6 +102,14 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
         const evidence = findReferences(project, symbol, scope)
         const byAccess = countAccess(evidence)
+        // A reference inside a safety program or a safety AOI is safety code; say so per row.
+        // Search reports an AOI as "AOI::Name"; the reference scan reports its plain name.
+        const isSafetyScope = (scopeName: string): boolean => {
+          const plain = scopeName.startsWith('AOI::') ? scopeName.slice('AOI::'.length) : scopeName
+          const instruction = project.document.aois.find(entry => entry.name.toUpperCase() === plain.toUpperCase())
+          if (instruction !== undefined) return instruction.safety === true
+          return project.document.programs.some(entry => entry.name.toUpperCase() === plain.toUpperCase() && entry.safety === true)
+        }
         const rows = evidence.slice(0, limit).map(reference => ({
           scope: reference.scope,
           routine: reference.routine,
@@ -112,6 +120,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           access: reference.access,
           confidence: reference.confidence,
           context: reference.context,
+          ...(isSafetyScope(reference.scope) ? { safety: true } : {}),
         }))
         // A consumed tag's writer is another controller; a produced tag's readers are remote too.
         const declared = project.document.tags.find(tag => tag.name.toLowerCase() === (symbol.split('.')[0] ?? symbol).toLowerCase())

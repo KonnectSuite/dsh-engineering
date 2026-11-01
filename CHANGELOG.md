@@ -943,6 +943,12 @@
   omits the field otherwise. Verified on `Seco_Homogenizer`: searching `Open_Valve` returns one standard hit (`COMBUSTION/D02_Sfty_HMI`) and four safety hits
   (`AOI::FC_SFTY_SSOV` EnableInFalse and Logic), flagged accordingly; a built fixture pins both sides. 446 package tests.
 
+- **`find_references` rows now say when the site is safety code - and the AOI spelling broke the first try.** Each evidence row carries `safety: true` when its scope is a
+  safety program or safety AOI, and the description names it. The first real check on `Seco_Homogenizer` returned `false` for all four `FC_SFTY_SSOV` rows: the
+  reference scan reports an AOI by its **plain name**, while `search_logic` reports `AOI::Name`, so the prefix test missed. Both helpers now accept either
+  spelling and resolve the AOI first; the same check then returns `true` for every safety AOI row. Tests cover a safety program tag and an AOI parameter.
+  447 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
