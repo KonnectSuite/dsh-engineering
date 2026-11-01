@@ -1455,6 +1455,10 @@
   `run_checks`: both report no FBD/ICON/OCON/IREF/OREF finding and no SFC finding. This pins the composer output against the rules added in rounds 72-74,
   so a change to either side that breaks the agreement fails a test. 539 package tests.
 
+- **The diagram document names the initial SFC step.** The FBD/SFC table gained an Initial column: a step Studio marks `InitialStep` shows
+  `yes`, every other row is blank. A test documents a two-step chart and asserts the initial row and the unmarked one. Live check: `read_controller_mode`
+  against 192.168.1.3 through `DESKTOP-N9UEQO4!AB_ETHIP-1\192.168.1.3` returned `Run` (read-only, snapshot sha 38a68c3c...). 540 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

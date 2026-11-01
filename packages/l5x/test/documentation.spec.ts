@@ -64,8 +64,26 @@ describe('document_project', () => {
     expect((await l5xTool.call('open_project', { path: 'pins.l5x' })).error).toBeUndefined()
     expect((await l5xTool.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
     const text = l5xTool.written.get('docs/rungs/Main.md') ?? ''
-    expect(text).toContain('| Element | Reference | Pins | From | From pin | To | To pin |')
+    expect(text).toContain('| Element | Reference | Pins | Initial | From | From pin | To | To pin |')
     expect(text).toContain('SourceA SourceB Dest')
+  })
+
+  it('documents which SFC step is the initial step', async () => {
+    const sfc = '<Routine Name="Chart" Type="SFC"><SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape"><Sheet Number="1">'
+      + '<Step ID="1" X="300" Y="100" Operand="Step_1" InitialStep="true"/><Step ID="2" X="300" Y="300" Operand="Step_2" InitialStep="false"/>'
+      + '<Transition ID="3" X="300" Y="200" Operand="Tran_1"/><DirectedLink FromID="1" ToID="3"/><DirectedLink FromID="3" ToID="2"/>'
+      + '</Sheet></SFCContent></Routine>'
+    const xml = l5x({
+      name: 'SfcDoc',
+      programs: program('Main', sfc, { mainRoutine: 'Chart' }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['sfc.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'sfc.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    const text = l5xTool.written.get('docs/rungs/Main.md') ?? ''
+    expect(text).toMatch(/\| Step \| Step_1 \|[^\n]*\| yes \|/u)
+    expect(text).toMatch(/\| Step \| Step_2 \|[^\n]*\| {2}\|/u)
   })
 
   it('summarises the project with its tasks and programs', async () => {
