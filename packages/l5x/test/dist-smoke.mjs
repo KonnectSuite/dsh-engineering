@@ -60,8 +60,11 @@ test('the built engine knows an infinite check is input-type and REAL-only', { s
   const { instructionByName } = await load('engine/instructions.js')
   assert.deepEqual(instructionByName('ISINF')?.operands[0]?.types, ['REAL'])
   const { parseLadder, rightRailReader } = await load('engine/logic-syntax.js')
-  const parsed = parseLadder('ISINF(R);')
-  assert.equal(rightRailReader(parsed.nodes), 'ISINF')
+  // Every input-type reader refuses to drive the rail; BSL is an output instruction and must not.
+  for (const name of ['ISINF', 'ISNAN', 'DTR', 'AND', 'OR', 'XOR', 'NOT', 'BTD', 'EQU', 'NEQ']) {
+    assert.equal(rightRailReader(parseLadder(`${name}(X);`).nodes), name, name)
+  }
+  assert.equal(rightRailReader(parseLadder('BSL(X);').nodes), undefined)
 })
 
 test('the built engine reports a JSR without its return slot', { skip }, async () => {

@@ -632,6 +632,33 @@ describe('a bit shift', () => {
   })
 })
 
+describe('an input-type logic instruction', () => {
+  it('cannot end a rung but can drive an output', async () => {
+    // DTR(Src,Mask,Ref) alone failed AUDIT_OUTPUTS and DTR(...)OTE(Bit) built 0/0; AND behaves the
+    // same way (AND(A,B,D)OTE(Bit) built 0/0). Both were missing from the rail rule.
+    const project = l5x({
+      name: 'RailGuard',
+      tags: tag('A', 'DINT') + tag('B', 'DINT') + tag('D', 'DINT') + tag('Src', 'DINT') + tag('Mask', 'DINT') + tag('Ref', 'DINT') + tag('Bit', 'BOOL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['rail.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'rail.l5x' })).error).toBeUndefined()
+    const andRail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }] }) })
+    expect(andRail.error?.code).toBe('INVALID_LADDER_SPEC')
+    expect(andRail.error?.message).toContain('ends in AND')
+    const andDriven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }, { instr: 'OTE', args: ['Bit'] }] }) })
+    expect(andDriven.error).toBeUndefined()
+    expect((andDriven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('AND(A,B,D)OTE(Bit);')
+    const dtrRail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }] }) })
+    expect(dtrRail.error?.code).toBe('INVALID_LADDER_SPEC')
+    expect(dtrRail.error?.message).toContain('ends in DTR')
+    const dtrDriven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }, { instr: 'OTE', args: ['Bit'] }] }) })
+    expect(dtrDriven.error).toBeUndefined()
+    expect((dtrDriven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('DTR(Src,Mask,Ref)OTE(Bit);')
+  })
+})
+
 describe('an infinite or NaN check', () => {
   it('takes a REAL tag and cannot end a rung', async () => {
     // ISINF(R)OTE(B) and ISNAN(R)OTE(B) built 0/0; ISINF(D) with a DINT failed INVALIDOPTYPE.

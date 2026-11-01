@@ -1212,6 +1212,11 @@
 
 - **Generated client faces refreshed** after the BSL/BSR change, so repository bytes match the rebuilt artifact.
 
+- **DTR, AND, OR, XOR, NOT and BTD cannot end a rung.** `DTR(Src,Mask,Ref)` alone failed Studio with `AUDIT_OUTPUTS` while
+  `DTR(...)OTE(Bit)` built 0/0; `AND(A,B,D)OTE(Bit)` also built 0/0. All six are now in the rail-reader set, so the composer refuses the
+  unbuildable form and names the instruction. BSL/BSR are deliberately excluded because they built at the rail. Tests hold AND and DTR both ways;
+  the dist smoke checks every reader and the BSL exclusion. 494 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -152,7 +152,8 @@ export function parseLadder(source: string): { nodes: readonly LadderNode[]; iss
  */
 const RAIL_READERS: ReadonlySet<string> = new Set([
   'AFI', 'ONS', 'XIC', 'XIO',
-  'ISINF', 'ISNAN',
+  'ISINF', 'ISNAN', 'DTR',
+  'AND', 'OR', 'XOR', 'NOT', 'BTD',
   'EQU', 'GEQ', 'GRT', 'LEQ', 'LES', 'LIM', 'MEQ', 'NEQ',
 ])
 
