@@ -28,6 +28,15 @@ test('the built engine emits the modern spelling for a v37 project', { skip }, a
   assert.equal(spellingForProject('MOV', new Set(), '19'), 'MOV')
 })
 
+test('the built catalog marks the slots that must be tags', { skip }, async () => {
+  const { instructionByName } = await load('engine/instructions.js')
+  for (const [name, slotName] of [['ADD', 'Destination'], ['FOR', 'Index'], ['SIZE', 'Size']]) {
+    const slot = instructionByName(name)?.operands.find(operand => operand.name === slotName)
+    assert.equal(slot?.writable, true, `${name} ${slotName}`)
+  }
+  assert.equal(instructionByName('ADD')?.operands[0]?.writable, undefined)
+})
+
 test('the built engine reports a JSR without its return slot', { skip }, async () => {
   const { rungFindings } = await load('engine/rung-rules.js')
   const routine = {

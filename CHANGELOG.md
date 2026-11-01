@@ -1121,6 +1121,9 @@
 - **Generated client faces refreshed.** The rebuild after the writable-slot changes regenerated both tracked client faces; they are committed so the
   repository carries the same bytes the release assembly embeds.
 
+- **The built artifact must carry the writable-slot contract.** The dist smoke now asserts `ADD` Destination, `FOR` Index and `SIZE` Size are
+  `writable` in `lib/`, and that a source slot is not, so an artifact built before the guard fails the smoke. 4/4 smoke checks pass.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
