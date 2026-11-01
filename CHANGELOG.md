@@ -1185,6 +1185,12 @@
 
 - **Generated client faces refreshed** after removing EXP from the catalogue, so repository bytes match the rebuilt artifact.
 
+- **ISINF and ISNAN are input instructions, and their source must be REAL.** Both names are newer than the v36 help index, so Studio decided: `ISINF(R)OTE(B)`
+  and `ISNAN(R)OTE(B)` built 0/0, while `ISINF(D)` with a DINT failed `INVALIDOPTYPE`. Both are now in the rail-reader set (a rung ending in one is
+  refused before a build) and their Source slot is restricted to REAL. The remaining two unlisted names, `SRT(Arr,0,Ctrl,10,0)` and
+  `ATAN2(R,R,R)`, built 0/0 and are real. Tests hold the type, the rail refusal and the legal driven form; the dist smoke checks the built engine.
+  492 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

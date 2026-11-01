@@ -608,6 +608,30 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('an infinite or NaN check', () => {
+  it('takes a REAL tag and cannot end a rung', async () => {
+    // ISINF(R)OTE(B) and ISNAN(R)OTE(B) built 0/0; ISINF(D) with a DINT failed INVALIDOPTYPE.
+    // Neither name is in the v36 help index, so both were probed against Studio.
+    const project = l5x({
+      name: 'IsCheckGuard',
+      tags: tag('R', 'REAL') + tag('D', 'DINT') + tag('B', 'BOOL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['isinf.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'isinf.l5x' })).error).toBeUndefined()
+    const driven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }, { instr: 'OTE', args: ['B'] }] }) })
+    expect(driven.error).toBeUndefined()
+    expect((driven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ISINF(R)OTE(B);')
+    const rail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }] }) })
+    expect(rail.error?.code).toBe('INVALID_LADDER_SPEC')
+    expect(rail.error?.message).toContain('ends in ISINF')
+    const intSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['D'] }, { instr: 'OTE', args: ['B'] }] }) })
+    expect(intSource.error?.code).toBe('INVALID_OPERAND')
+    expect(intSource.error?.message).toContain('must be REAL')
+  })
+})
+
 describe('a tag-only operand slot', () => {
   it('refuses a literal for arrays, structures and copy sources', async () => {
     // COP(Arr,5,10) and NEG(5,5) were accepted before this; Studio refuses a literal in those

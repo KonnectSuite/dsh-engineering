@@ -46,6 +46,14 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   assert.equal(cps[1]?.arrayElement, true)
 })
 
+test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {
+  const { instructionByName } = await load('engine/instructions.js')
+  assert.deepEqual(instructionByName('ISINF')?.operands[0]?.types, ['REAL'])
+  const { parseLadder, rightRailReader } = await load('engine/logic-syntax.js')
+  const parsed = parseLadder('ISINF(R);')
+  assert.equal(rightRailReader(parsed.nodes), 'ISINF')
+})
+
 test('the built engine reports a JSR without its return slot', { skip }, async () => {
   const { rungFindings } = await load('engine/rung-rules.js')
   const routine = {
