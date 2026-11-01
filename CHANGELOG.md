@@ -869,6 +869,10 @@
   `safety: true` in the row and the record, `Main/PlainTag` reports `false` in the row and omits the field in the record. The test that checked the CSV now
   asserts all three surfaces together, so they cannot disagree. 437 package tests.
 
+- **An AOI's own routines now carry the instruction's safety class.** Reading `FC_SFTY_SSOV/Logic` returned the routine alone; nothing said it is safety code. AOI routine
+  rows in `list_components` now carry `safety`, and `get_component` on an AOI-owned routine returns `safety: true` when the parent instruction is `Class="Safety"`. The
+  builder spec asserts both for `AOI_Step/Logic`. 437 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

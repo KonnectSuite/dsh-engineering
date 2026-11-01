@@ -47,5 +47,12 @@ describe('the fixture builder', () => {
       .filter(entry => entry.safetyEnabled === true)
       .map(entry => entry.name)
     expect(safetyModules).toEqual(['SA_IN'])
+
+    // The AOI is safety, so its own logic is safety code; both surfaces must say so.
+    const logicRow = ((routines.data?.rows ?? []) as { name: string; safety?: boolean }[])
+      .find(entry => entry.name === 'Logic')
+    expect(logicRow?.safety).toBe(true)
+    const logic = await l5xTool.call('get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
+    expect((logic.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
   })
 })
