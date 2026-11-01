@@ -788,6 +788,12 @@
   safety AOIs and 0 calls outside its safety programs**, so it produces no noise on real projects, and the test covers both a violating standard program
   and a compliant safety program (1 finding, never 2). 428 package tests.
 
+- **Two more safety rules, both corpus-silent.** `SAFETY_PROGRAM_NOT_IN_SAFETY_TASK` reports a program declared `Class="Safety"` that no task schedules, or
+  that a standard task schedules - at run time it is not a safety program. `SAFETY_MODULE_WITHOUT_SAFETY_NETWORK` reports a module with
+  `SafetyEnabled="true"` and no `SafetyNetwork`, whose connection cannot be verified. Scanning first showed the corpus needs neither:
+  `Seco_Homogenizer` has 2 safety programs both scheduled by `SafetyTask` and 10 safety modules all with a network, `Seco_Cooler` 1 and 6 - and both rules
+  return **0 findings** there after implementation. The test covers one violating and one compliant case for each. 429 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

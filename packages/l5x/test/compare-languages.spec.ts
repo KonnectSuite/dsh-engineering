@@ -521,3 +521,41 @@ describe('a safety instruction outside a safety program', () => {
     expect(String(findings[0]?.message)).not.toContain('Guard')
   })
 })
+
+/** One safety program scheduled by a standard task, one by a safety task; one safety module without a network. */
+const SAFETY_SCHEDULE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="SafetySched" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags/>
+    <Modules>
+      <Module Name="SA_BAD" CatalogNumber="1756-IB16S/A" Vendor="1" ProductType="35" ProductCode="33" Major="1" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false" SafetyEnabled="true"/>
+      <Module Name="SA_OK" CatalogNumber="1756-IB16S/A" Vendor="1" ProductType="35" ProductCode="33" Major="1" Minor="11" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false" SafetyEnabled="true" SafetyNetwork="16#0000_4bc3"/>
+    </Modules>
+    <Programs>
+      <Program Name="Misplaced" MainRoutineName="R" Class="Safety"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program>
+      <Program Name="Guard" MainRoutineName="R" Class="Safety"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program>
+    </Programs>
+    <Tasks>
+      <Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Misplaced"/></ScheduledPrograms></Task>
+      <Task Name="SafetyTask" Type="PERIODIC" Rate="20" Priority="10" Class="Safety"><ScheduledPrograms><ScheduledProgram Name="Guard"/></ScheduledPrograms></Task>
+    </Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('safety scheduling and safety network', () => {
+  it('reports a safety program in a standard task and a safety module without a network', async () => {
+    const l5x = harness(new Map([['ss.l5x', new TextEncoder().encode(SAFETY_SCHEDULE_L5X)]]))
+    await l5x.call('open_project', { path: 'ss.l5x' })
+    const schedule = await l5x.call('run_checks', { rule: 'SAFETY_PROGRAM_NOT_IN_SAFETY_TASK' })
+    const scheduleFindings = (schedule.data?.findings ?? []) as { message: string }[]
+    expect(scheduleFindings.length).toBe(1)
+    expect(String(scheduleFindings[0]?.message)).toContain('Misplaced')
+    expect(String(scheduleFindings[0]?.message)).toContain('MainTask')
+    expect(String(scheduleFindings[0]?.message)).not.toContain('Guard')
+    const network = await l5x.call('run_checks', { rule: 'SAFETY_MODULE_WITHOUT_SAFETY_NETWORK' })
+    const networkFindings = (network.data?.findings ?? []) as { message: string }[]
+    expect(networkFindings.length).toBe(1)
+    expect(String(networkFindings[0]?.message)).toContain('SA_BAD')
+    expect(String(networkFindings[0]?.message)).not.toContain('SA_OK')
+  })
+})

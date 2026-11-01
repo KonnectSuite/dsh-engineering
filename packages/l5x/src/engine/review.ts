@@ -370,6 +370,27 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       `${uncatalogued.size} instruction(s) in this export are not in the catalogue, so their operands were not checked: ${listed}${rows.length > 8 ? `, and ${rows.length - 8} more` : ''}`,
       { instructions: rows.slice(0, 20).map(([name, rungs]) => ({ name, rungs })), catalogue_size: catalogued.size, note: 'The catalogue models 128 of the vendor instructions; an uncatalogued name may still be valid, and Studio remains the arity gate.' })
   }
+  // A safety program must be scheduled by a safety task; one that runs in a standard task, or in
+  // none, is not a safety program at run time. Both corpus projects are clean, so this is silent.
+  for (const program of doc.programs) {
+    if (!program.safety) continue
+    const scheduledBySafety = doc.tasks.some(task => task.safety && task.programs.some(name => name.toUpperCase() === program.name.toUpperCase()))
+    if (!scheduledBySafety) {
+      const where = doc.tasks.filter(task => task.programs.some(name => name.toUpperCase() === program.name.toUpperCase())).map(task => task.name)
+      report('SAFETY_PROGRAM_NOT_IN_SAFETY_TASK', 'warning',
+        where.length === 0
+          ? `${program.name} is declared Class="Safety" but no task schedules it.`
+          : `${program.name} is declared Class="Safety" but is scheduled by ${where.join(', ')}, not a safety task.`,
+        { program: program.name, scheduledBy: where }, 'high')
+    }
+  }
+  // A safety-enabled module needs its safety network number; without one the connection cannot be verified.
+  for (const module of doc.modules) {
+    if (module.safetyEnabled !== true || module.safetyNetwork !== undefined) continue
+    report('SAFETY_MODULE_WITHOUT_SAFETY_NETWORK', 'warning',
+      `${module.name} is safety-enabled but declares no safety network number.`,
+      { module: module.name, catalogNumber: module.catalogNumber }, 'high')
+  }
   // A safety add-on instruction is declared Class="Safety"; calling it from standard logic puts
   // a certified instruction where no safety task scans it. The corpus is clean, so this is not noise.
   const safetyAoiNames = new Set(doc.aois.filter(aoi => aoi.safety === true).map(aoi => aoi.name.toUpperCase()))
