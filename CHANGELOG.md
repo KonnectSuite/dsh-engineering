@@ -1414,6 +1414,10 @@
   program with one RLL routine plus one FBD and one SFC routine, asserts `l5x_routine_diagram` refuses each non-ladder routine with its language named,
   and asserts `l5x_diagram` draws only the single ladder rung. 523 package tests.
 
+- **A diagram refusal says which of three conditions is true.** `l5x_diagram` answered a missing program, a missing routine and a program that exists
+  with no ladder all with `NOT_FOUND`. It now distinguishes them: `NOT_FOUND` names the absent program or routine, and `NO_LADDER_ROUTINES` says a
+  program exists but holds no RLL content. The skill also names the Alarms table the documentation bundle now writes. 524 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

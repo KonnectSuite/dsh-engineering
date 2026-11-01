@@ -125,5 +125,5 @@ truth. Never write to `<workspace>/_backups`.
 
 `document_project` writes a NEW folder: `PROJECT.md`, `io.md`/`io.csv`, `tags.csv` and `tags-studio.csv` (the
 `Tag Name,Description` shape Studio imports), and `rungs/<program>.md`. Structure and citations, not prose.
-`PROJECT.md` also carries Safety and Add-On Instructions tables; `rungs/AOI-<name>.md` documents an AOI's own
+`PROJECT.md` also carries Safety, Add-On Instructions and Alarms tables; `rungs/AOI-<name>.md` documents an AOI's own
 routines; the summary counts program and AOI routines separately.

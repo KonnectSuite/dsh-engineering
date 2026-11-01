@@ -266,4 +266,21 @@ describe('non-ladder routines', () => {
     expect(diagram.error).toBeUndefined()
     expect(diagram.data?.rungs).toBe(1)
   })
+
+  it('explains that an FBD-only program has no ladder, as its own condition', async () => {
+    const fbdOnly = l5x({
+      name: 'FbdOnly',
+      programs: program('Main', fbd, { mainRoutine: 'Fb' }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['fbd-only.l5x', new TextEncoder().encode(fbdOnly)]]))
+    expect((await l5xTool.call('open_project', { path: 'fbd-only.l5x' })).error).toBeUndefined()
+    const diagram = await l5xTool.call('l5x_diagram', { program: 'Main' })
+    expect(diagram.error?.code).toBe('NO_LADDER_ROUTINES')
+    expect(diagram.error?.message).toContain('has no ladder routines')
+    // A program that does not exist is a different condition and a different code path.
+    const missing = await l5xTool.call('l5x_diagram', { program: 'Nope' })
+    expect(missing.error?.code).toBe('NOT_FOUND')
+    expect(missing.error?.message).toContain('No program named Nope')
+  })
 })

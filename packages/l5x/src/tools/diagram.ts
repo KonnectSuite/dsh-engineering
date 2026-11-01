@@ -168,13 +168,23 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         if (requested < 1 || requested > 200) {
           throw new L5xError('INVALID_ARGUMENT', `max_rungs must be between 1 and 200, not ${requested}.`, 'Pass a smaller page, for example 40, or omit the argument for 60.')
         }
-        const routines = listRoutines(project.document).filter(info => info.type === 'RLL' && (program === undefined || info.program === program) && (routineName === undefined || info.name === routineName))
+        const allRoutines = listRoutines(project.document)
+        const routines = allRoutines.filter(info => info.type === 'RLL' && (program === undefined || info.program === program) && (routineName === undefined || info.name === routineName))
         if (routines.length === 0) {
+          const candidates = allRoutines.map(info => `${info.program}/${info.name} (${info.type})`).slice(0, 12)
+          // Three different conditions answered one NOT_FOUND: a missing program, a missing routine,
+          // and a program that exists but has no ladder. A reader needs the one that is true.
+          if (program !== undefined && !project.document.programs.some(entry => entry.name === program)) {
+            throw new L5xError('NOT_FOUND', `No program named ${program}.`, 'Call list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
+          }
+          if (routineName !== undefined && !allRoutines.some(info => info.name === routineName && (program === undefined || info.program === program))) {
+            throw new L5xError('NOT_FOUND', `No routine named ${routineName}${program === undefined ? '' : ` in program ${program}`}.`, 'Call list_components kind="routine" for the declared routines and their languages.', candidates)
+          }
           throw new L5xError(
-            'NOT_FOUND',
-            program === undefined ? 'The project has no ladder routines to draw.' : `Program ${program} has no ladder routines.`,
-            'List the routines with list_components, then pass a program that owns RLL routines.',
-            listRoutines(project.document).map(info => `${info.program}/${info.name} (${info.type})`).slice(0, 12),
+            'NO_LADDER_ROUTINES',
+            program === undefined ? 'The project has no ladder routines to draw.' : `Program ${program} exists but has no ladder routines.`,
+            'Pass a program or routine that owns RLL content; list_components shows each routine language.',
+            candidates,
           )
         }
         const rows: Row[] = []
