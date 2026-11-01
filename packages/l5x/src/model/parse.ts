@@ -42,12 +42,29 @@ export function loadL5x(xml: string): L5xDocument {
     tags: buildTags(controller),
     udts: buildUdts(controller),
   vendorTypes: vendorTypeNames(controller),
+  protectedRoutines: protectedRoutineNames(controller),
     aois: buildAois(controller),
     modules: buildModules(controller),
     alarms: buildAlarms(controller),
   }
   controllerElements.set(document, controller)
   return document
+}
+
+/** Routines the export carries only as encrypted bodies. */
+function protectedRoutineNames(controller: XmlElement): readonly { program: string; name: string }[] {
+  const results: { program: string; name: string }[] = []
+  const programs = firstChild(controller, 'Programs')
+  if (programs === undefined) return results
+  for (const program of elementChildren(programs, 'Program')) {
+    const routines = firstChild(program, 'Routines')
+    if (routines === undefined) continue
+    for (const routine of elementChildren(routines, 'EncodedData')) {
+      if (optionalAttribute(routine, 'EncodedType', '') !== 'Routine') continue
+      results.push({ program: optionalAttribute(program, 'Name', ''), name: optionalAttribute(routine, 'Name', '') })
+    }
+  }
+  return results
 }
 
 function buildAlarms(controller: XmlElement): readonly L5xAlarm[] {

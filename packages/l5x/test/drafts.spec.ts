@@ -392,3 +392,17 @@ describe('editing a data type', () => {
     expect(member.error).toBeUndefined()
   })
 })
+
+
+/** A project whose only routine is an encrypted body. */
+const ENCRYPTED_ROUTINE_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Encrypted\" ProcessorType=\"1756-L8\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <EncodedData EncodedType=\"Routine\" Name=\"R\"/>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('editing a source-protected routine', () => {
+  it('says it is protected instead of saying it does not exist', async () => {
+    const l5x = harness(new Map([['e.l5x', new TextEncoder().encode(ENCRYPTED_ROUTINE_L5X)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'e.l5x' })).error).toBeUndefined()
+    const staged = await l5x.call('draft_rung', { program: 'P', routine: 'R', rung: 0, mode: 'replace', text: 'NOP();' })
+    expect(staged.error?.code).toBe('PROTECTED_TARGET')
+    expect(String(staged.error?.message)).toContain('source-protected')
+  })
+})

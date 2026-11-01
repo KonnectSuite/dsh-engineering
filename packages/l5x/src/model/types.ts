@@ -265,6 +265,8 @@ export interface L5xDocument {
   readonly alarms: readonly L5xAlarm[]
   /** Names of data types the vendor owns (Family other than NoFamily), which cannot be edited. */
   readonly vendorTypes: readonly string[]
+  /** Routines whose bodies are encrypted in the export, so they cannot be read or changed. */
+  readonly protectedRoutines: readonly { readonly program: string; readonly name: string }[]
 }
 
 /** One place a symbol appears. */

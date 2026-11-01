@@ -175,6 +175,12 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const program = safetyGuard(project, requiredString(args, 'program'))
         const routine = requiredString(args, 'routine')
+        // A routine the export carries only as an encrypted body cannot be edited; "no such routine"
+        // would send a reader looking for a name that is right there in the export.
+        if (!project.document.routines.some(entry => entry.program === program && entry.name.toLowerCase() === routine.toLowerCase())
+          && project.document.protectedRoutines.some(entry => entry.program === program && entry.name.toLowerCase() === routine.toLowerCase())) {
+          throw new L5xError('PROTECTED_TARGET', `Routine ${routine} in ${program} is source-protected in this export; its body cannot be read or changed.`, 'Obtain an unprotected export or the source project from the vendor.')
+        }
         const mode = requiredString(args, 'mode')
         const text = optionalString(args, 'text')
         const rung = optionalInteger(args, 'rung')

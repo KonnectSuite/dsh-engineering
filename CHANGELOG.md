@@ -573,6 +573,15 @@
   round 77's audit lesson applied to the second protected class, and the reason it was cheap: the guard already existed, only
   its evidence was missing from the model.
 
+- **A source-protected routine can no longer be edited, and the tool says why.** On `Seco_Cooler` - whose 144 routine bodies are
+  encrypted - `draft_rung` **staged** a replacement for `BLOWERS/MainRoutine`, a routine the export carries only as an encrypted
+  body; the change could never apply, and the old failure path would have described it as a missing routine. The document now
+  carries **`protectedRoutines`** (program and name for every `EncodedData EncodedType="Routine"`), and staging refuses with
+  `PROTECTED_TARGET: Routine MainRoutine in BLOWERS is source-protected in this export; its body cannot be read or changed.`
+  Verified on that real export. One test pins the refusal. Still to fix, recorded rather than claimed: `get_component` on the same
+  routine says "No routine named MainRoutine in this export", which is the misleading sentence this round removed from staging but
+  not yet from the reader.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
