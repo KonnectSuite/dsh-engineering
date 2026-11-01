@@ -267,6 +267,24 @@ describe('the I/O list', () => {
   })
 })
 
+describe('the review summary', () => {
+  it('reports the check findings in the project summary', async () => {
+    const built = l5x({
+      name: 'WithFindings',
+      tags: tag('Orphan'),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['rf.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'rf.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs-findings', include: ['project'] })).error).toBeUndefined()
+    const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
+    expect(project).toContain('## Review findings')
+    expect(project).toContain('UNUSED_TAG')
+    expect(project).toContain('absence of findings does not prove controller safety')
+  })
+})
+
 describe('the tag CSV safety column', () => {
   it('marks a tag declared in a safety program and not one in standard logic', async () => {
     const built = l5x({

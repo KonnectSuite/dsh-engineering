@@ -20,6 +20,7 @@ import type { L5xDocument, L5xRoutine, L5xRung, L5xTag } from '../model/types.ts
 import { aliasesOf } from './configuration.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { resolveTag } from './tag-resolution.ts'
+import { runChecks } from './review.ts'
 
 /** One documentation part a caller can ask for. */
 export type DocumentPart = 'project' | 'io' | 'tags' | 'rungs'
@@ -190,6 +191,22 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
     text += '\n## Source-protected routines\n\nTheir bodies are encrypted in this export and are not documented here.\n\n| Program | Routine |\n|---|---|\n'
     for (const entry of project.document.protectedRoutines.slice(0, 200)) text += mdRow(entry.program, entry.name)
     if (project.document.protectedRoutines.length > 200) text += `\n${project.document.protectedRoutines.length - 200} more are not listed.\n`
+  }
+  // The bundle should not read clean while the checks already know something is wrong.
+  const checks = runChecks(project) as { findings?: readonly { rule: string; severity: string }[] }
+  const findings = checks.findings ?? []
+  if (findings.length > 0) {
+    const bySeverity = new Map<string, number>()
+    const byRule = new Map<string, number>()
+    for (const finding of findings) {
+      bySeverity.set(finding.severity, (bySeverity.get(finding.severity) ?? 0) + 1)
+      byRule.set(finding.rule, (byRule.get(finding.rule) ?? 0) + 1)
+    }
+    const severityRow = [...bySeverity].sort().map(([severity, count]) => mdRow(severity, count)).join('')
+    const rules = [...byRule].sort((left, right) => right[1] - left[1]).slice(0, 8).map(([rule, count]) => `${rule} (${count})`).join(', ')
+    text += '\n## Review findings\n\nHeuristic; absence of findings does not prove controller safety. Run run_checks for sites.\n\n| Severity | Count |\n|---|---|\n'
+    text += severityRow
+    text += `\nTop rules: ${rules}.${byRule.size > 8 ? ` And ${byRule.size - 8} more rule(s).` : ''}\n`
   }
   text += '\n## Coverage\n\nThis document is generated from the saved export. It does not prove construction of the program,'
   text += ' compiled behaviour, runtime behaviour, or anything outside the export (HMI, produced/consumed tags, driver consumers).\n'

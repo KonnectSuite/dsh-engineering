@@ -877,6 +877,11 @@
   section to learn that `SafetyTask` or `COMBUSTION_SAFETY` is safety - while the file header already says the fact. Both tables now carry a **Safety** column:
   verified on `Seco_Homogenizer`, where `SafetyTask` reads true and `MainTask` false, and the programs table marks the two guard programs. 437 package tests.
 
+- **`PROJECT.md` now carries the review findings, not just the structure.** A handover bundle could read clean while `run_checks` already knew about 684 info items and 7
+  warnings - the two tools disagreed about the same project. The summary now ends with a **Review findings** section: counts by severity and the top rules, with the
+  heuristic caveat and a pointer to `run_checks`. Verified on `Seco_Homogenizer` (684 info, 7 warning; top rules UNDOCUMENTED_ROUTINE 257, UNDOCUMENTED_RUNG 237,
+  UNUSED_TAG 149) and pinned with a built fixture whose unused tag produces a finding. 438 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
