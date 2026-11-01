@@ -141,6 +141,13 @@ export function userType(name: string, members: readonly string[], family = 'NoF
   return `<DataType Name="${name}" Family="${family}" Class="User"><Members>${members.join('')}</Members></DataType>`
 }
 
+/** One vendor instruction whose body the export stores encrypted. */
+export function encodedAoi(name: string, options: { readonly vendor?: string; readonly description?: string } = {}): string {
+  const vendor = options.vendor === undefined ? '' : ` Vendor="${options.vendor}"`
+  const description = options.description === undefined ? '' : `<Description><![CDATA[${options.description}]]></Description>`
+  return `<EncodedData EncodedType="AddOnInstructionDefinition" Name="${name}" Class="Standard" Revision="1.0"${vendor} EncryptionConfig="9">${description}</EncodedData>`
+}
+
 /** One I/O module. */
 export function module(
   name: string,

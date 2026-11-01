@@ -175,6 +175,8 @@ export interface L5xAoiInfo {
   readonly revision: string
   /** Present and true only when the export declares the instruction `Class="Safety"`. */
   readonly safety?: boolean
+  /** Present and true when the export stores the body as EncodedData, so its logic is not readable. */
+  readonly protected?: boolean
 }
 
 /** One add-on instruction with its interface and internal logic. */

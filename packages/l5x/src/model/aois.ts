@@ -55,6 +55,7 @@ export function buildAois(controller: XmlElement): readonly L5xAoiDefinition[] {
     description: descriptionOf(aoi),
     revision: optionalAttribute(aoi, 'Revision', ''),
     ...(optionalAttribute(aoi, 'Class', '') === 'Safety' ? { safety: true } : {}),
+    ...(aoi.name === 'EncodedData' ? { protected: true } : {}),
     vendor: optionalAttribute(aoi, 'Vendor', ''),
     parameters: aoiParameters(aoi),
     localTags: aoiLocalTags(aoi),

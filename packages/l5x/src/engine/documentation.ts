@@ -179,7 +179,8 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   if (document.aois.length > 0) {
     text += '\n## Add-On Instructions\n\n| Instruction | Revision | Safety | Parameters | Routines | Description |\n|---|---|---|---|---|---|\n'
     for (const aoi of document.aois) {
-      text += mdRow(aoi.name, aoi.revision, aoi.safety === true ? 'yes' : 'no', aoi.parameters.length, aoi.routines.length, aoi.description)
+      // An encrypted instruction has routines we cannot see; 0 would claim it has none.
+      text += mdRow(aoi.name, aoi.revision, aoi.safety === true ? 'yes' : 'no', aoi.parameters.length, aoi.protected === true ? 'encrypted' : aoi.routines.length, aoi.description)
     }
   }
   // A handover reader must know which parts of the project are safety before touching anything.

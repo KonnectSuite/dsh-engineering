@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
-import { aoi, l5x, member, module, parameter, program, rllRoutine, tag, task, userType } from './l5x-build.ts'
+import { aoi, encodedAoi, l5x, member, module, parameter, program, rllRoutine, tag, task, userType } from './l5x-build.ts'
 
 const built = l5x({
   name: 'BuiltFixture',
@@ -180,6 +180,28 @@ describe('searching safety logic', () => {
     const plainMatches = (plain.data?.matches ?? []) as { safety?: boolean }[]
     expect(plainMatches.length).toBeGreaterThan(0)
     expect(plainMatches.every(match => match.safety === undefined)).toBe(true)
+  })
+})
+
+describe('an encrypted add-on instruction', () => {
+  it('is marked protected, counted in the limits and not shown as zero routines', async () => {
+    const built = l5x({
+      name: 'EncAoi',
+      aois: encodedAoi('VEND_AOI', { vendor: 'Acme', description: 'vendor instruction' }),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['ea.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    const opened = await l5xTool.call('open_project', { path: 'ea.l5x' })
+    expect(opened.error).toBeUndefined()
+    expect(Number(opened.data?.counts?.aois)).toBe(1)
+    const aoi = await l5xTool.call('get_component', { kind: 'aoi', name: 'VEND_AOI' })
+    expect((aoi.data?.component as { protected?: boolean } | undefined)?.protected).toBe(true)
+    const overview = await l5xTool.call('project_overview')
+    expect(JSON.stringify(overview.data?.limits ?? [])).toContain('encrypted (vendor)')
+    expect((await l5xTool.call('document_project', { output_root: 'docs-enc', include: ['project'] })).error).toBeUndefined()
+    const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
+    expect(project).toMatch(/\| VEND_AOI \|[^\n]*\| encrypted \|/u)
   })
 })
 

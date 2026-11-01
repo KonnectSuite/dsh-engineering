@@ -962,6 +962,12 @@
   `LEN:DINT, DATA:SINT` with `Dimension 50`, and the limits list drops the false vendor entry. The same round found my fixture builder writing
   `Dimensions="50" Dimension="0"` where a real export writes `Dimension="50"`. 449 package tests.
 
+- **An encrypted vendor instruction is now marked as unreadable, not as having no logic.** Round 163's count audit showed `AOI56MCM` (ProSoft) and eleven
+  Yaskawa motion instructions counted as AOIs with **0 routines** and no warning - their bodies are `<EncodedData>`. The model now carries
+  `protected: true`, `project_overview` reports *"N add-on instruction definition(s) are encrypted (vendor): their bodies are not readable"*, and the
+  handover table prints **encrypted** in the Routines column instead of `0`. Verified on both real exports (Seco 1, Carpenter 11) and pinned with a
+  builder `encodedAoi` fixture that asserts the flag, the limits entry and the table cell. 450 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

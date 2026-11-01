@@ -79,6 +79,8 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         if (document.vendorTypes.length > 0) limits.push(`${document.vendorTypes.length} vendor-owned data type(s) are not modelled`)
         const safetyTasks = document.tasks.filter(task => task.safety).map(task => task.name)
         if (safetyTasks.length > 0) limits.push(`safety task(s) ${safetyTasks.join(', ')}: safety logic cannot be edited`)
+    const protectedAois = project.document.aois.filter(aoi => aoi.protected === true)
+    if (protectedAois.length > 0) limits.push(`${protectedAois.length} add-on instruction definition(s) are encrypted (vendor): their bodies are not readable`)
         return success(
           `${document.controller.name} (${document.controller.processorType}, revision ${revisionOf(document)}).${limits.length === 0 ? '' : ` Limits: ${limits.join('; ')}.`}`,
           {
