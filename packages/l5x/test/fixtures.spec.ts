@@ -117,6 +117,32 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('a tag marked Class=Safety', () => {
+  it('is safety in the listing, the reader and the CSV even in a standard program', async () => {
+    const built = l5x({
+      name: 'SafetyTags',
+      tags: tag('CTRL_SAFE', 'BOOL', ' Class="Safety"'),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(PROG_SAFE)OTE(PLAIN);' }]), { tags: tag('PROG_SAFE', 'BOOL', ' Class="Safety"') + tag('PLAIN') }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['st.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'st.l5x' })).error).toBeUndefined()
+    const listed = await l5xTool.call('list_components', { kind: 'tag', scope: 'controller' })
+    const ctrl = ((listed.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'CTRL_SAFE')
+    expect(ctrl?.safety).toBe(true)
+    const prog = await l5xTool.call('list_components', { kind: 'tag', scope: 'Main' })
+    expect(((prog.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'PROG_SAFE')?.safety).toBe(true)
+    expect(((prog.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'PLAIN')?.safety).toBe(false)
+    const record = await l5xTool.call('get_component', { kind: 'tag', name: 'CTRL_SAFE' })
+    expect((record.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
+    expect((await l5xTool.call('document_project', { output_root: 'docs-st', include: ['tags'] })).error).toBeUndefined()
+    const csv = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('tags.csv'))?.[1] ?? '')
+    expect(csv).toMatch(/controller,CTRL_SAFE,[^\n]*,true$/mu)
+    expect(csv).toMatch(/Main,PROG_SAFE,[^\n]*,true$/mu)
+    expect(csv).toMatch(/Main,PLAIN,[^\n]*,false$/mu)
+  })
+})
+
 describe('reference rows', () => {
   it('say when the reference is safety code', async () => {
     const built = l5x({

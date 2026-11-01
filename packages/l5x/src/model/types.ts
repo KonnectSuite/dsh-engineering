@@ -24,6 +24,8 @@ export interface L5xTag {
   readonly radix?: string
   /** Present and true only when the export marks the tag `Constant="true"`. */
   readonly constant?: boolean
+  /** Present and true when the export marks the tag `Class="Safety"`; controller-scoped safety tags exist. */
+  readonly safety?: boolean
   /** External-access setting, when the export declares one. */
   readonly externalAccess?: string
   /** Declared tag type as written, e.g. Base, Alias, Produced, Consumed. */

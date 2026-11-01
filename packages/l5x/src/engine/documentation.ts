@@ -118,7 +118,7 @@ function tagsCsv(document: L5xDocument): string {
   let text = line('scope', 'name', 'data_type', 'description', 'alias_for', 'dimensions', 'external_access', 'safety')
   for (const tag of document.tags) {
     const record = tag as unknown as Record<string, unknown>
-    text += line(tag.scope, tag.name, tag.dataType, tag.description ?? '', aliasTarget(document, tag), record.dimensions ?? '', tag.externalAccess ?? '', safetyScopes.has(tag.scope.toUpperCase()))
+    text += line(tag.scope, tag.name, tag.dataType, tag.description ?? '', aliasTarget(document, tag), record.dimensions ?? '', tag.externalAccess ?? '', tag.safety === true || safetyScopes.has(tag.scope.toUpperCase()))
   }
   return text
 }

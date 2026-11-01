@@ -113,6 +113,7 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
     constant?: boolean
     externalAccess?: string
     tagType?: string
+    safety?: boolean
     consumerOf?: string
     remoteTag?: string
     aliasFor?: string
@@ -133,6 +134,8 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
   if (externalAccess !== undefined) entry.externalAccess = externalAccess
   const tagType = presentAttribute(tag, 'TagType')
   if (tagType !== undefined) entry.tagType = tagType
+  // A controller-scoped safety tag carries Class="Safety"; program membership is not the only marker.
+  if (tag.attrs['Class'] === 'Safety') entry.safety = true
   // A produced or consumed tag is a network fact an engineer needs before changing it.
   const aliasFor = presentAttribute(tag, 'AliasFor')
   if (aliasFor !== undefined) entry.aliasFor = aliasFor

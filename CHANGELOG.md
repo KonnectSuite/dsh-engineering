@@ -984,6 +984,12 @@
   nothing. `counts.aois` is now present and the counts line ends `add-on instructions: 26` on `Seco_Homogenizer`, matching the 26 AOI rows and
   `open_project`'s own count. The AOI-docs test asserts it. 451 package tests.
 
+- **Controller-scoped safety tags were invisible as safety.** A safety audit against the raw export counted **157** tags with `Class="Safety"`; the model marked
+  **none** of them, because safety was derived only from the declaring program, and these are controller-scoped (`AREA_E_UNDER_BLKD`, `AREA_N_PLTFRM_BLKD`...).
+  The reader now parses the tag's `Class="Safety"` and every consumer ORs it with program membership: listing rows, `get_component`, and the `safety` column of
+  `tags.csv`. Verified on `Seco_Homogenizer`: **259 safety tags** = 157 controller-class + 102 program-scoped, exactly as the raw file and the program set
+  predict. A built fixture pins both a controller tag and a standard-program tag. 451 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
