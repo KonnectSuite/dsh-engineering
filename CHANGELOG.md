@@ -1269,6 +1269,8 @@
   PID(pid1,...) form uses a PID tag. The PID slot now carries `types: ['PID']`, the existing build-proven test also asserts the refusal, and the dist
   smoke checks the built catalogue. 499 package tests.
 
+- **Generated client faces refreshed** after the PID type restriction, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
