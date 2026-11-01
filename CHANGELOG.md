@@ -129,6 +129,16 @@
   **0 warnings, 0 errors and an ACD written**. Two tests cover the accepted types and keep an unknown type refused, with
   the type check asserted where it actually fires — when the draft is applied, not when it is staged.
 
+- **Fixing code is now a proven flow, not a claim: refuse, name, replace, re-check, build.** An export whose rung reads
+  `XIC(Missing)OTE(Run)` **fails a real build** with `RxCMP_E_OPERAND_TAGNOTFOUND`; `run_checks` names it exactly —
+  *"Symbol Main::Missing could not be resolved in this export"*; `compose_rung` with `mode: "replace"` stages
+  `XIC(Start)OTE(Run)`; `draft_apply` writes it; the re-check on the written file reports **0** unresolved references; and
+  that file **builds with 0 warnings and 0 errors**. Both sides of the before/after are Studio verdicts, which is what
+  makes the claim worth anything. The flow is pinned in `packages/l5x/test/repair.spec.ts` so it cannot quietly stop
+  working: it asserts the finding before, the composed text, that the written export no longer contains the bad symbol,
+  and that the re-opened export has no unresolved reference left. That is the capability the brief asks for — compose,
+  and fix — shown as one run rather than as separate tools that happen to exist.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
