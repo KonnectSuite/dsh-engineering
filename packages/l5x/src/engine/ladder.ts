@@ -296,15 +296,20 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // because checkOperand preserves the text it was given.
     const emitted = args.map((argument, index) => {
       const text = checkOperand(project, argument, kindAt(index), operands).text
-      // Studio refuses a literal in a destination slot only at build time, with
+      // Studio refuses a literal in a writable slot only at build time, with
       // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. Catch it while composing and
       // state the written order, so the caller never learns the order from a failed build.
       const slot = instruction.operands[index] ?? restSlot
-      if (slot !== undefined && /dest/i.test(slot.name) && isLiteral(text)) {
+      const destination = slot !== undefined && /dest/i.test(slot.name)
+      // FOR's index is the other slot Studio requires to be a tag; its bounds may be literals.
+      const forIndex = instruction.name === 'FOR' && slot?.name === 'Index'
+      if (slot !== undefined && (destination || forIndex) && isLiteral(text)) {
         throw new L5xError(
           'INVALID_OPERAND',
-          `${text} is a literal where ${instruction.name} needs a writable destination.`,
-          `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`,
+          `${text} is a literal where ${instruction.name} needs a writable ${destination ? 'destination' : 'index'}.`,
+          destination
+            ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
+            : 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.',
         )
       }
       return text

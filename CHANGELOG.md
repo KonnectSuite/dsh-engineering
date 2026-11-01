@@ -1106,6 +1106,10 @@
 - **A changed wire pin is named in the change summary.** `renderChangeValue` now includes `from`/`to` pins, so a comparison that flips a wire from
   `SourceA` to `SourceB` says exactly that instead of printing `Wire #0->2` on both sides. Held by a changed-fields test. 479 package tests.
 
+- **A FOR index must be a tag, and the composer now says so.** Studio refused `FOR(Loop,5,0,10,1)` at build with `RxCMP_E_AUDIT_INVALIDOPKIND`;
+  `FOR(Loop,Count,0,10,1)` built 0/0. The composer refuses a literal FOR index while composing, with a fix naming the DINT tag the index needs, and leaves
+  the initial, terminal and step values free to be literals. Two tests hold both sides. 480 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

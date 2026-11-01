@@ -288,13 +288,19 @@ describe('a loop instruction names its routine', () => {
     expect(instructionByName('FOR')?.operands[0]?.kind).toBe('ROUTINE')
   })
 
-  it('composes a FOR loop over a routine that exists', async () => {
+  it('refuses a literal index and composes a tag index over a routine that exists', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    // Studio refused FOR(MainRoutine,0,1,10,1) at build with RxCMP_E_AUDIT_INVALIDOPKIND.
+    const bad = await l5x.call('compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['MainRoutine', '0', '1', '10', '1'] }] }),
     })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('writable index')
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['MainRoutine', 'SystemClock', '1', '10', '1'] }] }),
+    })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('FOR(MainRoutine,0,1,10,1);')
+    expect(text(result.data)).toBe('FOR(MainRoutine,SystemClock,1,10,1);')
   })
 })
 

@@ -427,3 +427,24 @@ describe('a project with no Tags element', () => {
     expect(text.indexOf('<Tags>')).toBeLessThan(text.indexOf('<Programs>'))
   })
 })
+
+describe('a FOR loop index', () => {
+  it('must be a tag, while its initial, terminal and step values may be literals', async () => {
+    const project = l5x({
+      name: 'ForGuard',
+      tags: tag('Count', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', []) + rllRoutine('Loop', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['for.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'for.l5x' })).error).toBeUndefined()
+    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', '5', '0', '10', '1'] }] }) })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('writable index')
+    expect(bad.error?.fix).toContain('DINT tag')
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', 'Count', '0', '10', '1'] }] }) })
+    expect(good.error).toBeUndefined()
+    const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
+    expect(rungs?.[0]?.neutral_text).toBe('FOR(Loop,Count,0,10,1);')
+  })
+})
