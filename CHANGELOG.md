@@ -1217,6 +1217,11 @@
   unbuildable form and names the instruction. BSL/BSR are deliberately excluded because they built at the rail. Tests hold AND and DTR both ways;
   the dist smoke checks every reader and the BSL exclusion. 494 package tests.
 
+- **One-based positions are enforced, not just documented.** `FIND(Str1,Str2,0,Pos)` failed Studio with `RxCMP_E_AUDIT_OUTOFRANGE`; `FIND(...,1,...)`
+  built 0/0. New `minimum` metadata is set to 1 on the Start slot of FIND, MID, INSERT and DELETE, and the composer refuses a lower literal naming
+  the 1-based rule. `UID()` also built 0/0 (no change needed). Tests hold FIND and MID both ways; the dist smoke checks the built catalogue.
+  495 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

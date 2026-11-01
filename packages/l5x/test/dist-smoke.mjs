@@ -54,6 +54,11 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
     const bit = instructionByName(name)?.operands.find(operand => operand.name === 'Source bit')
     assert.equal(bit?.kind, 'BOOL', name)
   }
+  // FIND and the string positions are 1-based.
+  for (const name of ['FIND', 'MID', 'INSERT', 'DELETE']) {
+    const start = instructionByName(name)?.operands.find(operand => operand.name === 'Start')
+    assert.equal(start?.minimum, 1, name)
+  }
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {

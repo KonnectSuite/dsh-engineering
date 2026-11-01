@@ -608,6 +608,33 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('a one-based start position', () => {
+  it('refuses zero and accepts one', async () => {
+    // FIND(Str1,Str2,0,Pos) failed RxCMP_E_AUDIT_OUTOFRANGE; FIND(...,1,...) built 0/0. The string
+    // positioning instructions are 1-based for the same reason.
+    const project = l5x({
+      name: 'StartGuard',
+      tags: tag('Str1', 'STRING') + tag('Str2', 'STRING') + tag('Pos', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['start.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'start.l5x' })).error).toBeUndefined()
+    const findZero = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '0', 'Pos'] }] }) })
+    expect(findZero.error?.code).toBe('INVALID_OPERAND')
+    expect(findZero.error?.message).toContain('1-based')
+    const findOne = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Pos'] }] }) })
+    expect(findOne.error).toBeUndefined()
+    expect((findOne.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('FIND(Str1,Str2,1,Pos);')
+    const midZero = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '0', 'Str2'] }] }) })
+    expect(midZero.error?.code).toBe('INVALID_OPERAND')
+    expect(midZero.error?.message).toContain('1-based')
+    const midOne = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '1', 'Str2'] }] }) })
+    expect(midOne.error).toBeUndefined()
+    expect((midOne.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MID(Str1,1,1,Str2);')
+  })
+})
+
 describe('a bit shift', () => {
   it('loads its source bit from a BOOL tag', async () => {
     // The vendor table says Source Bit is a BOOL tag; the catalogue had NUMBER, so BSL(...,0,...)

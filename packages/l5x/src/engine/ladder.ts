@@ -317,6 +317,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       if (slot?.arrayElement === true && !text.includes('[')) {
         throw new L5xError('INVALID_OPERAND', `${text} must name one array element for ${instruction.name} ${slot.name}, for example ${text}[0].`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array tag.`)
       }
+      // Studio answers RxCMP_E_AUDIT_OUTOFRANGE for a below-minimum literal: FIND(...,0,...) fails and
+      // FIND(...,1,...) builds, and the string positioning operands are 1-based for the same reason.
+      if (slot?.minimum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) < slot.minimum) {
+        throw new L5xError('INVALID_OPERAND', `${text} is below the minimum ${slot.minimum} for ${instruction.name} ${slot.name}; positions are 1-based.`, `Use ${slot.minimum} or greater.`)
+      }
       // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
       // STD's Destination must be REAL even though its slot kind is NUMBER.
       if (slot?.types !== undefined && operand.resolved && operand.data_type !== undefined && !slot.types.includes(operand.data_type)) {
