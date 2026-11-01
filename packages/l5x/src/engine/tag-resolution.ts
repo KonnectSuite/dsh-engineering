@@ -15,6 +15,17 @@ export interface TagResolution {
   readonly aliases: readonly string[]
   readonly indices_verified: boolean
   readonly reason?: string
+  /** Scopes that declare the base name when the requested scope does not. */
+  readonly scopes?: readonly string[]
+}
+
+/** Scopes that declare one base name, ignoring case, in table order. */
+function scopesDeclaring(table: ReadonlyMap<string, Declaration>, name: string): readonly string[] {
+  const found: string[] = []
+  for (const declaration of table.values()) {
+    if (declaration.name.toLowerCase() === name.toLowerCase()) found.push(declaration.scope)
+  }
+  return [...new Set(found)]
 }
 
 const integerWidths: Readonly<Record<string, number>> = { SINT: 8, INT: 16, DINT: 32, LINT: 64 }
@@ -90,6 +101,7 @@ export function resolveTag(document: L5xDocument, scope: string, symbol: string)
   const aliases: string[] = []
   let indicesVerified = true
   const fail = (reason: string): TagResolution => ({ symbol, scope, resolved: false, aliases, indices_verified: indicesVerified, reason })
+  const failElsewhere = (reason: string, scopes: readonly string[]): TagResolution => ({ symbol, scope, resolved: false, aliases, indices_verified: indicesVerified, reason, scopes })
   let localScope = scope
   let address = symbol
   const qualified = /^Program:([A-Za-z_][A-Za-z0-9_]*)\.(.+)$/iu.exec(address)
@@ -98,7 +110,14 @@ export function resolveTag(document: L5xDocument, scope: string, symbol: string)
   if (segments === undefined || segments.length === 0) return fail('Malformed address')
   let declaration = table.get(key(localScope, segments[0]!.name))
   if (declaration === undefined && !localScope.startsWith('AOI::') && qualified === null) declaration = table.get(key('controller', segments[0]!.name))
-  if (declaration === undefined) return fail('Declaration is absent from the export')
+  if (declaration === undefined) {
+    // The name may be declared in another scope. Reporting "absent from the export" when it
+    // is only absent from the requested scope sends a reader looking for a typo that is not
+    // there, so name the scopes that do declare it.
+    const elsewhere = scopesDeclaring(table, segments[0]!.name)
+    if (elsewhere.length > 0) return failElsewhere('Declaration is not in scope ' + localScope + '; it is declared in ' + elsewhere.join(', '), elsewhere)
+    return fail('Declaration is absent from the export')
+  }
   const seen = new Set<string>()
   while (declaration.alias !== undefined) {
     const identity = key(declaration.scope, declaration.name)

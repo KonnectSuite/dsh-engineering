@@ -109,6 +109,13 @@
   subroutine taking three arguments was refused; a slot can now be marked as repeating, and `list_instructions`
   reports `rest: true` so a reader can see the parameter list is open-ended.
 
+- **A tag that exists in another scope is no longer reported as absent.** `resolve_tag { address: "MainTimer" }`
+  at controller scope answered *"Declaration is absent from the export"* — while the tag is declared in
+  `MainProgram`. That is the kind of refusal that sends a reader hunting a typo that is not there. The resolution
+  now says which scope does declare it and returns the scopes in a `scopes` field, so a caller can retry with
+  `scope: "MainProgram"` instead of concluding the tag does not exist. A name no scope declares still answers
+  *"absent from the export"*.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -120,7 +127,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-262 package tests and 70 bundle tests pass.
+265 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

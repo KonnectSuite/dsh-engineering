@@ -274,3 +274,28 @@ describe('a JSR parameter list varies', () => {
     expect(rows.find(row => row.name === 'JSR')?.operands[1]?.rest).toBe(true)
   })
 })
+
+
+describe('a declaration in another scope', () => {
+  it('names the scope that declares it instead of calling it absent', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('resolve_tag', { address: 'MainTimer' })
+    expect(result.data?.resolved).toBe(false)
+    expect(String(result.data?.reason)).toContain('MainProgram')
+    expect(result.data?.scopes).toContain('MainProgram')
+  })
+
+  it('resolves the same name when the program scope is given', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('resolve_tag', { address: 'MainTimer', scope: 'MainProgram' })
+    expect(result.data?.resolved).toBe(true)
+    expect(result.data?.data_type).toBe('TIMER')
+  })
+
+  it('still reports a name no scope declares as absent', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('resolve_tag', { address: 'NoSuchTag' })
+    expect(String(result.data?.reason)).toBe('Declaration is absent from the export')
+    expect(result.data?.scopes).toBeUndefined()
+  })
+})
