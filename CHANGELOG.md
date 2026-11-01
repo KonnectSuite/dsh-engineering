@@ -1265,6 +1265,10 @@
 
 - **Generated client faces refreshed** after the alarm type restrictions, so repository bytes match the rebuilt artifact.
 
+- **PID takes a PID structure.** PID(tieback,...) with a REAL tag in the structure slot failed Studio with INVALIDOPTYPE; the build-proven
+  PID(pid1,...) form uses a PID tag. The PID slot now carries `types: ['PID']`, the existing build-proven test also asserts the refusal, and the dist
+  smoke checks the built catalogue. 499 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

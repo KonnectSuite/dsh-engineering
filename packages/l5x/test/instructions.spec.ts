@@ -340,6 +340,12 @@ describe('arities a Studio build proved', () => {
     expect(result.error).toBeUndefined()
     const rungs = result.data?.rungs as { neutral_text: string }[]
     expect(rungs[0]?.neutral_text).toBe('XIC(a1)PID(pid1,pv,tieback,cv,0,inholdBit,inholdVal);')
+    // PID(tieback,...) with a REAL in the structure slot failed Studio with INVALIDOPTYPE.
+    const wrong = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pv', 'pv', 'tieback', 'cv', '0', 'inholdBit', 'inholdVal'] }] }),
+    })
+    expect(wrong.error?.code).toBe('INVALID_OPERAND')
+    expect(wrong.error?.message).toContain('must be PID')
   })
 
   it('composes the alarm rungs that built', async () => {
