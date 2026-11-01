@@ -773,6 +773,43 @@ describe('draft tag validation', () => {
   })
 })
 
+describe('a program without a Tags region', () => {
+  it('gets one before Routines, and the new tags compose in the same draft', async () => {
+    // The builder always writes <Tags></Tags>; Studio exports may omit it. The change set has to
+    // create the region in the right position, and composition must see the staged program tags.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="ProgramTags" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Programs><Program Name="Main" MainRoutineName="MainRoutine"><Routines>
+      <Routine Name="MainRoutine" Type="RLL"><RLLContent/></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5xTool = harness(new Map([['programtags.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'programtags.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Local', data_type: 'DINT', description: 'local' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Flag', data_type: 'BOOL', description: 'flag' })).error).toBeUndefined()
+    const rung = await l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(Local)OTE(Flag);' })
+    expect(rung.error).toBeUndefined()
+    const applied = await l5xTool.call('draft_apply', { output_path: 'programtags-out.l5x' })
+    expect(applied.error).toBeUndefined()
+    const output = String(l5xTool.written.get('programtags-out.l5x'))
+    const program = output.slice(output.indexOf('<Program Name="Main"'), output.indexOf('</Program>'))
+    expect(program.indexOf('<Tags>')).toBeGreaterThanOrEqual(0)
+    expect(program.indexOf('<Tags>')).toBeLessThan(program.indexOf('<Routines>'))
+    expect(program).toContain('Name="Local"')
+    expect(program).toContain('Name="Flag"')
+    expect(program).toContain('XIC(Local)OTE(Flag)')
+    const reopened = harness(new Map([['programtags-out.l5x', new TextEncoder().encode(output)]]), { editing: false })
+    expect((await reopened.call('open_project', { path: 'programtags-out.l5x' })).error).toBeUndefined()
+    const tags = await reopened.call('list_components', { kind: 'tag', scope: 'Main' })
+    const names = ((tags.data?.rows ?? []) as { name: string }[]).map(row => row.name)
+    expect(names).toContain('Local')
+    expect(names).toContain('Flag')
+  })
+})
+
 describe('tag initial value bounds', () => {
   it('accepts a value that fits and refuses one that does not', async () => {
     const project = l5x({

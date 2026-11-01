@@ -1329,6 +1329,11 @@
   UDINT accepts its maximum; DINT refuses 2147483648; REAL accepts 1.5 and refuses 1e39. Each case stages a tag and checks the apply result, so the
   boundary is proven from the caller's side. 508 package tests.
 
+- **A program that has no Tags region gets one in the right place, and the new tags compose in the same draft.** The test fixture is raw XML
+  (the builder always writes an empty Tags region) with a Program containing only Routines. Two program-scoped tags are declared, a rung reads and writes
+  them, one apply writes the export, and a reopen lists both tags — proving the insertion order (Tags before Routines) and staged program-tag resolution.
+  509 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
