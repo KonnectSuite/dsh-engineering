@@ -1158,6 +1158,10 @@
   compares the resolved tag type with the parameter's declared type for non-scalar parameters and refuses a literal or a wrong structure, naming both
   types. A test holds the right, wrong and literal shapes. 487 package tests.
 
+- **An AOI interface change is now held by a comparison test.** Probing showed `compare_projects` already reports an AOI as changed when a parameter's usage
+  goes from Input to InOut (component `aoi`, with before and after parameter lists), but no test covered it. The test now pins that, so a future
+  normalisation change cannot quietly call an incompatible AOI edit "no changes". 488 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

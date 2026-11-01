@@ -10,6 +10,7 @@ import { rmSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { fixtureBytes, harness } from './harness.ts'
+import { aoi, l5x, parameter, program, rllRoutine, task } from './l5x-build.ts'
 
 /** The synthetic export: one ladder, one FBD and one SFC routine. */
 function synthetic(): string {
@@ -281,6 +282,32 @@ describe('produced and consumed tags', () => {
 
 /** One AOI whose input parameter aliases into a tag array. */
 const AOI_ALIAS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"AoiAlias\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"WRK_PermArray\" TagType=\"Base\" DataType=\"BOOL\" Dimensions=\"32\"/></Tags>\n    <AddOnInstructionDefinitions>\n      <AddOnInstructionDefinition Name=\"AOI_PermCheck\" Revision=\"1\" ExecutePrescan=\"false\" ExecutePostscan=\"false\" ExecuteEnableInFalse=\"false\" CreatedDate=\"2026-01-01T00:00:00\" ModifiedDate=\"2026-01-01T00:00:00\">\n        <Parameters>\n          <Parameter Name=\"INP_Perm0\" TagType=\"Alias\" Usage=\"Input\" AliasFor=\"WRK_PermArray.0\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/>\n          <Parameter Name=\"Out\" Usage=\"Output\" DataType=\"BOOL\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/>\n        </Parameters>\n      </AddOnInstructionDefinition>\n    </AddOnInstructionDefinitions>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('an AOI definition compared between exports', () => {
+  it('reports a changed parameter usage', async () => {
+    // The interface is now a first-class part of composition, so a comparison that missed a pin
+    // change would call an incompatible edit "no changes".
+    const project = (usage: string): string => l5x({
+      name: 'AoiCompare',
+      aois: aoi('MyAoi', { parameters: [parameter('In1', { usage, dataType: 'BOOL' })] }),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const before = project('Input')
+    const after = project('InOut')
+    const tool = harness(new Map([['before.l5x', new TextEncoder().encode(before)], ['after.l5x', new TextEncoder().encode(after)]]))
+    const a = await tool.call('open_project', { path: 'before.l5x' })
+    const b = await tool.call('open_project', { path: 'after.l5x' })
+    const compared = await tool.call('compare_projects', { before_id: a.data?.project_id, after_id: b.data?.project_id })
+    expect(compared.error).toBeUndefined()
+    const changes = (compared.data as { changes?: { kind: string; component: string; key: string; before?: { parameters?: { name: string; usage: string }[] }; after?: { parameters?: { name: string; usage: string }[] } }[] } | undefined)?.changes ?? []
+    const change = changes.find(entry => entry.component === 'aoi' && entry.key === 'MyAoi')
+    expect(change?.kind).toBe('changed')
+    expect(change?.before?.parameters?.[0]?.usage).toBe('Input')
+    expect(change?.after?.parameters?.[0]?.usage).toBe('InOut')
+  })
+})
+
 
 describe('an AOI parameter that aliases', () => {
   it('names the tag array element it points at', async () => {
