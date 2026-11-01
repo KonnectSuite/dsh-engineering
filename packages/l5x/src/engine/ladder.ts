@@ -112,7 +112,86 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
   return direct
 }
 /** One tag or literal operand, checked against its slot kind. */
+/** A label or routine name is an identifier, never an address. */
+const IDENTIFIER_TEXT = /^[A-Za-z_][A-Za-z0-9_]*$/u
+
+/**
+ * An expression is text with operators, not an address, so it is not resolved
+ * against tags. It is still checked for the shapes that would corrupt the rung: an
+ * unbalanced bracket, an unterminated string, or an embedded terminator.
+ *
+ * @param text - The expression as written.
+ * @param seen - Operands reported with the composed rung.
+ * @returns The operand to emit.
+ */
+function checkExpression(text: string, seen: ComposedOperand[]): ComposedOperand {
+  let parentheses = 0
+  let brackets = 0
+  let quote = ''
+  let broken = false
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text.charAt(index)
+    if (quote !== '') {
+      if (character === '$') { index += 1; continue }
+      if (character === quote) quote = ''
+      continue
+    }
+    if (character === '"' || character === "'") { quote = character; continue }
+    if (character === ';') { broken = true; break }
+    if (character === '(') parentheses += 1
+    else if (character === ')') { parentheses -= 1; if (parentheses < 0) { broken = true; break } }
+    else if (character === '[') brackets += 1
+    else if (character === ']') { brackets -= 1; if (brackets < 0) { broken = true; break } }
+  }
+  if (broken || quote !== '' || parentheses !== 0 || brackets !== 0) {
+    throw new L5xError('INVALID_OPERAND', '"' + text + '" is not a balanced expression.', 'Balance the brackets, close the strings, and do not embed a rung terminator.')
+  }
+  const operand: ComposedOperand = { text, resolved: false }
+  seen.push(operand)
+  return operand
+}
+
+/**
+ * A routine name resolves against the export's routines, the way a tag resolves
+ * against its declarations. This is a JSR target, not an address.
+ *
+ * @param project - The export the rung is being composed into.
+ * @param text - The routine name as written.
+ * @param seen - Operands reported with the composed rung.
+ * @returns The operand to emit, with the routine spelling the export uses.
+ */
+function checkRoutine(project: ProjectSnapshot, text: string, seen: ComposedOperand[]): ComposedOperand {
+  const routine = project.document.routines.find(entry => entry.name.toUpperCase() === text.toUpperCase())
+  if (routine === undefined) {
+    const candidates = project.document.routines.map(entry => entry.name).slice(0, 8)
+    throw new L5xError('ROUTINE_NOT_FOUND', 'No routine named "' + text + '" exists in this export.', candidates.length === 0 ? 'This export has no routines; declare one before jumping to it.' : 'Retry with one of the routine names, or declare the routine first.', candidates)
+  }
+  const operand: ComposedOperand = { text: routine.name, resolved: true, canonical: routine.name }
+  seen.push(operand)
+  return operand
+}
+
+/**
+ * A label is an identifier inside its own routine. Whether a matching LBL exists is
+ * a property of the finished rung, so it is not decided here.
+ *
+ * @param text - The label as written.
+ * @param seen - Operands reported with the composed rung.
+ * @returns The operand to emit.
+ */
+function checkLabel(text: string, seen: ComposedOperand[]): ComposedOperand {
+  if (!IDENTIFIER_TEXT.test(text)) throw new L5xError('INVALID_OPERAND', '"' + text + '" is not a label name.', 'A label starts with a letter or underscore and holds letters, digits and underscores.')
+  const operand: ComposedOperand = { text, resolved: false }
+  seen.push(operand)
+  return operand
+}
+
 function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionInfo['operands'][number]['kind'], seen: ComposedOperand[]): ComposedOperand {
+  // Three slot kinds are not tag references: a computed expression, a routine name and
+  // a label. Resolving them as tags refused every CPT, CMP, JSR, JMP and LBL.
+  if (kind === 'EXPRESSION') return checkExpression(text, seen)
+  if (kind === 'ROUTINE') return checkRoutine(project, text, seen)
+  if (kind === 'LABEL') return checkLabel(text, seen)
   if (isLiteral(text)) {
     // A literal is a value, not an address: only the slots that take a value accept it.
     if (kind === 'BOOL') throw new L5xError('INVALID_OPERAND', `${text} is a number where a BOOL tag is required.`, 'Pass a declared BOOL tag.')
@@ -176,8 +255,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
         `Call list_instructions with filter "${instruction.name}" for the exact operand order.`,
       )
     }
-    for (const [index, argument] of args.entries()) checkOperand(project, argument, instruction.operands[index]!.kind, operands)
-    return { text: `${emittedMnemonic(project, instruction.name)}(${args.join(',')})`, grounding: 'catalog' }
+    // Emit the resolved operand text rather than the caller's spelling: a routine name
+    // keeps the case the export uses, and a tag, literal or expression is unchanged
+    // because checkOperand preserves the text it was given.
+    const emitted = args.map((argument, index) => checkOperand(project, argument, instruction.operands[index]!.kind, operands).text)
+    return { text: `${emittedMnemonic(project, instruction.name)}(${emitted.join(',')})`, grounding: 'catalog' }
   }
   const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === node.instr.toUpperCase())
   if (aoi === undefined) {

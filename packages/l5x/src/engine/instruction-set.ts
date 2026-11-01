@@ -9,6 +9,8 @@
  * A mnemonic appears once in the catalog: an entry that instructions.ts already declares
  * with named slots (SQR, BSL, BSR) is not repeated here.
  */
+import type { OperandKind } from './instructions.ts'
+
 const TABLE: readonly (readonly [string, string])[] = [
   ['Contacts and coils', 'OSF=B OSR=B UID= UIE='],
   ['Comparison', 'MEQ=AB'],
@@ -25,7 +27,7 @@ const TABLE: readonly (readonly [string, string])[] = [
   ['Motion', 'MAJ=AB MAS=A MAM=AB MSO=A MSF=A MGS=A MGSP=A MAH=A MAPC=A MATC=A MDW=A MRP=A MDF=A'],
 ]
 
-const slot = (code: string): { name: string; kind: 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' } => {
+const slot = (code: string): { name: string; kind: OperandKind } => {
   switch (code) {
     case 'A': return { name: 'Source A', kind: 'NUMBER' }
     case 'B': return { name: 'Source B', kind: 'NUMBER' }
@@ -36,8 +38,8 @@ const slot = (code: string): { name: string; kind: 'BOOL' | 'NUMBER' | 'ANY' | '
     case 'T': return { name: 'Timer', kind: 'TIMER' }
     case 'C': return { name: 'Counter', kind: 'COUNTER' }
     case 'K': return { name: 'Control', kind: 'ANY' }
-    case 'X': return { name: 'Expression', kind: 'ANY' }
-    case 'R': return { name: 'Routine Name', kind: 'ANY' }
+    case 'X': return { name: 'Expression', kind: 'EXPRESSION' }
+    case 'R': return { name: 'Routine Name', kind: 'ROUTINE' }
     default: return { name: 'Tag', kind: 'BOOL' }
   }
 }
@@ -46,7 +48,7 @@ const slot = (code: string): { name: string; kind: 'BOOL' | 'NUMBER' | 'ANY' | '
 export interface MoreInstruction {
   readonly name: string
   readonly category: string
-  readonly slots: readonly { readonly name: string; readonly kind: 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' }[]
+  readonly slots: readonly { readonly name: string; readonly kind: OperandKind }[]
 }
 
 export const MORE_INSTRUCTIONS: readonly MoreInstruction[] = TABLE.flatMap(([category, list]) =>

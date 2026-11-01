@@ -54,6 +54,16 @@
   still composes. A wrong tag and a numeric literal each fail with the type the slot needs. `packages/l5x/test/instructions.spec.ts`
   composes into an export that carries STRING tags, so the check is exercised against a parsed project rather than a stub.
 
+- **A rung can carry an expression, a routine name and a label.** Every operand was forced through tag
+  resolution, so five common instructions could not be composed at all: `CPT(LineSpeed + 5.0,Total)` and
+  `CMP(LineSpeed > 5.0)` failed with "is not a tag or a number", and `JSR(MainRoutine)`, `JMP(Label)` and
+  `LBL(Label)` failed with `TAG_NOT_FOUND` because a routine name and a label are not tags. Three slot kinds now
+  say what an operand really is: `EXPRESSION` is text with operators, checked only for the shapes that would
+  corrupt the rung (an unbalanced bracket, an unterminated string, an embedded terminator); `ROUTINE` resolves
+  against the export's routines and its refusals are `ROUTINE_NOT_FOUND` with the routine names as candidates;
+  `LABEL` must be an identifier. The composer also emits the **resolved** operand text now, so a JSR keeps the
+  case the export uses rather than the caller's (`mainroutine` → `MainRoutine`).
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -65,7 +75,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-231 package tests and 70 bundle tests pass.
+240 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

@@ -17,7 +17,7 @@ describe('catalog', () => {
       expect(instruction.summary.length).toBeGreaterThan(5)
       for (const slot of instruction.operands) {
         expect(slot.name.length).toBeGreaterThan(0)
-        expect(['BOOL', 'NUMBER', 'ANY', 'TIMER', 'COUNTER', 'STRING']).toContain(slot.kind)
+        expect(['BOOL', 'NUMBER', 'ANY', 'TIMER', 'COUNTER', 'STRING', 'EXPRESSION', 'ROUTINE', 'LABEL']).toContain(slot.kind)
       }
     }
   })

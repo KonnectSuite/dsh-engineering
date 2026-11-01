@@ -14,7 +14,7 @@
  */
 
 /** What one operand slot accepts. */
-export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' | 'STRING'
+export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' | 'STRING' | 'EXPRESSION' | 'ROUTINE' | 'LABEL'
 
 /** One operand slot. */
 export interface InstructionOperand {
@@ -55,6 +55,12 @@ const bool = (name = 'Tag'): InstructionOperand => ({ name, kind: 'BOOL' })
 const num = (name = 'Source'): InstructionOperand => ({ name, kind: 'NUMBER' })
 const any = (name: string): InstructionOperand => ({ name, kind: 'ANY' })
 const str = (name: string): InstructionOperand => ({ name, kind: 'STRING' })
+/** A computed expression: text with operators, not an address. */
+const expression = (name = 'Expression'): InstructionOperand => ({ name, kind: 'EXPRESSION' })
+/** The name of a routine in the export, which is not a tag. */
+const routine = (name = 'Routine'): InstructionOperand => ({ name, kind: 'ROUTINE' })
+/** A label a JMP targets inside its own routine. */
+const label = (name = 'Label'): InstructionOperand => ({ name, kind: 'LABEL' })
 
 /** The catalog, in category order. */
 export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
@@ -74,7 +80,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'LES', category: 'Comparison', summary: 'Less than.', operands: [num('Source A'), num('Source B')] },
   { name: 'LEQ', category: 'Comparison', summary: 'Less than or equal.', operands: [num('Source A'), num('Source B')] },
   { name: 'LIM', category: 'Comparison', summary: 'Limit test: true when the test value lies between the limits.', operands: [num('Low limit'), num('Test'), num('High limit')] },
-  { name: 'CMP', category: 'Comparison', summary: 'Compare: true when the expression is true.', operands: [{ name: 'Expression', kind: 'ANY' }] },
+  { name: 'CMP', category: 'Comparison', summary: 'Compare: true when the expression is true.', operands: [expression()] },
 
   // Math
   { name: 'ADD', category: 'Math', summary: 'Add source A and source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
@@ -83,7 +89,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'DIV', category: 'Math', summary: 'Divide source A by source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'MOD', category: 'Math', summary: 'Remainder of source A divided by source B.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), num('Destination')] },
-  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination.', operands: [{ name: 'Expression', kind: 'ANY' }, num('Destination')] },
+  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination.', operands: [expression(), num('Destination')] },
 
   // Move
   { name: 'MOV', category: 'Move', summary: 'Move the source value into the destination.', operands: [num('Source'), num('Destination')] },
@@ -99,10 +105,10 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'CTD', category: 'Timer and counter', summary: 'Count down on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset')] },
 
   // Program control
-  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [{ name: 'Routine', kind: 'ANY' }, { name: 'Parameter', kind: 'ANY', optional: true }] },
+  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [routine(), { name: 'Parameter', kind: 'ANY', optional: true }] },
   { name: 'RET', category: 'Program control', summary: 'Return from a subroutine.', operands: [] },
-  { name: 'JMP', category: 'Program control', summary: 'Jump to a label in the same routine.', operands: [{ name: 'Label', kind: 'ANY' }] },
-  { name: 'LBL', category: 'Program control', summary: 'Label target for a JMP.', operands: [{ name: 'Label', kind: 'ANY' }] },
+  { name: 'JMP', category: 'Program control', summary: 'Jump to a label in the same routine.', operands: [label()] },
+  { name: 'LBL', category: 'Program control', summary: 'Label target for a JMP.', operands: [label()] },
   { name: 'MCR', category: 'Program control', summary: 'Master control relay zone boundary.', operands: [] },
 
   // Bit
