@@ -731,6 +731,48 @@ describe('an array dimension', () => {
   })
 })
 
+describe('draft tag validation', () => {
+  it('names the identifier rule and a repair, and refuses unknown scope or a duplicate', async () => {
+    const project = l5x({
+      name: 'DraftTagGuard',
+      tags: tag('Existing', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const open = async () => {
+      const tool = harness(new Map([['tags.l5x', new TextEncoder().encode(project)]]), { editing: true })
+      expect((await tool.call('open_project', { path: 'tags.l5x' })).error).toBeUndefined()
+      return tool
+    }
+    const tool = await open()
+    // The apply message carries the specific identifier code, and a single failed operation keeps its repair.
+    const space = await tool.call('draft_tag', { scope: 'controller', name: 'Start PB', data_type: 'DINT', description: 'x' })
+    expect(space.error).toBeUndefined()
+    const spaceApplied = await tool.call('draft_apply', { output_path: 'space.l5x' })
+    expect(spaceApplied.error?.code).toBe('INVALID_CHANGE_SET')
+    expect(spaceApplied.error?.message).toContain('[NAME_INVALID_CHARACTERS]')
+    expect(spaceApplied.error?.message).toContain('a space')
+    const digitTool = await open()
+    expect((await digitTool.call('draft_tag', { scope: 'controller', name: '1Pump', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const digitApplied = await digitTool.call('draft_apply', { output_path: 'digit.l5x' })
+    expect(digitApplied.error?.message).toContain('[NAME_STARTS_WITH_DIGIT]')
+    expect(digitApplied.error?.fix).toContain('_1Pump')
+    const longTool = await open()
+    expect((await longTool.call('draft_tag', { scope: 'controller', name: 'A'.repeat(41), data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const longApplied = await longTool.call('draft_apply', { output_path: 'long.l5x' })
+    expect(longApplied.error?.message).toContain('[NAME_TOO_LONG]')
+    // Scope and duplicate checks run at apply, against the export being edited.
+    const scopeTool = await open()
+    const scope = await scopeTool.call('draft_tag', { scope: 'Nope', name: 'X', data_type: 'DINT', description: 'x' })
+    const scopeApplied = scope.error === undefined ? await scopeTool.call('draft_apply', { output_path: 'scope.l5x' }) : scope
+    expect(scopeApplied.error?.code).toBe('COMPONENT_NOT_FOUND')
+    const duplicateTool = await open()
+    const duplicate = await duplicateTool.call('draft_tag', { scope: 'controller', name: 'Existing', data_type: 'DINT', description: 'x' })
+    const duplicateApplied = duplicate.error === undefined ? await duplicateTool.call('draft_apply', { output_path: 'duplicate.l5x' }) : duplicate
+    expect(duplicateApplied.error?.code).toBe('NAME_COLLISION')
+  })
+})
+
 describe('tag array dimensions', () => {
   it('accepts one to three positive sizes and refuses the rest', async () => {
     const project = l5x({

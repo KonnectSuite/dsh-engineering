@@ -161,7 +161,10 @@ function text(row: Record<string, unknown>, name: string): string {
 }
 function identifier(row: Record<string, unknown>, name: string): string {
   const value = text(row, name)
-  if (!/^[A-Za-z_][A-Za-z0-9_]{0,39}$/u.test(value)) throw new EngineeringError('INVALID_CHANGE_SET', `${name} must be a Logix identifier of at most 40 characters`)
+  // checkIdentifier names the exact rule and a usable repair; a regex here lost both,
+  // so every invalid tag name came back as one generic INVALID_CHANGE_SET.
+  const issue = checkIdentifier(value)
+  if (issue !== undefined) throw new EngineeringError(issue.code, `${name} is not usable: ${issue.message}`, issue.fix)
   return value
 }
 function integer(row: Record<string, unknown>, name: string): number {
@@ -317,16 +320,21 @@ function parseOperations(request: string, maximum: number, declaredTypes: Readon
   fields(root, ['version', 'operations'])
   if (root.version !== 1 || !Array.isArray(root.operations) || root.operations.length < 1 || root.operations.length > maximum) throw new EngineeringError('INVALID_CHANGE_SET', `version must be 1 with between 1 and ${maximum} operations. ${CHANGE_SET_HELP}`)
   const operations: Operation[] = []
-  const errors: string[] = []
+  const failures: { readonly code: string; readonly message: string; readonly fix?: string }[] = []
   for (const [index, entry] of root.operations.entries()) {
     try { operations.push(parseOne(entry, declaredTypes)) }
     catch (error) {
       const code = error instanceof EngineeringError ? error.code : 'INVALID_CHANGE_SET'
       const message = error instanceof Error ? error.message.replace(/^[A-Z][A-Z_]*: /u, '') : String(error)
-      errors.push(`#${index} [${code}]: ${message}`)
+      failures.push({ code, message: `#${index} [${code}]: ${message}`, ...(error instanceof EngineeringError && error.fix !== undefined ? { fix: error.fix } : {}) })
     }
   }
-  if (errors.length > 0) throw new EngineeringError('INVALID_CHANGE_SET', `${errors.length} of ${root.operations.length} operation(s) failed:\n${errors.map(line => `- ${line}`).join('\n')}\n${CHANGE_SET_HELP}`)
+  if (failures.length > 0) {
+    // One failed operation is the ordinary repair case: keep its own fix (including any suggested
+    // name) instead of the generic help text, so the caller can correct the operation directly.
+    const fix = failures.length === 1 ? failures[0]!.fix : undefined
+    throw new EngineeringError('INVALID_CHANGE_SET', `${failures.length} of ${root.operations.length} operation(s) failed:\n${failures.map(failure => `- ${failure.message}`).join('\n')}\n${CHANGE_SET_HELP}`, fix)
+  }
   return operations
 }
 const escape = (value: string): string => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')

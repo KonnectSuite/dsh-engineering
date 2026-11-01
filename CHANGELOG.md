@@ -1320,6 +1320,11 @@
   four sizes, an oversized single dimension, a total above the cap, and an array with a scalar initial value. The test also shows the timing: `draft_tag`
   stages the operation and `draft_apply` reports `INVALID_CHANGE_SET`, so a caller must read the apply result for validation errors. 506 package tests.
 
+- **Invalid tag names now carry the exact rule and its repair.** `identifier()` in the change set duplicated the identifier rules as one generic
+  message, so `checkIdentifier`'s specific codes (NAME_INVALID_CHARACTERS, NAME_STARTS_WITH_DIGIT, NAME_TOO_LONG) and suggested names never reached a
+  caller. It now delegates to `checkIdentifier`, and a single failed operation keeps its own fix instead of the generic help text. Tests hold all
+  three codes, the `_1Pump` repair, an unknown scope (COMPONENT_NOT_FOUND) and a duplicate (NAME_COLLISION). 507 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
