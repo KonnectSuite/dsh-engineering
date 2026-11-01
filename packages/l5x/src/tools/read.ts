@@ -112,7 +112,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         const rows = selectRows(project.document, kind, optionalString(args, 'scope'), filter)
         const page = rows.slice(offset, offset + limit)
         return success(
-          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}.`,
+          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}${kind !== 'routine' ? '' : (() => { const protectedCount = project.document.protectedRoutines.filter(entry => optionalString(args, 'scope') === undefined || entry.program === optionalString(args, 'scope')).length; return protectedCount === 0 ? '' : `, ${protectedCount} source-protected` })()}.`,
           { kind, total: rows.length, offset, limit, rows: page },
           pageNext(kind, page, offset, limit, rows.length, filter),
         )
@@ -185,7 +185,13 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
         : kind === 'udt'
           ? document.udts.map(udt => ({ name: udt.name, members: udt.members.length, description: udt.description }))
           : kind === 'routine'
-            ? listRoutines(document, scope ?? '').map(routine => ({ name: routine.name, program: routine.program, type: routine.type, rungCount: routine.rungCount ?? null, lineCount: routine.lineCount ?? null, description: routine.description }))
+            ? [
+                ...listRoutines(document, scope ?? '').map(routine => ({ name: routine.name, program: routine.program, type: routine.type, rungCount: routine.rungCount ?? null, lineCount: routine.lineCount ?? null, description: routine.description })),
+                // A protected routine exists; listing nothing tells an engineer the program is empty.
+                ...document.protectedRoutines
+                  .filter(entry => scope === undefined || entry.program === scope)
+                  .map(entry => ({ name: entry.name, program: entry.program, type: 'PROTECTED', rungCount: null, lineCount: null, description: 'Source-protected: the body is encrypted in this export' })),
+              ]
             : kind === 'aoi'
               ? listAois(document).map(aoi => ({ name: aoi.name, revision: aoi.revision, description: aoi.description }))
               : kind === 'module'

@@ -589,6 +589,13 @@
   program named in the candidates so a caller can offer the choice. Verified on that real export, and the test that pins the
   staging refusal now asserts the reader's answer too, so the two surfaces cannot drift apart again.
 
+- **`list_components` no longer reports a protected program as empty.** On `Seco_Cooler`, `list_components kind:"routine" scope:"BLOWERS"`
+  answered **"0 routines"** for a program whose main routine exists as an encrypted body - the third surface to lie about the same
+  object. It now lists the row with `type: "PROTECTED"` and a description saying the body is encrypted, and the summary counts them:
+  **"22 routines, 22 source-protected"** for that program, and **"144 routines, 144 source-protected"** across the project, which
+  matches the 144 `EncodedData` bodies exactly. A test pins the row and the count alongside the editor's refusal and the reader's
+  message, so all three surfaces are checked in one place.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

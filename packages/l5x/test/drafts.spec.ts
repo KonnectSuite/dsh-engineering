@@ -408,5 +408,10 @@ describe('editing a source-protected routine', () => {
     const read = await l5x.call('get_component', { kind: 'routine', name: 'R', scope: 'P' })
     expect(read.error?.code).toBe('PROTECTED_TARGET')
     expect(String(read.error?.message)).toContain('source-protected')
+    // The listing must show the row rather than reporting an empty program.
+    const listed = await l5x.call('list_components', { kind: 'routine', scope: 'P' })
+    expect(String(listed.summary)).toContain('1 source-protected')
+    const rows = (listed.data?.rows ?? []) as { name: string; type: string }[]
+    expect(rows.some(row => row.name === 'R' && row.type === 'PROTECTED')).toBe(true)
   })
 })
