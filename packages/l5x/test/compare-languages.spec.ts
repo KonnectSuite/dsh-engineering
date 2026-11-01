@@ -667,3 +667,36 @@ describe('logic inside an add-on instruction', () => {
     expect(Number(refs.data?.total)).toBe(1)
   })
 })
+
+/** An AOI whose Logic routine reads and writes one of its own parameters. */
+const AOI_PARAM_REFS_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="AoiParams" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags/>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="AOI_P" Class="Standard" Revision="1.0" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false">
+        <Parameters><Parameter Name="P" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+        <Routines>
+          <Routine Name="Logic" Type="RLL"><RLLContent>
+            <Rung Number="0" Type="N"><Text><![CDATA[XIC(P)OTE(P);]]></Text></Rung>
+          </RLLContent></Routine>
+        </Routines>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('an AOI parameter as a symbol', () => {
+  it('resolves plainly with the AOI as scope and qualified with AOI::Member', async () => {
+    const l5x = harness(new Map([['ap.l5x', new TextEncoder().encode(AOI_PARAM_REFS_L5X)]]))
+    expect((await l5x.call('open_project', { path: 'ap.l5x' })).error).toBeUndefined()
+    const plain = await l5x.call('find_references', { symbol: 'P', scope: 'AOI_P' })
+    expect(Number(plain.data?.total)).toBe(2)
+    const qualified = await l5x.call('find_references', { symbol: 'AOI_P::P' })
+    expect(Number(qualified.data?.total)).toBe(2)
+    const trace = await l5x.call('trace_dependencies', { symbol: 'AOI_P::P', direction: 'upstream' })
+    expect(trace.error).toBeUndefined()
+  })
+})

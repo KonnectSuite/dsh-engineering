@@ -838,6 +838,11 @@
   undeclared tag answered yes: one `UNRESOLVED_REFERENCE` naming `NoSuchTag` with evidence `scope: AOI_Bad, routine: Logic, rung: 0`, and `find_references` returns the same
   occurrence. That coverage existed and was held by no test; it is now pinned, including the scope and rung evidence. 433 package tests.
 
+- **An AOI parameter resolves as a symbol, both ways.** Following round 129, the next question was whether an add-on instruction's own parameters and local tags are reachable
+  in the reference graph. On the real `FC_SFTY_SSOV` (19 parameters, 8 locals), `EnableIn` answers **2 references** plainly with the AOI as scope and the same count
+  qualified as `FC_SFTY_SSOV::EnableIn`, and `trace_dependencies` resolves it. The resolution worked and was held by no test; one now pins plain, qualified and trace
+  on a fixture whose AOI Logic reads and writes its own parameter. 434 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
