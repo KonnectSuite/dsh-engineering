@@ -195,9 +195,10 @@ export function validateRungTags(project: ProjectSnapshot, nodes: readonly Ladde
       const text = tokens.map(token => token.text).join('')
       // Studio shows an unset operand as ?; a pasted rung may carry it and Studio fills it in.
       if (text === '' || text.includes('?')) continue
-      // Reuse the composer's operand checks: literal slot kinds, declared type, array shape,
-      // writable destinations, bounds and the program scope all apply to a pasted rung.
-      checkOperand(project, text, slot.kind, seen)
+      // Reuse the composer's operand checks and slot rules: literal slot kinds, declared type,
+      // array shape, writable destinations, bounds and the program scope all apply to a pasted rung.
+      const operand = checkOperand(project, text, slot.kind, seen)
+      checkSlot(instruction, slot, text, operand)
     }
   }
 }
@@ -334,6 +335,61 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   return operand
 }
 
+/**
+ * Apply one slot's own rule to an operand, whether the rung came from a structure or from pasted
+ * NeutralText. These are the rules Studio answers at build time with INVALIDOPKIND, MUSTBEDISCRETE,
+ * MUSTBEARRAY, OUTOFRANGE and INVALIDOPTYPE; stating them here keeps both paths identical.
+ *
+ * @param instruction - Catalogue entry being written.
+ * @param slot - The slot the operand fills.
+ * @param text - Operand text as written.
+ * @param operand - The checked operand (resolved type and array dimensions when declared).
+ */
+function checkSlot(instruction: InstructionInfo, slot: InstructionInfo['operands'][number], text: string, operand: ComposedOperand): void {
+  // Studio refuses a literal in a writable slot only at build time, with
+  // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
+  // composer can refuse them and state the written order instead. A slot of kind ANY is not
+  // automatically writable: JSR's return parameter and PID's master loop accept 0.
+  if ((slot.writable === true || slot.tagOnly === true) && isLiteral(text)) {
+    if (slot.writable !== true) {
+      throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a tag for ${slot.name}.`, `Pass a declared tag for the ${slot.name} slot; Studio does not accept a literal there.`)
+    }
+    const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
+    const fix = slot.name === 'Destination'
+      ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
+      : slot.name === 'Index'
+        ? 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.'
+        : `Pass a declared tag for the ${slot.name} slot; Studio refuses a literal there.`
+    throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a writable ${what}.`, fix)
+  }
+  if (slot.arrayElement === true && !text.includes('[')) {
+    throw new L5xError('INVALID_OPERAND', `${text} must name one array element for ${instruction.name} ${slot.name}, for example ${text}[0].`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array tag.`)
+  }
+  // Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar tag in an array slot: SIZE(D,0,Pos) failed
+  // and SIZE(Arr,2,Pos) built.
+  if (slot.arrayTag === true && operand.resolved && (text.includes('[') || (operand.dimensions?.length ?? 0) === 0)) {
+    throw new L5xError('INVALID_OPERAND', `${text} must name a declared array tag for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag itself (Arr), not one element or a scalar tag.')
+  }
+  // SQO(...,Dest,...) with the whole destination array failed MUSTBEDISCRETE; Dest[0] built.
+  if (slot.noArray === true && operand.resolved && !text.includes('[') && (operand.dimensions?.length ?? 0) > 0) {
+    throw new L5xError('INVALID_OPERAND', `${text} is a whole array where ${instruction.name} ${slot.name} must name one element or a scalar tag.`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array.`)
+  }
+  // Studio answers RxCMP_E_AUDIT_OUTOFRANGE for a below-minimum literal: FIND(...,0,...) fails and
+  // FIND(...,1,...) builds, and the string positioning operands are 1-based for the same reason.
+  if (slot.minimum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) < slot.minimum) {
+    throw new L5xError('INVALID_OPERAND', `${text} is below the minimum ${slot.minimum} for ${instruction.name} ${slot.name}; positions are 1-based.`, `Use ${slot.minimum} or greater.`)
+  }
+  // Studio answers OUTOFRANGE above a maximum too: an array has at most three dimensions.
+  if (slot.maximum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) > slot.maximum) {
+    throw new L5xError('INVALID_OPERAND', `${text} is above the maximum ${slot.maximum} for ${instruction.name} ${slot.name}; array dimensions are 0, 1 and 2.`, `Use a dimension from 0 to ${slot.maximum}.`)
+  }
+  // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
+  // STD's Destination must be REAL even though its slot kind is NUMBER.
+  if (slot.types !== undefined && operand.resolved && operand.data_type !== undefined && !slot.types.includes(operand.data_type)) {
+    throw new L5xError('INVALID_OPERAND', `${text} is ${operand.data_type}; ${instruction.name} ${slot.name} must be ${slot.types.join(' or ')}.`, `Use a tag of type ${slot.types.join(' or ')}.`)
+  }
+}
+
 /** Resolve one instruction node and emit it. */
 function composeInstruction(project: ProjectSnapshot, node: InstructionNode, operands: ComposedOperand[], counter: { instructions: number }): { text: string; grounding: 'catalog' | 'aoi' } {
   // The spec is caller-supplied JSON. Check its shape instead of trusting it: an empty
@@ -377,49 +433,9 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     const emitted = args.map((argument, index) => {
       const operand = checkOperand(project, argument, kindAt(index), operands)
       const text = operand.text
-      // Studio refuses a literal in a writable slot only at build time, with
-      // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
-      // composer can refuse them and state the written order instead. A slot of kind ANY is not
-      // automatically writable: JSR's return parameter and PID's master loop accept 0.
       const slot = instruction.operands[index] ?? restSlot
-      if ((slot?.writable === true || slot?.tagOnly === true) && isLiteral(text)) {
-        if (slot.writable !== true) {
-          throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a tag for ${slot.name}.`, `Pass a declared tag for the ${slot.name} slot; Studio does not accept a literal there.`)
-        }
-        const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
-        const fix = slot.name === 'Destination'
-          ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
-          : slot.name === 'Index'
-            ? 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.'
-            : `Pass a declared tag for the ${slot.name} slot; Studio refuses a literal there.`
-        throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a writable ${what}.`, fix)
-      }
-      if (slot?.arrayElement === true && !text.includes('[')) {
-        throw new L5xError('INVALID_OPERAND', `${text} must name one array element for ${instruction.name} ${slot.name}, for example ${text}[0].`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array tag.`)
-      }
-      // Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar tag in an array slot: SIZE(D,0,Pos) failed
-      // and SIZE(Arr,2,Pos) built.
-      if (slot?.arrayTag === true && operand.resolved && (text.includes('[') || (operand.dimensions?.length ?? 0) === 0)) {
-        throw new L5xError('INVALID_OPERAND', `${text} must name a declared array tag for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag itself (Arr), not one element or a scalar tag.')
-      }
-      // SQO(...,Dest,...) with the whole destination array failed MUSTBEDISCRETE; Dest[0] built.
-      if (slot?.noArray === true && operand.resolved && !text.includes('[') && (operand.dimensions?.length ?? 0) > 0) {
-        throw new L5xError('INVALID_OPERAND', `${text} is a whole array where ${instruction.name} ${slot.name} must name one element or a scalar tag.`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array.`)
-      }
-      // Studio answers RxCMP_E_AUDIT_OUTOFRANGE for a below-minimum literal: FIND(...,0,...) fails and
-      // FIND(...,1,...) builds, and the string positioning operands are 1-based for the same reason.
-      if (slot?.minimum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) < slot.minimum) {
-        throw new L5xError('INVALID_OPERAND', `${text} is below the minimum ${slot.minimum} for ${instruction.name} ${slot.name}; positions are 1-based.`, `Use ${slot.minimum} or greater.`)
-      }
-      // Studio answers OUTOFRANGE above a maximum too: an array has at most three dimensions.
-      if (slot?.maximum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) > slot.maximum) {
-        throw new L5xError('INVALID_OPERAND', `${text} is above the maximum ${slot.maximum} for ${instruction.name} ${slot.name}; array dimensions are 0, 1 and 2.`, `Use a dimension from 0 to ${slot.maximum}.`)
-      }
-      // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
-      // STD's Destination must be REAL even though its slot kind is NUMBER.
-      if (slot?.types !== undefined && operand.resolved && operand.data_type !== undefined && !slot.types.includes(operand.data_type)) {
-        throw new L5xError('INVALID_OPERAND', `${text} is ${operand.data_type}; ${instruction.name} ${slot.name} must be ${slot.types.join(' or ')}.`, `Use a tag of type ${slot.types.join(' or ')}.`)
-      }
+      if (slot === undefined) return text
+      checkSlot(instruction, slot, text, operand)
       return text
     })
     return { text: `${emittedMnemonic(project, instruction.name)}(${emitted.join(',')})`, grounding: 'catalog' }

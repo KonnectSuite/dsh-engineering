@@ -1365,6 +1365,11 @@
   apply to pasted text; keyword slots and `?` placeholders are left to Studio. Staged structures resolve member paths (`T.DN` is BOOL), and a fixture
   that read a DINT in a contact was corrected. 513 package tests.
 
+- **The raw path and the composer now share one slot-rule implementation.** The writable/array/bounds/type rules lived inline in the composer, so
+  pasted text escaped them (`ADD(D,1,5)` passed the draft; Studio fails a literal destination with `INVALIDOPKIND`). The rules moved into `checkSlot`
+  and both paths call it after the operand type check; a raw-text test asserts the literal-destination refusal. No rule is stated twice, so the two
+  entry points cannot drift. 513 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

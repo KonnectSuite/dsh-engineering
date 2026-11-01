@@ -798,6 +798,10 @@ describe('a raw rung operand count', () => {
     const wrongTimer = await draft('XIC(B)TON(D,500,0);')
     expect(wrongTimer.error?.code).toBe('INVALID_OPERAND')
     expect(wrongTimer.error?.message).toContain('needs a timer')
+    // Slot rules apply too: a literal destination fails Studio with INVALIDOPKIND.
+    const literalDest = await draft('XIC(B)ADD(D,1,5);')
+    expect(literalDest.error?.code).toBe('INVALID_OPERAND')
+    expect(literalDest.error?.message).toContain('needs a writable destination')
     expect((await draft('XIC(B)TON(T,500,0);')).error).toBeUndefined()
     // An unmodelled instruction keeps the raw escape hatch, since its operand list is not modelled.
     expect((await draft('FAL(D,D)OTE(B);')).error).toBeUndefined()
