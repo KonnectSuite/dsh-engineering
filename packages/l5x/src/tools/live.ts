@@ -85,9 +85,9 @@ function tagsOf(args: Readonly<Record<string, unknown>>): string {
 
 /** The same tag parameter for the polling tools. */
 const TAGS_PARAM = list(
-  'Controller-scoped scalar tags to read, 1 to 16. Each entry names the tag and optionally its program.',
+  'Controller-scoped scalar tags or scalar members to read, 1 to 16. Each entry names the tag and optionally its program.',
   objectItem(
-    'One declared scalar tag.',
+    'One declared scalar tag or scalar member (Timer.PRE).',
     {
       name: string('Tag name. Example: "LineSpeed".'),
       program: string('Program scope for a program-scoped tag. Omit for a controller tag.'),
@@ -117,7 +117,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
   return [
     tool({
       name: 'poll_live_tags',
-      description: 'Read declared scalar PLC tags directly over EtherNet/IP without Studio, FactoryTalk Linx, an ACD upload or the SDK. Explicit controller IPv4 and slot required. Returns timestamped sweeps, quality and controller identity; no writes.',
+      description: 'Read declared scalar PLC tags or scalar members directly over EtherNet/IP without Studio, FactoryTalk Linx, an ACD upload or the SDK. Explicit controller IPv4 and slot required. Returns timestamped sweeps, quality and controller identity; no writes.',
       parameters: object({
         project_id: PROJECT_ID,
         ...target,
@@ -160,14 +160,14 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
     }),
     tool({
       name: 'read_live_tags',
-      description: 'Read up to 64 declared scalar tags in ONE EtherNet/IP request (CIP tag group). Faster than polling for a one-shot snapshot; no writes, no Studio, no Linx, no SDK.',
+      description: 'Read up to 64 declared scalar tags or scalar members in ONE EtherNet/IP request (CIP tag group). Faster than polling for a one-shot snapshot; no writes, no Studio, no Linx, no SDK.',
       parameters: object({
         project_id: PROJECT_ID,
         ...target,
         tags: list(
-          'Declared scalar tags to read together, 1 to 64. Each entry names the tag and optionally its program.',
+          'Declared scalar tags or scalar members to read together, 1 to 64. Each entry names the tag and optionally its program.',
           objectItem(
-            'One declared scalar tag.',
+            'One declared scalar tag or scalar member (Timer.PRE).',
             {
               name: string('Tag name. Example: "LineSpeed".'),
               program: string('Program scope for a program-scoped tag. Omit for a controller tag.'),
@@ -350,7 +350,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
     }),
     tool({
       name: 'start_plc_trend',
-      description: 'Start a bounded, read-only PLC trend as a session-owned background job. Explicit IPv4, slot and declared scalar tags required. SDK-independent EtherNet/IP; the chart follows the job without a model call per sample.',
+      description: 'Start a bounded, read-only PLC trend as a session-owned background job. Explicit IPv4, slot and declared scalars or scalar members required. SDK-independent EtherNet/IP; the chart follows the job without a model call per sample.',
       parameters: object({
         project_id: PROJECT_ID,
         ...target,

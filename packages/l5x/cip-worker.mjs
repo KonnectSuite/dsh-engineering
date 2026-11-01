@@ -59,7 +59,8 @@ async function read(spec) {
   return await connectAndRun(spec, async (plc, controller) => {
     const group = new ethernetIp.TagGroup()
     const tags = spec.tags.map(entry => {
-      if (!entry || typeof entry.name !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(entry.name)
+      // A read may name one scalar member (Timer.PRE); a write never reaches here with a dot.
+      if (!entry || typeof entry.name !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u.test(entry.name)
         || !['BOOL', 'INT', 'DINT', 'REAL'].includes(entry.data_type)
         || (entry.program !== undefined && (typeof entry.program !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(entry.program))))
         throw new Error('Invalid CIP worker tag')

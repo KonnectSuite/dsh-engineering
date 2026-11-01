@@ -1063,6 +1063,11 @@
   allowWrites plus human approval, instead of claiming the surface never writes; it also records the SDK route form `WORKSTATION!DRIVER\IP` from
   RSLinxNG.xml, the exact string the live E2E needed. Skill body 7,982 of 8,000. 461 package tests.
 
+- **Live reads accept one scalar member, not just whole scalars.** `read_live_tags`, `poll_live_tags` and `start_plc_trend` now take `Timer.PRE` or `Timer.ACC`:
+  the declaration resolves on the base tag, `resolveTag` supplies the member's own type, and the CIP worker allows a dotted symbol on the read path. Writes still
+  accept only whole scalar tags, so one write changes one known operand and its readback proves it. Four tests hold member resolution, the whole-TIMER refusal
+  and the member-write refusal; verified live on 192.168.1.3 with `Timer.PRE = 2000`, `Timer.ACC = 0`, `Count = 2097029`, all good quality. 465 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

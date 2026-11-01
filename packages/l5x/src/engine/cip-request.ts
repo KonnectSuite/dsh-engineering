@@ -42,25 +42,28 @@ interface DeclaredTag {
 /** Resolve one entry against the export: name, scope, declaration and alias target. */
 function declaredTag(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUPPORTED_WRITE_TAG' | 'UNSUPPORTED_POLL_TAG' | 'INVALID_POLL' = 'UNSUPPORTED_WRITE_TAG'): DeclaredTag {
   if (!entry || typeof entry !== 'object' || !('name' in entry) || typeof entry.name !== 'string'
-    || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(entry.name)
+    || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u.test(entry.name)
     || !Object.keys(entry).every(key => key === 'name' || key === 'scope'))
     throw new EngineeringError(errorCode, 'Each tag needs an exact tag name and optional scope only')
   const scope = 'scope' in entry ? entry.scope : 'controller'
   if (typeof scope !== 'string' || (scope !== 'controller' && !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(scope)))
     throw new EngineeringError('INVALID_POLL', 'scope must be controller or an exact program name')
-  const declared = project.document.tags.find(tag => tag.name === entry.name && tag.scope === scope)
+  // A read may name one scalar member of a structured tag (Timer.PRE). The declaration
+  // lives on the base tag; the member's own type comes from resolveTag below.
+  const base = entry.name.split('.')[0] ?? entry.name
+  const declared = project.document.tags.find(tag => tag.name === base && tag.scope === scope)
   const controller = controllerElementOf(project.document)
   const programs = firstChild(controller, 'Programs')
   const container = scope === 'controller' ? controller : programs === undefined ? undefined
     : elementChildren(programs, 'Program').find(program => program.attrs.Name === scope)
   const tagContainer = container === undefined ? undefined : firstChild(container, 'Tags')
-  const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === entry.name)
+  const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === base)
   const dimensions = declaration?.attrs.Dimensions ?? declaration?.attrs.Dimension ?? ''
   if (!declared) {
     throw new EngineeringError(errorCode, `${String(entry.name)} is not a declared tag in this export`, 'Open the export that declares it, or check the name with list_components kind="tag".')
   }
   return {
-    name: declared.name,
+    name: entry.name,
     scope,
     dataType: declared.dataType,
     ...(declaration?.attrs.AliasFor === undefined ? {} : { aliasFor: declaration.attrs.AliasFor }),
@@ -79,14 +82,16 @@ function declaredTag(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUP
  */
 function resolveReadable(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUPPORTED_WRITE_TAG' | 'UNSUPPORTED_POLL_TAG' = 'UNSUPPORTED_WRITE_TAG'): ScalarTag {
   const tag = declaredTag(project, entry, errorCode)
-  // An alias carries no DataType of its own. resolveTag follows it to the operand
-  // behind it, including module I/O that is not a declared <Tag> — the same
-  // resolution the resolve_tag tool reports.
-  const resolution = isScalar(tag.dataType) ? undefined : resolveTag(project.document, tag.scope, tag.name)
-  const type = isScalar(tag.dataType) ? tag.dataType
-    : resolution?.resolved === true && isScalar(resolution.data_type) ? resolution.data_type : undefined
+  // A member read names the base declaration but takes the member's type: Timer.PRE is a
+  // DINT inside a TIMER. resolveTag walks the member path and follows any alias.
+  const dotted = tag.name.includes('.')
+  const resolution = dotted || !isScalar(tag.dataType) ? resolveTag(project.document, tag.scope, tag.name) : undefined
+  const type = dotted
+    ? resolution?.resolved === true && isScalar(resolution.data_type) ? resolution.data_type : undefined
+    : isScalar(tag.dataType) ? tag.dataType
+      : resolution?.resolved === true && isScalar(resolution.data_type) ? resolution.data_type : undefined
   if (!isScalar(type)) {
-    throw new EngineeringError(errorCode, `${tag.name} is ${tag.dataType || 'an undeclared type'}; this surface reads BOOL, INT, DINT and REAL scalars`, 'Read a scalar tag, or use the export tools for structured values.')
+    throw new EngineeringError(errorCode, `${tag.name} is ${tag.dataType || 'an undeclared type'}; this surface reads BOOL, INT, DINT and REAL scalars and scalar members`, 'Read a scalar tag or one scalar member such as Timer.PRE, or use the export tools for structured values.')
   }
   if (tag.dimensions !== '' && tag.dimensions !== '0') {
     throw new EngineeringError(errorCode, `${tag.name} is an array (${tag.dimensions}); this surface reads one scalar at a time`, 'Read one element with a name the controller declares, or use the export tools for the array.')
@@ -98,6 +103,10 @@ function resolveReadable(project: ProjectSnapshot, entry: unknown, errorCode: 'U
  * Resolve one *writable* scalar: no alias, external access, declared range.
  */
 function resolveWritable(project: ProjectSnapshot, entry: unknown): ScalarTag {
+  // Reads may name one member; a write changes one whole scalar so the controller
+  // changes exactly one known operand and the readback proves it.
+  if (typeof entry === 'object' && entry !== null && 'name' in entry && typeof entry.name === 'string' && entry.name.includes('.'))
+    throw new EngineeringError('UNSUPPORTED_WRITE_TAG', `${entry.name} is a member, and writes accept whole scalar tags`, 'Read a scalar member freely; to change it, write the scalar tag its logic uses.')
   const tag = declaredTag(project, entry)
   if (aliasesOf(project.document).has(`${tag.scope}::${tag.name}`))
     throw new EngineeringError('UNSUPPORTED_WRITE_TAG', `${tag.name} is an alias; write the tag it points at`, 'Read aliases freely; a write must name the declared tag so the controller changes one known operand.')

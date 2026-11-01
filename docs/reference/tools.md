@@ -579,27 +579,27 @@ Direct EtherNet/IP reads with no Studio, FactoryTalk Linx or ACD snapshot.
 
 #### `poll_live_tags`
 
-Read declared scalar PLC tags directly over EtherNet/IP without Studio, FactoryTalk Linx, an ACD upload or the SDK. Explicit controller IPv4 and slot required. Returns timestamped sweeps, quality and controller identity; no writes.
+Read declared scalar PLC tags or scalar members directly over EtherNet/IP without Studio, FactoryTalk Linx, an ACD upload or the SDK. Explicit controller IPv4 and slot required. Returns timestamped sweeps, quality and controller identity; no writes.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 | `ip_address` | string | yes | Controller IPv4 address the human named. Example: "192.168.1.10". |
 | `slot` | integer | no | CPU slot, 0 to 31. Default 0. |
-| `tags` | array | yes | Controller-scoped scalar tags to read, 1 to 16. Each entry names the tag and optionally its program. |
+| `tags` | array | yes | Controller-scoped scalar tags or scalar members to read, 1 to 16. Each entry names the tag and optionally its program. |
 | `sample_count` | integer | no | Number of sweeps to read. Default 1. |
 | `interval_ms` | integer | no | Requested interval between sweeps. Default 200. |
 
 #### `read_live_tags`
 
-Read up to 64 declared scalar tags in ONE EtherNet/IP request (CIP tag group). Faster than polling for a one-shot snapshot; no writes, no Studio, no Linx, no SDK.
+Read up to 64 declared scalar tags or scalar members in ONE EtherNet/IP request (CIP tag group). Faster than polling for a one-shot snapshot; no writes, no Studio, no Linx, no SDK.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 | `ip_address` | string | yes | Controller IPv4 address the human named. Example: "192.168.1.10". |
 | `slot` | integer | no | CPU slot, 0 to 31. Default 0. |
-| `tags` | array | yes | Declared scalar tags to read together, 1 to 64. Each entry names the tag and optionally its program. |
+| `tags` | array | yes | Declared scalar tags or scalar members to read together, 1 to 64. Each entry names the tag and optionally its program. |
 
 #### `read_controller_clock`
 
@@ -643,14 +643,14 @@ Set the controller wall clock (L8x only), then read it back. Requires the row's 
 
 #### `start_plc_trend`
 
-Start a bounded, read-only PLC trend as a session-owned background job. Explicit IPv4, slot and declared scalar tags required. SDK-independent EtherNet/IP; the chart follows the job without a model call per sample.
+Start a bounded, read-only PLC trend as a session-owned background job. Explicit IPv4, slot and declared scalars or scalar members required. SDK-independent EtherNet/IP; the chart follows the job without a model call per sample.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 | `ip_address` | string | yes | Controller IPv4 address the human named. Example: "192.168.1.10". |
 | `slot` | integer | no | CPU slot, 0 to 31. Default 0. |
-| `tags` | array | yes | Controller-scoped scalar tags to read, 1 to 16. Each entry names the tag and optionally its program. |
+| `tags` | array | yes | Controller-scoped scalar tags or scalar members to read, 1 to 16. Each entry names the tag and optionally its program. |
 | `sample_count` | integer | no | Number of sweeps in the trend. Default 300. |
 | `interval_ms` | integer | no | Requested interval between sweeps. Default 200. |
 

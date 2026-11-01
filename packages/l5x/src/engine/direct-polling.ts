@@ -64,32 +64,35 @@ export function pollingRequest(project: ProjectSnapshot, input: Readonly<Record<
   const seen = new Set<string>()
   const tags = raw.map((entry: unknown): PollTag => {
     if (!entry || typeof entry !== 'object' || !('name' in entry) || typeof entry.name !== 'string'
-      || !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(entry.name) || !Object.keys(entry).every(key => key === 'name' || key === 'scope'))
+      || !/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/u.test(entry.name) || !Object.keys(entry).every(key => key === 'name' || key === 'scope'))
       throw new EngineeringError('INVALID_POLL', 'Each tag needs an exact scalar name and optional scope only')
     const scope = 'scope' in entry ? entry.scope : 'controller'
     if (typeof scope !== 'string' || (scope !== 'controller' && !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(scope)))
       throw new EngineeringError('INVALID_POLL', 'scope must be controller or an exact program name')
-    const declared = project.document.tags.find(tag => tag.name === entry.name && tag.scope === scope)
+    // A trend may watch one scalar member (Timer.PRE); the declaration lives on the base tag.
+    const base = entry.name.split('.')[0] ?? entry.name
+    const declared = project.document.tags.find(tag => tag.name === base && tag.scope === scope)
     const controller = controllerElementOf(project.document)
     const programs = firstChild(controller, 'Programs')
     const container = scope === 'controller' ? controller : programs === undefined ? undefined
       : elementChildren(programs, 'Program').find(program => program.attrs.Name === scope)
     const tagContainer = container === undefined ? undefined : firstChild(container, 'Tags')
-    const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === entry.name)
+    const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === base)
     const dimensions = declaration?.attrs.Dimensions ?? declaration?.attrs.Dimension ?? ''
     // A poll is a read: an alias is a normal operand, and ExternalAccess only
     // stops writes. Refusing aliases made every module-point BOOL unmonitorable.
-    let type = ['BOOL', 'INT', 'DINT', 'REAL'].includes(declared?.dataType ?? '') ? declared?.dataType ?? '' : ''
+    const scalars = ['BOOL', 'INT', 'DINT', 'REAL']
+    let type = declared !== undefined && scalars.includes(declared.dataType) ? declared.dataType : ''
     if (type === '' && declared !== undefined) {
-      const resolution = resolveTag(project.document, scope, declared.name)
-      if (resolution.resolved && resolution.data_type !== undefined && ['BOOL', 'INT', 'DINT', 'REAL'].includes(resolution.data_type)) type = resolution.data_type
+      const resolution = resolveTag(project.document, scope, entry.name)
+      if (resolution.resolved && resolution.data_type !== undefined && scalars.includes(resolution.data_type)) type = resolution.data_type
     }
     if (!declared || type === '' || (dimensions !== '' && dimensions !== '0'))
-      throw new EngineeringError('UNSUPPORTED_POLL_TAG', 'Select a declared scalar BOOL, INT, DINT, or REAL (aliases are read through; arrays are refused)')
-    const key = `${scope}::${declared.name}`.toLowerCase()
+      throw new EngineeringError('UNSUPPORTED_POLL_TAG', 'Select a declared scalar BOOL, INT, DINT, or REAL, or one scalar member (aliases are read through; arrays are refused)')
+    const key = `${scope}::${entry.name}`.toLowerCase()
     if (seen.has(key)) throw new EngineeringError('INVALID_POLL', 'Duplicate watch tag')
     seen.add(key)
-    return { name: declared.name, ...(scope === 'controller' ? {} : { program: scope }), data_type: type as PollTag['data_type'] }
+    return { name: entry.name, ...(scope === 'controller' ? {} : { program: scope }), data_type: type as PollTag['data_type'] }
   })
   const request: PollRequest = { ip, slot, tags, samples, interval, timeout: config.requestTimeoutMs }
   return { request, evidence: tags.map(tag => ({ tag: tag.name, scope: tag.program ?? 'controller',
