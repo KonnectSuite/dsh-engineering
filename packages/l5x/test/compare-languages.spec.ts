@@ -129,3 +129,34 @@ describe('one rung changed', () => {
     expect(fields).toContain('XIC(B)OTE(B)')
   })
 })
+
+
+/** The same SFC chart with one transition condition rewritten. */
+const SFC_OLD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"SfcDiff\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A1\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"A2\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"SFC\"><SFCContent SheetSize=\"Letter - 8.5 x 11 in\" SheetOrientation=\"Landscape\">\n        <Step ID=\"0\" X=\"300\" Y=\"100\" Operand=\"Step_1\" HideDesc=\"false\" DescX=\"340\" DescY=\"80\" DescWidth=\"0\" InitialStep=\"true\" PresetUsesExpr=\"false\" LimitHighUsesExpr=\"false\" LimitLowUsesExpr=\"false\" ShowActions=\"true\"/>\n        <Step ID=\"1\" X=\"300\" Y=\"300\" Operand=\"Step_2\" HideDesc=\"false\" DescX=\"340\" DescY=\"280\" DescWidth=\"0\" InitialStep=\"false\" PresetUsesExpr=\"false\" LimitHighUsesExpr=\"false\" LimitLowUsesExpr=\"false\" ShowActions=\"true\"/>\n        <Transition ID=\"2\" X=\"300\" Y=\"200\" Operand=\"T_1\" HideDesc=\"false\" DescX=\"340\" DescY=\"180\" DescWidth=\"0\"><Condition><STContent><Line Number=\"0\"><![CDATA[A1]]></Line></STContent></Condition></Transition>\n        <DirectedLink FromID=\"0\" ToID=\"2\" Show=\"true\"/>\n        <DirectedLink FromID=\"2\" ToID=\"1\" Show=\"true\"/>\n      </SFCContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+const SFC_NEW = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"SfcDiff\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A1\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"A2\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"SFC\"><SFCContent SheetSize=\"Letter - 8.5 x 11 in\" SheetOrientation=\"Landscape\">\n        <Step ID=\"0\" X=\"300\" Y=\"100\" Operand=\"Step_1\" HideDesc=\"false\" DescX=\"340\" DescY=\"80\" DescWidth=\"0\" InitialStep=\"true\" PresetUsesExpr=\"false\" LimitHighUsesExpr=\"false\" LimitLowUsesExpr=\"false\" ShowActions=\"true\"/>\n        <Step ID=\"1\" X=\"300\" Y=\"300\" Operand=\"Step_2\" HideDesc=\"false\" DescX=\"340\" DescY=\"280\" DescWidth=\"0\" InitialStep=\"false\" PresetUsesExpr=\"false\" LimitHighUsesExpr=\"false\" LimitLowUsesExpr=\"false\" ShowActions=\"true\"/>\n        <Transition ID=\"2\" X=\"300\" Y=\"200\" Operand=\"T_1\" HideDesc=\"false\" DescX=\"340\" DescY=\"180\" DescWidth=\"0\"><Condition><STContent><Line Number=\"0\"><![CDATA[A2]]></Line></STContent></Condition></Transition>\n        <DirectedLink FromID=\"0\" ToID=\"2\" Show=\"true\"/>\n        <DirectedLink FromID=\"2\" ToID=\"1\" Show=\"true\"/>\n      </SFCContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a sequential function chart', () => {
+  it('decodes steps, transitions and links written without a Sheet wrapper', async () => {
+    // A real SFC export writes the chart directly under SFCContent. Decoding only Sheet children
+    // returned zero nodes, so the chart was invisible to the reader and to the diff.
+    const l5x = harness(new Map([['sfc.l5x', new TextEncoder().encode(SFC_OLD)]]))
+    await l5x.call('open_project', { path: 'sfc.l5x' })
+    const routine = await l5x.call('get_component', { kind: 'routine', name: 'R', scope: 'P' })
+    const body = (routine.data?.component?.body ?? {}) as { type?: string; nodes?: { kind: string }[] }
+    expect(body.type).toBe('SFC')
+    expect((body.nodes ?? []).length).toBeGreaterThanOrEqual(4)
+    expect((body.nodes ?? []).some(node => node.kind === 'Transition')).toBe(true)
+  })
+
+  it('reports a changed transition condition', async () => {
+    const l5x = harness(new Map([
+      ['old.l5x', new TextEncoder().encode(SFC_OLD)],
+      ['new.l5x', new TextEncoder().encode(SFC_NEW)],
+    ]))
+    const before = await l5x.call('open_project', { path: 'old.l5x' })
+    const after = await l5x.call('open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; key: string }[]
+    expect(changes.some(change => change.component === 'diagram' && change.key === 'P::R')).toBe(true)
+  })
+})

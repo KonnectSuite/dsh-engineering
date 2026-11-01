@@ -655,6 +655,14 @@
   changed error precedence - four existing tests caught it, which is the tests doing their job - so the shipped version only **enriches a
   genuine `TAG_NOT_FOUND`** and every other refusal keeps its own code and message. 408 package tests.
 
+- **SFC charts were invisible: they decoded to zero nodes, and the diff reported "0 changes" for a rewritten transition.** A real SFC export
+  writes its steps, transitions and links **directly under `SFCContent`**, with no `<Sheet>` wrapper, but `decodeDiagram` only walked
+  `<Sheet>` children - so every SFC routine read back empty and a chart edit could not be seen. It now treats unwrapped content as
+  one sheet: the same fixture decodes 4 nodes (`Step`, `Transition`, `Line`, `DirectedLink`) and a changed condition produces
+  `diagram P::R changed`. Two tests pin the decode and the diff. Found by asking the question round 93 left open - "SFC diff is
+  fixture-tested only" was wrong: it was **not tested at all**, and the fixture lacked the wrapper real exports omit. Follow-up
+  recorded: `changed_fields` prints diagram nodes as `[object Object]`, so the diff finds the change but not yet describes it.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -127,8 +127,13 @@ function decodeDiagram(routine: XmlElement, contentName: string): readonly L5xDi
   const content = firstChild(routine, contentName)
   if (content === undefined) return []
   const nodes: L5xDiagramNode[] = []
-  for (const sheet of elementChildren(content, 'Sheet')) {
-    const number = Number.parseInt(sheet.attrs['Number'] ?? '0', 10)
+  // A real SFC export writes its steps and transitions directly under SFCContent, with no Sheet
+  // wrapper, so decoding only Sheet children returned zero nodes and the diff could not see a chart.
+  const sheets = elementChildren(content, 'Sheet')
+  const scopes = sheets.length > 0
+    ? sheets.map(sheet => ({ number: Number.parseInt(sheet.attrs['Number'] ?? '0', 10), element: sheet }))
+    : [{ number: 1, element: content }]
+  for (const { number, element: sheet } of scopes) {
     const visit = (child: XmlElement): void => {
       const text = nodeText(child)
       if (Object.keys(child.attrs).length > 0 || text !== undefined) {
