@@ -95,6 +95,10 @@ truth. Never write to `<workspace>/_backups`.
 - `draft_tag` also accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL`.
 - Serial ASCII (`ABL`, `ARD`, ...) needs a controller **with a serial port**: it builds on a 1756-L73 and is refused
   on a 5069 or 1756-L8x whatever the operands. `run_checks` reports it before any build.
+- String positioning operands are **1-based**: `MID(s,5,1,d)` builds, and `0` fails with
+  `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
+- Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or
+  Studio answers `AUDIT_OUTPUTS`.
 - Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
   export, `verify_offline_l5x` builds it.
 - An aborted import on an export that imported before means the controller **name is still registered** with the

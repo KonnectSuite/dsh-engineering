@@ -241,6 +241,16 @@
   slots (`Source`, `Source bit`, `Dest`, `Dest bit`, `Length`) and a build of `BTD(d1,0,d2,0,8)` passes - my earlier
   four-operand probe was what was wrong, not the catalogue.
 
+- **The bit family builds, and the skill now carries the two rules that cost probes to learn.** `AND`, `OR`, `XOR`, `NOT`,
+  `BTD` and `MEQ` all build through our composer once the rung **ends in an output** -
+  `XIC(a1)AND(d1,d2,d3)OTE(a2)` and its siblings passed in one project with **0 warnings and 0 errors**. They are
+  input-type instructions, and ending a rung on one answers `AUDIT_OUTPUTS`. That, and the previous round's 1-based string
+  `Start` (`MID(s,5,1,d)` builds, `0` fails with `OUTOFRANGE`), are now in `SKILL.md`, whose body grew from 5545 to 5863
+  characters and still has 2137 of headroom. One finding stays **open** rather than becoming a rule: a subroutine whose
+  first rung is a bare `SBR();` made a build fail with `AUDIT_OUTPUTS`, and removing that rung made the identical project
+  pass - yet our own composer emits `SBR();` and a test pins it. One data point is not a rule, so it is recorded as a
+  question to settle with a dedicated probe rather than encoded on a guess.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
