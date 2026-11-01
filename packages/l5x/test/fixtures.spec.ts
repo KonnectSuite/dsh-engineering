@@ -100,6 +100,23 @@ describe('descriptions added to existing components', () => {
   })
 })
 
+describe('a finding remedy', () => {
+  it('is attached to an actionable rule', async () => {
+    const built = l5x({
+      name: 'FixProof',
+      tags: tag('Orphan'),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['fx.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'fx.l5x' })).error).toBeUndefined()
+    const checks = await l5xTool.call('run_checks', { rule: 'UNUSED_TAG' })
+    const findings = (checks.data?.findings ?? []) as { rule: string; fix?: string }[]
+    expect(findings.length).toBe(1)
+    expect(String(findings[0]?.fix)).toContain('delete')
+  })
+})
+
 describe('a project with no Tags element', () => {
   it('gets one when the first tag is added', async () => {
     const built = l5x({

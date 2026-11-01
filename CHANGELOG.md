@@ -914,6 +914,12 @@
   before `Data`). It now inserts at the element's content start. SDK-proven together with the UDT-member path: setting a UDT description and a tag description
   builds with **0 warnings, 0 errors**, two changes. The test asserts the order for both. 443 package tests.
 
+- **Findings now carry a structured remedy.** `run_checks` reported rule, severity, message and evidence - what is wrong and where - but never what to do. A
+  `fix` field now comes from a per-rule remedy map (unused tag, unresolved reference, undocumented rung/routine/program, unscheduled program, latch without
+  reset, multiple writers, mnemonic mismatch, rung with no output), so a caller can act without composing the advice itself. Verified on
+  `Seco_Homogenizer`: **100 of the first 100 findings** carry one, e.g. `DUPLICATE_OUTPUT -> Confirm intent and keep a single writer per tag, or split the
+  tag.` A test pins the unused-tag remedy. 444 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

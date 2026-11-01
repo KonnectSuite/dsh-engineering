@@ -61,12 +61,29 @@ export function compareProjects(before: ProjectSnapshot, after: ProjectSnapshot)
   return { before: before.sha256, after: after.sha256, changes: result, count: result.length, coverage: { before: before.features, after: after.features } }
 }
 
+/** What to change for rules whose remedy is short enough to state here. */
+const REMEDIES: Record<string, string> = {
+  UNUSED_TAG: 'Use the tag in logic or delete it in Studio; an exported tag with no reader may be HMI-only, so check the HMI first.',
+  UNRESOLVED_REFERENCE: 'Declare the tag or correct the spelling; find_references lists every site of the symbol.',
+  UNDOCUMENTED_RUNG: 'Add a rung comment stating what the rung does and why it exists.',
+  UNDOCUMENTED_ROUTINE: 'Add a routine description saying what it does and when it runs.',
+  UNDOCUMENTED_PROGRAM: 'Add a program description naming the equipment and mode it controls.',
+  UNSCHEDULED_PROGRAM: 'Add the program to a task that runs it, or delete the unused program.',
+  LATCH_WITHOUT_RESET: 'Add a reset path (XIO condition driving OTU) or confirm the latch is reset outside this export.',
+  MULTIPLE_OUTPUT_WRITES: 'Confirm one writer is intended; merge the writers or move the second to another tag.',
+  DUPLICATE_OUTPUT: 'Confirm intent and keep a single writer per tag, or split the tag.',
+  MNEMONIC_VERSION_MISMATCH: 'Use the instruction spelling this project revision builds; list_instructions gives both spellings.',
+  RUNG_NO_OUTPUT: 'Give the rung an output instruction, or delete it.',
+}
+
 export interface Finding {
   readonly rule: string
   readonly severity: 'info' | 'warning' | 'critical'
   readonly message: string
   readonly evidence: unknown
   readonly confidence: 'high' | 'medium' | 'low'
+  /** One line saying what to change, when the rule has a known remedy. */
+  readonly fix?: string
 }
 
 /** A short list of rung numbers, counting the rest. */
@@ -139,7 +156,11 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   const doc = project.document
   const references = evidenceOf(project)
   const findings: Finding[] = []
-  const report = (rule: string, severity: Finding['severity'], message: string, evidence: unknown, confidence: Finding['confidence'] = 'high'): void => { findings.push({ rule, severity, message, evidence, confidence }) }
+  const report = (rule: string, severity: Finding['severity'], message: string, evidence: unknown, confidence: Finding['confidence'] = 'high', fix?: string): void => {
+    // Every finding a reader can act on should say what to do; rules without a remedy stay silent.
+    const remedy = fix ?? REMEDIES[rule]
+    findings.push({ rule, severity, message, evidence, confidence, ...(remedy === undefined ? {} : { fix: remedy }) })
+  }
   const used = new Set<string>()
   for (const ref of references) {
     if (ref.resolved !== undefined) {
