@@ -267,6 +267,54 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       `${uncatalogued.size} instruction(s) in this export are not in the catalogue, so their operands were not checked: ${listed}${rows.length > 8 ? `, and ${rows.length - 8} more` : ''}`,
       { instructions: rows.slice(0, 20).map(([name, rungs]) => ({ name, rungs })), catalogue_size: catalogued.size, note: 'The catalogue models 128 of the vendor instructions; an uncatalogued name may still be valid, and Studio remains the arity gate.' })
   }
+  // Control-transfer pass: a JSR naming a routine that is not in its own program, or a JMP with
+  // no LBL of that name in its own routine, cannot build. Both targets are written in the rung,
+  // so the export states them and no vendor table is needed.
+  const routinesByProgram = new Map<string, Set<string>>()
+  const programsByRoutine = new Map<string, string[]>()
+  for (const routine of doc.routines) {
+    const names = routinesByProgram.get(routine.program) ?? new Set<string>()
+    names.add(routine.name.toUpperCase())
+    routinesByProgram.set(routine.program, names)
+    const key = routine.name.toUpperCase()
+    programsByRoutine.set(key, [...programsByRoutine.get(key) ?? [], routine.program])
+  }
+  for (const routine of doc.routines) {
+    if (routine.body.type !== 'RLL') continue
+    const labels = new Set<string>()
+    for (const rung of routine.body.rungs) {
+      for (const match of rung.text.matchAll(/(?:^|[^A-Za-z0-9_])LBL\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*[),]/gu)) {
+        const label = match[1]
+        if (label !== undefined) labels.add(label.toUpperCase())
+      }
+    }
+    const missingLabels = new Map<string, number[]>()
+    const missingRoutines = new Map<string, number[]>()
+    for (const rung of routine.body.rungs) {
+      for (const match of rung.text.matchAll(/(?:^|[^A-Za-z0-9_])JMP\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*[),]/gu)) {
+        const label = match[1]
+        if (label === undefined || labels.has(label.toUpperCase())) continue
+        missingLabels.set(label, [...missingLabels.get(label) ?? [], rung.number])
+      }
+      for (const match of rung.text.matchAll(/(?:^|[^A-Za-z0-9_])JSR\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*[),]/gu)) {
+        const target = match[1]
+        if (target === undefined || routinesByProgram.get(routine.program)?.has(target.toUpperCase()) === true) continue
+        missingRoutines.set(target, [...missingRoutines.get(target) ?? [], rung.number])
+      }
+    }
+    for (const [label, rungs] of missingLabels) {
+      report('LABEL_NOT_FOUND', 'warning',
+        `${routine.program}::${routine.name} jumps to ${label} at rung ${rungList(rungs)}, and no LBL in this routine uses that name`,
+        { program: routine.program, routine: routine.name, label, rungs })
+    }
+    for (const [target, rungs] of missingRoutines) {
+      const elsewhere = programsByRoutine.get(target.toUpperCase())
+      const hint = elsewhere === undefined ? '' : `; a routine of that name exists in ${elsewhere.join(', ')}, and a JSR can only call a routine in its own program`
+      report('UNRESOLVED_ROUTINE', 'warning',
+        `${routine.program}::${routine.name} jumps to ${target} at rung ${rungList(rungs)}, and ${routine.program} declares no routine of that name${hint}`,
+        { program: routine.program, routine: routine.name, target, rungs })
+    }
+  }
   // Structure pass: an export states no rule for a diagram's wire graph or a rung's
   // shape, so a document Studio refuses looks exactly like one it accepts.
   for (const routine of doc.routines) {

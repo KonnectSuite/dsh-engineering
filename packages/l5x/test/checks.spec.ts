@@ -300,3 +300,32 @@ describe('a staged rung the catalogue cannot check', () => {
     expect(rules).toContain('UNCATALOGUED_INSTRUCTION')
   })
 })
+
+
+/** An export whose rungs jump to a routine in another program and to a label that is not there. */
+const TRANSFER_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Transfer\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"P1\" MainRoutineName=\"R\">\n        <Routines>\n          <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)JSR(Ghost);]]></Text></Rung>\n            <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)JMP(Skip);]]></Text></Rung>\n            <Rung Number=\"2\" Type=\"N\"><Text><![CDATA[LBL(Skip);]]></Text></Rung>\n            <Rung Number=\"3\" Type=\"N\"><Text><![CDATA[XIC(A)JSR(Sub);]]></Text></Rung>\n            <Rung Number=\"4\" Type=\"N\"><Text><![CDATA[XIC(A)JMP(Nowhere);]]></Text></Rung>\n            <Rung Number=\"5\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n          <Routine Name=\"Sub\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n      <Program Name=\"P2\" MainRoutineName=\"Ghost\">\n        <Routines>\n          <Routine Name=\"Ghost\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P1\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('control transfer', () => {
+  it('reports a jump to a routine its own program does not declare, and says where that name lives', async () => {
+    const l5x = harness(new Map([['transfer.l5x', new TextEncoder().encode(TRANSFER_L5X)]]))
+    await l5x.call('open_project', { path: 'transfer.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'UNRESOLVED_ROUTINE' })
+    const rows = result.data?.findings as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Ghost')
+    expect(rows[0]?.message).toContain('exists in P2')
+    // The JSR to Sub is in the same program and must not be reported.
+    expect(rows[0]?.message).not.toContain('Sub')
+  })
+
+  it('reports a jump to a label no LBL in the routine uses', async () => {
+    const l5x = harness(new Map([['transfer.l5x', new TextEncoder().encode(TRANSFER_L5X)]]))
+    await l5x.call('open_project', { path: 'transfer.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'LABEL_NOT_FOUND' })
+    const rows = result.data?.findings as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Nowhere')
+    // Skip has an LBL on rung 2, so it must not be reported.
+    expect(rows[0]?.message).not.toContain('Skip')
+  })
+})

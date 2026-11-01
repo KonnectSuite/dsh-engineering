@@ -200,6 +200,13 @@
   `UNCATALOGUED_INSTRUCTION` in `draft_validate`'s `new_findings`, so the reader learns which part of their own edit
   went unexamined before it is written.
 
+- **Two control-transfer failures are reported: a `JSR` to a routine its own program does not declare, and a `JMP`
+  with no `LBL` of that name in its routine.** Neither could build, and neither was reported — a project that jumps
+  nowhere read clean. The targets are written in the rung, so no vendor table is needed: `UNRESOLVED_ROUTINE` names the
+  routine and where a same-named routine does live (*"P1::R jumps to Ghost … a routine of that name exists in P2, and a
+  JSR can only call a routine in its own program"*), and `LABEL_NOT_FOUND` names the label and rung. A `JSR` to a routine
+  in its own program and a `JMP` with a matching `LBL` stay silent, which the tests assert.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -211,7 +218,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-305 package tests and 70 bundle tests pass.
+307 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
