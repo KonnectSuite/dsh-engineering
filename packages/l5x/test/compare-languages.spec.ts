@@ -438,3 +438,44 @@ describe('a controller-level change', () => {
     expect(fields).toContain('commPath')
   })
 })
+
+/** One export differing from the other only in a module revision, an AOI parameter and a tag radix. */
+function deepVariant(moduleMinor: string, aoiType: string, radix: string, constant: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="Deep" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="Speed" TagType="Base" DataType="REAL" Radix="${radix}" Constant="${constant}" ExternalAccess="Read/Write"/></Tags>
+    <Modules><Module Name="Local:3" CatalogNumber="5069-IB16" Vendor="1" ProductType="7" ProductCode="0" Major="1" Minor="${moduleMinor}" ParentModule="Local" ParentModPortId="1" Inhibited="false" MajorFault="false"/></Modules>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="AOI_X" Class="Standard" Revision="1.0" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false">
+        <Parameters><Parameter Name="In" Usage="Input" DataType="${aoiType}" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+}
+
+describe('changes below the component name', () => {
+  it('reports a module revision, an AOI parameter type and a tag radix', async () => {
+    // Probed before writing this: each of these was reported, so the test locks the coverage in.
+    const before = deepVariant('11', 'BOOL', 'Float', 'false')
+    const after = deepVariant('12', 'DINT', 'Decimal', 'true')
+    const l5x = harness(new Map([
+      ['a.l5x', new TextEncoder().encode(before)],
+      ['b.l5x', new TextEncoder().encode(after)],
+    ]))
+    const one = await l5x.call('open_project', { path: 'a.l5x' })
+    const two = await l5x.call('open_project', { path: 'b.l5x' })
+    expect(one.error).toBeUndefined()
+    expect(two.error).toBeUndefined()
+    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
+    const all = changes.map(change => `${change.component} ${(change.changed_fields ?? []).join(' ')}`).join('\n')
+    expect(all).toContain('module minor 11 to 12')
+    expect(all).toContain('aoi parameters')
+    expect(all).toContain('tag radix Float to Decimal')
+    expect(all).toContain('constant undefined to true')
+  })
+})

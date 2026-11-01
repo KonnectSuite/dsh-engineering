@@ -772,6 +772,11 @@
   `processorType 1756-L81ES to 1756-L82ES`, `commPath CIM_Prep/10.211.100.100/Backplane/0 to .../101/...`. That is the first thing a release
   review should see, and it was the one thing the comparison could not. A test pins it. 424 package tests.
 
+- **The diff's deep coverage is now pinned: module revision, AOI parameter type and tag radix.** Probing showed `compare_projects` reports a module `minor 11 to 12`,
+  an AOI parameter `parameters [...] BOOL ... to DINT`, and a tag `radix Float to Decimal` plus `constant undefined to true` - coverage that existed and was held by
+  nothing. One test now changes all three in one fixture and asserts each line. My first version of the test asserted a string the test itself never built
+  (`aoi AOI_X changed`), so it failed for my reason, not the product's - found by printing the map rather than guessing. 425 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
