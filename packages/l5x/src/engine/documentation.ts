@@ -160,12 +160,12 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   text += `- Project serial: ${controller.projectSerialNumber ?? 'not declared'}; saved path: ${controller.commPath ?? 'not declared'}\n`
   text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines}; rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}\n\n`
   if ((project.protectedRoutines ?? 0) > 0) text += `- Source-protected routines: ${project.protectedRoutines}. Their bodies are encrypted in this export and were not documented.\n`
-  text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Programs |\n|---|---|---|---|---|\n'
-  for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.programs.join(', '))
-  text += '\n## Programs\n\n| Program | Main routine | Routines | Description |\n|---|---|---|---|\n'
+  text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Safety | Programs |\n|---|---|---|---|---|---|\n'
+  for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.safety === true, task.programs.join(', '))
+  text += '\n## Programs\n\n| Program | Main routine | Routines | Safety | Description |\n|---|---|---|---|---|\n'
   for (const program of document.programs) {
     const routines = listRoutines(document, program.name)
-    text += mdRow(program.name, program.mainRoutine, routines.length, program.description)
+    text += mdRow(program.name, program.mainRoutine, routines.length, program.safety === true, program.description)
   }
   // AOIs are where much of a real project's behaviour lives; the bundle named none of them.
   if (document.aois.length > 0) {

@@ -40,7 +40,7 @@ describe('document_project', () => {
     await l5x.call('document_project', { output_root: 'docs' })
     const project = l5x.written.get('docs/PROJECT.md') ?? ''
     expect(project).toContain('# SampleController project documentation')
-    expect(project).toContain('| Program | Main routine | Routines | Description |')
+    expect(project).toContain('| Program | Main routine | Routines | Safety | Description |')
     expect(project).toContain('MainProgram')
     expect(project).toContain('rungs: 11 (11 with comments)')
   })

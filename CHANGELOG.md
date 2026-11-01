@@ -873,6 +873,10 @@
   rows in `list_components` now carry `safety`, and `get_component` on an AOI-owned routine returns `safety: true` when the parent instruction is `Class="Safety"`. The
   builder spec asserts both for `AOI_Step/Logic`. 437 package tests.
 
+- **The program and task tables mark safety directly.** `PROJECT.md` listed tasks and programs without a safety column, so a reader had to cross-reference the Safety
+  section to learn that `SafetyTask` or `COMBUSTION_SAFETY` is safety - while the file header already says the fact. Both tables now carry a **Safety** column:
+  verified on `Seco_Homogenizer`, where `SafetyTask` reads true and `MainTask` false, and the programs table marks the two guard programs. 437 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
