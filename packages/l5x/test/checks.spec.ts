@@ -524,3 +524,28 @@ describe('a string literal in a rung', () => {
     expect(rows).toEqual([])
   })
 })
+
+
+/** An AOI-style routine set: the output is forced in the preset routines on purpose. */
+const AOI_PRESET_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Preset\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Valve_Output\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"Logic\"><Routines><Routine Name=\"Logic\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Valve_Output);]]></Text></Rung></RLLContent></Routine><Routine Name=\"EnableInFalse\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Valve_Output);]]></Text></Rung></RLLContent></Routine><Routine Name=\"Prescan\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Valve_Output);]]></Text></Rung></RLLContent></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+/** Two ordinary routines writing the same output: the rule must still catch it. */
+const TWO_WRITERS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Preset\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Valve_Output\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"Logic\"><Routines><Routine Name=\"Logic\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Valve_Output);]]></Text></Rung></RLLContent></Routine><Routine Name=\"Other\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Valve_Output);]]></Text></Rung></RLLContent></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('an output written more than once', () => {
+  it('stays quiet for the AOI preset routines', async () => {
+    const l5x = harness(new Map([['preset.l5x', new TextEncoder().encode(AOI_PRESET_L5X)]]))
+    await l5x.call('open_project', { path: 'preset.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    expect(result.data?.findings).toEqual([])
+  })
+
+  it('still reports two ordinary routines', async () => {
+    const l5x = harness(new Map([['two.l5x', new TextEncoder().encode(TWO_WRITERS_L5X)]]))
+    await l5x.call('open_project', { path: 'two.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    const rows = (result.data?.findings ?? []) as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Valve_Output')
+  })
+})

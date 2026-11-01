@@ -359,6 +359,14 @@
   the file already documents - a literal wearing a tag's shape - and it is the reason the rule's confidence was `low` on
   real code: the scanner was guessing at letters.
 
+- **Two false `MULTIPLE_OUTPUT_WRITES` findings were the AOI pattern, not a defect.** On the production export the rule named
+  output parameters written from `Logic`, `EnableInFalse` and `Prescan` - which is exactly how an Add-On Instruction forces
+  its outputs when the instruction is disabled or scanned. Writing an AOI output in those preset routines is documented
+  practice, so the rule now **exempts them** and counts only the ordinary routines: `MULTIPLE_OUTPUT_WRITES` fell from 6 to
+  4 on that project and total warnings from 14 to 12. The remaining four are real multiple writers, all inside `Logic`.
+  Two tests pin both directions - a routine set of `Logic`/`EnableInFalse`/`Prescan` produces nothing, while `Logic`/`Other`
+  produces the finding with the tag named - so the exemption cannot swallow a genuine defect.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

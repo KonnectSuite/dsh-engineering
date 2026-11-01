@@ -258,7 +258,11 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   }
   const writers = new Map<string, Evidence[]>()
   for (const ref of references) if (ref.resolved !== undefined && (ref.access === 'write' || ref.access === 'read_write')) writers.set(ref.resolved, [...writers.get(ref.resolved) ?? [], ref])
-  for (const [symbol, locations] of writers) {
+  // An AOI forces its output parameters in EnableInFalse and Prescan on purpose: a production project
+  // produced five "multiple writers" findings that were exactly that documented pattern.
+  const presetRoutine = /^(?:EnableInFalse|Prescan|Postscan)$/iu
+  for (const [symbol, allSites] of writers) {
+    const locations = allSites.filter(site => !presetRoutine.test(site.routine))
     if (locations.length <= 1) continue
     if (!/(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) continue
     report('MULTIPLE_OUTPUT_WRITES', 'warning', `Output-like symbol ${symbol} is written from ${locations.length} sites: ${siteList(locations)}`, locations, 'medium')
