@@ -3,7 +3,7 @@
  *
  * Everything here is derived from the parsed project: the generator provides the
  * structure and the citations, and the narrative prose stays the caller's job.
- * That split is deliberate â€” a generated narrative would be an unsourced claim,
+ * That split is deliberate  -  a generated narrative would be an unsourced claim,
  * while a rung with its number, comment, text and referenced tags is evidence a
  * reviewer can check in one click.
  *
@@ -160,7 +160,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   const document = project.document
   const { controller } = document
   let text = `# ${controller.name} project documentation\n\n`
-  text += `Generated from \`${project.path}\` (sha256 \`${project.sha256.slice(0, 16)}â€¦\`) at ${new Date().toISOString()}.\n\n`
+  text += `Generated from \`${project.path}\` (sha256 \`${project.sha256.slice(0, 16)}...\`) at ${new Date().toISOString()}.\n\n`
   text += `- Processor: ${controller.processorType}\n- Revision: ${document.controller.majorRev}.${document.controller.minorRev}\n`
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   // The saved route and project serial are what a handover reader needs to reach and identify the machine.
@@ -238,8 +238,8 @@ const DIAGRAM_LANGUAGE: Readonly<Record<string, string>> = {
 /**
  * Document one non-ladder routine from the elements the reader decoded.
  *
- * Execution semantics remain unverified, so this lists what the export records â€” an element,
- * the reference it carries and the wires between ids â€” and never claims what runs.
+ * Execution semantics remain unverified, so this lists what the export records  -  an element,
+ * the reference it carries and the wires between ids  -  and never claims what runs.
  *
  * @param info - The routine's listing entry.
  * @param routine - The routine whose body is not ladder.
@@ -273,7 +273,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
   for (const programName of programs) {
     const program = document.programs.find(entry => entry.name === programName)
     if (program === undefined) continue
-    let section = `# ${programName} â€” rung documentation${program.safety === true ? ' (SAFETY program)' : ''}\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
+    let section = `# ${programName}  -  rung documentation${program.safety === true ? ' (SAFETY program)' : ''}\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
     let part = 1
     let inFile = 0
     let headingWritten = false
@@ -303,7 +303,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
           part += 1
           inFile = 0
           headingWritten = true
-          section = `# ${programName} â€” rung documentation (continued)\n`
+          section = `# ${programName}  -  rung documentation (continued)\n`
         }
       }
     }

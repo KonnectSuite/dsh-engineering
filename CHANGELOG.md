@@ -1000,6 +1000,11 @@
   `(SAFETY instruction)`; verified on `Seco_Homogenizer` (`COMBUSTION_SAFETY`, `FC_SFTY_SSOV`) and pinned with a built fixture. This is the last documentation
   surface that lacked the safety marker. 454 package tests.
 
+- **Fourteen mojibake sequences were corrupting source comments and generated documents.** The rung header read `# COMBUSTION_SAFETY â€” rung documentation` because
+  an earlier edit had written UTF-8 bytes through a decoder that turned them into `â€"` (and one double-encoded `ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â`); the same corruption sat in
+  five source files, including the PROJECT.md "Generated from ... sha256 ...â€¦" line. All now read ASCII (` - ` and `...`), the repository's stated default:
+  **0 occurrences remain**, and the generated header is `# COMBUSTION_SAFETY - rung documentation (SAFETY program)`. 454 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

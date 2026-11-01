@@ -5,8 +5,8 @@
  * could previously name any identifier and still parse. This table is the
  * contract: an instruction, its operand slots and the kind each slot accepts.
  *
- * The set covers what engineering programs actually use ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â measured against a
- * 1279-tag, 860-rung project ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â rather than every instruction the vendor ships.
+ * The set covers what engineering programs actually use ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â measured against a
+ * 1279-tag, 860-rung project ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â rather than every instruction the vendor ships.
  * An unknown name is refused with the nearest catalog names; an AOI declared by
  * the project is accepted separately, because its pins live in the export.
  *
@@ -219,7 +219,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), num('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
 
   // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
-  // source for, and the compact table's empty slot list made them claim "takes 0 operands" ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+  // source for, and the compact table's empty slot list made them claim "takes 0 operands" ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â
   // a confident wrong answer with no way forward. Drafting the rung text still works.
   { name: 'EOT', category: 'Program control', summary: 'End of transition, for a Sequential Function Chart step.', operands: [], notModelled: true },
   { name: 'SFR', category: 'Program control', summary: 'Reset an SFC routine to a target state.', operands: [], notModelled: true },
@@ -248,7 +248,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
 /**
  * Alternate spellings resolved to the catalog name.
  *
- * Logix Designer 36 renamed sixteen ladder instructions ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â `EQU` became `EQ`,
+ * Logix Designer 36 renamed sixteen ladder instructions ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â `EQU` became `EQ`,
  * `SQR` became `SQRT`, and so on. The catalog keeps one name per instruction,
  * because that name is also the key the viewer labels a block with, so composed
  * text, parsed text and a rendered block agree. Lookup still accepts the other

@@ -1,7 +1,7 @@
 /**
  * The supervised controller lifecycle: upload, connect, mode change, download.
  *
- * Only three actions change a machine â€” capture, mode change and download â€”
+ * Only three actions change a machine  -  capture, mode change and download  - 
  * and each one asks for per-call human approval of the exact controller, route
  * and target before it sends anything. Reading is unapproved and read-only.
  *

@@ -3,8 +3,8 @@
  * one tag's element usage.
  *
  * The old surface answered "where is this used" with five tools. This module
- * answers it with three names that state their intent â€” `find_references`,
- * `trace_dependencies`, `resolve_tag` â€” plus `usage_map` for element/bit
+ * answers it with three names that state their intent  -  `find_references`,
+ * `trace_dependencies`, `resolve_tag`  -  plus `usage_map` for element/bit
  * allocation, and `search_logic` for text that is not a symbol.
  *
  * @module dsh-engineering-l5x/tools/references
