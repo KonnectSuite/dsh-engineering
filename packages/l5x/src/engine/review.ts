@@ -379,8 +379,8 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       const where = doc.tasks.filter(task => task.programs.some(name => name.toUpperCase() === program.name.toUpperCase())).map(task => task.name)
       report('SAFETY_PROGRAM_NOT_IN_SAFETY_TASK', 'warning',
         where.length === 0
-          ? `${program.name} is declared Class="Safety" but no task schedules it.`
-          : `${program.name} is declared Class="Safety" but is scheduled by ${where.join(', ')}, not a safety task.`,
+          ? `${program.name} is declared Class="Safety" but no task schedules it; schedule it from a task with Class="Safety", or clear its safety class.`
+          : `${program.name} is declared Class="Safety" but is scheduled by ${where.join(', ')}, not a safety task; move it to a safety task or clear its safety class.`,
         { program: program.name, scheduledBy: where }, 'high')
     }
   }
@@ -388,7 +388,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   for (const module of doc.modules) {
     if (module.safetyEnabled !== true || module.safetyNetwork !== undefined) continue
     report('SAFETY_MODULE_WITHOUT_SAFETY_NETWORK', 'warning',
-      `${module.name} is safety-enabled but declares no safety network number.`,
+      `${module.name} is safety-enabled but declares no safety network number; set its SafetyNetwork in Studio before download.`,
       { module: module.name, catalogNumber: module.catalogNumber }, 'high')
   }
   // A safety add-on instruction is declared Class="Safety"; calling it from standard logic puts
@@ -403,7 +403,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         for (const instruction of mnemonicsIn(rung.text)) {
           if (!safetyAoiNames.has(instruction)) continue
           report('SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM', 'warning',
-            `${instruction} is a safety instruction called in standard program ${routine.program} (${routine.name} rung ${rung.number}).`,
+            `${instruction} is a safety instruction called in standard program ${routine.program} (${routine.name} rung ${rung.number}); call it from a routine scheduled by a safety task, or remove it.`,
             { program: routine.program, routine: routine.name, rung: rung.number, instruction }, 'high')
         }
       }

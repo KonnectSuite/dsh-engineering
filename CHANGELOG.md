@@ -794,6 +794,11 @@
   `Seco_Homogenizer` has 2 safety programs both scheduled by `SafetyTask` and 10 safety modules all with a network, `Seco_Cooler` 1 and 6 - and both rules
   return **0 findings** there after implementation. The test covers one violating and one compliant case for each. 429 package tests.
 
+- **Safety findings now say what to do, not only what is wrong.** Each of the three rules ends with the action: *call it from a routine scheduled by a safety
+  task, or remove it* / *move it to a safety task or clear its safety class* / *set its SafetyNetwork in Studio before download*. The test that covered the
+  violations now asserts the action text too, so a finding cannot silently lose its remedy. The first patch script missed an anchor and applied nothing -
+  caught because the script writes only at the end - so the corrected anchors were taken from the file rather than reconstructed. 429 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

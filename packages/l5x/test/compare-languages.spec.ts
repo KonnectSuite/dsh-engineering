@@ -519,6 +519,8 @@ describe('a safety instruction outside a safety program', () => {
     expect(findings[0]?.severity).toBe('warning')
     expect(String(findings[0]?.message)).toContain('standard program Standard')
     expect(String(findings[0]?.message)).not.toContain('Guard')
+    // A finding must say what to do, not only what is wrong.
+    expect(String(findings[0]?.message)).toContain('call it from a routine scheduled by a safety task')
   })
 })
 
@@ -552,10 +554,12 @@ describe('safety scheduling and safety network', () => {
     expect(String(scheduleFindings[0]?.message)).toContain('Misplaced')
     expect(String(scheduleFindings[0]?.message)).toContain('MainTask')
     expect(String(scheduleFindings[0]?.message)).not.toContain('Guard')
+    expect(String(scheduleFindings[0]?.message)).toContain('move it to a safety task')
     const network = await l5x.call('run_checks', { rule: 'SAFETY_MODULE_WITHOUT_SAFETY_NETWORK' })
     const networkFindings = (network.data?.findings ?? []) as { message: string }[]
     expect(networkFindings.length).toBe(1)
     expect(String(networkFindings[0]?.message)).toContain('SA_BAD')
     expect(String(networkFindings[0]?.message)).not.toContain('SA_OK')
+    expect(String(networkFindings[0]?.message)).toContain('set its SafetyNetwork')
   })
 })
