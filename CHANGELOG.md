@@ -1302,6 +1302,10 @@
   `BSL(Arr[0],Ctrl,Bit,8)` both built 0/0, matching the earlier SQO element build. Regression tests now hold the element forms for SRT, BSL and BSR
   beside the CONTROL rule, so a future attempt to require the whole array fails a test instead of the vendor. 501 package tests.
 
+- **PID's optional master loop is a PID structure or the literal 0.** PID(...,tieback,...) with a REAL tag in the master-loop slot failed Studio with
+  `INVALIDOPTYPE`; the build-proven PID(...,0,...) form passes the literal. The slot now carries `types: ['PID']` while still accepting 0, the PID
+  test holds the refusal, and the dist smoke checks the built catalogue. 501 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -66,6 +66,8 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   assert.deepEqual(instructionByName('ALMD')?.operands[0]?.types, ['ALARM_DIGITAL'])
   // PID takes a PID structure, not an arbitrary tag.
   assert.deepEqual(instructionByName('PID')?.operands[0]?.types, ['PID'])
+  // Its optional master loop is a PID structure too.
+  assert.deepEqual(instructionByName('PID')?.operands.find(operand => operand.name === 'PID master loop')?.types, ['PID'])
   // FIND returns its position in a DINT.
   const findResult = instructionByName('FIND')?.operands.find(operand => operand.name === 'Result')
   assert.deepEqual(findResult?.types, ['DINT'])

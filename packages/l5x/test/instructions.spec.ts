@@ -346,6 +346,12 @@ describe('arities a Studio build proved', () => {
     })
     expect(wrong.error?.code).toBe('INVALID_OPERAND')
     expect(wrong.error?.message).toContain('must be PID')
+    // PID(...,tieback,...) with a REAL in the optional master-loop slot also failed INVALIDOPTYPE.
+    const wrongMaster = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pid1', 'pv', 'tieback', 'cv', 'tieback', 'inholdBit', 'inholdVal'] }] }),
+    })
+    expect(wrongMaster.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongMaster.error?.message).toContain('must be PID')
   })
 
   it('composes the alarm rungs that built', async () => {
