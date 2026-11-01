@@ -92,13 +92,23 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
   const document = project.document
   const direct = resolveTag(document, 'controller', text)
   if (direct.resolved) return direct
-  // A rung is written inside a program, so an unqualified program tag is the
-  // ordinary case. Resolve it when exactly one program declares the base name;
-  // two programs declaring it is an ambiguity the caller must settle.
+  // A rung is written inside a program, so an unqualified program tag is the ordinary case.
+  // With a program scope, only that program's own tags may resolve: a tag local to another
+  // program builds nowhere (Studio answers RxCMP_E_OPERAND_TAGNOTFOUND).
+  const scope = project.programScope
+  const inProgram = scope !== undefined && scope.toLowerCase() !== 'controller'
+  if (inProgram) {
+    const local = resolveTag(document, scope, text)
+    if (local.resolved) return local
+  }
   const base = text.split(/[.[:]/u)[0] ?? text
-  const declared = document.tags.filter(tag => tag.name.toUpperCase() === base.toUpperCase())
-  // A draft may declare the tag this rung is written against; that is not an error.
-  const staged = (project.stagedTags ?? []).find(tag => tag.name.toUpperCase() === base.toUpperCase())
+  // Without a program scope (a preview), an unqualified name resolves when exactly one program
+  // declares it. Two programs declaring it is an ambiguity the caller must settle.
+  const declared = inProgram ? [] : document.tags.filter(tag => tag.name.toUpperCase() === base.toUpperCase())
+  // A draft may declare the tag this rung is written against; that is not an error. A staged
+  // controller-scoped tag is visible from every program; a staged program tag only from its own.
+  const staged = (project.stagedTags ?? []).find(tag => tag.name.toUpperCase() === base.toUpperCase()
+    && (!inProgram || tag.scope.toLowerCase() === 'controller' || tag.scope.toLowerCase() === scope.toLowerCase()))
   if (staged !== undefined && declared.length === 0) {
     return { symbol: text, scope: staged.scope, resolved: true, canonical: staged.name, data_type: staged.dataType, aliases: [], indices_verified: false, ...(staged.dimensions === undefined ? {} : { dimensions: staged.dimensions }) }
   }
@@ -227,13 +237,23 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   }
   const resolution = resolveOperand(project, text)
   if (!resolution.resolved) {
+    const base = text.split(/[.[:]/u)[0] ?? text
     const near = project.document.tags
       .map(tag => tag.name)
       .filter(name => name.toLowerCase().includes(text.split('.')[0]!.toLowerCase()))
       .slice(0, 5)
+    const scope = project.programScope
+    const elsewhere = scope === undefined ? [] : [...new Set(project.document.tags
+      .filter(tag => tag.name.toUpperCase() === base.toUpperCase() && tag.scope.toLowerCase() !== scope.toLowerCase())
+      .map(tag => tag.scope))]
+    // A tag local to another program exists in the export but not in this rung's program; saying
+    // "does not exist" would send the reader looking for a typo that is not there.
+    const message = scope !== undefined && elsewhere.length > 0
+      ? `${text} is not declared in program ${scope}; it is declared in ${elsewhere.join(', ')}.`
+      : `No tag named "${text}" resolves in this export.`
     throw new L5xError(
       'TAG_NOT_FOUND',
-      `No tag named "${text}" resolves in this export.`,
+      message,
       near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tag first.',
       near,
     )

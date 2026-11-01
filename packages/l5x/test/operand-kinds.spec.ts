@@ -53,7 +53,7 @@ describe('a destination is a writable location, not a literal', () => {
   it('refuses a whole batch when one rung has a literal destination', async () => {
     const l5x = await opened()
     const batch = await l5x.call('compose_batch', {
-      program: 'Main',
+      program: 'MainProgram',
       routine: 'MainRoutine',
       rung: 0,
       rungs_json: JSON.stringify([

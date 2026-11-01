@@ -1344,6 +1344,12 @@
   vendor keywords (GSV/SSV/AHL), and the 9 refusals are exactly the documented ones: eight unmodelled instructions (FAL/FSC/DCM/DCS/CROUT/EOT/SFR/SFP)
   and the SBR-only rung Studio aborts. Any other error fails the test. 511 package tests.
 
+- **A rung resolves tags in its own program only.** A rung staged in Beta that read Alpha's local tag composed cleanly, then Studio failed it with
+  `RxCMP_E_OPERAND_TAGNOTFOUND`. The composer now carries the composing program on the project view; program tags resolve only in their own program,
+  staged controller tags stay visible everywhere, and the refusal names the program that does declare the tag. `XIC(Shared)OTE(LocalB)` in Beta built
+  0/0 (ACD sha 5686d63f...). Two existing tests were themselves composing across programs (MotorProgram's tag into MainProgram, and a program named
+  Main that does not exist); both now use valid scopes. 512 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -45,6 +45,8 @@ export interface ProjectSnapshot {
   readonly document: L5xDocument
   /** Tags a draft declares that the export does not have yet; composition resolves them, nothing is written. */
   readonly stagedTags?: readonly L5xTag[]
+  /** Program the rung being composed belongs to, so a local tag is resolved only in its own program. */
+  readonly programScope?: string
   /** Studio software revision the export declares. */
   readonly softwareRevision: string
   /** Whether this revision is in the parser's observed test matrix. */

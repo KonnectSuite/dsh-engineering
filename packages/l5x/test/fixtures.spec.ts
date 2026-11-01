@@ -773,6 +773,39 @@ describe('draft tag validation', () => {
   })
 })
 
+describe('a program scope', () => {
+  it('resolves only that program local tags and controller tags', async () => {
+    // A rung staged in Beta that reads Alpha's LocalA built nowhere: Studio answered
+    // RxCMP_E_OPERAND_TAGNOTFOUND, although the composer had accepted it.
+    const project = l5x({
+      name: 'ScopeGuard',
+      tags: tag('Shared', 'BOOL'),
+      programs: program('Alpha', rllRoutine('MainRoutine', []), { tags: tag('LocalA', 'BOOL') })
+        + program('Beta', rllRoutine('MainRoutine', []), { tags: tag('LocalB', 'BOOL') }),
+      tasks: task('MainTask', ['Alpha', 'Beta']),
+    })
+    const l5xTool = harness(new Map([['scope.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'scope.l5x' })).error).toBeUndefined()
+    const compose = (spec: unknown) => l5xTool.call('compose_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify(spec) })
+    const wrong = await compose({ series: [{ instr: 'XIC', args: ['LocalA'] }, { instr: 'OTE', args: ['LocalB'] }] })
+    expect(wrong.error?.code).toBe('TAG_NOT_FOUND')
+    expect(wrong.error?.message).toContain('not declared in program Beta')
+    expect(wrong.error?.message).toContain('Alpha')
+    const local = await compose({ series: [{ instr: 'XIC', args: ['LocalB'] }, { instr: 'OTE', args: ['LocalB'] }] })
+    expect(local.error).toBeUndefined()
+    expect((local.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('XIC(LocalB)OTE(LocalB);')
+    const shared = await compose({ series: [{ instr: 'XIC', args: ['Shared'] }, { instr: 'OTE', args: ['LocalB'] }] })
+    expect(shared.error).toBeUndefined()
+    // The same rule holds for a tag staged in another program in this draft.
+    expect((await l5xTool.call('draft_tag', { scope: 'Alpha', name: 'StagedA', data_type: 'BOOL', description: 'a' })).error).toBeUndefined()
+    const stagedWrong = await compose({ series: [{ instr: 'XIC', args: ['StagedA'] }, { instr: 'OTE', args: ['LocalB'] }] })
+    expect(stagedWrong.error?.code).toBe('TAG_NOT_FOUND')
+    expect((await l5xTool.call('draft_tag', { scope: 'Beta', name: 'StagedB', data_type: 'BOOL', description: 'b' })).error).toBeUndefined()
+    const stagedRight = await compose({ series: [{ instr: 'XIC', args: ['StagedB'] }, { instr: 'OTE', args: ['LocalB'] }] })
+    expect(stagedRight.error).toBeUndefined()
+  })
+})
+
 describe('a program without a Tags region', () => {
   it('gets one before Routines, and the new tags compose in the same draft', async () => {
     // The builder always writes <Tags></Tags>; Studio exports may omit it. The change set has to

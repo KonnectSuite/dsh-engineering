@@ -95,7 +95,7 @@ describe('structure trees', () => {
   it('stages the composed rung and validates it', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['SystemRunning'] }, { instr: 'OTE', args: ['VFD_Running'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
       program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 7, comment: 'Composed rung.',
     })
     expect(result.error).toBeUndefined()

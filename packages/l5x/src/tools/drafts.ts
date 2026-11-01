@@ -248,6 +248,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         // A rung may be written against a tag this same draft declares.
         const stagedNow = drafts.existing(exec, project.id)
         const visible = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
+        const program = optionalString(args, 'program')
+        const scoped = program === undefined ? visible : { ...visible, programScope: program }
         const pattern = optionalString(args, 'pattern')
         const specJson = optionalString(args, 'spec_json')
         if ((pattern === undefined) === (specJson === undefined)) {
@@ -256,12 +258,11 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         let composed: { rungs: readonly ComposedRung[]; pattern?: string }
         if (pattern !== undefined) {
           if (!(PATTERNS as readonly string[]).includes(pattern)) throw invalid('pattern', `Unknown pattern ${JSON.stringify(pattern)}.`, `Pass one of: ${PATTERNS.join(', ')}.`)
-          composed = composePattern(visible, pattern as PatternName, jsonObject(typeof args.arguments_json === 'string' ? args.arguments_json : undefined, 'arguments_json'))
+          composed = composePattern(scoped, pattern as PatternName, jsonObject(typeof args.arguments_json === 'string' ? args.arguments_json : undefined, 'arguments_json'))
         } else {
           const spec = jsonObject(specJson, 'spec_json')
-          composed = { rungs: [composeRung(visible, spec as unknown as LadderNodeSpec)] }
+          composed = { rungs: [composeRung(scoped, spec as unknown as LadderNodeSpec)] }
         }
-        const program = optionalString(args, 'program')
         const routine = optionalString(args, 'routine')
         const mode = optionalString(args, 'mode')
         const rung = optionalInteger(args, 'rung')
@@ -311,6 +312,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const stagedNow = drafts.existing(exec, project.id)
         const visible = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
+        const program = safetyGuard(project, requiredString(args, 'program'))
+        const routine = requiredString(args, 'routine')
+        const scoped = { ...visible, programScope: program }
         const entries = jsonArray(requiredString(args, 'rungs_json'), 'rungs_json')
         if (entries.length === 0) throw invalid('rungs_json', 'rungs_json is empty.', 'Pass at least one rung description.')
         if (entries.length > 200) throw invalid('rungs_json', 'rungs_json holds more than 200 rungs.', 'Split the batch; 200 is the limit for one call.')
@@ -325,13 +329,11 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             if (typeof pattern !== 'string' || !(PATTERNS as readonly string[]).includes(pattern)) throw invalid('rungs_json', `Entry ${index} names an unknown pattern.`, `Pass one of: ${PATTERNS.join(', ')}.`)
             const argsObject = record.arguments === undefined ? {} : record.arguments
             if (argsObject === null || typeof argsObject !== 'object' || Array.isArray(argsObject)) throw invalid('rungs_json', `Entry ${index} arguments must be a JSON object.`, 'Pass the pattern arguments, e.g. {"start":"Start","stop":"Stop","run":"Run"}.')
-            composed.push(...composePattern(visible, pattern as PatternName, argsObject as Record<string, unknown>).rungs)
+            composed.push(...composePattern(scoped, pattern as PatternName, argsObject as Record<string, unknown>).rungs)
           } else {
-            composed.push(composeRung(visible, spec as unknown as LadderNodeSpec))
+            composed.push(composeRung(scoped, spec as unknown as LadderNodeSpec))
           }
         }
-        const program = safetyGuard(project, requiredString(args, 'program'))
-        const routine = requiredString(args, 'routine')
         const requested = optionalInteger(args, 'rung')
         const body = getRoutine(project.document, program, routine)?.body
         const known = body?.type === 'RLL' ? body.rungs.map(rung => rung.number) : []
