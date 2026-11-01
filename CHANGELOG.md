@@ -1312,6 +1312,10 @@
   (array_tag, no_array, minimum/maximum, types for MESSAGE, alarms, PID and CONTROL), so an agent reads the data instead of discovering the rule at
   build time. Three verbose sentences were compressed to make room; body 7,966 / 8,000. 501 package tests.
 
+- **Catalogue invariants fail the build, not the vendor.** A new suite asserts unique uppercase mnemonics, well-formed slots, no contradictory array flags
+  (arrayElement/arrayTag/noArray), ordered minimum/maximum, non-empty type lists, and a repeating tail only on the last slot. It passes over every
+  explicit and generated instruction. Live check: `read_controller_mode` on 192.168.1.3 returned **Run** over the saved route (read-only). 505 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
