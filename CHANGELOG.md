@@ -1210,6 +1210,8 @@
   tests hold the literal refusal and both composed rungs, and the dist smoke checks the built catalogue. `SQO(SeqArr,255,Dest,Ctrl,10,0)` also
   built 0/0, confirming its existing shape. 493 package tests.
 
+- **Generated client faces refreshed** after the BSL/BSR change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
