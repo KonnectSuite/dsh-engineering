@@ -20,8 +20,20 @@ export function engineeringTags(document: L5xDocument): readonly (L5xTag & { rea
   const aliases = aliasesOf(document)
   return document.tags.map(tag => {
     const aliasFor = aliases.get(`${tag.scope}::${tag.name}`)
-    return aliasFor === undefined ? tag : { ...tag, aliasFor }
+    // Studio writes the defaults it applied on import (radix, Read/Write) while a hand-written
+    // export omits them. Compare effective values, or every round trip reports the defaults.
+    const radix = tag.radix ?? defaultRadix(tag.dataType)
+    const externalAccess = tag.externalAccess ?? 'Read/Write'
+    return aliasFor === undefined ? { ...tag, radix, externalAccess } : { ...tag, radix, externalAccess, aliasFor }
   })
+}
+
+/** The radix Studio exports for a type when the tag does not state one. */
+function defaultRadix(dataType: string): string {
+  const type = dataType.toUpperCase()
+  if (type === 'REAL' || type === 'LREAL') return 'Float'
+  if (['SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'BOOL'].includes(type)) return 'Decimal'
+  return 'NullType'
 }
 
 /** Module attributes and every port, excluding runtime data values and export formatting. */

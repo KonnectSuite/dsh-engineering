@@ -1,6 +1,6 @@
 import type { ProjectSnapshot } from '../session.ts'
 import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
-import type { L5xDocument, L5xRoutine, L5xTag } from '../model/types.ts'
+import type { L5xDocument, L5xRoutine, L5xTag, L5xTask, L5xUdt } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn, mnemonicsIn } from './mnemonics.ts'
 import { INSTRUCTIONS, instructionByName } from './instructions.ts'
@@ -15,6 +15,15 @@ export interface Change {
   readonly after?: unknown
 }
 
+/** JSON with object keys in a fixed order: two records with the same fields are equal. */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, inner: unknown) => {
+    if (inner === null || typeof inner !== 'object' || Array.isArray(inner)) return inner
+    const record = inner as Record<string, unknown>
+    return Object.fromEntries(Object.keys(record).sort().map(key => [key, record[key]]))
+  })
+}
+
 function changes<T>(component: string, before: readonly T[], after: readonly T[], key: (value: T) => string): Change[] {
   const old = new Map(before.map(value => [key(value), value]))
   const next = new Map(after.map(value => [key(value), value]))
@@ -22,7 +31,7 @@ function changes<T>(component: string, before: readonly T[], after: readonly T[]
   for (const [name, value] of old) {
     const other = next.get(name)
     if (other === undefined) result.push({ kind: 'removed', component, key: name, before: value })
-    else if (JSON.stringify(value) !== JSON.stringify(other)) result.push({ kind: 'changed', component, key: name, before: value, after: other })
+    else if (stableStringify(value) !== stableStringify(other)) result.push({ kind: 'changed', component, key: name, before: value, after: other })
   }
   for (const [name, value] of next) if (!old.has(name)) result.push({ kind: 'added', component, key: name, after: value })
   return result
@@ -31,33 +40,115 @@ function allRoutines(document: L5xDocument): readonly L5xRoutine[] {
   return [...document.routines, ...document.aois.flatMap(aoi => aoi.routines.map(routine => ({ ...routine, program: `AOI::${aoi.name}` })))]
 }
 
+/**
+ * Studio rewrites the node ids of a diagram on save and rewires them consistently, and it
+ * surrounds an ST body with blank lines. Both are presentation: comparing them as engineering
+ * changes made a round trip through Studio report a changed diagram and body that a user then
+ * has to explain. Label nodes by their order instead, and trim ST, on both sides.
+ */
+function canonicalDiagram(nodes: readonly unknown[]): unknown[] {
+  // Condition and STContent are the XML wrappers Studio puts around a transition's line; the
+  // Line node already carries the text, and the padding it adds is presentation.
+  const wrappers = new Set(['Condition', 'STContent'])
+  const records: unknown[] = nodes
+    .filter(node => !(typeof node === 'object' && node !== null && wrappers.has(String((node as Record<string, unknown>).kind))))
+    .map(node => typeof node === 'object' && node !== null ? { ...(node as Record<string, unknown>) } : node)
+  const labels = new Map<string, string>()
+  let next = 0
+  for (const record of records) {
+    if (typeof record !== 'object' || record === null || Array.isArray(record)) continue
+    const fields = record as Record<string, unknown>
+    if (fields.fromId !== undefined || fields.toId !== undefined) continue
+    if (fields.id !== undefined) {
+      labels.set(String(fields.id), String(next))
+      next += 1
+    }
+  }
+  return records.map(record => {
+    if (typeof record !== 'object' || record === null || Array.isArray(record)) return record
+    const fields = record as Record<string, unknown>
+    let normalized = fields
+    if (typeof fields.text === 'string') {
+      const text = fields.text.replace(/\r\n/gu, '\n').trim()
+      if (text === '') {
+        const { text: _padding, ...rest } = fields
+        normalized = rest
+      } else {
+        normalized = { ...fields, text }
+      }
+    }
+    if (normalized.fromId !== undefined || normalized.toId !== undefined) {
+      return {
+        ...normalized,
+        ...(normalized.fromId === undefined ? {} : { fromId: labels.get(String(normalized.fromId)) ?? normalized.fromId }),
+        ...(normalized.toId === undefined ? {} : { toId: labels.get(String(normalized.toId)) ?? normalized.toId }),
+      }
+    }
+    return normalized.id === undefined ? normalized : { ...normalized, id: labels.get(String(normalized.id)) ?? normalized.id }
+  })
+}
+
+/** An ST body without the blank lines or line-ending style Studio adds when it saves. */
+function trimmedCode(code: string): string {
+  return code.replace(/\r\n/gu, '\n').trim()
+}
+
+/** Tasks with the default priority Studio writes when the export omits one. */
+function effectiveTasks(tasks: readonly L5xTask[]): readonly L5xTask[] {
+  return tasks.map(task => task.priority === '' ? { ...task, priority: '10' } : task)
+}
+
+/** Declared types only: built-in and module-defined types appear merely by importing a project. */
+function userTypes(document: L5xDocument): readonly L5xUdt[] {
+  const vendor = new Set(document.vendorUdts.map(type => type.name.toLowerCase()))
+  return document.udts.filter(type => !vendor.has(type.name.toLowerCase()))
+}
+
+/** A controller record without the release patch stamp or an all-zero project serial. */
+function effectiveController(controller: L5xDocument['controller']): Record<string, unknown> {
+  const { minorRev: _minor, projectSerialNumber, ...rest } = controller
+  return {
+    ...rest,
+    ...(projectSerialNumber === undefined || projectSerialNumber === '16#0000_0000' ? {} : { projectSerialNumber }),
+  }
+}
+
 /** Compare parsed engineering content; timestamps and XML presentation never enter the comparison. */
 export function compareProjects(before: ProjectSnapshot, after: ProjectSnapshot): object {
   const a = before.document
   const b = after.document
+  const oldModules = moduleConfigurations(a)
+  const newModules = moduleConfigurations(b)
+  // Studio adds the controller's embedded Local module when it imports and saves a project, and
+  // it stamps the release's patch revision. Neither is an engineering change.
+  const hasLocal = (rows: readonly { readonly name: string }[]): boolean => rows.some(row => row.name === 'Local')
+  const modulesBefore = oldModules
+  const modulesAfter = hasLocal(oldModules) ? newModules : newModules.filter(row => row.name !== 'Local')
+  const controllerBefore = effectiveController(a.controller)
+  const controllerAfter = effectiveController(b.controller)
   const oldRoutines = allRoutines(a)
   const newRoutines = allRoutines(b)
   const result = [
     ...changes('program', a.programs, b.programs, v => v.name),
-    ...changes('task', a.tasks, b.tasks, v => v.name),
+    ...changes('task', effectiveTasks(a.tasks), effectiveTasks(b.tasks), v => v.name),
     ...changes('tag', engineeringTags(a), engineeringTags(b), v => `${v.scope}::${v.name}`),
-    ...changes('udt', a.udts, b.udts, v => v.name),
+    ...changes('udt', userTypes(a), userTypes(b), v => v.name),
     ...changes('aoi', a.aois.map(({ routines: _routines, ...rest }) => rest), b.aois.map(({ routines: _routines, ...rest }) => rest), v => v.name),
-    ...changes('module', moduleConfigurations(a), moduleConfigurations(b), v => v.name),
+    ...changes('module', modulesBefore, modulesAfter, v => v.name),
     ...changes('alarm', a.alarms, b.alarms, v => v.name),
     ...changes('routine', oldRoutines.map(({ body: _body, ...rest }) => rest), newRoutines.map(({ body: _body, ...rest }) => rest), v => `${v.program}::${v.name}`),
   ]
   const oldRungs = oldRoutines.flatMap(r => r.body.type === 'RLL' ? r.body.rungs.map(v => ({ program: r.program, routine: r.name, ...v })) : [])
   const newRungs = newRoutines.flatMap(r => r.body.type === 'RLL' ? r.body.rungs.map(v => ({ program: r.program, routine: r.name, ...v })) : [])
   result.push(...changes('rung', oldRungs, newRungs, v => `${v.program}::${v.routine}::${v.number}`))
-  const oldSt = oldRoutines.filter(r => r.body.type === 'ST').map(r => ({ program: r.program, routine: r.name, code: r.body.type === 'ST' ? r.body.code : '' }))
-  const newSt = newRoutines.filter(r => r.body.type === 'ST').map(r => ({ program: r.program, routine: r.name, code: r.body.type === 'ST' ? r.body.code : '' }))
+  const oldSt = oldRoutines.filter(r => r.body.type === 'ST').map(r => ({ program: r.program, routine: r.name, code: trimmedCode(r.body.type === 'ST' ? r.body.code : '') }))
+  const newSt = newRoutines.filter(r => r.body.type === 'ST').map(r => ({ program: r.program, routine: r.name, code: trimmedCode(r.body.type === 'ST' ? r.body.code : '') }))
   result.push(...changes('structured_text', oldSt, newSt, v => `${v.program}::${v.routine}`))
-  const oldDiagrams = oldRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : [] }))
-  const newDiagrams = newRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : [] }))
+  const oldDiagrams = oldRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: canonicalDiagram(r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : []) }))
+  const newDiagrams = newRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: canonicalDiagram(r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : []) }))
   result.push(...changes('diagram', oldDiagrams, newDiagrams, v => `${v.program}::${v.routine}`))
   // A processor change or a new saved route is a real change; comparing only components said "no changes".
-  result.push(...changes('controller', [{ ...before.document.controller }], [{ ...after.document.controller }], () => 'controller'))
+  result.push(...changes('controller', [controllerBefore], [controllerAfter], () => 'controller'))
   return { before: before.sha256, after: after.sha256, changes: result, count: result.length, coverage: { before: before.features, after: after.features } }
 }
 
@@ -148,8 +239,8 @@ export function changedFields(change: { readonly before?: unknown; readonly afte
   const right = after as Record<string, unknown>
   const changed: string[] = []
   for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
-    const was = JSON.stringify(left[key]) ?? String(left[key])
-    const now = JSON.stringify(right[key]) ?? String(right[key])
+    const was = stableStringify(left[key])
+    const now = stableStringify(right[key])
     if (was === now) continue
     // A diagram is a node list: name the nodes that appeared or vanished, not two object dumps.
     if (key === 'nodes' && Array.isArray(left[key]) && Array.isArray(right[key])) {

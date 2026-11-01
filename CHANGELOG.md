@@ -1088,6 +1088,13 @@
 - **A failed batch stages nothing.** A third destination-guard test sends a two-rung `compose_batch` whose second rung has a literal destination: the batch is
   refused with `INVALID_OPERAND` and no draft exists to clean up, so a later `draft_apply` cannot write half a change set. 472 package tests.
 
+- **`compare_projects` compares engineering content, not export shape.** A compose -> Studio build -> export round trip of the all-language project
+  reported **271 changes** that were all normalisation: 261 injected built-in types, Studio's FBD node renumbering, ST padding blank lines, SFC
+  Condition/STContent wrappers, default tag radix/ExternalAccess, default task priority, the embedded Local module and the release patch revision.
+  The comparator now compares effective values (sorted-key JSON so field order cannot matter), canonical diagram labels, trimmed ST, user-declared types
+  only, and ignores the embedded Local module and patch revision. The same round trip now reports **0 changes**, while real operand/rung/ST changes are
+  still reported. 476 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

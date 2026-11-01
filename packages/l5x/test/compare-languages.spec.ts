@@ -82,6 +82,44 @@ describe('a change to formatting only', () => {
     const changes = await compare(before, after)
     expect(changes.count).toBe(0)
   })
+
+  it('ignores the blank lines Studio adds around a Structured Text body', async () => {
+    const before = new TextDecoder().decode(fixtureBytes())
+    const after = before.replace('<Line Number="0"><![CDATA[', '<Line Number="0"><![CDATA[\n')
+    expect(after).not.toBe(before)
+    const changes = await compare(before, after)
+    expect(changes.count).toBe(0)
+  })
+
+  it('ignores the node ids Studio reassigns in a diagram', async () => {
+    const before = synthetic()
+    const after = before
+      .replace('IRef ID="1"', 'IRef ID="tmp"')
+      .replace('ORef ID="2"', 'ORef ID="1"')
+      .replace('IRef ID="tmp"', 'IRef ID="2"')
+      .replace('FromID="1" ToID="2"', 'FromID="2" ToID="1"')
+    expect(after).not.toBe(before)
+    const changes = await compare(before, after)
+    expect(changes.count).toBe(0)
+  })
+
+  it('ignores the patch revision Studio stamps on a controller', async () => {
+    const before = synthetic()
+    const after = before.replace('MajorRev="36" MinorRev="0"', 'MajorRev="36" MinorRev="11"')
+    expect(after).not.toBe(before)
+    const changes = await compare(before, after)
+    expect(changes.count).toBe(0)
+  })
+
+  it('ignores the defaults Studio writes for a task priority and a tag radix', async () => {
+    const before = synthetic()
+    const after = before
+      .replace('<Tag Name="Start" TagType="Base" DataType="BOOL"/>', '<Tag Name="Start" TagType="Base" DataType="BOOL" Radix="Decimal" ExternalAccess="Read/Write"/>')
+      .replace('<Task Name="MainTask" Type="CONTINUOUS">', '<Task Name="MainTask" Type="CONTINUOUS" Priority="10">')
+    expect(after).not.toBe(before)
+    const changes = await compare(before, after)
+    expect(changes.count).toBe(0)
+  })
 })
 
 
