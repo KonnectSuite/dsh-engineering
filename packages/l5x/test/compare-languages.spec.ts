@@ -379,3 +379,29 @@ describe('controller metadata', () => {
     expect(controller.projectSerialNumber).toBe('16#0163_1759')
   })
 })
+
+/** A consumed tag read once in logic, and a produced tag. */
+const NETWORK_TAGS_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="NetworkTags" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="CCI_Nutro_dints" TagType="Consumed" DataType="DINT"><ConsumeInfo Producer="CCI_Ethernet_Port_Controller" RemoteTag="CCI_Nutro_dints" RemoteInstance="0" RPI="20" Unicast="true"/></Tag>
+      <Tag Name="FROM_FURN" TagType="Produced" DataType="DINT"><ProduceInfo ProduceCount="2" ProgrammaticallySendEventTrigger="false" UnicastPermitted="true"/></Tag>
+    </Tags>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent>
+      <Rung Number="0" Type="N"><Text><![CDATA[XIC(CCI_Nutro_dints.0)OTE(FROM_FURN.0);]]></Text></Rung>
+    </RLLContent></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('who writes a networked tag', () => {
+  it('names the producer controller for a consumed tag and the consumer count for a produced one', async () => {
+    const l5x = harness(new Map([['n.l5x', new TextEncoder().encode(NETWORK_TAGS_L5X)]]))
+    await l5x.call('open_project', { path: 'n.l5x' })
+    const consumed = await l5x.call('find_references', { symbol: 'CCI_Nutro_dints' })
+    expect(String(consumed.summary)).toContain('Consumed tag: written by CCI_Ethernet_Port_Controller as CCI_Nutro_dints')
+    const produced = await l5x.call('find_references', { symbol: 'FROM_FURN' })
+    expect(String(produced.summary)).toContain('Produced tag: 2 consumer(s) declared')
+  })
+})

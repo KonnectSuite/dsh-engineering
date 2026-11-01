@@ -105,9 +105,18 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           confidence: reference.confidence,
           context: reference.context,
         }))
+        // A consumed tag's writer is another controller; a produced tag's readers are remote too.
+        const declared = project.document.tags.find(tag => tag.name.toLowerCase() === (symbol.split('.')[0] ?? symbol).toLowerCase())
+        const tagNote = declared === undefined
+          ? ''
+          : declared.tagType === 'Consumed'
+            ? ` Consumed tag: written by ${declared.consumerOf ?? 'an unnamed producer'}${declared.remoteTag === undefined ? '' : ` as ${declared.remoteTag}`}.`
+            : declared.tagType === 'Produced'
+              ? ` Produced tag: ${declared.produceCount ?? 0} consumer(s) declared.`
+              : ''
         const first = evidence[0]
         return success(
-          `${evidence.length} ${evidence.length === 1 ? 'reference' : 'references'} to ${symbol}: ${byAccess.read} read, ${byAccess.write + byAccess.read_write} write, ${byAccess.unknown} unknown.${project.document.protectedRoutines.length === 0 ? '' : ` ${project.document.protectedRoutines.length} source-protected routine(s) were not searched.`}`,
+          `${evidence.length} ${evidence.length === 1 ? 'reference' : 'references'} to ${symbol}: ${byAccess.read} read, ${byAccess.write + byAccess.read_write} write, ${byAccess.unknown} unknown.${project.document.protectedRoutines.length === 0 ? '' : ` ${project.document.protectedRoutines.length} source-protected routine(s) were not searched.`}${tagNote}`,
           {
             symbol,
             total: evidence.length,

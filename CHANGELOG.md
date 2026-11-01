@@ -754,6 +754,12 @@
   `saved path: CIM_Prep/10.211.100.100/Backplane/0`. 423 package tests. The lesson is mechanical: **edit test files with an editor, not with a template
   literal in a patch script** - three attempts across two rounds, and only the editor worked first time.
 
+- **`find_references` now answers "who writes this?" for a networked tag.** The reference summary said `14 read, 0 write` for a consumed tag - true of the
+  export and misleading about the machine: the writer is the producer controller, which the model has known since round 96. The summary now appends
+  `Consumed tag: written by CCI_Ethernet_Port_Controller as CCI_Nutro_dints`, or `Produced tag: N consumer(s) declared`. Verified on
+  `GrosfillexLine3`, where the consumed tag reads 14 references with zero local writes. A test covers both directions on a fixture with one consumed
+  and one produced tag. 424 package tests - and the test was added with the `edit` tool, per round 111's rule.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
