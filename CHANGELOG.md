@@ -261,6 +261,16 @@
   test that pinned the old behavior now asserts the refusal. This is the tenth defect found by building rather than
   reasoning, and the first in program control.
 
+- **`JSR` takes a return-parameter slot, and the ground truth came from a production export.** Our catalogue allowed
+  `JSR(Routine)` alone, and Studio refuses it with `RxCMP_E_AUDIT_INVALIDNOOFOPS` even against a clean subroutine that
+  contains only `RET();`. A production project answers the question in one line - it writes `JSR(A01_Inputs,0)` - so the
+  instruction is `JSR(Routine Name, Return Par)`, the second operand being `0` when the routine returns nothing.
+  Corrected in the catalogue, and **verified by build**: `XIC(a1)JSR(Sub,0)` composed through our tools and built with
+  **0 warnings and 0 errors**. Input parameters are not modelled (they sit before the return parameter and would need the
+  subroutine's own `SBR` declaration, which a build shows Studio will not accept as a bare rung), so the composer refuses
+  a third operand rather than guessing. `SKILL.md` carries the rule; the variadic test that assumed free-form parameters
+  is replaced by the two behaviours a build proves.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -141,7 +141,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'CTD', category: 'Timer and counter', summary: 'Count down on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset'), num('Accum')] },
 
   // Program control
-  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [routine(), { name: 'Parameter', kind: 'ANY', optional: true, rest: true }] },
+  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; the second operand is the return parameter, written 0 when the routine returns nothing.', operands: [routine('Routine Name'), { name: 'Return Par', kind: 'ANY' }] },
   { name: 'RET', category: 'Program control', summary: 'Return from a subroutine.', operands: [] },
   { name: 'JMP', category: 'Program control', summary: 'Jump to a label in the same routine.', operands: [label()] },
   { name: 'LBL', category: 'Program control', summary: 'Label target for a JMP.', operands: [label()] },

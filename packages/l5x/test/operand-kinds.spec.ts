@@ -29,15 +29,15 @@ describe('a routine name is not a tag', () => {
   it('composes a JSR and keeps the routine spelling the export uses', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'JSR', args: ['mainroutine'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'JSR', args: ['mainroutine', '0'] }] }),
     })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('XIC(StartPB)JSR(MainRoutine);')
+    expect(text(result.data)).toBe('XIC(StartPB)JSR(MainRoutine,0);')
   })
 
   it('refuses a routine the export does not declare, and lists the ones it has', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['NoSuchRoutine'] }] }) })
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['NoSuchRoutine', '0'] }] }) })
     expect(result.error?.code).toBe('ROUTINE_NOT_FOUND')
     expect(result.error?.candidates).toContain('MainRoutine')
   })
@@ -251,30 +251,24 @@ describe('a loop instruction names its routine', () => {
   })
 })
 
-describe('a JSR parameter list varies', () => {
-  it('accepts as many parameters as the caller passes', async () => {
-    const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', 'StartPB', 'StopPB', 'SystemRunning'] }] }),
-    })
+describe('a JSR carries its return parameter', () => {
+  it('composes JSR(name, 0) the way a real export writes it', async () => {
+    // Ground truth from a production export: JSR(A01_Inputs,0). One operand is refused by Studio
+    // with RxCMP_E_AUDIT_INVALIDNOOFOPS.
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0'] }] }) })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('JSR(MainRoutine,StartPB,StopPB,SystemRunning);')
+    expect(text(result.data)).toBe('JSR(MainRoutine,0);')
   })
 
-  it('still accepts a call with no parameters', async () => {
-    const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine'] }] }) })
-    expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('JSR(MainRoutine);')
-  })
-
-  it('tells a reader the parameter slot repeats', async () => {
-    const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'jsr' })).data?.rows as { name: string; operands: { rest?: boolean }[] }[]
-    expect(rows.find(row => row.name === 'JSR')?.operands[1]?.rest).toBe(true)
+  it('refuses a third operand, because input parameters are not modelled', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0', 'StartPB'] }] }) })
+    expect(result.error).toBeDefined()
   })
 })
-
 
 describe('a declaration in another scope', () => {
   it('names the scope that declares it instead of calling it absent', async () => {
