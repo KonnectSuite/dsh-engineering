@@ -66,6 +66,27 @@ export interface Finding {
   readonly confidence: 'high' | 'medium' | 'low'
 }
 
+/** A short list of rung numbers, counting the rest. */
+function rungList(rungs: readonly number[], limit = 5): string {
+  return rungs.length <= limit ? rungs.join(', ') : `${rungs.slice(0, limit).join(', ')} and ${rungs.length - limit} more`
+}
+
+/** The places a symbol is touched, as "program::routine rung N" when known. */
+function siteList(locations: readonly Evidence[], limit = 3): string {
+  const sites = locations.map(location => {
+    const at = location.rung !== undefined
+      ? ` rung ${location.rung}`
+      : location.line !== undefined
+        ? ` line ${location.line}`
+        : location.sheet !== undefined
+          ? ` sheet ${location.sheet}`
+          : ''
+    return `${location.scope}::${location.routine}${at}`
+  })
+  const unique = [...new Set(sites)]
+  return unique.length <= limit ? unique.join(', ') : `${unique.slice(0, limit).join(', ')} and ${unique.length - limit} more`
+}
+
 /** Field-level summary of one change, when both sides are records. */
 function changedFields(change: Change, limit = 4): string[] {
   const before = change.before
@@ -131,7 +152,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   for (const program of doc.programs) {
     const tasks = scheduled.get(program.name) ?? []
     if (tasks.length === 0) report('UNSCHEDULED_PROGRAM', 'warning', `Program ${program.name} is not scheduled`, { program: program.name })
-    if (tasks.length > 1) report('MULTIPLE_SCHEDULES', 'warning', `Program ${program.name} is scheduled more than once`, { program: program.name, tasks })
+    if (tasks.length > 1) report('MULTIPLE_SCHEDULES', 'warning', `Program ${program.name} is scheduled in ${tasks.length} tasks: ${tasks.join(', ')}`, { program: program.name, tasks })
     if (program.description.trim() === '') report('UNDOCUMENTED_PROGRAM', 'info', `Program ${program.name} has no description`, { program: program.name })
   }
   for (const routine of doc.routines) {
@@ -148,7 +169,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   // Standards pass: a latch nothing resets, and one output driven from two rungs.
   // Basis: CRAFT-FAULT-02 (a latch needs a reset that only succeeds when the cause is
   // gone) and the one-driver-per-output guidance in the craft pages.
-  const latched = new Map<string, { program: string; routine: string; rungs: number[] }>()
+  const latched = new Map<string, { program: string; routine: string; tag: string; rungs: number[] }>()
   const reset = new Set<string>()
   const driven = new Map<string, { program: string; routine: string; tag: string; rungs: number[] }>()
   for (const routine of doc.routines) {
@@ -160,7 +181,8 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         const tag = text.split(/[.\s]/u)[0] ?? ''
         if (tag === '') continue
         if (kind === 'OTU') { reset.add(tag.toLowerCase()); continue }
-        const latch = kind === 'OTL' ? latched.get(tag.toLowerCase()) ?? { program: routine.program, routine: routine.name, rungs: [] } : undefined
+        // Keep the tag's own casing: a finding that lowercases it reports a name the project does not use.
+        const latch = kind === 'OTL' ? latched.get(tag.toLowerCase()) ?? { program: routine.program, routine: routine.name, tag, rungs: [] } : undefined
         if (latch !== undefined) {
           latch.rungs.push(rung.number)
           latched.set(tag.toLowerCase(), latch)
@@ -174,15 +196,19 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   }
   for (const [tag, entry] of latched) {
     if (reset.has(tag)) continue
-    report('LATCH_WITHOUT_RESET', 'warning', `${entry.program}::${entry.routine} latches ${tag}, and nothing in this export resets it`, { program: entry.program, routine: entry.routine, tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
+    report('LATCH_WITHOUT_RESET', 'warning', `${entry.program}::${entry.routine} latches ${entry.tag} at rung ${rungList(entry.rungs)}, and nothing in this export resets it`, { program: entry.program, routine: entry.routine, tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
   }
   for (const entry of driven.values()) {
     if (entry.rungs.length < 2) continue
-    report('DUPLICATE_OUTPUT', 'warning', `${entry.program}::${entry.routine} drives ${entry.tag} from ${entry.rungs.length} rungs`, { program: entry.program, routine: entry.routine, tag: entry.tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
+    report('DUPLICATE_OUTPUT', 'warning', `${entry.program}::${entry.routine} drives ${entry.tag} from ${entry.rungs.length} rungs: ${rungList(entry.rungs)}`, { program: entry.program, routine: entry.routine, tag: entry.tag, rungs: entry.rungs.slice(0, 20), basis: 'CRAFT-FAULT-02' }, 'high')
   }
   const writers = new Map<string, Evidence[]>()
   for (const ref of references) if (ref.resolved !== undefined && (ref.access === 'write' || ref.access === 'read_write')) writers.set(ref.resolved, [...writers.get(ref.resolved) ?? [], ref])
-  for (const [symbol, locations] of writers) if (locations.length > 1 && /(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) report('MULTIPLE_OUTPUT_WRITES', 'warning', `Multiple indexed writes to output-like symbol ${symbol}`, locations, 'medium')
+  for (const [symbol, locations] of writers) {
+    if (locations.length <= 1) continue
+    if (!/(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) continue
+    report('MULTIPLE_OUTPUT_WRITES', 'warning', `Output-like symbol ${symbol} is written from ${locations.length} sites: ${siteList(locations)}`, locations, 'medium')
+  }
   if (baseline !== undefined) {
     const difference = compareProjects(baseline, project) as { changes: Change[] }
     for (const change of difference.changes) {

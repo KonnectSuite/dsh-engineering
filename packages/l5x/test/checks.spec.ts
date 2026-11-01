@@ -217,3 +217,42 @@ describe('a run_checks baseline', () => {
     expect((result.data?.findings as unknown[]).length).toBe(0)
   })
 })
+
+
+/** An export that trips the four findings whose messages name their sites. */
+const SITES_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Findings\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"B\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Latch\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"Main\" MainRoutineName=\"R\">\n        <Routines>\n          <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(Out);]]></Text></Rung>\n            <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(B)OTE(Out);]]></Text></Rung>\n            <Rung Number=\"2\" Type=\"N\"><Text><![CDATA[XIC(A)OTL(Latch);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks>\n      <Task Name=\"Fast\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task>\n      <Task Name=\"Slow\" Type=\"PERIODIC\" Rate=\"100\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task>\n    </Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('findings name the places they found', () => {
+  it('names the tasks a program is scheduled in', async () => {
+    const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
+    await l5x.call('open_project', { path: 'sites.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_SCHEDULES' })
+    const rows = result.data?.findings as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Fast')
+    expect(rows[0]?.message).toContain('Slow')
+  })
+
+  it('names the rungs an output is driven from, and keeps the tag casing', async () => {
+    const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
+    await l5x.call('open_project', { path: 'sites.l5x' })
+    const duplicate = await l5x.call('run_checks', { rule: 'DUPLICATE_OUTPUT' })
+    const outputRows = duplicate.data?.findings as { message: string }[]
+    expect(outputRows[0]?.message).toContain('0, 1')
+
+    const latch = await l5x.call('run_checks', { rule: 'LATCH_WITHOUT_RESET' })
+    const latchRows = latch.data?.findings as { message: string }[]
+    expect(latchRows[0]?.message).toContain('Latch')
+    expect(latchRows[0]?.message).toContain('rung 2')
+  })
+
+  it('names the sites an output-like symbol is written from', async () => {
+    const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
+    await l5x.call('open_project', { path: 'sites.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    const rows = result.data?.findings as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('2 sites')
+    expect(rows[0]?.message).toContain('rung 0')
+  })
+})

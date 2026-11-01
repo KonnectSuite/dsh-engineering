@@ -166,6 +166,13 @@
   1769-L33ER-X"*, listing up to four fields and counting the rest. `packages/l5x/test/checks.spec.ts` covers it, and
   the matching case that two identical exports report no I/O change at all.
 
+- **Four more findings name the places they found instead of only the count.** `MULTIPLE_SCHEDULES` said a program was
+  "scheduled more than once" without naming the tasks; it now says `scheduled in 2 tasks: Fast, Slow`.
+  `MULTIPLE_OUTPUT_WRITES` said "Multiple indexed writes to output-like symbol X"; it now names the sites
+  (`Main::R rung 0, Main::R rung 1`). `DUPLICATE_OUTPUT` and `LATCH_WITHOUT_RESET` now list the rung numbers they
+  already held, and the latch finding keeps the tag's own casing (`latches Latch`, not `latches latch`). Each one is
+  data the record already carried; only the sentence was withholding it.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -177,7 +184,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-296 package tests and 70 bundle tests pass.
+299 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
