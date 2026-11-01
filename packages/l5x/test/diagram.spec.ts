@@ -120,8 +120,8 @@ describe('l5x_diagram', () => {
 })
 
 
-describe('a host that cannot resolve the defaulted output folder', () => {
-  it('returns the page and says why the image is missing, instead of refusing the call', async () => {
+describe('a defaulted output folder', () => {
+  it('writes the page to an absolute path instead of reporting a relative one', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
     const open = await l5x.call('open_project', { path: 'sample.l5x' })
     expect(open.error).toBeUndefined()
@@ -129,7 +129,7 @@ describe('a host that cannot resolve the defaulted output folder', () => {
     const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 3 })
     expect(result.error).toBeUndefined()
     expect(result.data?.rungs).toBe(3)
-    expect(String(result.data?.image_error)).toContain('is not absolute')
-    expect(result.data?.diagram_svg).toBeUndefined()
+    expect(result.data?.image_error).toBeUndefined()
+    expect(String(result.summary)).not.toContain('is not absolute')
   })
 })

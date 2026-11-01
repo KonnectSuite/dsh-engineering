@@ -18,7 +18,7 @@ import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
-import { dirname, isAbsolute, resolve } from 'node:path'
+import { dirname, isAbsolute , resolve } from 'node:path'
 import type { ProjectSession } from '../session.ts'
 import { optionalNumber, optionalString, tool } from './common.ts'
 

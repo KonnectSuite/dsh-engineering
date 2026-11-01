@@ -10,7 +10,7 @@
  * @module dsh-engineering-l5x/tools/diagram
  */
 
-import { isAbsolute } from 'node:path'
+import { isAbsolute , resolve } from 'node:path'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { integer, object, string } from '../core/params.ts'
@@ -214,7 +214,8 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         const title = `${controller} · ${rows.length} rung(s) · ${routines.length} ladder routine(s)`
         const slug = 'l5x-diagram'
         const folder = optionalString(args, 'output') ?? '.l5x-diagram'
-        const target = await session.resolvePath(`${folder}/${slug}.svg`, exec)
+        const resolvedTarget = await session.resolvePath(`${folder}/${slug}.svg`, exec)
+        const target = isAbsolute(resolvedTarget) ? resolvedTarget : resolve(resolvedTarget)
         // The output folder is defaulted by this tool, so a host that cannot make the path
         // absolute is not the caller's mistake, and the page has already rendered. Return it and
         // say why the image is missing, the way l5x_routine_diagram does, instead of failing the

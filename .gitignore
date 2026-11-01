@@ -24,3 +24,4 @@ __pycache__/
 # ladder preview artifacts
 .l5x-preview/
 .l5x-preview-test/
+.l5x-diagram/
