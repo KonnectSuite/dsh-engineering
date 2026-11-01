@@ -658,6 +658,39 @@ describe('an alarm instruction', () => {
   })
 })
 
+describe('a file statistic', () => {
+  it('takes a CONTROL structure, not another structure', async () => {
+    // SRT(Arr,0,Ctl2,10,0) and STD(Arr,0,Dest,Ctl2,10,0) with a COUNTER control both failed
+    // INVALIDOPTYPE; the same rungs with a CONTROL tag built 0/0.
+    const project = l5x({
+      name: 'FileStatGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Dest', 'REAL') + tag('Ctrl', 'CONTROL') + tag('Ctl2', 'COUNTER'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['stats.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'stats.l5x' })).error).toBeUndefined()
+    const good = [
+      ['SRT', ['Arr', '0', 'Ctrl', '10', '0'], 'SRT(Arr,0,Ctrl,10,0);'],
+      ['STD', ['Arr', '0', 'Dest', 'Ctrl', '10', '0'], 'STD(Arr,0,Dest,Ctrl,10,0);'],
+    ] as const
+    for (const [instr, args, expected] of good) {
+      const result = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
+      expect(result.error).toBeUndefined()
+      expect((result.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe(expected)
+    }
+    const wrong = [
+      ['SRT', ['Arr', '0', 'Ctl2', '10', '0']],
+      ['STD', ['Arr', '0', 'Dest', 'Ctl2', '10', '0']],
+    ] as const
+    for (const [instr, args] of wrong) {
+      const result = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
+      expect(result.error?.code).toBe('INVALID_OPERAND')
+      expect(result.error?.message).toContain('must be CONTROL')
+    }
+  })
+})
+
 describe('an array dimension', () => {
   it('needs an array tag and a dimension from 0 to 2', async () => {
     // SIZE(5,0,Pos) failed MUSTBEARRAY and SIZE(Arr,3,Pos) failed OUTOFRANGE; SIZE(Arr,2,Pos) builds.

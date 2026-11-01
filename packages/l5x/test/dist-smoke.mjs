@@ -77,8 +77,8 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   const sqoSlots = instructionByName('SQO')?.operands ?? []
   assert.deepEqual(sqoSlots.find(operand => operand.name === 'Control')?.types, ['CONTROL'])
   assert.equal(sqoSlots.find(operand => operand.name === 'Dest')?.noArray, true)
-  // The bit shifts take a CONTROL structure too.
-  for (const name of ['BSL', 'BSR']) {
+  // The bit shifts and file statistics take a CONTROL structure too.
+  for (const name of ['BSL', 'BSR', 'SRT', 'STD']) {
     assert.deepEqual(instructionByName(name)?.operands.find(operand => operand.name === 'Control')?.types, ['CONTROL'], name)
   }
   for (const name of ['SIZE', 'SRT', 'STD']) {
