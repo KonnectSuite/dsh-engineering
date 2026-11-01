@@ -13,7 +13,7 @@
 import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
-import { instructionByName, nearestInstructions, NUMERIC_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
+import { instructionByName, nearestInstructions, NUMERIC_TYPES, STRING_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
 import { parseLadder, rightRailReader } from './logic-syntax.ts'
 import { mnemonicsIn, spellingForProject } from './mnemonics.ts'
 
@@ -117,6 +117,9 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
     // A literal is a value, not an address: only the slots that take a value accept it.
     if (kind === 'BOOL') throw new L5xError('INVALID_OPERAND', `${text} is a number where a BOOL tag is required.`, 'Pass a declared BOOL tag.')
     if (kind === 'TIMER') throw new L5xError('INVALID_OPERAND', `${text} is a number where a timer is required.`, 'Pass a declared TIMER tag.')
+    // A number is not a string. The count the string instructions take is the separate
+    // Qty or Start slot, so a literal in a string slot is always a mistake.
+    if (kind === 'STRING') throw new L5xError('INVALID_OPERAND', `${text} is a number where a STRING tag is required.`, 'Pass a declared STRING tag.')
     const operand: ComposedOperand = { text, resolved: false }
     seen.push(operand)
     return operand
@@ -145,6 +148,9 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   }
   if (kind === 'NUMBER' && !NUMERIC_TYPES.has(type)) {
     throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a numeric value or tag.`, 'Pass a numeric literal or an INT, DINT, REAL or similar tag.', [])
+  }
+  if (kind === 'STRING' && !STRING_TYPES.has(type)) {
+    throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a STRING tag.`, 'Pass a declared STRING tag, or a STRING array element.', [])
   }
   if (kind === 'TIMER' && !TIMER_TYPES.has(type)) {
     throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a timer.`, 'Pass a declared TIMER tag (TON, TOF or RTO instance).', [])

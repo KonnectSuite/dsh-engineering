@@ -17,7 +17,7 @@ describe('catalog', () => {
       expect(instruction.summary.length).toBeGreaterThan(5)
       for (const slot of instruction.operands) {
         expect(slot.name.length).toBeGreaterThan(0)
-        expect(['BOOL', 'NUMBER', 'ANY', 'TIMER', 'COUNTER']).toContain(slot.kind)
+        expect(['BOOL', 'NUMBER', 'ANY', 'TIMER', 'COUNTER', 'STRING']).toContain(slot.kind)
       }
     }
   })
@@ -124,5 +124,81 @@ describe('composing with a newly catalogued instruction', () => {
     expect(result.error).toBeUndefined()
     const rungs = result.data?.rungs as { neutral_text: string }[]
     expect(rungs[0]?.neutral_text).toBe('SBR();')
+  })
+})
+
+
+/** One export carrying STRING tags, so the string slots can be type-checked. */
+const STRING_EXPORT = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="StringController" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <Tags>
+      <Tag Name="TextA" TagType="Base" DataType="STRING"/>
+      <Tag Name="TextB" TagType="Base" DataType="STRING"/>
+      <Tag Name="TextOut" TagType="Base" DataType="STRING"/>
+      <Tag Name="Count" TagType="Base" DataType="DINT"/>
+      <Tag Name="Start" TagType="Base" DataType="BOOL"/>
+    </Tags>
+    <Programs>
+      <Program Name="Main" MainRoutineName="Ladder">
+        <Routines>
+          <Routine Name="Ladder" Type="RLL"><RLLContent>
+            <Rung Number="0" Type="N"><Text><![CDATA[XIC(Start)OTE(Start);]]></Text></Rung>
+          </RLLContent></Routine>
+        </Routines>
+      </Program>
+    </Programs>
+  </Controller>
+</RSLogix5000Content>`
+
+/** Open the STRING export and return the harness. */
+async function openedStrings() {
+  const l5x = harness(new Map([['strings.l5x', new TextEncoder().encode(STRING_EXPORT)]]), { editing: true })
+  const open = await l5x.call('open_project', { path: 'strings.l5x' })
+  expect(open.error).toBeUndefined()
+  return l5x
+}
+
+describe('string operands are typed', () => {
+  it('reports the string slots as STRING in the listing', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'concat' })).data?.rows as { name: string; operands: { name: string; kind: string }[] }[]
+    expect(rows.find(row => row.name === 'CONCAT')?.operands.map(slot => slot.kind)).toEqual(['STRING', 'STRING', 'STRING'])
+  })
+
+  it('composes a string instruction when the tags are strings', async () => {
+    const l5x = await openedStrings()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['TextA', 'TextB', 'TextOut'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect((result.data?.rungs as { neutral_text: string }[])[0]?.neutral_text).toBe('CONCAT(TextA,TextB,TextOut);')
+  })
+
+  it('refuses a BOOL tag in a string slot, and names the type it needs', async () => {
+    const l5x = await openedStrings()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['Start', 'TextB', 'TextOut'] }] }),
+    })
+    expect(result.error?.code).toBe('INVALID_OPERAND')
+    expect(result.error?.message).toContain('STRING')
+  })
+
+  it('refuses a number in a string slot', async () => {
+    const l5x = await openedStrings()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['5', 'TextB', 'TextOut'] }] }),
+    })
+    expect(result.error?.code).toBe('INVALID_OPERAND')
+    expect(result.error?.message).toContain('STRING')
+  })
+
+  it('still accepts a number in the count slot next to a string slot', async () => {
+    const l5x = await openedStrings()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['TextA', 'Count', 'Count', 'TextOut'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect((result.data?.rungs as { neutral_text: string }[])[0]?.neutral_text).toBe('MID(TextA,Count,Count,TextOut);')
   })
 })

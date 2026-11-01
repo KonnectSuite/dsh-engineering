@@ -47,6 +47,13 @@
   Studio writes. `SBR` carries no operands — its parameters are the arguments the calling `JSR` passes — which also
   makes `SBR_NOT_FIRST` judge a mnemonic the catalogue previously did not know.
 
+- **A string slot is typed, so a BOOL tag cannot sit where a string belongs.** The string family added in this release
+  declared its source and destination slots as `ANY`, which validated nothing: `CONCAT(Start,TextB,TextOut)` composed
+  happily with `Start` a BOOL, and Studio rejected it later. Those slots are now `STRING` — `CONCAT`, `MID`, `FIND`,
+  `INSERT`, `DELETE`, `LOWER`, `UPPER`, `RTOS` — while the count and start slots stay numeric, so `MID(TextA,Count,Count,TextOut)`
+  still composes. A wrong tag and a numeric literal each fail with the type the slot needs. `packages/l5x/test/instructions.spec.ts`
+  composes into an export that carries STRING tags, so the check is exercised against a parsed project rather than a stub.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -58,7 +65,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-226 package tests and 70 bundle tests pass.
+231 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

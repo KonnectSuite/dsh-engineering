@@ -14,7 +14,7 @@
  */
 
 /** What one operand slot accepts. */
-export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER'
+export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' | 'STRING'
 
 /** One operand slot. */
 export interface InstructionOperand {
@@ -42,6 +42,8 @@ export interface InstructionInfo {
 export const NUMERIC_TYPES: ReadonlySet<string> = new Set(['SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Timer data types. */
 export const TIMER_TYPES: ReadonlySet<string> = new Set(['TIMER', 'TON', 'TOF', 'RTO'])
+/** String data types the string instructions take. */
+export const STRING_TYPES: ReadonlySet<string> = new Set(['STRING'])
 /** Counter data types. */
 export const COUNTER_TYPES: ReadonlySet<string> = new Set(['COUNTER', 'CTU', 'CTD', 'CTUD'])
 
@@ -52,6 +54,7 @@ import { MNEMONIC_PAIRS } from './mnemonics.ts'
 const bool = (name = 'Tag'): InstructionOperand => ({ name, kind: 'BOOL' })
 const num = (name = 'Source'): InstructionOperand => ({ name, kind: 'NUMBER' })
 const any = (name: string): InstructionOperand => ({ name, kind: 'ANY' })
+const str = (name: string): InstructionOperand => ({ name, kind: 'STRING' })
 
 /** The catalog, in category order. */
 export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
@@ -112,14 +115,14 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
 
   // String. Operand order is the order the vendor's own instruction metadata uses, so a
   // composed rung reads the way an export from Studio does.
-  { name: 'CONCAT', category: 'String', summary: 'Concatenate: append source B to source A and write the joined string to the destination.', operands: [any('Source A'), any('Source B'), any('Dest')] },
-  { name: 'MID', category: 'String', summary: 'Extract part of a string: copy Qty characters from Start into the destination string.', operands: [any('Source'), num('Qty'), num('Start'), any('Dest')] },
-  { name: 'FIND', category: 'String', summary: 'Find: search the source string and write the first position of Search to the result.', operands: [any('Source'), any('Search'), num('Start'), any('Result')] },
-  { name: 'INSERT', category: 'String', summary: 'Insert source B into source A at Start and write the result to the destination.', operands: [any('Source A'), any('Source B'), num('Start'), any('Dest')] },
-  { name: 'DELETE', category: 'String', summary: 'Delete Qty characters from the source starting at Start into the destination.', operands: [any('Source'), num('Qty'), num('Start'), any('Dest')] },
-  { name: 'LOWER', category: 'String', summary: 'Lower case: copy the source string to the destination in lower case.', operands: [any('Source'), any('Dest')] },
-  { name: 'UPPER', category: 'String', summary: 'Upper case: copy the source string to the destination in upper case.', operands: [any('Source'), any('Dest')] },
-  { name: 'RTOS', category: 'String', summary: 'Real to string: convert a REAL value into the destination string.', operands: [num('Source'), any('Dest')] },
+  { name: 'CONCAT', category: 'String', summary: 'Concatenate: append source B to source A and write the joined string to the destination.', operands: [str('Source A'), str('Source B'), str('Dest')] },
+  { name: 'MID', category: 'String', summary: 'Extract part of a string: copy Qty characters from Start into the destination string.', operands: [str('Source'), num('Qty'), num('Start'), str('Dest')] },
+  { name: 'FIND', category: 'String', summary: 'Find: search the source string and write the first position of Search to the result.', operands: [str('Source'), str('Search'), num('Start'), any('Result')] },
+  { name: 'INSERT', category: 'String', summary: 'Insert source B into source A at Start and write the result to the destination.', operands: [str('Source A'), str('Source B'), num('Start'), str('Dest')] },
+  { name: 'DELETE', category: 'String', summary: 'Delete Qty characters from the source starting at Start into the destination.', operands: [str('Source'), num('Qty'), num('Start'), str('Dest')] },
+  { name: 'LOWER', category: 'String', summary: 'Lower case: copy the source string to the destination in lower case.', operands: [str('Source'), str('Dest')] },
+  { name: 'UPPER', category: 'String', summary: 'Upper case: copy the source string to the destination in upper case.', operands: [str('Source'), str('Dest')] },
+  { name: 'RTOS', category: 'String', summary: 'Real to string: convert a REAL value into the destination string.', operands: [num('Source'), str('Dest')] },
 
   // File and array
   { name: 'FLL', category: 'File and array', summary: 'File fill: fill Length elements at the destination with the source value.', operands: [num('Source'), any('Dest'), num('Length')] },
