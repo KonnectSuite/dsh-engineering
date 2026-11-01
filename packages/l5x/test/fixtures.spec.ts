@@ -117,6 +117,32 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('a routine in a safety program', () => {
+  it('is marked safety in the listing and the reader', async () => {
+    const built = l5x({
+      name: 'SafetyRoutines',
+      programs: [
+        program('Guard', rllRoutine('MainRoutine', [{ text: 'NOP();' }]), { safety: true }),
+        program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      ].join(''),
+      tasks: [
+        task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
+        task('MainTask', ['Main']),
+      ].join(''),
+    })
+    const l5xTool = harness(new Map([['sr.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'sr.l5x' })).error).toBeUndefined()
+    const guard = await l5xTool.call('list_components', { kind: 'routine', scope: 'Guard' })
+    const guardRows = (guard.data?.rows ?? []) as { name: string; safety?: boolean }[]
+    expect(guardRows.length).toBe(1)
+    expect(guardRows[0]?.safety).toBe(true)
+    const main = await l5xTool.call('list_components', { kind: 'routine', scope: 'Main' })
+    expect(((main.data?.rows ?? []) as { safety?: boolean }[])[0]?.safety).toBe(false)
+    const read = await l5xTool.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'Guard' })
+    expect((read.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
+  })
+})
+
 describe('a tag marked Class=Safety', () => {
   it('is safety in the listing, the reader and the CSV even in a standard program', async () => {
     const built = l5x({

@@ -196,7 +196,7 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
           ? document.udts.map(udt => ({ name: udt.name, members: udt.members.length, description: udt.description }))
           : kind === 'routine'
             ? [
-                ...listRoutines(document, scope ?? '').map(routine => ({ name: routine.name, program: routine.program, type: routine.type, rungCount: routine.rungCount ?? null, lineCount: routine.lineCount ?? null, description: routine.description })),
+                ...listRoutines(document, scope ?? '').map(routine => ({ name: routine.name, program: routine.program, type: routine.type, rungCount: routine.rungCount ?? null, lineCount: routine.lineCount ?? null, description: routine.description, safety: document.programs.some(program => program.safety && program.name.toUpperCase() === routine.program.toUpperCase()) })),
                 // An AOI carries its own routines; omitting them made a 3-routine AOI list as empty.
                 ...(document.aois.find(aoi => aoi.name.toUpperCase() === (scope ?? '').toUpperCase())?.routines ?? []).map(routine => ({ name: routine.name, program: scope ?? '', type: routine.type, rungCount: routine.body.type === 'RLL' ? routine.body.rungs.length : null, lineCount: routine.body.type === 'ST' ? (routine.body.code.split('\n').length) : null, description: routine.description, safety: document.aois.some(aoi => aoi.name.toUpperCase() === (scope ?? '').toUpperCase() && aoi.safety === true) })),
                 // A protected routine exists; listing nothing tells an engineer the program is empty.
@@ -302,7 +302,10 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
         matches.map(routine => routine.program),
       )
     }
-    return getRoutine(document, first.program, name)
+    const found = getRoutine(document, first.program, name)
+    // A routine inside a safety program is safety code.
+    const inSafetyProgram = document.programs.some(program => program.safety && program.name.toUpperCase() === first.program.toUpperCase())
+    return found === undefined ? found : { ...found, ...(inSafetyProgram ? { safety: true } : {}) }
   }
   if (kind === 'aoi') {
     const aoi = getAoi(document, name)

@@ -990,6 +990,11 @@
   `tags.csv`. Verified on `Seco_Homogenizer`: **259 safety tags** = 157 controller-class + 102 program-scoped, exactly as the raw file and the program set
   predict. A built fixture pins both a controller tag and a standard-program tag. 451 package tests.
 
+- **A routine inside a safety program is now marked safety.** Round 169 fixed the tag; the level below still said nothing: all ten routines of
+  `COMBUSTION_SAFETY` listed as ordinary ladder with no safety flag, and `get_component` returned them the same way. Routine rows and the routine reader now
+  carry `safety: true` when the declaring program is `Class="Safety"` (and keep the AOI-owner rule from round 137). Verified on `Seco_Homogenizer`:
+  **10 of 10** routines in the guard program flagged; a built fixture pins a safety program against a standard one. 452 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
