@@ -201,3 +201,35 @@ describe('nine more operand counts, from the systematic audit', () => {
     expect(text(result.data)).toBe('XIC(StartPB)OSR(StartPB,SystemRunning);')
   })
 })
+
+
+describe('the motion family', () => {
+  it('catalogues every instruction box field, not the placeholder operand', () => {
+    const expected: readonly (readonly [string, number])[] = [
+      ['MAJ', 17], ['MAM', 20], ['MAPC', 14], ['MAS', 9], ['MATC', 12], ['MAH', 2],
+      ['MDF', 2], ['MDW', 2], ['MGS', 3], ['MGSP', 2], ['MRP', 5], ['MSF', 2], ['MSO', 2],
+    ]
+    for (const [name, count] of expected) {
+      expect(instructionByName(name)?.operands.length, name).toBe(count)
+    }
+  })
+
+  it('names the axis and motion control operands a motion call starts with', () => {
+    expect(instructionByName('MSO')?.operands.map(slot => slot.name)).toEqual(['Axis', 'MotionControl'])
+    expect(instructionByName('MGS')?.operands.map(slot => slot.name)).toEqual(['Group', 'MotionControl', 'StopMode'])
+  })
+
+  it('leaves the operand type open where the catalogue cannot verify it', () => {
+    // AXIS and MOTION_GROUP are datatypes this catalogue does not model; ANY is the honest slot.
+    expect(instructionByName('MSO')?.operands.every(slot => slot.kind === 'ANY')).toBe(true)
+  })
+
+  it('composes a motion instruction through the ordinary operand path', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'MSO', args: ['Motor_1', 'SystemClock'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('MSO(Motor_1,SystemClock);')
+  })
+})

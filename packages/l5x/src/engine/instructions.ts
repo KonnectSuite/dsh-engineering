@@ -159,6 +159,23 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'BTD', category: 'Move', summary: 'Bit distribute: copy Length bits from the source bit position to the destination bit position.', operands: [num('Source'), num('Source bit'), num('Dest'), num('Dest bit'), num('Length')] },
   { name: 'AVE', category: 'File and array', summary: 'Average: average the array along one dimension into the destination.', operands: [any('Array'), num('Dimension'), any('Dest'), any('Control'), num('Length'), num('Position')] },
 
+  // Motion. Every operand is a field of the instruction box, in the order the vendor
+  // metadata writes them, so the count and order are right and the type is left open: this
+  // catalogue cannot verify AXIS, MOTION_GROUP or the enumerated unit types.
+  { name: 'MAJ', category: 'Motion', summary: 'Motion axis jog: run the axis continuously at a speed until a stop.', operands: [any('Axis'), any('MotionControl'), any('Direction'), any('Speed'), any('SpeedUnits'), any('AccelRate'), any('AccelUnits'), any('DecelRate'), any('DecelUnits'), any('Profile'), any('AccelJerk'), any('DecelJerk'), any('JerkUnits'), any('Merge'), any('MergeSpeed'), any('LockPosition'), any('LockDirection')] },
+  { name: 'MAM', category: 'Motion', summary: 'Motion axis move: one positioning move with the given type, speed, acceleration and merge.', operands: [any('Axis'), any('MotionControl'), any('MoveType'), any('Position'), any('Speed'), any('SpeedUnits'), any('AccelRate'), any('AccelUnits'), any('DecelRate'), any('DecelUnits'), any('Profile'), any('AccelJerk'), any('DecelJerk'), any('JerkUnits'), any('Merge'), any('MergeSpeed'), any('LockPosition'), any('LockDirection'), any('EventDistance'), any('CalculatedData')] },
+  { name: 'MAPC', category: 'Motion', summary: 'Motion axis position cam: slave the axis to a master through a cam profile.', operands: [any('SlaveAxis'), any('MasterAxis'), any('MotionControl'), any('Direction'), any('CamProfile'), any('SlaveScaling'), any('MasterScaling'), any('ExecutionMode'), any('ExecutionSchedule'), any('MasterLockPosition'), any('CamLockPosition'), any('CamType'), any('MasterReference'), any('MasterDirection')] },
+  { name: 'MAS', category: 'Motion', summary: 'Motion axis stop: stop the axis with the given stop type and deceleration.', operands: [any('Axis'), any('MotionControl'), any('StopType'), any('ChangeDecel'), any('DecelRate'), any('DecelUnits'), any('ChangeDecelJerk'), any('DecelJerk'), any('JerkUnits')] },
+  { name: 'MATC', category: 'Motion', summary: 'Motion axis time cam: drive the axis from a cam profile against time.', operands: [any('Axis'), any('MotionControl'), any('Direction'), any('CamProfile'), any('DistanceScaling'), any('TimeScaling'), any('ExecutionMode'), any('ExecutionSchedule'), any('LockPosition'), any('CamType'), any('LockDirection'), any('InstructionMode')] },
+  { name: 'MAH', category: 'Motion', summary: 'Motion axis home: home the axis using the configured home sequence.', operands: [any('Axis'), any('MotionControl')] },
+  { name: 'MDF', category: 'Motion', summary: 'Motion axis disarm: disarm the axis so motion is no longer commanded.', operands: [any('Axis'), any('MotionControl')] },
+  { name: 'MDW', category: 'Motion', summary: 'Motion axis dwell: hold the axis at its position for a time.', operands: [any('Axis'), any('MotionControl')] },
+  { name: 'MGS', category: 'Motion', summary: 'Motion group stop: stop every axis in the group.', operands: [any('Group'), any('MotionControl'), any('StopMode')] },
+  { name: 'MGSP', category: 'Motion', summary: 'Motion group shutdown: shut the group down.', operands: [any('Group'), any('MotionControl')] },
+  { name: 'MRP', category: 'Motion', summary: 'Motion redefinition of position: redefine the axis position.', operands: [any('Axis'), any('MotionControl'), any('Type'), any('PositionSelect'), any('Position')] },
+  { name: 'MSF', category: 'Motion', summary: 'Motion axis shutdown: shut the axis down.', operands: [any('Axis'), any('MotionControl')] },
+  { name: 'MSO', category: 'Motion', summary: 'Motion servo on: turn the axis servo drive on.', operands: [any('Axis'), any('MotionControl')] },
+
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({
     name: instruction.name,

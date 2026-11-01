@@ -84,6 +84,14 @@
   The audit is repeatable: it reports 33 remaining differences, which is the motion family and the block-pin
   instructions, both of which need their own pass rather than a mechanical fix.
 
+- **The motion family is catalogued from its instruction-box fields, 92 operands across 13 instructions.** Our whole
+  motion row was a placeholder — `MAJ`, `MAM`, `MAPC`, `MAS`, `MATC`, `MAH`, `MDF`, `MDW`, `MGS`, `MGSP`, `MRP`, `MSF`
+  and `MSO` each carried one or two operands, so every real motion call was refused by the arity check that was
+  supposed to protect it. Each now carries the fields its instruction box shows, in written order — `MAJ` has 17,
+  `MAM` 20, `MAPC` 14, `MSO` 2 — which took the arity audit from 33 differences to 20. Operand kinds stay `ANY` on
+  purpose: this catalogue cannot verify `AXIS`, `MOTION_GROUP` or the unit enumerations, so it validates presence and
+  order and never claims a type it cannot check.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -95,7 +103,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-249 package tests and 70 bundle tests pass.
+253 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
