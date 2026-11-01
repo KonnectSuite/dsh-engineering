@@ -546,6 +546,15 @@
   `PROTECTED_TARGET: Program MOTION_SAFETY runs in a safety task, and safety logic cannot be changed.` Verified against the real
   Seco export, where the same call previously staged; the test now asserts the staging refusal and that no draft id is returned.
 
+- **Every staging tool now refuses safety logic, and refuses before it complains about anything else.** Round 75 guarded `draft_rung`;
+  this round funnels all nine program and scope selectors in the draft surface through one `safetyGuard`, so `draft_st`,
+  `draft_tag`, `draft_routine`, `draft_sfc`, `draft_fbd` and the tag tools all answer
+  `PROTECTED_TARGET: Program Safe runs in a safety task, and safety logic cannot be changed.` at staging. One ordering bug came
+  out of the test: `draft_routine` validated its body first, so a safety program with no body answered `INVALID_ARGUMENT` and hid
+  the reason; the guard now runs before body validation, because a caller editing safety logic should hear that rather than an
+  argument complaint about a routine that cannot exist. The test covers three different tools in one safety project, so a future
+  tool that bypasses the helper will show up as a failure rather than as a silent gap.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

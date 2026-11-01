@@ -352,4 +352,16 @@ describe('editing a safety-scheduled program', () => {
     expect(String(staged.error?.message)).toContain('safety task')
     expect(staged.data?.draft_id).toBeUndefined()
   })
+
+  it('refuses a structured text edit, a new tag and a new routine there too', async () => {
+    // One helper guards every staging path, so a draft cannot accumulate safety work in pieces.
+    const l5x = harness(new Map([['s.l5x', new TextEncoder().encode(SAFETY_DRAFT_L5X)]]), { editing: true })
+    await l5x.call('open_project', { path: 's.l5x' })
+    const st = await l5x.call('draft_st', { program: 'Safe', routine: 'R', code: 'A := 1;' })
+    expect(st.error?.code).toBe('PROTECTED_TARGET')
+    const tag = await l5x.call('draft_tag', { scope: 'Safe', name: 'T1', data_type: 'DINT', description: 'x' })
+    expect(tag.error?.code).toBe('PROTECTED_TARGET')
+    const routine = await l5x.call('draft_routine', { program: 'Safe', name: 'X1', language: 'ST' })
+    expect(routine.error?.code).toBe('PROTECTED_TARGET')
+  })
 })

@@ -17,10 +17,24 @@ import { getRoutine } from '../model/routines.ts'
 import { instructionByName } from '../engine/instructions.ts'
 import { resolveSymbol } from '../engine/analysis.ts'
 import { safetyProgramNames } from '../engine/project-analysis.ts'
+
+/**
+ * Refuse a draft that names safety logic.
+ *
+ * @param project - The open project.
+ * @param program - Program the operation targets.
+ * @returns The program name, so call sites can wrap an expression.
+ */
+function safetyGuard(project: ProjectSnapshot, program: string): string {
+  if (safetyProgramNames(project.document).has(program.toUpperCase())) {
+    throw new L5xError('PROTECTED_TARGET', `Program ${program} runs in a safety task, and safety logic cannot be changed.`, 'Edit the safety task in Studio with a safety signature update; this service refuses safety edits.')
+  }
+  return program
+}
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
-import type { ProjectSession } from '../session.ts'
+import type { ProjectSession, ProjectSnapshot } from '../session.ts'
 import type { Draft, DraftOperation, DraftStore } from '../drafts.ts'
 import { PROJECT_ID, optionalInteger, optionalNumber, optionalString, requiredString, tool } from './common.ts'
 
@@ -145,10 +159,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, ['program', 'routine', 'mode']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
-        const program = requiredString(args, 'program')
-        if (safetyProgramNames(project.document).has(program.toUpperCase())) {
-          throw new L5xError('PROTECTED_TARGET', `Program ${program} runs in a safety task, and safety logic cannot be changed.`, 'Edit the safety task in Studio with a safety signature update; this service refuses safety edits.')
-        }
+        const program = safetyGuard(project, requiredString(args, 'program'))
         const routine = requiredString(args, 'routine')
         const mode = requiredString(args, 'mode')
         const text = optionalString(args, 'text')
@@ -188,7 +199,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const operation: DraftOperation = {
           operation: 'set_rung_comment',
-          program: requiredString(args, 'program'),
+          program: safetyGuard(project, requiredString(args, 'program')),
           routine: requiredString(args, 'routine'),
           rung: optionalInteger(args, 'rung') ?? 0,
           comment: typeof args.comment === 'string' ? args.comment : '',
@@ -297,10 +308,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             composed.push(composeRung(visible, spec as unknown as LadderNodeSpec))
           }
         }
-        const program = requiredString(args, 'program')
-        if (safetyProgramNames(project.document).has(program.toUpperCase())) {
-          throw new L5xError('PROTECTED_TARGET', `Program ${program} runs in a safety task, and safety logic cannot be changed.`, 'Edit the safety task in Studio with a safety signature update; this service refuses safety edits.')
-        }
+        const program = safetyGuard(project, requiredString(args, 'program'))
         const routine = requiredString(args, 'routine')
         const requested = optionalInteger(args, 'rung')
         const body = getRoutine(project.document, program, routine)?.body
@@ -356,7 +364,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const operation: DraftOperation = {
           operation: 'replace_st',
-          program: requiredString(args, 'program'),
+          program: safetyGuard(project, requiredString(args, 'program')),
           routine: requiredString(args, 'routine'),
           code: requiredString(args, 'code'),
         }
@@ -377,7 +385,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, ['program', 'routine', 'blocks']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
-        const program = requiredString(args, 'program')
+        const program = safetyGuard(project, requiredString(args, 'program'))
         const routineName = requiredString(args, 'routine')
 
         // The routine may be staged in this same draft, before it exists in the document.
@@ -438,7 +446,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, ['program', 'routine', 'steps', 'transitions', 'links']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
-        const program = requiredString(args, 'program')
+        const program = safetyGuard(project, requiredString(args, 'program'))
         const routineName = requiredString(args, 'routine')
         const draft = drafts.forProject(exec, project.id)
         const view = withStagedTags(project, stagedFromDraft(draft.operations, project))
@@ -539,6 +547,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, ['program', 'name', 'language']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
+        // The safety refusal comes before body validation: a caller editing safety logic should hear that,
+        // not an argument complaint about a routine that cannot be created anyway.
+        safetyGuard(project, requiredString(args, 'program'))
         const language = requiredString(args, 'language')
         if (language !== 'RLL' && language !== 'ST' && language !== 'FBD' && language !== 'SFC') throw new L5xError('INVALID_ARGUMENT', 'language must be "RLL", "ST", "FBD" or "SFC"', 'Pass "RLL" for ladder, "ST" for Structured Text, "FBD" for a function block diagram, or "SFC" for a sequential function chart.')
         const code = optionalString(args, 'code') ?? ''
@@ -546,7 +557,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         if (language !== 'FBD' && language !== 'SFC' && code.trim() === '') throw new L5xError('INVALID_ARGUMENT', 'RLL and ST routines need a body in code.', 'Pass the rungs or statements in code.')
         const operation: DraftOperation = {
           operation: 'add_routine',
-          program: requiredString(args, 'program'),
+          program: safetyGuard(project, requiredString(args, 'program')),
           name: requiredString(args, 'name'),
           language,
           code,
@@ -574,7 +585,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const externalAccess = optionalString(args, 'external_access')
         const operation: DraftOperation = {
           operation: 'add_tag',
-          scope: requiredString(args, 'scope'),
+          scope: safetyGuard(project, requiredString(args, 'scope')),
           name: requiredString(args, 'name'),
           data_type: requiredString(args, 'data_type'),
           description: requiredString(args, 'description'),
@@ -598,7 +609,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const operation: DraftOperation = {
           operation: 'set_tag_description',
-          scope: requiredString(args, 'scope'),
+          scope: safetyGuard(project, requiredString(args, 'scope')),
           name: requiredString(args, 'name'),
           description: requiredString(args, 'description'),
         }
