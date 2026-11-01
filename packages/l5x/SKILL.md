@@ -42,7 +42,7 @@ truth. Never write to `<workspace>/_backups`.
 - `run_checks`: findings with rule, severity, site and a fix when known; filter by either. Covers unused tags, unresolved references,
   unscheduled programs, undocumented logic, latch and duplicate output, mnemonic mismatch, FBD graph, rung shape,
   and instructions the controller family cannot build. Safety rules also cover a safety instruction called from
-  standard logic, a safety program in a standard task, and a safety module with no network number.
+  standard logic, a safety program in a standard task, a safety module with no network number, and a standard write to a safety tag.
 - `compare_projects`: semantic diff by component; export timestamps and formatting are ignored. A controller-level
   change (processor, saved route, project serial) is reported too.
 

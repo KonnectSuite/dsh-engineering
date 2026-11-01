@@ -1048,6 +1048,10 @@
   but reported the unfiltered count in `total`, so a rule filter could say "691 findings" beside zero rows. `total` is now the filtered count, with
   `total_unfiltered` retained. 458 package tests.
 
+- **The new safety rule is discoverable.** `run_checks`'s description now names `SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC`, and the skill lists a
+  standard write to a safety tag among the safety rules - so an assistant reading either surface knows the check exists and can filter for it.
+  `docs/reference/tools.md` regenerated; skill body 7,871 of 8,000 characters. 458 package tests, 90 bundle, docs current.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
