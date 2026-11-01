@@ -1143,6 +1143,12 @@
   `download_ready: true`. The composer requires the instance tag, checks its data type is the AOI, and refuses a literal or a non-instance first operand.
   486 package tests.
 
+- **AOI calls take the instance and only the Required parameters, and an AOI instance can now be declared.** Probing the real Carpenter project
+  settled both: instance + all visible parameters failed `INVALIDNOOFOPS`, instance + the two `Required="true"` inputs built 0/0 with
+  `download_ready: true`. The composer now enforces exact required arity, checks each parameter against its declared type, refuses literals for
+  Output/InOut pins, and `draft_tag` accepts an AOI name as a data type so an instance tag can be created at all (it previously answered
+  `UNKNOWN_DATA_TYPE`). 486 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

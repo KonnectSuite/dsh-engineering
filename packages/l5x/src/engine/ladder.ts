@@ -13,7 +13,7 @@
 import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
-import { instructionByName, nearestInstructions, NUMERIC_TYPES, STRING_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
+import { COUNTER_TYPES, instructionByName, nearestInstructions, NUMERIC_TYPES, STRING_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
 import { parseLadder, rightRailReader } from './logic-syntax.ts'
 import { mnemonicsIn, spellingForProject } from './mnemonics.ts'
 
@@ -343,9 +343,33 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   if ((instance.data_type ?? '').toUpperCase() !== aoi.name.toUpperCase()) {
     throw new L5xError('INVALID_OPERAND', `${instance.text} is ${instance.data_type ?? 'an unknown type'}; ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Pass the declared ${aoi.name} instance first, or declare one with draft_tag data_type "${aoi.name}".`)
   }
-  // AOI pins are declared by the AOI, not by this catalog; the remaining operand text is still
-  // resolved so a typo in a tag cannot reach the draft.
-  const parameters = args.slice(1).map(argument => checkOperand(project, argument, 'ANY', operands).text)
+  const required = aoi.parameters.filter(parameter => parameter.required === true)
+  const supplied = args.slice(1)
+  if (supplied.length !== required.length) {
+    const shape = required.map(parameter => `${parameter.name} (${parameter.usage} ${parameter.dataType})`).join(', ')
+    throw new L5xError(
+      'INVALID_OPERAND',
+      `${aoi.name} takes its instance tag and ${required.length} required parameter(s)${required.length === 0 ? '' : `: ${shape}`}; ${supplied.length} were supplied.`,
+      'Pass the required parameters in declaration order; optional parameters keep their declared defaults and are not operands.',
+    )
+  }
+  const kindOf = (dataType: string): InstructionInfo['operands'][number]['kind'] => {
+    const type = dataType.toUpperCase()
+    if (type === 'BOOL') return 'BOOL'
+    if (STRING_TYPES.has(type)) return 'STRING'
+    if (TIMER_TYPES.has(type)) return 'TIMER'
+    if (COUNTER_TYPES.has(type)) return 'COUNTER'
+    if (NUMERIC_TYPES.has(type)) return 'NUMBER'
+    return 'ANY'
+  }
+  const parameters = supplied.map((argument, index) => {
+    const parameter = required[index]!
+    const operand = checkOperand(project, argument, kindOf(parameter.dataType), operands)
+    if ((parameter.usage === 'Output' || parameter.usage === 'InOut') && isLiteral(operand.text)) {
+      throw new L5xError('INVALID_OPERAND', `${operand.text} is a literal where ${aoi.name}'s ${parameter.usage} parameter ${parameter.name} needs a tag.`, `Pass a declared ${parameter.dataType} tag for ${parameter.name}.`)
+    }
+    return operand.text
+  })
   return { text: `${aoi.name}(${[instance.text, ...parameters].join(',')})`, grounding: 'aoi' }
 }
 /** True for a plain object a composition node can be. */

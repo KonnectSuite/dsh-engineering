@@ -86,7 +86,7 @@ describe('structure trees', () => {
   it('accepts an AOI declared by the export and reports its grounding', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'Motor_Control', args: ['Motor1_AOI', 'SystemRunning', 'StopPB', '0'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'Motor_Control', args: ['Motor1_AOI', 'StartPB', 'StopPB', 'SystemRunning', 'VFD_Running', 'StartPB', 'StopPB', 'SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
     expect((result.data?.rungs as { grounding: string }[])[0]?.grounding).toBe('aoi')

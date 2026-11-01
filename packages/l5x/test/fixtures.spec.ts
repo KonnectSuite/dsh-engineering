@@ -520,7 +520,7 @@ describe('an add-on instruction call', () => {
     // the AOI. Parameters alone failed a Studio build with RxCMP_E_AUDIT_INVALIDOPTYPE.
     const project = l5x({
       name: 'AoiCallGuard',
-      tags: tag('MyAoi_1', 'MyAoi') + tag('In1', 'BOOL') + tag('Out1', 'BOOL'),
+      tags: tag('MyAoi_1', 'MyAoi') + tag('In1', 'BOOL') + tag('Out1', 'BOOL') + tag('Num', 'DINT'),
       aois: aoi('MyAoi', { parameters: [parameter('In1', { usage: 'Input', dataType: 'BOOL' }), parameter('Out1', { usage: 'Output', dataType: 'BOOL' })] }),
       programs: program('Main', rllRoutine('MainRoutine', [])),
       tasks: task('MainTask', ['Main']),
@@ -537,5 +537,22 @@ describe('an add-on instruction call', () => {
     const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['5', 'In1', 'Out1'] }] }) })
     expect(literal.error?.code).toBe('INVALID_OPERAND')
     expect(literal.error?.message).toContain('needs an instance tag')
+    // Studio accepted exactly the instance plus the parameters marked Required="true" in real
+    // project calls; a missing or extra parameter fails the build with INVALIDNOOFOPS.
+    const missing = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1'] }] }) })
+    expect(missing.error?.code).toBe('INVALID_OPERAND')
+    expect(missing.error?.message).toContain('2 required parameter')
+    const extra = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1', 'Num'] }] }) })
+    expect(extra.error?.code).toBe('INVALID_OPERAND')
+    expect(extra.error?.message).toContain('2 required parameter')
+    const wrongType = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'Num', 'Out1'] }] }) })
+    expect(wrongType.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongType.error?.message).toContain('BOOL')
+    // The instance tag itself has to be declarable: an AOI name is a data type for draft_tag.
+    const instanceDraft = await l5xTool.call('draft_tag', { scope: 'controller', name: 'MyAoi_2', data_type: 'MyAoi', description: 'second instance' })
+    expect(instanceDraft.error).toBeUndefined()
+    const applied = await l5xTool.call('draft_apply', { output_path: 'aoi-instance.l5x' })
+    expect(applied.error).toBeUndefined()
+    expect(String(l5xTool.written.get('aoi-instance.l5x'))).toContain('<Tag Name="MyAoi_2"')
   })
 })

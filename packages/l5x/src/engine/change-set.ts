@@ -582,11 +582,14 @@ function rungWith(rung: XmlRegion, text: string, comment: string | undefined): s
   return `<Rung Number="${rung.attributes.Number}" Type="${type}">${commentXml(comment)}${text}</Rung>`
 }
 
-/** Every type name a change may reference: scalars plus declared types. */
+/** Every type name a change may reference: scalars, declared types and add-on instructions. */
 function declaredTypeNames(project: ProjectSnapshot): ReadonlySet<string> {
   const names = new Set<string>([...SCALAR_TYPES].map(name => name.toLowerCase()))
   for (const name of BUILTIN_STRUCTURE_TYPES) names.add(name)
   for (const name of typeIndex(project.document).keys()) names.add(name)
+  // An add-on instruction is a data type for tags: its instance tag is the first operand of every
+  // AOI call, so draft_tag must be able to declare one.
+  for (const aoi of project.document.aois) names.add(aoi.name.toLowerCase())
   return names
 }
 
