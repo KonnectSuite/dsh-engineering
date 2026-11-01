@@ -1255,6 +1255,10 @@
   FBD_LOGICAL (0/0) but aborted the import for FBD_MOVE, so only the five proven names were added to the built-in set. draft_tag's description lists them,
   and the built-in-type test now declares ten types through the tool. 498 package tests.
 
+- **A draft-created TIMER drives a real TON in the same draft.** The built-in-type test now declares a TIMER through `draft_tag`, composes
+  `TON(T1,1000,0)` against it, and applies both in one export, proving the reachability fix end to end rather than only tag presence.
+  498 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

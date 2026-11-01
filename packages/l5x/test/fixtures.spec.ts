@@ -646,10 +646,14 @@ describe('tag types the catalogue needs', () => {
       const added = await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: dataType })
       expect(added.error).toBeUndefined()
     }
+    // The draft-created TIMER is directly usable by the composer, not just present in the export.
+    const ton = await l5xTool.call('compose_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify({ series: [{ instr: 'TON', args: ['T1', '1000', '0'] }] }) })
+    expect(ton.error).toBeUndefined()
     const applied = await l5xTool.call('draft_apply', { output_path: 'builtin-types.l5x' })
     expect(applied.error).toBeUndefined()
     const output = String(l5xTool.written.get('builtin-types.l5x'))
     for (const type of ['TIMER', 'COUNTER', 'PID', 'STRING', 'MESSAGE', 'FBD_TIMER', 'FBD_COUNTER', 'FBD_COMPARE', 'FBD_LOGICAL', 'FBD_MATH']) expect(output).toContain(`DataType="${type}"`)
+    expect(output).toContain('TON(T1,1000,0)')
   })
 })
 
