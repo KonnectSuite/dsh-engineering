@@ -158,6 +158,20 @@
   class of phantom entries the audit began with `ACN`, `ASR` and `AEX`. The catalogue is now **134** instructions, and
   the test that keeps those mnemonics absent covers `SQC` too, so it cannot return by accident.
 
+- **The skill now teaches what this cycle proved, and it got 2.4 KB smaller doing it.** `packages/l5x/SKILL.md` was at
+  **7975 of its 8000-character budget** - 25 characters of room - so it could not gain a line without losing one. A
+  rewrite keeps every rule and adds the ones a model could not have known: that FBD and SFC take no body and are created
+  then filled; that a block **is an instance** whose first operand names a tag of the block's structure, that
+  block-to-block wires are legal, and that a sheet which both writes and reads one tag aborts the import; that a chart
+  has one initial step and that a transition condition **must reference a tag or member**, since `TRUE` fails as an
+  undefined tag while `Step_1.DN` builds, and that `draft_sfc` creates its own `SFC_STEP`, `SFC_ACTION` and BOOL tags;
+  that `draft_tag` accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL`; that the serial ASCII
+  family needs a **serial port** and is refused on a 5069 or 1756-L8x whatever the operands, with `run_checks` reporting
+  it first; that `XPY`, `ASN`, `ACS` and `ATN` are `EXPT`, `ASIN`, `ACOS`, `ATAN` in a v36+ project and only the composer
+  knows the spelling; the repair loop itself; and the gotcha that cost a cycle - an aborted import on an export that
+  imported before usually means the **controller name is still registered**. The body is now **5545 characters**, so the
+  next proven rule fits without a fight.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

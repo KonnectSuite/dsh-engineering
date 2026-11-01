@@ -8,114 +8,99 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 
 ## Boundary
 
-This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into Studio, connects to a controller, changes mode, or writes runtime data.
+This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into
+Studio, or touches a controller. Live reads are read-only; controller writes need per-call human approval.
 
 ## Backups
 
-Every engineering product backs up into the same tree, so a backup means one place whichever surface
-you are in:
-
-```
-<workspace>/backups/<product>/<subject>/<UTC stamp>/
-    backup-manifest.json      every copied file: relative path + SHA-256
-    <the copy>
-```
-
-Studio 5000 is the `l5x` product: the copy holds the `.ACD` being worked on, or the `.L5X` export when
-that is the source of truth, one stamp per backup. Drafts and SDK builds already write new files, so
-this is a backup on request ("back up this project"). Build it as a copy plus
-`backup-manifest.json` listing every file's relative path and SHA-256. `<workspace>/_backups` and
-`<workspace>/backups/<project>/…` are older layouts: never write there, and leave what is there alone.
+`<workspace>/backups/<product>/<subject>/<UTC stamp>/` holds `backup-manifest.json` (relative path + SHA-256 per
+file) and the copy. Studio is the `l5x` product: the copy is the `.ACD`, or the `.L5X` when that is the source of
+truth. Never write to `<workspace>/_backups`.
 
 ## Start
 
-1. Call `open_project` with the export path. Keep the returned `project_id`.
-2. Later calls may omit `project_id` when exactly one project is open; pass it when several are.
-3. A read refuses a changed export with `STALE_EXPORT`; call `open_project` again before continuing.
+1. `open_project` with the export path; keep `project_id`. Later calls may omit it when one project is open.
+2. A read refuses a changed export with `STALE_EXPORT`; reopen before continuing.
 
 ## Find the thing
 
-- `list_components` enumerates one kind: program, task, tag, udt, routine, aoi, module, alarm. Filter by name, page with offset and limit.
-- `get_component` reads one in full by exact name. Pass `scope` for a program-scoped tag or routine.
-- `search_logic` finds literal text in rungs, ST lines and diagram labels.
-- `find_references` answers where a symbol is read or written. Use `detail: "evidence"` for rung or line rows with access type and context.
-- `trace_dependencies` follows upstream or downstream operands. It is static evidence, not runtime causality.
-- `resolve_tag` resolves an alias chain, member, integer bit or array subscript.
-- `usage_map` reports which array elements and bits a tag uses and which remain free.
+- `list_components` (program, task, tag, udt, routine, aoi, module, alarm), `get_component`, `search_logic`.
+- `find_references` (read/write, scope), `trace_dependencies` (static, not runtime), `resolve_tag` (alias chain,
+  member, bit, subscript), `usage_map` (bits and elements used, and free).
 
 ## Scope rules
 
-- Program-scoped tags and routines need `scope` set to the program name.
-- AOI members are written `AOI_Name::Member`, for example `AOI_EncoderScale::Out_FPM`. `find_references` accepts that spelling; `trace_dependencies` splits it and resolves the member against the AOI.
-- An unresolved symbol is refused with `UNRESOLVED_SYMBOL` and candidate scope names. Do not guess past it; fix the scope or the spelling.
+- Program-scoped tags and routines need `scope`.
+- AOI members are written `AOI_Name::Member`; `find_references` accepts that spelling.
+- An unresolved symbol is refused with `UNRESOLVED_SYMBOL` plus candidate scopes. Fix the scope, do not guess.
 
 ## Checks and comparison
 
-- `run_checks` returns findings with a rule and severity. Filter with `severity` or `rule`, page with offset and limit. Findings are candidates for engineering review, never proof of a defect or of safety.
-- `compare_projects` diffs two open exports by component. Export timestamps and XML formatting are ignored by design.
+- `run_checks`: findings with rule, severity and site; filter by either. Covers unused tags, unresolved references,
+  unscheduled programs, undocumented logic, latch and duplicate output, mnemonic mismatch, FBD graph, rung shape,
+  and instructions the controller family cannot build.
+- `compare_projects`: semantic diff by component; export timestamps and formatting are ignored.
 
 ## Live reads
 
-`l5x-live` reads declared scalar tags over EtherNet/IP with no Studio, FactoryTalk Linx or SDK. If `poll_live_tags` is unavailable, say live reads are not enabled here.
-
-- `poll_live_tags` takes an explicit IPv4 address, a CPU slot and 1 to 16 declared scalars, and returns timestamped sweeps, quality and controller identity.
-- `start_plc_trend` samples the same way as a session-owned job the chart can follow; stop it through the job controls.
-- These are read-only. Never write controller data, force tags, toggle bits or edit online.
-- Report `live_logic_matches_export: "unverified"`: a read proves a value at a moment, not that the controller runs the export.
+- `poll_live_tags` (IPv4, slot, 1-16 declared scalars, timestamped sweeps) and `start_plc_trend` read over
+  EtherNet/IP with no Studio, Linx or SDK.
+- Read-only: never write controller data, force tags, toggle bits or edit online. A read proves a moment, not that
+  the controller runs this export.
 
 ## Reporting
 
-- Every result carries `summary`, `data`, `coverage` and `next`. Read `coverage` before claiming the answer is complete.
-- State what the export cannot prove: FBD and SFC execution semantics, dynamic indices, runtime behavior, external HMI and driver consumers, and whether online logic matches the export.
-- Quote the program, routine and rung or ST line for each finding.
-- Do not call a tag unused, or an output permanently zero, from the absence of references alone. External consumers are invisible here.
+- Every result carries `summary`, `data`, `coverage`, `next`. Read `coverage` before claiming completeness.
+- State what an export cannot prove: FBD and SFC execution, dynamic indices, runtime behavior, external HMI.
+- Never call a tag unused, or an output permanently zero, from missing references alone.
+- Quote the program, routine and rung or line for each finding.
 
 ## Revisions
 
-- Reading accepts any export revision 19 or later. Revisions outside the observed matrix open and report `verification: "untested_revision"`.
-- Reading never needs Studio 5000. The studio entry adds offline import and build, and its controller
-  tools handle upload, mode change and download under per-call approval.
+- Reading accepts revision 19+; outside the observed matrix reports `verification: unverified`.
+- Reading never needs Studio. The `l5x-studio` entry adds offline import and build, and controller tools that run
+  under per-call approval.
 
 ## Studio
 
-The `l5x-studio` entry adds offline SDK work; it may be disabled. Call `studio_sdk_status` before using it.
-
-- `export_acd_to_l5x` writes one new full L5X from an ACD. No controller contact.
-- `verify_offline_l5x` imports a full L5X into a new offline ACD and builds it. Build needs project revision 37+; `probe: true` tries a lower one and reports the SDK error. An L5X from `export_acd_to_l5x` may be refused as "no changes".
-- `build_acd_from_draft` imports one changed RLL or ST routine into a new ACD copy, builds and exports it. The baseline must be an L5X exported from that ACD in this chat; neither file may change.
-- `studio_review_evidence` checks program, routine and rung or line names and verbatim quotes before you report findings.
-- `controller_approval_status` says whether this session can ask a human. `capture_controller_snapshot`, `change_controller_mode` and `download_project` need per-call approval of the exact target and proceed only on `allowed-once`; `download_project` takes a `verification_id` from a passed build in this chat.
-- `go_online`, `read_controller_mode` and `read_live_tag` are read-only and need no approval. Never write controller data, force tags, toggle bits or edit online.
+- `export_acd_to_l5x` writes a new full L5X from an ACD; no controller contact.
+- `verify_offline_l5x` imports and builds; it needs revision 37+ and the matching Studio release.
+- `build_acd_from_draft` imports one changed routine into a new ACD, builds it and exports.
+- `studio_review_evidence` checks names and verbatim quotes before you report.
+- `controller_approval_status` says whether this session can ask. `go_online`, `read_controller_mode` and
+  `read_live_tag` are read-only.
 
 ## Editing
 
-Editing uses the `draft_*` family. It may be disabled in this profile; if a draft tool is unavailable, say editing is not enabled here rather than trying another tool.
+- `draft_*`, one operation per call: rung, rung comment, ST, routine, tag, tag description, UDT member, UDT
+  description, FBD, SFC.
+- `draft_validate` prepares the draft against the project; `draft_apply` writes ONE new L5X and never overwrites.
+- Reopen the written file to review it. Drafts belong to this chat.
 
-- One operation per call: `draft_rung`, `draft_rung_comment`, `draft_st`, `draft_routine`, `draft_tag`, `draft_tag_description`, `draft_udt_member`, `draft_udt_description`.
-- `draft_validate` prepares the accumulated draft against the project and returns its hash, diff summary and check findings. Read the findings before applying.
-- `draft_apply` writes the draft to ONE new `.L5X` path. It never overwrites an existing file.
-- After applying, reopen the written file with `open_project` to review it.
-- Drafts belong to this chat. Another chat starts with none, and an applied draft is cleared.
+## Compose
 
-## Generate
-
-Compose through `compose_rung`; for an instruction it does not model, use `draft_rung` text.
-
-### Show proposed rungs as ladder
-`l5x_rung_preview` validates rungs like `draft_rung`, writes a viewer document and draws a PNG. For existing logic, `l5x_diagram` draws every rung of the project (or one `program`): start there when reviewing a controller you did not write, before reading rungs one by one.
-
-- `list_instructions` lists operand slots and kinds; read it before composing.
-- `compose_rung` builds one rung from a tree (`spec_json`) or a pattern (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves and type-checks every operand, refusing anything unknown or mistyped before staging. compose_batch does the same for 200 rungs in one call, refusing the batch if a rung fails.
-- Pass `program`, `routine`, `mode` and `rung` to stage it (plus `comment`); without them it returns text only.
-- `fault_latch` stages two rungs at `rung` and `rung + 1`; rung numbers are not renumbered, so pick free ones.
+- `list_instructions` lists slots and kinds; read it before composing.
+- `compose_rung` builds one rung from `spec_json` or a pattern (start_stop_latch, fault_latch, ton_delay,
+  interlock). Pass `program`, `routine`, `mode` and `rung` to stage it.
+- `l5x_rung_preview` validates rungs and draws them; `l5x_routine_diagram` draws existing logic.
+- Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in a v36+ project. Compose through
+  `compose_rung`: it writes the spelling the project publishes.
+- `draft_routine` takes RLL, ST, FBD or SFC. **FBD and SFC take no body**: create the routine, then `draft_fbd` or
+  `draft_sfc`.
+- FBD: a block **is an instance** - its first operand names a tag of the block's structure (`FBD_MATH` for `ADD`).
+  Wires use `ToParam` in and `FromParam` out, and **blocks may wire to each other**. A sheet that both writes and
+  reads one tag makes Studio abort the import.
+- SFC: exactly one initial step, and a condition **must reference a tag or member** - `TRUE` fails as an undefined
+  tag while `Step_1.DN` builds. `draft_sfc` creates the `SFC_STEP`, `SFC_ACTION` and BOOL tags itself.
+- `draft_tag` also accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL`.
+- Serial ASCII (`ABL`, `ARD`, ...) needs a controller **with a serial port**: it builds on a 1756-L73 and is refused
+  on a 5069 or 1756-L8x whatever the operands. `run_checks` reports it before any build.
+- Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
+  export, `verify_offline_l5x` builds it.
+- An aborted import on an export that imported before means the controller **name is still registered** with the
+  SDK; the same bytes import under a different name.
 
 ## Documentation
 
-`document_project` writes a handover bundle into a NEW folder; the export is untouched:
-
-- `PROJECT.md` — controller, revision, tasks, programs, counts;
-- `io.md` / `io.csv` — modules and module-data tags;
-- `tags.csv` and `tags-studio.csv` — every declared tag, and the `Tag Name,Description` shape Studio imports;
-- `rungs/<program>.md` — each rung's number, comment, NeutralText, instructions and resolved tags.
-
-Structure and citations, not prose: write the narrative and use `draft_rung_comment` / `draft_tag_description` when it belongs in the project.
+`document_project` writes a NEW folder: `PROJECT.md`, `io.md`/`io.csv`, `tags.csv` and `tags-studio.csv` (the
+`Tag Name,Description` shape Studio imports), and `rungs/<program>.md`. Structure and citations, not prose.
