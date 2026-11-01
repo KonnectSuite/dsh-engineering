@@ -1236,6 +1236,11 @@
 
 - **Generated client faces refreshed** after the FIND Result restriction, so repository bytes match the rebuilt artifact.
 
+- **Array dimensions are bounded and SIZE reads an array tag.** `SIZE(5,0,Pos)` failed Studio with `MUSTBEARRAY` and `SIZE(Arr,3,Pos)` failed
+  `OUTOFRANGE`; `SIZE(Arr,2,Pos)` builds. New `maximum` metadata is 2 on the Dimension to Vary slot of SIZE, SRT and STD, SIZE's Source is
+  tag-only, and the composer refuses both a literal source and an out-of-range dimension. `MID(Str1,0,1,Str2)` with Qty 0 built 0/0, so string
+  quantity keeps no minimum. Tests and the dist smoke hold the new bounds. 497 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

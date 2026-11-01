@@ -322,6 +322,10 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       if (slot?.minimum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) < slot.minimum) {
         throw new L5xError('INVALID_OPERAND', `${text} is below the minimum ${slot.minimum} for ${instruction.name} ${slot.name}; positions are 1-based.`, `Use ${slot.minimum} or greater.`)
       }
+      // Studio answers OUTOFRANGE above a maximum too: an array has at most three dimensions.
+      if (slot?.maximum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) > slot.maximum) {
+        throw new L5xError('INVALID_OPERAND', `${text} is above the maximum ${slot.maximum} for ${instruction.name} ${slot.name}; array dimensions are 0, 1 and 2.`, `Use a dimension from 0 to ${slot.maximum}.`)
+      }
       // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
       // STD's Destination must be REAL even though its slot kind is NUMBER.
       if (slot?.types !== undefined && operand.resolved && operand.data_type !== undefined && !slot.types.includes(operand.data_type)) {

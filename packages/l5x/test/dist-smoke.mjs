@@ -64,6 +64,13 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   // FIND returns its position in a DINT.
   const findResult = instructionByName('FIND')?.operands.find(operand => operand.name === 'Result')
   assert.deepEqual(findResult?.types, ['DINT'])
+  // SIZE reads an array tag and an array has at most three dimensions.
+  const sizeSource = instructionByName('SIZE')?.operands.find(operand => operand.name === 'Source')
+  assert.equal(sizeSource?.tagOnly, true)
+  for (const name of ['SIZE', 'SRT', 'STD']) {
+    const dimension = instructionByName(name)?.operands.find(operand => operand.name === 'Dimension to Vary')
+    assert.equal(dimension?.maximum, 2, name)
+  }
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {

@@ -608,6 +608,29 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('an array dimension', () => {
+  it('needs an array tag and a dimension from 0 to 2', async () => {
+    // SIZE(5,0,Pos) failed MUSTBEARRAY and SIZE(Arr,3,Pos) failed OUTOFRANGE; SIZE(Arr,2,Pos) builds.
+    const project = l5x({
+      name: 'DimensionGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Pos', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['dim.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'dim.l5x' })).error).toBeUndefined()
+    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['5', '0', 'Pos'] }] }) })
+    expect(literal.error?.code).toBe('INVALID_OPERAND')
+    expect(literal.error?.message).toContain('needs a tag for Source')
+    const three = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '3', 'Pos'] }] }) })
+    expect(three.error?.code).toBe('INVALID_OPERAND')
+    expect(three.error?.message).toContain('maximum 2')
+    const two = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '2', 'Pos'] }] }) })
+    expect(two.error).toBeUndefined()
+    expect((two.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SIZE(Arr,2,Pos);')
+  })
+})
+
 describe('a message instruction', () => {
   it('takes a MESSAGE tag, not any tag', async () => {
     // MSG(N) with a DINT failed INVALIDOPTYPE; MSG(Msg) with a MESSAGE tag built 0/0.
