@@ -112,6 +112,7 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
     radix?: string
     constant?: boolean
     externalAccess?: string
+    dimensions?: readonly number[]
   } = {
     name: optionalAttribute(tag, 'Name', ''),
     dataType: optionalAttribute(tag, 'DataType', ''),
@@ -124,5 +125,10 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
   if (tag.attrs['Constant'] === 'true') entry.constant = true
   const externalAccess = presentAttribute(tag, 'ExternalAccess')
   if (externalAccess !== undefined) entry.externalAccess = externalAccess
+  const dimensions = presentAttribute(tag, 'Dimensions')
+  if (dimensions !== undefined) {
+    const parsed = dimensions.trim().split(/\s+/u).map(Number).filter(value => Number.isFinite(value) && value > 0)
+    if (parsed.length > 0) entry.dimensions = parsed
+  }
   return entry
 }

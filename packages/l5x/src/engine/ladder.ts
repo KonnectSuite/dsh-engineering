@@ -312,7 +312,6 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   for (const argument of args) checkOperand(project, argument, 'ANY', operands)
   return { text: `${aoi.name}(${args.join(',')})`, grounding: 'aoi' }
 }
-
 /** True for a plain object a composition node can be. */
 function isSpecNode(value: unknown): value is LadderNodeSpec {
   return typeof value === 'object' && value !== null && !Array.isArray(value)

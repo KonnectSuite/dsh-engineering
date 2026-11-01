@@ -26,6 +26,8 @@ export interface L5xTag {
   readonly constant?: boolean
   /** External-access setting, when the export declares one. */
   readonly externalAccess?: string
+  /** Array dimensions, when the export declares a Dimensions attribute. */
+  readonly dimensions?: readonly number[]
 }
 
 /** One member of a user-defined type. */

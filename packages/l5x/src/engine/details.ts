@@ -99,7 +99,8 @@ export function tagElement(document: L5xDocument, scope: string, name: string): 
 export function tagDetail(document: L5xDocument, tag: L5xTag): TagDetail {
   const element = tagElement(document, tag.scope, tag.name)
   if (element === undefined) return {}
-  const dimensions = presentAttribute(element, 'Dimensions')
+  // Dimensions are carried on the tag now, so this reader does not parse the XML twice.
+  const dimensions = tag.dimensions === undefined ? undefined : tag.dimensions.join(' ')
   const aliasFor = presentAttribute(element, 'AliasFor')
   const detail: { dimensions?: string; aliasFor?: string; value?: string; words?: number } = {}
   if (dimensions !== undefined) {
