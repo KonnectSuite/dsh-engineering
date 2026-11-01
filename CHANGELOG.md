@@ -1183,6 +1183,8 @@
   `compose_rung` now answers UNKNOWN_INSTRUCTION and a test holds the refusal. Running every other generated math instruction built 0/0 except EXP
   (NEG/ABS/EXPT/LN, DEG, RAD, TO_BCD/BCD_TO/TRUNC and the six trig instructions). 491 package tests.
 
+- **Generated client faces refreshed** after removing EXP from the catalogue, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
