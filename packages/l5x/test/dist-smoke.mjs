@@ -30,7 +30,7 @@ test('the built engine emits the modern spelling for a v37 project', { skip }, a
 
 test('the built catalog marks the slots that must be tags', { skip }, async () => {
   const { instructionByName } = await load('engine/instructions.js')
-  for (const [name, slotName] of [['ADD', 'Destination'], ['FOR', 'Index'], ['SIZE', 'Size'], ['STD', 'Control'], ['SWPB', 'Dest'], ['MVM', 'Dest']]) {
+  for (const [name, slotName] of [['ADD', 'Destination'], ['FOR', 'Index'], ['SIZE', 'Size'], ['STD', 'Control'], ['SWPB', 'Dest'], ['MVM', 'Dest'], ['NEG', 'Dest']]) {
     const slot = instructionByName(name)?.operands.find(operand => operand.name === slotName)
     assert.equal(slot?.writable, true, `${name} ${slotName}`)
   }
@@ -38,6 +38,12 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   // The vendor restricts STD's Destination to REAL; the built slot must carry that type.
   const destination = instructionByName('STD')?.operands.find(operand => operand.name === 'Destination')
   assert.deepEqual(destination?.types, ['REAL'])
+  // CPS copies between array elements: Source is tag-only, Dest writable, both element-addressed.
+  const cps = instructionByName('CPS')?.operands ?? []
+  assert.equal(cps[0]?.tagOnly, true)
+  assert.equal(cps[0]?.arrayElement, true)
+  assert.equal(cps[1]?.writable, true)
+  assert.equal(cps[1]?.arrayElement, true)
 })
 
 test('the built engine reports a JSR without its return slot', { skip }, async () => {

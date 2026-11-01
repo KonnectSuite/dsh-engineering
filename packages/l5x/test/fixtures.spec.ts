@@ -587,6 +587,40 @@ describe('a destination slot named Dest', () => {
     expect((mvmGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MVM(1,255,D);')
   })
 })
+describe('a tag-only operand slot', () => {
+  it('refuses a literal for arrays, structures and copy sources', async () => {
+    // COP(Arr,5,10) and NEG(5,5) were accepted before this; Studio refuses a literal in those
+    // slots with RxCMP_E_AUDIT_INVALIDOPKIND. The compact instruction table's Dest is covered too.
+    const project = l5x({
+      name: 'TagOnlyGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Arr2', 'DINT', ' Dimensions="10"'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['tagonly.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'tagonly.l5x' })).error).toBeUndefined()
+    const cpsGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
+    expect(cpsGood.error).toBeUndefined()
+    expect((cpsGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('CPS(Arr[0],Arr2[0],10);')
+    // Studio answered MUSTBEDISCRETE for CPS(Arr,Arr2,10); the element form above built 0/0.
+    const cpsWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr', 'Arr2', '10'] }] }) })
+    expect(cpsWhole.error?.code).toBe('INVALID_OPERAND')
+    expect(cpsWhole.error?.message).toContain('array element')
+    const cpsSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['5', 'Arr2', '10'] }] }) })
+    expect(cpsSource.error?.code).toBe('INVALID_OPERAND')
+    expect(cpsSource.error?.message).toContain('needs a tag for Source')
+    const cpsDest = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', '5', '10'] }] }) })
+    expect(cpsDest.error?.code).toBe('INVALID_OPERAND')
+    expect(cpsDest.error?.message).toContain('writable dest')
+    const neg = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'NEG', args: ['5', '5'] }] }) })
+    expect(neg.error?.code).toBe('INVALID_OPERAND')
+    expect(neg.error?.message).toContain('writable dest')
+    const copSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['5', 'Arr2', '10'] }] }) })
+    expect(copSource.error?.code).toBe('INVALID_OPERAND')
+    expect(copSource.error?.message).toContain('needs a tag for Source')
+  })
+})
+
 describe('an AOI structure parameter', () => {
   it('requires a tag of the parameter type', async () => {
     // Studio refused a BOOL tag where MAFR_Yaskawa's InOut Axis needs a Yaskawa_EIP_Servo with

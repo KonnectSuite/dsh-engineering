@@ -302,7 +302,10 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       // composer can refuse them and state the written order instead. A slot of kind ANY is not
       // automatically writable: JSR's return parameter and PID's master loop accept 0.
       const slot = instruction.operands[index] ?? restSlot
-      if (slot?.writable === true && isLiteral(text)) {
+      if ((slot?.writable === true || slot?.tagOnly === true) && isLiteral(text)) {
+        if (slot.writable !== true) {
+          throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a tag for ${slot.name}.`, `Pass a declared tag for the ${slot.name} slot; Studio does not accept a literal there.`)
+        }
         const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
         const fix = slot.name === 'Destination'
           ? `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`
@@ -310,6 +313,9 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
             ? 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.'
             : `Pass a declared tag for the ${slot.name} slot; Studio refuses a literal there.`
         throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a writable ${what}.`, fix)
+      }
+      if (slot?.arrayElement === true && !text.includes('[')) {
+        throw new L5xError('INVALID_OPERAND', `${text} must name one array element for ${instruction.name} ${slot.name}, for example ${text}[0].`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array tag.`)
       }
       // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
       // STD's Destination must be REAL even though its slot kind is NUMBER.

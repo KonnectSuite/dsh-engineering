@@ -14,22 +14,21 @@ import type { OperandKind } from './instructions.ts'
 const TABLE: readonly (readonly [string, string])[] = [
   ['Contacts and coils', 'UID= UIE='],
   ['Math', 'NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD '],
-  ['Move', 'CPS=SDL'],
   ['Program control', 'BRK= NOP= TND='],
   ['Communications', 'MSG=K'],
 ]
 
-const slot = (code: string): { name: string; kind: OperandKind } => {
+const slot = (code: string): { name: string; kind: OperandKind; writable?: boolean; tagOnly?: boolean } => {
   switch (code) {
     case 'A': return { name: 'Source A', kind: 'NUMBER' }
     case 'B': return { name: 'Source B', kind: 'NUMBER' }
     case 'S': return { name: 'Source', kind: 'NUMBER' }
-    case 'D': return { name: 'Dest', kind: 'NUMBER' }
+    case 'D': return { name: 'Dest', kind: 'NUMBER', writable: true }
     case 'L': return { name: 'Length', kind: 'NUMBER' }
     case 'P': return { name: 'Position', kind: 'NUMBER' }
     case 'T': return { name: 'Timer', kind: 'TIMER' }
     case 'C': return { name: 'Counter', kind: 'COUNTER' }
-    case 'K': return { name: 'Control', kind: 'ANY' }
+    case 'K': return { name: 'Control', kind: 'ANY', writable: true }
     case 'X': return { name: 'Expression', kind: 'EXPRESSION' }
     case 'R': return { name: 'Routine Name', kind: 'ROUTINE' }
     default: return { name: 'Tag', kind: 'BOOL' }
@@ -40,7 +39,7 @@ const slot = (code: string): { name: string; kind: OperandKind } => {
 export interface MoreInstruction {
   readonly name: string
   readonly category: string
-  readonly slots: readonly { readonly name: string; readonly kind: OperandKind }[]
+  readonly slots: readonly { readonly name: string; readonly kind: OperandKind; readonly writable?: boolean; readonly tagOnly?: boolean }[]
 }
 
 export const MORE_INSTRUCTIONS: readonly MoreInstruction[] = TABLE.flatMap(([category, list]) =>
