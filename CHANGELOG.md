@@ -40,6 +40,13 @@
   uses. `packages/l5x/test/instructions.spec.ts` asserts the field appears for a renamed instruction and is absent
   for one that was never renamed.
 
+- **Ten more instructions a rung can actually use.** The string family (`CONCAT`, `MID`, `FIND`, `INSERT`, `DELETE`,
+  `LOWER`, `UPPER`, `RTOS`), file fill (`FLL`) and the subroutine label (`SBR`) are now catalogued, taking the catalogue
+  from 118 to 128 instructions. Operand order is not guessed: each one was read out of the vendor instruction metadata
+  the composer's own generate templates use, so `MID(Source,Qty,Start,Dest)` and `FLL(Source,Dest,Length)` are the order
+  Studio writes. `SBR` carries no operands — its parameters are the arguments the calling `JSR` passes — which also
+  makes `SBR_NOT_FIRST` judge a mnemonic the catalogue previously did not know.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -51,7 +58,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-222 package tests and 70 bundle tests pass.
+226 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

@@ -84,3 +84,45 @@ describe('list_instructions names the other spelling', () => {
     expect(rows.find(row => row.name === 'TON')).not.toHaveProperty('also_published_as')
   })
 })
+
+
+describe('newly catalogued instructions', () => {
+  it('carries the operand order the vendor metadata uses', () => {
+    const expected: readonly (readonly [string, number])[] = [
+      ['CONCAT', 3], ['MID', 4], ['FIND', 4], ['INSERT', 4], ['DELETE', 4],
+      ['LOWER', 2], ['UPPER', 2], ['RTOS', 2], ['FLL', 3], ['SBR', 0],
+    ]
+    for (const [name, count] of expected) {
+      expect(instructionByName(name), name).toBeDefined()
+      expect(instructionByName(name)?.operands.length, name).toBe(count)
+    }
+  })
+
+  it('names the string and file slots a reader has to fill', () => {
+    expect(instructionByName('MID')?.operands.map(slot => slot.name)).toEqual(['Source', 'Qty', 'Start', 'Dest'])
+    expect(instructionByName('FLL')?.operands.map(slot => slot.name)).toEqual(['Source', 'Dest', 'Length'])
+    expect(instructionByName('INSERT')?.operands.map(slot => slot.name)).toEqual(['Source A', 'Source B', 'Start', 'Dest'])
+  })
+})
+
+describe('composing with a newly catalogued instruction', () => {
+  it('composes a file fill rung', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'FLL', args: ['LineSpeed', 'FaultCount', '5'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('XIC(StartPB)FLL(LineSpeed,FaultCount,5);')
+  })
+
+  it('composes a subroutine label with no operands', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SBR' }] }) })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('SBR();')
+  })
+})
