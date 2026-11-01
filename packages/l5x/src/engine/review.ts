@@ -149,13 +149,21 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     used.add(`${ref.scope}::${rawBase}`.toLowerCase())
     used.add(`controller::${rawBase}`.toLowerCase())
   }
-  for (const tag of doc.tags) {
-    // A module-defined tag such as `Local:1:C` or `TopCutter_MP2600iec:I` is
-    // wired by the module, not by indexed logic, so "no reference" proves nothing
-    // and buried the real findings: 20 such rows on one export.
-    if (/:[A-Z]+$/u.test(tag.name)) continue
-    const key = `${tag.scope}::${tag.name}`.toLowerCase()
-    if (!used.has(key)) report('UNUSED_TAG', 'info', `No indexed logic reference to ${tag.scope}::${tag.name}`, { scope: tag.scope, tag: tag.name }, 'low')
+  // On an export with encrypted routine bodies, a tag used only inside them has no readable
+  // reference, so "unused" would be a guess dressed as a finding - 1277 of them on one export.
+  const unreadableBodies = doc.protectedRoutines.length
+  const skippedReadings: { rule: string; reason: string }[] = []
+  if (unreadableBodies > 0) {
+    skippedReadings.push({ rule: 'UNUSED_TAG', reason: `${unreadableBodies} routine body(ies) are encrypted, so a missing reference does not prove a tag unused` })
+  } else {
+    for (const tag of doc.tags) {
+      // A module-defined tag such as `Local:1:C` or `TopCutter_MP2600iec:I` is
+      // wired by the module, not by indexed logic, so "no reference" proves nothing
+      // and buried the real findings: 20 such rows on one export.
+      if (/:[A-Z]+$/u.test(tag.name)) continue
+      const key = `${tag.scope}::${tag.name}`.toLowerCase()
+      if (!used.has(key)) report('UNUSED_TAG', 'info', `No indexed logic reference to ${tag.scope}::${tag.name}`, { scope: tag.scope, tag: tag.name }, 'low')
+    }
   }
   const unresolved = new Map<string, Evidence[]>()
   for (const ref of references) {
@@ -420,5 +428,5 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     byRule[finding.rule] = (byRule[finding.rule] ?? 0) + 1
     bySeverity[finding.severity] = (bySeverity[finding.severity] ?? 0) + 1
   }
-  return { project_id: project.id, baseline_id: baseline?.id, findings, count: findings.length, summary: { byRule, bySeverity }, coverage: project.features, note: 'Heuristic findings require engineering review; absence of findings does not prove controller safety.' }
+  return { project_id: project.id, baseline_id: baseline?.id, findings, count: findings.length, summary: { byRule, bySeverity }, coverage: project.features, ...(skippedReadings.length === 0 ? {} : { skipped_readings: skippedReadings }), note: 'Heuristic findings require engineering review; absence of findings does not prove controller safety.' }
 }

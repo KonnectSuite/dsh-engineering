@@ -28,6 +28,8 @@ interface Finding {
 /** The checks engine's answer. */
 interface ChecksResult {
   readonly findings: readonly Finding[]
+  /** Readings that could not be trusted on this export, with the reason. */
+  readonly skipped_readings?: readonly { readonly rule: string; readonly reason: string }[]
   readonly count: number
   readonly summary: { readonly byRule: Readonly<Record<string, number>>; readonly bySeverity: Readonly<Record<string, number>> }
   readonly note: string
@@ -104,7 +106,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         const byRule = countBy(filtered, finding => finding.rule)
         const symbol = firstSymbol(page)
         return success(
-          `${filtered.length} ${filtered.length === 1 ? 'finding' : 'findings'}${rule === undefined ? '' : ` for rule ${rule}`} in ${project.document.controller.name} (${bySeverity.critical ?? 0} critical, ${bySeverity.warning ?? 0} warning, ${bySeverity.info ?? 0} info), ordered by severity.`,
+          `${filtered.length} ${filtered.length === 1 ? 'finding' : 'findings'}${rule === undefined ? '' : ` for rule ${rule}`} in ${project.document.controller.name} (${bySeverity.critical ?? 0} critical, ${bySeverity.warning ?? 0} warning, ${bySeverity.info ?? 0} info), ordered by severity.${result.skipped_readings === undefined ? '' : ' ' + result.skipped_readings.length + ' reading(s) skipped.'}`,
           {
             total: result.count,
             filtered_total: filtered.length,
@@ -115,6 +117,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
             by_rule: byRule,
             findings: page,
             note: result.note,
+            ...(result.skipped_readings === undefined ? {} : { skipped_readings: result.skipped_readings }),
           },
           [
             ...(symbol === undefined

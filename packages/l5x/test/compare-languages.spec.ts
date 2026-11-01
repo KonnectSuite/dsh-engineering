@@ -247,3 +247,30 @@ describe('a module recorded as faulted', () => {
     expect(row?.inhibited).toBe(true)
   })
 })
+
+
+/** One unused tag in a project whose only routine is encrypted, and the same with readable logic. */
+const UNUSED_ENCRYPTED = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"UnusedTags\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"Orphan\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><EncodedData EncodedType=\"Routine\" Name=\"R\"/></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+const UNUSED_READABLE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"UnusedTags\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"Orphan\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[NOP();]]></Text></Rung></RLLContent></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('unused-tag analysis on an encrypted export', () => {
+  it('is skipped and says so, instead of reporting every tag unused', async () => {
+    const l5x = harness(new Map([['u.l5x', new TextEncoder().encode(UNUSED_ENCRYPTED)]]))
+    await l5x.call('open_project', { path: 'u.l5x' })
+    const checks = await l5x.call('run_checks', {})
+    const findings = (checks.data?.findings ?? []) as { rule: string }[]
+    expect(findings.some(finding => finding.rule === 'UNUSED_TAG')).toBe(false)
+    const skipped = (checks.data?.skipped_readings ?? []) as { rule: string; reason: string }[]
+    expect(skipped.some(entry => entry.rule === 'UNUSED_TAG')).toBe(true)
+    expect(String(skipped[0]?.reason)).toContain('encrypted')
+    expect(String(checks.summary)).toContain('reading(s) skipped')
+  })
+
+  it('still reports an unused tag when the logic is readable', async () => {
+    const l5x = harness(new Map([['u.l5x', new TextEncoder().encode(UNUSED_READABLE)]]))
+    await l5x.call('open_project', { path: 'u.l5x' })
+    const checks = await l5x.call('run_checks', {})
+    const findings = (checks.data?.findings ?? []) as { rule: string }[]
+    expect(findings.some(finding => finding.rule === 'UNUSED_TAG')).toBe(true)
+  })
+})

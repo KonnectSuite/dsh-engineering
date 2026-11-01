@@ -697,6 +697,13 @@
   (`GSV(Safety,,SafetySignatureExists,...)`), which is runtime state, so nothing was modelled and no false field ships. The test
   covers a faulted, inhibited module in both the reader and the listing. 414 package tests.
 
+- **Unused-tag analysis is skipped when the logic is encrypted, and says why.** On `Seco_Cooler` - 1266 tags, 144 encrypted routine bodies, zero
+  readable routines - `run_checks` reported 1277 findings, and the ones I sampled were all `UNUSED_TAG`: a tag used only inside an encrypted
+  body has no readable reference, so "unused" was a guess dressed as a finding. The pass now runs only when at least one body is readable;
+  otherwise the result carries **`skipped_readings`** with the rule and the reason, and the summary appends "1 reading(s) skipped". Verified on
+  that export: the findings page now contains no `UNUSED_TAG` at all, only `UNDOCUMENTED_PROGRAM`. Two tests pin both sides - skipped on an
+  encrypted routine, still reported on readable logic - so the guard cannot quietly suppress a real finding. 416 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
