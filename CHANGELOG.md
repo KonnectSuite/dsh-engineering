@@ -1334,6 +1334,11 @@
   them, one apply writes the export, and a reopen lists both tags — proving the insertion order (Tags before Routines) and staged program-tag resolution.
   509 package tests.
 
+- **One program using every new rule builds 0/0, and the repository reproduces it.** Composed only through the tools (24 tags, 9 rungs: latch, TON,
+  ADD, SQO with Dest[0], gated MSG, FIND once-based, ALMA, BSL, PID with master loop 0), the export
+  `composed-proof.L5X` (sha 5432156...) imported and built with 0 warnings and 0 errors (ACD sha c6852cbc...). A committed test composes the same
+  program in memory, applies it, reopens it and asserts all nine rungs read back unchanged. 510 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
