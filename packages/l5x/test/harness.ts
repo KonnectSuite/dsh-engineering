@@ -35,7 +35,7 @@ export interface Harness {
  * @param options - Set `editing`, `studio` or `live` to mount those entries over the read entry's service, and `approval` to provide an approval service.
  * @returns The registered definitions, written files, and a call helper.
  */
-export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; live?: boolean | { allowWrites?: boolean }; approval?: { policy: 'ask' | 'never'; outcome?: string } } = {}): Harness {
+export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = fixtureBytes, options: { editing?: boolean; studio?: boolean; live?: boolean | { allowWrites?: boolean }; approval?: { policy: 'ask' | 'never'; outcome?: string }; denyWrite?: boolean } = {}): Harness {
   const definitions: ToolDefinition[] = []
   const written = new Map<string, string>()
   const services = new Map<string, unknown>()
@@ -50,7 +50,10 @@ export function harness(source: (() => Uint8Array) | Map<string, Uint8Array> = f
       async resolve(path: string) { return { targetKey: path, displayPath: path } },
       async stat(target: { displayPath: string }) { return exists(target.displayPath) ? { type: 'file' } : undefined },
       async readBytes(target: { displayPath: string }) { return read(target.displayPath) },
-      async writeText(target: { displayPath: string }, text: string) { written.set(target.displayPath, text) },
+      async writeText(target: { displayPath: string }, text: string) {
+        if (options.denyWrite === true) throw new Error('file access denied under workspace-write mode')
+        written.set(target.displayPath, text)
+      },
     },
     provide(name: string, value: unknown) { services.set(name, value) },
     get(name: string) { return services.get(name) },

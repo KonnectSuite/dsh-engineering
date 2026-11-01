@@ -265,7 +265,15 @@ export class ProjectSession {
       ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
       ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
     })
-    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal)
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal).catch((error: unknown) => {
+      // A provider denial is an environment condition, not a plugin defect: state the destination
+      // and what to change, and say plainly that nothing was written.
+      throw new L5xError(
+        'WRITE_DENIED',
+        `The filesystem provider refused to write ${target.displayPath}: ${error instanceof Error ? error.message : String(error)}`,
+        'Choose a path the provider allows (for example one inside its writable workspace) or grant write access to this folder; the draft was not written.',
+      )
+    })
     return target.displayPath
   }
 
@@ -318,7 +326,13 @@ export class ProjectSession {
         'Use a profile whose filesystem provider allows writes, or copy the draft text into Studio manually.',
       )
     }
-    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal)
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal).catch((error: unknown) => {
+      throw new L5xError(
+        'WRITE_DENIED',
+        `The filesystem provider refused to write ${target.displayPath}: ${error instanceof Error ? error.message : String(error)}`,
+        'Choose a path the provider allows (for example one inside its writable workspace) or grant write access to this folder; nothing was written.',
+      )
+    })
     return target.displayPath
   }
 

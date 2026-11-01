@@ -1383,6 +1383,12 @@
   (`INVALID_LADDER`) and a duplicate routine name (`NAME_COLLISION`). Both created routines composed through the tools imported and built 0/0
   (ACD sha a8b2b374...), with the change summary naming both routines and the ST body. 516 package tests.
 
+- **One changed routine builds through the ACD workflow, and a denied write is no longer called a plugin defect.** `export_acd_to_l5x` captured
+  `e2e-ship2.ACD`; replacing the placeholder `TON(Timer,?,?)` with `TON(Timer,1000,0)` and running `build_acd_from_draft` produced a partial
+  import of only `Main.MainRoutine`, built 0/0, exported `e2e-built.L5X` and returned `download_ready: true` with a verification id (ACD sha
+  f06f2121...). Separately, a provider write denial escaped as `INTERNAL` with "plugin defect" advice; it is now `WRITE_DENIED` naming the
+  destination, the provider reason and a usable fix, with a regression test. 517 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

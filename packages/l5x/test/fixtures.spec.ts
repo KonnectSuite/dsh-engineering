@@ -796,6 +796,25 @@ describe('two output instructions in series', () => {
   })
 })
 
+describe('a denied draft write', () => {
+  it('reports WRITE_DENIED with the provider reason, not an internal defect', async () => {
+    const project = l5x({
+      name: 'DeniedWrite',
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['denied.l5x', new TextEncoder().encode(project)]]), { editing: true, denyWrite: true })
+    expect((await l5xTool.call('open_project', { path: 'denied.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_tag', { scope: 'controller', name: 'X', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const applied = await l5xTool.call('draft_apply', { output_path: 'denied-out.L5X' })
+    expect(applied.error?.code).toBe('WRITE_DENIED')
+    expect(applied.error?.message).toContain('refused to write')
+    expect(applied.error?.message).toContain('denied')
+    expect(applied.error?.fix).toContain('provider allows')
+    expect(l5xTool.written.size).toBe(0)
+  })
+})
+
 describe('creating a routine', () => {
   it('writes ST and RLL bodies and refuses an invalid body or duplicate name', async () => {
     const project = l5x({
