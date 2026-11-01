@@ -59,6 +59,16 @@ describe('list_instructions', () => {
     expect(ton?.operands).toEqual([{ name: 'Timer', kind: 'TIMER', required: true }, { name: 'Preset', kind: 'NUMBER', required: true }, { name: 'Accum', kind: 'NUMBER', required: true }])
   })
 
+  it('marks the slots that must be tags', async () => {
+    const l5x = harness(fixtureBytes)
+    const add = ((await l5x.call('list_instructions', { filter: 'ADD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'ADD')
+    expect(add?.operands.find(slot => slot.name === 'Destination')?.writable).toBe(true)
+    expect(add?.operands.find(slot => slot.name === 'Source A')?.writable).toBeUndefined()
+    const forRow = ((await l5x.call('list_instructions', { filter: 'FOR' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'FOR')
+    expect(forRow?.operands.find(slot => slot.name === 'Index')?.writable).toBe(true)
+    expect(forRow?.operands.find(slot => slot.name === 'Initial value')?.writable).toBeUndefined()
+  })
+
   it('filters by name and by category', async () => {
     const l5x = harness(fixtureBytes)
     const byName = await l5x.call('list_instructions', { filter: 'ton' })

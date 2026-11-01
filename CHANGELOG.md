@@ -1114,6 +1114,10 @@
   while `SIZE(Arr,0,Arr[0])` built 0/0, so the `Size` slot joined `Destination` and `FOR`'s `Index` as explicitly `writable`. The composer refuses a literal in
   any such slot and names it. Both SIZE cases are held by tests. 481 package tests.
 
+- **Which operand slots must be tags is visible before composing.** `list_instructions` rows now carry `writable: true` on Destination, `FOR` Index and
+  `SIZE` Size, and the description names it, so an agent can see the constraint instead of learning it from a refused build. Tested on ADD and FOR
+  (Destination/Index marked, source and bound slots not). 482 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

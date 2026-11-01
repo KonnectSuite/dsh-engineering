@@ -167,7 +167,7 @@ The instruction catalog the composer validates, and the handover bundle written 
 
 #### `list_instructions`
 
-List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.
+List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
