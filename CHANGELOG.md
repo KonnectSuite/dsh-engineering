@@ -160,6 +160,12 @@
   whole-project diagram now does the same — the answer carries the rung count, the page window and an `image_error`,
   and only the image is missing.
 
+- **An I/O change against a baseline says which field changed.** `run_checks { baseline_id }` reported *"I/O module
+  Local changed"* and left the reader to diff the export by hand — while the change record it already holds carries
+  both sides. The finding now names the fields: *"I/O module Local changed: catalogNumber 1769-L33ER to
+  1769-L33ER-X"*, listing up to four fields and counting the rest. `packages/l5x/test/checks.spec.ts` covers it, and
+  the matching case that two identical exports report no I/O change at all.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -171,7 +177,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-294 package tests and 70 bundle tests pass.
+296 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

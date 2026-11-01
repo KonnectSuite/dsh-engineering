@@ -180,3 +180,40 @@ describe('standards rules', () => {
     expect(findings[0]?.evidence.basis).toBeTypeOf('string')
   })
 })
+
+
+describe('a run_checks baseline', () => {
+  /** Two exports that differ in one module catalog number. */
+  function pair() {
+    const before = new TextDecoder().decode(fixtureBytes())
+    const after = before.replace('CatalogNumber="1769-L33ER"', 'CatalogNumber="1769-L33ER-X"')
+    expect(after).not.toBe(before)
+    return harness(new Map([
+      ['before.l5x', new TextEncoder().encode(before)],
+      ['after.l5x', new TextEncoder().encode(after)],
+    ]))
+  }
+
+  it('names the module field that changed, not just that it changed', async () => {
+    const l5x = pair()
+    const one = await l5x.call('open_project', { path: 'before.l5x' })
+    const two = await l5x.call('open_project', { path: 'after.l5x' })
+    const result = await l5x.call('run_checks', {
+      project_id: two.data?.project_id,
+      baseline_id: one.data?.project_id,
+      rule: 'IO_MODULE_CHANGED',
+    })
+    expect(result.error).toBeUndefined()
+    const rows = result.data?.findings as { message: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('catalogNumber')
+    expect(rows[0]?.message).toContain('1769-L33ER-X')
+  })
+
+  it('reports no I/O change when the two exports match', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const one = await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('run_checks', { baseline_id: one.data?.project_id, rule: 'IO_MODULE_CHANGED' })
+    expect((result.data?.findings as unknown[]).length).toBe(0)
+  })
+})

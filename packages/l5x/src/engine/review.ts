@@ -66,6 +66,22 @@ export interface Finding {
   readonly confidence: 'high' | 'medium' | 'low'
 }
 
+/** Field-level summary of one change, when both sides are records. */
+function changedFields(change: Change, limit = 4): string[] {
+  const before = change.before
+  const after = change.after
+  if (typeof before !== 'object' || before === null || typeof after !== 'object' || after === null) return []
+  const left = before as Record<string, unknown>
+  const right = after as Record<string, unknown>
+  const changed: string[] = []
+  for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
+    const was = JSON.stringify(left[key]) ?? String(left[key])
+    const now = JSON.stringify(right[key]) ?? String(right[key])
+    if (was !== now) changed.push(`${key} ${String(left[key])} to ${String(right[key])}`)
+  }
+  return changed.length <= limit ? changed : [...changed.slice(0, limit), `and ${changed.length - limit} more`]
+}
+
 export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot): object {
   const doc = project.document
   const references = evidenceOf(project)
@@ -169,7 +185,13 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   for (const [symbol, locations] of writers) if (locations.length > 1 && /(?:^|::|\.)[^.]*:(?:O|Output)|_Output|\.O\./iu.test(symbol)) report('MULTIPLE_OUTPUT_WRITES', 'warning', `Multiple indexed writes to output-like symbol ${symbol}`, locations, 'medium')
   if (baseline !== undefined) {
     const difference = compareProjects(baseline, project) as { changes: Change[] }
-    for (const change of difference.changes) if (change.component === 'module') report('IO_MODULE_CHANGED', 'warning', `I/O module ${change.key} ${change.kind}`, change)
+    for (const change of difference.changes) {
+    if (change.component !== 'module') continue
+    // "changed" alone sends a reader to diff the file by hand. The record already carries both
+    // sides, so name the fields that differ.
+    const fields = changedFields(change)
+    report('IO_MODULE_CHANGED', 'warning', `I/O module ${change.key} ${change.kind}${fields.length === 0 ? '' : ': ' + fields.join(', ')}`, change)
+  }
   }
   // Revision pass: one finding per mnemonic, not per rung. Logix Designer 36 renamed
   // sixteen ladder instructions (EQU to EQ, SQR to SQRT, …). A project that carries
