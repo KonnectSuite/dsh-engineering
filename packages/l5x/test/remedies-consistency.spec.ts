@@ -44,6 +44,10 @@ describe('the filterable rule list', () => {
     const known = new Set(FINDING_RULES)
     const missing = [...rules].filter(rule => !known.has(rule)).sort()
     expect({ emitted: rules.size, missing }).toEqual({ emitted: rules.size, missing: [] })
+    // A stale name left in the list would accept a filter that can never match: the same
+    // silent-clean answer as a misspelling. The list must not exceed what the source emits.
+    const extra = FINDING_RULES.filter(rule => !rules.has(rule)).sort()
+    expect({ listed: FINDING_RULES.length, extra }).toEqual({ listed: FINDING_RULES.length, extra: [] })
     expect(FINDING_RULES.length).toBe(new Set(FINDING_RULES).size)
     expect(FINDING_RULES.length).toBeGreaterThanOrEqual(36)
   })

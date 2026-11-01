@@ -1459,6 +1459,10 @@
   `yes`, every other row is blank. A test documents a two-step chart and asserts the initial row and the unmarked one. Live check: `read_controller_mode`
   against 192.168.1.3 through `DESKTOP-N9UEQO4!AB_ETHIP-1\192.168.1.3` returned `Run` (read-only, snapshot sha 38a68c3c...). 540 package tests.
 
+- **The rule list cannot go stale either.** The drift test proved every emitted rule is listed; a name left in the list with no emitter would still pass
+  and accept a filter that can never match. The test now asserts set equality in both directions: no emitted rule missing, no listed rule unemitted.
+  540 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
