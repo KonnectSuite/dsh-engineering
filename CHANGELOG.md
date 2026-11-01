@@ -719,6 +719,11 @@
   so my first two real calls returned the old single filename - the fix is verified through the plugin source, not through the running app.
   418 package tests.
 
+- **The task listing says which task is a safety task.** The model learned `safety` from `Class="Safety"` in round 75 and `project_overview`
+  warns about safety tasks, but `list_components kind:"task"` showed only type, rate and programs - so a reader scanning the tasks could not
+  see that `SafetyTask` is safety without inferring it from the name. Rows now carry `safety: true|false`; verified on `Seco_Homogenizer`,
+  where `SafetyTask` reports true and the three standard tasks false, and a test pins reader and listing together. 419 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

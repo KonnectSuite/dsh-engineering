@@ -187,7 +187,7 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
   const rows: readonly ComponentRow[] = kind === 'program'
     ? document.programs.map(program => ({ name: program.name, mainRoutine: program.mainRoutine, description: program.description }))
     : kind === 'task'
-      ? document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs }))
+      ? document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs, safety: task.safety === true }))
       : kind === 'tag'
         ? listTags(document, scope ?? '').map(tag => ({ name: tag.name, scope: tag.scope, dataType: tag.dataType, description: tag.description ?? '', externalAccess: tag.externalAccess ?? '', ...(tag.tagType === undefined ? {} : { tagType: tag.tagType }), ...(tag.consumerOf === undefined ? {} : { consumerOf: tag.consumerOf }), ...(tag.aliasFor === undefined ? {} : { aliasFor: tag.aliasFor }) }))
         : kind === 'udt'

@@ -304,3 +304,22 @@ describe('a paginated routine diagram', () => {
     rmSync(folder, { recursive: true, force: true })
   })
 })
+
+
+/** A standard task and a safety task. */
+const TASK_CLASS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Tasks\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks>\n      <Task Name=\"MainTask\" Type=\"CONTINUOUS\" Class=\"Standard\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task>\n      <Task Name=\"SafetyTask\" Type=\"PERIODIC\" Rate=\"20\" Priority=\"10\" Class=\"Safety\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task>\n    </Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('task class', () => {
+  it('says which task is a safety task, in the reader and the listing', async () => {
+    const l5x = harness(new Map([['t.l5x', new TextEncoder().encode(TASK_CLASS_L5X)]]))
+    await l5x.call('open_project', { path: 't.l5x' })
+    const safety = await l5x.call('get_component', { kind: 'task', name: 'SafetyTask' })
+    expect(safety.data?.component?.safety).toBe(true)
+    const main = await l5x.call('get_component', { kind: 'task', name: 'MainTask' })
+    expect(main.data?.component?.safety).toBe(false)
+    const listed = await l5x.call('list_components', { kind: 'task' })
+    const rows = (listed.data?.rows ?? []) as { name: string; safety?: boolean }[]
+    expect(rows.find(row => row.name === 'SafetyTask')?.safety).toBe(true)
+    expect(rows.find(row => row.name === 'MainTask')?.safety).toBe(false)
+  })
+})
