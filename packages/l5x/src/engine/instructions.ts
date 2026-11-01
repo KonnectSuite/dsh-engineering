@@ -131,12 +131,12 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'CLR', category: 'Move', summary: 'Clear the destination to zero.', operands: [num('Destination')] },
 
   // Timer and counter
-  { name: 'TON', category: 'Timer and counter', summary: 'Timer on delay: accumulates while the rung is true.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset')] },
-  { name: 'TOF', category: 'Timer and counter', summary: 'Timer off delay: accumulates after the rung goes false.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset')] },
-  { name: 'RTO', category: 'Timer and counter', summary: 'Retentive timer on: accumulates and holds its value.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset')] },
+  { name: 'TON', category: 'Timer and counter', summary: 'Timer on delay: accumulates while the rung is true; the accumulator operand is written as 0.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset'), num('Accum')] },
+  { name: 'TOF', category: 'Timer and counter', summary: 'Timer off delay: accumulates after the rung goes false; the accumulator operand is written as 0.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset'), num('Accum')] },
+  { name: 'RTO', category: 'Timer and counter', summary: 'Retentive timer on: accumulates and holds its value; the accumulator operand is written as 0.', operands: [{ name: 'Timer', kind: 'TIMER' }, num('Preset'), num('Accum')] },
   { name: 'RES', category: 'Timer and counter', summary: 'Reset a timer or counter structure.', operands: [{ name: 'Structure', kind: 'ANY' }] },
-  { name: 'CTU', category: 'Timer and counter', summary: 'Count up on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset')] },
-  { name: 'CTD', category: 'Timer and counter', summary: 'Count down on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset')] },
+  { name: 'CTU', category: 'Timer and counter', summary: 'Count up on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset'), num('Accum')] },
+  { name: 'CTD', category: 'Timer and counter', summary: 'Count down on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset'), num('Accum')] },
 
   // Program control
   { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [routine(), { name: 'Parameter', kind: 'ANY', optional: true, rest: true }] },

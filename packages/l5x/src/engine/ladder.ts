@@ -73,7 +73,7 @@ export interface ComposedRungs {
 }
 
 /** Named patterns the composer can expand. */
-export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock', 'analog_scale', 'totalizer'] as const
+export const PATTERNS = ['start_stop_latch', 'fault_latch', 'ton_delay', 'interlock', 'analog_scale', 'totalizer', 'run_hour_meter'] as const
 /** One pattern name. */
 export type PatternName = (typeof PATTERNS)[number]
 
@@ -451,7 +451,7 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
     if (typeof preset !== 'number' || !Number.isFinite(preset) || preset < 0) {
       throw new L5xError('INVALID_ARGUMENT', 'ton_delay needs preset_ms as a non-negative number.', 'Pass the preset in milliseconds, for example 1500.')
     }
-    return one({ series: [{ instr: 'XIC', args: [enable] }, { instr: 'TON', args: [timer, String(preset)] }] })
+    return one({ series: [{ instr: 'XIC', args: [enable] }, { instr: 'TON', args: [timer, String(preset), '0'] }] })
   }
   if (pattern === 'analog_scale') {
     const source = arg(args, 'source')
@@ -485,6 +485,24 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
       { instr: 'XIC', args: [enable] },
       { instr: 'ADD', args: [total, rate, total] },
     ] })
+  }
+  if (pattern === 'run_hour_meter') {
+    const run = arg(args, 'run')
+    const timer = arg(args, 'timer')
+    const hours = arg(args, 'hours')
+    const preset = args.preset_ms ?? 3_600_000
+    if (typeof preset !== 'number' || !Number.isFinite(preset) || preset <= 0) {
+      throw new L5xError('INVALID_ARGUMENT', 'run_hour_meter needs preset_ms as a positive number.', 'Pass the interval in milliseconds; the default is one hour (3600000).')
+    }
+    // The timer's own .DN bit opens its rung, so the timer resets in the same scan that counts the
+    // hour and the accumulator runs exactly once per interval.
+    return {
+      pattern,
+      rungs: [
+        composeRung(project, { series: [{ instr: 'XIO', args: [`${timer}.DN`] }, { instr: 'XIC', args: [run] }, { instr: 'TON', args: [timer, String(preset), '0'] }] }),
+        composeRung(project, { series: [{ instr: 'XIC', args: [`${timer}.DN`] }, { instr: 'ADD', args: [hours, '1', hours] }] }),
+      ],
+    }
   }
   // fault_latch: set on the fault, clear on the reset — two rungs, never one.
   const fault = arg(args, 'fault')

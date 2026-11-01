@@ -271,7 +271,7 @@ Compose one validated ladder rung from a structure or a named pattern, checking 
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `pattern` | string (start_stop_latch \| fault_latch \| ton_delay \| interlock \| analog_scale \| totalizer) | no | Named pattern to expand. fault_latch produces two rungs. |
+| `pattern` | string (start_stop_latch \| fault_latch \| ton_delay \| interlock \| analog_scale \| totalizer \| run_hour_meter) | no | Named pattern to expand. fault_latch produces two rungs. |
 | `spec_json` | string | no | Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}. |
 | `arguments_json` | string | no | Pattern arguments as JSON, for example {"start":"Start","stop":"Stop","run":"Run"}. |
 | `program` | string | no | Program to stage into. Omit to return the composed text only. |

@@ -56,7 +56,7 @@ describe('list_instructions', () => {
     expect(result.error).toBeUndefined()
     const rows = result.data?.rows as { name: string; operands: { name: string; kind: string; required: boolean }[] }[]
     const ton = rows.find(row => row.name === 'TON')
-    expect(ton?.operands).toEqual([{ name: 'Timer', kind: 'TIMER', required: true }, { name: 'Preset', kind: 'NUMBER', required: true }])
+    expect(ton?.operands).toEqual([{ name: 'Timer', kind: 'TIMER', required: true }, { name: 'Preset', kind: 'NUMBER', required: true }, { name: 'Accum', kind: 'NUMBER', required: true }])
   })
 
   it('filters by name and by category', async () => {

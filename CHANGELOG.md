@@ -210,6 +210,17 @@
   from the previous round applies: `ADD`'s slot order cannot be proved by a build (the sources share a kind, and addition
   is commutative), so this verifies the **rung shape** and the in-place accumulate, not the operand order.
 
+- **The timer and counter instructions were missing an operand, and `run_hour_meter` is the seventh pattern.** `TON(meter,3600000)`
+  fails with `RxCMP_E_AUDIT_INVALIDNOOFOPS`; **`TON(meter,3600000,0)` builds** — the third slot is the accumulator, written
+  as an immediate. `CTU(counter,10,0)` builds for the same reason. The catalogue had `TON`, `TOF`, `RTO`, `CTU` and `CTD`
+  with two slots, so every timer or counter rung the composer produced was one operand short, and the `ton_delay` pattern
+  had never been build-verified. All five are corrected, and `ton_delay` now emits the accumulator too. The new
+  **`run_hour_meter`** pattern is the proof: it emits `XIO(meter.DN)XIC(run)TON(meter,3600000,0)` and
+  `XIC(meter.DN)ADD(hours,1,hours)`, the timer's own `.DN` bit breaks its rung so it resets in the same scan it counts,
+  and Logix Designer **built both rungs with 0 warnings and 0 errors**. This is the second time the audit has found a
+  defect in an instruction used by the fixtures since early in the cycle — the first was `CPT`'s operand order — and both
+  were invisible until a build of *that* instruction, not of a neighbour.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -51,7 +51,9 @@ describe('patterns', () => {
       arguments_json: JSON.stringify({ enable: 'SystemRunning', timer: 'MainTimer', preset_ms: 1500 }),
     })
     expect(result.error).toBeUndefined()
-    expect(textOf(result)).toBe('XIC(SystemRunning)TON(MainTimer,1500);')
+    // A build proved the timer needs its accumulator operand: TON(MainTimer,3600000,0) builds and
+    // TON(MainTimer,3600000) fails with RxCMP_E_AUDIT_INVALIDNOOFOPS.
+    expect(textOf(result)).toBe('XIC(SystemRunning)TON(MainTimer,1500,0);')
   })
 
   it('composes an interlock chain from named conditions', async () => {
@@ -227,5 +229,37 @@ describe('the totalizer pattern', () => {
     expect(result.error).toBeUndefined()
     const rungs = result.data?.rungs as { neutral_text: string }[]
     expect(rungs[0]?.neutral_text).toBe('XIC(run)ADD(total,rate,total);')
+  })
+})
+
+
+describe('the run_hour_meter pattern', () => {
+  it('resets its own timer and counts once per interval', async () => {
+    // Verified by a Logix Designer build: the two rungs below passed with 0 warnings and 0 errors.
+    // The timer's accumulator operand is written as 0; two operands fail with INVALIDNOOFOPS.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="RunHour" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="run" TagType="Base" DataType="BOOL"/>
+      <Tag Name="meter" TagType="Base" DataType="TIMER"/>
+      <Tag Name="hours" TagType="Base" DataType="DINT"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[OTE(run);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['runhour.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'runhour.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', {
+      pattern: 'run_hour_meter',
+      arguments_json: JSON.stringify({ run: 'run', timer: 'meter', hours: 'hours' }),
+    })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('XIO(meter.DN)XIC(run)TON(meter,3600000,0);')
+    expect(rungs[1]?.neutral_text).toBe('XIC(meter.DN)ADD(hours,1,hours);')
   })
 })
