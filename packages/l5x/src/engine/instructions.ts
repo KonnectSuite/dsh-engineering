@@ -14,7 +14,7 @@
  */
 
 /** What one operand slot accepts. */
-export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' | 'STRING' | 'EXPRESSION' | 'ROUTINE' | 'LABEL'
+export type OperandKind = 'BOOL' | 'NUMBER' | 'ANY' | 'TIMER' | 'COUNTER' | 'STRING' | 'EXPRESSION' | 'ROUTINE' | 'LABEL' | 'KEYWORD'
 
 /** One operand slot. */
 export interface InstructionOperand {
@@ -61,6 +61,8 @@ const expression = (name = 'Expression'): InstructionOperand => ({ name, kind: '
 const routine = (name = 'Routine'): InstructionOperand => ({ name, kind: 'ROUTINE' })
 /** A label a JMP targets inside its own routine. */
 const label = (name = 'Label'): InstructionOperand => ({ name, kind: 'LABEL' })
+/** A symbolic name such as a GSV class or attribute: an identifier, not a tag. */
+const keyword = (name: string): InstructionOperand => ({ name, kind: 'KEYWORD' })
 
 /** The catalog, in category order. */
 export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
@@ -116,8 +118,8 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'OR', category: 'Bit', summary: 'Bitwise OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'XOR', category: 'Bit', summary: 'Bitwise exclusive OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'NOT', category: 'Bit', summary: 'Bitwise complement of the source into the destination.', operands: [num('Source'), num('Destination')] },
-  { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Length')] },
-  { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Length')] },
+  { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Source bit'), num('Length')] },
+  { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY' }, { name: 'Control', kind: 'ANY' }, num('Source bit'), num('Length')] },
 
   // String. Operand order is the order the vendor's own instruction metadata uses, so a
   // composed rung reads the way an export from Studio does.
@@ -135,6 +137,18 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
 
   // Program control. SBR carries no operands: its parameters are the JSR arguments.
   { name: 'SBR', category: 'Program control', summary: 'Subroutine label a JSR calls; its parameters are the arguments the JSR passes.', operands: [] },
+
+  // Masked, array and system instructions. Their operand lists are the vendor operand
+  // fields in written order, including the Length and Position fields that a control
+  // structure carries: the compact table below had several of these wrong, and a wrong
+  // count is only caught by Studio.
+  { name: 'MVM', category: 'Move', summary: 'Masked move: copy the source through the mask into the destination.', operands: [num('Source'), num('Mask'), num('Dest')] },
+  { name: 'GSV', category: 'Communications', summary: 'Get system value: read one attribute of a class instance into the destination.', operands: [keyword('Class'), keyword('Instance'), keyword('Attribute'), any('Dest')] },
+  { name: 'SSV', category: 'Communications', summary: 'Set system value: write the source into one attribute of a class instance.', operands: [keyword('Class'), keyword('Instance'), keyword('Attribute'), any('Source')] },
+  { name: 'SQO', category: 'Sequencer', summary: 'Sequencer output: drive the destination from one masked step of the array.', operands: [any('Array'), num('Mask'), num('Dest'), any('Control'), num('Length'), num('Position')] },
+  { name: 'SQL', category: 'Sequencer', summary: 'Sequencer load: store the source into the current step of the array.', operands: [any('Array'), num('Source'), any('Control'), num('Length'), num('Position')] },
+  { name: 'FAL', category: 'File and array', summary: 'File arithmetic and logic: evaluate the expression across Length elements.', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), any('Dest'), expression()] },
+  { name: 'FSC', category: 'File and array', summary: 'File search and compare: evaluate the expression across Length elements and report the position.', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), expression()] },
 
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({

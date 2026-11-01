@@ -172,6 +172,22 @@ function checkRoutine(project: ProjectSnapshot, text: string, seen: ComposedOper
 }
 
 /**
+ * A keyword names a system class, an instance or an attribute — GSV(Program, Main,
+ * LastScanTime, Dest). It is an identifier the controller interprets, never a tag, so
+ * resolving it against the tag table would refuse every GSV and SSV.
+ *
+ * @param text - The keyword as written.
+ * @param seen - Operands reported with the composed rung.
+ * @returns The operand to emit.
+ */
+function checkKeyword(text: string, seen: ComposedOperand[]): ComposedOperand {
+  if (!IDENTIFIER_TEXT.test(text)) throw new L5xError('INVALID_OPERAND', '"' + text + '" is not a keyword; a class, instance or attribute is a bare identifier.', 'Pass the keyword the controller names, for example Program, Main or LastScanTime.')
+  const operand: ComposedOperand = { text, resolved: false }
+  seen.push(operand)
+  return operand
+}
+
+/**
  * A label is an identifier inside its own routine. Whether a matching LBL exists is
  * a property of the finished rung, so it is not decided here.
  *
@@ -192,6 +208,7 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   if (kind === 'EXPRESSION') return checkExpression(text, seen)
   if (kind === 'ROUTINE') return checkRoutine(project, text, seen)
   if (kind === 'LABEL') return checkLabel(text, seen)
+  if (kind === 'KEYWORD') return checkKeyword(text, seen)
   if (isLiteral(text)) {
     // A literal is a value, not an address: only the slots that take a value accept it.
     if (kind === 'BOOL') throw new L5xError('INVALID_OPERAND', `${text} is a number where a BOOL tag is required.`, 'Pass a declared BOOL tag.')

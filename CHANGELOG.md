@@ -64,6 +64,18 @@
   `LABEL` must be an identifier. The composer also emits the **resolved** operand text now, so a JSR keeps the
   case the export uses rather than the caller's (`mainroutine` → `MainRoutine`).
 
+- **Nine instructions had the wrong operand count, and Studio would have rejected every rung using them.** The
+  compact table declared `MVM` with 2 operands (it takes Source, Mask, Destination), `GSV` and `SSV` with 3 (they take
+  Class, Instance, Attribute, then a destination or source), `SQO` with 3 (it takes six), `SQL` with 3 (five), `FAL`
+  with 3 (six), `FSC` with 3 (five), and `BSL`/`BSR` with 3 (four, because the source bit sits before the length).
+  The counts now come from the vendor operand fields in written order, including the Length and Position fields a
+  control structure carries — exactly the fields a pins-only reading of the metadata misses. `SQO`, `SQL`, `FAL`, `FSC`,
+  `MVM`, `GSV` and `SSV` moved out of the compact table into explicit entries, so each has one home.
+- **A system class, instance and attribute is a keyword, not a tag.** `GSV(Program,MainProgram,LastScanTime,Dest)` and
+  `SSV(...)` name controller classes, not tag references, so the new `KEYWORD` slot kind validates them as identifiers
+  instead of resolving them against the tag table — which refused every GSV and SSV even once the operand count was
+  right.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -75,7 +87,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-240 package tests and 70 bundle tests pass.
+246 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

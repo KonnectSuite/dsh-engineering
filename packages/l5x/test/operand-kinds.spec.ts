@@ -9,6 +9,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fixtureBytes, harness } from './harness.ts'
+import { instructionByName } from '../src/engine/instructions.ts'
 
 /** Open the fixture with the editing entry and return the harness. */
 async function opened() {
@@ -109,5 +110,64 @@ describe('the listing names the kinds', () => {
     expect(jsr.find(row => row.name === 'JSR')?.operands[0]?.kind).toBe('ROUTINE')
     const jmp = (await l5x.call('list_instructions', { filter: 'jmp' })).data?.rows as { name: string; operands: { kind: string }[] }[]
     expect(jmp.find(row => row.name === 'JMP')?.operands[0]?.kind).toBe('LABEL')
+  })
+})
+
+
+describe('the operand counts the vendor fields give', () => {
+  it('catalogues the full operand list, not the short one the compact table had', () => {
+    const expected: readonly (readonly [string, number])[] = [
+      ['MVM', 3], ['GSV', 4], ['SSV', 4], ['SQO', 6], ['SQL', 5], ['FAL', 6], ['FSC', 5], ['BSL', 4], ['BSR', 4],
+    ]
+    for (const [name, count] of expected) {
+      expect(instructionByName(name)?.operands.length, name).toBe(count)
+    }
+  })
+
+  it('composes a masked move with its mask slot', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'MVM', args: ['LineSpeed', 'FaultCount', 'SystemClock'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('XIC(StartPB)MVM(LineSpeed,FaultCount,SystemClock);')
+  })
+
+  it('composes a sequenced output with all six operands', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['FaultCount', '5', 'FaultCount', 'CycleCounter', '10', '0'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('SQO(FaultCount,5,FaultCount,CycleCounter,10,0);')
+  })
+
+  it('composes a file arithmetic rung with an expression operand', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'FAL', args: ['CycleCounter', '10', '0', '1', 'FaultCount', 'LineSpeed + 1.0'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('FAL(CycleCounter,10,0,1,FaultCount,LineSpeed + 1.0);')
+  })
+})
+
+describe('a keyword is not a tag', () => {
+  it('composes a GSV whose class, instance and attribute are keywords', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'GSV', args: ['Program', 'MainProgram', 'LastScanTime', 'SystemClock'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('GSV(Program,MainProgram,LastScanTime,SystemClock)OTE(SystemRunning);')
+  })
+
+  it('refuses a keyword that is not an identifier', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'GSV', args: ['Program Class', 'Main', 'X', 'SystemClock'] }] }),
+    })
+    expect(result.error?.code).toBe('INVALID_OPERAND')
+    expect(result.error?.message).toContain('keyword')
   })
 })
