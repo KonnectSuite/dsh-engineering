@@ -236,6 +236,8 @@ describe('documenting an AOI routine', () => {
     expect(documented.error).toBeUndefined()
     // The count must include what the bundle writes; "1 routine" alone hid the AOI's logic.
     expect(documented.data?.counts?.aoiRoutines).toBe(1)
+    // The one AOI rung the file documents must be counted too.
+    expect(documented.data?.counts?.aoiRungs).toBe(1)
     expect(String(documented.summary)).toContain('1 AOI routine(s)')
     const entry = [...l5x.written.entries()].find(([key]) => String(key).endsWith('AOI-AOI_Step.md'))
     expect(entry).toBeDefined()

@@ -968,6 +968,11 @@
   handover table prints **encrypted** in the Routines column instead of `0`. Verified on both real exports (Seco 1, Carpenter 11) and pinned with a
   builder `encodedAoi` fixture that asserts the flag, the limits entry and the table cell. 450 package tests.
 
+- **The bundle's rung count now matches the rungs it writes.** Round 125 started writing AOI logic, but `counts.rungs` still counted only program rungs: on
+  `Seco_Homogenizer` the summary said 9,596 while the export holds **9,766** `<Rung>` elements. The missing 170 are the AOI routines' rungs. `counts.aoiRungs`
+  now reports them and the summary reads *"29 AOI routine(s) (170 rung(s)), 9596 rung(s)"* - **9,596 + 170 = 9,766, exactly the raw count**. Same treatment for
+  the counts line; the AOI-docs test asserts the new count. 450 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

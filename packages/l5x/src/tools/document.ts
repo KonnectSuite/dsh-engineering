@@ -129,7 +129,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
           written.push({ path: destination, bytes: new TextEncoder().encode(text).length })
         }
         return success(
-          `Wrote ${written.length} file(s) for ${bundle.counts.programs} program(s), ${bundle.counts.routines} routine(s)${(project.protectedRoutines ?? 0) === 0 ? '' : ` plus ${project.protectedRoutines} source-protected`}${bundle.counts.aoiRoutines === 0 ? '' : ` and ${bundle.counts.aoiRoutines} AOI routine(s)`}, ${bundle.counts.rungs} rung(s) (${bundle.counts.comments} commented) to ${outputRoot}.`,
+          `Wrote ${written.length} file(s) for ${bundle.counts.programs} program(s), ${bundle.counts.routines} routine(s)${(project.protectedRoutines ?? 0) === 0 ? '' : ` plus ${project.protectedRoutines} source-protected`}${bundle.counts.aoiRoutines === 0 ? '' : ` and ${bundle.counts.aoiRoutines} AOI routine(s) (${bundle.counts.aoiRungs} rung(s))`}, ${bundle.counts.rungs} rung(s) (${bundle.counts.comments} commented) to ${outputRoot}.`,
           {
             output_root: outputRoot,
             files: written,
