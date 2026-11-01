@@ -1247,6 +1247,10 @@
   the built-in structure set lacked it. `message` joins CONTROL, SERIAL_PORT_CONTROL, ALARM_ANALOG, ALARM_DIGITAL and FBD_MATH; the test declares
   Msg2 and applies it, and the skill lists MESSAGE. Studio already built `MSG(Msg)` with such a tag 0/0. 497 package tests.
 
+- **TIMER, COUNTER, PID and STRING tags can be declared through draft_tag.** All four are built-in Logix structures the catalogue and its patterns
+  use (TON, CTU, PID, string instructions), yet `draft_tag` answered UNKNOWN_DATA_TYPE for each; MESSAGE was fixed last round and STRING was
+  missing too. The test declares all five through the tool and applies them, and the skill lists them. 498 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -631,6 +631,28 @@ describe('an array dimension', () => {
   })
 })
 
+describe('tag types the catalogue needs', () => {
+  it('can be declared through draft_tag', async () => {
+    // draft_tag answered UNKNOWN_DATA_TYPE for TIMER, COUNTER, PID, STRING and MESSAGE, although the
+    // catalogue and its patterns use all five. They are built-in Logix structures, not project UDTs.
+    const project = l5x({
+      name: 'BuiltinTypes',
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['types.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'types.l5x' })).error).toBeUndefined()
+    for (const [name, dataType] of [['T1', 'TIMER'], ['C1', 'COUNTER'], ['P1', 'PID'], ['S1', 'STRING'], ['M1', 'MESSAGE']]) {
+      const added = await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: dataType })
+      expect(added.error).toBeUndefined()
+    }
+    const applied = await l5xTool.call('draft_apply', { output_path: 'builtin-types.l5x' })
+    expect(applied.error).toBeUndefined()
+    const output = String(l5xTool.written.get('builtin-types.l5x'))
+    for (const type of ['TIMER', 'COUNTER', 'PID', 'STRING', 'MESSAGE']) expect(output).toContain(`DataType="${type}"`)
+  })
+})
+
 describe('a message instruction', () => {
   it('takes a MESSAGE tag, not any tag', async () => {
     // MSG(N) with a DINT failed INVALIDOPTYPE; MSG(Msg) with a MESSAGE tag built 0/0.

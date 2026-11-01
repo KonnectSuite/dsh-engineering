@@ -100,7 +100,7 @@ truth. Never write to `<workspace>/_backups`.
   reads one tag makes Studio abort the import.
 - SFC: exactly one initial step, and a condition **must reference a tag or member** - `TRUE` fails as an undefined
   tag while `Step_1.DN` builds. `draft_sfc` creates the `SFC_STEP`, `SFC_ACTION` and BOOL tags itself.
-- `draft_tag` also accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG`, `ALARM_DIGITAL`, `MESSAGE` and any **AOI name**.
+- `draft_tag` also accepts `TIMER`, `COUNTER`, `PID`, `STRING`, `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG`, `ALARM_DIGITAL`, `MESSAGE` and any **AOI name**.
 - AOI call: instance tag first, then only the parameters whose `Required` is true.
 - Serial ASCII (`ABL`, `ARD`, ...) needs a controller **with a serial port**: it builds on a 1756-L73 and is refused
   on a 5069 or 1756-L8x whatever the operands. `run_checks` reports it before any build.
