@@ -40,6 +40,16 @@ describe('a destination is a writable location, not a literal', () => {
     expect(result.error).toBeUndefined()
     expect(text(result.data)).toBe('ADD(LineSpeed,5,LineSpeed);')
   })
+  it('applies the same rule to MOV and CLR', async () => {
+    const l5x = await opened()
+    const move = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['LineSpeed', '5'] }] }) })
+    expect(move.error?.code).toBe('INVALID_OPERAND')
+    const clear = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CLR', args: ['5'] }] }) })
+    expect(clear.error?.code).toBe('INVALID_OPERAND')
+    const good = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['5', 'LineSpeed'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect(text(good.data)).toBe('MOV(5,LineSpeed);')
+  })
 })
 
 describe('a routine name is not a tag', () => {

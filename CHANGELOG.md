@@ -1058,6 +1058,11 @@
   the written order, and a two-sided test holds both the refusal and the correct destination-last emission. Composer output built **0 warnings / 0 errors**.
   Also cleaned four corrupted mojibake comments in the instruction catalogue. 460 package tests.
 
+- **The destination guard covers MOV and CLR, and the skill tells the truth about live traffic.** A second test holds `MOV`/`CLR` refusing a literal
+  destination while `MOV(5,LineSpeed)` composes. The Live reads section now says reads are safe and `write_live_tag`/`write_controller_clock` exist behind
+  allowWrites plus human approval, instead of claiming the surface never writes; it also records the SDK route form `WORKSTATION!DRIVER\IP` from
+  RSLinxNG.xml, the exact string the live E2E needed. Skill body 7,982 of 8,000. 461 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

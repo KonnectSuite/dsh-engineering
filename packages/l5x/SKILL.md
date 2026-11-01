@@ -50,8 +50,9 @@ truth. Never write to `<workspace>/_backups`.
 
 - `poll_live_tags` (IPv4, slot, 1-16 declared scalars, timestamped sweeps) and `start_plc_trend` read over
   EtherNet/IP with no Studio, Linx or SDK.
-- Read-only: never write controller data, force tags, toggle bits or edit online. A read proves a moment, not that
-  the controller runs this export.
+- Reads are safe. Writes (`write_live_tag`, `write_controller_clock`) need allowWrites and human approval; never
+  force tags or edit online. A read proves a moment, not that the controller runs this export.
+- SDK route: `WORKSTATION!DRIVER\IP` (RSLinxNG.xml).
 
 ## Reporting
 
