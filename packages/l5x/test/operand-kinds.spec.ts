@@ -25,6 +25,23 @@ function text(data: unknown): string {
   return rungs?.[0]?.neutral_text ?? ''
 }
 
+describe('a destination is a writable location, not a literal', () => {
+  it('refuses a literal in the destination slot and states the written order', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', 'LineSpeed', '5'] }] }) })
+    expect(result.error?.code).toBe('INVALID_OPERAND')
+    expect(result.error?.message).toContain('literal where ADD needs a writable destination')
+    expect(result.error?.fix).toContain('Source A, Source B, Destination')
+  })
+
+  it('composes the destination-last order Studio writes', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', '5', 'LineSpeed'] }] }) })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('ADD(LineSpeed,5,LineSpeed);')
+  })
+})
+
 describe('a routine name is not a tag', () => {
   it('composes a JSR and keeps the routine spelling the export uses', async () => {
     const l5x = await opened()

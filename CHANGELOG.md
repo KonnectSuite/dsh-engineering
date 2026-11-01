@@ -1052,6 +1052,12 @@
   standard write to a safety tag among the safety rules - so an assistant reading either surface knows the check exists and can filter for it.
   `docs/reference/tools.md` regenerated; skill body 7,871 of 8,000 characters. 458 package tests, 90 bundle, docs current.
 
+- **A literal destination is refused while composing, not at build time.** The live E2E program exposed that `compose_rung` accepted `ADD(Count,Count,1)`: the
+  catalogue correctly reads Source A, Source B, Destination, but every numeric slot shares one kind, so a literal passed the Destination slot and Studio rejected
+  the download build with `RxCMP_E_AUDIT_INVALIDOPKIND` and no operand position. The composer now refuses a literal any `Destination` slot with a message naming
+  the written order, and a two-sided test holds both the refusal and the correct destination-last emission. Composer output built **0 warnings / 0 errors**.
+  Also cleaned four corrupted mojibake comments in the instruction catalogue. 460 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

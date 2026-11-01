@@ -294,7 +294,21 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // Emit the resolved operand text rather than the caller's spelling: a routine name
     // keeps the case the export uses, and a tag, literal or expression is unchanged
     // because checkOperand preserves the text it was given.
-    const emitted = args.map((argument, index) => checkOperand(project, argument, kindAt(index), operands).text)
+    const emitted = args.map((argument, index) => {
+      const text = checkOperand(project, argument, kindAt(index), operands).text
+      // Studio refuses a literal in a destination slot only at build time, with
+      // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. Catch it while composing and
+      // state the written order, so the caller never learns the order from a failed build.
+      const slot = instruction.operands[index] ?? restSlot
+      if (slot !== undefined && /dest/i.test(slot.name) && isLiteral(text)) {
+        throw new L5xError(
+          'INVALID_OPERAND',
+          `${text} is a literal where ${instruction.name} needs a writable destination.`,
+          `Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}. For arithmetic and move instructions the destination comes last.`,
+        )
+      }
+      return text
+    })
     return { text: `${emittedMnemonic(project, instruction.name)}(${emitted.join(',')})`, grounding: 'catalog' }
   }
   const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === mnemonic.toUpperCase())
