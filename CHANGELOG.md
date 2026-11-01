@@ -1234,6 +1234,8 @@
   DINT Result built 0/0. The Result slot now carries `types: ['DINT']`; the test holds the wrong-type refusal and the dist smoke checks the built
   catalogue. `SIZE(Arr,0,R)` with a REAL size built 0/0, so SIZE keeps its numeric slot. 496 package tests.
 
+- **Generated client faces refreshed** after the FIND Result restriction, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
