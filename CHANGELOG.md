@@ -72,6 +72,16 @@
   rung however many such instructions it holds, and a 1756-L73 reports nothing. Six tests cover the rule directly and
   through `run_checks`.
 
+- **The serial ASCII family is complete in the catalogue: `ACL` and `AHL` join it, both built.** Their slots come from
+  the installed help pages, not from guessing: `ACL` is `Channel`, `Clear Serial Port Read` and `Clear Serial Port Write`
+  (both BOOL), and `AHL` is `Channel`, `ANDMask`, `ORMask`, `Serial Port Control` and `Channel Status`. The catalogue is
+  now **140** instructions. `AHL` had also been sitting in the compact `instruction-set.ts` table as `AHL=AL` — two
+  slots where Studio takes five — so it is removed from that table, the second time this round-trip has caught a wrong
+  arity there. Verification is a Studio build on a 1756-L73 through our own composer: `compose_rung` produced
+  `XIC(a1)ACL(chan,clrR,clrW)OTE(a2)` and `XIC(a1)AHL(chan,andMask,orMask,ctl,chStatus)OTE(a2)`, `draft_apply` wrote the
+  export, and Logix Designer built it with **0 warnings, 0 errors and an ACD written**. The test that pins the ASCII text
+  now covers all eight instructions, so a later operand edit cannot silently change what Studio approved.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -19,7 +19,7 @@ const TABLE: readonly (readonly [string, string])[] = [
   ['Sequencer', 'SQC=KLP'],
   ['Program control', 'JXR=R BRK= NOP= TND='],
   ['Communications', 'MSG=K'],
-  ['ASCII', 'ACN=AL ASR=ALS AHL=AL AEX=ALD'],
+  ['ASCII', 'ACN=AL ASR=ALS AEX=ALD'],
   ['String', 'STOD=SD DTOS=SD STOR=SSD'],
   ['Process', 'PID=K PIDE=K'],
   ['Alarm', 'ALMA=D ALMD=D'],

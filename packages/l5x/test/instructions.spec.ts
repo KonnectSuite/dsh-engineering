@@ -130,6 +130,9 @@ describe('composing with a newly catalogued instruction', () => {
       <Tag Name="text" TagType="Base" DataType="STRING"/>
       <Tag Name="len" TagType="Base" DataType="DINT"/>
       <Tag Name="cnt" TagType="Base" DataType="DINT"/>
+      <Tag Name="clrR" TagType="Base" DataType="BOOL"/><Tag Name="clrW" TagType="Base" DataType="BOOL"/>
+      <Tag Name="andMask" TagType="Base" DataType="DINT"/><Tag Name="orMask" TagType="Base" DataType="DINT"/>
+      <Tag Name="chStatus" TagType="Base" DataType="DINT"/>
     </Tags>
     <Programs><Program Name="Main" MainRoutineName="R"><Routines>
       <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung></RLLContent></Routine>
@@ -143,6 +146,8 @@ describe('composing with a newly catalogued instruction', () => {
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ABL', args: ['chan', 'ctl', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ABL(chan,ctl,cnt)OTE(a2);'],
       [{ series: [{ instr: 'ARD', args: ['chan', 'text', 'ctl', 'len', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'ARD(chan,text,ctl,len,cnt)OTE(a2);'],
       [{ series: [{ instr: 'AWT', args: ['chan', 'text', 'ctl', 'len', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'AWT(chan,text,ctl,len,cnt)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ACL', args: ['chan', 'clrR', 'clrW'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ACL(chan,clrR,clrW)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'AHL', args: ['chan', 'andMask', 'orMask', 'ctl', 'chStatus'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)AHL(chan,andMask,orMask,ctl,chStatus)OTE(a2);'],
     ] as const) {
       const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
       expect(result.error).toBeUndefined()
