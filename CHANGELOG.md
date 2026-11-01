@@ -385,6 +385,15 @@
   an output driven from two rungs in one routine, which is legal but worth a reader's attention - plus one
   `LATCH_WITHOUT_RESET`. A test pins the AOI case with three branches writing one output parameter.
 
+- **A one-shot's storage bit is read/write, and the reference tools now say so.** On the production export,
+  `find_references System_ONS` returned ten references with **every one classified `unknown`**, because `ONS`, `OSF` and
+  `OSR` were missing from `READ_WRITE_OPS` even though the instruction writes the storage bit it reads. After the fix the
+  same query returns **0 read, 10 write, 0 unknown** across four routines. Two smaller things came out of the probe: the
+  matcher now also resolves a base tag against its **subscript and member** forms (`Flags` finds `Flags[2].3`), which the
+  dot-only pattern missed, and two of my own readings were wrong rather than the tools - `find_references` reports `total`,
+  not `matches`, and `usage_map` had already been naming the other scope since round 19. Both corrections are in the record
+  because a defect claim that turns out to be a field-name mistake is the same class of error as a wrong operand order.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

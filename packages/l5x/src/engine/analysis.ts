@@ -26,7 +26,9 @@ const LADDER = /([A-Za-z_][A-Za-z0-9_]*)\s*\(([^()]*)\)/gu
 const READ_OPS = new Set(['XIC', 'XIO', 'EQU', 'EQ', 'NEQ', 'NE', 'GRT', 'GT', 'GEQ', 'GE', 'LES', 'LT', 'LEQ', 'LE', 'LIM', 'LIMIT', 'CMP'])
 const WRITE_OPS = new Set(['OTE', 'OTL', 'OTU', 'CLR'])
 const SOURCE_DEST_OPS = new Set(['MOV', 'MOVE', 'FLL', 'COP', 'ADD', 'SUB', 'MUL', 'DIV'])
-const READ_WRITE_OPS = new Set(['TON', 'TOF', 'RTO', 'CTU', 'CTD', 'RES'])
+// A one-shot storage bit is written by the instruction as well as read, so it is read/write.
+// Leaving ONS out made all ten of a production project's one-shot references "unknown".
+const READ_WRITE_OPS = new Set(['TON', 'TOF', 'RTO', 'CTU', 'CTD', 'RES', 'ONS', 'OSF', 'OSR'])
 const KEYWORDS = new Set(['IF', 'THEN', 'ELSE', 'ELSIF', 'END_IF', 'FOR', 'TO', 'DO', 'END_FOR', 'WHILE', 'END_WHILE', 'RETURN', 'TRUE', 'FALSE', 'AND', 'OR', 'NOT', 'MOD'])
 const BUILTIN_MEMBERS: Readonly<Record<string, ReadonlySet<string>>> = {
   TIMER: new Set(['EN', 'TT', 'DN', 'PRE', 'ACC']),
@@ -299,11 +301,17 @@ export function evidenceOf(project: ProjectSnapshot): readonly Evidence[] {
 
 export function findReferences(project: ProjectSnapshot, symbol: string, scope?: string): readonly Evidence[] {
   const query = symbol.toLowerCase()
-  return evidenceOf(project).filter(entry => (scope === undefined || entry.scope === scope) && (
-    entry.symbol.toLowerCase() === query || entry.symbol.toLowerCase().startsWith(`${query}.`) ||
-    entry.resolved?.toLowerCase() === query || entry.resolved?.toLowerCase().endsWith(`::${query}`) ||
-    entry.resolved?.toLowerCase().includes(`::${query}.`)
-  ))
+  // A base tag is written Flags[2].3 in logic. The old matcher only knew the dot form, so a search
+  // for System_ONS returned nothing on a production project that uses System_ONS[0].1.
+  const isBaseOf = (value: string | undefined): boolean => {
+    if (value === undefined) return false
+    const lower = value.toLowerCase()
+    const tail = lower.includes('::') ? lower.slice(lower.lastIndexOf('::') + 2) : lower
+    return lower === query || lower.startsWith(`${query}.`) || lower.startsWith(`${query}[`) ||
+      tail === query || tail.startsWith(`${query}.`) || tail.startsWith(`${query}[`)
+  }
+  return evidenceOf(project).filter(entry =>
+    (scope === undefined || entry.scope === scope) && (isBaseOf(entry.symbol) || isBaseOf(entry.resolved)))
 }
 
 export function traceSymbol(project: ProjectSnapshot, symbol: string, scope?: string): object {

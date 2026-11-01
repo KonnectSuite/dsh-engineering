@@ -168,3 +168,60 @@ describe('usage_map with the wrong scope', () => {
     expect(result.error).toBeUndefined()
   })
 })
+
+
+describe('a search for a base tag', () => {
+  it('matches a subscripted and a bit reference', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Refs" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <Tags>
+      <Tag Name="Flags" TagType="Base" DataType="DINT" Dimensions="4"/>
+      <Tag Name="Out" TagType="Base" DataType="BOOL"/>
+    </Tags>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[XIC(Flags[2].3)OTE(Out);]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['refs.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    await l5x.call('open_project', { path: 'refs.l5x' })
+    for (const symbol of ['Flags', 'Flags[2].3', 'Flags[2]']) {
+      const result = await l5x.call('find_references', { symbol })
+      expect(Number(result.data?.total ?? 0), symbol).toBeGreaterThan(0)
+    }
+    const partial = await l5x.call('find_references', { symbol: 'Fla' })
+    expect(Number(partial.data?.total ?? 0)).toBe(0)
+  })
+})
+
+
+describe('a one-shot storage bit', () => {
+  it('is classified read/write rather than unknown', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Oneshot" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <Tags>
+      <Tag Name="A" TagType="Base" DataType="BOOL"/>
+      <Tag Name="Storage" TagType="Base" DataType="BOOL"/>
+      <Tag Name="Out" TagType="Base" DataType="BOOL"/>
+    </Tags>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[XIC(A)ONS(Storage)OTE(Out);]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['oneshot.l5x', new TextEncoder().encode(xml)]]))
+    await l5x.call('open_project', { path: 'oneshot.l5x' })
+    const result = await l5x.call('find_references', { symbol: 'Storage' })
+    const byAccess = result.data?.by_access ?? {}
+    expect(Number(byAccess.read_write ?? 0)).toBe(1)
+    expect(Number(byAccess.unknown ?? 0)).toBe(0)
+  })
+})
