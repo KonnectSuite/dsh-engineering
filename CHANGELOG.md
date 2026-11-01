@@ -704,6 +704,14 @@
   that export: the findings page now contains no `UNUSED_TAG` at all, only `UNDOCUMENTED_PROGRAM`. Two tests pin both sides - skipped on an
   encrypted routine, still reported on readable logic - so the guard cannot quietly suppress a real finding. 416 package tests.
 
+- **A routine diagram's second page no longer overwrites the first, and the default path now actually writes an image.** `l5x_routine_diagram`
+  on the real `TRAVEL/B01_Alarms` said *"No PNG diagram: the workspace path `.l5x-preview/TRAVEL-B01_Alarms.svg` is not absolute, so no image
+  was written"* - and even when a rasteriser ran, page 2 reused page 1's filename, so stepping through a 60-rung routine kept one file.
+  The resolved path is now absolutised and a paginated page carries its rung range: the same call produces
+  `TRAVEL-B01_Alarms-r0-4.png` and `TRAVEL-B01_Alarms-r5-9.png`, with `start_rung` continuing correctly. A single-page draw keeps its old
+  name. A test draws two pages of a six-rung routine and asserts the distinct absolute paths. 417 package tests. Found by testing the two
+  paths round 93 listed as untested: `rungs_per_file` was fine; the diagram was not.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

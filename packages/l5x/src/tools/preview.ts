@@ -18,7 +18,7 @@ import type { ToolDefinition } from '../core/tool.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
-import { dirname, isAbsolute } from 'node:path'
+import { dirname, isAbsolute, resolve } from 'node:path'
 import type { ProjectSession } from '../session.ts'
 import { optionalNumber, optionalString, tool } from './common.ts'
 
@@ -258,9 +258,12 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
           throw new L5xError('INVALID_ARGUMENT', `No rung at or after ${from} in ${program}/${routineName}, whose rungs run ${rungs[0]?.number} to ${rungs.at(-1)?.number}.`, 'Pass start_rung within that range.')
         }
 
-        const slug = `${program}-${routineName}`.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Routine'
+        const baseSlug = `${program}-${routineName}`.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Routine'
+        // A second page must not overwrite the first, and a relative path leaves no image on disk.
+        const slug = page.length < rungs.length ? `${baseSlug}-r${page[0]?.number ?? start}-${page.at(-1)?.number ?? start}` : baseSlug
         const folder = optionalString(args, 'output') ?? '.l5x-preview'
-        const probe = await session.resolvePath(`${folder}/${slug}.svg`, exec)
+        const resolvedProbe = await session.resolvePath(`${folder}/${slug}.svg`, exec)
+        const probe = isAbsolute(resolvedProbe) ? resolvedProbe : resolve(resolvedProbe)
         const raster = renderLadderSvg(page.map(rung => ({ number: rung.number, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })), slug)
         let image: { svg: string; png?: string } = { svg: '' }
         let rasterError: string | undefined

@@ -274,3 +274,29 @@ describe('unused-tag analysis on an encrypted export', () => {
     expect(findings.some(finding => finding.rule === 'UNUSED_TAG')).toBe(true)
   })
 })
+
+
+/** Six rungs, so the diagram pages. */
+const SIX_RUNGS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Pages\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"B\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung><Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung><Rung Number=\"2\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung><Rung Number=\"3\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung><Rung Number=\"4\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung><Rung Number=\"5\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung></RLLContent></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a paginated routine diagram', () => {
+  it('writes each page to its own absolute path', async () => {
+    const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(SIX_RUNGS_L5X)]]), { editing: true })
+    await l5x.call('open_project', { path: 'p.l5x' })
+    const first = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3 })
+    expect(first.error).toBeUndefined()
+    expect(String(first.data?.diagram_svg ?? '').length).toBeGreaterThan(0)
+    expect(String(first.summary)).toContain('0-2')
+    const second = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3, start_rung: 3 })
+    expect(second.error).toBeUndefined()
+    expect(String(second.summary)).toContain('3-5')
+    const firstPng = first.data?.diagram_png
+    const secondPng = second.data?.diagram_png
+    if (typeof firstPng === 'string' && typeof secondPng === 'string') {
+      expect(firstPng).not.toBe(secondPng)
+      expect(/^[A-Za-z]:[\\/]|^\//u.test(firstPng)).toBe(true)
+      expect(firstPng).toContain('r0-2')
+      expect(secondPng).toContain('r3-5')
+    }
+  })
+})
