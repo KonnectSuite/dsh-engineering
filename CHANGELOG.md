@@ -1339,6 +1339,11 @@
   `composed-proof.L5X` (sha 5432156...) imported and built with 0 warnings and 0 errors (ACD sha c6852cbc...). A committed test composes the same
   program in memory, applies it, reopens it and asserts all nine rungs read back unchanged. 510 package tests.
 
+- **The whole catalogue now composes to text the parser accepts.** A sweep walks all 136 `list_instructions` rows with slot-shaped arguments
+  (writable destinations, array tags, elements, no-array slots, bound types); 124 compose and pass `l5x_rung_preview`, 3 are skipped for needing real
+  vendor keywords (GSV/SSV/AHL), and the 9 refusals are exactly the documented ones: eight unmodelled instructions (FAL/FSC/DCM/DCS/CROUT/EOT/SFR/SFP)
+  and the SBR-only rung Studio aborts. Any other error fails the test. 511 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
