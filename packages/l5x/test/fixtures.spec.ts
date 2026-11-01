@@ -796,6 +796,42 @@ describe('two output instructions in series', () => {
   })
 })
 
+describe('creating a routine', () => {
+  it('writes ST and RLL bodies and refuses an invalid body or duplicate name', async () => {
+    const project = l5x({
+      name: 'RoutineDraft',
+      tags: tag('B', 'BOOL') + tag('C', 'BOOL') + tag('Counter', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const open = async () => {
+      const tool = harness(new Map([['routines.l5x', new TextEncoder().encode(project)]]), { editing: true })
+      expect((await tool.call('open_project', { path: 'routines.l5x' })).error).toBeUndefined()
+      return tool
+    }
+    const tool = await open()
+    expect((await tool.call('draft_routine', { program: 'Main', name: 'Calc', language: 'ST', code: 'Counter := 1;' })).error).toBeUndefined()
+    expect((await tool.call('draft_routine', { program: 'Main', name: 'Sub', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
+    const applied = await tool.call('draft_apply', { output_path: 'routines-out.l5x' })
+    expect(applied.error).toBeUndefined()
+    const written = String(tool.written.get('routines-out.l5x'))
+    expect(written).toContain('<Routine Name="Calc" Type="ST"><STContent>')
+    expect(written).toContain('Counter := 1;')
+    expect(written).toContain('<Routine Name="Sub" Type="RLL"><RLLContent>')
+    expect(written).toContain('XIC(B)OTE(C);')
+    // The same guards the other draft tools use apply here too.
+    const badRll = await open()
+    expect((await badRll.call('draft_routine', { program: 'Main', name: 'Bad', language: 'RLL', code: 'XIC(B);' })).error).toBeUndefined()
+    expect((await badRll.call('draft_apply', { output_path: 'routines-bad.l5x' })).error?.code).toBe('INVALID_LADDER')
+    const badSt = await open()
+    expect((await badSt.call('draft_routine', { program: 'Main', name: 'Bad', language: 'ST', code: '(* open' })).error).toBeUndefined()
+    expect((await badSt.call('draft_apply', { output_path: 'routines-badst.l5x' })).error?.code).toBe('INVALID_ST')
+    const duplicate = await open()
+    expect((await duplicate.call('draft_routine', { program: 'Main', name: 'MainRoutine', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
+    expect((await duplicate.call('draft_apply', { output_path: 'routines-dupe.l5x' })).error?.code).toBe('NAME_COLLISION')
+  })
+})
+
 describe('a Structured Text draft', () => {
   it('writes only into an ST routine and refuses unterminated text', async () => {
     const st = '<Routine Name="Calc" Type="ST"><STContent><Line Number="0"><![CDATA[Counter := 0;]]></Line></STContent></Routine>'

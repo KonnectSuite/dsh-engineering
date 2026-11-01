@@ -1378,6 +1378,11 @@
   (`UNSUPPORTED_TARGET`), refuses an unterminated block comment (`INVALID_ST`) and writes the replacement as numbered ST lines. The same drafted
   body composed through `draft_st` imported and built 0/0 (ACD sha f5c8fe0a...), proving the STContent shape Studio accepts. 515 package tests.
 
+- **Routine creation writes valid ST and RLL bodies.** `draft_routine` had no success test for either language. Tests now create an ST routine
+  (numbered STContent lines) and an RLL routine, and refuse an unterminated ST body (`INVALID_ST`), a rung that never reaches the rail
+  (`INVALID_LADDER`) and a duplicate routine name (`NAME_COLLISION`). Both created routines composed through the tools imported and built 0/0
+  (ACD sha a8b2b374...), with the change summary naming both routines and the ST body. 516 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
