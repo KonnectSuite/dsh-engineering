@@ -403,5 +403,10 @@ describe('who writes a networked tag', () => {
     expect(String(consumed.summary)).toContain('Consumed tag: written by CCI_Ethernet_Port_Controller as CCI_Nutro_dints')
     const produced = await l5x.call('find_references', { symbol: 'FROM_FURN' })
     expect(String(produced.summary)).toContain('Produced tag: 2 consumer(s) declared')
+    // An empty graph must not read as "nothing feeds this".
+    const upstream = await l5x.call('trace_dependencies', { symbol: 'CCI_Nutro_dints', direction: 'upstream' })
+    expect(String(upstream.summary)).toContain('Value arrives from CCI_Ethernet_Port_Controller as CCI_Nutro_dints')
+    const downstream = await l5x.call('trace_dependencies', { symbol: 'FROM_FURN', direction: 'downstream' })
+    expect(String(downstream.summary)).toContain('Value leaves to 2 consumer(s)')
   })
 })

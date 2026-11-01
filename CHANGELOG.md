@@ -760,6 +760,12 @@
   `GrosfillexLine3`, where the consumed tag reads 14 references with zero local writes. A test covers both directions on a fixture with one consumed
   and one produced tag. 424 package tests - and the test was added with the `edit` tool, per round 111's rule.
 
+- **`trace_dependencies` says when a value comes from the network.** Tracing a consumed tag upstream answered `1 symbol and 0 edges` - which reads as "nothing
+  feeds this" when the feed is a producer controller that the export names. The summary now appends
+  `Value arrives from CCI_Ethernet_Port_Controller as CCI_Nutro_dints; no upstream logic in this export.`, and a produced tag traced downstream says
+  `Value leaves to 2 consumer(s); no downstream logic in this export.` Verified on `GrosfillexLine3`; the test that covered `find_references` for these tags
+  now asserts both trace directions too. 424 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

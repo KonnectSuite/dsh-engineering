@@ -193,6 +193,16 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         }
         const nodes = graph.nodes as readonly unknown[]
         const edges = graph.edges as readonly unknown[]
+        // A consumed tag's feed is another controller and a produced tag's reader is remote: say so,
+        // or an empty graph reads as "nothing feeds this".
+        const base = symbol.split('.')[0] ?? symbol
+        const declared = project.document.tags.find(tag => tag.name.toLowerCase() === base.toLowerCase()
+          && (tag.scope === effectiveScope || tag.scope === 'controller' || effectiveScope === 'controller'))
+        const networkNote = declared?.tagType === 'Consumed'
+          ? ` Value arrives from ${declared.consumerOf ?? 'the network'}${declared.remoteTag === undefined ? '' : ` as ${declared.remoteTag}`}; no upstream logic in this export.`
+          : declared?.tagType === 'Produced'
+            ? ` Value leaves to ${declared.produceCount ?? 0} consumer(s); no downstream logic in this export.`
+            : ''
         const coverage: Coverage = {
           complete: graph.static_complete === true,
           unverified: [
@@ -203,7 +213,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           ],
         }
         return success(
-          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}${graph.truncated === true ? ' (truncated)' : ''}.`,
+          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}${graph.truncated === true ? ' (truncated)' : ''}.${networkNote}`,
           graph,
           [
             { tool: 'find_references', args: { symbol: requested }, why: 'See every occurrence rather than the dependency graph.' },
