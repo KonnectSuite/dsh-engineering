@@ -796,6 +796,42 @@ describe('two output instructions in series', () => {
   })
 })
 
+describe('a Structured Text draft', () => {
+  it('writes only into an ST routine and refuses unterminated text', async () => {
+    const st = '<Routine Name="Calc" Type="ST"><STContent><Line Number="0"><![CDATA[Counter := 0;]]></Line></STContent></Routine>'
+    const project = l5x({
+      name: 'StDraft',
+      tags: tag('Counter', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', []) + st),
+      tasks: task('MainTask', ['Main']),
+    })
+    const open = async () => {
+      const tool = harness(new Map([['st.l5x', new TextEncoder().encode(project)]]), { editing: true })
+      expect((await tool.call('open_project', { path: 'st.l5x' })).error).toBeUndefined()
+      return tool
+    }
+    const missingTool = await open()
+    expect((await missingTool.call('draft_st', { program: 'Main', routine: 'Nope', code: 'A := 1;' })).error).toBeUndefined()
+    expect((await missingTool.call('draft_apply', { output_path: 'st-missing.l5x' })).error).toBeDefined()
+    const wrongTool = await open()
+    expect((await wrongTool.call('draft_st', { program: 'Main', routine: 'MainRoutine', code: 'A := 1;' })).error).toBeUndefined()
+    const wrong = await wrongTool.call('draft_apply', { output_path: 'st-wrong.l5x' })
+    expect(wrong.error?.code).toBe('UNSUPPORTED_TARGET')
+    const badTool = await open()
+    expect((await badTool.call('draft_st', { program: 'Main', routine: 'Calc', code: '(* open comment' })).error).toBeUndefined()
+    const bad = await badTool.call('draft_apply', { output_path: 'st-bad.l5x' })
+    expect(bad.error?.code).toBe('INVALID_ST')
+    const goodTool = await open()
+    const code = 'Counter := Counter + 1;\nIF Counter > 10 THEN Counter := 0; END_IF;'
+    expect((await goodTool.call('draft_st', { program: 'Main', routine: 'Calc', code })).error).toBeUndefined()
+    const good = await goodTool.call('draft_apply', { output_path: 'st-good.l5x' })
+    expect(good.error).toBeUndefined()
+    const written = String(goodTool.written.get('st-good.l5x'))
+    expect(written).toContain('Counter := Counter + 1;')
+    expect(written).toContain('IF Counter > 10 THEN Counter := 0; END_IF;')
+  })
+})
+
 describe('a raw rung operand count', () => {
   it('refuses a modelled instruction with too few or too many operands', async () => {
     // TON(T,500) fails Studio with RxCMP_E_AUDIT_INVALIDNOOFOPS; the raw path now refuses it too.

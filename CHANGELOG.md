@@ -1374,6 +1374,10 @@
   (ACD sha 5147a2ed...), so a rule forbidding a second output would be stricter than the vendor. Both the raw rung and the composer must accept it;
   a regression test holds both. 514 package tests.
 
+- **The Structured Text draft pipeline is pinned and vendor-built.** `replace_st` refuses a missing routine, refuses a ladder routine
+  (`UNSUPPORTED_TARGET`), refuses an unterminated block comment (`INVALID_ST`) and writes the replacement as numbered ST lines. The same drafted
+  body composed through `draft_st` imported and built 0/0 (ACD sha f5c8fe0a...), proving the STContent shape Studio accepts. 515 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
