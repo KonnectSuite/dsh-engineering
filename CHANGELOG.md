@@ -189,6 +189,18 @@
   tool reference regenerated because the pattern enumeration is part of the schema. The rung is pinned in
   `ladder.spec.ts` so a later edit cannot quietly drop the decimal point.
 
+- **Operand order, swept where a build can actually catch a swap: `SQO` and `SQL` are confirmed, and the method has a
+  stated limit.** The last round's `CPT` defect raised the question of how many other entries have their slots in the
+  wrong order, so this round took the class where a mistake is *detectable*: instructions whose slots differ in kind. Two
+  builds settle the sequencer family's order - `XIC(a1)SQO(arr[0],mask,dest[0],ctl,10,0)OTE(a2)` and
+  `XIC(a1)SQL(arr[0],src[0],ctl,10,0)OTE(a2)` both **passed with 0 warnings and 0 errors** - and both rungs are now
+  pinned in `operand-kinds.spec.ts`. `GSV` reached the compiler's attribute check (`RxCMP_E_AUDIT_BADATTR` on a
+  controller/attribute pair I chose badly), which shows the class/instance/attribute/destination order is parsed but is
+  **not** a build verification, and it is recorded as such. The limit matters more than the results: where two adjacent
+  slots share a kind - `MOV(Source, Destination)`, `COP(Source, Destination, Length)`, `FLL` - a swapped order compiles
+  either way, so **no build can ever prove it** and the help is the only authority. Order verification is therefore
+  complete only for the mixed-kind set, not for the catalogue.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

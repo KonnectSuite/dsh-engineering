@@ -355,3 +355,39 @@ describe('instructions verified by a Studio build', () => {
     })
   }
 })
+
+
+describe('operand order confirmed by build', () => {
+  it('composes SQO and SQL in the order Studio accepted', async () => {
+    // Builds: XIC(a1)SQO(arr[0],mask,dest[0],ctl,10,0)OTE(a2); and
+    // XIC(a1)SQL(arr[0],src[0],ctl,10,0)OTE(a2); both passed with 0 warnings and 0 errors.
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="SeqOrder" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="a1" TagType="Base" DataType="BOOL"/><Tag Name="a2" TagType="Base" DataType="BOOL"/>
+      <Tag Name="arr" TagType="Base" DataType="DINT" Dimensions="10"/>
+      <Tag Name="src" TagType="Base" DataType="DINT" Dimensions="10"/>
+      <Tag Name="dest" TagType="Base" DataType="DINT" Dimensions="10"/>
+      <Tag Name="mask" TagType="Base" DataType="DINT"/>
+      <Tag Name="ctl" TagType="Base" DataType="CONTROL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['seq.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'seq.l5x' })).error).toBeUndefined()
+    for (const [spec, expected] of [
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SQO', args: ['arr[0]', 'mask', 'dest[0]', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SQO(arr[0],mask,dest[0],ctl,10,0)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SQL', args: ['arr[0]', 'src[0]', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SQL(arr[0],src[0],ctl,10,0)OTE(a2);'],
+    ] as const) {
+      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      expect(result.error).toBeUndefined()
+      const rungs = result.data?.rungs as { neutral_text: string }[]
+      expect(rungs[0]?.neutral_text).toBe(expected)
+    }
+  })
+})
