@@ -72,8 +72,15 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const document = project.document
+        // Limits belong in the first call: a caller who does not know the export is partly unreadable
+        // will read every later empty result as bad news about their project.
+        const limits: string[] = []
+        if (document.protectedRoutines.length > 0) limits.push(`${document.protectedRoutines.length} source-protected routine(s): bodies are encrypted and cannot be read`)
+        if (document.vendorTypes.length > 0) limits.push(`${document.vendorTypes.length} vendor-owned data type(s) are not modelled`)
+        const safetyTasks = document.tasks.filter(task => task.safety).map(task => task.name)
+        if (safetyTasks.length > 0) limits.push(`safety task(s) ${safetyTasks.join(', ')}: safety logic cannot be edited`)
         return success(
-          `${document.controller.name} (${document.controller.processorType}, revision ${revisionOf(document)}).`,
+          `${document.controller.name} (${document.controller.processorType}, revision ${revisionOf(document)}).${limits.length === 0 ? '' : ` Limits: ${limits.join('; ')}.`}`,
           {
             project_id: project.id,
             controller: document.controller,
@@ -83,6 +90,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
             counts: countsOf(document, project.protectedRoutines ?? 0),
             programs: document.programs,
             tasks: document.tasks,
+            ...(limits.length === 0 ? {} : { limits }),
           },
           [
             { tool: 'list_components', args: { kind: 'routine' }, why: 'List the routines you can read next.' },

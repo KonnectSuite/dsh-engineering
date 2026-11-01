@@ -619,6 +619,13 @@
   the difference between a warning and a work order: "144 bodies are encrypted" tells an engineer something is missing;
   a table tells them what to ask the vendor for.
 
+- **`project_overview` - the first call anyone makes - now states the export's limits.** On `Seco_Cooler` it used to report controller,
+  revision and counts, leaving a caller to discover later that 144 routine bodies are encrypted and the project has a safety task:
+  `... Limits: 144 source-protected routine(s): bodies are encrypted and cannot be read; safety task(s) SafetyTask: safety logic
+  cannot be edited.` The payload carries a `limits` array the same way. A caller who does not know an export is partly unreadable
+  reads every later empty result as bad news about their own project; the fix is to say it once, first. The test asserts the
+  summary and the payload field on an encrypted-routine project, alongside the editor, reader, listing and search answers.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -423,5 +423,10 @@ describe('editing a source-protected routine', () => {
     expect(String(search.summary)).toContain('source-protected routine(s) were not searched')
     const refs = await l5x.call('find_references', { symbol: 'Anything' })
     expect(String(refs.summary)).toContain('source-protected routine(s) were not searched')
+    // The first call anyone makes must state the export's limits too.
+    const overview = await l5x.call('project_overview')
+    expect(String(overview.summary)).toContain('Limits:')
+    expect(String(overview.summary)).toContain('source-protected routine(s)')
+    expect((overview.data?.limits ?? []).length).toBeGreaterThan(0)
   })
 })
