@@ -214,6 +214,30 @@ async function ensureBridge(availability: SdkStatus, signal?: AbortSignal): Prom
   if (built.code !== 0 || !existsSync(bridgeDll)) throw new EngineeringError('SDK_BRIDGE_BUILD_FAILED', built.output)
 }
 
+/**
+ * What to do after one offline verification attempt.
+ *
+ * A failed build can come back with no diagnostic line at all — the Studio engine stops and
+ * reports nothing — and telling a reader to "read diagnostics" when the list is empty is advice
+ * that cannot be followed. The gates to check are stated instead.
+ *
+ * @param result - The observed outcome of the attempt.
+ * @returns The next step, in the reader's terms.
+ */
+export function verifyNextStep(result: {
+  readonly passed: boolean
+  readonly failureStage: string | null
+  readonly sdkError: string | null
+  readonly diagnosticCount: number
+}): string {
+  if (result.passed) return 'Review the engineering diff and controller target before any approved download.'
+  if (result.failureStage === 'import') return 'The SDK could not import this export; the failure is not the build revision. Read sdk_error and diagnostics, then compare an unedited export from this project before changing the draft.'
+  if (result.sdkError === null && result.diagnosticCount === 0) {
+    return `The Studio engine stopped at ${String(result.failureStage)} without reporting a diagnostic line, so there is nothing to read. The two gates to check are a Logix Designer release installed for this export revision, and project revision ${MIN_BUILD_REVISION} or later for a build. Keep log as the evidence, then compare an unedited export from this project before changing the draft.`
+  }
+  return 'Read diagnostics, correct the L5X, reopen the changed file, and retry with a new ACD path. If the cause is unclear, build the unedited source as a baseline.'
+}
+
 export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: string, signal?: AbortSignal, options: { readonly probeBuild?: boolean } = {}): Promise<object> {
   // Local preconditions first. Whether the export this chat reviewed is still the file on disk
   // needs no SDK, and answering first means a missing or replaced file is reported as that
@@ -253,9 +277,7 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
     build_gate: { axis: 'project_revision', minimum: MIN_BUILD_REVISION },
     output_bytes: outputInfo?.size ?? 0, import_warnings: summary === null ? null : Number(summary[1]), import_errors: summary === null ? null : Number(summary[2]),
     failure_stage: failureStage, sdk_error: sdkError, diagnostics, log,
-    next_step: passed ? 'Review the engineering diff and controller target before any approved download.'
-      : failureStage === 'import' ? 'The SDK could not import this export; the failure is not the build revision. Read sdk_error and diagnostics, then compare an unedited export from this project before changing the draft.'
-        : 'Read diagnostics, correct the L5X, reopen the changed file, and retry with a new ACD path. If the cause is unclear, build the unedited source as a baseline.',
+    next_step: verifyNextStep({ passed, failureStage, sdkError, diagnosticCount: diagnostics.length }),
     controller_operation: 'none', studio_review: 'required',
   }
 }

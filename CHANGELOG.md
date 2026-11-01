@@ -224,6 +224,13 @@
   here as `STUDIO_VERSION_UNAVAILABLE: Studio 5000 v33 is not installed; … Installed versions: 36, 37`. The description
   now states that gate, then the 37+ build requirement, then `probe=true`.
 
+- **A failed offline build that reports nothing no longer gives advice that cannot be followed.** The real Studio engine was
+  driven end to end for the first time here (183 seconds, bridge built, project opened) and it stopped at `open_source`
+  with `sdk_error: null`, `diagnostics: []` and a single log line — while `next_step` still said *"Read diagnostics,
+  correct the L5X"*. The next step is now the pure `verifyNextStep`, and a silent failure says so, names the two gates
+  (a Logix Designer release installed for the export revision, and project revision 37 or later for a build) and points
+  at `log` as the evidence instead of an empty list.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -235,7 +242,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-312 package tests and 70 bundle tests pass.
+316 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

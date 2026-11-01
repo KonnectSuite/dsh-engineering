@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { importAbortAdvice, isSafetyProject } from '../src/tools/studio.ts'
+import { verifyNextStep } from '../src/engine/studio-sdk.ts'
 
 describe('safety project detection', () => {
   it('recognises a safety task or program element', () => {
@@ -27,5 +28,31 @@ describe('import abort advice', () => {
 
   it('stays quiet for an unrelated failure', () => {
     expect(importAbortAdvice('SDK_OPERATION_FAILED: something else')).toBeNull()
+  })
+})
+
+
+describe('the offline verify next step', () => {
+  it('points at the diff when the build passed', () => {
+    const advice = verifyNextStep({ passed: true, failureStage: null, sdkError: null, diagnosticCount: 0 })
+    expect(advice).toContain('engineering diff')
+  })
+
+  it('says an import failure is not the build revision', () => {
+    const advice = verifyNextStep({ passed: false, failureStage: 'import', sdkError: 'XMLSrv_E_IMPORT', diagnosticCount: 2 })
+    expect(advice).toContain('not the build revision')
+  })
+
+  it('does not tell a reader to read diagnostics when there are none', () => {
+    // Observed against the real Studio engine: it stopped at open_source and reported nothing.
+    const advice = verifyNextStep({ passed: false, failureStage: 'open_source', sdkError: null, diagnosticCount: 0 })
+    expect(advice).toContain('without reporting a diagnostic line')
+    expect(advice).not.toContain('Read diagnostics')
+    expect(advice).toContain('37')
+  })
+
+  it('names diagnostics when there are some', () => {
+    const advice = verifyNextStep({ passed: false, failureStage: 'build', sdkError: 'some error', diagnosticCount: 3 })
+    expect(advice).toContain('Read diagnostics')
   })
 })
