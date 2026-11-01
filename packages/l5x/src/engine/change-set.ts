@@ -38,24 +38,51 @@ export interface FbdWireOp {
   readonly to_pin?: string
 }
 
+/** One step on an inserted SFC chart. */
+export interface SfcStepOp {
+  readonly id: number
+  readonly name: string
+  readonly initial?: boolean
+  readonly x?: number
+  readonly y?: number
+  readonly actions?: readonly { readonly id: number; readonly name: string; readonly qualifier: string; readonly boolean?: boolean }[]
+}
+
+/** One transition, with its condition written as Structured Text lines. */
+export interface SfcTransitionOp {
+  readonly id: number
+  readonly name: string
+  readonly condition: string
+  readonly x?: number
+  readonly y?: number
+}
+
+/** One directed link between a step and a transition. */
+export interface SfcLinkOp {
+  readonly from: number
+  readonly to: number
+  readonly show?: boolean
+}
+
 type Operation =
   | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly comment?: string }
   | { readonly operation: 'delete_rung'; readonly program: string; readonly routine: string; readonly rung: number }
   | { readonly operation: 'insert_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly before_rung?: number; readonly comment?: string }
   | { readonly operation: 'set_rung_comment'; readonly program: string; readonly routine: string; readonly rung: number; readonly comment: string }
   | { readonly operation: 'replace_st'; readonly program: string; readonly routine: string; readonly code: string }
-  | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST' | 'FBD'; readonly code: string }
+  | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST' | 'FBD' | 'SFC'; readonly code: string }
   | { readonly operation: 'add_tag'; readonly scope: string; readonly name: string; readonly data_type: string; readonly value?: number; readonly dimensions?: string; readonly external_access?: string; readonly description: string }
   | { readonly operation: 'set_tag_description'; readonly scope: string; readonly name: string; readonly description: string }
   | { readonly operation: 'add_udt_member'; readonly udt: string; readonly name: string; readonly data_type: string; readonly description: string }
   | { readonly operation: 'set_udt_description'; readonly udt: string; readonly description: string }
   | { readonly operation: 'set_udt_member_description'; readonly udt: string; readonly member: string; readonly description: string }
+| { readonly operation: 'insert_sfc_sheet'; readonly program: string; readonly routine: string; readonly steps: readonly SfcStepOp[]; readonly transitions: readonly SfcTransitionOp[]; readonly links: readonly SfcLinkOp[] }
 | { readonly operation: 'insert_fbd_sheet'; readonly program: string; readonly routine: string; readonly sheet: number; readonly blocks: readonly FbdBlockOp[]; readonly refs: readonly FbdRefOp[]; readonly wires: readonly FbdWireOp[] }
 
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Operation names accepted by a version-1 change set. */
-const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description', 'insert_fbd_sheet'] as const
+const SUPPORTED_OPERATIONS = ['replace_rung', 'insert_rung', 'delete_rung', 'set_rung_comment', 'replace_st', 'add_routine', 'add_tag', 'set_tag_description', 'add_udt_member', 'set_udt_description', 'set_udt_member_description', 'insert_fbd_sheet', 'insert_sfc_sheet'] as const
 /** Compact contract returned with validation errors and embedded in tool descriptions. */
 export const CHANGE_SET_HELP = `Operations (each also needs "operation"):
 replace_rung {program,routine,rung,text,comment?}
@@ -63,7 +90,8 @@ insert_rung {program,routine,rung,text,before_rung?,comment?} — rung is the po
 delete_rung {program,routine,rung}
 set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
-add_routine {program,name,language:"RLL"|"ST"|"FBD",code} — an FBD routine takes an empty code; add sheets with insert_fbd_sheet
+add_routine {program,name,language:"RLL"|"ST"|"FBD"|"SFC",code} — an FBD routine takes an empty code; add sheets with insert_fbd_sheet
+insert_sfc_sheet {program,routine,steps:[{id,name,initial?,actions?:[{id,name,qualifier,boolean?}]}],transitions:[{id,name,condition}],links:[{from,to,show?}]} — one initial step, condition is Structured Text
 insert_fbd_sheet {program,routine,sheet,blocks,refs,wires} — blocks {id,type,tag,structure,pins}, refs {id,direction,tag}, wires {from,to,from_pin?,to_pin?}; the block tag must carry the structure type Studio expects (FBD_MATH for ADD)
 add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
 set_tag_description {scope,name,description}
@@ -194,9 +222,21 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       return { operation: row.operation, program: identifier(row, 'program'), routine: identifier(row, 'routine'), code: text(row, 'code') }
     case 'add_routine': {
       fields(row, ['operation', 'program', 'name', 'language', 'code'])
-      if (row.language !== 'RLL' && row.language !== 'ST' && row.language !== 'FBD') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL", "ST" or "FBD"')
+      if (row.language !== 'RLL' && row.language !== 'ST' && row.language !== 'FBD' && row.language !== 'SFC') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL", "ST" or "FBD"')
     if (row.language === 'FBD' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An FBD routine takes no code; create it empty and add sheets with draft_fbd')
+    if (row.language === 'SFC' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An SFC routine takes no code; create it empty and add the chart with draft_sfc')
       return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
+    }
+    case 'insert_sfc_sheet': {
+      fields(row, ['operation', 'program', 'routine', 'steps', 'transitions', 'links'])
+      return {
+        operation: row.operation,
+        program: identifier(row, 'program'),
+        routine: identifier(row, 'routine'),
+        steps: sfcSteps(row.steps),
+        transitions: sfcTransitions(row.transitions),
+        links: sfcLinks(row.links),
+      }
     }
     case 'insert_fbd_sheet': {
       fields(row, ['operation', 'program', 'routine', 'sheet', 'blocks', 'refs', 'wires'])
@@ -357,6 +397,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     if (routines.children.some(routine => routine.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Routine already exists')
     let body: string
     if (operation.language === 'FBD') body = '<FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape"/>'
+    else if (operation.language === 'SFC') body = '<SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape"/>'
     else if (operation.language === 'ST') body = stContent(operation.code)
     else {
       const lines = (operation.code ?? '').split('\n').filter(line => line.trim() !== '')
@@ -366,6 +407,25 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     return insert(xml, routines, `<Routine Name="${operation.name}" Type="${operation.language}">${body}</Routine>`)
   }
   const routine = uniqueRegion(routines.children, 'Routine', operation.routine); editable(routine)
+  if (operation.operation === 'insert_sfc_sheet') {
+    if (routine.attributes.Type !== 'SFC') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not a sequential function chart')
+    const chart = sfcChartXml(operation)
+    const content = routine.children.find(child => child.kind === 'SFCContent')
+    if (content === undefined) {
+      const element = xml.slice(routine.start, routine.end)
+      const open = element.indexOf('>')
+      if (open < 0) throw new EngineeringError('INVALID_OPERATION', 'The SFC routine element is malformed')
+      const head = element.slice(0, open).replace(/\/$/u, '')
+      return replace(xml, routine.start, routine.end, `${head}><SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape">${chart}</SFCContent></Routine>`)
+    }
+    if (content.selfClosing) {
+      const element = xml.slice(content.start, content.end)
+      const head = element.replace(/\/>$/u, '>')
+      return replace(xml, content.start, content.end, `${head}${chart}</SFCContent>`)
+    }
+    const closing = content.end - '</SFCContent>'.length
+    return replace(xml, closing, closing, chart)
+  }
   if (operation.operation === 'insert_fbd_sheet') {
     if (routine.attributes.Type !== 'FBD') throw new EngineeringError('UNSUPPORTED_TARGET', 'Selected routine is not a function block diagram')
     const sheet = fbdSheetXml(operation)
@@ -714,4 +774,108 @@ function fbdSheetXml(operation: Extract<Operation, { operation: 'insert_fbd_shee
 /** Escape an attribute value. */
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+}
+
+
+/** Validate an SFC step list. */
+function sfcSteps(value: unknown): readonly SfcStepOp[] {
+  if (!Array.isArray(value) || value.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', 'steps must be a non-empty array')
+  const steps = value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `steps[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    const actions = Array.isArray(row.actions) ? row.actions.map((action: unknown, at: number) => {
+      if (typeof action !== 'object' || action === null) throw new EngineeringError('INVALID_CHANGE_SET', `steps[${index}].actions[${at}] must be an object`)
+      const item = action as Record<string, unknown>
+      return {
+        id: fbdId(item.id, `steps[${index}].actions[${at}].id`),
+        name: String(item.name ?? ''),
+        qualifier: String(item.qualifier ?? 'NonStored'),
+        ...(item.boolean === undefined ? {} : { boolean: item.boolean === true }),
+      }
+    }) : undefined
+    return {
+      id: fbdId(row.id, `steps[${index}].id`),
+      name: String(row.name ?? ''),
+      ...(row.initial === undefined ? {} : { initial: row.initial === true }),
+      ...(row.x === undefined ? {} : { x: fbdId(row.x, `steps[${index}].x`) }),
+      ...(row.y === undefined ? {} : { y: fbdId(row.y, `steps[${index}].y`) }),
+      ...(actions === undefined ? {} : { actions }),
+    }
+  })
+  const initials = steps.filter(step => step.initial === true).length
+  if (initials !== 1) throw new EngineeringError('INVALID_CHANGE_SET', `An SFC chart needs exactly one initial step; this one has ${initials}.`, 'Mark one step with initial: true.')
+  return steps
+}
+
+/** Validate an SFC transition list. */
+function sfcTransitions(value: unknown): readonly SfcTransitionOp[] {
+  if (!Array.isArray(value) || value.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', 'transitions must be a non-empty array')
+  return value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `transitions[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    const condition = String(row.condition ?? '')
+    if (condition.trim() === '') throw new EngineeringError('INVALID_CHANGE_SET', `transitions[${index}].condition must be Structured Text`)
+    return {
+      id: fbdId(row.id, `transitions[${index}].id`),
+      name: String(row.name ?? ''),
+      condition,
+      ...(row.x === undefined ? {} : { x: fbdId(row.x, `transitions[${index}].x`) }),
+      ...(row.y === undefined ? {} : { y: fbdId(row.y, `transitions[${index}].y`) }),
+    }
+  })
+}
+
+/** Validate an SFC link list against the nodes. */
+function sfcLinks(value: unknown): readonly SfcLinkOp[] {
+  if (!Array.isArray(value) || value.length === 0) throw new EngineeringError('INVALID_CHANGE_SET', 'links must be a non-empty array')
+  return value.map((entry: unknown, index: number) => {
+    if (typeof entry !== 'object' || entry === null) throw new EngineeringError('INVALID_CHANGE_SET', `links[${index}] must be an object`)
+    const row = entry as Record<string, unknown>
+    return {
+      from: fbdId(row.from, `links[${index}].from`),
+      to: fbdId(row.to, `links[${index}].to`),
+      ...(row.show === undefined ? {} : { show: row.show === true }),
+    }
+  })
+}
+
+/**
+ * One SFC chart in the shape Studio writes: steps with optional actions, transitions with a
+ * Structured Text condition, and directed links. Studio adds no Sheet element here.
+ */
+function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_sheet' }>): string {
+  const ids = new Set<number>()
+  const claim = (id: number, what: string): void => {
+    if (ids.has(id)) throw new EngineeringError('INVALID_CHANGE_SET', `Node id ${id} is used twice (${what})`)
+    ids.add(id)
+  }
+  for (const step of operation.steps) {
+    claim(step.id, 'step')
+    for (const action of step.actions ?? []) claim(action.id, 'action')
+  }
+  for (const transition of operation.transitions) claim(transition.id, 'transition')
+  for (const link of operation.links) {
+    if (!ids.has(link.from) || !ids.has(link.to)) throw new EngineeringError('INVALID_CHANGE_SET', `A link names id ${link.from} or ${link.to}, which no step or transition uses`)
+  }
+  const parts: string[] = []
+  for (const step of operation.steps) {
+    const x = step.x ?? 300
+    const y = step.y ?? 100
+    const head = `<Step ID="${step.id}" X="${x}" Y="${y}" Operand="${escapeXml(step.name)}" HideDesc="false" DescX="${x + 40}" DescY="${y - 20}" DescWidth="0" InitialStep="${step.initial === true ? 'true' : 'false'}" PresetUsesExpr="false" LimitHighUsesExpr="false" LimitLowUsesExpr="false" ShowActions="true"`
+    const actions = step.actions ?? []
+    if (actions.length === 0) { parts.push(`${head}/>`); continue }
+    const body = actions.map(action => `<Action ID="${action.id}" Operand="${escapeXml(action.name)}" Qualifier="${escapeXml(action.qualifier)}" IsBoolean="${action.boolean === false ? 'false' : 'true'}" PresetUsesExpr="false"/>`).join('')
+    parts.push(`${head}>${body}</Step>`)
+  }
+  for (const transition of operation.transitions) {
+    const x = transition.x ?? 300
+    const y = transition.y ?? 200
+    const lines = transition.condition.split(/\r?\n/u).filter(line => line.trim() !== '')
+      .map((line, index) => `<Line Number="${index}"><![CDATA[${line}]]></Line>`).join('')
+    parts.push(`<Transition ID="${transition.id}" X="${x}" Y="${y}" Operand="${escapeXml(transition.name)}" HideDesc="false" DescX="${x + 60}" DescY="${y - 20}" DescWidth="0"><Condition><STContent>${lines}</STContent></Condition></Transition>`)
+  }
+  for (const link of operation.links) {
+    parts.push(`<DirectedLink FromID="${link.from}" ToID="${link.to}" Show="${link.show === false ? 'false' : 'true'}"/>`)
+  }
+  return parts.join('')
 }

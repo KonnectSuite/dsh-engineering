@@ -4,7 +4,7 @@
 MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
 switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 141 tools · 7 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 142 tools · 7 rows · 4 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -54,7 +54,7 @@ bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 52 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **Studio 5000 L5X** | 53 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
 | **FactoryTalk View ME** | 47 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |

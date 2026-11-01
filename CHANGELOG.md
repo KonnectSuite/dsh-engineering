@@ -297,6 +297,17 @@
   sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
   passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
 
+- **Sequential function charts can be created and staged, with one limit stated where it is met.** `draft_routine` accepts
+  `language: "SFC"` and writes an empty `SFCContent` — **verified by a Logix Designer build: passed, 0 warnings** — and
+  the new `draft_sfc` stages steps, transitions and directed links in the shape a real export uses (taken from a
+  production project: `Step` with `InitialStep` and `<Action>`, `Transition` with a Structured Text condition,
+  `DirectedLink`, and no `Sheet` wrapper). The chart imports into Studio cleanly once its tags exist, but a full build
+  verdict is **not yet reached**: Studio's tags for a step are `SFC_STEP` structures whose every state member must be
+  written (`XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM` when the structure is empty), transitions are plain BOOL tags, and the
+  generated chart still reports `RxSTX_E_TAG_NOT_FOUND` at build. Generating that step state is the remaining work, and
+  the tool description says so where a caller will read it. Six tests cover routine creation, the generated XML, and the
+  refusals (no initial step, unknown link, wrong routine language).
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -308,7 +319,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-344 package tests and 70 bundle tests pass.
+350 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

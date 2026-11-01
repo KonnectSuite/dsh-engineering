@@ -416,22 +416,56 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
+      name: 'draft_sfc',
+      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. The step tags (SFC_STEP) and transition tags (BOOL) must already exist; generating their state is not supported yet. Nothing is written until draft_apply.',
+      parameters: object({
+        program: string('Program that owns the SFC routine. Example: "MainProgram".'),
+        routine: string('Sequential function chart routine to extend. Example: "Chart".'),
+        steps: string('Steps as JSON: [{"id":0,"name":"Step_1","initial":true},{"id":1,"name":"Step_2"}].'),
+        transitions: string('Transitions as JSON: [{"id":2,"name":"Tran_1","condition":"Step_1.DN"}].'),
+        links: string('Links as JSON: [{"from":0,"to":2},{"from":2,"to":1}].'),
+        project_id: PROJECT_ID,
+      }, ['program', 'routine', 'steps', 'transitions', 'links']),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const program = requiredString(args, 'program')
+        const routineName = requiredString(args, 'routine')
+        const draft = drafts.forProject(exec, project.id)
+        const stagedRoutine = draft.operations.some(operation => operation.operation === 'add_routine'
+          && String(operation.program) === program
+          && String(operation.name).toLowerCase() === routineName.toLowerCase()
+          && String(operation.language) === 'SFC')
+        const routine = project.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
+        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine", or stage the routine first with draft_routine language "SFC".')
+        if (routine !== undefined && routine.type !== 'SFC') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a sequential function chart.`, 'Extend a routine that is already SFC, or create one with draft_routine language "SFC".')
+        const operation: DraftOperation = {
+          operation: 'insert_sfc_sheet',
+          program,
+          routine: routineName,
+          steps: jsonArrayArg(args, 'steps'),
+          transitions: jsonArrayArg(args, 'transitions'),
+          links: jsonArrayArg(args, 'links'),
+        }
+        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+      },
+    }),
+    tool({
       name: 'draft_routine',
       description: 'Append one new routine to the chat draft. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that will own the new routine. Example: "MainProgram".'),
         name: string('New routine name, a Logix identifier of at most 40 characters. Example: "Calc".'),
-        language: choice('Language of the new routine: RLL for ladder, ST for Structured Text, FBD for a function block diagram.', ['RLL', 'ST', 'FBD']),
+        language: choice('Language of the new routine: RLL for ladder, ST for Structured Text, FBD for a function block diagram, SFC for a sequential function chart.', ['RLL', 'ST', 'FBD', 'SFC']),
         code: string('Body: NeutralText rungs for RLL, statements for ST. An FBD routine takes no body; add sheets with draft_fbd.'),
         project_id: PROJECT_ID,
       }, ['program', 'name', 'language']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const language = requiredString(args, 'language')
-        if (language !== 'RLL' && language !== 'ST' && language !== 'FBD') throw new L5xError('INVALID_ARGUMENT', 'language must be "RLL", "ST" or "FBD"', 'Pass "RLL" for ladder, "ST" for Structured Text, or "FBD" for a function block diagram.')
+        if (language !== 'RLL' && language !== 'ST' && language !== 'FBD' && language !== 'SFC') throw new L5xError('INVALID_ARGUMENT', 'language must be "RLL", "ST", "FBD" or "SFC"', 'Pass "RLL" for ladder, "ST" for Structured Text, "FBD" for a function block diagram, or "SFC" for a sequential function chart.')
         const code = optionalString(args, 'code') ?? ''
-        if (language === 'FBD' && code.trim() !== '') throw new L5xError('INVALID_ARGUMENT', 'An FBD routine takes no body; create it and add sheets with draft_fbd.', 'Omit code, then stage the diagram with draft_fbd.')
-        if (language !== 'FBD' && code.trim() === '') throw new L5xError('INVALID_ARGUMENT', 'RLL and ST routines need a body in code.', 'Pass the rungs or statements in code.')
+        if ((language === 'FBD' || language === 'SFC') && code.trim() !== '') throw new L5xError('INVALID_ARGUMENT', `An ${language} routine takes no body; create it and add the content with ${language === 'FBD' ? 'draft_fbd' : 'draft_sfc'}.`, 'Omit code and stage the content with the matching draft tool.')
+        if (language !== 'FBD' && language !== 'SFC' && code.trim() === '') throw new L5xError('INVALID_ARGUMENT', 'RLL and ST routines need a body in code.', 'Pass the rungs or statements in code.')
         const operation: DraftOperation = {
           operation: 'add_routine',
           program: requiredString(args, 'program'),
