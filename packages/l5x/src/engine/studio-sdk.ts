@@ -78,21 +78,24 @@ function installedStudioVersions(): number[] {
   return readdirSync(base).map(name => /^v(\d+)$/iu.exec(name)).filter((match): match is RegExpExecArray => match !== null).map(match => Number(match[1])).sort((a, b) => a - b)
 }
 
-async function run(program: string, args: readonly string[], timeoutMs: number, signal?: AbortSignal): Promise<{ code: number | null; output: string }> {
+async function run(program: string, args: readonly string[], timeoutMs: number, signal?: AbortSignal): Promise<{ code: number | null; output: string; timedOut: boolean }> {
   return new Promise((done, fail) => {
     const child = spawn(program, args, { windowsHide: true, signal, shell: false })
     let output = ''
+    // A killed child closes with code null and no message, which is indistinguishable from a
+    // failure the program reported. Remember that we killed it so the caller can say so.
+    let timedOut = false
     const collect = (chunk: Buffer) => { output = (output + chunk.toString()).slice(-1_000_000) }
     child.stdout.on('data', collect)
     child.stderr.on('data', collect)
-    const timeout = setTimeout(() => child.kill(), timeoutMs)
+    const timeout = setTimeout(() => { timedOut = true; child.kill() }, timeoutMs)
     child.on('error', error => { clearTimeout(timeout); fail(error) })
-    child.on('close', code => { clearTimeout(timeout); done({ code, output }) })
+    child.on('close', code => { clearTimeout(timeout); done({ code, output, timedOut }) })
   })
 }
 
 /** Run the bridge, retrying once when FactoryTalk Directory cached credentials expired. */
-async function runBridge(args: readonly string[], timeoutMs: number, signal?: AbortSignal): Promise<{ code: number | null; output: string }> {
+async function runBridge(args: readonly string[], timeoutMs: number, signal?: AbortSignal): Promise<{ code: number | null; output: string; timedOut: boolean }> {
   const first = await run('dotnet', args, timeoutMs, signal)
   if (first.code === 0 || !FTSP_RETRYABLE.test(first.output)) return first
   return run('dotnet', args, timeoutMs, signal)
@@ -231,6 +234,7 @@ export function verifyNextStep(result: {
   readonly diagnosticCount: number
 }): string {
   if (result.passed) return 'Review the engineering diff and controller target before any approved download.'
+  if (result.failureStage === 'timeout') return 'The run was stopped at its time budget, so no diagnostic was produced and nothing was learned about the export. A cold first open starts the Studio engine and can take minutes: retry once the engine is warm, or open and build the export in Studio 5000. The log shows how far the run got.'
   if (result.failureStage === 'import') return 'The SDK could not import this export; the failure is not the build revision. Read sdk_error and diagnostics, then compare an unedited export from this project before changing the draft.'
   if (result.sdkError === null && result.diagnosticCount === 0) {
     return `The Studio engine stopped at ${String(result.failureStage)} without reporting a diagnostic line, so there is nothing to read. The two gates to check are a Logix Designer release installed for this export revision, and project revision ${MIN_BUILD_REVISION} or later for a build. Keep log as the evidence, then compare an unedited export from this project before changing the draft.`
@@ -256,7 +260,10 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
   if (revision < MIN_BUILD_REVISION && options.probeBuild !== true) throw new EngineeringError('SDK_BUILD_UNSUPPORTED', `Project revision ${revision} cannot be built: the SDK selects the Logix Designer engine by project revision, and Build is supported only for project revision ${MIN_BUILD_REVISION} or later (observed: "${BUILD_REVISION_OBSERVED}"). Upgrade or convert the project, use Studio 5000 Import + Verify, or pass probe=true to attempt the build and report the SDK's own error.`)
   await createOutputFolder(output)
   await ensureBridge(availability, signal)
-  const result = await runBridge([bridgeDll, 'verify', source, output], 180_000, signal)
+  // A cold first open starts the Studio engine; the observed cold run took 183s, so 180s
+  // budget killed it and the kill looked like a project that would not open.
+  const verifyTimeoutMs = 300_000
+  const result = await runBridge([bridgeDll, 'verify', source, output], verifyTimeoutMs, signal)
   const outputInfo = existsSync(output) ? await stat(output) : undefined
   const summary = /<Summary Warnings="(\d+)" Errors="(\d+)"\s*\/>/u.exec(result.output)
   const lines = sdkDiagnosticLines(result.output)
@@ -266,6 +273,7 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
   const sdkError = /SDK_OPERATION_FAILED:\s*([^\r\n]+)/u.exec(result.output)?.[1]?.trim()
     ?? /(?:ERROR|error)[^\r\n]*(?:Exception|XMLSrv_)[^\r\n]*/u.exec(result.output)?.[0]?.trim() ?? null
   const failureStage = passed ? null
+    : result.timedOut ? 'timeout'
     : /XMLSrv_E_IMPORT|Import was cancelled|IMPORT_ABORTED/iu.test(result.output) ? 'import'
       : result.output.includes('Build started') ? 'build'
         : result.output.includes('Save As started') ? 'import_or_save' : 'open_source'
@@ -275,6 +283,7 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
     output_sha256: passed ? createHash('sha256').update(await readFile(output)).digest('hex') : null,
     sdk_available: true, offline_build: passed ? 'passed' : 'failed', download_ready: passed,
     build_gate: { axis: 'project_revision', minimum: MIN_BUILD_REVISION },
+    timeout_ms: verifyTimeoutMs,
     output_bytes: outputInfo?.size ?? 0, import_warnings: summary === null ? null : Number(summary[1]), import_errors: summary === null ? null : Number(summary[2]),
     failure_stage: failureStage, sdk_error: sdkError, diagnostics, log,
     next_step: verifyNextStep({ passed, failureStage, sdkError, diagnosticCount: diagnostics.length }),

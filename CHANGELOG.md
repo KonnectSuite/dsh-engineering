@@ -231,6 +231,16 @@
   (a Logix Designer release installed for the export revision, and project revision 37 or later for a build) and points
   at `log` as the evidence instead of an empty list.
 
+- **A run stopped at its time budget is reported as a timeout, not as a project that failed to open.** Driving the real
+  Studio engine end to end showed the shape of the bug: the bridge was killed by its own 180-second timeout (observed
+  elapsed 183,546 ms), a killed child closes with `code: null` and no message, and the stage fell through to
+  `open_source` with `sdk_error: null` and no diagnostics — so a hang looked like an export Studio refused to open. The
+  child is now remembered as having been killed, the stage is `timeout`, the result carries `timeout_ms`, and the advice
+  says the run was stopped, that nothing was learned about the export, and to retry once the engine is warm or build it
+  in Studio 5000. The verify budget is 300 seconds because a cold first open starts the engine and took 183 seconds
+  here; re-running against the real engine at 300 seconds confirmed the diagnosis (elapsed 301,936 ms, staged
+  `timeout`), which also shows that a structurally minimal L5X does not open — the import waits indefinitely.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -242,7 +252,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-316 package tests and 70 bundle tests pass.
+317 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

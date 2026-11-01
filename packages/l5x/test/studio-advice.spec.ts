@@ -56,3 +56,15 @@ describe('the offline verify next step', () => {
     expect(advice).toContain('Read diagnostics')
   })
 })
+
+
+describe('a run stopped at its time budget', () => {
+  it('says the run was stopped and nothing was learned, instead of guessing a stage', () => {
+    // Observed: a cold open took 183s against a 180s budget, so the child was killed and the
+    // result carried no message. It must not be reported as a project that failed to open.
+    const advice = verifyNextStep({ passed: false, failureStage: 'timeout', sdkError: null, diagnosticCount: 0 })
+    expect(advice).toContain('stopped at its time budget')
+    expect(advice).toContain('Studio 5000')
+    expect(advice).not.toContain('Read diagnostics')
+  })
+})
