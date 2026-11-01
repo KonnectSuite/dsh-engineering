@@ -587,6 +587,27 @@ describe('a destination slot named Dest', () => {
     expect((mvmGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MVM(1,255,D);')
   })
 })
+describe('a mnemonic that is not in the Logix set', () => {
+  it('refuses EXP, which is an SLC mnemonic the vendor index does not list', async () => {
+    // Studio help lists Advanced Math as LN, LOG and EXPT; the production corpus never writes
+    // EXP(. A build of EXP alone failed AUDIT_OUTPUTS and EXP followed by OTE failed INVALIDOPTYPE.
+    const project = l5x({
+      name: 'NotAMnemonic',
+      tags: tag('R', 'REAL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['nomnemonic.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'nomnemonic.l5x' })).error).toBeUndefined()
+    const composed = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'EXP', args: ['R', 'R'] }] }) })
+    expect(composed.error?.code).toBe('UNKNOWN_INSTRUCTION')
+    expect(composed.error?.message).toContain('neither a catalogued instruction nor an AOI')
+    const listed = await l5xTool.call('list_instructions', { filter: 'EXP' })
+    const names = ((listed.data?.rows ?? []) as { name: string }[]).map(row => row.name)
+    expect(names).not.toContain('EXP')
+  })
+})
+
 describe('a tag-only operand slot', () => {
   it('refuses a literal for arrays, structures and copy sources', async () => {
     // COP(Arr,5,10) and NEG(5,5) were accepted before this; Studio refuses a literal in those

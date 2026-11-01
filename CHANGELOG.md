@@ -1178,6 +1178,11 @@
 
 - **Generated client faces refreshed** after the tag-only and CPS catalogue change, so repository bytes match the rebuilt artifact.
 
+- **EXP removed: it is not a Logix 5000 instruction.** The vendor index lists Advanced Math as LN, LOG and EXPT only; production samples never write
+  `EXP(`; a build of EXP alone failed `AUDIT_OUTPUTS` and EXP followed by OTE failed `INVALIDOPTYPE`. The SLC-era mnemonic was in the compact table;
+  `compose_rung` now answers UNKNOWN_INSTRUCTION and a test holds the refusal. Running every other generated math instruction built 0/0 except EXP
+  (NEG/ABS/EXPT/LN, DEG, RAD, TO_BCD/BCD_TO/TRUNC and the six trig instructions). 491 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
