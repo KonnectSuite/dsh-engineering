@@ -156,7 +156,12 @@ describe('a sequential function chart', () => {
     const before = await l5x.call('open_project', { path: 'old.l5x' })
     const after = await l5x.call('open_project', { path: 'new.l5x' })
     const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
-    const changes = (diff.data?.changes ?? []) as { component: string; key: string }[]
-    expect(changes.some(change => change.component === 'diagram' && change.key === 'P::R')).toBe(true)
+    const changes = (diff.data?.changes ?? []) as { component: string; key: string; changed_fields?: string[] }[]
+    const diagram = changes.find(change => change.component === 'diagram' && change.key === 'P::R')
+    expect(diagram).toBeDefined()
+    // The diff must name the element that changed, not print two object dumps.
+    const fields = (diagram?.changed_fields ?? []).join(' ')
+    expect(fields).toContain('Line A1')
+    expect(fields).toContain('Line A2')
   })
 })

@@ -88,6 +88,25 @@ function siteList(locations: readonly Evidence[], limit = 3): string {
   return unique.length <= limit ? unique.join(', ') : `${unique.slice(0, limit).join(', ')} and ${unique.length - limit} more`
 }
 
+/** One diagram node or plain value, rendered compactly for a change summary. */
+function renderChangeValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    const brief = value.slice(0, 6).map(renderChangeValue)
+    return value.length <= 6 ? `[${brief.join('; ')}]` : `[${brief.join('; ')}; +${value.length - 6} more]`
+  }
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>
+    if (typeof record.kind === 'string') {
+      const id = record.id !== undefined ? `#${String(record.id)}` : record.fromId !== undefined ? `#${String(record.fromId)}->${String(record.toId)}` : ''
+      const operand = record.operand !== undefined ? ` ${String(record.operand)}` : ''
+      const content = record.text !== undefined ? ` ${String(record.text)}` : ''
+      return `${record.kind}${id}${operand}${content}`
+    }
+    return JSON.stringify(record)
+  }
+  return String(value)
+}
+
 /** Field-level summary of one change, when both sides are records. */
 export function changedFields(change: { readonly before?: unknown; readonly after?: unknown }, limit = 4): string[] {
   const before = change.before
@@ -99,7 +118,17 @@ export function changedFields(change: { readonly before?: unknown; readonly afte
   for (const key of new Set([...Object.keys(left), ...Object.keys(right)])) {
     const was = JSON.stringify(left[key]) ?? String(left[key])
     const now = JSON.stringify(right[key]) ?? String(right[key])
-    if (was !== now) changed.push(`${key} ${String(left[key])} to ${String(right[key])}`)
+    if (was === now) continue
+    // A diagram is a node list: name the nodes that appeared or vanished, not two object dumps.
+    if (key === 'nodes' && Array.isArray(left[key]) && Array.isArray(right[key])) {
+      const leftNodes = new Set((left[key] as unknown[]).map(renderChangeValue))
+      const rightNodes = new Set((right[key] as unknown[]).map(renderChangeValue))
+      const added = [...rightNodes].filter(node => !leftNodes.has(node))
+      const removed = [...leftNodes].filter(node => !rightNodes.has(node))
+      changed.push(`${key} +${JSON.stringify(added)} -${JSON.stringify(removed)}`)
+      continue
+    }
+    changed.push(`${key} ${renderChangeValue(left[key])} to ${renderChangeValue(right[key])}`)
   }
   return changed.length <= limit ? changed : [...changed.slice(0, limit), `and ${changed.length - limit} more`]
 }

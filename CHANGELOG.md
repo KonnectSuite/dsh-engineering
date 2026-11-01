@@ -663,6 +663,12 @@
   fixture-tested only" was wrong: it was **not tested at all**, and the fixture lacked the wrapper real exports omit. Follow-up
   recorded: `changed_fields` prints diagram nodes as `[object Object]`, so the diff finds the change but not yet describes it.
 
+- **An SFC or FBD change is now described by the element that changed, not `[object Object]`.** Round 94 made the diff see charts; the detail
+  line still printed `nodes [object Object],[object Object]… to [object Object]…`. A diagram's node list is now compared as a set and only
+  the difference is shown: the round-94 fixture reports `nodes +["Line A2"] -["Line A1"]` - the transition condition that appeared and the one
+  that vanished, each rendered as `kind#id operand text`. Ordinary fields render compactly too, so a nested value no longer degenerates to
+  `[object Object]`. The test that pinned the SFC diff now asserts both conditions by name. 410 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
