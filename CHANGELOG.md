@@ -402,6 +402,13 @@
   and all three pass against the build produced this cycle. This closes the gap between "the source is right" and "the artifact
   is right" - the live app still bundles an older copy (round 57), but what we can build is now proven to carry every fix.
 
+- **Correcting my own commit: the dist smoke test must not be named `.spec.mjs`.** The previous commit landed with `vitest` red,
+  because `**/*.spec.mjs` is inside the vitest include pattern and the file uses `node:test` - the suite failed to load while
+  the 388 real tests still passed, which is exactly the shape of failure that a careless `git commit` hides. It is renamed to
+  `dist-smoke.mjs`, which vitest ignores and the explicit bundle command still runs. `vitest` is green again and the three dist
+  checks pass. Recording it in the changelog rather than amending, because the rule that produced it - never commit with a red
+  gate - is worth more than a tidy history.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
