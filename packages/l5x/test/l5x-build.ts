@@ -65,11 +65,12 @@ export function rllRoutine(name: string, rungs: readonly { readonly text: string
 export function program(
   name: string,
   routines: string,
-  options: { readonly mainRoutine?: string; readonly safety?: boolean } = {},
+  options: { readonly mainRoutine?: string; readonly safety?: boolean; readonly tags?: string } = {},
 ): string {
   const main = options.mainRoutine ?? 'MainRoutine'
   const safety = options.safety === true ? ' Class="Safety"' : ''
-  return `<Program Name="${name}" MainRoutineName="${main}"${safety}><Tags/><Routines>${routines}</Routines></Program>`
+  const tags = options.tags ?? ''
+  return `<Program Name="${name}" MainRoutineName="${main}"${safety}><Tags>${tags}</Tags><Routines>${routines}</Routines></Program>`
 }
 
 /** One task scheduling the named programs. */

@@ -106,10 +106,12 @@ function aliasTarget(document: L5xDocument, tag: L5xTag): string {
 
 /** The tags CSV every declared tag appears in. */
 function tagsCsv(document: L5xDocument): string {
-  let text = line('scope', 'name', 'data_type', 'description', 'alias_for', 'dimensions', 'external_access')
+  // A tag declared in a safety program is part of the safety function; the CSV must say so.
+  const safetyScopes = new Set(document.programs.filter(program => program.safety).map(program => program.name.toUpperCase()))
+  let text = line('scope', 'name', 'data_type', 'description', 'alias_for', 'dimensions', 'external_access', 'safety')
   for (const tag of document.tags) {
     const record = tag as unknown as Record<string, unknown>
-    text += line(tag.scope, tag.name, tag.dataType, tag.description ?? '', aliasTarget(document, tag), record.dimensions ?? '', tag.externalAccess ?? '')
+    text += line(tag.scope, tag.name, tag.dataType, tag.description ?? '', aliasTarget(document, tag), record.dimensions ?? '', tag.externalAccess ?? '', safetyScopes.has(tag.scope.toUpperCase()))
   }
   return text
 }

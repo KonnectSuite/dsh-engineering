@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fixtureBytes, harness } from './harness.ts'
-import { l5x, module, program, rllRoutine, task } from './l5x-build.ts'
+import { l5x, module, program, rllRoutine, tag, task } from './l5x-build.ts'
 
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
@@ -51,7 +51,7 @@ describe('document_project', () => {
     const tags = l5x.written.get('docs/tags.csv') ?? ''
     const studio = l5x.written.get('docs/tags-studio.csv') ?? ''
     const declared = (result.data?.counts as { tags: number }).tags
-    expect(tags.split('\n')[0]).toBe('scope,name,data_type,description,alias_for,dimensions,external_access')
+    expect(tags.split('\n')[0]).toBe('scope,name,data_type,description,alias_for,dimensions,external_access,safety')
     expect(tags.trimEnd().split('\n').length).toBe(declared + 1)
     expect(studio.split('\n')[0]).toBe('Tag Name,Description')
     expect(studio.trimEnd().split('\n').length).toBe(declared + 1)
@@ -264,5 +264,26 @@ describe('the I/O list', () => {
     expect(all).toContain('| Safety | Safety network |')
     expect(all).toMatch(/\| SA_IN \| 1756-IB16S\/A \|[^|]*\|[^|]*\| false \| true \| 16#0000_4bc3 \|/)
     expect(all).toContain(',true,16#0000_4bc3,')
+  })
+})
+
+describe('the tag CSV safety column', () => {
+  it('marks a tag declared in a safety program and not one in standard logic', async () => {
+    const built = l5x({
+      name: 'TagSafety',
+      programs: [
+        program('Guard', rllRoutine('MainRoutine', [{ text: 'NOP();' }]), { safety: true, tags: tag('SafeTag') }),
+        program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }]), { tags: tag('PlainTag') }),
+      ].join(''),
+      tasks: [task('MainTask', ['Main']), task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' })].join(''),
+    })
+    const l5xTool = harness(new Map([['ts.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'ts.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs-tags', include: ['tags'] })).error).toBeUndefined()
+    const csv = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('tags.csv'))?.[1] ?? '')
+    expect(csv.split('\n')[0]).toContain(',safety')
+    expect(csv).toContain('Guard,SafeTag,')
+    expect(csv).toMatch(/Guard,SafeTag,[^\n]*,true$/mu)
+    expect(csv).toMatch(/Main,PlainTag,[^\n]*,false$/mu)
   })
 })

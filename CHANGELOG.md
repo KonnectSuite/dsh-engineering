@@ -859,6 +859,11 @@
   network** columns; verified through the fixture builder with a guard-rated `1756-IB16S/A` on network `16#0000_4bc3` beside a standard module, and the test asserts
   the markdown row and the CSV fields. 436 package tests. The test is also the builder's second real use - content only, element names owned by the helper.
 
+- **The tag CSV now says which tags belong to a safety program.** `tags.csv` carried scope, name, type, description, alias, dimensions and external access - but a tag
+  declared in a safety program is part of the safety function, and nothing distinguished it from ordinary `Main` logic. A `safety` column now reports true for a tag whose
+  declaring program is `Class="Safety"`, verified with a built fixture holding `Guard/SafeTag` and `Main/PlainTag`; the Studio import shape stays exactly
+  `Tag Name,Description`. The builder gained program-tag support to write that fixture. 437 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
