@@ -184,6 +184,13 @@
   the rung text with `draft_rung` and run `draft_validate` — verified to accept an uncatalogued mnemonic, since the text
   path validates syntax and tags while Studio remains the arity gate.
 
+- **`run_checks` now says which logic it could not check.** A rung naming an instruction the catalogue does not carry went
+  unexamined and unreported, so "no findings" read as "everything was verified". The new
+  `UNCATALOGUED_INSTRUCTION` finding is `info` and aggregated: *"1 instruction(s) in this export are not in the catalogue,
+  so their operands were not checked: CROUT (1 rung)"*, with the catalogue size and the note that an uncatalogued name
+  may still be valid and Studio remains the arity gate. An AOI the export declares is excluded — the committed fixture
+  calls `Motor_Control` and stays silent.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -195,7 +202,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-302 package tests and 70 bundle tests pass.
+304 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

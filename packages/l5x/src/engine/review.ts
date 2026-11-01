@@ -2,7 +2,8 @@ import type { ProjectSnapshot } from '../session.ts'
 import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
 import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
-import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn } from './mnemonics.ts'
+import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn, mnemonicsIn } from './mnemonics.ts'
+import { INSTRUCTIONS, instructionByName } from './instructions.ts'
 import { validateDiagram } from './fbd.ts'
 import { rungFindings } from './rung-rules.ts'
 
@@ -243,6 +244,28 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         `${entry.used} is the pre-v${MNEMONIC_RENAME_MAJOR} spelling; this project is v${majorRev} and publishes ${entry.preferred}`,
         { used: entry.used, preferred: entry.preferred, majorVersion: majorRev, rungs: entry.rungs, truncated: entry.rungs.length >= 20 }, 'high')
     }
+  }
+  // Coverage pass: a rung may name an instruction this catalogue does not carry. That is not an
+  // error — about a hundred of the vendor's are not modelled — but the reader is entitled to know
+  // which logic went unchecked, rather than reading "no findings" as "everything was verified".
+  const catalogued = new Set(INSTRUCTIONS.map(instruction => instruction.name.toUpperCase()))
+  const aoiNames = new Set(doc.aois.map(aoi => aoi.name.toUpperCase()))
+  const uncatalogued = new Map<string, number>()
+  for (const routine of doc.routines) {
+    if (routine.body.type !== 'RLL') continue
+    for (const rung of routine.body.rungs) {
+      for (const name of mnemonicsIn(rung.text)) {
+        if (catalogued.has(name) || aoiNames.has(name) || instructionByName(name) !== undefined) continue
+        uncatalogued.set(name, (uncatalogued.get(name) ?? 0) + 1)
+      }
+    }
+  }
+  if (uncatalogued.size > 0) {
+    const rows = [...uncatalogued].sort((left, right) => right[1] - left[1])
+    const listed = rows.slice(0, 8).map(([name, rungs]) => `${name} (${rungs} rung${rungs === 1 ? '' : 's'})`).join(', ')
+    report('UNCATALOGUED_INSTRUCTION', 'info',
+      `${uncatalogued.size} instruction(s) in this export are not in the catalogue, so their operands were not checked: ${listed}${rows.length > 8 ? `, and ${rows.length - 8} more` : ''}`,
+      { instructions: rows.slice(0, 20).map(([name, rungs]) => ({ name, rungs })), catalogue_size: catalogued.size, note: 'The catalogue models 128 of the vendor instructions; an uncatalogued name may still be valid, and Studio remains the arity gate.' })
   }
   // Structure pass: an export states no rule for a diagram's wire graph or a rung's
   // shape, so a document Studio refuses looks exactly like one it accepts.

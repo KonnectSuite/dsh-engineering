@@ -256,3 +256,29 @@ describe('findings name the places they found', () => {
     expect(rows[0]?.message).toContain('rung 0')
   })
 })
+
+
+/** An export whose rung names an instruction this catalogue does not carry. */
+const UNCATALOGUED_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Coverage\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"Main\" MainRoutineName=\"R\">\n        <Routines>\n          <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)CROUT(Out,5);]]></Text></Rung>\n            <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)XIC(Out)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('logic the catalogue could not check', () => {
+  it('names the instruction it could not arity-check, and says why that is not an error', async () => {
+    const l5x = harness(new Map([['coverage.l5x', new TextEncoder().encode(UNCATALOGUED_L5X)]]))
+    await l5x.call('open_project', { path: 'coverage.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    const rows = result.data?.findings as { message: string; severity: string; evidence: { catalogue_size?: number; note?: string } }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.severity).toBe('info')
+    expect(rows[0]?.message).toContain('CROUT')
+    expect(rows[0]?.evidence.catalogue_size).toBeGreaterThan(100)
+    expect(String(rows[0]?.evidence.note)).toContain('Studio remains the arity gate')
+  })
+
+  it('stays quiet for catalogued instructions and for a declared AOI call', async () => {
+    // The fixture calls Motor_Control, which is an AOI it declares, so it must not be flagged.
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    expect(result.data?.findings).toEqual([])
+  })
+})
