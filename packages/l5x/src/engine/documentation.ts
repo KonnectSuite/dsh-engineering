@@ -273,7 +273,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
   for (const programName of programs) {
     const program = document.programs.find(entry => entry.name === programName)
     if (program === undefined) continue
-    let section = `# ${programName} â€” rung documentation\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
+    let section = `# ${programName} â€” rung documentation${program.safety === true ? ' (SAFETY program)' : ''}\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
     let part = 1
     let inFile = 0
     let headingWritten = false
@@ -312,7 +312,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
   // An AOI's logic is where safety instructions often live; documenting programs only hid it.
   if (options.programs === undefined) {
     for (const aoi of document.aois) {
-      let section = `# ${aoi.name} - AOI routine documentation\n\n${aoi.description || 'No AOI description.'}\n`
+      let section = `# ${aoi.name} - AOI routine documentation${aoi.safety === true ? ' (SAFETY instruction)' : ''}\n\n${aoi.description || 'No AOI description.'}\n`
       let documented = 0
       for (const routine of aoi.routines) {
         if (routine.body.type !== 'RLL') {

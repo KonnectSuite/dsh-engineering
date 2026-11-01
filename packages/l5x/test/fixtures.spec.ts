@@ -117,6 +117,25 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('safety in the rung documentation', () => {
+  it('marks a safety program file and a safety instruction file', async () => {
+    const built = l5x({
+      name: 'SafetyDocs',
+      aois: aoi('AOI_SAFE', { safety: true, parameters: [parameter('P')], routines: rllRoutine('Logic', [{ text: 'XIC(P)OTE(P);' }]) }),
+      programs: program('Guard', rllRoutine('MainRoutine', [{ text: 'NOP();' }]), { safety: true }),
+      tasks: task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
+    })
+    const l5xTool = harness(new Map([['sd.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'sd.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs-sd', include: ['rungs'] })).error).toBeUndefined()
+    const files = [...l5xTool.written.entries()].map(([key, value]) => [String(key), String(value)] as const)
+    const programFile = files.find(([key]) => key.endsWith('rungs/Guard.md'))
+    expect(programFile?.[1]).toContain('SAFETY program')
+    const aoiFile = files.find(([key]) => key.endsWith('AOI-AOI_SAFE.md'))
+    expect(aoiFile?.[1]).toContain('SAFETY instruction')
+  })
+})
+
 describe('a routine in a safety program', () => {
   it('is marked safety in the listing and the reader', async () => {
     const built = l5x({

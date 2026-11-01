@@ -995,6 +995,11 @@
   carry `safety: true` when the declaring program is `Class="Safety"` (and keep the AOI-owner rule from round 137). Verified on `Seco_Homogenizer`:
   **10 of 10** routines in the guard program flagged; a built fixture pins a safety program against a standard one. 452 package tests.
 
+- **The rung documentation says when the logic is safety.** `rungs/<program>.md` and `rungs/AOI-<name>.md` documented the logic without saying it belongs to a
+  guard program or a safety instruction - a reviewer reading the file had to cross-reference `PROJECT.md`. The headers now read `(SAFETY program)` and
+  `(SAFETY instruction)`; verified on `Seco_Homogenizer` (`COMBUSTION_SAFETY`, `FC_SFTY_SSOV`) and pinned with a built fixture. This is the last documentation
+  surface that lacked the safety marker. 454 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
