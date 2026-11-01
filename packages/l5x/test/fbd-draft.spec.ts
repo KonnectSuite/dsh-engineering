@@ -170,3 +170,46 @@ describe('creating the routine and chaining blocks', () => {
     expect(String(validated.error?.message)).toContain('both writes and reads')
   })
 })
+
+
+/** A project with one REAL tag and no function block structure. */
+const BLOCK_ONLY = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="BlockOnly" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="Angle" TagType="Base" DataType="REAL"/></Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[OTE(Angle.0);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+
+
+describe('a block tag staged in the same draft', () => {
+  it('resolves for draft_fbd before draft_apply', async () => {
+    // withStagedTags puts staged declarations on project.stagedTags, not document.tags, so the direct
+    // lookup in draft_fbd used to miss a tag draft_tag had just created.
+    const l5x = harness(new Map([['b.l5x', new TextEncoder().encode(BLOCK_ONLY)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'b.l5x' })).error).toBeUndefined()
+    const routine = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
+    expect(routine.error).toBeUndefined()
+    const tag = await l5x.call('draft_tag', { scope: 'controller', name: 'sum1', data_type: 'FBD_MATH', description: 'ADD block' })
+    expect(tag.error).toBeUndefined()
+    const staged = await l5x.call('draft_fbd', {
+      program: 'Main', routine: 'G', sheet: 1,
+      blocks: JSON.stringify([{ id: 1, type: 'ADD', tag: 'sum1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'], x: 320, y: 40 }]),
+      refs: JSON.stringify([
+        { id: 0, direction: 'in', tag: 'Angle', x: 120, y: 30 },
+        { id: 2, direction: 'in', tag: 'Angle', x: 120, y: 90 },
+        { id: 3, direction: 'out', tag: 'Angle', x: 560, y: 60 },
+      ]),
+      wires: JSON.stringify([
+        { from: 0, to: 1, to_pin: 'SourceA' },
+        { from: 2, to: 1, to_pin: 'SourceB' },
+        { from: 1, to: 3, from_pin: 'Dest' },
+      ]),
+    })
+    expect(staged.error).toBeUndefined()
+  })
+})

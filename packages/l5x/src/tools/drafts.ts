@@ -394,7 +394,10 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           if (instructionByName(type) === undefined) throw new L5xError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction.`, 'Call list_instructions to see the catalogued names.')
           const tag = String((block as Record<string, unknown>).tag ?? '')
           const structure = String((block as Record<string, unknown>).structure ?? '')
-          const declared = view.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
+          // withStagedTags puts staged declarations on project.stagedTags, not on document.tags; a
+          // draft_tag followed by draft_fbd in one chat must still resolve.
+          const declared = [...view.document.tags, ...(view.stagedTags ?? [])]
+            .find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
           if (declared === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `The block's tag ${tag} is not declared in ${program} or controller scope.`, `Declare it first: draft_tag scope "${program}" name "${tag}" data_type "${structure}" — a block is an instance of its structure.`)
           if (declared.dataType.toUpperCase() !== structure.toUpperCase()) throw new L5xError('TYPE_MISMATCH', `Tag ${tag} is ${declared.dataType}, but the block needs a ${structure} instance.`, 'Declare a tag whose data type is the block structure, for example FBD_MATH for ADD.')
         }
@@ -509,7 +512,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       parameters: object({
         scope: string('Declaring scope: "controller" or a program name. Example: "controller".'),
         name: string('New tag name, a Logix identifier of at most 40 characters. Example: "SP_Start".'),
-        data_type: string('Declared data type. Example: "REAL", a UDT name, or a built-in structure Studio defaults: CONTROL, SERIAL_PORT_CONTROL, ALARM_DIGITAL, ALARM_ANALOG.'),
+        data_type: string('Declared data type. Example: "REAL", a UDT name, or a built-in structure Studio defaults: CONTROL, SERIAL_PORT_CONTROL, ALARM_DIGITAL, ALARM_ANALOG, FBD_MATH.'),
         description: string('Tag description shown in Studio. Example: "Start threshold".'),
         value: integer('Optional scalar initial value. Example: 80.'),
         dimensions: string('Optional array dimensions, space separated. Example: "4 2".'),

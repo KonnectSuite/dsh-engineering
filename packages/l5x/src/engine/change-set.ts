@@ -93,7 +93,7 @@ type Operation =
  * block builds, which is how a CONTROL, a SERIAL_PORT_CONTROL and both alarm structures were used in
  * build-verified rungs this cycle. Listing them here lets add_tag create them.
  */
-const BUILTIN_STRUCTURE_TYPES = new Set(['control', 'serial_port_control', 'alarm_analog', 'alarm_digital'])
+const BUILTIN_STRUCTURE_TYPES = new Set(['control', 'serial_port_control', 'alarm_analog', 'alarm_digital', 'fbd_math'])
 
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])

@@ -409,6 +409,15 @@
   checks pass. Recording it in the changelog rather than amending, because the rule that produced it - never commit with a red
   gate - is worth more than a tidy history.
 
+- **One project, three languages, all composed by our tools and built by Studio: RLL, FBD and SFC.** The attempt found two defects
+  before it succeeded. `draft_tag` could not create an **`FBD_MATH`** instance at all - the built-in structure list carried
+  only `CONTROL`, `SERIAL_PORT_CONTROL` and the two alarm structures - so nobody could compose a function block in a project
+  that did not already have one. And once that was fixed, `draft_fbd` still refused the block, because `withStagedTags`
+  publishes staged declarations on `project.stagedTags` while the block lookup read `document.tags` only; `ladder.ts` had
+  been consulting both for rounds, and this path had not. Both fixed, and the project now composes `draft_tag FBD_MATH` ->
+  `draft_routine` FBD -> `draft_fbd` (ADD wired to three tags) -> `draft_routine` SFC -> `draft_sfc` (two steps, two
+  transitions) alongside an RLL rung, then builds with **0 warnings, 0 errors and an ACD written**.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
