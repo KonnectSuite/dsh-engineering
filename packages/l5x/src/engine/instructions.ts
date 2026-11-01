@@ -90,6 +90,8 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'LEQ', category: 'Comparison', summary: 'Less than or equal.', operands: [num('Source A'), num('Source B')] },
   { name: 'LIM', category: 'Comparison', summary: 'Limit test: true when the test value lies between the limits.', operands: [num('Low limit'), num('Test'), num('High limit')] },
   { name: 'CMP', category: 'Comparison', summary: 'Compare: true when the expression is true.', operands: [expression()] },
+  { name: 'ISINF', category: 'Comparison', summary: 'True when the source is infinite.', operands: [num('Source')] },
+  { name: 'ISNAN', category: 'Comparison', summary: 'True when the source is not a number.', operands: [num('Source')] },
 
   // Math
   { name: 'ADD', category: 'Math', summary: 'Add source A and source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },

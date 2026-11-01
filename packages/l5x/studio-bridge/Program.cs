@@ -287,8 +287,12 @@ try
         Console.Error.WriteLine("Output must be a new, distinct ACD file.");
         return 2;
     }
-    using LogixProject imported = await LogixProject.OpenLogixProjectAsync(source, new StdOutEventLogger());
-    await imported.SaveAsAsync(output, false, false);
+    // The L5X-derived project keeps the controller name, so release it before opening the ACD
+    // that carries the same name; otherwise the second open aborts without changes.
+    using (LogixProject imported = await LogixProject.OpenLogixProjectAsync(source, new StdOutEventLogger()))
+    {
+        await imported.SaveAsAsync(output, false, false);
+    }
     using LogixProject offline = await LogixProject.OpenLogixProjectAsync(output, new StdOutEventLogger());
     await offline.BuildAsync(LogixProject.RequestedBuildTarget.DefaultTarget);
     await offline.SaveAsync();

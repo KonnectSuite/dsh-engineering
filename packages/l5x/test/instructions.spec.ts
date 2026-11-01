@@ -117,6 +117,23 @@ describe('composing with a newly catalogued instruction', () => {
     expect(rungs[0]?.neutral_text).toBe('XIC(StartPB)FLL(LineSpeed,FaultCount,5);')
   })
 
+  it('composes the float comparisons Studio built', async () => {
+    // Verified by a Logix Designer build: passed, 0 warnings, 0 errors, ACD written.
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    for (const [mnemonic, expected] of [
+      ['ISINF', 'XIC(StartPB)ISINF(LineSpeed)OTE(SystemRunning);'],
+      ['ISNAN', 'XIC(StartPB)ISNAN(LineSpeed)OTE(SystemRunning);'],
+    ] as const) {
+      const result = await l5x.call('compose_rung', {
+        spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: mnemonic, args: ['LineSpeed'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
+      })
+      expect(result.error).toBeUndefined()
+      const rungs = result.data?.rungs as { neutral_text: string }[]
+      expect(rungs[0]?.neutral_text).toBe(expected)
+    }
+  })
+
   it('composes a subroutine label with no operands', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
     expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()

@@ -38,6 +38,18 @@
   `XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM`. Ten tests cover creation, generated tags, actions, conditions, the XML and the
   refusals.
 
+- **Two float comparisons the composer refused now compose, and a repeated import aborts for a reason worth knowing.** `ISINF`
+  and `ISNAN` take one `Source` slot; the catalogue is now **138** instructions. Verification went through our own tools
+  rather than a hand-written rung: `compose_rung` built the spec tree, `draft_apply` wrote the export, and Logix Designer
+  reported **0 warnings, 0 errors and an ACD written**. A second finding came out of the failures on the way: an import of
+  an L5X whose **controller name is already registered** with the Studio SDK fails with
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`, and the *same bytes* import cleanly under a new controller name — renaming the
+  controller proved it, after the file had been blamed. The bridge now releases the L5X-derived project before it opens
+  the ACD that carries the same name, which is the correct lifetime regardless; the stale registration that survives a
+  crashed or killed run still needs a fresh name or a service restart, and that is stated here rather than left to be
+  rediscovered. `REF` was tried in the same batch and refused with `RxCMP_E_AUDIT_INVALIDOPTYPE` for both DINT and REAL
+  operands, so it stays uncatalogued until a real export shows its operand type.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
