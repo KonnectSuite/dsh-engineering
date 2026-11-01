@@ -39,6 +39,12 @@ export interface AcdExportRecord {
 
 /** Exports and verified builds, scoped to the chat that ran them. */
 export class StudioState {
+  // A chat object is not stable across turns: the same conversation can present a fresh
+  // wrapper object on the next tool call. Keying the provenance only by that identity made a
+  // baseline exported in one turn "not exported from an ACD" in a later turn, so the stable
+  // session id is the first key and object identity is the fallback.
+  private readonly sessionChats = new Map<string, Map<string, AcdExportRecord>>()
+  private readonly sessionBuilds = new Map<string, Map<string, VerifiedBuild>>()
   private readonly chats = new WeakMap<object, Map<string, AcdExportRecord>>()
   private readonly detached = new Map<string, AcdExportRecord>()
   private readonly buildChats = new WeakMap<object, Map<string, VerifiedBuild>>()
@@ -89,6 +95,14 @@ export class StudioState {
 
   /** The record map for one calling chat. */
   private chatsOf(exec: ExecContext | undefined): Map<string, AcdExportRecord> {
+    const sessionId = exec?.sessionId
+    if (sessionId !== undefined) {
+      const existing = this.sessionChats.get(sessionId)
+      if (existing !== undefined) return existing
+      const created = new Map<string, AcdExportRecord>()
+      this.sessionChats.set(sessionId, created)
+      return created
+    }
     const chat = exec?.chat
     if (chat === undefined) return this.detached
     const existing = this.chats.get(chat)
@@ -100,6 +114,14 @@ export class StudioState {
 
   /** The verified-build map for one calling chat. */
   private buildsOf(exec: ExecContext | undefined): Map<string, VerifiedBuild> {
+    const sessionId = exec?.sessionId
+    if (sessionId !== undefined) {
+      const existing = this.sessionBuilds.get(sessionId)
+      if (existing !== undefined) return existing
+      const created = new Map<string, VerifiedBuild>()
+      this.sessionBuilds.set(sessionId, created)
+      return created
+    }
     const chat = exec?.chat
     if (chat === undefined) return this.detachedBuilds
     const existing = this.buildChats.get(chat)

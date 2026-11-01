@@ -1068,6 +1068,11 @@
   accept only whole scalar tags, so one write changes one known operand and its readback proves it. Four tests hold member resolution, the whole-TIMER refusal
   and the member-write refusal; verified live on 192.168.1.3 with `Timer.PRE = 2000`, `Timer.ACC = 0`, `Count = 2097029`, all good quality. 465 package tests.
 
+- **ACD provenance survives across turns.** The live bench forced a second export of the same baseline because the first record had vanished: `StudioState`
+  keyed exports and verified builds by the `chat` object identity, and a later turn presents a fresh wrapper. Provenance now keys on the stable `sessionId`
+  first (identity fallback when absent), so a baseline exported in one turn still authorises a build in the next. Four tests: cross-turn reuse, verified build,
+  session isolation, identity fallback. 469 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
