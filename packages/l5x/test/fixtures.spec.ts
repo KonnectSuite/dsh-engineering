@@ -554,5 +554,9 @@ describe('an add-on instruction call', () => {
     const applied = await l5xTool.call('draft_apply', { output_path: 'aoi-instance.l5x' })
     expect(applied.error).toBeUndefined()
     expect(String(l5xTool.written.get('aoi-instance.l5x'))).toContain('<Tag Name="MyAoi_2"')
+    // A literal cannot stand in for an Output pin.
+    const literalOutput = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', '5'] }] }) })
+    expect(literalOutput.error?.code).toBe('INVALID_OPERAND')
+    expect(literalOutput.error?.message).toContain('BOOL tag is required')
   })
 })

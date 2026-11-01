@@ -232,7 +232,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser or leaves the right power rail undriven.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
-        spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}.'),
+        spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}. An add-on instruction call passes its instance tag first, then only the parameters marked Required in the AOI definition.'),
         arguments_json: string('Pattern arguments as JSON, for example {"start":"Start","stop":"Stop","run":"Run"}.'),
         program: string('Program to stage into. Omit to return the composed text only.'),
         routine: string('Routine to stage into. Required with program.'),
