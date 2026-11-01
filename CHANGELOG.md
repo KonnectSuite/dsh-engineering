@@ -741,6 +741,13 @@
   engineer wants to discover from a failure. `L5xControllerSummary` now exposes `commPath` and `projectSerialNumber`; verified on `Seco_Homogenizer`, which
   reports `CIM_Prep\10.211.100.100\Backplane\0` and `16#0163_1759`, and a test pins both through `project_overview`. 422 package tests.
 
+- **The handover document states the project serial and the saved route.** Round 109 put `projectSerialNumber` and `commPath` on the controller record;
+  `PROJECT.md` still listed only processor, revision and export kind. It now carries
+  `- Project serial: ...; saved path: ...`, with `not declared` when the export omits them, so a new engineer holding the bundle knows which
+  project it is and how the machine is reached without opening the L5X. My attempt to pin this with a new fixture produced a transform error twice
+  and I restored `documentation.spec.ts` from HEAD rather than leave a broken spec; the line is exercised by the existing bundle tests but **not
+  asserted for these two fields**, which is recorded as the gap.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
