@@ -19,7 +19,6 @@ const TABLE: readonly (readonly [string, string])[] = [
   ['Program control', 'BRK= NOP= TND='],
   ['Communications', 'MSG=K'],
   ['String', 'STOD=SD DTOS=SD'],
-  ['Process', 'PID=K'],
 ]
 
 const slot = (code: string): { name: string; kind: OperandKind } => {

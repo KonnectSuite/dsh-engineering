@@ -139,6 +139,17 @@
   and that the re-opened export has no unresolved reference left. That is the capability the brief asks for — compose,
   and fix — shown as one run rather than as separate tools that happen to exist.
 
+- **`PID` takes seven operands, not one, and two rounds of wrong guesses about it were mine to own.** The ladder form is
+  `PID(pid, PV, Tieback, CV, master loop, inhold bit, inhold value)`; `PID(tag)` and even `PID(tag, PV, Tieback, CV)` fail
+  with `RxCMP_E_AUDIT_INVALIDNOOFOPS`, and the seven-operand form **builds with 0 warnings and 0 errors**. The same round
+  cleared a misunderstanding behind three earlier failures: `EXPT`, `ASIN`, `ACOS` and `ATAN` are the **v36+ spellings**
+  of the legacy `XPY`, `ASN`, `ACS`, `ATN` this catalogue has always carried — my raw-XML probes wrote the legacy names
+  into a 37 project and Studio answered `INVALIDOPTYPE`, which reads like a bad operand but was a bad *spelling*. With the
+  modern names, `EXPT(r1,r2,r3)`, `ASIN(r1,r2)`, `ACOS(r1,r2)` and `ATAN(r1,r2)` all build, so those catalogue entries
+  were right all along and are unchanged. `SQC` stays open: `SQC(arr,…)` needs array **elements** (`MUSTBEDISCRETE`), and
+  the element form still fails on type, so nothing is changed there until a shape builds. Two tests pin PID's seven slots
+  and the accepted rung.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

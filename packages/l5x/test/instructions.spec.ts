@@ -280,6 +280,41 @@ describe('arities a Studio build proved', () => {
     expect(instructionByName('ALMA')?.operands.length).toBe(5)
   })
 
+  it('keeps PID at the seven operands a build accepted', () => {
+    // PID(pid, PV, Tieback, CV, master loop, inhold bit, inhold value). Five operands fail with
+    // RxCMP_E_AUDIT_INVALIDNOOFOPS; seven build.
+    expect(instructionByName('PID')?.operands.length).toBe(7)
+  })
+
+  it('composes the PID rung that built', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="PidTest" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="a1" TagType="Base" DataType="BOOL"/>
+      <Tag Name="pid1" TagType="Base" DataType="PID"/>
+      <Tag Name="pv" TagType="Base" DataType="REAL"/>
+      <Tag Name="tieback" TagType="Base" DataType="REAL"/>
+      <Tag Name="cv" TagType="Base" DataType="REAL"/>
+      <Tag Name="inholdBit" TagType="Base" DataType="BOOL"/>
+      <Tag Name="inholdVal" TagType="Base" DataType="REAL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a1);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['pid.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'pid.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pid1', 'pv', 'tieback', 'cv', '0', 'inholdBit', 'inholdVal'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    const rungs = result.data?.rungs as { neutral_text: string }[]
+    expect(rungs[0]?.neutral_text).toBe('XIC(a1)PID(pid1,pv,tieback,cv,0,inholdBit,inholdVal);')
+  })
+
   it('composes the alarm rungs that built', async () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
