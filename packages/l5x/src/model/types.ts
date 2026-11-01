@@ -229,6 +229,8 @@ export interface L5xModule {
   readonly catalogNumber: string
   /** Parent module name, empty string for a module the controller owns directly. */
   readonly parentModule: string
+  /** Present and true when the export omits Name; the identity is parent:slot. */
+  readonly unnamed?: boolean
   /** Description, when the module has one. */
   readonly description?: string
   /** First port's `Address`, which is the slot for a chassis module. */

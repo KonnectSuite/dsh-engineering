@@ -51,6 +51,7 @@ function parseModule(module: XmlElement): L5xModule {
     majorFault?: boolean
     safetyEnabled?: boolean
     safetyNetwork?: string
+    unnamed?: boolean
   } = {
     name: optionalAttribute(module, 'Name', ''),
     catalogNumber: optionalAttribute(module, 'CatalogNumber', ''),
@@ -61,6 +62,12 @@ function parseModule(module: XmlElement): L5xModule {
   const ports = firstChild(module, 'Ports')
   const port = ports === undefined ? undefined : firstChild(ports, 'Port')
   if (port !== undefined) entry.slot = optionalAttribute(port, 'Address', '')
+  // A child module can be written without Name - drive peripheral modules are. parent:slot is how
+  // Studio identifies it on screen, and an empty name cannot be listed, read or compared.
+  if (entry.name === '') {
+    entry.unnamed = true
+    entry.name = `${entry.parentModule}:${entry.slot ?? '?'}`
+  }
   if (module.attrs['Inhibited'] === 'true') entry.inhibited = true
   if (module.attrs['MajorFault'] === 'true') entry.majorFault = true
   if (module.attrs['SafetyEnabled'] === 'true') entry.safetyEnabled = true

@@ -183,6 +183,27 @@ describe('searching safety logic', () => {
   })
 })
 
+describe('a module with no Name', () => {
+  it('gets a stable parent:slot identity and can be read by it', async () => {
+    const built = l5x({
+      name: 'UnnamedModule',
+      modules: module('', 'RHINOBP-DRIVE-PERIPHERAL-MODULE', { parentModule: 'DRIVE_1', slot: '4' }),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['um.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'um.l5x' })).error).toBeUndefined()
+    const listed = await l5xTool.call('list_components', { kind: 'module' })
+    const rows = (listed.data?.rows ?? []) as { name: string; unnamed?: boolean; slot: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.name).toBe('DRIVE_1:4')
+    expect(rows[0]?.unnamed).toBe(true)
+    const read = await l5xTool.call('get_component', { kind: 'module', name: 'DRIVE_1:4' })
+    expect(read.error).toBeUndefined()
+    expect((read.data?.component as { catalogNumber?: string } | undefined)?.catalogNumber).toBe('RHINOBP-DRIVE-PERIPHERAL-MODULE')
+  })
+})
+
 describe('an encrypted add-on instruction', () => {
   it('is marked protected, counted in the limits and not shown as zero routines', async () => {
     const built = l5x({

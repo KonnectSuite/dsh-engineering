@@ -207,7 +207,7 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
             : kind === 'aoi'
               ? listAois(document).map(aoi => ({ name: aoi.name, revision: aoi.revision, description: aoi.description, safety: aoi.safety === true }))
               : kind === 'module'
-                ? listModules(document).map(module => ({ name: module.name, catalogNumber: module.catalogNumber, slot: module.slot ?? '', parentModule: module.parentModule, inhibited: module.inhibited === true, majorFault: module.majorFault === true, safetyEnabled: module.safetyEnabled === true }))
+                ? listModules(document).map(module => ({ name: module.name, catalogNumber: module.catalogNumber, slot: module.slot ?? '', parentModule: module.parentModule, inhibited: module.inhibited === true, majorFault: module.majorFault === true, safetyEnabled: module.safetyEnabled === true, ...(module.unnamed === true ? { unnamed: true } : {}) }))
                 : document.alarms.map(alarm => ({ name: alarm.name, kind: alarm.kind, description: alarm.description }))
   const needle = filter.toLowerCase()
   return needle === '' ? rows : rows.filter(row => row.name.toLowerCase().includes(needle))

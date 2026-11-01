@@ -154,6 +154,7 @@ export function module(
   catalogNumber: string,
   options: {
     readonly parentModule?: string
+    readonly slot?: string
     readonly parentPortId?: string
     readonly safety?: boolean
     readonly safetyNetwork?: string
@@ -163,5 +164,9 @@ export function module(
 ): string {
   const safety = options.safety === true ? ' SafetyEnabled="true"' : ''
   const network = options.safetyNetwork === undefined ? '' : ` SafetyNetwork="${options.safetyNetwork}"`
-  return `<Module Name="${name}" CatalogNumber="${catalogNumber}" Vendor="1" ProductType="14" ProductCode="0" Major="1" Minor="11" ParentModule="${options.parentModule ?? 'Local'}" ParentModPortId="${options.parentPortId ?? '1'}" Inhibited="${options.inhibited === true ? 'true' : 'false'}" MajorFault="${options.majorFault === true ? 'true' : 'false'}"${safety}${network}/>`
+  // An empty name means the export omits Name, as it does for drive peripheral modules.
+  const nameAttribute = name === '' ? '' : ` Name="${name}"`
+  const slot = options.slot === undefined ? '' : `<Ports><Port Id="1" Address="${options.slot}"/></Ports>`
+  const open = `<Module${nameAttribute} CatalogNumber="${catalogNumber}" Vendor="1" ProductType="14" ProductCode="0" Major="1" Minor="11" ParentModule="${options.parentModule ?? 'Local'}" ParentModPortId="${options.parentPortId ?? '1'}" Inhibited="${options.inhibited === true ? 'true' : 'false'}" MajorFault="${options.majorFault === true ? 'true' : 'false'}"${safety}${network}`
+  return slot === '' ? `${open}/>` : `${open}>${slot}</Module>`
 }

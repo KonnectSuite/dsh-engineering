@@ -973,6 +973,12 @@
   now reports them and the summary reads *"29 AOI routine(s) (170 rung(s)), 9596 rung(s)"* - **9,596 + 170 = 9,766, exactly the raw count**. Same treatment for
   the counts line; the AOI-docs test asserts the new count. 450 package tests.
 
+- **A child module with no Name no longer appears blank.** Twenty drive peripheral modules on `Seco_Homogenizer` are written without a `Name` attribute, so
+  `list_components` returned rows with `name: ""` and `get_component` could not address them at all. The model now gives such a module the identity Studio shows
+  on screen - **parent:slot** - and marks it `unnamed: true`; the rows carry the flag and the record is readable by that name. Verified on the real export:
+  **0 blank names, 91 rows**, e.g. `RC_1_FAN_1102VFD:1` (`RHINOBP-DRIVE-PERIPHERAL-MODULE`) reads back with its catalog number. The builder can now write an
+  unnamed module, and a test pins the identity and the lookup. 451 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
