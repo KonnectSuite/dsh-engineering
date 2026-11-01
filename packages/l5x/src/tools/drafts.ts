@@ -19,6 +19,20 @@ import { resolveSymbol } from '../engine/analysis.ts'
 import { safetyProgramNames } from '../engine/project-analysis.ts'
 
 /**
+ * Refuse a draft that edits a vendor-owned data type.
+ *
+ * @param project - The open project.
+ * @param udt - Data type the operation targets.
+ * @returns The type name.
+ */
+function vendorTypeGuard(project: ProjectSnapshot, udt: string): string {
+  if (project.document.vendorTypes.some(name => name.toUpperCase() === udt.toUpperCase())) {
+    throw new L5xError('PROTECTED_TARGET', `Data type ${udt} is vendor-owned, and vendor types cannot be changed.`, 'Add a user-defined type instead; Studio owns the built-in families.')
+  }
+  return udt
+}
+
+/**
  * Refuse a draft that names safety logic.
  *
  * @param project - The open project.
@@ -632,7 +646,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const operation: DraftOperation = {
           operation: 'add_udt_member',
-          udt: requiredString(args, 'udt'),
+          udt: vendorTypeGuard(project, requiredString(args, 'udt')),
           name: requiredString(args, 'name'),
           data_type: requiredString(args, 'data_type'),
           description: requiredString(args, 'description'),
@@ -651,7 +665,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       }, ['udt', 'description']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
-        const udt = requiredString(args, 'udt')
+        const udt = vendorTypeGuard(project, requiredString(args, 'udt'))
         const description = requiredString(args, 'description')
         const member = optionalString(args, 'member')
         const operation: DraftOperation = member === undefined

@@ -564,6 +564,15 @@
   round-76 claim itself: "every tool" is a claim about evidence, so it has to be tested by walking the tool list rather than
   inferred from the shared helper.
 
+- **Vendor-owned data types are now refused at staging, the same way safety logic is.** The ACD-edit guard already treated any type whose
+  `Family` is not `NoFamily` as vendor-owned, but that knowledge lived only in the raw XML, so `draft_udt_member` staged an edit to
+  `STRING_1` and the caller learned at validation. The document now carries **`vendorTypes`** - the names only, so `udts` still lists
+  the 166 user types and no count moves - and both `draft_udt_member` and `draft_udt_description` refuse at staging:
+  `PROTECTED_TARGET: Data type STRING_1 is vendor-owned, and vendor types cannot be changed.` Verified against the real Seco
+  export, where the same call previously staged; two tests pin the refusal and one confirms a user type still stages. This is
+  round 77's audit lesson applied to the second protected class, and the reason it was cheap: the guard already existed, only
+  its evidence was missing from the model.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

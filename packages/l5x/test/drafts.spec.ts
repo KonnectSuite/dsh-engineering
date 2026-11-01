@@ -370,3 +370,25 @@ describe('editing a safety-scheduled program', () => {
     expect(batch.error?.code).toBe('PROTECTED_TARGET')
   })
 })
+
+
+/** A project with one vendor-owned type and one user type. */
+const VENDOR_TYPE_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"VendorTypes\" ProcessorType=\"1756-L8\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <DataTypes>\n      <DataType Name=\"STRING_5\" Family=\"StringFamily\" Class=\"String\"><Members/></DataType>\n      <DataType Name=\"MY_TYPE\" Family=\"NoFamily\" Class=\"User\"><Members><Member Name=\"A\" DataType=\"DINT\"/></Members></DataType>\n    </DataTypes>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[NOP();]]></Text></Rung></RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('editing a data type', () => {
+  it('refuses a vendor-owned type at staging', async () => {
+    const l5x = harness(new Map([['v.l5x', new TextEncoder().encode(VENDOR_TYPE_L5X)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'v.l5x' })).error).toBeUndefined()
+    const member = await l5x.call('draft_udt_member', { udt: 'STRING_5', name: 'X', data_type: 'DINT', description: 'x' })
+    expect(member.error?.code).toBe('PROTECTED_TARGET')
+    const description = await l5x.call('draft_udt_description', { udt: 'STRING_5', description: 'x' })
+    expect(description.error?.code).toBe('PROTECTED_TARGET')
+  })
+
+  it('still stages an edit to a user type', async () => {
+    const l5x = harness(new Map([['v.l5x', new TextEncoder().encode(VENDOR_TYPE_L5X)]]), { editing: true })
+    await l5x.call('open_project', { path: 'v.l5x' })
+    const member = await l5x.call('draft_udt_member', { udt: 'MY_TYPE', name: 'B', data_type: 'DINT', description: 'y' })
+    expect(member.error).toBeUndefined()
+  })
+})

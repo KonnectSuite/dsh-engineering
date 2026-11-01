@@ -263,6 +263,8 @@ export interface L5xDocument {
   readonly modules: readonly L5xModule[]
   /** Alarm declarations recognized structurally in the export. */
   readonly alarms: readonly L5xAlarm[]
+  /** Names of data types the vendor owns (Family other than NoFamily), which cannot be edited. */
+  readonly vendorTypes: readonly string[]
 }
 
 /** One place a symbol appears. */

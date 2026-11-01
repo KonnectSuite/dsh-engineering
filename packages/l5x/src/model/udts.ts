@@ -44,6 +44,15 @@ export function getUdt(document: L5xDocument, name = ''): readonly L5xUdt[] {
  * @param controller - The controller element.
  * @returns The types, in written order, each with its visible members.
  */
+/** Names of the data types the vendor owns: every family other than the user one. */
+export function vendorTypeNames(controller: XmlElement): readonly string[] {
+  const dataTypes = firstChild(controller, 'DataTypes')
+  if (dataTypes === undefined) return []
+  return elementChildren(dataTypes, 'DataType')
+    .filter(type => type.attrs['Family'] !== undefined && type.attrs['Family'] !== NO_FAMILY)
+    .map(type => optionalAttribute(type, 'Name', ''))
+}
+
 export function buildUdts(controller: XmlElement): readonly L5xUdt[] {
   return udtElements(controller).map(udt => ({
     name: optionalAttribute(udt, 'Name', ''),
