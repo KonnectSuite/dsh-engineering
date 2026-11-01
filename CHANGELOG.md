@@ -311,6 +311,14 @@
   write a defect and a checker that finds one already in the file - the second is what an engineer needs when they open
   somebody else's project.
 
+- **A `JSR` that names a routine the program does not declare is now a critical finding.** The composer already refuses to
+  compose one, but a project that lost a routine - renamed, deleted, copied between programs - still carried the call, and
+  nothing reported it. The new rule `JSR_ROUTINE_MISSING` walks each program's routines, resolves every `JSR(name, ...)`
+  against the routines that program declares, and names the rung: ``P::R rung 1 calls JSR(Nope) and P declares no routine
+  of that name``. It is **case-insensitive**, because Studio's routine lookups are, and it stays quiet for a call to a
+  sibling routine - the test proves both in one project by calling a declared routine and an undeclared one from adjacent
+  rungs. `run_checks` names the rule in its description, so the tool reference regenerated.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

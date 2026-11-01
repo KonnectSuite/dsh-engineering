@@ -441,3 +441,35 @@ describe('a serial-port instruction on a processor without one', () => {
     expect((result.data?.findings as unknown[]).length).toBe(0)
   })
 })
+
+
+/** A program whose main routine calls one declared routine and one that does not exist. */
+const JSR_MISSING_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Calls" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/></Tags>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[XIC(A)JSR(S,0);]]></Text></Rung>
+        <Rung Number="1" Type="N"><Text><![CDATA[XIC(A)JSR(Nope,0);]]></Text></Rung>
+      </RLLContent></Routine>
+      <Routine Name="S" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[RET();]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('a JSR naming a routine the program does not declare', () => {
+  it('reports only the missing target', async () => {
+    const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
+    await l5x.call('open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'JSR_ROUTINE_MISSING' })
+    const rows = (result.data?.findings ?? []) as { message: string; severity: string }[]
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Nope')
+    expect(rows[0]?.message).not.toContain('JSR(S')
+    expect(rows[0]?.severity).toBe('critical')
+  })
+})

@@ -174,6 +174,19 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
           { program: program.name, mainRoutine: program.mainRoutine, routines: own.map(routine => routine.name).slice(0, 10) })
       }
     }
+    // A JSR names a routine in the same program. A name the program does not declare cannot build.
+    for (const routine of own) {
+      if (routine.body.type !== 'RLL') continue
+      for (const rung of routine.body.rungs) {
+        for (const called of rung.text.matchAll(/(?:^|[^A-Za-z0-9_])JSR[ \t]*\([ \t]*([A-Za-z_][A-Za-z0-9_]*)/gu)) {
+          const target = called[1]
+          if (own.some(entry => entry.name.toUpperCase() === target.toUpperCase())) continue
+          report('JSR_ROUTINE_MISSING', 'critical',
+            `${program.name}::${routine.name} rung ${rung.number} calls JSR(${target}) and ${program.name} declares no routine of that name`,
+            { program: program.name, routine: routine.name, rung: rung.number, called: target, routines: own.map(entry => entry.name).slice(0, 10) })
+        }
+      }
+    }
     const firstSpelling = new Map<string, string>()
     const duplicates = new Map<string, string>()
     for (const routine of own) {
