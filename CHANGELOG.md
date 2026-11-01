@@ -349,6 +349,16 @@
   "instruction the catalogue does not carry" example; they now use a fictional `FROB`, so the behaviour they pin is real
   rather than accidental.
 
+- **The eight unresolved references on the production export were string literals, not tags - a parser bug, now fixed.** The
+  evidence made it plain: `MOVE('C',Edit_Practice_String)` inside a recipe selector, once per letter. The token scanner ran
+  over the raw operand text, so every character inside a single-quoted literal became a candidate symbol, and the resolver
+  dutifully reported `RECIPE::C`, `RECIPE::E` and six more as undeclared. `tokens()` now **masks string literals** before
+  matching (replacing each with spaces so indices stay aligned), handles the doubled-quote escape a literal can contain
+  (`'O''Brien'`), and the same production export now reports **zero** unresolved references instead of eight. A regression
+  test pins it with a rung that moves three literals, one of them escaped. This is the same class as the radix-literal bug
+  the file already documents - a literal wearing a tag's shape - and it is the reason the rule's confidence was `low` on
+  real code: the scanner was guessing at letters.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

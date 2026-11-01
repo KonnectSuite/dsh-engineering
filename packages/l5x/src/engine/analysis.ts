@@ -200,7 +200,10 @@ function resolveSymbolDirect(document: L5xDocument, scope: string, symbol: strin
 
 function tokens(text: string): string[] {
   const found: string[] = []
-  for (const match of text.matchAll(TOKEN)) {
+  // A string literal is not a tag: MOVE('C',Dest) handed back C as an unresolved reference on a real
+  // project, eight times over. Mask the literal so its letters never match; indices stay aligned.
+  const masked = text.replace(/'(?:[^']|'')*'/gu, literal => ' '.repeat(literal.length))
+  for (const match of masked.matchAll(TOKEN)) {
     const at = match.index ?? 0
     // A radix literal — 16#F000, 2#1010, 8#777 — must not hand back the digits after the #
     // as a symbol. On a real project every hex mask became an unresolved reference.

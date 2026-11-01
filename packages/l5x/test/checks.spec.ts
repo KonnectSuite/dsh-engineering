@@ -495,3 +495,32 @@ describe('a JSR naming a routine the program does not declare', () => {
     expect(result.summary).toContain('ordered by severity')
   })
 })
+
+
+/** Rungs that move a string literal into a tag, the way a recipe selector does. */
+const STRING_LITERAL_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Literals" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
+    <Tags>
+      <Tag Name="Pick" TagType="Base" DataType="DINT"/>
+      <Tag Name="Text" TagType="Base" DataType="STRING"/>
+    </Tags>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[[EQ(Pick,1) MOVE('C',Text) ,EQ(Pick,2) MOVE('E',Text) ,EQ(Pick,3) MOVE('O''Brien',Text) ];]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('a string literal in a rung', () => {
+  it('is not reported as an unresolved tag', async () => {
+    // A real project produced eight unresolved references, one per letter moved out of a literal.
+    const l5x = harness(new Map([['literals.l5x', new TextEncoder().encode(STRING_LITERAL_L5X)]]))
+    await l5x.call('open_project', { path: 'literals.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    const rows = (result.data?.findings ?? []) as { message: string }[]
+    expect(rows).toEqual([])
+  })
+})
