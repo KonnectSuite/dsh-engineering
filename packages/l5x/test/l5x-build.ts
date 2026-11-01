@@ -115,6 +115,31 @@ export function aoi(
   return `<AddOnInstructionDefinition Name="${name}"${safety} Revision="${revision}" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false">${parameters}${localTags}${routines}</AddOnInstructionDefinition>`
 }
 
+/** One user-defined-type member, with the attributes a real Studio export writes. */
+export function member(
+  name: string,
+  options: {
+    readonly dataType?: string
+    readonly dimensions?: string
+    readonly radix?: string
+    readonly hidden?: boolean
+    readonly externalAccess?: string
+    readonly description?: string
+    readonly target?: string
+    readonly bitNumber?: number
+  } = {},
+): string {
+  const dimensions = options.dimensions === undefined ? ' Dimension="0"' : ` Dimensions="${options.dimensions}" Dimension="0"`
+  const target = options.target === undefined ? '' : ` Target="${options.target}" BitNumber="${options.bitNumber ?? 0}"`
+  const description = options.description === undefined ? '' : ` Description="${options.description}"`
+  return `<Member Name="${name}" DataType="${options.dataType ?? 'DINT'}"${dimensions} Radix="${options.radix ?? 'Decimal'}" Hidden="${options.hidden === true ? 'true' : 'false'}"${target} ExternalAccess="${options.externalAccess ?? 'Read/Write'}"${description}/>`
+}
+
+/** One user-defined type. */
+export function userType(name: string, members: readonly string[]): string {
+  return `<DataType Name="${name}" Family="NoFamily" Class="User"><Members>${members.join('')}</Members></DataType>`
+}
+
 /** One I/O module. */
 export function module(
   name: string,

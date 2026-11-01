@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
-import { aoi, l5x, module, parameter, program, rllRoutine, tag, task } from './l5x-build.ts'
+import { aoi, l5x, member, module, parameter, program, rllRoutine, tag, task, userType } from './l5x-build.ts'
 
 const built = l5x({
   name: 'BuiltFixture',
@@ -54,5 +54,25 @@ describe('the fixture builder', () => {
     expect(logicRow?.safety).toBe(true)
     const logic = await l5xTool.call('get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
     expect((logic.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
+  })
+})
+
+describe('adding a UDT member', () => {
+  it('writes the description as a child element, which is the shape Studio accepts', async () => {
+    const built = l5x({
+      name: 'UdtShape',
+      dataTypes: userType('MY_UDT', [member('A')]),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['um.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'um.l5x' })).error).toBeUndefined()
+    const staged = await l5xTool.call('draft_udt_member', { udt: 'MY_UDT', name: 'B', data_type: 'DINT', description: 'second member' })
+    expect(staged.error).toBeUndefined()
+    expect((await l5xTool.call('draft_apply', { output_path: 'um-edited.l5x' })).error).toBeUndefined()
+    const text = String(l5xTool.written.get('um-edited.l5x') ?? '')
+    // Studio logs XMLSrv_W_INVALID_ATTRIBUTE and drops an attribute Description.
+    expect(text).toContain('<Description><![CDATA[second member]]></Description>')
+    expect(text).not.toMatch(/<Member Name="B"[^>]*Description="/u)
   })
 })

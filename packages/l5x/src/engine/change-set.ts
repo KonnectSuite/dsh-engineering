@@ -388,8 +388,12 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     const dataType = operation.data_type.toUpperCase()
     const scalar = SCALAR_TYPES.has(dataType)
     const radix = scalar ? (dataType === 'REAL' || dataType === 'LREAL' ? 'Float' : 'Decimal') : 'NullType'
-    const description = operation.description === '' ? '' : ` Description="${escape(operation.description)}"`
-    return insert(xml, members, `<Member Name="${operation.name}" DataType="${operation.data_type}" Dimension="0" Radix="${radix}" Hidden="false" ExternalAccess="Read/Write"${description}/>`)
+    const opening = `<Member Name="${operation.name}" DataType="${operation.data_type}" Dimension="0" Radix="${radix}" Hidden="false" ExternalAccess="Read/Write"`
+    // Studio writes a member description as a child element; as an attribute it is ignored
+    // (XMLSrv_W_INVALID_ATTRIBUTE), which silently dropped the text.
+    return insert(xml, members, operation.description === ''
+      ? `${opening}/>`
+      : `${opening}><Description>${cdata(operation.description)}</Description></Member>`)
   }
   if (operation.operation === 'add_sfc_tag') {
     const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)

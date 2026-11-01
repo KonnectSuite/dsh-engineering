@@ -895,6 +895,14 @@
   `document_project`, `trace_dependencies`, `usage_map` - and requires each to be a registered plugin tool, with `present` allowed as the host
   tool it is. No phantom was found; the guard is the deliverable. 440 package tests.
 
+- **The first SDK proof of `draft_udt_member` found a silent data loss.** With a vendor-shaped fixture (the builder now writes members with
+  `Dimension Radix Hidden ExternalAccess`, as a real export does), adding member `B` built cleanly - but Studio logged
+  `XMLSrv_W_INVALID_ATTRIBUTE: Unexpected attribute 'Description' will be ignored`. The tool wrote the description as an attribute; a real
+  export writes a child `<Description><![CDATA[...]]></Description>` (Seco's `Fault_Code` shows the shape). It now writes the child element:
+  the same build reports **0 warnings, 0 errors**. The builder also gained `member`/`userType` and a test pins the generated XML.
+  **My round-143 fixture was the problem, not the edit** - a minimal DataType is not importable at all, which is why the first attempt aborted.
+  441 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
