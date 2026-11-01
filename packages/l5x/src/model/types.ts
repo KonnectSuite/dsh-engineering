@@ -32,6 +32,12 @@ export interface L5xTag {
   readonly consumerOf?: string
   /** For a consumed tag, the remote tag name in ConsumeInfo. */
   readonly remoteTag?: string
+  /** For an alias tag, the tag or member it points at. */
+  readonly aliasFor?: string
+  /** For a produced tag, how many consumers the export declares. */
+  readonly produceCount?: number
+  /** For a produced tag, whether unicast is permitted. */
+  readonly produceUnicast?: boolean
   /** Array dimensions, when the export declares a Dimensions attribute. */
   readonly dimensions?: readonly number[]
 }

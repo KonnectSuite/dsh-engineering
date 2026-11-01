@@ -189,7 +189,7 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
     : kind === 'task'
       ? document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs }))
       : kind === 'tag'
-        ? listTags(document, scope ?? '').map(tag => ({ name: tag.name, scope: tag.scope, dataType: tag.dataType, description: tag.description ?? '', externalAccess: tag.externalAccess ?? '', ...(tag.tagType === undefined ? {} : { tagType: tag.tagType }), ...(tag.consumerOf === undefined ? {} : { consumerOf: tag.consumerOf }) }))
+        ? listTags(document, scope ?? '').map(tag => ({ name: tag.name, scope: tag.scope, dataType: tag.dataType, description: tag.description ?? '', externalAccess: tag.externalAccess ?? '', ...(tag.tagType === undefined ? {} : { tagType: tag.tagType }), ...(tag.consumerOf === undefined ? {} : { consumerOf: tag.consumerOf }), ...(tag.aliasFor === undefined ? {} : { aliasFor: tag.aliasFor }) }))
         : kind === 'udt'
           ? document.udts.map(udt => ({ name: udt.name, members: udt.members.length, description: udt.description }))
           : kind === 'routine'

@@ -115,6 +115,9 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
     tagType?: string
     consumerOf?: string
     remoteTag?: string
+    aliasFor?: string
+    produceCount?: number
+    produceUnicast?: boolean
     dimensions?: readonly number[]
   } = {
     name: optionalAttribute(tag, 'Name', ''),
@@ -131,6 +134,14 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
   const tagType = presentAttribute(tag, 'TagType')
   if (tagType !== undefined) entry.tagType = tagType
   // A produced or consumed tag is a network fact an engineer needs before changing it.
+  const aliasFor = presentAttribute(tag, 'AliasFor')
+  if (aliasFor !== undefined) entry.aliasFor = aliasFor
+  const produceInfo = tag.children.find(child => child.name === 'ProduceInfo')
+  if (produceInfo !== undefined && 'attrs' in produceInfo) {
+    const count = Number.parseInt(produceInfo.attrs['ProduceCount'] ?? '', 10)
+    if (Number.isFinite(count)) entry.produceCount = count
+    if (produceInfo.attrs['UnicastPermitted'] === 'true') entry.produceUnicast = true
+  }
   const consumeInfo = tag.children.find(child => child.name === 'ConsumeInfo')
   if (consumeInfo !== undefined && 'attrs' in consumeInfo) {
     const producer = presentAttribute(consumeInfo, 'Producer')

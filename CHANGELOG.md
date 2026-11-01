@@ -677,6 +677,13 @@
   another controller is reading - previously the tool would have said nothing at all. Test covers a produced tag, a consumed tag and
   the listing row. 411 package tests.
 
+- **An alias tag now names its target, and a produced tag its consumer count.** Round 96 added the network role; the record was still partial in two
+  ways an engineer checks first. `L5xTag.aliasFor` carries `AliasFor` (so an alias row no longer looks like a tag of its own), and
+  `produceCount` / `produceUnicast` carry `ProduceInfo`. Verified on the real `Seco_Homogenizer` produced tag: `tagType: "Produced",
+  produceCount: 1, produceUnicast: true`, exposed by both `get_component` and the tag listing. The test covers an alias pointing at a
+  base tag, a produced tag with two consumers and unicast permitted, and the listing row. 412 package tests. Follow-up: AOI
+  `<Parameter TagType="Alias" AliasFor=...>` uses the same attribute, and the AOI model does not read it yet.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
