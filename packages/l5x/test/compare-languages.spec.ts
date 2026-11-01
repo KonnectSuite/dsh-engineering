@@ -698,5 +698,10 @@ describe('an AOI parameter as a symbol', () => {
     expect(Number(qualified.data?.total)).toBe(2)
     const trace = await l5x.call('trace_dependencies', { symbol: 'AOI_P::P', direction: 'upstream' })
     expect(trace.error).toBeUndefined()
+    // usage_map maps declared tags; an AOI member must be explained, not reported missing.
+    const usage = await l5x.call('usage_map', { tag: 'P', scope: 'AOI_P' })
+    expect(usage.error?.code).toBe('INVALID_ARGUMENT')
+    expect(String(usage.error?.message)).toContain('member of add-on instruction AOI_P')
+    expect(String(usage.error?.fix)).toContain('AOI_P::P')
   })
 })

@@ -843,6 +843,11 @@
   qualified as `FC_SFTY_SSOV::EnableIn`, and `trace_dependencies` resolves it. The resolution worked and was held by no test; one now pins plain, qualified and trace
   on a fixture whose AOI Logic reads and writes its own parameter. 434 package tests.
 
+- **`usage_map` now explains an AOI member instead of calling it missing.** Probing the tools that reach inside an add-on instruction: `search_logic` finds AOI logic
+  (matching `AOI::AOI_P Logic 0`), `find_references` and `trace_dependencies` resolve an AOI parameter - but `usage_map` answered `COMPONENT_NOT_FOUND` for a
+  parameter that plainly exists. It now refuses with `INVALID_ARGUMENT: P is a member of add-on instruction AOI_P; usage_map maps declared tags, not AOI internals.`
+  and points at `find_references` with `AOI_P::P`. The tool that cannot do the job now says so and names the tool that can. 434 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

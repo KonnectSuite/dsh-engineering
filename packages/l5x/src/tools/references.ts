@@ -291,6 +291,19 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
             declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
           }
         }
+      // An AOI parameter or local tag is a symbol, but usage_map maps declared tags.
+      const aoiOwner = declared === undefined
+        ? project.document.aois.find(aoi => aoi.name.toUpperCase() === scope.toUpperCase()
+          && [...aoi.parameters, ...aoi.localTags].some(member => String(member.name).toLowerCase() === tag.toLowerCase()))
+        : undefined
+      if (aoiOwner !== undefined) {
+        throw new L5xError(
+          'INVALID_ARGUMENT',
+          `${tag} is a member of add-on instruction ${aoiOwner.name}; usage_map maps declared tags, not AOI internals.`,
+          `Use find_references with symbol "${aoiOwner.name}::${tag}" to see where it is read and written.`,
+          [`${aoiOwner.name}::${tag}`],
+        )
+      }
       if (declared === undefined) {
         const declaredHere = project.document.tags
           .filter(entry => entry.scope.toLowerCase() === scope.toLowerCase())
