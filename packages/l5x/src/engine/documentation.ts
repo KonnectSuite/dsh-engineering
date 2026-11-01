@@ -272,6 +272,31 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
     }
     if (inFile > 0 || !headingWritten) files.set(part === 1 ? `rungs/${programName}.md` : `rungs/${programName}-${part}.md`, section)
   }
+  // An AOI's logic is where safety instructions often live; documenting programs only hid it.
+  if (options.programs === undefined) {
+    for (const aoi of document.aois) {
+      let section = `# ${aoi.name} - AOI routine documentation\n\n${aoi.description || 'No AOI description.'}\n`
+      let documented = 0
+      for (const routine of aoi.routines) {
+        if (routine.body.type !== 'RLL') {
+          section += `\n## ${routine.name}\n\nLanguage: ${routine.body.type}; read it with get_component kind="routine", scope="${aoi.name}".\n`
+          continue
+        }
+        section += `\n## ${routine.name}\n\n${routine.description || 'No routine description.'}\n`
+        for (const rung of routine.body.rungs) {
+          const instructions = [...instructionsOf(parseLadder(rung.text).nodes)].join(', ')
+          const tags = tagsOf(document, rung)
+          section += `\n### Rung ${rung.number}\n\n`
+          if (rung.comment !== undefined) section += `**Comment:** ${rung.comment.replaceAll('\n', '\n> ')}\n\n`
+          section += '\u0060\u0060\u0060\n' + rung.text + '\n\u0060\u0060\u0060\n\n'
+          section += `Instructions: ${instructions || 'none parsed'}.\n`
+          if (tags.length > 0) section += `Tags: ${tags.join(', ')}.\n`
+          documented += 1
+        }
+      }
+      if (documented > 0) files.set(`rungs/AOI-${aoi.name}.md`, section)
+    }
+  }
   return files
 }
 

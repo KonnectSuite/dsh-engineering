@@ -210,3 +210,33 @@ describe('documenting a safety project', () => {
     expect(all).toContain('| FC_SFTY_SSOV | 1.0 | yes | 1 | 0 |')
   })
 })
+
+/** An AOI whose Logic routine carries a ladder rung, so the bundle has something to document. */
+const DOC_AOI_LOGIC_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="DocAoiLogic" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/></Tags>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="AOI_Step" Class="Standard" Revision="1.0" ExecutePrescan="true" ExecutePostscan="false" ExecuteEnableInFalse="false">
+        <Parameters><Parameter Name="In" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+        <Routines>
+          <Routine Name="Logic" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Comment><![CDATA[AOI logic rung]]></Comment><Text><![CDATA[XIC(A)OTE(A);]]></Text></Rung></RLLContent></Routine>
+        </Routines>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('documenting an AOI routine', () => {
+  it('writes the AOI logic to its own rung file', async () => {
+    const l5x = harness(new Map([['dl.l5x', new TextEncoder().encode(DOC_AOI_LOGIC_L5X)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'dl.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('document_project', { output_root: 'docs-aoi', include: ['rungs'] })).error).toBeUndefined()
+    const entry = [...l5x.written.entries()].find(([key]) => String(key).endsWith('AOI-AOI_Step.md'))
+    expect(entry).toBeDefined()
+    const doc = String(entry?.[1] ?? '')
+    expect(doc).toContain('## Logic')
+    expect(doc).toContain('### Rung 0')
+    expect(doc).toContain('AOI logic rung')
+  })
+})

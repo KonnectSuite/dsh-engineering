@@ -814,6 +814,11 @@
   the whole table - controller, module revision, AOI parameter, tag radix/constant, UDT member, rung, ST, FBD and SFC diagrams - is held by tests. Alarms were also
   probed: every production export parses zero alarm declarations, so alarm comparison cannot be exercised from the corpus and remains fixture-covered. 431 package tests.
 
+- **An AOI's logic now appears in the handover bundle.** The bundle documented program rungs and, since round 121, listed AOIs with their routine counts - but never
+  rendered the routines themselves, so `FC_SFTY_SSOV`'s `EnableInFalse` (whose rungs comment "SAFETY SHUT OFF VALVE / CONTROL / On Enable False Scan")
+  was invisible. A rung request now also writes one file per AOI with RLL routines: `rungs/AOI-FC_SFTY_SSOV.md` documents the routines, comments, NeutralText,
+  instructions and tags, verified on the real export. The test pins the section, rung and comment. 431 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
