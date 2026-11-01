@@ -49,6 +49,11 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   const fill = instructionByName('FLL')?.operands.find(operand => operand.name === 'Dest')
   assert.equal(fill?.writable, true)
   assert.equal(fill?.arrayElement, true)
+  // BSL/BSR load their source bit from a BOOL tag, not a number.
+  for (const name of ['BSL', 'BSR']) {
+    const bit = instructionByName(name)?.operands.find(operand => operand.name === 'Source bit')
+    assert.equal(bit?.kind, 'BOOL', name)
+  }
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {

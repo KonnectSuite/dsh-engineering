@@ -1205,6 +1205,11 @@
 
 - **Generated client faces refreshed** after the FLL element change, so repository bytes match the rebuilt artifact.
 
+- **BSL and BSR load their source bit from a BOOL tag, not a number.** The vendor operand table says Source Bit is a BOOL tag; the catalogue had
+  `NUMBER`, so `BSL(Arr,Ctrl,0,10)` failed `INVALIDOPKIND` while `BSL(Arr,Ctrl,Bit,10)` with a BOOL tag built 0/0. Both slots are BOOL now,
+  tests hold the literal refusal and both composed rungs, and the dist smoke checks the built catalogue. `SQO(SeqArr,255,Dest,Ctrl,10,0)` also
+  built 0/0, confirming its existing shape. 493 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -163,8 +163,8 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'OR', category: 'Bit', summary: 'Bitwise OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
   { name: 'XOR', category: 'Bit', summary: 'Bitwise exclusive OR of two sources into the destination.', operands: [num('Source A'), num('Source B'), numW('Destination')] },
   { name: 'NOT', category: 'Bit', summary: 'Bitwise complement of the source into the destination.', operands: [num('Source'), numW('Destination')] },
-  { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, { name: 'Control', kind: 'ANY', writable: true }, num('Source bit'), num('Length')] },
-  { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, { name: 'Control', kind: 'ANY', writable: true }, num('Source bit'), num('Length')] },
+  { name: 'BSL', category: 'Bit', summary: 'Bit shift left through an array.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, { name: 'Control', kind: 'ANY', writable: true }, bool('Source bit'), num('Length')] },
+  { name: 'BSR', category: 'Bit', summary: 'Bit shift right through an array.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, { name: 'Control', kind: 'ANY', writable: true }, bool('Source bit'), num('Length')] },
 
   // String. Operand order is the order the vendor's own instruction metadata uses, so a
   // composed rung reads the way an export from Studio does.

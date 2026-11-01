@@ -608,6 +608,30 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('a bit shift', () => {
+  it('loads its source bit from a BOOL tag', async () => {
+    // The vendor table says Source Bit is a BOOL tag; the catalogue had NUMBER, so BSL(...,0,...)
+    // failed INVALIDOPKIND. BSL(Arr,Ctrl,Bit,10) with a BOOL tag built 0/0.
+    const project = l5x({
+      name: 'BitShiftGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Ctrl', 'CONTROL') + tag('Bit', 'BOOL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['bsl.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'bsl.l5x' })).error).toBeUndefined()
+    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', '0', '10'] }] }) })
+    expect(literal.error?.code).toBe('INVALID_OPERAND')
+    expect(literal.error?.message).toContain('BOOL tag')
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('BSL(Arr,Ctrl,Bit,10);')
+    const right = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSR', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
+    expect(right.error).toBeUndefined()
+    expect((right.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('BSR(Arr,Ctrl,Bit,10);')
+  })
+})
+
 describe('an infinite or NaN check', () => {
   it('takes a REAL tag and cannot end a rung', async () => {
     // ISINF(R)OTE(B) and ISNAN(R)OTE(B) built 0/0; ISINF(D) with a DINT failed INVALIDOPTYPE.
