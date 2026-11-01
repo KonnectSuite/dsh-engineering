@@ -323,3 +323,20 @@ describe('task class', () => {
     expect(rows.find(row => row.name === 'MainTask')?.safety).toBe(false)
   })
 })
+
+
+/** One standard program and one declared safety program. */
+const PROGRAM_CLASS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"ProgramClass\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags/>\n    <Programs>\n      <Program Name=\"Standard\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program>\n      <Program Name=\"Guard\" MainRoutineName=\"R\" Class=\"Safety\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Standard\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('program class', () => {
+  it('says which program is a safety program', async () => {
+    const l5x = harness(new Map([['pc.l5x', new TextEncoder().encode(PROGRAM_CLASS_L5X)]]))
+    await l5x.call('open_project', { path: 'pc.l5x' })
+    const guard = await l5x.call('get_component', { kind: 'program', name: 'Guard' })
+    expect(guard.data?.component?.safety).toBe(true)
+    const listed = await l5x.call('list_components', { kind: 'program' })
+    const rows = (listed.data?.rows ?? []) as { name: string; safety?: boolean }[]
+    expect(rows.find(row => row.name === 'Guard')?.safety).toBe(true)
+    expect(rows.find(row => row.name === 'Standard')?.safety).toBe(false)
+  })
+})

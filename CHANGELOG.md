@@ -724,6 +724,12 @@
   see that `SafetyTask` is safety without inferring it from the name. Rows now carry `safety: true|false`; verified on `Seco_Homogenizer`,
   where `SafetyTask` reports true and the three standard tasks false, and a test pins reader and listing together. 419 package tests.
 
+- **The program listing says which program is a safety program.** Round 106 fixed the task row; the program row had the same omission - `get_component` returned
+  the declared `safety` flag, but `list_components kind:"program"` showed only name, main routine and description, so the two guard programs looked ordinary
+  in the list an engineer scans first. Rows now carry `safety: true|false`; verified on `Seco_Homogenizer`, where the list names
+  **`COMBUSTION_SAFETY` and `MOTION_SAFETY`** - exactly the programs `SafetyTask` schedules - and the other 21 report false. A test pins the reader and the
+  listing for one declared safety program and one standard program. 420 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -185,7 +185,7 @@ function countsOf(document: L5xDocument, protectedRoutines = 0): Readonly<Record
 /** One kind's rows, filtered and in export order. */
 function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined, filter: string): readonly ComponentRow[] {
   const rows: readonly ComponentRow[] = kind === 'program'
-    ? document.programs.map(program => ({ name: program.name, mainRoutine: program.mainRoutine, description: program.description }))
+    ? document.programs.map(program => ({ name: program.name, mainRoutine: program.mainRoutine, description: program.description, safety: program.safety === true }))
     : kind === 'task'
       ? document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs, safety: task.safety === true }))
       : kind === 'tag'
