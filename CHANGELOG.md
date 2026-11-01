@@ -1308,6 +1308,10 @@
 
 - **Generated client faces refreshed** after the PID master-loop restriction, so repository bytes match the rebuilt artifact.
 
+- **The skill names the enforced slot metadata.** Its Compose section now says `list_instructions` flags are enforced
+  (array_tag, no_array, minimum/maximum, types for MESSAGE, alarms, PID and CONTROL), so an agent reads the data instead of discovering the rule at
+  build time. Three verbose sentences were compressed to make room; body 7,966 / 8,000. 501 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

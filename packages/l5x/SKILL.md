@@ -64,8 +64,7 @@ truth. Never write to `<workspace>/_backups`.
 ## Revisions
 
 - Reading accepts revision 19+; outside the observed matrix reports `verification: unverified`.
-- Reading never needs Studio. The `l5x-studio` entry adds offline import and build, and controller tools that run
-  under per-call approval.
+- Reading never needs Studio; `l5x-studio` adds offline build and approval-gated controller tools.
 
 ## Studio
 
@@ -85,7 +84,8 @@ truth. Never write to `<workspace>/_backups`.
 
 ## Compose
 
-- `list_instructions` lists slots and kinds; read it first.
+- `list_instructions` lists slots and kinds; read it first. Its flags are enforced: array_tag, no_array,
+  minimum/maximum, types (MESSAGE, alarms, PID, CONTROL).
 - `compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
   `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
   `ton_delay` enable/timer/preset_ms; `interlock` conditions (array) and output;
@@ -114,13 +114,12 @@ truth. Never write to `<workspace>/_backups`.
 - `FAL` and `FSC` are **not modelled**: eight shapes were refused by the compiler, so writing them is a hand job
   until a real export shows the accepted form. The composer answers `INSTRUCTION_NOT_MODELLED` rather than guessing.
 - `JSR` takes the routine **and** a return parameter: `JSR(Sub,0)` builds, and `JSR(Sub)` fails with
-  `RxCMP_E_AUDIT_INVALIDNOOFOPS`. A production export writes it the same way.
+  `RxCMP_E_AUDIT_INVALIDNOOFOPS`.
 - A rung whose only instruction is `SBR()` is refused (`LgxSrv_E_FATAL_ERROR`; `AUDIT_OUTPUTS` beside `RET`). Write
   the body without a header rung, or declare parameters.
 - Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
   export, `verify_offline_l5x` builds it.
-- An aborted import on an export that imported before means the controller **name is still registered** with the
-  SDK; the same bytes import under a different name.
+- If a previously imported export now aborts, the controller **name is registered** with the SDK; import the same bytes under a new name.
 
 ## Documentation
 
