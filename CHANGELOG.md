@@ -1410,6 +1410,10 @@
   flattened. Each path now gets a stub to one vertical join bar, so the merge is visible; the layout note is empty for branches. Preview tests assert both
   paths, the join colour and no flatten note. 521 package tests.
 
+- **A mixed-language program is drawn and refused correctly.** The tests covered ST and RLL diagram behavior; FBD and SFC were untested. A test now builds a
+  program with one RLL routine plus one FBD and one SFC routine, asserts `l5x_routine_diagram` refuses each non-ladder routine with its language named,
+  and asserts `l5x_diagram` draws only the single ladder rung. 523 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

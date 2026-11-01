@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { renderLadderSvg } from '../src/engine/render-ladder.ts'
 import { fixtureBytes, harness } from './harness.ts'
+import { l5x, program, rllRoutine, tag, task } from './l5x-build.ts'
 
 /** A harness with the read entry mounted, which owns the preview tool. */
 function preview() {
@@ -235,5 +236,34 @@ describe('l5x_routine_diagram', () => {
     const l5x = await opened()
     const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram' })
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+})
+
+describe('non-ladder routines', () => {
+  const fbd = '<Routine Name="Fb" Type="FBD"><FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape"/></Routine>'
+  const sfc = '<Routine Name="Sf" Type="SFC"><SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape"/></Routine>'
+  const project = (): string => l5x({
+    name: 'MixedLang',
+    tags: tag('Start') + tag('Run'),
+    programs: program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(Start)OTE(Run);' }]) + fbd + sfc),
+    tasks: task('MainTask', ['Main']),
+  })
+
+  it('refuses an FBD and an SFC routine, naming the language', async () => {
+    const l5xTool = harness(new Map([['mixed.l5x', new TextEncoder().encode(project())]]))
+    expect((await l5xTool.call('open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
+    for (const [routine, language] of [['Fb', 'FBD'], ['Sf', 'SFC']] as const) {
+      const result = await l5xTool.call('l5x_routine_diagram', { program: 'Main', routine })
+      expect(result.error?.code, routine).toBe('INVALID_ARGUMENT')
+      expect(result.error?.message, routine).toContain(language)
+    }
+  })
+
+  it('draws only the ladder rungs of a mixed-language program', async () => {
+    const l5xTool = harness(new Map([['mixed.l5x', new TextEncoder().encode(project())]]))
+    expect((await l5xTool.call('open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
+    const diagram = await l5xTool.call('l5x_diagram', { program: 'Main' })
+    expect(diagram.error).toBeUndefined()
+    expect(diagram.data?.rungs).toBe(1)
   })
 })
