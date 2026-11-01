@@ -165,3 +165,24 @@ describe('a sequential function chart', () => {
     expect(fields).toContain('Line A2')
   })
 })
+
+
+/** One produced tag and one consumed tag. */
+const PROD_CONS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"ProdCons\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags>\n      <Tag Name=\"FROM_FURN\" TagType=\"Produced\" DataType=\"DINT\"><ProduceInfo ProduceCount=\"1\" ProgrammaticallySendEventTrigger=\"false\"/></Tag>\n      <Tag Name=\"CCI_Nutro_dints\" TagType=\"Consumed\" DataType=\"DINT\"><ConsumeInfo Producer=\"CCI_Ethernet_Port_Controller\" RemoteTag=\"CCI_Nutro_dints\" RemoteInstance=\"0\" RPI=\"20\" Unicast=\"true\"/></Tag>\n      <Tag Name=\"Local\" TagType=\"Base\" DataType=\"BOOL\"/>\n    </Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('produced and consumed tags', () => {
+  it('names the network role and the producer controller', async () => {
+    const l5x = harness(new Map([['pc.l5x', new TextEncoder().encode(PROD_CONS_L5X)]]))
+    await l5x.call('open_project', { path: 'pc.l5x' })
+    const produced = await l5x.call('get_component', { kind: 'tag', name: 'FROM_FURN' })
+    expect(produced.data?.component?.tagType).toBe('Produced')
+    const consumed = await l5x.call('get_component', { kind: 'tag', name: 'CCI_Nutro_dints' })
+    expect(consumed.data?.component?.tagType).toBe('Consumed')
+    expect(consumed.data?.component?.consumerOf).toBe('CCI_Ethernet_Port_Controller')
+    expect(consumed.data?.component?.remoteTag).toBe('CCI_Nutro_dints')
+    const listed = await l5x.call('list_components', { kind: 'tag', filter: 'CCI_Nutro' })
+    const row = (listed.data?.rows ?? [])[0] as { tagType?: string; consumerOf?: string } | undefined
+    expect(row?.tagType).toBe('Consumed')
+    expect(row?.consumerOf).toBe('CCI_Ethernet_Port_Controller')
+  })
+})

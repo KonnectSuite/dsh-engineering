@@ -112,6 +112,9 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
     radix?: string
     constant?: boolean
     externalAccess?: string
+    tagType?: string
+    consumerOf?: string
+    remoteTag?: string
     dimensions?: readonly number[]
   } = {
     name: optionalAttribute(tag, 'Name', ''),
@@ -125,6 +128,16 @@ export function parseTag(tag: XmlElement, scope: string): L5xTag {
   if (tag.attrs['Constant'] === 'true') entry.constant = true
   const externalAccess = presentAttribute(tag, 'ExternalAccess')
   if (externalAccess !== undefined) entry.externalAccess = externalAccess
+  const tagType = presentAttribute(tag, 'TagType')
+  if (tagType !== undefined) entry.tagType = tagType
+  // A produced or consumed tag is a network fact an engineer needs before changing it.
+  const consumeInfo = tag.children.find(child => child.name === 'ConsumeInfo')
+  if (consumeInfo !== undefined && 'attrs' in consumeInfo) {
+    const producer = presentAttribute(consumeInfo, 'Producer')
+    if (producer !== undefined) entry.consumerOf = producer
+    const remoteTag = presentAttribute(consumeInfo, 'RemoteTag')
+    if (remoteTag !== undefined) entry.remoteTag = remoteTag
+  }
   const dimensions = presentAttribute(tag, 'Dimensions')
   if (dimensions !== undefined) {
     const parsed = dimensions.trim().split(/\s+/u).map(Number).filter(value => Number.isFinite(value) && value > 0)

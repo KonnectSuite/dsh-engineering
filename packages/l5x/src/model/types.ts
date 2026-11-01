@@ -26,6 +26,12 @@ export interface L5xTag {
   readonly constant?: boolean
   /** External-access setting, when the export declares one. */
   readonly externalAccess?: string
+  /** Declared tag type as written, e.g. Base, Alias, Produced, Consumed. */
+  readonly tagType?: string
+  /** For a consumed tag, the producer controller named in ConsumeInfo. */
+  readonly consumerOf?: string
+  /** For a consumed tag, the remote tag name in ConsumeInfo. */
+  readonly remoteTag?: string
   /** Array dimensions, when the export declares a Dimensions attribute. */
   readonly dimensions?: readonly number[]
 }

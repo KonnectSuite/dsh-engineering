@@ -669,6 +669,14 @@
   that vanished, each rendered as `kind#id operand text`. Ordinary fields render compactly too, so a nested value no longer degenerates to
   `[object Object]`. The test that pinned the SFC diff now asserts both conditions by name. 410 package tests.
 
+- **Produced and consumed tags now say so, and a consumed tag names the controller it comes from.** The tag model carried name, type, scope,
+  radix, constant and external access - nothing about the network. The production exports are full of it: `Seco_Homogenizer` has 5
+  produced and 83 consumed tags, `GrosfillexLine3` 1 and 1. `get_component` and `list_components` now report `tagType` (Base, Alias,
+  Produced, Consumed), and for a consumed tag `consumerOf` and `remoteTag` from `ConsumeInfo`: the real `CCI_Nutro_dints` answers
+  `"tagType":"Consumed","consumerOf":"CCI_Ethernet_Port_Controller"`. That is the fact an engineer needs before changing a tag that
+  another controller is reading - previously the tool would have said nothing at all. Test covers a produced tag, a consumed tag and
+  the listing row. 411 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
