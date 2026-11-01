@@ -251,6 +251,16 @@
   pass - yet our own composer emits `SBR();` and a test pins it. One data point is not a rule, so it is recorded as a
   question to settle with a dedicated probe rather than encoded on a guess.
 
+- **A rung whose only instruction is `SBR()` is now refused, because a build proves Studio will not take it.** The previous
+  round left that observation open with one data point; this round settled it with five subroutine shapes. `SBR();` alone
+  does not merely fail to compile - the SDK itself reports `LgxSrv_E_FATAL_ERROR` - and `SBR();` followed by `RET();`
+  answers `AUDIT_OUTPUTS`, because **SBR does not drive the right power rail**. `RET();` alone builds, so the header is
+  the problem, not the return. The composer emitted `SBR();` and a test pinned it, so a caller following our own catalogue
+  would have produced a routine Studio cannot import; `compose_rung` now refuses it with the failure modes named and two
+  ways forward (write the body without a header rung, or declare parameters). `SKILL.md` carries the rule too, and the
+  test that pinned the old behavior now asserts the refusal. This is the tenth defect found by building rather than
+  reasoning, and the first in program control.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

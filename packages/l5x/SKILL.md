@@ -99,6 +99,8 @@ truth. Never write to `<workspace>/_backups`.
   `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
 - Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or
   Studio answers `AUDIT_OUTPUTS`.
+- A rung whose only instruction is `SBR()` is refused, because a build fails it: `LgxSrv_E_FATAL_ERROR` alone, and
+  `AUDIT_OUTPUTS` beside a `RET` rung. Write the subroutine body without a header rung, or declare parameters.
 - Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
   export, `verify_offline_l5x` builds it.
 - An aborted import on an export that imported before means the controller **name is still registered** with the

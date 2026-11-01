@@ -173,13 +173,14 @@ describe('composing with a newly catalogued instruction', () => {
     }
   })
 
-  it('composes a subroutine label with no operands', async () => {
+  it('refuses a rung whose only instruction is SBR', async () => {
+    // Build evidence: SBR(); alone fails inside the SDK (LgxSrv_E_FATAL_ERROR), and beside a RET rung
+    // the compiler answers AUDIT_OUTPUTS because SBR does not drive the right rail.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
     expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
     const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SBR' }] }) })
-    expect(result.error).toBeUndefined()
-    const rungs = result.data?.rungs as { neutral_text: string }[]
-    expect(rungs[0]?.neutral_text).toBe('SBR();')
+    expect(result.error?.code).toBe('INVALID_LADDER_SPEC')
+    expect(String(result.error?.message)).toContain('SBR')
   })
 })
 

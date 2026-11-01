@@ -407,6 +407,16 @@ export function composeRung(project: ProjectSnapshot, spec: LadderNodeSpec): Com
   const counter = { instructions: 0 }
   const grounds = new Set<'catalog' | 'aoi'>()
   const text = `${composeNode(project, spec, operands, counter, 0, grounds)};`
+  // A build proved a bare SBR rung is not accepted: alone it fails inside the SDK
+  // (LgxSrv_E_FATAL_ERROR), and beside RET the compiler answers AUDIT_OUTPUTS because SBR does not
+  // drive the right rail. Refuse it here with what to do instead.
+  if (counter.instructions === 1 && /^SBR\(\s*\);/u.test(text.trim())) {
+    throw new L5xError(
+      'INVALID_LADDER_SPEC',
+      'A rung whose only instruction is SBR() is not buildable: Studio fails it with LgxSrv_E_FATAL_ERROR, or with AUDIT_OUTPUTS when a RET rung follows.',
+      'Write the subroutine body without a header rung, or declare parameters with SBR(params) and pass the same parameters from JSR.',
+    )
+  }
   if (counter.instructions === 0) throw new L5xError('INVALID_LADDER_SPEC', 'The specification contains no instruction.', 'Give the rung at least one instruction.')
   return verify(project, text, operands, counter.instructions, grounds)
 }
