@@ -146,6 +146,13 @@
   `packages/l5x/test/documentation.spec.ts` asserts all three: the ST routine's source, an FBD sheet with its `IRef` and
   `Wire` rows, and an SFC sheet.
 
+- **`compare_projects` is tested on the languages that are not ladder.** It is the tool a reviewer uses to judge an
+  edit, and a comparison that answers "no changes" while a Structured Text body or a diagram changed would be worse
+  than one that fails. Probing confirmed it does see them — component `structured_text` for an ST body, `diagram` for a
+  function block operand and for a chart step — and nothing held it, so
+  `packages/l5x/test/compare-languages.spec.ts` now covers an ST body change, an FBD operand change, an SFC step
+  change, a rung change and a whitespace-only edit that must report nothing.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -157,7 +164,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-288 package tests and 70 bundle tests pass.
+293 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
