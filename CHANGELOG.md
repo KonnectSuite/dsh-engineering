@@ -292,6 +292,16 @@
   given the help calls them pseudo-operands. Shipping an order change that agrees with the vendor documentation while the
   build is still red is a deliberate, stated risk - the alternative is keeping an order the documentation contradicts.
 
+- **`FAL` and `FSC` are now refused instead of guessed.** Eight shapes were tried against a real build - destination as an
+  element and as a bare tag, `ctl.POS` in the expression, `ctl.LEN`/`ctl.POS` for length and position, and mode `0`, `1`
+  and `ALL` - and every one answered `RxCMP_E_AUDIT_INVALIDOPKIND` or crashed the compiler outright
+  (`LgxSrv_E_UNHANDLED_EXCEPTION`). A catalogue entry that emits rungs Studio rejects is worse than one that admits it
+  does not know, so both are marked **not modelled**: `list_instructions` still names them, and `compose_rung` answers
+  `INSTRUCTION_NOT_MODELLED` with the history in the message instead of a plausible-looking rung. That also reverts the
+  order change from the previous round, which was help-verified but never build-verified - right to try, wrong to keep
+  once eight probes failed. The test that composed a `FAL` rung now asserts the refusal, and `SKILL.md` says to write
+  these two by hand until a real export shows the accepted form.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -117,7 +117,7 @@ describe('the listing names the kinds', () => {
 describe('the operand counts the vendor fields give', () => {
   it('catalogues the full operand list, not the short one the compact table had', () => {
     const expected: readonly (readonly [string, number])[] = [
-      ['MVM', 3], ['GSV', 4], ['SSV', 4], ['SQO', 6], ['SQL', 5], ['FAL', 6], ['FSC', 5], ['BSL', 4], ['BSR', 4],
+      ['MVM', 3], ['GSV', 4], ['SSV', 4], ['SQO', 6], ['SQL', 5], ['BSL', 4], ['BSR', 4],
     ]
     for (const [name, count] of expected) {
       expect(instructionByName(name)?.operands.length, name).toBe(count)
@@ -142,13 +142,17 @@ describe('the operand counts the vendor fields give', () => {
     expect(text(result.data)).toBe('SQO(FaultCount,5,FaultCount,CycleCounter,10,0);')
   })
 
-  it('composes a file arithmetic rung with an expression operand', async () => {
+  it('refuses FAL, which is not modelled', async () => {
+    // Eight shapes were tried against a real build: destination as element and as bare tag, ctl.POS in
+    // the expression, ctl.LEN/ctl.POS for length and position, and mode 0/1/ALL. Every one answered
+    // RxCMP_E_AUDIT_INVALIDOPKIND, or crashed the compiler. Refusing beats emitting a rung Studio
+    // rejects, so the entry is marked not modelled until a real export shows the accepted form.
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FAL', args: ['CycleCounter', '10', '0', '1', 'LineSpeed + 1.0', 'FaultCount'] }] }),
     })
-    expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('FAL(CycleCounter,10,0,1,LineSpeed + 1.0,FaultCount);')
+    expect(result.error?.code).toBe('INSTRUCTION_NOT_MODELLED')
+    expect(String(result.error?.message)).toContain('FAL')
   })
 })
 

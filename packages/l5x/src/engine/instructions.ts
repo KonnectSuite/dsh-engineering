@@ -181,8 +181,8 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SSV', category: 'Communications', summary: 'Set system value: write the source into one attribute of a class instance.', operands: [keyword('Class'), keyword('Instance'), keyword('Attribute'), any('Source')] },
   { name: 'SQO', category: 'Sequencer', summary: 'Sequencer output: drive the destination from one masked step of the array.', operands: [any('Array'), num('Mask'), num('Dest'), any('Control'), num('Length'), num('Position')] },
   { name: 'SQL', category: 'Sequencer', summary: 'Sequencer load: store the source into the current step of the array.', operands: [any('Array'), num('Source'), any('Control'), num('Length'), num('Position')] },
-  { name: 'FAL', category: 'File and array', summary: 'File arithmetic and logic: evaluate the expression across Length elements and store it in the destination. Mode is a number from 1 (0 is out of range).', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), expression(), any('Destination')] },
-  { name: 'FSC', category: 'File and array', summary: 'File search and compare: evaluate the expression across Length elements and report the position. Mode is a number from 1 (0 is out of range).', operands: [any('Control'), num('Length'), num('Position'), num('Mode'), expression()] },
+  { name: 'FAL', category: 'File and array', summary: 'File arithmetic and logic. Not modelled: eight operand shapes were refused by the compiler, so write this one by hand until a real export shows the accepted form.', notModelled: true, operands: [] },
+  { name: 'FSC', category: 'File and array', summary: 'File search and compare. Not modelled: six operand shapes were refused or crashed the compiler, so write this one by hand until a real export shows the accepted form.', notModelled: true, operands: [] },
 
   // Operand lists the vendor fields give in full. One-shot storage/output, a masked
   // compare and the bit-distribute and average forms each had too few operands, which the
