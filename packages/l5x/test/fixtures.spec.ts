@@ -783,7 +783,7 @@ describe('a bit shift', () => {
     // failed INVALIDOPKIND. BSL(Arr,Ctrl,Bit,10) with a BOOL tag built 0/0.
     const project = l5x({
       name: 'BitShiftGuard',
-      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Ctrl', 'CONTROL') + tag('Bit', 'BOOL'),
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Ctrl', 'CONTROL') + tag('Ctl2', 'COUNTER') + tag('Bit', 'BOOL'),
       programs: program('Main', rllRoutine('MainRoutine', [])),
       tasks: task('MainTask', ['Main']),
     })
@@ -798,6 +798,12 @@ describe('a bit shift', () => {
     const right = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSR', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
     expect(right.error).toBeUndefined()
     expect((right.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('BSR(Arr,Ctrl,Bit,10);')
+    // BSL(Arr,Ctl2,Bit,8) with a COUNTER control failed Studio with INVALIDOPTYPE.
+    for (const instr of ['BSL', 'BSR']) {
+      const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr', 'Ctl2', 'Bit', '10'] }] }) })
+      expect(wrong.error?.code).toBe('INVALID_OPERAND')
+      expect(wrong.error?.message).toContain('must be CONTROL')
+    }
   })
 })
 

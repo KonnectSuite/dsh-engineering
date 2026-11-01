@@ -1286,6 +1286,10 @@
 
 - **Generated client faces refreshed** after the SQO/staged-dimension changes, so repository bytes match the rebuilt artifact.
 
+- **The bit shifts take a CONTROL structure.** BSL(Arr,Ctl2,Bit,8) with a COUNTER control failed Studio with `INVALIDOPTYPE`;
+  `BSL(Arr,Ctrl,Bit,8)` built 0/0. BSL and BSR Control slots now accept CONTROL only; the existing bit-shift test holds both refusals alongside the
+  valid rungs, and the dist smoke checks the built catalogue. 500 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
