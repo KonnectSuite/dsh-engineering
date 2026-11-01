@@ -1162,6 +1162,11 @@
   goes from Input to InOut (component `aoi`, with before and after parameter lists), but no test covered it. The test now pins that, so a future
   normalisation change cannot quietly call an incompatible AOI edit "no changes". 488 package tests.
 
+- **Every destination slot is now marked writable, not only those named Destination.** The first pass covered 15 `Destination` slots; the audit found the
+  `Dest` slots of `SWPB`, `STOD`, `MVM`, `SQO`, `OSR/OSF`, `BTD` (Dest and Dest bit), the string `Dest` slots, PID's Control variable and the serial
+  Destination unmarked. Studio refused `SWPB(5,0,5)` with `RxCMP_E_AUDIT_INVALIDOPKIND`, so the composer now refuses a literal in all of them. Tests hold
+  SWPB and MVM; the dist smoke asserts the built catalogue carries both. 490 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

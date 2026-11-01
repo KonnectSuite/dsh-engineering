@@ -561,6 +561,32 @@ describe('an add-on instruction call', () => {
   })
 })
 
+describe('a destination slot named Dest', () => {
+  it('refuses a literal and accepts a tag', async () => {
+    // SWPB(5,0,5) failed Studio with RxCMP_E_AUDIT_INVALIDOPKIND; the Destination slots of these
+    // instructions are named Dest, not Destination, and were missed by the first guard pass.
+    const project = l5x({
+      name: 'DestGuard',
+      tags: tag('D', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['dest.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'dest.l5x' })).error).toBeUndefined()
+    const swpbBad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', '5'] }] }) })
+    expect(swpbBad.error?.code).toBe('INVALID_OPERAND')
+    expect(swpbBad.error?.message).toContain('writable dest')
+    const swpbGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', 'D'] }] }) })
+    expect(swpbGood.error).toBeUndefined()
+    expect((swpbGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SWPB(5,0,D);')
+    const mvmBad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', '5'] }] }) })
+    expect(mvmBad.error?.code).toBe('INVALID_OPERAND')
+    expect(mvmBad.error?.message).toContain('writable dest')
+    const mvmGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', 'D'] }] }) })
+    expect(mvmGood.error).toBeUndefined()
+    expect((mvmGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MVM(1,255,D);')
+  })
+})
 describe('an AOI structure parameter', () => {
   it('requires a tag of the parameter type', async () => {
     // Studio refused a BOOL tag where MAFR_Yaskawa's InOut Axis needs a Yaskawa_EIP_Servo with
