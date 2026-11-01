@@ -1022,6 +1022,13 @@
   a real instruction with no logic. The summary now appends `definition encrypted: its routines are not readable`, matching the AOI flag from round 164. Verified on
   `Seco_Homogenizer` and pinned with the builder's `encodedAoi` fixture. 456 package tests.
 
+- **Built-in data types are now readable, not just counted.** A project with no user-defined types (Showcase2) reported
+  `0 udts, plus 266 vendor-owned not listed` - honest, but the 266 product types were readable nowhere, and `get_component` answered
+  `PROTECTED_TARGET`. The model now keeps `vendorUdts`, `list_components kind:"udt"` takes `include_vendor: true`, and `get_component` returns a
+  product type with `vendorOwned: true`: `ALARM_ANALOG` reads back with **123 members**. Editing them is still refused. The summary no longer
+  contradicts the listing (`including 266 vendor-owned (not editable)`). Verified on Showcase2's SDK export; tests cover read, listing and the
+  staging refusal. 456 package tests, docs regenerated for the new parameter.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

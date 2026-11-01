@@ -61,6 +61,7 @@ List one component kind in the open project, paginated. Use it to find the exact
 | `filter` | string | no | Case-insensitive substring matched against the component name. |
 | `offset` | integer | no | Zero-based index of the first row to return. |
 | `limit` | integer | no | Maximum rows to return. |
+| `include_vendor` | value | no | Include vendor and product-defined data types in a udt listing: true or false. Default false - they are counted in the summary but not listed. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 
 #### `get_component`

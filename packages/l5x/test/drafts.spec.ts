@@ -383,11 +383,16 @@ describe('editing a data type', () => {
     expect(member.error?.code).toBe('PROTECTED_TARGET')
     const description = await l5x.call('draft_udt_description', { udt: 'STRING_5', description: 'x' })
     expect(description.error?.code).toBe('PROTECTED_TARGET')
-    // Reader and listing must agree: the type exists and is vendor-owned.
+    // Reader and listing must agree: the type exists, is readable, and is vendor-owned.
     const read = await l5x.call('get_component', { kind: 'udt', name: 'STRING_5' })
-    expect(read.error?.code).toBe('PROTECTED_TARGET')
+    expect(read.error).toBeUndefined()
+    expect((read.data?.component as { vendorOwned?: boolean } | undefined)?.vendorOwned).toBe(true)
     const listed = await l5x.call('list_components', { kind: 'udt' })
     expect(String(listed.summary)).toContain('1 vendor-owned not listed')
+    const withVendor = await l5x.call('list_components', { kind: 'udt', include_vendor: true })
+    expect(String(withVendor.summary)).toContain('including 1 vendor-owned (not editable)')
+    const vendorRows = (withVendor.data?.rows ?? []) as { name: string; vendorOwned?: boolean }[]
+    expect(vendorRows.some(row => row.name === 'STRING_5' && row.vendorOwned === true)).toBe(true)
   })
 
   it('still stages an edit to a user type', async () => {

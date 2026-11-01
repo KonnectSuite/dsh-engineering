@@ -61,6 +61,15 @@ export function buildUdts(controller: XmlElement): readonly L5xUdt[] {
   }))
 }
 
+/** Every data type the export declares that is NOT user-defined: product and vendor types. */
+export function buildVendorUdts(controller: XmlElement): readonly L5xUdt[] {
+  const dataTypes = firstChild(controller, 'DataTypes')
+  if (dataTypes === undefined) return []
+  return elementChildren(dataTypes, 'DataType')
+    .filter(type => !isUserType(type))
+    .map(type => ({ name: optionalAttribute(type, 'Name', ''), description: descriptionOf(type), members: udtMembers(type) }))
+}
+
 /** Whether the export marks one data type as written by the project. */
 function isUserType(type: XmlElement): boolean {
   const declared = type.attrs['Class']

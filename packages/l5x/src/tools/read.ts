@@ -13,7 +13,7 @@ import type { L5xDocument, L5xTag } from '../model/index.ts'
 import { getAoi, getRoutine, getUdt, listAois, listModules, listRoutines, listTags } from '../model/index.ts'
 import { L5xError } from '../core/errors.ts'
 import { success, type NextStep } from '../core/result.ts'
-import { choice, integer, object, string } from '../core/params.ts'
+import { choice, integer, object, scalar, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import type { ProjectSession } from '../session.ts'
 import { COVERAGE, PROJECT_ID, integerArg, optionalString, requiredString, tool } from './common.ts'
@@ -111,6 +111,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         filter: string('Case-insensitive substring matched against the component name.'),
         offset: integer('Zero-based index of the first row to return.', { minimum: 0, default: 0 }),
         limit: integer('Maximum rows to return.', { minimum: 1, maximum: 200, default: 50 }),
+        include_vendor: scalar('Include vendor and product-defined data types in a udt listing: true or false. Default false - they are counted in the summary but not listed.'),
         project_id: PROJECT_ID,
       }, ['kind']),
       async run(args, exec) {
@@ -119,10 +120,17 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         const filter = optionalString(args, 'filter') ?? ''
         const offset = integerArg(args, 'offset', 0)
         const limit = Math.min(Math.max(integerArg(args, 'limit', 50), 1), 200)
-        const rows = selectRows(project.document, kind, optionalString(args, 'scope'), filter)
+        const userRows = selectRows(project.document, kind, optionalString(args, 'scope'), filter)
+        const includeVendor = args.include_vendor === true && kind === 'udt'
+        const vendorRows = includeVendor
+          ? project.document.vendorUdts
+            .filter(entry => filter === '' || entry.name.toLowerCase().includes(filter.toLowerCase()))
+            .map(entry => ({ name: entry.name, members: entry.members.length, description: entry.description, vendorOwned: true }))
+          : []
+        const rows = [...userRows, ...vendorRows] as readonly ComponentRow[]
         const page = rows.slice(offset, offset + limit)
         return success(
-          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}${kind !== 'udt' ? '' : (project.document.vendorTypes.length === 0 ? '' : `, plus ${project.document.vendorTypes.length} vendor-owned not listed`)}${kind !== 'routine' ? '' : (() => { const protectedCount = project.document.protectedRoutines.filter(entry => optionalString(args, 'scope') === undefined || entry.program === optionalString(args, 'scope')).length; return protectedCount === 0 ? '' : `, ${protectedCount} source-protected` })()}${kind !== 'routine' ? '' : (() => { const scopeName = optionalString(args, 'scope'); const instruction = scopeName === undefined ? undefined : project.document.aois.find(entry => entry.name.toUpperCase() === scopeName.toUpperCase()); return instruction?.protected === true ? ', definition encrypted: its routines are not readable' : '' })()}.`,
+          `${rows.length} ${rows.length === 1 ? kind : `${kind}s`}${filter === '' ? '' : ` matching ${JSON.stringify(filter)}`}${kind !== 'udt' || project.document.vendorTypes.length === 0 ? '' : includeVendor ? `, including ${project.document.vendorTypes.length} vendor-owned (not editable)` : `, plus ${project.document.vendorTypes.length} vendor-owned not listed`}${kind !== 'routine' ? '' : (() => { const protectedCount = project.document.protectedRoutines.filter(entry => optionalString(args, 'scope') === undefined || entry.program === optionalString(args, 'scope')).length; return protectedCount === 0 ? '' : `, ${protectedCount} source-protected` })()}${kind !== 'routine' ? '' : (() => { const scopeName = optionalString(args, 'scope'); const instruction = scopeName === undefined ? undefined : project.document.aois.find(entry => entry.name.toUpperCase() === scopeName.toUpperCase()); return instruction?.protected === true ? ', definition encrypted: its routines are not readable' : '' })()}.`,
           { kind, total: rows.length, offset, limit, rows: page },
           pageNext(kind, page, offset, limit, rows.length, filter),
         )
@@ -257,16 +265,9 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
     const matches = getUdt(document, name)
     const first = matches[0]
     if (first === undefined) {
-      // A built-in family type exists in the export; "not found" is the wrong sentence.
-      const vendor = document.vendorTypes.find(entry => entry.toLowerCase() === name.toLowerCase())
-      if (vendor !== undefined) {
-        throw new L5xError(
-          'PROTECTED_TARGET',
-          `Data type ${vendor} is vendor-owned; this tool models user-defined types, not the built-in families.`,
-          'Read the vendor documentation for that family, or add a user-defined type.',
-          [vendor],
-        )
-      }
+      // A built-in family type is declared in the export; it can be read, just not edited.
+      const vendor = document.vendorUdts.find(entry => entry.name.toLowerCase() === name.toLowerCase())
+      if (vendor !== undefined) return { ...vendor, vendorOwned: true }
       throw notFound(kind, name, document.udts.map(udt => udt.name))
     }
     return first

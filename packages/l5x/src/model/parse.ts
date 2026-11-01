@@ -13,7 +13,7 @@ import { controllerElement, descriptionOf, programElements, L5X_ROOT_TAG } from 
 import { documentRoot, elementChildren, firstChild, optionalAttribute, parseXml, type XmlElement } from './xml.ts'
 import { buildRoutines } from './routines.ts'
 import { buildTags } from './tags.ts'
-import { buildUdts, vendorTypeNames } from './udts.ts'
+import { buildUdts, buildVendorUdts, vendorTypeNames } from './udts.ts'
 import { buildAois } from './aois.ts'
 import { buildModules } from './modules.ts'
 
@@ -41,6 +41,7 @@ export function loadL5x(xml: string): L5xDocument {
     routines: buildRoutines(controller),
     tags: buildTags(controller),
     udts: buildUdts(controller),
+    vendorUdts: buildVendorUdts(controller),
   vendorTypes: vendorTypeNames(controller),
   protectedRoutines: protectedRoutineNames(controller),
     aois: buildAois(controller),

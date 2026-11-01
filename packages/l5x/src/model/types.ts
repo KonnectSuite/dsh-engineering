@@ -291,6 +291,8 @@ export interface L5xDocument {
   readonly tags: readonly L5xTag[]
   /** User-defined types in the export's order. */
   readonly udts: readonly L5xUdt[]
+  /** Vendor and product-defined data types, readable but not editable. */
+  readonly vendorUdts: readonly L5xUdt[]
   /** Add-on instruction definitions in the export's order. */
   readonly aois: readonly L5xAoiDefinition[]
   /** I/O modules in the export's order. */
