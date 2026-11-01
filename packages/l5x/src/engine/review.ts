@@ -89,7 +89,7 @@ function siteList(locations: readonly Evidence[], limit = 3): string {
 }
 
 /** Field-level summary of one change, when both sides are records. */
-function changedFields(change: Change, limit = 4): string[] {
+export function changedFields(change: { readonly before?: unknown; readonly after?: unknown }, limit = 4): string[] {
   const before = change.before
   const after = change.after
   if (typeof before !== 'object' || before === null || typeof after !== 'object' || after === null) return []

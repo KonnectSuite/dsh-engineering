@@ -9,7 +9,7 @@
  * @module dsh-engineering-l5x/tools/checks
  */
 
-import { runChecks, compareProjects } from '../engine/review.ts'
+import { changedFields, runChecks, compareProjects } from '../engine/review.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -141,7 +141,11 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         const result = compareProjects(before, after) as CompareResult
         const offset = integerArg(args, 'offset', 0)
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
-        const page = result.changes.slice(offset, offset + limit)
+        // A module that "changed" sent a reader to diff XML by hand; name the fields instead.
+        const page = result.changes.slice(offset, offset + limit).map(change => {
+          const fields = changedFields(change)
+          return fields.length === 0 ? change : { ...change, changed_fields: fields }
+        })
         const byComponent = countBy(result.changes, change => change.component)
         const byKind = countBy(result.changes, change => change.kind)
         return success(

@@ -426,6 +426,14 @@
   omitted entirely. `packages/l5x/test/dist-smoke.mjs` is now wired into that script, and a root run reports **90 tests, 90 pass,
   0 fail**. The lesson is the same one as the fixtures: a gate you invoke by hand from the wrong place is not a gate.
 
+- **`compare_projects` now names the fields that differ, and the safety/non-safety diff shows why it matters.** On the two real
+  Carpenter exports the change record used to say only `module Local changed`, which sends a reader into the XML by hand. It now
+  carries `changed_fields`, and the same diff reads: **`catalogNumber 5069-L320ERMS2 to 5069-L320ER`**, `minor 13 to 11`,
+  `ports ...`, `parentPortId 3 to 2` on three modules. That is the whole difference between a safety and a standard build in one
+  line per component, and it comes from the same `changedFields` helper that `run_checks` has used since the I/O-change rule was
+  written - the compare path simply never called it. A test pins it on two exports whose only difference is a tag description.
+  The pair also gave a clean third production project: **0 critical, 1 warning, 262 info**, no uncatalogued instructions.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

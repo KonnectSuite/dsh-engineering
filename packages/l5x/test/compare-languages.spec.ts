@@ -82,3 +82,24 @@ describe('a change to formatting only', () => {
     expect(changes.count).toBe(0)
   })
 })
+
+
+/** Two exports whose only difference is one tag description. */
+const DIFF_OLD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Diff\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"Speed\" TagType=\"Base\" DataType=\"REAL\" Description=\"Line speed\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[OTE(Speed.0);]]></Text></Rung></RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+const DIFF_NEW = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Diff\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"Speed\" TagType=\"Base\" DataType=\"REAL\" Description=\"Line speed, ft/min\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[OTE(Speed.0);]]></Text></Rung></RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a change record', () => {
+  it('names the fields that differ', async () => {
+    const l5x = harness(new Map([
+      ['old.l5x', new TextEncoder().encode(DIFF_OLD)],
+      ['new.l5x', new TextEncoder().encode(DIFF_NEW)],
+    ]))
+    const before = await l5x.call('open_project', { path: 'old.l5x' })
+    const after = await l5x.call('open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
+    const tagChange = changes.find(change => change.component === 'tag')
+    expect(tagChange).toBeDefined()
+    expect((tagChange?.changed_fields ?? []).join(' ')).toContain('description')
+  })
+})
