@@ -479,3 +479,45 @@ describe('changes below the component name', () => {
     expect(all).toContain('constant undefined to true')
   })
 })
+
+/** A safety instruction called from standard logic, and the same call inside a safety program. */
+const SAFETY_CONTEXT_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="SafetyCtx" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/></Tags>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="FC_SFTY_SSOV" Class="Safety" Revision="1.0" ExecutePrescan="true" ExecutePostscan="false" ExecuteEnableInFalse="true">
+        <Parameters><Parameter Name="In" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs>
+      <Program Name="Standard" MainRoutineName="R"><Routines>
+        <Routine Name="R" Type="RLL"><RLLContent>
+          <Rung Number="0" Type="N"><Text><![CDATA[XIC(A)FC_SFTY_SSOV(A);]]></Text></Rung>
+        </RLLContent></Routine>
+      </Routines></Program>
+      <Program Name="Guard" MainRoutineName="R" Class="Safety"><Routines>
+        <Routine Name="R" Type="RLL"><RLLContent>
+          <Rung Number="0" Type="N"><Text><![CDATA[XIC(A)FC_SFTY_SSOV(A);]]></Text></Rung>
+        </RLLContent></Routine>
+      </Routines></Program>
+    </Programs>
+    <Tasks>
+      <Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Standard"/></ScheduledPrograms></Task>
+      <Task Name="SafetyTask" Type="PERIODIC" Rate="20" Priority="10" Class="Safety"><ScheduledPrograms><ScheduledProgram Name="Guard"/></ScheduledPrograms></Task>
+    </Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('a safety instruction outside a safety program', () => {
+  it('is reported in standard logic and not in the safety program', async () => {
+    const l5x = harness(new Map([['sc.l5x', new TextEncoder().encode(SAFETY_CONTEXT_L5X)]]))
+    await l5x.call('open_project', { path: 'sc.l5x' })
+    const checks = await l5x.call('run_checks', { rule: 'SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM' })
+    const findings = (checks.data?.findings ?? []) as { message: string; severity: string }[]
+    expect(findings.length).toBe(1)
+    expect(findings[0]?.severity).toBe('warning')
+    expect(String(findings[0]?.message)).toContain('standard program Standard')
+    expect(String(findings[0]?.message)).not.toContain('Guard')
+  })
+})

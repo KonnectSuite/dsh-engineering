@@ -370,6 +370,24 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       `${uncatalogued.size} instruction(s) in this export are not in the catalogue, so their operands were not checked: ${listed}${rows.length > 8 ? `, and ${rows.length - 8} more` : ''}`,
       { instructions: rows.slice(0, 20).map(([name, rungs]) => ({ name, rungs })), catalogue_size: catalogued.size, note: 'The catalogue models 128 of the vendor instructions; an uncatalogued name may still be valid, and Studio remains the arity gate.' })
   }
+  // A safety add-on instruction is declared Class="Safety"; calling it from standard logic puts
+  // a certified instruction where no safety task scans it. The corpus is clean, so this is not noise.
+  const safetyAoiNames = new Set(doc.aois.filter(aoi => aoi.safety === true).map(aoi => aoi.name.toUpperCase()))
+  const safetyProgramNames = new Set(doc.programs.filter(program => program.safety).map(program => program.name.toUpperCase()))
+  if (safetyAoiNames.size > 0) {
+    for (const routine of doc.routines) {
+      if (routine.body.type !== 'RLL') continue
+      if (safetyProgramNames.has(routine.program.toUpperCase())) continue
+      for (const rung of routine.body.rungs) {
+        for (const instruction of mnemonicsIn(rung.text)) {
+          if (!safetyAoiNames.has(instruction)) continue
+          report('SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM', 'warning',
+            `${instruction} is a safety instruction called in standard program ${routine.program} (${routine.name} rung ${rung.number}).`,
+            { program: routine.program, routine: routine.name, rung: rung.number, instruction }, 'high')
+        }
+      }
+    }
+  }
   // Control-transfer pass: a JSR naming a routine that is not in its own program, or a JMP with
   // no LBL of that name in its own routine, cannot build. Both targets are written in the rung,
   // so the export states them and no vendor table is needed.

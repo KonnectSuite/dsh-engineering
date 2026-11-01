@@ -782,6 +782,12 @@
   `Safety task | SafetyTask`, `Safety program | COMBUSTION_SAFETY, MOTION_SAFETY`, `Safety I/O module | 10: SA_DIG_IN_1, …`,
   `Safety AOI | FC_SFTY_BURNER_DIRECT, FC_SFTY_SSOV` - verified on `Seco_Homogenizer`, and a test pins every row. 426 package tests.
 
+- **New rule: a safety instruction called from standard logic.** `run_checks` now reports `SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM` when an AOI declared
+  `Class="Safety"` is called from a program that is not safety-scheduled - the certified instruction sits where no safety task scans it. It is a
+  warning, with evidence naming program, routine, rung and instruction. The rule was written only after scanning the corpus: **Seco_Homogenizer has 2
+  safety AOIs and 0 calls outside its safety programs**, so it produces no noise on real projects, and the test covers both a violating standard program
+  and a compliant safety program (1 finding, never 2). 428 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
