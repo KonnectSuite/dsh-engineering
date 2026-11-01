@@ -101,6 +101,14 @@
   array attribute, its absence on a scalar, the one-line-per-`<Line>` rule, and that the written file reopens
   with the new routine listed.
 
+- **`FOR` now runs a routine, and a `JSR` may pass as many parameters as it needs.** The compact table gave `FOR`
+  a routine name, a source and an expression — neither the right count nor the right meaning. It takes the routine
+  it loops over plus Index, Initial value, Terminal value and Step size, confirmed against two independent sources
+  (the vendor operand metadata and the published description "each time the FOR instruction executes the routine,
+  it adds the Step size to the Index"). Separately, `JSR` could carry only a routine and **one** parameter, so a
+  subroutine taking three arguments was refused; a slot can now be marked as repeating, and `list_instructions`
+  reports `rest: true` so a reader can see the parameter list is open-ended.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -112,7 +120,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-257 package tests and 70 bundle tests pass.
+262 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

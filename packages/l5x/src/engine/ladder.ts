@@ -263,8 +263,12 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   }
   const instruction = instructionByName(node.instr)
   if (instruction !== undefined) {
-    const required = instruction.operands.filter(slot => slot.optional !== true).length
-    if (args.length < required || args.length > instruction.operands.length) {
+    // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
+    // parameters as its target routine declares.
+    const restSlot = instruction.operands.find(slot => slot.rest === true)
+    const kindAt = (index: number): InstructionInfo['operands'][number]['kind'] => (instruction.operands[index] ?? restSlot)?.kind ?? 'ANY'
+    const required = instruction.operands.filter(slot => slot.optional !== true && slot.rest !== true).length
+    if (args.length < required || (restSlot === undefined && args.length > instruction.operands.length)) {
       const shape = instruction.operands.map(slot => `${slot.name}${slot.optional === true ? '?' : ''}`).join(', ')
       throw new L5xError(
         'INVALID_OPERAND',
@@ -275,7 +279,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // Emit the resolved operand text rather than the caller's spelling: a routine name
     // keeps the case the export uses, and a tag, literal or expression is unchanged
     // because checkOperand preserves the text it was given.
-    const emitted = args.map((argument, index) => checkOperand(project, argument, instruction.operands[index]!.kind, operands).text)
+    const emitted = args.map((argument, index) => checkOperand(project, argument, kindAt(index), operands).text)
     return { text: `${emittedMnemonic(project, instruction.name)}(${emitted.join(',')})`, grounding: 'catalog' }
   }
   const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === node.instr.toUpperCase())

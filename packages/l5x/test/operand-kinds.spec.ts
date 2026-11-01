@@ -233,3 +233,44 @@ describe('the motion family', () => {
     expect(text(result.data)).toBe('MSO(Motor_1,SystemClock);')
   })
 })
+
+
+describe('a loop instruction names its routine', () => {
+  it('catalogues FOR with the routine, the index, the bounds and the step', () => {
+    expect(instructionByName('FOR')?.operands.map(slot => slot.name)).toEqual(['Routine', 'Index', 'Initial value', 'Terminal value', 'Step size'])
+    expect(instructionByName('FOR')?.operands[0]?.kind).toBe('ROUTINE')
+  })
+
+  it('composes a FOR loop over a routine that exists', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['MainRoutine', '0', '1', '10', '1'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('FOR(MainRoutine,0,1,10,1);')
+  })
+})
+
+describe('a JSR parameter list varies', () => {
+  it('accepts as many parameters as the caller passes', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', 'StartPB', 'StopPB', 'SystemRunning'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('JSR(MainRoutine,StartPB,StopPB,SystemRunning);')
+  })
+
+  it('still accepts a call with no parameters', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine'] }] }) })
+    expect(result.error).toBeUndefined()
+    expect(text(result.data)).toBe('JSR(MainRoutine);')
+  })
+
+  it('tells a reader the parameter slot repeats', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'jsr' })).data?.rows as { name: string; operands: { rest?: boolean }[] }[]
+    expect(rows.find(row => row.name === 'JSR')?.operands[1]?.rest).toBe(true)
+  })
+})

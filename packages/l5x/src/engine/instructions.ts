@@ -24,6 +24,8 @@ export interface InstructionOperand {
   readonly kind: OperandKind
   /** True when the instruction accepts the slot but does not require it. */
   readonly optional?: boolean
+  /** True when this slot repeats for each remaining operand, as a JSR parameter list does. */
+  readonly rest?: boolean
 }
 
 /** One catalogued instruction. */
@@ -107,7 +109,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'CTD', category: 'Timer and counter', summary: 'Count down on each false-to-true rung transition.', operands: [{ name: 'Counter', kind: 'COUNTER' }, num('Preset')] },
 
   // Program control
-  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [routine(), { name: 'Parameter', kind: 'ANY', optional: true }] },
+  { name: 'JSR', category: 'Program control', summary: 'Jump to a subroutine; parameters follow the routine name.', operands: [routine(), { name: 'Parameter', kind: 'ANY', optional: true, rest: true }] },
   { name: 'RET', category: 'Program control', summary: 'Return from a subroutine.', operands: [] },
   { name: 'JMP', category: 'Program control', summary: 'Jump to a label in the same routine.', operands: [label()] },
   { name: 'LBL', category: 'Program control', summary: 'Label target for a JMP.', operands: [label()] },
@@ -175,6 +177,11 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'MRP', category: 'Motion', summary: 'Motion redefinition of position: redefine the axis position.', operands: [any('Axis'), any('MotionControl'), any('Type'), any('PositionSelect'), any('Position')] },
   { name: 'MSF', category: 'Motion', summary: 'Motion axis shutdown: shut the axis down.', operands: [any('Axis'), any('MotionControl')] },
   { name: 'MSO', category: 'Motion', summary: 'Motion servo on: turn the axis servo drive on.', operands: [any('Axis'), any('MotionControl')] },
+
+  // FOR runs a named routine until the index passes the terminal value, so its first
+  // operand is a routine, not an address. The compact table had a routine name, a source
+  // and an expression, which is neither the right count nor the right meaning.
+  { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), num('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
 
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({

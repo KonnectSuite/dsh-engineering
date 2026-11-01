@@ -45,7 +45,7 @@ function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
     name: instruction.name,
     category: instruction.category,
     summary: instruction.summary,
-    operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true })),
+    operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true, ...(slot.rest === true ? { rest: true } : {}) })),
     // Logix Designer 36 renamed sixteen instructions (EQU/EQ, SQR/SQRT, …). The row
     // carries the other published spelling so a caller does not have to know which
     // one this export happens to read; compose_rung accepts either.
