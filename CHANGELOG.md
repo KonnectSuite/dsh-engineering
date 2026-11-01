@@ -889,6 +889,12 @@
   change the type in Studio or remove instances first. A new spec walks every `tools` array the report returns and requires each entry to be a registered tool,
   so a phantom name cannot ship again. 439 package tests.
 
+- **A guard for the other place a tool name can go stale: the `next` suggestions.** Round 141 stopped the capability report from advertising
+  tools that do not exist; every tool also returns `next` steps by name, and a stale name there is the same trap. A new spec collects the
+  suggestions from nine tools - `open_project`, `project_overview`, `run_checks`, `list_components`, `find_references`, `get_component`,
+  `document_project`, `trace_dependencies`, `usage_map` - and requires each to be a registered plugin tool, with `present` allowed as the host
+  tool it is. No phantom was found; the guard is the deliverable. 440 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
