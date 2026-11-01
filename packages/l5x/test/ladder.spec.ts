@@ -149,6 +149,22 @@ describe('refusals', () => {
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
 
+  it('names every undefined tag in one spec at once', async () => {
+    // Three typos should cost one refusal. Only a genuine TAG_NOT_FOUND is enriched, so other
+    // refusals keep their own precedence.
+    const l5x = await opened()
+    const spec = { series: [
+      { instr: 'XIC', args: ['NoSuchOne'] },
+      { instr: 'XIC', args: ['NoSuchTwo'] },
+      { instr: 'OTE', args: ['MissingOut'] },
+    ] }
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+    expect(result.error?.code).toBe('TAG_NOT_FOUND')
+    expect(result.error?.message).toContain('NoSuchOne')
+    expect(result.error?.message).toContain('NoSuchTwo')
+    expect(result.error?.message).toContain('MissingOut')
+  })
+
   it('names every required pattern argument at once', async () => {
     // A caller that omits two arguments should not need two round trips to learn both.
     const l5x = await opened()

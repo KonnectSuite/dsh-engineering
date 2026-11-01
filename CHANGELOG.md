@@ -648,6 +648,13 @@
   its arguments and says which one is absent. That is the round-86 lesson made structural: a `ton_delay` call was wrong three ways and
   each attempt cost a round trip. Two tests pin the complete list for a string pair and a numeric set. 407 package tests.
 
+- **A spec with three undefined tags now names all three in one refusal.** `compose_rung` stopped at the first unresolved operand, so a caller
+  fixing typos learned them one round trip at a time: `No tag named "NoSuchOne"`. The scan that walks the spec uses the catalogue's own slot
+  kinds, so only tag slots are checked and numbers, keywords, labels and expressions are left alone; the message is now
+  `No tags named "NoSuchOne", "NoSuchTwo", "MissingOut" resolve in this export.` My first attempt ran that scan **before** composition and
+  changed error precedence - four existing tests caught it, which is the tests doing their job - so the shipped version only **enriches a
+  genuine `TAG_NOT_FOUND`** and every other refusal keeps its own code and message. 408 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

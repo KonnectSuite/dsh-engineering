@@ -402,8 +402,45 @@ function verify(project: ProjectSnapshot, text: string, operands: readonly Compo
  * @param spec - The composition tree.
  * @returns The validated rung.
  */
-export function composeRung(project: ProjectSnapshot, spec: LadderNodeSpec): ComposedRung {
+/**
+ * Collect every tag slot in one specification that does not resolve.
+ *
+ * The composer stops at the first failure while emitting text, so a caller with three undefined
+ * tags learned them one round trip at a time. This scan uses the catalog's slot kinds, so only
+ * slots that take a tag are checked and keywords, numbers, labels and expressions are left alone.
+ *
+ * @param project - The open project.
+ * @param spec - Composition tree.
+ * @param found - Set collecting unresolved operand text.
+ * @param depth - Recursion guard.
+ */
+function unresolvedTagOperands(project: ProjectSnapshot, spec: LadderNodeSpec, found: Set<string>, depth: number): void {
+  if (depth > 20) return
+  if ('series' in spec) {
+    for (const child of spec.series) unresolvedTagOperands(project, child, found, depth + 1)
+    return
+  }
+  if ('parallel' in spec) {
+    for (const path of spec.parallel) for (const child of path) unresolvedTagOperands(project, child, found, depth + 1)
+    return
+  }
+  const instruction = instructionByName(spec.instr)
+  if (instruction === undefined) return
+  const tagKinds = new Set(['BOOL', 'ANY', 'TIMER', 'COUNTER', 'STRING'])
+  const last = instruction.operands[instruction.operands.length - 1]
+  for (const [index, raw] of (spec.args ?? []).entries()) {
+    const slot = instruction.operands[Math.min(index, instruction.operands.length - 1)] ?? last
+    if (slot === undefined || !tagKinds.has(slot.kind)) continue
+    if (typeof raw !== 'string') continue
+    const operand = raw.trim()
+    if (!TAG_TEXT.test(operand)) continue
+    if (!resolveOperand(project, operand).resolved) found.add(operand)
+  }
+}
+
+function composeRungBody(project: ProjectSnapshot, spec: LadderNodeSpec): ComposedRung {
   const operands: ComposedOperand[] = []
+
   const counter = { instructions: 0 }
   const grounds = new Set<'catalog' | 'aoi'>()
   const text = `${composeNode(project, spec, operands, counter, 0, grounds)};`
@@ -552,5 +589,33 @@ export function composePattern(project: ProjectSnapshot, pattern: PatternName, a
       composeRung(project, { series: [{ instr: 'XIC', args: [fault] }, { instr: 'OTL', args: [latched] }] }),
       composeRung(project, { series: [{ instr: 'XIC', args: [reset] }, { instr: 'OTU', args: [latched] }] }),
     ],
+  }
+}
+
+/**
+ * Compose one rung, naming every undefined tag when the first one fails.
+ *
+ * The composer stops emitting at the first unresolved operand, which is right for the text but
+ * leaves a caller fixing three typos over three calls. Only a genuine TAG_NOT_FOUND is enriched,
+ * so every other refusal keeps its own precedence and message.
+ */
+export function composeRung(project: ProjectSnapshot, spec: LadderNodeSpec): ComposedRung {
+  try {
+    return composeRungBody(project, spec)
+  } catch (error) {
+    if (!(error instanceof L5xError) || error.code !== 'TAG_NOT_FOUND') throw error
+    const missing = new Set<string>()
+    unresolvedTagOperands(project, spec, missing, 0)
+    if (missing.size < 2) throw error
+    const quoted = [...missing].map(name => `"${name}"`)
+    const near = [...new Set([...missing].flatMap(name => project.document.tags
+      .map(tag => tag.name)
+      .filter(candidate => candidate.toLowerCase().includes(name.split('.')[0]!.toLowerCase()))))].slice(0, 5)
+    throw new L5xError(
+      'TAG_NOT_FOUND',
+      `No tags named ${quoted.join(', ')} resolve in this export.`,
+      near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tags first.',
+      near,
+    )
   }
 }
