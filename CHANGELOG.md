@@ -504,6 +504,13 @@
   the wrong-type name is refused with SFC_ACTION named, and a valid chart still composes. This is the sixth self-correction of
   the cycle, and the most expensive: the defect was in the probe, not the product.
 
+- **Documentation now says when routine bodies are encrypted, in the bundle and in the summary.** `document_project` on the
+  source-protected export reported "16 file(s) for 11 program(s), **0 routine(s), 0 rung(s)**" - a handover bundle that tells a
+  maintenance engineer their project has no logic. It now reads `0 routine(s) plus 144 source-protected`, and `overview.md`
+  carries a line of its own: "Source-protected routines: 144. Their bodies are encrypted in this export and were not
+  documented." That is the third surface to get the same honesty after `open_project` and `run_checks` (rounds 61-62) - and
+  the one where it matters most, because a documentation bundle is what a new engineer reads first.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

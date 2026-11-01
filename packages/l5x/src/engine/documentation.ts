@@ -152,6 +152,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   text += `- Processor: ${controller.processorType}\n- Revision: ${document.controller.majorRev}.${document.controller.minorRev}\n`
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}\n\n`
+  if ((project.protectedRoutines ?? 0) > 0) text += `- Source-protected routines: ${project.protectedRoutines}. Their bodies are encrypted in this export and were not documented.\n`
   text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Programs |\n|---|---|---|---|---|\n'
   for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.programs.join(', '))
   text += '\n## Programs\n\n| Program | Main routine | Routines | Description |\n|---|---|---|---|\n'
