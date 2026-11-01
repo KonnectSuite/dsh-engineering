@@ -1014,6 +1014,10 @@
   was lying. Compared on **30 controller tags** of `Seco_Homogenizer`: reads and writes match exactly in all 30 (e.g. `ALWAYS_OFF` 94/1). A built fixture now
   pins the invariant on a rung that reads a tag twice, so a future change to either scan must keep them consistent. 455 package tests.
 
+- **Every row the listing shows can be read.** Audited `list_components` against `get_component` across two production exports: **517 + 283 rows** of programs,
+  tasks, data types, AOIs, modules and controller tags, plus **230 program-scoped routines and tags** - **0 unreadable**. The invariant is now a test: a built
+  fixture lists each kind and reads every row by the name the listing gave. A listing that names something the reader cannot open is a dead end. 456 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
