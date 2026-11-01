@@ -148,3 +148,25 @@ describe('wire loops', () => {
     ])).filter(finding => finding.rule === 'FBD_FEEDBACK_CYCLE')).toEqual([])
   })
 })
+
+describe('a wire pin the block does not show', () => {
+  const sheet = (pin: string): readonly L5xDiagramNode[] => [
+    { kind: 'IRef', sheet: 1, id: '1', operand: 'A' },
+    { kind: 'Block', sheet: 1, id: '2', operand: 'Add1', pins: 'SourceA SourceB Dest' },
+    { kind: 'ORef', sheet: 1, id: '3', operand: 'D' },
+    { kind: 'Wire', sheet: 1, fromId: '1', toId: '2', toParam: pin },
+    { kind: 'Wire', sheet: 1, fromId: '2', fromParam: 'Dest', toId: '3' },
+  ]
+
+  it('reports a wire to an undeclared pin with the pins the block shows', () => {
+    const found = validateDiagram(routine(sheet('Nope'))).filter(finding => finding.rule === 'FBD_WIRE_PIN_NOT_VISIBLE')
+    expect(found.length).toBe(1)
+    expect(found[0]?.message).toContain('Nope')
+    expect(found[0]?.message).toContain('SourceA')
+    expect(found[0]?.evidence).toMatchObject({ block: '2', pin: 'Nope', visible_pins: ['SourceA', 'SourceB', 'Dest'] })
+  })
+
+  it('accepts a wire to a declared pin', () => {
+    expect(validateDiagram(routine(sheet('SourceA'))).filter(finding => finding.rule === 'FBD_WIRE_PIN_NOT_VISIBLE')).toEqual([])
+  })
+})

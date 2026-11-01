@@ -178,6 +178,7 @@ const REMEDIES: Record<string, string> = {
   SCHEDULED_PROGRAM_MISSING: 'Correct the scheduled name or create that program; a task cannot schedule a missing program.',
   UNCATALOGUED_INSTRUCTION: 'Check the abbreviation against the installed help for this revision; the tool will not guess operands.',
   UNRESOLVED_ROUTINE: 'Declare the routine in the program, or correct the spelling; the reference row names it.',
+  FBD_WIRE_PIN_NOT_VISIBLE: 'Connect the wire to a pin the block declares, or show that pin on the block in Studio; a pin the block does not show cannot be wired.',
 }
 
 /** Every rule the checks can emit; a filter outside this set would silently return nothing. */
@@ -186,6 +187,7 @@ export const FINDING_RULES: readonly string[] = [
   'DUPLICATE_ROUTINE_NAME',
   'FBD_DANGLING_WIRE',
   'FBD_FEEDBACK_CYCLE',
+  'FBD_WIRE_PIN_NOT_VISIBLE',
   'ICON_NO_MATCHING_OCON',
   'ICON_NAME_NOT_PROVIDED',
   'ICON_NO_OUTBOUND_WIRE',

@@ -1440,6 +1440,10 @@
   to `compare_projects` and missing from the diagram table. The model now carries `pins`; the `rungs/<program>.md` table gained a Pins column; and a
   VisiblePins change is reported as a diagram change. Tests cover the documented column and the comparison. 531 package tests.
 
+- **`run_checks` reports a wire to a pin the block does not show.** FBD decoding now carries a block's `VisiblePins`, so the checker compares
+  every wire pin with the block's declared pins. A wire to an undeclared pin is `FBD_WIRE_PIN_NOT_VISIBLE` (warning) naming the block, the pin and
+  the pins it does show; a wire to a declared pin is clean. The rule list is 38. 533 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

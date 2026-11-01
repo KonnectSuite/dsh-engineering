@@ -121,6 +121,25 @@ export function validateDiagram(routine: L5xRoutine): readonly DiagramFinding[] 
     }
   }
 
+  // A wire may only land on a pin the block declares visible. A pin the block does not show is
+  // a wiring mistake a reader cannot see from the wire alone, and Studio refuses the export.
+  const blockPins = new Map<string, { pins: Set<string>; id: string; sheet: number }>()
+  for (const node of nodes) {
+    if (node.kind !== 'Block' || node.id === undefined || node.pins === undefined) continue
+    blockPins.set(`${node.sheet}::${node.id}`, { pins: new Set(node.pins.split(/\s+/u).filter(Boolean)), id: node.id, sheet: node.sheet })
+  }
+  for (const node of nodes) {
+    if (node.kind !== NOT_A_WIRE) continue
+    for (const [side, id, pin] of [['FromID', node.fromId, node.fromParam], ['ToID', node.toId, node.toParam]] as const) {
+      if (id === undefined || pin === undefined) continue
+      const block = blockPins.get(`${node.sheet}::${id}`)
+      if (block === undefined || block.pins.has(pin)) continue
+      report('FBD_WIRE_PIN_NOT_VISIBLE', 'warning',
+        `${where(node)}: wire ${side} pin "${pin}" is not a visible pin of block ${id} (${[...block.pins].join(', ')})`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, block: id, pin, visible_pins: [...block.pins] })
+    }
+  }
+
   // A reference with no operand reads or writes nothing.
   for (const node of nodes) {
     if (node.kind !== 'IRef' && node.kind !== 'ORef') continue

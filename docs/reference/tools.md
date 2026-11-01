@@ -139,7 +139,7 @@ Evidence-backed structural checks and export comparison.
 
 #### `run_checks`
 
-Run evidence-backed engineering checks on the open project: 37 rules covering unused and unresolved tags, scheduling and routines, undocumented logic, latches and multiple writers, instruction spelling for this revision, FBD wiring (dangling wires, duplicate destinations, IREF/OREF/ICON/OCON names and wires, feedback cycles), rungs Studio refuses, serial-port support on the processor, I/O module changes against a baseline, and safety placement and writes. Each finding carries its rule, severity, site evidence and, when known, a fix saying what to change; the rule filter rejects a name that is not one of the 37. Pass baseline_id to add I/O change checks against an earlier export.
+Run evidence-backed engineering checks on the open project: 38 rules covering unused and unresolved tags, scheduling and routines, undocumented logic, latches and multiple writers, instruction spelling for this revision, FBD wiring (dangling wires, wires to a pin the block does not show, duplicate destinations, IREF/OREF/ICON/OCON names and wires, feedback cycles), rungs Studio refuses, serial-port support on the processor, I/O module changes against a baseline, and safety placement and writes. Each finding carries its rule, severity, site evidence and, when known, a fix saying what to change; the rule filter rejects a name that is not one of the 38. Pass baseline_id to add I/O change checks against an earlier export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
