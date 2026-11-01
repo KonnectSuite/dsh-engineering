@@ -117,6 +117,26 @@ describe('a finding remedy', () => {
   })
 })
 
+describe('usage_map and find_references', () => {
+  it('agree on how many times a tag is read and written', async () => {
+    const built = l5x({
+      name: 'UsageAgree',
+      tags: tag('T'),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(T)XIC(T)OTE(OUT);' }]), { tags: tag('OUT') }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['ua.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'ua.l5x' })).error).toBeUndefined()
+    const refs = await l5xTool.call('find_references', { symbol: 'T' })
+    const access = refs.data?.by_access ?? {}
+    const usage = await l5xTool.call('usage_map', { tag: 'T' })
+    const whole = usage.data?.whole_element ?? {}
+    expect(Number(whole.reads)).toBe(Number(access.read ?? 0))
+    expect(Number(whole.writes)).toBe(Number(access.write ?? 0))
+    expect(Number(whole.reads)).toBe(2)
+  })
+})
+
 describe('safety in the rung documentation', () => {
   it('marks a safety program file and a safety instruction file', async () => {
     const built = l5x({

@@ -1010,6 +1010,10 @@
   A scan of the source for other non-ASCII found only legitimate text - the Chinese strings in `locales.ts` and meaningful symbols in comments and messages -
   so nothing else was touched. 454 package tests.
 
+- **`usage_map` and `find_references` agree on real tags.** The two tools answer the same question from different views, so a disagreement would mean one of them
+  was lying. Compared on **30 controller tags** of `Seco_Homogenizer`: reads and writes match exactly in all 30 (e.g. `ALWAYS_OFF` 94/1). A built fixture now
+  pins the invariant on a rung that reads a tag twice, so a future change to either scan must keep them consistent. 455 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
