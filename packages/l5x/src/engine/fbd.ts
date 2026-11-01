@@ -106,6 +106,9 @@ export function validateDiagram(routine: L5xRoutine): readonly DiagramFinding[] 
     findings.push({ rule, severity, message, evidence, confidence })
   }
   const where = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} id ${node.id ?? '?'}`
+  // A wire has no id of its own, so naming it by the elements it joins is the only way a reader
+  // can find it on the sheet; "id ?" was in every wire finding and located nothing.
+  const whereWire = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} ${node.kind} ${node.fromId ?? '?'} -> ${node.toId ?? '?'}`
 
   const ids = idsBySheet(nodes)
 
@@ -116,8 +119,8 @@ export function validateDiagram(routine: L5xRoutine): readonly DiagramFinding[] 
     for (const [side, id] of [['FromID', node.fromId], ['ToID', node.toId]] as const) {
       if (id === undefined || sheetIds.has(id)) continue
       report('FBD_DANGLING_WIRE', 'critical',
-        `${where(node)}: wire ${side}="${id}" names no element on that sheet`,
-        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, elements: sheetIds.size })
+        `${whereWire(node)}: ${side}="${id}" names no element on that sheet`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, from_id: node.fromId, to_id: node.toId, elements: sheetIds.size })
     }
   }
 
@@ -135,8 +138,8 @@ export function validateDiagram(routine: L5xRoutine): readonly DiagramFinding[] 
       const block = blockPins.get(`${node.sheet}::${id}`)
       if (block === undefined || block.pins.has(pin)) continue
       report('FBD_WIRE_PIN_NOT_VISIBLE', 'warning',
-        `${where(node)}: wire ${side} pin "${pin}" is not a visible pin of block ${id} (${[...block.pins].join(', ')})`,
-        { program: routine.program, routine: routine.name, sheet: node.sheet, side, block: id, pin, visible_pins: [...block.pins] })
+        `${whereWire(node)}: ${side} pin "${pin}" is not a visible pin of block ${id} (${[...block.pins].join(', ')})`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, block: id, pin, visible_pins: [...block.pins], from_id: node.fromId, to_id: node.toId })
     }
   }
 
@@ -232,6 +235,8 @@ export function validateSfcDiagram(routine: L5xRoutine): readonly DiagramFinding
     findings.push({ rule, severity, message, evidence, confidence })
   }
   const where = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} id ${node.id ?? '?'}`
+  // A directed link carries no id either: name it by the elements it joins.
+  const whereLink = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} ${node.kind} ${node.fromId ?? '?'} -> ${node.toId ?? '?'}`
   // A chart's links may reach a step drawn on another sheet, so a target resolves anywhere in the
   // routine; resolving per sheet would report a valid cross-sheet link as critical.
   const chartIds = new Set(nodes.flatMap(node => node.id === undefined ? [] : [node.id]))
@@ -242,8 +247,8 @@ export function validateSfcDiagram(routine: L5xRoutine): readonly DiagramFinding
     for (const [side, id] of [['FromID', node.fromId], ['ToID', node.toId]] as const) {
       if (id === undefined || chartIds.has(id)) continue
       report('SFC_LINK_TARGET_MISSING', 'critical',
-        `${where(node)}: link ${side}="${id}" names no step or transition in this chart`,
-        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, elements: chartIds.size })
+        `${whereLink(node)}: ${side}="${id}" names no step or transition in this chart`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, from_id: node.fromId, to_id: node.toId, elements: chartIds.size })
     }
   }
 

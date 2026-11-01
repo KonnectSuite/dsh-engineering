@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+- **A diagram finding now names the wire or link it is about.** A `<Wire>` and a `<DirectedLink>` carry no `ID` of
+  their own, so every FBD and SFC finding located them as `id ?` — true of every wire on a sheet and useless on a real
+  one. `FBD_DANGLING_WIRE`, `FBD_WIRE_PIN_NOT_VISIBLE` and `SFC_LINK_TARGET_MISSING` now name the ends
+  (`COMBUSTION::Air_Valve_Ramping sheet 1 Wire 1 -> 20: ToID pin "AccelRate" is not a visible pin of block 20
+  (In, AccelRate, DecelRate, Out)`) and carry `from_id`/`to_id` in the evidence, so the wire can be found in Studio.
+  Verified on the real 10 MB `Seco_Homogenizer` export, which carries the only diagram languages in the corpus (one FBD
+  sheet of five `SCRV` blocks and 20 wired pins, two SFC charts): the untouched export reports nothing for all four
+  diagram rules, while copies broken on purpose fire exactly where they should — one `ToParam` typo gives 1
+  `FBD_WIRE_PIN_NOT_VISIBLE`, one cleared `InitialStep` gives 1 `SFC_NO_INITIAL_STEP`, and one link retargeted to `999`
+  gives 2 `SFC_LINK_TARGET_MISSING` because both charts carry that link. The other four production exports are ladder
+  only, so they exercise no diagram rule at all — recorded as a true negative on one export, not as coverage on five.
+  Three tests assert the ends and that no diagram finding still says `id ?`.
 - **Eight instructions the composer used to refuse now compose, and Studio proved they build.** `FFL`, `FFU`, `LFL`,
   `LFU`, `DTR`, `ATAN2`, `SQI` and `EVENT` were among the ~100 instructions the catalogue did not carry; their operand
   lists come from the installed Logix 5000 instruction help (`Help\ENU\rs5000`), which states each slot by name,

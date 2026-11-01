@@ -66,6 +66,9 @@ describe('broken diagrams', () => {
     expect(rows.length).toBe(1)
     expect(rows[0]?.severity).toBe('critical')
     expect(rows[0]?.message).toContain('ToID="9"')
+    // A wire has no id of its own, so the message must locate it by the elements it joins.
+    expect(rows[0]?.message).toContain('Wire 1 -> 9')
+    expect(rows[0]?.message).not.toContain('id ?')
   })
 
   it('refuses an output reference with no operand', async () => {
@@ -161,6 +164,9 @@ describe('a sequential function chart', () => {
     ])).filter(finding => finding.rule === 'SFC_LINK_TARGET_MISSING')
     expect(found.length).toBe(1)
     expect(found[0]?.message).toContain('"9"')
+    // A link carries no id either: it is located by the step and transition it joins.
+    expect(found[0]?.message).toContain('DirectedLink 2 -> 9')
+    expect(found[0]?.message).not.toContain('id ?')
     expect(found[0]?.evidence).toMatchObject({ side: 'ToID', id: '9' })
   })
 
@@ -213,6 +219,8 @@ describe('a wire pin the block does not show', () => {
     expect(found.length).toBe(1)
     expect(found[0]?.message).toContain('Nope')
     expect(found[0]?.message).toContain('SourceA')
+    expect(found[0]?.message).toContain('Wire 1 -> 2')
+    expect(found[0]?.message).not.toContain('id ?')
     expect(found[0]?.evidence).toMatchObject({ block: '2', pin: 'Nope', visible_pins: ['SourceA', 'SourceB', 'Dest'] })
   })
 
