@@ -1224,6 +1224,10 @@
 
 - **Generated client faces refreshed** after the minimum-position metadata change, so repository bytes match the rebuilt artifact.
 
+- **MSG takes a MESSAGE tag, and the composer checks it.** `MSG(N)` with a DINT failed Studio with `INVALIDOPTYPE`; `MSG(Msg)` with a MESSAGE
+  tag built 0/0. The compact table's Control slot now carries `types: ['MESSAGE']`, a test holds the wrong-tag refusal and the valid rung, and the
+  dist smoke checks the built catalogue. 496 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

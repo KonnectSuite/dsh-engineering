@@ -608,6 +608,26 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('a message instruction', () => {
+  it('takes a MESSAGE tag, not any tag', async () => {
+    // MSG(N) with a DINT failed INVALIDOPTYPE; MSG(Msg) with a MESSAGE tag built 0/0.
+    const project = l5x({
+      name: 'MsgGuard',
+      tags: tag('Msg', 'MESSAGE') + tag('N', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['msg.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'msg.l5x' })).error).toBeUndefined()
+    const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['N'] }] }) })
+    expect(wrong.error?.code).toBe('INVALID_OPERAND')
+    expect(wrong.error?.message).toContain('must be MESSAGE')
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['Msg'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MSG(Msg);')
+  })
+})
+
 describe('a one-based start position', () => {
   it('refuses zero and accepts one', async () => {
     // FIND(Str1,Str2,0,Pos) failed RxCMP_E_AUDIT_OUTOFRANGE; FIND(...,1,...) built 0/0. The string

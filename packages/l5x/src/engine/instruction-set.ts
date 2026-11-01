@@ -18,7 +18,7 @@ const TABLE: readonly (readonly [string, string])[] = [
   ['Communications', 'MSG=K'],
 ]
 
-const slot = (code: string): { name: string; kind: OperandKind; writable?: boolean; tagOnly?: boolean } => {
+const slot = (code: string): { name: string; kind: OperandKind; writable?: boolean; tagOnly?: boolean; types?: readonly string[] } => {
   switch (code) {
     case 'A': return { name: 'Source A', kind: 'NUMBER' }
     case 'B': return { name: 'Source B', kind: 'NUMBER' }
@@ -28,7 +28,7 @@ const slot = (code: string): { name: string; kind: OperandKind; writable?: boole
     case 'P': return { name: 'Position', kind: 'NUMBER' }
     case 'T': return { name: 'Timer', kind: 'TIMER' }
     case 'C': return { name: 'Counter', kind: 'COUNTER' }
-    case 'K': return { name: 'Control', kind: 'ANY', writable: true }
+    case 'K': return { name: 'Control', kind: 'ANY', writable: true, types: ['MESSAGE'] }
     case 'X': return { name: 'Expression', kind: 'EXPRESSION' }
     case 'R': return { name: 'Routine Name', kind: 'ROUTINE' }
     default: return { name: 'Tag', kind: 'BOOL' }
@@ -39,7 +39,7 @@ const slot = (code: string): { name: string; kind: OperandKind; writable?: boole
 export interface MoreInstruction {
   readonly name: string
   readonly category: string
-  readonly slots: readonly { readonly name: string; readonly kind: OperandKind; readonly writable?: boolean; readonly tagOnly?: boolean }[]
+  readonly slots: readonly { readonly name: string; readonly kind: OperandKind; readonly writable?: boolean; readonly tagOnly?: boolean; readonly types?: readonly string[] }[]
 }
 
 export const MORE_INSTRUCTIONS: readonly MoreInstruction[] = TABLE.flatMap(([category, list]) =>
