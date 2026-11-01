@@ -854,6 +854,11 @@
   module with a network and a normal module, opens it and asserts every part arrives - AOI safety, the alias target, the AOI's own Logic routine by the AOI name, and the
   safety module - which proves the builder emits what the readers expect. 435 package tests.
 
+- **The I/O list marks safety modules and their safety network.** `io.md` and `io.csv` named module, catalog, slot, parent and inhibit - and said nothing about which
+  channels belong to the safety function, which is the first thing an electrician needs to know before landing a wire. Both now carry **Safety** and **Safety
+  network** columns; verified through the fixture builder with a guard-rated `1756-IB16S/A` on network `16#0000_4bc3` beside a standard module, and the test asserts
+  the markdown row and the CSV fields. 436 package tests. The test is also the builder's second real use - content only, element names owned by the helper.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -135,13 +135,14 @@ function ioFiles(document: L5xDocument): { markdown: string; csv: string } {
   const io = document.tags.filter(tag => tag.name.includes(':'))
   let markdown = '# I/O list\n\n'
   markdown += `${document.modules.length} module(s); ${io.length} tag(s) look like module data (a colon in the name).\n\n`
-  markdown += '| Module | Catalog | Slot | Parent | Inhibited | Description |\n|---|---|---|---|---|---|\n'
+  // An electrician needs to know which I/O is safety-rated and on which safety network.
+  markdown += '| Module | Catalog | Slot | Parent | Inhibited | Safety | Safety network | Description |\n|---|---|---|---|---|---|---|---|\n'
   for (const module of document.modules) {
-    markdown += mdRow(module.name, module.catalogNumber, module.slot ?? '', module.parentModule, module.inhibited === true, module.description ?? '')
+    markdown += mdRow(module.name, module.catalogNumber, module.slot ?? '', module.parentModule, module.inhibited === true, module.safetyEnabled === true, module.safetyNetwork ?? '', module.description ?? '')
   }
   markdown += `\nModule-data tags: ${io.map(tag => tag.name).join(', ') || 'none'}.\n`
-  let csv = line('name', 'catalog_number', 'slot', 'parent_module', 'inhibited', 'description')
-  for (const module of document.modules) csv += line(module.name, module.catalogNumber, module.slot ?? '', module.parentModule, module.inhibited === true, module.description ?? '')
+  let csv = line('name', 'catalog_number', 'slot', 'parent_module', 'inhibited', 'safety', 'safety_network', 'description')
+  for (const module of document.modules) csv += line(module.name, module.catalogNumber, module.slot ?? '', module.parentModule, module.inhibited === true, module.safetyEnabled === true, module.safetyNetwork ?? '', module.description ?? '')
   return { markdown, csv }
 }
 

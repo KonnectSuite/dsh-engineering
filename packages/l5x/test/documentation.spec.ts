@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fixtureBytes, harness } from './harness.ts'
+import { l5x, module, program, rllRoutine, task } from './l5x-build.ts'
 
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
@@ -242,5 +243,26 @@ describe('documenting an AOI routine', () => {
     expect(doc).toContain('## Logic')
     expect(doc).toContain('### Rung 0')
     expect(doc).toContain('AOI logic rung')
+  })
+})
+
+describe('the I/O list', () => {
+  it('marks safety modules and their network', async () => {
+    const built = l5x({
+      name: 'IoList',
+      modules: [
+        module('SA_IN', '1756-IB16S/A', { safety: true, safetyNetwork: '16#0000_4bc3' }),
+        module('Local:3', '5069-IB16'),
+      ].join(''),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['io.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'io.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('document_project', { output_root: 'docs-io', include: ['io'] })).error).toBeUndefined()
+    const all = [...l5xTool.written.values()].map(value => String(value)).join('\n')
+    expect(all).toContain('| Safety | Safety network |')
+    expect(all).toMatch(/\| SA_IN \| 1756-IB16S\/A \|[^|]*\|[^|]*\| false \| true \| 16#0000_4bc3 \|/)
+    expect(all).toContain(',true,16#0000_4bc3,')
   })
 })
