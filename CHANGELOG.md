@@ -1451,6 +1451,10 @@
 - **An SFC link may cross sheets.** The link check resolved targets per sheet, so a valid link to a step drawn on another sheet would have been a critical
   finding. Targets now resolve anywhere in the chart. A test links sheet 1 to a step on sheet 2 and expects no `SFC_LINK_TARGET_MISSING`. 537 package tests.
 
+- **The composers and the checkers agree.** A sheet written by `draft_fbd` and a chart written by `draft_sfc` are reopened and passed through
+  `run_checks`: both report no FBD/ICON/OCON/IREF/OREF finding and no SFC finding. This pins the composer output against the rules added in rounds 72-74,
+  so a change to either side that breaks the agreement fails a test. 539 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

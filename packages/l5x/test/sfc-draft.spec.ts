@@ -68,6 +68,19 @@ describe('sequential function charts', () => {
     expect(text).toContain('<DirectedLink FromID="0" ToID="2" Show="true"/>')
   })
 
+  it('composes a chart the SFC checks call clean', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    expect((await l5x.call('draft_sfc', CHART)).error).toBeUndefined()
+    expect((await l5x.call('draft_apply', { output_path: 'checked.L5X' })).error).toBeUndefined()
+    const written = l5x.written.get('checked.L5X') ?? ''
+    const checker = harness(new Map([['checked.L5X', new TextEncoder().encode(written)]]))
+    expect((await checker.call('open_project', { path: 'checked.L5X' })).error).toBeUndefined()
+    const checks = await checker.call('run_checks', {})
+    const sfcRules = ((checks.data?.findings ?? []) as { rule: string }[]).map(finding => finding.rule).filter(rule => rule.startsWith('SFC_'))
+    expect(sfcRules).toEqual([])
+  })
+
   it('refuses a chart without exactly one initial step', async () => {
     const l5x = await opened()
 

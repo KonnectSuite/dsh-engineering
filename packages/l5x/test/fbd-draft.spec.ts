@@ -67,6 +67,18 @@ describe('draft_fbd', () => {
     expect(text).toContain('SheetSize="B - 11 x 17 in"')
   })
 
+  it('composes a sheet the FBD checks call clean', async () => {
+    const l5x = await opened()
+    expect((await l5x.call('draft_fbd', SHEET)).error).toBeUndefined()
+    expect((await l5x.call('draft_apply', { output_path: 'checked.L5X' })).error).toBeUndefined()
+    const written = l5x.written.get('checked.L5X') ?? ''
+    const checker = harness(new Map([['checked.L5X', new TextEncoder().encode(written)]]))
+    expect((await checker.call('open_project', { path: 'checked.L5X' })).error).toBeUndefined()
+    const checks = await checker.call('run_checks', {})
+    const diagramRules = ((checks.data?.findings ?? []) as { rule: string }[]).map(finding => finding.rule).filter(rule => /^(FBD|IREF|OREF|ICON|OCON)_/u.test(rule))
+    expect(diagramRules).toEqual([])
+  })
+
   it('refuses a routine that is not a function block diagram', async () => {
     const l5x = await opened()
     const result = await l5x.call('draft_fbd', { ...SHEET, routine: 'R' })
