@@ -85,24 +85,23 @@ truth. Never write to `<workspace>/_backups`.
 
 ## Compose
 
-- `list_instructions` lists slots and kinds; read it before composing.
+- `list_instructions` lists slots and kinds; read it first.
 - `compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
   `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
   `ton_delay` enable/timer/preset_ms; `interlock` conditions (array) and output;
   `analog_scale` source/destination/in_min/in_max/out_min/out_max;
   `totalizer` enable/rate/total; `run_hour_meter` run/timer/hours (plus preset_ms, default one hour; two rungs).
   Stage with `program`, `routine`, `mode` and `rung`.
-- `l5x_rung_preview` validates rungs and draws them; `l5x_routine_diagram` draws existing logic.
-- Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in a v36+ project. Compose through
-  `compose_rung`: it writes the spelling the project publishes.
-- `draft_routine` takes RLL, ST, FBD or SFC. **FBD and SFC take no body**: create the routine, then `draft_fbd` or
-  `draft_sfc`.
+- `l5x_rung_preview` validates/draws rungs; `l5x_routine_diagram` draws existing logic.
+- Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in v36+. `compose_rung` writes the project's spelling.
+- `draft_routine` takes RLL, ST, FBD or SFC. **FBD and SFC take no body**: create the routine, then `draft_fbd`/`draft_sfc`.
 - FBD: a block **is an instance** - its first operand names a tag of the block's structure (`FBD_MATH` for `ADD`).
   Wires use `ToParam` in and `FromParam` out, and **blocks may wire to each other**. A sheet that both writes and
   reads one tag makes Studio abort the import.
 - SFC: exactly one initial step, and a condition **must reference a tag or member** - `TRUE` fails as an undefined
   tag while `Step_1.DN` builds. `draft_sfc` creates the `SFC_STEP`, `SFC_ACTION` and BOOL tags itself.
-- `draft_tag` also accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL`.
+- `draft_tag` also accepts `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG`, `ALARM_DIGITAL` and any **AOI name**.
+- AOI call: instance tag first, then only the parameters whose `Required` is true.
 - Serial ASCII (`ABL`, `ARD`, ...) needs a controller **with a serial port**: it builds on a 1756-L73 and is refused
   on a 5069 or 1756-L8x whatever the operands. `run_checks` reports it before any build.
 - String positioning operands are **1-based**: `MID(s,5,1,d)` builds, and `0` fails with
@@ -111,13 +110,13 @@ truth. Never write to `<workspace>/_backups`.
   Studio answers `AUDIT_OUTPUTS`.
 - `MSG(tag)` takes one `MESSAGE` tag and ends the rung; real code gates it with `ONS`. `COP` and `FLL` take
   `(source element, destination element, length)` and `(value, destination element, length)`.
-- A build that fails with `Server execution failed` is transient: retry it once before reporting it.
+- A build failing with `Server execution failed` is transient: retry once.
 - `FAL` and `FSC` are **not modelled**: eight shapes were refused by the compiler, so writing them is a hand job
   until a real export shows the accepted form. The composer answers `INSTRUCTION_NOT_MODELLED` rather than guessing.
 - `JSR` takes the routine **and** a return parameter: `JSR(Sub,0)` builds, and `JSR(Sub)` fails with
   `RxCMP_E_AUDIT_INVALIDNOOFOPS`. A production export writes it the same way.
-- A rung whose only instruction is `SBR()` is refused, because a build fails it: `LgxSrv_E_FATAL_ERROR` alone, and
-  `AUDIT_OUTPUTS` beside a `RET` rung. Write the subroutine body without a header rung, or declare parameters.
+- A rung whose only instruction is `SBR()` is refused (`LgxSrv_E_FATAL_ERROR`; `AUDIT_OUTPUTS` beside `RET`). Write
+  the body without a header rung, or declare parameters.
 - Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
   export, `verify_offline_l5x` builds it.
 - An aborted import on an export that imported before means the controller **name is still registered** with the

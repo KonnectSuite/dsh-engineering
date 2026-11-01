@@ -1149,6 +1149,10 @@
   Output/InOut pins, and `draft_tag` accepts an AOI name as a data type so an instance tag can be created at all (it previously answered
   `UNKNOWN_DATA_TYPE`). 486 package tests.
 
+- **The skill now teaches the AOI call shape.** A new line says an AOI call is the instance tag first, then only the parameters whose `Required` is true,
+  and `draft_tag` is documented as accepting an AOI name. The prose it replaced was redundant, so the body is 7,929 of 8,000 characters - smaller than before
+  the addition. 486 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
