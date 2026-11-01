@@ -317,16 +317,10 @@ function ladderSegments(text) {
 // packages/l5x/src/engine/instruction-set.ts
 var TABLE = [
   ["Contacts and coils", "UID= UIE="],
-  ["Math", "NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD SCL=SD"],
-  ["Move", "CPS=SDL SWPB=SD"],
-  ["File and array", "SRT=DLX STD=DL SIZE=D"],
-  ["Sequencer", "SQC=KLP"],
-  ["Program control", "JXR=R BRK= NOP= TND="],
-  ["Communications", "MSG=K"],
-  ["ASCII", "ACN=AL ARD=ALD ASR=ALS AWA=ALS AHL=AL AWT=ALS AEX=ALD ABL=AL ACB=AL"],
-  ["String", "STOD=SD DTOS=SD STOR=SSD"],
-  ["Process", "PID=K PIDE=K"],
-  ["Alarm", "ALMA=D ALMD=D"]
+  ["Math", "NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD "],
+  ["Move", "CPS=SDL"],
+  ["Program control", "BRK= NOP= TND="],
+  ["Communications", "MSG=K"]
 ];
 var slot = (code) => {
   switch (code) {
@@ -410,6 +404,19 @@ var INSTRUCTIONS = [
   { name: "LEQ", category: "Comparison", summary: "Less than or equal.", operands: [num("Source A"), num("Source B")] },
   { name: "LIM", category: "Comparison", summary: "Limit test: true when the test value lies between the limits.", operands: [num("Low limit"), num("Test"), num("High limit")] },
   { name: "CMP", category: "Comparison", summary: "Compare: true when the expression is true.", operands: [expression()] },
+  { name: "ISINF", category: "Comparison", summary: "True when the source is infinite.", operands: [num("Source")] },
+  { name: "ISNAN", category: "Comparison", summary: "True when the source is not a number.", operands: [num("Source")] },
+  // ASCII serial port. These need a controller with a serial port: they build on ControlLogix 5570
+  // (1756-L73) and are refused on CompactLogix 5380 (5069) and ControlLogix 5580 (1756-L83E), where
+  // the compiler answers RxCMP_E_AUDIT_INVALIDOPTYPE for every operand combination tried.
+  { name: "ABL", category: "ASCII", summary: "Count the characters in the serial port buffer until a line terminator.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
+  { name: "ACB", category: "ASCII", summary: "Count the characters still in the serial port buffer.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
+  { name: "ARD", category: "ASCII", summary: "Read characters from the serial port buffer into a destination.", operands: [num("Channel"), str("Destination"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
+  { name: "ACL", category: "ASCII", summary: "Clear the serial port read buffer and the read and write queues.", operands: [num("Channel"), bool("Clear Serial Port Read"), bool("Clear Serial Port Write")] },
+  { name: "AHL", category: "ASCII", summary: "Apply an AND and OR mask to the serial port control lines.", operands: [num("Channel"), num("ANDMask"), num("ORMask"), any("Serial Port Control"), num("Channel Status")] },
+  { name: "ARL", category: "ASCII", summary: "Read a line from the serial port buffer into a destination.", operands: [num("Channel"), str("Destination"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
+  { name: "AWA", category: "ASCII", summary: "Write characters to the serial port buffer, appended.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
+  { name: "AWT", category: "ASCII", summary: "Write characters to the serial port buffer.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
   // Math
   { name: "ADD", category: "Math", summary: "Add source A and source B into the destination.", operands: [num("Source A"), num("Source B"), num("Destination")] },
   { name: "SUB", category: "Math", summary: "Subtract source B from source A into the destination.", operands: [num("Source A"), num("Source B"), num("Destination")] },
@@ -417,20 +424,32 @@ var INSTRUCTIONS = [
   { name: "DIV", category: "Math", summary: "Divide source A by source B into the destination.", operands: [num("Source A"), num("Source B"), num("Destination")] },
   { name: "MOD", category: "Math", summary: "Remainder of source A divided by source B.", operands: [num("Source A"), num("Source B"), num("Destination")] },
   { name: "SQR", category: "Math", summary: "Square root of the source into the destination.", operands: [num("Source"), num("Destination")] },
-  { name: "CPT", category: "Math", summary: "Compute an expression into the destination.", operands: [expression(), num("Destination")] },
+  { name: "CPT", category: "Math", summary: "Compute an expression into the destination; the destination comes first in the rung text.", operands: [num("Destination"), expression()] },
+  { name: "STD", category: "File and array", summary: "Standard deviation of the array elements into a REAL destination.", operands: [any("Array"), num("Dimension to Vary"), num("Destination"), any("Control"), num("Length"), num("Position")] },
+  { name: "SIZE", category: "File and array", summary: "Number of elements in one dimension of an array into the size tag.", operands: [any("Source"), num("Dimension to Vary"), num("Size")] },
+  { name: "JXR", category: "Program control", summary: "Run an external routine; parameters and a return tag may follow the control structure.", operands: [routine("External routine name"), any("External routine control")] },
+  { name: "PID", category: "Process", summary: "PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.", operands: [any("PID"), num("Process variable"), num("Tieback"), num("Control variable"), any("PID master loop"), bool("Inhold bit"), num("Inhold value")] },
+  { name: "ALMA", category: "Alarm", summary: "Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.", operands: [any("Alarm"), num("In"), bool("ProgAckAll"), bool("ProgDisable"), bool("ProgEnable")] },
+  { name: "ALMD", category: "Alarm", summary: "Digital alarm: the condition in the ALARM_DIGITAL structure, acknowledged and reset from the program.", operands: [any("Alarm"), bool("ProgAck"), bool("ProgReset"), bool("ProgDisable"), bool("ProgEnable")] },
+  // Audited against the installed help and a Studio build: the compact table had these wrong.
+  { name: "SRT", category: "File and array", summary: "Sort the elements of an array in place, using a control structure for length and position.", operands: [any("Array"), num("Dimension to Vary"), any("Control"), num("Length"), num("Position")] },
+  { name: "SWPB", category: "Move", summary: "Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.", operands: [num("Source"), num("Order Mode"), num("Dest")] },
+  { name: "STOD", category: "String", summary: "Convert a string to an integer value in the destination.", operands: [str("Source"), num("Dest")] },
+  { name: "DTOS", category: "String", summary: "Convert an integer value to its decimal string in the destination.", operands: [num("Source"), str("Dest")] },
+  { name: "STOR", category: "String", summary: "Convert a string to a REAL value in the destination.", operands: [str("Source"), num("Destination")] },
   // Move
   { name: "MOV", category: "Move", summary: "Move the source value into the destination.", operands: [num("Source"), num("Destination")] },
   { name: "COP", category: "Move", summary: "Copy elements from the source to the destination.", operands: [{ name: "Source", kind: "ANY" }, { name: "Destination", kind: "ANY" }, num("Length")] },
   { name: "CLR", category: "Move", summary: "Clear the destination to zero.", operands: [num("Destination")] },
   // Timer and counter
-  { name: "TON", category: "Timer and counter", summary: "Timer on delay: accumulates while the rung is true.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset")] },
-  { name: "TOF", category: "Timer and counter", summary: "Timer off delay: accumulates after the rung goes false.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset")] },
-  { name: "RTO", category: "Timer and counter", summary: "Retentive timer on: accumulates and holds its value.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset")] },
+  { name: "TON", category: "Timer and counter", summary: "Timer on delay: accumulates while the rung is true; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
+  { name: "TOF", category: "Timer and counter", summary: "Timer off delay: accumulates after the rung goes false; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
+  { name: "RTO", category: "Timer and counter", summary: "Retentive timer on: accumulates and holds its value; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
   { name: "RES", category: "Timer and counter", summary: "Reset a timer or counter structure.", operands: [{ name: "Structure", kind: "ANY" }] },
-  { name: "CTU", category: "Timer and counter", summary: "Count up on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset")] },
-  { name: "CTD", category: "Timer and counter", summary: "Count down on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset")] },
+  { name: "CTU", category: "Timer and counter", summary: "Count up on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset"), num("Accum")] },
+  { name: "CTD", category: "Timer and counter", summary: "Count down on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset"), num("Accum")] },
   // Program control
-  { name: "JSR", category: "Program control", summary: "Jump to a subroutine; parameters follow the routine name.", operands: [routine(), { name: "Parameter", kind: "ANY", optional: true, rest: true }] },
+  { name: "JSR", category: "Program control", summary: "Jump to a subroutine; the second operand is the return parameter, written 0 when the routine returns nothing.", operands: [routine("Routine Name"), { name: "Return Par", kind: "ANY" }] },
   { name: "RET", category: "Program control", summary: "Return from a subroutine.", operands: [] },
   { name: "JMP", category: "Program control", summary: "Jump to a label in the same routine.", operands: [label()] },
   { name: "LBL", category: "Program control", summary: "Label target for a JMP.", operands: [label()] },
@@ -465,8 +484,11 @@ var INSTRUCTIONS = [
   { name: "SSV", category: "Communications", summary: "Set system value: write the source into one attribute of a class instance.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), any("Source")] },
   { name: "SQO", category: "Sequencer", summary: "Sequencer output: drive the destination from one masked step of the array.", operands: [any("Array"), num("Mask"), num("Dest"), any("Control"), num("Length"), num("Position")] },
   { name: "SQL", category: "Sequencer", summary: "Sequencer load: store the source into the current step of the array.", operands: [any("Array"), num("Source"), any("Control"), num("Length"), num("Position")] },
-  { name: "FAL", category: "File and array", summary: "File arithmetic and logic: evaluate the expression across Length elements.", operands: [any("Control"), num("Length"), num("Position"), num("Mode"), any("Dest"), expression()] },
-  { name: "FSC", category: "File and array", summary: "File search and compare: evaluate the expression across Length elements and report the position.", operands: [any("Control"), num("Length"), num("Position"), num("Mode"), expression()] },
+  { name: "FAL", category: "File and array", summary: "File arithmetic and logic. Not modelled: eight operand shapes were refused by the compiler, so write this one by hand until a real export shows the accepted form.", notModelled: true, operands: [] },
+  { name: "DCM", category: "Safety", summary: "Dual Channel Input Monitor. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "DCM", kind: "ANY" }, { name: "Safety Function", kind: "ANY" }, { name: "Input Type", kind: "ANY" }, { name: "Input Delay", kind: "NUMBER" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
+  { name: "DCS", category: "Safety", summary: "Dual Channel Input Stop. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "DCS", kind: "ANY" }, { name: "Safety Function", kind: "ANY" }, { name: "Input Type", kind: "ANY" }, { name: "Input Delay", kind: "NUMBER" }, { name: "Startup Inhibit", kind: "ANY" }, { name: "Reset Type", kind: "ANY" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
+  { name: "CROUT", category: "Safety", summary: "Configurable Redundant Output. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "CROUT", kind: "ANY" }, { name: "Feedback Type", kind: "ANY" }, { name: "Feedback Reaction Time", kind: "NUMBER" }, { name: "Enable", kind: "ANY" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Input Status", kind: "ANY" }, { name: "Output Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
+  { name: "FSC", category: "File and array", summary: "File search and compare. Not modelled: six operand shapes were refused or crashed the compiler, so write this one by hand until a real export shows the accepted form.", notModelled: true, operands: [] },
   // Operand lists the vendor fields give in full. One-shot storage/output, a masked
   // compare and the bit-distribute and average forms each had too few operands, which the
   // composer's own arity check then defended.
@@ -496,11 +518,21 @@ var INSTRUCTIONS = [
   // and an expression, which is neither the right count nor the right meaning.
   { name: "FOR", category: "Program control", summary: "For loop: run the named routine, adding the step to the index, until the index passes the terminal value.", operands: [routine(), num("Index"), num("Initial value"), num("Terminal value"), num("Step size")] },
   // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
-  // source for, and the compact table's empty slot list made them claim "takes 0 operands" —
+  // source for, and the compact table's empty slot list made them claim "takes 0 operands" ÃƒÂ¢Ã¢ - šÂ¬Ã¢â‚¬Â
   // a confident wrong answer with no way forward. Drafting the rung text still works.
   { name: "EOT", category: "Program control", summary: "End of transition, for a Sequential Function Chart step.", operands: [], notModelled: true },
   { name: "SFR", category: "Program control", summary: "Reset an SFC routine to a target state.", operands: [], notModelled: true },
   { name: "SFP", category: "Program control", summary: "Pause an SFC routine at a target state.", operands: [], notModelled: true },
+  // Operand lists transcribed from the installed Logix 5000 instruction help (Help\ENU\rs5000),
+  // which states each slot by name; pseudo-operands Length and Position are real operands here.
+  { name: "FFL", category: "File and array", summary: "FIFO load: copy the source into the next FIFO element.", operands: [any("Source"), any("FIFO"), any("Control"), num("Length"), num("Position")] },
+  { name: "FFU", category: "File and array", summary: "FIFO unload: move the oldest FIFO element into the destination.", operands: [any("FIFO"), any("Destination"), any("Control"), num("Length"), num("Position")] },
+  { name: "LFL", category: "File and array", summary: "LIFO load: push the source onto a LIFO stack.", operands: [any("Source"), any("LIFO"), any("Control"), num("Length"), num("Position")] },
+  { name: "LFU", category: "File and array", summary: "LIFO unload: pop the most recent LIFO element into the destination.", operands: [any("LIFO"), any("Destination"), any("Control"), num("Length"), num("Position")] },
+  { name: "DTR", category: "Compare", summary: "Data transition: pass source bits through the mask and compare them with the reference.", operands: [any("Source"), any("Mask"), any("Reference")] },
+  { name: "ATAN2", category: "Math", summary: "Two-argument arctangent: the angle of Source Y over Source X.", operands: [any("Source Y"), any("Source X"), any("Dest")] },
+  { name: "SQI", category: "Sequencer", summary: "Sequencer input: compare the source with one masked step of the array.", operands: [any("Array"), any("Mask"), any("Source"), any("Control"), num("Length"), num("Position")] },
+  { name: "EVENT", category: "Program control", summary: "Trigger an event task.", operands: [keyword("Task")] },
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map((instruction) => ({
     name: instruction.name,

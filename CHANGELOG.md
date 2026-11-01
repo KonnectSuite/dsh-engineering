@@ -1035,6 +1035,12 @@
   `list_components` lists them only with `include_vendor: true`). Test pins user count 1 vs vendor count 1 and that the vendor type stays out of the user
   table. 457 package tests.
 
+- **The release pipeline runs end to end, and it caught two stale artifacts.** `pnpm prepack` first refused to assemble: `l5x: lib/ is older than
+  src/engine/documentation.ts; rebuild before packing`. After rebuilding the component it assembled **6 components** (l5x 145 files, ftview 90, mwi 108,
+  optix 161, migration 25, resources 57 - about 4.8 MB) into the gitignored `vendor/` tree. Regenerating also brought the two **tracked** client faces
+  (`lib/client.js`, `packages/viewer/lib/client.js`) in line with the current instruction set, which they had lagged. This is the step that turns the
+  plugin into a publishable package; installing it remains the user's decision. 457 package tests, 90 bundle, docs current.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
