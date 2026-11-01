@@ -227,6 +227,11 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
           throw new L5xError('INVALID_ARGUMENT', 'Pass program and routine.', 'Name the program and the routine it owns, for example "MainProgram" and "MainRoutine".')
         }
         const project = await session.require(optionalString(args, 'project_id'), exec)
+        // A missing program and a missing routine inside an existing program are different
+        // conditions; one NOT_FOUND for both sent the reader to the wrong list.
+        if (!project.document.programs.some(entry => entry.name === program)) {
+          throw new L5xError('NOT_FOUND', `No program named "${program}".`, 'Call list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
+        }
         const routine = getRoutine(project.document, program, routineName)
         if (routine === undefined) {
           throw new L5xError(
@@ -246,7 +251,8 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
           instructions: instructionsOf(rung.text),
         }))
         if (rungs.length === 0) {
-          throw new L5xError('NOT_FOUND', `Routine ${program}/${routineName} has no rungs.`, 'Pick a routine that carries logic.')
+          // The routine exists and is ladder; it is simply empty, which is not "not found".
+          throw new L5xError('NO_RUNGS', `Routine ${program}/${routineName} exists but has no rungs.`, 'Write a rung first, or pick a routine that carries logic.')
         }
         const cap = Math.max(1, Math.trunc(optionalNumber(args, 'max_rungs') ?? 40))
         const from = Math.max(0, Math.trunc(optionalNumber(args, 'start_rung') ?? 0))

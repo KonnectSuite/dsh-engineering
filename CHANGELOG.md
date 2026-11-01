@@ -1418,6 +1418,10 @@
   with no ladder all with `NOT_FOUND`. It now distinguishes them: `NOT_FOUND` names the absent program or routine, and `NO_LADDER_ROUTINES` says a
   program exists but holds no RLL content. The skill also names the Alarms table the documentation bundle now writes. 524 package tests.
 
+- **A routine-diagram refusal names the right missing thing.** `l5x_routine_diagram` reported a missing program as "no routine named X in
+  Nope" and an existing empty ladder routine as `NOT_FOUND`. It now returns `NOT_FOUND` naming the absent program (with program candidates), keeps the
+  routine-specific `NOT_FOUND`, and answers `NO_RUNGS` when the routine exists but is empty. Tests cover all three. 526 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

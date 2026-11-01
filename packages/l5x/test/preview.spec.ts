@@ -237,6 +237,27 @@ describe('l5x_routine_diagram', () => {
     const result = await l5x.call('l5x_routine_diagram', { program: 'MainProgram' })
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
+
+  it('names a missing program separately from a missing routine', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('l5x_routine_diagram', { program: 'Nope', routine: 'MainRoutine' })
+    expect(result.error?.code).toBe('NOT_FOUND')
+    expect(result.error?.message).toContain('No program named "Nope"')
+    expect(result.error?.candidates).toEqual(expect.arrayContaining(['MainProgram', 'MotorProgram']))
+  })
+
+  it('reports an empty ladder routine as NO_RUNGS, not as missing', async () => {
+    const empty = l5x({
+      name: 'EmptyRoutine',
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['empty.l5x', new TextEncoder().encode(empty)]]))
+    expect((await l5xTool.call('open_project', { path: 'empty.l5x' })).error).toBeUndefined()
+    const result = await l5xTool.call('l5x_routine_diagram', { program: 'Main', routine: 'MainRoutine' })
+    expect(result.error?.code).toBe('NO_RUNGS')
+    expect(result.error?.message).toContain('exists but has no rungs')
+  })
 })
 
 describe('non-ladder routines', () => {
