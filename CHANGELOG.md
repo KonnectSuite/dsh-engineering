@@ -1276,6 +1276,8 @@
   whole array is required. The array-dimension test holds both refusals plus the valid `SIZE(Arr,2,Pos)`; the dist smoke checks the built catalogue.
   499 package tests.
 
+- **Generated client faces refreshed** after the array-tag check, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
