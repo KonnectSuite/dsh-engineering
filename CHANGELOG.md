@@ -124,6 +124,20 @@
   rather than a crash, and checks that `search_logic` reaches a Sequential Function Chart step operand and an FBD
   reference operand while finding nothing for a topology element that carries no label.
 
+- **A malformed composition spec no longer reports itself as a plugin defect.** `compose_rung` with `{}` answered
+  `INTERNAL: Cannot read properties of undefined (reading 'toUpperCase')`, and a numeric mnemonic answered
+  `INTERNAL: name.toUpperCase is not a function`. By this codebase's own contract `INTERNAL` means the tool is broken,
+  so both told the reader the wrong thing about whose mistake it was. The spec arrives as caller-supplied JSON and is
+  now shape-checked: a node must be an object, an instruction node must carry a non-empty mnemonic, and every operand
+  must be a string — each refused as `INVALID_LADDER_SPEC` with the shape to use instead.
+- **A target that is not there is no longer called ambiguous.** `XML_REGIONS`/`acd-edit` threw
+  `AMBIGUOUS_TARGET: Expected one Routine named NoSuchRoutine; found 0` — a code that sends a reader looking for
+  duplicates that were never there. Zero matches now answers `COMPONENT_NOT_FOUND` with the declared names as the next
+  call; only more than one match stays `AMBIGUOUS_TARGET`.
+- **The failure surface is now tested.** `packages/l5x/test/failures.spec.ts` throws an empty export, a non-L5X XML
+  document, a truncated export, an unclosed export, a missing path and five malformed specs at the tools and asserts
+  every answer is a repairable code and **never** `INTERNAL`.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -135,7 +149,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-274 package tests and 70 bundle tests pass.
+285 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

@@ -10,7 +10,8 @@ function controller(project: ProjectSnapshot): XmlElement {
 
 function named(parent: XmlElement | undefined, kind: string, name: string): XmlElement {
   const matches = parent === undefined ? [] : elementChildren(parent, kind).filter(node => node.attrs.Name === name)
-  if (matches.length !== 1) throw new EngineeringError('AMBIGUOUS_TARGET', `Expected one ${kind} named ${name}`)
+  if (matches.length === 0) throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${kind} named ${name} in this project.`, 'Call project_overview to confirm the project state, then retry.')
+  if (matches.length > 1) throw new EngineeringError('AMBIGUOUS_TARGET', `Expected one ${kind} named ${name}; found ${matches.length}`, 'More than one ' + kind + ' matches this name; narrow the target.')
   return matches[0]!
 }
 

@@ -256,12 +256,22 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
 
 /** Resolve one instruction node and emit it. */
 function composeInstruction(project: ProjectSnapshot, node: InstructionNode, operands: ComposedOperand[], counter: { instructions: number }): { text: string; grounding: 'catalog' | 'aoi' } {
+  // The spec is caller-supplied JSON. Check its shape instead of trusting it: an empty
+  // object or a numeric mnemonic used to surface as an INTERNAL defect, which reads to the
+  // model as "the plugin is broken" rather than "fix the argument".
+  const mnemonic = typeof node.instr === 'string' ? node.instr.trim() : ''
+  if (mnemonic === '') {
+    throw new L5xError('INVALID_LADDER_SPEC', 'An instruction node needs a mnemonic.', 'Pass {"instr":"XIC","args":["Tag"]}; call list_instructions for the mnemonics this catalogue knows.')
+  }
   const args = node.args ?? []
+  if (!Array.isArray(args) || args.some(argument => typeof argument !== 'string')) {
+    throw new L5xError('INVALID_LADDER_SPEC', 'Every operand must be a string.', 'Pass operands as strings, for example ["StartPB"] or ["MainTimer","500"].')
+  }
   counter.instructions += 1
   if (counter.instructions > MAX_INSTRUCTIONS) {
     throw new L5xError('LADDER_TOO_LARGE', `One rung may hold at most ${MAX_INSTRUCTIONS} instructions.`, 'Split the logic across rungs.')
   }
-  const instruction = instructionByName(node.instr)
+  const instruction = instructionByName(mnemonic)
   if (instruction !== undefined) {
     // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
     // parameters as its target routine declares.
@@ -282,11 +292,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     const emitted = args.map((argument, index) => checkOperand(project, argument, kindAt(index), operands).text)
     return { text: `${emittedMnemonic(project, instruction.name)}(${emitted.join(',')})`, grounding: 'catalog' }
   }
-  const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === node.instr.toUpperCase())
+  const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === mnemonic.toUpperCase())
   if (aoi === undefined) {
     throw new L5xError(
       'UNKNOWN_INSTRUCTION',
-      `"${node.instr}" is neither a catalogued instruction nor an AOI declared in this export.`,
+      `"${mnemonic}" is neither a catalogued instruction nor an AOI declared in this export.`,
       'Call list_instructions for the catalog; an AOI must be declared in the project.',
       nearestInstructions(node.instr),
     )
@@ -295,6 +305,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   // still resolved so a typo in a tag cannot reach the draft.
   for (const argument of args) checkOperand(project, argument, 'ANY', operands)
   return { text: `${aoi.name}(${args.join(',')})`, grounding: 'aoi' }
+}
+
+/** True for a plain object a composition node can be. */
+function isSpecNode(value: unknown): value is LadderNodeSpec {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** Emit one node tree, validating as it goes. */
@@ -333,6 +348,11 @@ function emittedMnemonic(project: ProjectSnapshot, name: string): string {
 }
 
 function composeNode(project: ProjectSnapshot, node: LadderNodeSpec, operands: ComposedOperand[], counter: { instructions: number }, depth: number, grounds: Set<'catalog' | 'aoi'>): string {
+  // A node is a caller-supplied object: a number or an array here would make the 'in'
+  // operator throw, so reject the shape with a repairable failure first.
+  if (!isSpecNode(node)) {
+    throw new L5xError('INVALID_LADDER_SPEC', 'A composition node must be an object.', 'Use {"series":[...]}, {"parallel":[[...],[...]]} or {"instr":"XIC","args":["Tag"]}.')
+  }
   if (depth > MAX_DEPTH) throw new L5xError('LADDER_TOO_LARGE', `Branch nesting exceeds ${MAX_DEPTH}.`, 'Flatten the branches.')
   if ('parallel' in node) {
     if (!Array.isArray(node.parallel) || node.parallel.length < 2) {
