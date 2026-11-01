@@ -1422,6 +1422,11 @@
   Nope" and an existing empty ladder routine as `NOT_FOUND`. It now returns `NOT_FOUND` naming the absent program (with program candidates), keeps the
   routine-specific `NOT_FOUND`, and answers `NO_RUNGS` when the routine exists but is empty. Tests cover all three. 526 package tests.
 
+- **A mistyped routine filter no longer produces a silent, incomplete bundle.** `document_project` validated an unknown program but not an unknown
+  routine, so `routines: ["NoSuchRoutine"]` matched nothing and reported success. The filter now resolves against the selected programs and refuses an
+  unknown name with `COMPONENT_NOT_FOUND` and routine candidates; nothing is written. Tests cover the refusal and a valid filter that documents one
+  routine. 527 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

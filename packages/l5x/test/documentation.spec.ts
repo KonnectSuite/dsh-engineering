@@ -109,6 +109,19 @@ describe('document_project', () => {
     expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
     expect(result.error?.message).toContain('NoSuchProgram')
   })
+
+  it('refuses an unknown routine filter instead of writing an empty bundle', async () => {
+    const unknownTool = await opened()
+    const unknown = await unknownTool.call('document_project', { output_root: 'docs', routines: ['NoSuchRoutine'] })
+    expect(unknown.error?.code).toBe('COMPONENT_NOT_FOUND')
+    expect(unknown.error?.message).toContain('No routine named NoSuchRoutine')
+    expect(unknown.error?.candidates).toEqual(expect.arrayContaining(['MainRoutine']))
+    expect(unknownTool.written.size).toBe(0)
+    const knownTool = await opened()
+    const known = await knownTool.call('document_project', { output_root: 'docs', routines: ['MainRoutine'] })
+    expect(known.error).toBeUndefined()
+    expect(known.data?.counts?.routines).toBe(1)
+  })
 })
 
 

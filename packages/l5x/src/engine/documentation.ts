@@ -362,6 +362,17 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
     const unknown = programs.filter(name => !document.programs.some(program => program.name === name))
     if (unknown.length > 0) throw new L5xError('COMPONENT_NOT_FOUND', `No program named ${unknown.join(', ')}.`, 'Call list_components kind="program" for the declared names.', document.programs.map(program => program.name).slice(0, 5))
   }
+  // A mistyped routine filter used to match nothing and still report success, which reads as a
+  // complete bundle. Refuse it with the routine names the selected programs declare.
+  if (routines !== undefined) {
+    const scopePrograms = programs ?? document.programs.map(program => program.name)
+    const declared = [...new Set(scopePrograms.flatMap(name => listRoutines(document, name).map(info => info.name)))]
+    const unknown = routines.filter(name => !declared.includes(name))
+    if (unknown.length > 0) {
+      const where = programs === undefined ? '' : ` in ${programs.join(', ')}`
+      throw new L5xError('COMPONENT_NOT_FOUND', `No routine named ${unknown.join(', ')}${where}.`, 'Call list_components kind="routine" for the declared names.', declared.slice(0, 5))
+    }
+  }
   const counts: DocumentBundle['counts'] = {
     programs: programs?.length ?? document.programs.length,
     tasks: document.tasks.length,
