@@ -1081,6 +1081,10 @@
   project has no download path. The baseline blocker now says how to repair it (export the ACD, open that L5X). Also proven offline in one project: RLL + ST +
   FBD + SFC all build together with **0 warnings / 0 errors**.
 
+- **The skill now has guards, not conventions.** Two tests hold its published surface: the body must fit the component budget from `components.json`, and every
+  backticked snake_case name must be a registered tool, a compose pattern, a host-side Studio tool or a parameter - so a phantom name fails the build instead
+  of sending the assistant hunting. A self-check holds `open_project` in the scan so an empty result cannot pass. 471 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
