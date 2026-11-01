@@ -363,5 +363,10 @@ describe('editing a safety-scheduled program', () => {
     expect(tag.error?.code).toBe('PROTECTED_TARGET')
     const routine = await l5x.call('draft_routine', { program: 'Safe', name: 'X1', language: 'ST' })
     expect(routine.error?.code).toBe('PROTECTED_TARGET')
+    // The composer is a staging tool too, and it was the one that still got through.
+    const composed = await l5x.call('compose_rung', { program: 'Safe', routine: 'R', rung: 0, mode: 'replace', spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['B'] }, { instr: 'OTE', args: ['B'] }] }) })
+    expect(composed.error?.code).toBe('PROTECTED_TARGET')
+    const batch = await l5x.call('compose_batch', { program: 'Safe', routine: 'R', rung: 1, rungs_json: JSON.stringify([{ spec: { series: [{ instr: 'XIC', args: ['A'] }, { instr: 'OTE', args: ['B'] }] } }]) })
+    expect(batch.error?.code).toBe('PROTECTED_TARGET')
   })
 })

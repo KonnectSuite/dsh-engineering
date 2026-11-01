@@ -257,6 +257,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         if (program === undefined || routine === undefined || mode === undefined || rung === undefined) {
           throw invalid('program, routine, mode and rung', 'Staging needs all four.', 'Pass program, routine, mode and rung together, or none of them.')
         }
+        // The same safety refusal as draft_rung, draft_st and the rest: the composer is a staging tool.
+        safetyGuard(project, program)
         if (composed.rungs.length > 1 && mode === 'replace') throw invalid('mode', 'A two-rung pattern cannot replace one rung.', 'Use mode insert, or compose a single rung.')
         let draft: Draft | undefined
         for (const [index, composedRung] of composed.rungs.entries()) {

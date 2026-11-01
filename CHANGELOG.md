@@ -555,6 +555,15 @@
   argument complaint about a routine that cannot exist. The test covers three different tools in one safety project, so a future
   tool that bypasses the helper will show up as a failure rather than as a silent gap.
 
+- **The composer was the one staging tool that still accepted safety logic, and an audit found it.** Round 76 said "every staging tool"
+  guards safety; a deliberate audit of the tools that write through the draft store showed `compose_rung` **staged** a change to a
+  safety program while `compose_batch`, `draft_rung_comment` and the others refused. The guard now runs in `compose_rung` after its
+  argument checks, all three audit cases answer
+  `PROTECTED_TARGET: Program Safe runs in a safety task, and safety logic cannot be changed.`, and the safety test covers
+  `draft_rung`, `draft_st`, `draft_tag`, `draft_routine`, `compose_rung` and `compose_batch` in one project. The lesson is the
+  round-76 claim itself: "every tool" is a claim about evidence, so it has to be tested by walking the tool list rather than
+  inferred from the shared helper.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
