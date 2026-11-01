@@ -70,6 +70,25 @@ function tableOf(document: L5xDocument): ReadonlyMap<string, Declaration> {
   return table
 }
 
+/**
+ * The declared type of one member of a structure type, for a stage-2 tag a draft declared but the
+ * export does not carry yet. Built-in structures, UDTs and AOI parameters are all consulted.
+ *
+ * @param document - The parsed project.
+ * @param dataType - The structure type name.
+ * @param member - The member name as written.
+ * @returns The member type, or undefined when the type or member is not declared.
+ */
+export function memberType(document: L5xDocument, dataType: string, member: string): string | undefined {
+  const builtin = builtins[dataType.toUpperCase()]?.[member.toUpperCase()]
+  if (builtin !== undefined) return builtin
+  const udt = document.udts.find(entry => entry.name.toLowerCase() === dataType.toLowerCase())
+  const udtMember = udt?.members.find(entry => entry.name.toLowerCase() === member.toLowerCase())
+  if (udtMember !== undefined) return udtMember.dataType
+  const aoi = document.aois.find(entry => entry.name.toLowerCase() === dataType.toLowerCase())
+  return aoi?.parameters.find(entry => entry.name.toLowerCase() === member.toLowerCase())?.dataType
+}
+
 interface Segment { readonly name: string; readonly indices?: readonly string[] }
 function segmentsOf(symbol: string): readonly Segment[] | undefined {
   const parts: string[] = []

@@ -1360,6 +1360,11 @@
   allowed) and names the slot list and the supplied count; unmodelled instructions keep the raw escape hatch. Tests hold the short and long cases, a
   valid TON, and an unmodelled FAL rung. 513 package tests.
 
+- **A pasted rung is checked for operand types too.** `XIC(D)` with a DINT tag passed `draft_rung` and failed Studio with `INVALIDOPTYPE`. Raw
+  validation now reuses the composer's per-operand checks, so literal slot kinds, declared types, array shape, writable destinations and bounds all
+  apply to pasted text; keyword slots and `?` placeholders are left to Studio. Staged structures resolve member paths (`T.DN` is BOOL), and a fixture
+  that read a DINT in a contact was corrected. 513 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -791,6 +791,13 @@ describe('a raw rung operand count', () => {
     const long = await draft('XIC(B)ADD(D,1,D,2);')
     expect(long.error?.code).toBe('INVALID_OPERAND')
     expect(long.error?.message).toContain('ADD takes 3 operand(s)')
+    // A tag of the wrong type is refused too: XIC(D) with a DINT failed Studio with INVALIDOPTYPE.
+    const wrongType = await draft('XIC(D)OTE(B);')
+    expect(wrongType.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongType.error?.message).toContain('needs a BOOL tag')
+    const wrongTimer = await draft('XIC(B)TON(D,500,0);')
+    expect(wrongTimer.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongTimer.error?.message).toContain('needs a timer')
     expect((await draft('XIC(B)TON(T,500,0);')).error).toBeUndefined()
     // An unmodelled instruction keeps the raw escape hatch, since its operand list is not modelled.
     expect((await draft('FAL(D,D)OTE(B);')).error).toBeUndefined()
@@ -853,7 +860,7 @@ describe('a program without a Tags region', () => {
 </RSLogix5000Content>`
     const l5xTool = harness(new Map([['programtags.l5x', new TextEncoder().encode(xml)]]), { editing: true })
     expect((await l5xTool.call('open_project', { path: 'programtags.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Local', data_type: 'DINT', description: 'local' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Local', data_type: 'BOOL', description: 'local' })).error).toBeUndefined()
     expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Flag', data_type: 'BOOL', description: 'flag' })).error).toBeUndefined()
     const rung = await l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(Local)OTE(Flag);' })
     expect(rung.error).toBeUndefined()

@@ -12,7 +12,7 @@
 
 import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
-import { resolveTag } from './tag-resolution.ts'
+import { memberType, resolveTag } from './tag-resolution.ts'
 import { COUNTER_TYPES, instructionByName, nearestInstructions, NUMERIC_TYPES, STRING_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
 import { parseLadder, rightRailReader, type LadderNode } from './logic-syntax.ts'
 import { mnemonicsIn, spellingForProject } from './mnemonics.ts'
@@ -110,6 +110,15 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
   const staged = (project.stagedTags ?? []).find(tag => tag.name.toUpperCase() === base.toUpperCase()
     && (!inProgram || tag.scope.toLowerCase() === 'controller' || tag.scope.toLowerCase() === scope.toLowerCase()))
   if (staged !== undefined && declared.length === 0) {
+    const remainder = text.slice(base.length)
+    // A staged structure's member keeps its declared type: T.DN is BOOL even though T is TIMER.
+    if (remainder.startsWith('.') && !remainder.includes('[')) {
+      const path = remainder.slice(1)
+      let current: string | undefined = staged.dataType
+      for (const member of path.split('.').filter(part => part !== '')) current = current === undefined ? undefined : memberType(document, current, member)
+      if (current === undefined) return direct
+      return { symbol: text, scope: staged.scope, resolved: true, canonical: `${staged.name}.${path}`, data_type: current, aliases: [], indices_verified: false }
+    }
     return { symbol: text, scope: staged.scope, resolved: true, canonical: staged.name, data_type: staged.dataType, aliases: [], indices_verified: false, ...(staged.dimensions === undefined ? {} : { dimensions: staged.dimensions }) }
   }
   if (declared.length === 1) return resolveTag(document, declared[0]!.scope, text)
@@ -177,13 +186,18 @@ export function validateRungTags(project: ProjectSnapshot, nodes: readonly Ladde
         `Call list_instructions with filter "${instruction.name}" for the exact operand order, or compose the rung instead.`,
       )
     }
+    const seen: ComposedOperand[] = []
     for (const [index, tokens] of node.operands.entries()) {
-      const slot = instruction.operands[index]
+      const slot = instruction.operands[index] ?? restSlot
       if (slot === undefined) continue
-      if (slot.kind === 'EXPRESSION' || slot.kind === 'ROUTINE' || slot.kind === 'LABEL' || slot.kind === 'KEYWORD') continue
+      // A keyword slot accepts vendor class/attribute names this catalogue does not enumerate.
+      if (slot.kind === 'KEYWORD') continue
       const text = tokens.map(token => token.text).join('')
-      if (text === '' || isLiteral(text) || !TAG_TEXT.test(text)) continue
-      if (!resolveOperand(project, text).resolved) throw missingTag(project, text)
+      // Studio shows an unset operand as ?; a pasted rung may carry it and Studio fills it in.
+      if (text === '' || text.includes('?')) continue
+      // Reuse the composer's operand checks: literal slot kinds, declared type, array shape,
+      // writable destinations, bounds and the program scope all apply to a pasted rung.
+      checkOperand(project, text, slot.kind, seen)
     }
   }
 }
