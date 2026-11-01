@@ -5,12 +5,15 @@
  * slots in written order: A/B source A/B, S source, D destination, L length, P position, T timer,
  * C counter, K control, X expression, B BOOL tag, R routine name. The viewer labels a block from
  * these slots, and the composer builds a legal rung from them, so one table serves both.
+ *
+ * A mnemonic appears once in the catalog: an entry that instructions.ts already declares
+ * with named slots (SQR, BSL, BSR) is not repeated here.
  */
 const TABLE: readonly (readonly [string, string])[] = [
   ['Contacts and coils', 'OSF=B OSR=B UID= UIE='],
   ['Comparison', 'MEQ=AB'],
-  ['Math', 'NEG=SD ABS=SD SQR=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD SCL=SD'],
-  ['Move', 'MVM=SD CPS=SDL BTD=SDL SWPB=SD BSL=ALK BSR=ALK'],
+  ['Math', 'NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD SCL=SD'],
+  ['Move', 'MVM=SD CPS=SDL BTD=SDL SWPB=SD'],
   ['File and array', 'FAL=KLX FSC=KLX SRT=DLX AVE=DL STD=DL SIZE=D'],
   ['Sequencer', 'SQO=KLP SQC=KLP SQL=KLP'],
   ['Program control', 'JXR=R FOR=RBX BRK= NOP= TND= EOT= SFR= SFP='],

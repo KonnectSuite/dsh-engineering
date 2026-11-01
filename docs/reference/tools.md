@@ -138,7 +138,7 @@ Evidence-backed structural checks and export comparison.
 
 #### `run_checks`
 
-Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT). Pass baseline_id to add I/O change checks against an earlier export.
+Run evidence-backed engineering checks on the open project: unused tags, unresolved references, unscheduled programs and undocumented logic, plus the standards rules a latch that nothing resets (LATCH_WITHOUT_RESET) and one output driven from two rungs (DUPLICATE_OUTPUT), and a rung written in an instruction spelling from the other revision (MNEMONIC_VERSION_MISMATCH). Pass baseline_id to add I/O change checks against an earlier export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

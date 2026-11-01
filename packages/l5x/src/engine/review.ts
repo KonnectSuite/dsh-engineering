@@ -2,6 +2,7 @@ import type { ProjectSnapshot } from '../session.ts'
 import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
 import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
+import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn } from './mnemonics.ts'
 
 export interface Change {
   readonly kind: 'added' | 'removed' | 'changed'
@@ -167,6 +168,31 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   if (baseline !== undefined) {
     const difference = compareProjects(baseline, project) as { changes: Change[] }
     for (const change of difference.changes) if (change.component === 'module') report('IO_MODULE_CHANGED', 'warning', `I/O module ${change.key} ${change.kind}`, change)
+  }
+  // Revision pass: one finding per mnemonic, not per rung. Logix Designer 36 renamed
+  // sixteen ladder instructions (EQU to EQ, SQR to SQRT, …). A project that carries
+  // the other revision's spelling still builds, so this is a warning rather than a
+  // refusal: it tells the reader which spelling a rung composed into this project
+  // should use. An export that does not state its revision proves nothing, so the
+  // pass is skipped rather than guessing.
+  const majorRev = doc.controller.majorRev
+  if (Number.isFinite(Number.parseInt(majorRev, 10))) {
+    const mismatched = new Map<string, { used: string; preferred: string; rungs: string[] }>()
+    for (const routine of doc.routines) {
+      if (routine.body.type !== 'RLL') continue
+      for (const rung of routine.body.rungs) {
+        for (const mismatch of mnemonicMismatchesIn(rung.text, majorRev)) {
+          const entry = mismatched.get(mismatch.used) ?? { used: mismatch.used, preferred: mismatch.preferred, rungs: [] }
+          if (entry.rungs.length < 20) entry.rungs.push(`${routine.program}::${routine.name}#${rung.number}`)
+          mismatched.set(mismatch.used, entry)
+        }
+      }
+    }
+    for (const entry of mismatched.values()) {
+      report('MNEMONIC_VERSION_MISMATCH', 'warning',
+        `${entry.used} is the pre-v${MNEMONIC_RENAME_MAJOR} spelling; this project is v${majorRev} and publishes ${entry.preferred}`,
+        { used: entry.used, preferred: entry.preferred, majorVersion: majorRev, rungs: entry.rungs, truncated: entry.rungs.length >= 20 }, 'high')
+    }
   }
   const byRule: Record<string, number> = {}
   const bySeverity: Record<string, number> = {}

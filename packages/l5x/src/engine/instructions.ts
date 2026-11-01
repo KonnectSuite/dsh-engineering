@@ -46,6 +46,7 @@ export const TIMER_TYPES: ReadonlySet<string> = new Set(['TIMER', 'TON', 'TOF', 
 export const COUNTER_TYPES: ReadonlySet<string> = new Set(['COUNTER', 'CTU', 'CTD', 'CTUD'])
 
 import { MORE_INSTRUCTIONS } from './instruction-set.ts'
+import { MNEMONIC_PAIRS } from './mnemonics.ts'
 
 /** Slot helpers kept terse: the table reads as data, not code. */
 const bool = (name = 'Tag'): InstructionOperand => ({ name, kind: 'BOOL' })
@@ -117,8 +118,28 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   })),
 ]
 
-/** Alias spellings accepted for a catalog name. */
-const ALIASES: Readonly<Record<string, string>> = { EQ: 'EQU', NE: 'NEQ', GT: 'GRT', GE: 'GEQ', LT: 'LES', LE: 'LEQ', LIMIT: 'LIM', MOVE: 'MOV' }
+/**
+ * Alternate spellings resolved to the catalog name.
+ *
+ * Logix Designer 36 renamed sixteen ladder instructions — `EQU` became `EQ`,
+ * `SQR` became `SQRT`, and so on. The catalog keeps one name per instruction,
+ * because that name is also the key the viewer labels a block with, so composed
+ * text, parsed text and a rendered block agree. Lookup still accepts the other
+ * published spelling: an export may carry it at any revision.
+ *
+ * An alias therefore only ever points at a name the catalog declares. Fourteen
+ * pairs have exactly one side catalogued; a pair with neither is left alone, and
+ * `instructionByName` reports it as unknown with the nearest names as before.
+ */
+const CATALOG_NAMES: ReadonlySet<string> = new Set(INSTRUCTIONS.map(instruction => instruction.name))
+const ALIASES: Readonly<Record<string, string>> = Object.fromEntries(
+  MNEMONIC_PAIRS.flatMap(({ legacy, modern }): [string, string][] => {
+    const hasLegacy = CATALOG_NAMES.has(legacy)
+    const hasModern = CATALOG_NAMES.has(modern)
+    if (hasLegacy === hasModern) return []
+    return hasLegacy ? [[modern, legacy]] : [[legacy, modern]]
+  }),
+)
 
 /** The catalog entry for one mnemonic, following the alias table. */
 export function instructionByName(name: string): InstructionInfo | undefined {

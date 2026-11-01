@@ -1,5 +1,37 @@
 ## [Unreleased]
 
+### Added
+
+- **A composed rung matches the instruction spelling its project already reads.** Logix Designer 36 renamed
+  sixteen ladder instructions — `EQU` became `EQ`, `SQR` became `SQRT`, `MOV` became `MOVE`, `TRN` became
+  `TRUNC`, and twelve more — so one project can legitimately carry either spelling. The new
+  `packages/l5x/src/engine/mnemonics.ts` holds that table once, resolves either spelling on lookup, and lets
+  `compose_rung` write the spelling the export's own rungs use (`spellingForProject`), falling back to the
+  catalog name when the project uses neither. `run_checks` gains `MNEMONIC_VERSION_MISMATCH`, a warning that
+  names the spelling the project's `MajorRev` publishes instead of leaving the mismatch to the Studio build.
+- **A name Studio will refuse is refused at draft time.** `packages/l5x/src/engine/names.ts` states the identifier
+  rules an export never records — first character a letter or underscore, the rest letters, digits and underscore,
+  at most 40 characters — and `add_tag`, `add_routine` and `add_udt_member` now run them before staging. Each
+  failure carries the repair and a legal suggestion (`1Pump` → `_1Pump`, `Start PB` → `Start_PB`), so the author
+  fixes it in one turn instead of at build time.
+
+### Fixed
+
+- **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
+  composed rung naming `SQRT`, `EXPT`, `MOVE`, `LIMIT`, `ACOS`, `ASIN`, `ATAN`, `TO_BCD`, `BCD_TO` or `TRN` was
+  refused as an unknown instruction even though the catalog declares its pair.
+- **The right-rail guard sees the modern comparison spellings.** A rung ending in `EQ(`, `NE(`, `GT(`, `GE(`,
+  `LT(` or `LE(` leaves the right power rail undriven exactly as `EQU(` does, and is now refused the same way.
+- **The catalogue no longer declares three instructions twice.** `SQR`, `BSL` and `BSR` appeared in both
+  `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
+  mnemonic: 118 entries, 118 names.
+
+Covered by `packages/l5x/test/mnemonics.spec.ts`, `names.spec.ts` and `revision.spec.ts` — the last rewrites one
+attribute of the committed v33 fixture and asserts the real tools: `run_checks` reports `MOV` → `MOVE` on a v36
+copy and stays quiet on the v33 original, and `compose_rung` writes `MOV` into the v33 project, `MOVE` into a copy
+already written that way, and `SQR` for a `SQRT` request the project has never used. 199 package tests and 70
+bundle tests pass.
+
 ## [0.73.0] - 2026-10-31
 
 ### Added

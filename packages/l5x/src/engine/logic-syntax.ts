@@ -1,5 +1,7 @@
 /** Source-positioned Logix tokens and NeutralText structure for static analysis. */
 
+import { alternateMnemonic } from './mnemonics.ts'
+
 /** Offsets refer to UTF-16 positions in the original source, with an exclusive end. */
 export interface LogicToken {
   readonly kind: 'identifier' | 'number' | 'string' | 'punctuation'
@@ -172,7 +174,13 @@ export function rightRailReader(nodes: readonly LadderNode[]): string | undefine
     }
     return undefined
   }
-  return RAIL_READERS.has(last.name.toUpperCase()) ? last.name.toUpperCase() : undefined
+  const upper = last.name.toUpperCase()
+  if (RAIL_READERS.has(upper)) return upper
+  // Logix Designer 36 renamed several of these (EQU to EQ, …). The rail rule is about
+  // the instruction, not the spelling, so either published form counts: a v36 project
+  // ending a rung in EQ( leaves the rail undriven exactly as EQU( does.
+  const alternate = alternateMnemonic(upper)
+  return alternate !== undefined && RAIL_READERS.has(alternate) ? alternate : undefined
 }
 
 /** One address token sequence, including indices and its source occurrence. */export interface AddressOccurrence { readonly text: string; readonly start: number; readonly end: number; readonly line: number; readonly indexTokens: readonly LogicToken[] }

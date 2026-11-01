@@ -7,6 +7,7 @@ import { compareProjects, runChecks } from './review.ts'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { typeInstances, typeIndex, udtDetail } from './details.ts'
 import { uniqueRegion, xmlRegions, type XmlRegion } from './xml-regions.ts'
+import { checkIdentifier } from './names.ts'
 
 type Operation =
   | { readonly operation: 'replace_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly comment?: string }
@@ -44,6 +45,22 @@ Identifiers are at most 40 characters. Example: {"version":1,"operations":[{"ope
 type UdtOperation = Extract<Operation, { operation: 'add_udt_member' | 'set_udt_description' | 'set_udt_member_description' }>
 const UDT_OPERATIONS = ['add_udt_member', 'set_udt_description', 'set_udt_member_description'] as const
 const isUdtOperation = (operation: Operation): operation is UdtOperation => (UDT_OPERATIONS as readonly string[]).includes(operation.operation)
+
+/**
+ * Refuse a name Studio 5000 will not accept, before it reaches a draft.
+ *
+ * An export never states the naming rules for the names it already carries, so a
+ * draft used to accept `1Pump` or `Start PB` and the failure only appeared when
+ * Studio built the project. The rule is cheap to state here, and the message
+ * names the repair instead of the symptom.
+ *
+ * @param name - The identifier the operation would create.
+ * @param kind - What is being named, for the message: "Tag", "Routine", …
+ */
+function requireIdentifier(name: string, kind: string): void {
+  const issue = checkIdentifier(name)
+  if (issue !== undefined) throw new EngineeringError(issue.code, `${kind} name is not usable: ${issue.message}`, issue.fix)
+}
 
 /** Parse a Studio `Dimensions` value: one to three positive sizes. */
 function parseDimensions(row: Record<string, unknown>): string | undefined {
@@ -260,6 +277,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     }
     const instances = typeInstances(context.document, operation.udt)
     if (context.allowUdtInstances !== true && instances.length > 0) throw new EngineeringError('UDT_HAS_INSTANCES', `Data type ${operation.udt} has ${instances.length} instance(s) (first: ${instances[0]}); changing a member rewrites serialized tag data. Use propose_udt_change to emit a Data Type component for Studio import.`)
+    requireIdentifier(operation.name, 'Data type member')
     if (members.children.some(member => member.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Member already exists in the data type')
     const dataType = operation.data_type.toUpperCase()
     const scalar = SCALAR_TYPES.has(dataType)
@@ -271,6 +289,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     const owner = operation.scope.toLowerCase() === 'controller' ? controller : program(operation.scope)
     const tags = uniqueRegion(owner.children, 'Tags')
     if (operation.operation === 'add_tag') {
+      requireIdentifier(operation.name, 'Tag')
       if (tags.children.some(tag => tag.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Tag already exists in the selected scope')
       if (operation.dimensions === undefined && operation.value !== undefined) {
         const float = operation.data_type.toUpperCase() === 'REAL' || operation.data_type.toUpperCase() === 'LREAL'
@@ -290,6 +309,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   const owner = program(operation.program)
   const routines = uniqueRegion(owner.children, 'Routines')
   if (operation.operation === 'add_routine') {
+    requireIdentifier(operation.name, 'Routine')
     if (routines.children.some(routine => routine.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Routine already exists')
     let body: string
     if (operation.language === 'ST') body = stContent(operation.code)

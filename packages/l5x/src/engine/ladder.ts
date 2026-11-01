@@ -15,6 +15,7 @@ import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
 import { instructionByName, nearestInstructions, NUMERIC_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
 import { parseLadder, rightRailReader } from './logic-syntax.ts'
+import { mnemonicsIn, spellingForProject } from './mnemonics.ts'
 
 /** One instruction node. */
 export interface InstructionNode {
@@ -170,7 +171,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       )
     }
     for (const [index, argument] of args.entries()) checkOperand(project, argument, instruction.operands[index]!.kind, operands)
-    return { text: `${instruction.name}(${args.join(',')})`, grounding: 'catalog' }
+    return { text: `${emittedMnemonic(project, instruction.name)}(${args.join(',')})`, grounding: 'catalog' }
   }
   const aoi = project.document.aois.find(entry => entry.name.toUpperCase() === node.instr.toUpperCase())
   if (aoi === undefined) {
@@ -188,6 +189,40 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
 }
 
 /** Emit one node tree, validating as it goes. */
+/** The mnemonics an export already writes, cached per parsed document. */
+const projectSpellings = new WeakMap<object, ReadonlySet<string>>()
+
+/** Every mnemonic one export's ladder routines already use. */
+function spellingsOf(project: ProjectSnapshot): ReadonlySet<string> {
+  const key = project.document as unknown as object
+  const cached = projectSpellings.get(key)
+  if (cached !== undefined) return cached
+  const used = new Set<string>()
+  for (const routine of project.document.routines) {
+    if (routine.body.type !== 'RLL') continue
+    for (const rung of routine.body.rungs) for (const name of mnemonicsIn(rung.text)) used.add(name)
+  }
+  projectSpellings.set(key, used)
+  return used
+}
+
+/**
+ * The spelling to emit for one instruction.
+ *
+ * A rung composed into a project should read the way that project already reads.
+ * Logix Designer 36 renamed sixteen ladder instructions (EQU to EQ, SQR to SQRT,
+ * …), so when the export writes the other published spelling, emit that one and
+ * the new rung matches its neighbours. Otherwise emit the catalog name, which is
+ * also the name the viewer labels a block with, so the common case is unchanged.
+ *
+ * @param project - The export the rung is being composed into.
+ * @param name - The catalog mnemonic.
+ * @returns The spelling to write into the rung.
+ */
+function emittedMnemonic(project: ProjectSnapshot, name: string): string {
+  return spellingForProject(name, spellingsOf(project))
+}
+
 function composeNode(project: ProjectSnapshot, node: LadderNodeSpec, operands: ComposedOperand[], counter: { instructions: number }, depth: number, grounds: Set<'catalog' | 'aoi'>): string {
   if (depth > MAX_DEPTH) throw new L5xError('LADDER_TOO_LARGE', `Branch nesting exceeds ${MAX_DEPTH}.`, 'Flatten the branches.')
   if ('parallel' in node) {
