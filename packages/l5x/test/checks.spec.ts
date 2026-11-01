@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { FINDING_RULES } from '../src/engine/review.ts'
 import { fixtureBytes, harness } from './harness.ts'
 
 /** Open the fixture and return the harness. */
@@ -615,5 +616,17 @@ describe('an export with encrypted routine bodies', () => {
     const opened = await l5x.call('open_project', { path: 'p.l5x' })
     expect(String(opened.summary)).toContain('2 source-protected')
     expect((opened.data?.counts as { protected_routines?: number })?.protected_routines).toBe(2)
+  })
+})
+
+describe('the run_checks description', () => {
+  it('states the rule count the tool actually has, twice', () => {
+    // The count used to be hand-written prose: it said 41 while the tool carried 42, and no test could see it
+    // because generated documentation copies the description verbatim. It is now derived, and pinned here.
+    const definition = harness().definitions.find(entry => entry.name === 'run_checks')
+    const description = definition?.description ?? ''
+    expect(description).toContain(`${FINDING_RULES.length} rules`)
+    expect(description).toContain(`one of the ${FINDING_RULES.length}`)
+    expect(description).not.toMatch(/\b41 rules\b/)
   })
 })

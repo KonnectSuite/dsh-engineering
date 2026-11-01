@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- **The `run_checks` description now derives the rule count it states.** It said `41 rules` while the tool carried
+  **42**, and it said it twice — `docs/reference/tools.md` copies the description verbatim, so the wrong number shipped
+  in the generated reference with every gate green. Both places now interpolate `FINDING_RULES.length`, so a rule added
+  or removed updates the sentence, and a test pins the description to the exported list and refuses a hard-coded `41`.
+  Found by counting the list against the text while writing the parity matrix, not by a failing gate: a number written
+  as prose had nothing checking it.
 - **A diagram finding now names the wire or link it is about.** A `<Wire>` and a `<DirectedLink>` carry no `ID` of
   their own, so every FBD and SFC finding located them as `id ?` — true of every wire on a sheet and useless on a real
   one. `FBD_DANGLING_WIRE`, `FBD_WIRE_PIN_NOT_VISIBLE` and `SFC_LINK_TARGET_MISSING` now name the ends
