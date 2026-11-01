@@ -604,6 +604,13 @@
   cannot drift. Vendor types are the second protected class to be made consistent; safety programs are legitimately readable, so
   their read surfaces needed no change.
 
+- **The search tools now say what they could not search.** On the encrypted `Seco_Cooler` export, `search_logic` answered
+  "**0 matches** for OTE in routine logic" and `find_references` answered "**0 references**" - clean-looking zeros over 144
+  routine bodies that were never read. Both now append
+  `144 source-protected routine(s) were not searched`, and the test that already covered the protected routine's editor,
+  reader and listing asserts the two search answers as well. That is the last of the "silent absence" surfaces for a protected
+  export: a zero now distinguishes *nothing matched* from *nothing could be read*.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

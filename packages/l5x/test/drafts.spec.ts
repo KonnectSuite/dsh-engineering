@@ -418,5 +418,10 @@ describe('editing a source-protected routine', () => {
     expect(String(listed.summary)).toContain('1 source-protected')
     const rows = (listed.data?.rows ?? []) as { name: string; type: string }[]
     expect(rows.some(row => row.name === 'R' && row.type === 'PROTECTED')).toBe(true)
+    // Search tools must say the body was not searched rather than reporting a clean zero.
+    const search = await l5x.call('search_logic', { query: 'OTE' })
+    expect(String(search.summary)).toContain('source-protected routine(s) were not searched')
+    const refs = await l5x.call('find_references', { symbol: 'Anything' })
+    expect(String(refs.summary)).toContain('source-protected routine(s) were not searched')
   })
 })

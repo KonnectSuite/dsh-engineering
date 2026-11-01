@@ -58,7 +58,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const page = matches.slice(0, limit)
         const first = page[0]
         return success(
-          `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for ${JSON.stringify(query)} in routine logic.`,
+          `${matches.length} ${matches.length === 1 ? 'match' : 'matches'} for ${JSON.stringify(query)} in routine logic.${project.document.protectedRoutines.length === 0 ? '' : ` ${project.document.protectedRoutines.length} source-protected routine(s) were not searched.`}`,
           {
             query,
             total: matches.length,
@@ -107,7 +107,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         }))
         const first = evidence[0]
         return success(
-          `${evidence.length} ${evidence.length === 1 ? 'reference' : 'references'} to ${symbol}: ${byAccess.read} read, ${byAccess.write + byAccess.read_write} write, ${byAccess.unknown} unknown.`,
+          `${evidence.length} ${evidence.length === 1 ? 'reference' : 'references'} to ${symbol}: ${byAccess.read} read, ${byAccess.write + byAccess.read_write} write, ${byAccess.unknown} unknown.${project.document.protectedRoutines.length === 0 ? '' : ` ${project.document.protectedRoutines.length} source-protected routine(s) were not searched.`}`,
           {
             symbol,
             total: evidence.length,
