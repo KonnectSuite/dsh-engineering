@@ -829,6 +829,11 @@
   change is reported; and it described the bundle without the Safety and Add-On Instruction tables or the `rungs/AOI-<name>.md` files. All four are now
   in the skill, body 7648 of 8000 characters. A skill that omits a capability is a capability the assistant will not use. 432 package tests.
 
+- **Three tool descriptions now name behaviour they had grown.** `compare_projects` said it compared programs, tasks, tags and so on - the controller it now compares was
+  absent from the sentence a model reads; `project_overview` did not mention the limits list; `document_project` did not mention the Safety and Add-On Instruction
+  tables, the per-AOI routine files, or that counts separate program and AOI routines. All three updated and `docs/reference/tools.md` regenerated, so the public
+  reference matches the product. My first patch dropped the trailing comma and broke the file; `tsc` caught it before any test ran. 432 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

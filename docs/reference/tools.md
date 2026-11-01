@@ -44,7 +44,7 @@ Open one Studio 5000 L5X export for this chat. Returns a project_id and a struct
 
 #### `project_overview`
 
-Structure and coverage of the open project: controller, revision, tasks, programs and component counts.
+Structure and coverage of the open project: controller (including its saved route and project serial), revision, tasks, programs, component counts, and an explicit limits list when routines are protected, types are vendor-owned or a safety task exists.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -151,7 +151,7 @@ Run evidence-backed engineering checks on the open project: unused tags, unresol
 
 #### `compare_projects`
 
-Compare two open exports by engineering component: programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored.
+Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -176,7 +176,7 @@ List the ladder instructions the composer validates: mnemonic, category, summary
 
 #### `document_project`
 
-Write a documentation bundle for the open project into a NEW folder: project summary, I/O list, tag CSVs (including the Studio Tags and Comments shape) and per-program logic documentation — rungs with their comments and referenced tags, and the decoded elements of function block and sequential function chart routines. Never writes to the export.
+Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately. Never writes to the export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

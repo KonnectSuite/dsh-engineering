@@ -67,7 +67,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'project_overview',
-      description: 'Structure and coverage of the open project: controller, revision, tasks, programs and component counts.',
+      description: 'Structure and coverage of the open project: controller (including its saved route and project serial), revision, tasks, programs, component counts, and an explicit limits list when routines are protected, types are vendor-owned or a safety task exists.',
       parameters: object({ project_id: PROJECT_ID }, []),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
