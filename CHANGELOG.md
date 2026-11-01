@@ -1432,6 +1432,10 @@
   `IREF_TAG_NOT_PROVIDED`, `OREF_TAG_NOT_PROVIDED`). An unknown rule answers `INVALID_ARGUMENT` with the rule candidates, and the name is
   matched without case. A drift test scans the source for every emitted rule and fails if the list falls behind. 529 package tests.
 
+- **The `run_checks` description now matches the tool.** It named only some of the 37 rules and said nothing about filter validation. It now states the
+  37-rule scope in one sentence (tags, scheduling, rungs, FBD wiring, serial support, I/O change, safety), that each finding names its rule, severity,
+  evidence and fix, and that an unknown rule filter is rejected. Regenerated `docs/reference/tools.md`. 529 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
