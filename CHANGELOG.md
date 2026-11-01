@@ -1263,6 +1263,8 @@
   Studio with INVALIDOPTYPE, while ALMA(AlarmA,...) and ALMD(AlarmD,...) built 0/0. ALMA's Alarm slot now accepts ALARM_ANALOG only and ALMD's
   ALARM_DIGITAL only; tests hold both refusals and both valid rungs, and the dist smoke checks the built catalogue. 499 package tests.
 
+- **Generated client faces refreshed** after the alarm type restrictions, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
