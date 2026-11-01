@@ -520,6 +520,15 @@
   parentheses yields only `DCS`. That also means the earlier `DCM`/`DCS`/`CROUT` count from round 50 included this false name, so
   the real production total was even smaller than reported.
 
+- **A real edit in a 10 MB project produced exactly one change, and the diff named the rung and both texts.** Taking the production
+  Seco export, replacing rung 2 of `TRAVEL/C07_Laser_Cooling` through `compose_rung`, applying it, and comparing the two files gave
+  **1 change**: `rung: TRAVEL::C07_Laser_Cooling::2 changed`, with `changed_fields` holding the old branch rung and the new
+  three-instruction rung side by side. That is the fidelity an engineer needs from a diff - not "the routine changed". Also
+  verified on that project this round: `resolve_tag` on a deep member chain (`TC_FURN_GLOBAL.Scanner.NW.PV`), a bit address and
+  an array element all resolve; `get_component kind "aoi"` returns an AOI with its routine and parameters; `trace_dependencies`
+  and `find_references` both accept an `AOI::Member` symbol; and `document_project` filters to one program correctly (23 routines,
+  1210 rungs). A test pins the one-rung diff so the fidelity cannot regress.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

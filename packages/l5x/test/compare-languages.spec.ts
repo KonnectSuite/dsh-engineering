@@ -103,3 +103,29 @@ describe('a change record', () => {
     expect((tagChange?.changed_fields ?? []).join(' ')).toContain('description')
   })
 })
+
+
+/** The same project with one rung rewritten. */
+const RUNG_OLD = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"RungDiff\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"B\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n        <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung>\n        <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)XIO(B)OTE(B);]]></Text></Rung>\n      </RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+const RUNG_NEW = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"RungDiff\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"B\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n        <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung>\n        <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(B)OTE(B);]]></Text></Rung>\n      </RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('one rung changed', () => {
+  it('is one rung change naming both texts', async () => {
+    // On a real 10 MB project a single rung edit produced exactly one change:
+    // rung TRAVEL::C07_Laser_Cooling::2 with the before and after text in changed_fields.
+    const l5x = harness(new Map([
+      ['old.l5x', new TextEncoder().encode(RUNG_OLD)],
+      ['new.l5x', new TextEncoder().encode(RUNG_NEW)],
+    ]))
+    const before = await l5x.call('open_project', { path: 'old.l5x' })
+    const after = await l5x.call('open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; key: string; changed_fields?: string[] }[]
+    const rungs = changes.filter(change => change.component === 'rung')
+    expect(rungs.length).toBe(1)
+    expect(rungs[0]?.key).toContain('R::1')
+    const fields = (rungs[0]?.changed_fields ?? []).join(' ')
+    expect(fields).toContain('XIC(A)XIO(B)OTE(B)')
+    expect(fields).toContain('XIC(B)OTE(B)')
+  })
+})
