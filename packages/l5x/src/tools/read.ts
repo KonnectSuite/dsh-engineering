@@ -195,6 +195,8 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
           : kind === 'routine'
             ? [
                 ...listRoutines(document, scope ?? '').map(routine => ({ name: routine.name, program: routine.program, type: routine.type, rungCount: routine.rungCount ?? null, lineCount: routine.lineCount ?? null, description: routine.description })),
+                // An AOI carries its own routines; omitting them made a 3-routine AOI list as empty.
+                ...(document.aois.find(aoi => aoi.name.toUpperCase() === (scope ?? '').toUpperCase())?.routines ?? []).map(routine => ({ name: routine.name, program: scope ?? '', type: routine.type, rungCount: routine.body.type === 'RLL' ? routine.body.rungs.length : null, lineCount: routine.body.type === 'ST' ? (routine.body.code.split('\n').length) : null, description: routine.description })),
                 // A protected routine exists; listing nothing tells an engineer the program is empty.
                 ...document.protectedRoutines
                   .filter(entry => scope === undefined || entry.program === scope)
@@ -267,6 +269,9 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
   }
   if (kind === 'routine') {
     const matches = listRoutines(document, scope ?? '').filter(routine => routine.name === name)
+    // An AOI owns routines too: EnableInFalse, Logic, Prescan.
+    const aoiOwned = document.aois.find(aoi => aoi.name.toUpperCase() === (scope ?? '').toUpperCase())?.routines.find(routine => routine.name === name)
+    if (aoiOwned !== undefined) return aoiOwned
     const first = matches[0]
     if (first === undefined) {
       // The export may carry the routine as an encrypted body. Saying "no routine named" sends a

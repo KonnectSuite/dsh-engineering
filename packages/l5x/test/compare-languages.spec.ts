@@ -563,3 +563,35 @@ describe('safety scheduling and safety network', () => {
     expect(String(networkFindings[0]?.message)).toContain('set its SafetyNetwork')
   })
 })
+
+/** An AOI that owns a Logic routine and a Prescan routine. */
+const AOI_ROUTINES_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="AoiRoutines" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags/>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="AOI_Step" Class="Standard" Revision="1.0" ExecutePrescan="true" ExecutePostscan="false" ExecuteEnableInFalse="false">
+        <Parameters><Parameter Name="In" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+        <Routines>
+          <Routine Name="Logic" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[NOP();]]></Text></Rung></RLLContent></Routine>
+          <Routine Name="Prescan" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[NOP();]]></Text></Rung></RLLContent></Routine>
+        </Routines>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('an AOI that owns routines', () => {
+  it('lists and reads them by the AOI name', async () => {
+    const l5x = harness(new Map([['ar.l5x', new TextEncoder().encode(AOI_ROUTINES_L5X)]]))
+    await l5x.call('open_project', { path: 'ar.l5x' })
+    const listed = await l5x.call('list_components', { kind: 'routine', scope: 'AOI_Step' })
+    const rows = (listed.data?.rows ?? []) as { name: string; type: string }[]
+    expect(rows.map(row => row.name).sort()).toEqual(['Logic', 'Prescan'])
+    const routine = await l5x.call('get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
+    expect(routine.error).toBeUndefined()
+    expect(routine.data?.component?.name).toBe('Logic')
+  })
+})

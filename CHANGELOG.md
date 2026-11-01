@@ -799,6 +799,11 @@
   violations now asserts the action text too, so a finding cannot silently lose its remedy. The first patch script missed an anchor and applied nothing -
   caught because the script writes only at the end - so the corrected anchors were taken from the file rather than reconstructed. 429 package tests.
 
+- **An AOI's own routines are now listable and readable by name.** Every AOI carries routines - `FC_SFTY_SSOV` has **`EnableInFalse`, `Logic` and `Prescan`** - but
+  `list_components kind:"routine"` returned zero for an AOI scope and `get_component` answered `COMPONENT_NOT_FOUND`, so the only way to reach them was to read
+  the whole AOI and pick from its array. Both tools now resolve a scope that names an AOI: the real call returns `3 routines` and reads `Logic`. A test covers
+  an AOI with a Logic and a Prescan routine. 430 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
