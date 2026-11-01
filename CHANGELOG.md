@@ -1018,6 +1018,10 @@
   tasks, data types, AOIs, modules and controller tags, plus **230 program-scoped routines and tags** - **0 unreadable**. The invariant is now a test: a built
   fixture lists each kind and reads every row by the name the listing gave. A listing that names something the reader cannot open is a dead end. 456 package tests.
 
+- **Listing an encrypted AOI's routines now says why the list is empty.** `list_components kind:"routine" scope:"AOI56MCM"` answered `0 routines.` - the same shape as
+  a real instruction with no logic. The summary now appends `definition encrypted: its routines are not readable`, matching the AOI flag from round 164. Verified on
+  `Seco_Homogenizer` and pinned with the builder's `encodedAoi` fixture. 456 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
