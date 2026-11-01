@@ -45,7 +45,7 @@ function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
     name: instruction.name,
     category: instruction.category,
     summary: instruction.summary,
-    operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true, ...(slot.writable === true ? { writable: true } : {}), ...(slot.tagOnly === true ? { tag_only: true } : {}), ...(slot.arrayElement === true ? { array_element: true } : {}), ...(slot.minimum === undefined ? {} : { minimum: slot.minimum }), ...(slot.maximum === undefined ? {} : { maximum: slot.maximum }), ...(slot.types === undefined ? {} : { types: slot.types }), ...(slot.rest === true ? { rest: true } : {}) })),
+    operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true, ...(slot.writable === true ? { writable: true } : {}), ...(slot.tagOnly === true ? { tag_only: true } : {}), ...(slot.arrayElement === true ? { array_element: true } : {}), ...(slot.arrayTag === true ? { array_tag: true } : {}), ...(slot.minimum === undefined ? {} : { minimum: slot.minimum }), ...(slot.maximum === undefined ? {} : { maximum: slot.maximum }), ...(slot.types === undefined ? {} : { types: slot.types }), ...(slot.rest === true ? { rest: true } : {}) })),
     // Logix Designer 36 renamed sixteen instructions (EQU/EQ, SQR/SQRT, …). The row
     // carries the other published spelling so a caller does not have to know which
     // one this export happens to read; compose_rung accepts either.
@@ -66,7 +66,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
   return [
     tool({
       name: 'list_instructions',
-      description: 'List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable, or tag_only when it is read rather than written), whether it must name an array element (array_element), a minimum or maximum value where the vendor enforces one (minimum, maximum), an accepted type where the vendor restricts it (types), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.',
+      description: 'List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable, or tag_only when it is read rather than written), whether it must name an array element (array_element) or a whole array tag (array_tag), a minimum or maximum value where the vendor enforces one (minimum, maximum), an accepted type where the vendor restricts it (types), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.',
       parameters: object({
         filter: string('Case-insensitive substring matched against the instruction name, category or summary.'),
         category: string('Only instructions in this category, for example "Comparison".'),

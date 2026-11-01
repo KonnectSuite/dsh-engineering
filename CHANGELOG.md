@@ -1271,6 +1271,11 @@
 
 - **Generated client faces refreshed** after the PID type restriction, so repository bytes match the rebuilt artifact.
 
+- **Array slots are checked against the declaration, not guessed.** Resolution now returns a tag's array dimensions, and SIZE's Source carries
+  `arrayTag`; the composer refuses a scalar tag (`SIZE(D,0,Pos)` failed Studio with `MUSTBEARRAY`) and refuses one element (`Arr[0]`) where the
+  whole array is required. The array-dimension test holds both refusals plus the valid `SIZE(Arr,2,Pos)`; the dist smoke checks the built catalogue.
+  499 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -50,6 +50,8 @@ export interface ComposedOperand {
   readonly canonical?: string
   /** Declared data type when it resolves. */
   readonly data_type?: string
+  /** Declared array dimensions when the operand resolves to an array declaration. */
+  readonly dimensions?: readonly number[]
 }
 
 /** One composed rung. */
@@ -98,7 +100,7 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
   // A draft may declare the tag this rung is written against; that is not an error.
   const staged = (project.stagedTags ?? []).find(tag => tag.name.toUpperCase() === base.toUpperCase())
   if (staged !== undefined && declared.length === 0) {
-    return { symbol: text, scope: staged.scope, resolved: true, canonical: staged.name, data_type: staged.dataType, aliases: [], indices_verified: false }
+    return { symbol: text, scope: staged.scope, resolved: true, canonical: staged.name, data_type: staged.dataType, aliases: [], indices_verified: false, ...(staged.dimensions === undefined ? {} : { dimensions: staged.dimensions }) }
   }
   if (declared.length === 1) return resolveTag(document, declared[0]!.scope, text)
   if (declared.length > 1) {
@@ -237,7 +239,7 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
     )
   }
   const type = (resolution.data_type ?? '').toUpperCase()
-  const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, ...(type === '' ? {} : { data_type: type }) }
+  const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, ...(type === '' ? {} : { data_type: type }), ...(resolution.dimensions === undefined ? {} : { dimensions: resolution.dimensions }) }
   seen.push(operand)
   if (kind === 'BOOL' && type !== 'BOOL') {
     throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a BOOL tag.`, 'Use a BOOL tag, or an alias that resolves to BOOL.', [])
@@ -316,6 +318,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       }
       if (slot?.arrayElement === true && !text.includes('[')) {
         throw new L5xError('INVALID_OPERAND', `${text} must name one array element for ${instruction.name} ${slot.name}, for example ${text}[0].`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array tag.`)
+      }
+      // Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar tag in an array slot: SIZE(D,0,Pos) failed
+      // and SIZE(Arr,2,Pos) built.
+      if (slot?.arrayTag === true && operand.resolved && (text.includes('[') || (operand.dimensions?.length ?? 0) === 0)) {
+        throw new L5xError('INVALID_OPERAND', `${text} must name a declared array tag for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag itself (Arr), not one element or a scalar tag.')
       }
       // Studio answers RxCMP_E_AUDIT_OUTOFRANGE for a below-minimum literal: FIND(...,0,...) fails and
       // FIND(...,1,...) builds, and the string positioning operands are 1-based for the same reason.

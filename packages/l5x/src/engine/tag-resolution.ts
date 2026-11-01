@@ -15,6 +15,8 @@ export interface TagResolution {
   readonly aliases: readonly string[]
   readonly indices_verified: boolean
   readonly reason?: string
+  /** Declared array dimensions when the resolved declaration is an array. */
+  readonly dimensions?: readonly number[]
   /** Scopes that declare the base name when the requested scope does not. */
   readonly scopes?: readonly string[]
 }
@@ -170,5 +172,5 @@ export function resolveTag(document: L5xDocument, scope: string, symbol: string)
     } else if (dimensions.length > 0 && position !== segments.length - 1) return fail('Array member requires a subscript')
     canonical.push(name)
   }
-  return { symbol, scope, resolved: true, canonical: `${declaration.scope}::${canonical.join('.')}`, data_type: dataType, aliases, indices_verified: indicesVerified }
+  return { symbol, scope, resolved: true, canonical: `${declaration.scope}::${canonical.join('.')}`, data_type: dataType, aliases, indices_verified: indicesVerified, ...(dimensions.length === 0 ? {} : { dimensions }) }
 }

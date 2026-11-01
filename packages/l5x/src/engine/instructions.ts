@@ -32,6 +32,8 @@ export interface InstructionOperand {
   readonly minimum?: number
   /** True when the slot must name one array element (Arr[0]), not the array tag. */
   readonly arrayElement?: boolean
+  /** True when the slot must name a declared array tag as a whole (Studio answers MUSTBEARRAY otherwise). */
+  readonly arrayTag?: boolean
   /** True for an array, structure or control operand that must be a tag but is not written. */
   readonly tagOnly?: boolean
   /** True when Studio requires a tag here: a literal is refused at build with RxCMP_E_AUDIT_INVALIDOPKIND. */
@@ -129,7 +131,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination; the destination comes first in the rung text.', operands: [numW('Destination'), expression()] },
 
   { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, { name: 'Dimension to Vary', kind: 'NUMBER', maximum: 2 }, { name: 'Destination', kind: 'NUMBER', writable: true, types: ['REAL'] }, { name: 'Control', kind: 'ANY', writable: true }, num('Length'), num('Position')] },
-  { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [{ name: 'Source', kind: 'ANY', tagOnly: true }, { name: 'Dimension to Vary', kind: 'NUMBER', maximum: 2 }, numW('Size')] },
+  { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [{ name: 'Source', kind: 'ANY', tagOnly: true, arrayTag: true }, { name: 'Dimension to Vary', kind: 'NUMBER', maximum: 2 }, numW('Size')] },
   { name: 'JXR', category: 'Program control', summary: 'Run an external routine; parameters and a return tag may follow the control structure.', operands: [routine('External routine name'), { name: 'External routine control', kind: 'ANY', writable: true }] },
   { name: 'PID', category: 'Process', summary: 'PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.', operands: [{ name: 'PID', kind: 'ANY', writable: true, types: ['PID'] }, num('Process variable'), num('Tieback'), { name: 'Control variable', kind: 'NUMBER', writable: true }, any('PID master loop'), bool('Inhold bit'), num('Inhold value')] },
   { name: 'ALMA', category: 'Alarm', summary: 'Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.', operands: [{ name: 'Alarm', kind: 'ANY', writable: true, types: ['ALARM_ANALOG'] }, num('In'), bool('ProgAckAll'), bool('ProgDisable'), bool('ProgEnable')] },

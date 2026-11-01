@@ -72,6 +72,7 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   // SIZE reads an array tag and an array has at most three dimensions.
   const sizeSource = instructionByName('SIZE')?.operands.find(operand => operand.name === 'Source')
   assert.equal(sizeSource?.tagOnly, true)
+  assert.equal(sizeSource?.arrayTag, true)
   for (const name of ['SIZE', 'SRT', 'STD']) {
     const dimension = instructionByName(name)?.operands.find(operand => operand.name === 'Dimension to Vary')
     assert.equal(dimension?.maximum, 2, name)
