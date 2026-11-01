@@ -78,3 +78,31 @@ describe('through run_checks', () => {
     expect(invented).toEqual([])
   })
 })
+
+
+describe('a serial-port instruction on a processor without one', () => {
+  it('reports it on a CompactLogix 5380, where the build refuses it', () => {
+    const found = rungFindings(ladder('XIC(Start)ABL(chan,ctl,cnt)OTE(Run);'), { processorType: '5069-L320ERMS2' })
+    const rule = found.find(entry => entry.rule === 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED')
+    expect(rule).toBeDefined()
+    expect(rule?.severity).toBe('critical')
+    expect(rule?.message).toContain('ABL')
+    expect(rule?.message).toContain('5069-L320ERMS2')
+    expect(rule?.message).toContain('1756-L73')
+  })
+
+  it('reports it on a ControlLogix 5580', () => {
+    const found = rungFindings(ladder('XIC(Start)AWT(chan,text,ctl,len,cnt)OTE(Run);'), { processorType: '1756-L83E' })
+    expect(found.map(entry => entry.rule)).toContain('SERIAL_PORT_INSTRUCTION_UNSUPPORTED')
+  })
+
+  it('stays quiet on a 1756-L73, where the same rung builds', () => {
+    const found = rungFindings(ladder('XIC(Start)ABL(chan,ctl,cnt)OTE(Run);'), { processorType: '1756-L73' })
+    expect(found.map(entry => entry.rule)).not.toContain('SERIAL_PORT_INSTRUCTION_UNSUPPORTED')
+  })
+
+  it('reports once per rung, not once per mnemonic in it', () => {
+    const found = rungFindings(ladder('XIC(Start)ABL(chan,ctl,cnt)ACB(chan,ctl,cnt)OTE(Run);'), { processorType: '5069-L320ERMS2' })
+    expect(found.filter(entry => entry.rule === 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED').length).toBe(1)
+  })
+})

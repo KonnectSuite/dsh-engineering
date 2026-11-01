@@ -359,7 +359,7 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
   // shape, so a document Studio refuses looks exactly like one it accepts.
   for (const routine of doc.routines) {
     if (routine.body.type === 'FBD') findings.push(...validateDiagram(routine))
-    else if (routine.body.type === 'RLL') findings.push(...rungFindings(routine))
+    else if (routine.body.type === 'RLL') findings.push(...rungFindings(routine, { processorType: doc.controller.processorType }))
   }
   const byRule: Record<string, number> = {}
   const bySeverity: Record<string, number> = {}

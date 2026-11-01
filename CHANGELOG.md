@@ -62,6 +62,16 @@
   a 1756-L83E every operand combination returns `RxCMP_E_AUDIT_INVALIDOPTYPE`, while the same rungs build on a 1756-L73,
   and the help states these instructions are unavailable on controllers without serial ports.
 
+- **A serial-port instruction on a processor that has none is now reported instead of left for the build.** `run_checks`
+  gains `SERIAL_PORT_INSTRUCTION_UNSUPPORTED`: when a ladder routine uses `ABL`, `ACB`, `ACL`, `AHL`, `ARD`, `ARL`, `AWA`
+  or `AWT` and the export's `ProcessorType` is a CompactLogix 5380 (`5069-…`) or a ControlLogix 5580 (`1756-L8…`), the
+  finding says which rung, which mnemonic and why — Studio's compiler answers
+  `RxCMP_E_AUDIT_INVALIDOPTYPE` for every operand combination, because the family has no serial port — and names a
+  controller where the same rung does build (`1756-L73`). That rule exists because the previous round spent five failed
+  builds changing operand types for an instruction the platform never supported. Severity is `critical`, one finding per
+  rung however many such instructions it holds, and a 1756-L73 reports nothing. Six tests cover the rule directly and
+  through `run_checks`.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

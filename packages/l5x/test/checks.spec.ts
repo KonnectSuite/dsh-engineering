@@ -403,3 +403,41 @@ describe('the noise a real project produced', () => {
     expect(rows.some(row => row.message.includes('Card1:O'))).toBe(false)
   })
 })
+
+
+describe('a serial-port instruction on a processor without one', () => {
+  const project = (processorType: string) => `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="Serial" ProcessorType="${processorType}" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="Start" TagType="Base" DataType="BOOL"/><Tag Name="Run" TagType="Base" DataType="BOOL"/>
+      <Tag Name="chan" TagType="Base" DataType="DINT"/><Tag Name="ctl" TagType="Base" DataType="SERIAL_PORT_CONTROL"/>
+      <Tag Name="cnt" TagType="Base" DataType="DINT"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent>
+        <Rung Number="0" Type="N"><Text><![CDATA[XIC(Start)ABL(chan,ctl,cnt)OTE(Run);]]></Text></Rung>
+      </RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+  it('reports the instruction through run_checks on a 5069', async () => {
+    const l5x = harness(new Map([['serial.l5x', new TextEncoder().encode(project('5069-L320ERMS2'))]]))
+    expect((await l5x.call('open_project', { path: 'serial.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
+    expect(result.error).toBeUndefined()
+    const findings = result.data?.findings as { rule: string; message: string }[]
+    expect(findings.length).toBe(1)
+    expect(findings[0]?.message).toContain('ABL')
+  })
+
+  it('reports nothing on a 1756-L73', async () => {
+    const l5x = harness(new Map([['serial.l5x', new TextEncoder().encode(project('1756-L73'))]]))
+    expect((await l5x.call('open_project', { path: 'serial.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
+    expect(result.error).toBeUndefined()
+    expect((result.data?.findings as unknown[]).length).toBe(0)
+  })
+})
