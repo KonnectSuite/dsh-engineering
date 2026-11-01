@@ -1406,6 +1406,10 @@
   counts expose `alarms` and the summary line states the count. A test documents an export with one `HiTemp` alarm and asserts the section, the row,
   the count field and the summary. 521 package tests.
 
+- **Parallel branches are drawn with their join.** The diagram stacked branch paths but never drew their re-convergence, and reported the branch as
+  flattened. Each path now gets a stub to one vertical join bar, so the merge is visible; the layout note is empty for branches. Preview tests assert both
+  paths, the join colour and no flatten note. 521 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

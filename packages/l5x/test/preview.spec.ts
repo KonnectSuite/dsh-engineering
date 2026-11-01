@@ -121,11 +121,14 @@ describe('renderLadderSvg', () => {
     expect(raster.height).toBeGreaterThan(80)
   })
 
-  it('stacks a branch and reports that it flattened it', () => {
+  it('stacks a branch and draws its join without flattening', () => {
     const raster = renderLadderSvg([{ number: 0, text: 'XIC(A)[XIC(B),XIC(C)]OTE(Run);' }])
     expect(raster.svg).toContain('XIC(B)')
     expect(raster.svg).toContain('XIC(C)')
-    expect(raster.flattened).toEqual(['branch with 2 path(s)'])
+    expect(raster.flattened).toEqual([])
+    // The join adds a bar and one stub per path, so the connector colour appears more than the
+    // single left bracket did.
+    expect((raster.svg.match(/64748B/gu) ?? []).length).toBeGreaterThanOrEqual(3)
   })
 
   it('escapes operands so a stray angle bracket cannot break the SVG', () => {
@@ -150,9 +153,9 @@ describe('ladder diagram layout', () => {
     expect(raster.svg).toMatch(/OTE\(Run\)/u)
   })
 
-  it('stacks a parallel branch and notes it in the layout report', () => {
+  it('stacks and joins a parallel branch with no layout note', () => {
     const raster = renderLadderSvg([{ number: 0, text: 'XIC(Permit)[XIC(Auto),XIC(Bypass)]OTE(Run);' }], 'branch')
-    expect(raster.flattened.join(' ')).toContain('branch with 2 path(s)')
+    expect(raster.flattened).toEqual([])
     expect(raster.svg).toContain('XIC(Auto)')
     expect(raster.svg).toContain('XIC(Bypass)')
   })

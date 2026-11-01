@@ -16,12 +16,13 @@ export interface RungSpec {
   readonly comment?: string
 }
 
-/** A rendered diagram plus what the layout had to flatten. */
+/** A rendered diagram plus layout notes; empty when every element could be drawn. */
 export interface LadderRaster {
   readonly svg: string
   readonly width: number
   readonly height: number
   readonly rungs: number
+  /** Elements the layout could not draw; branches are drawn with their join, so this is usually empty. */
   readonly flattened: readonly string[]
 }
 
@@ -149,17 +150,25 @@ function laySequence(nodes: readonly LadderNode[], startX: number, centreY: numb
       x += box + BOX_GAP
       continue
     }
-    // A branch stacks its paths; the widest path decides how far the rail advances.
+    // A branch stacks its paths, then draws their re-convergence: a stub from each path's right
+    // edge to one join bar. Without the join the drawing showed the paths but not that they merge.
     const step = BOX_HEIGHT + 8
     const firstCentres = node.paths.map((_path, index) => centreY - ((node.paths.length - 1) * step) / 2 + index * step)
     const laidPaths = node.paths.map((path, index) => laySequence(path, x + 14, firstCentres[index]!, flattened))
-    flattened.push(`branch with ${node.paths.length} path(s)`)
+    const pathRights = laidPaths.map(laid => rightEdge(laid.cells))
     const span = Math.max(84, ...laidPaths.map(laid => rightEdge(laid.cells) - x))
     for (const laid of laidPaths) cells.push(...laid.cells)
     const top = firstCentres[0]! - BOX_HEIGHT / 2
     const bottom = firstCentres[firstCentres.length - 1]! + BOX_HEIGHT / 2
     cells.push({ label: '', x, y: top, width: 10, height: bottom - top, fill: 'none', stroke: '#64748B' })
-    x += span + 24
+    const joinX = x + span + 12
+    for (const [index, laid] of laidPaths.entries()) {
+      const right = pathRights[index]!
+      const centre = firstCentres[index]!
+      if (joinX > right) cells.push({ label: '', x: right, y: centre - 1, width: joinX - right, height: 2, fill: '#64748B', stroke: 'none' })
+    }
+    cells.push({ label: '', x: joinX, y: top, width: 2, height: bottom - top, fill: '#64748B', stroke: 'none' })
+    x = joinX + 34
   }
   return { cells, width: Math.max(0, rightEdge(cells) - startX) }
 }
