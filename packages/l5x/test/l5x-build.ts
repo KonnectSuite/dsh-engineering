@@ -129,15 +129,16 @@ export function member(
     readonly bitNumber?: number
   } = {},
 ): string {
-  const dimensions = options.dimensions === undefined ? ' Dimension="0"' : ` Dimensions="${options.dimensions}" Dimension="0"`
+  // A real export writes an array member as Dimension="N"; Dimensions is not a member attribute.
+  const dimensions = ` Dimension="${options.dimensions ?? '0'}"`
   const target = options.target === undefined ? '' : ` Target="${options.target}" BitNumber="${options.bitNumber ?? 0}"`
   const description = options.description === undefined ? '' : ` Description="${options.description}"`
   return `<Member Name="${name}" DataType="${options.dataType ?? 'DINT'}"${dimensions} Radix="${options.radix ?? 'Decimal'}" Hidden="${options.hidden === true ? 'true' : 'false'}"${target} ExternalAccess="${options.externalAccess ?? 'Read/Write'}"${description}/>`
 }
 
 /** One user-defined type. */
-export function userType(name: string, members: readonly string[]): string {
-  return `<DataType Name="${name}" Family="NoFamily" Class="User"><Members>${members.join('')}</Members></DataType>`
+export function userType(name: string, members: readonly string[], family = 'NoFamily'): string {
+  return `<DataType Name="${name}" Family="${family}" Class="User"><Members>${members.join('')}</Members></DataType>`
 }
 
 /** One I/O module. */

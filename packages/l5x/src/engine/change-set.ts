@@ -376,7 +376,9 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
   if (operation.operation === 'add_udt_member' || operation.operation === 'set_udt_description' || operation.operation === 'set_udt_member_description') {
     const dataTypes = uniqueRegion(controller.children, 'DataTypes')
     const type = uniqueRegion(dataTypes.children, 'DataType', operation.udt)
-    if (type.attributes.Family !== 'NoFamily') throw new EngineeringError('PROTECTED_TARGET', 'Module-defined and built-in data types are vendor-owned and cannot be changed')
+    const declaredClass = type.attributes.Class
+    const vendorOwned = declaredClass === undefined ? type.attributes.Family !== 'NoFamily' : declaredClass !== 'User'
+    if (vendorOwned) throw new EngineeringError('PROTECTED_TARGET', 'Module-defined and built-in data types are vendor-owned and cannot be changed')
     if (operation.operation === 'set_udt_description') return setDescription(xml, type, operation.description)
     const members = uniqueRegion(type.children, 'Members')
     if (operation.operation === 'set_udt_member_description') {

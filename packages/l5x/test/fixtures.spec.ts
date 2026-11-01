@@ -183,6 +183,31 @@ describe('searching safety logic', () => {
   })
 })
 
+describe('data type classes', () => {
+  it('reads a string-family user type, and hides a vendor type', async () => {
+    const built = l5x({
+      name: 'UdtClasses',
+      dataTypes: userType('MY_STR', [member('LEN', { dataType: 'DINT' }), member('DATA', { dataType: 'SINT', dimensions: '50' })], 'StringFamily')
+        + '<DataType Name="VENDOR_T" Family="Vendor" Class="Vendor"><Members><Member Name="X" DataType="DINT" Dimension="0"/></Members></DataType>',
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['uc.l5x', new TextEncoder().encode(built)]]))
+    const opened = await l5xTool.call('open_project', { path: 'uc.l5x' })
+    expect(opened.error).toBeUndefined()
+    // A string type is user-defined even though its family is not NoFamily.
+    expect(Number(opened.data?.counts?.udts)).toBe(1)
+    const listed = await l5xTool.call('list_components', { kind: 'udt' })
+    const names = ((listed.data?.rows ?? []) as { name: string }[]).map(row => row.name)
+    expect(names).toContain('MY_STR')
+    expect(names).not.toContain('VENDOR_T')
+    const type = await l5xTool.call('get_component', { kind: 'udt', name: 'MY_STR' })
+    const members = (type.data?.component?.members ?? []) as { name: string; dimension?: number }[]
+    expect(members.map(entry => entry.name)).toEqual(['LEN', 'DATA'])
+    expect(members.find(entry => entry.name === 'DATA')?.dimension).toBe(50)
+  })
+})
+
 describe('a project with no Tags element', () => {
   it('gets one when the first tag is added', async () => {
     const built = l5x({

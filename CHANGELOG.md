@@ -954,6 +954,14 @@
   counts line ends with `data types: N`. The section is emitted for any project that declares a type, not only ones with AOIs - my first placement put it inside
   the AOI block, and the builder fixture caught it. Verified on `Seco_Homogenizer`; test asserts the table, the row and `counts.udts`. 448 package tests.
 
+- **Seven user-defined string types were invisible because the reader classified by family.** Chasing a 166-vs-173 mismatch between `counts.udts` and the
+  export, every declared type proved to be `Class="User"` - but `STRING_1`, `STRING_2`, `STRING_3`, `STRING_5`, `STRING_6`, `STRING_9` and `STRING_50` live
+  in `StringFamily` and were treated as vendor-owned, so they were missing from `list_components`, `get_component`, `counts.udts`, the documentation table and
+  even the limits list (which wrongly called them vendor-owned). The reader now classifies by `Class` (falling back to family for older exports), and the
+  edit guard uses the same rule, so a string type is editable while a vendor type is not. Verified on `Seco_Homogenizer`: **173 types**, `STRING_50` reads
+  `LEN:DINT, DATA:SINT` with `Dimension 50`, and the limits list drops the false vendor entry. The same round found my fixture builder writing
+  `Dimensions="50" Dimension="0"` where a real export writes `Dimension="50"`. 449 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

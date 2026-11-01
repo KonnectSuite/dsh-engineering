@@ -1,9 +1,9 @@
 /**
  * User-defined-type reader.
  *
- * Only types the export keeps in the `NoFamily` family are user-defined; the
- * remaining entries in `DataTypes` are the built-in types Studio 5000 writes
- * out alongside them, and reporting those as UDTs would bury the real ones.
+ * A type is user-defined when the export marks it `Class="User"` - a string type lives in
+ * `StringFamily` yet is still written by the project, so family alone would hide it. Older
+ * exports without a Class attribute fall back to the `NoFamily` family.
  * Hidden members are omitted because the export marks them as preprocessor
  * bookkeeping rather than part of the interface.
  */
@@ -49,7 +49,7 @@ export function vendorTypeNames(controller: XmlElement): readonly string[] {
   const dataTypes = firstChild(controller, 'DataTypes')
   if (dataTypes === undefined) return []
   return elementChildren(dataTypes, 'DataType')
-    .filter(type => type.attrs['Family'] !== undefined && type.attrs['Family'] !== NO_FAMILY)
+    .filter(type => !isUserType(type))
     .map(type => optionalAttribute(type, 'Name', ''))
 }
 
@@ -61,11 +61,18 @@ export function buildUdts(controller: XmlElement): readonly L5xUdt[] {
   }))
 }
 
-/** The `<DataType>` elements the export keeps in the user-defined family. */
+/** Whether the export marks one data type as written by the project. */
+function isUserType(type: XmlElement): boolean {
+  const declared = type.attrs['Class']
+  if (declared !== undefined) return declared === 'User'
+  return type.attrs['Family'] === NO_FAMILY
+}
+
+/** The `<DataType>` elements the export declares as user-defined. */
 function udtElements(controller: XmlElement): readonly XmlElement[] {
   const dataTypes = firstChild(controller, 'DataTypes')
   if (dataTypes === undefined) return []
-  return elementChildren(dataTypes, 'DataType').filter(udt => udt.attrs['Family'] === NO_FAMILY)
+  return elementChildren(dataTypes, 'DataType').filter(isUserType)
 }
 
 /** One type's visible members, in written order. */
