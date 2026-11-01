@@ -118,3 +118,18 @@ describe('l5x_diagram', () => {
     expect(long.svg).toContain('BottomKnife_MP200Iec:O.DegreePosition')
   })
 })
+
+
+describe('a host that cannot resolve the defaulted output folder', () => {
+  it('returns the page and says why the image is missing, instead of refusing the call', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    expect(open.error).toBeUndefined()
+    // No output argument: this tool defaults it, and this harness resolves paths relatively.
+    const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 3 })
+    expect(result.error).toBeUndefined()
+    expect(result.data?.rungs).toBe(3)
+    expect(String(result.data?.image_error)).toContain('is not absolute')
+    expect(result.data?.diagram_svg).toBeUndefined()
+  })
+})

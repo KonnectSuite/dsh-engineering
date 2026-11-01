@@ -153,6 +153,13 @@
   `packages/l5x/test/compare-languages.spec.ts` now covers an ST body change, an FBD operand change, an SFC step
   change, a rung change and a whitespace-only edit that must report nothing.
 
+- **`l5x_diagram` no longer refuses a call over a folder it defaulted itself.** On a host that cannot make the
+  workspace path absolute, the tool threw `INVALID_ARGUMENT: The workspace path .l5x-diagram/l5x-diagram.svg is not
+  absolute` — blaming an `output` argument the caller never passed, and discarding a page that had already rendered.
+  Its sibling `l5x_routine_diagram` already coped: it returns the rung list and says why no image was written. The
+  whole-project diagram now does the same — the answer carries the rung count, the page window and an `image_error`,
+  and only the image is missing.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -164,7 +171,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-293 package tests and 70 bundle tests pass.
+294 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

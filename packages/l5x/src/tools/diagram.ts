@@ -215,16 +215,21 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         const slug = 'l5x-diagram'
         const folder = optionalString(args, 'output') ?? '.l5x-diagram'
         const target = await session.resolvePath(`${folder}/${slug}.svg`, exec)
-        if (!isAbsolute(target)) {
-          throw new L5xError('INVALID_ARGUMENT', `The workspace path ${target} is not absolute, so no image could be written.`, 'Pass an absolute output folder.')
-        }
+        // The output folder is defaulted by this tool, so a host that cannot make the path
+        // absolute is not the caller's mistake, and the page has already rendered. Return it and
+        // say why the image is missing, the way l5x_routine_diagram does, instead of failing the
+        // call over an argument the caller never passed.
+        const writable = isAbsolute(target)
         const at = startRung + 1
         const through = startRung + rows.length
         const pageNote = `${at}-${through} of ${at - 1 + rows.length + omitted} rung(s)` + (omitted === 0 ? '' : ` · next page start_rung ${through}`)
-        const raster = await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title, pageNote))
-        const words = omitted === 0
-          ? `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg}.`
-          : `Drew ${rows.length} rung(s) as ${raster.png ?? raster.svg} (from rung offset ${startRung}); ${omitted} more follow, so page on with start_rung ${startRung + rows.length}.`
+        const raster = writable ? await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title, pageNote)) : undefined
+        const drawn = raster === undefined ? '' : raster.png ?? raster.svg
+        const words = raster === undefined
+          ? `Drew ${rows.length} rung(s); no image was written because the workspace path ${target} is not absolute.`
+          : omitted === 0
+            ? `Drew ${rows.length} rung(s) as ${drawn}.`
+            : `Drew ${rows.length} rung(s) as ${drawn} (from rung offset ${startRung}); ${omitted} more follow, so page on with start_rung ${startRung + rows.length}.`
         return success(
           `${words}${beyond === 0 ? '' : ` ${beyond} rung(s) carried no instructions.`}`,
           {
@@ -236,11 +241,12 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
             next_start: omitted === 0 ? null : startRung + rows.length,
             omitted,
             empty: beyond,
-            diagram_svg: raster.svg,
-            ...(raster.png === undefined ? {} : { diagram_png: raster.png }),
+            ...(raster === undefined
+              ? { image_error: `The workspace path ${target} is not absolute, so no image was written.` }
+              : { diagram_svg: raster.svg, ...(raster.png === undefined ? {} : { diagram_png: raster.png }) }),
             note: 'The diagram is a schematic drawn from parsed rungs, not a Studio screenshot; parallel branches are flattened.',
           },
-          raster.png === undefined
+          raster?.png === undefined
             ? []
             : [{ tool: 'present', why: 'Attach the PNG so the answer shows the project logic itself.', args: { files: [{ path: raster.png, description: `Ladder diagram of ${controller}` }] } }],
           DIAGRAM_COVERAGE,
