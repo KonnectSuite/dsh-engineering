@@ -1,5 +1,42 @@
 ## [Unreleased]
 
+- **Eight instructions the composer used to refuse now compose, and Studio proved they build.** `FFL`, `FFU`, `LFL`,
+  `LFU`, `DTR`, `ATAN2`, `SQI` and `EVENT` were among the ~100 instructions the catalogue did not carry; their operand
+  lists come from the installed Logix 5000 instruction help (`Help\ENU\rs5000`), which states each slot by name,
+  including the pseudo-operands `Length` and `Position` that are real operands in the rung text. The catalogue goes from
+  128 to **136**. Verification is not a unit test alone: the composer built
+  `XIC(a1)FFL(arr1[0],arr2,ctl1,10,0)`, `XIC(a1)DTR(arr1[0],d2,arr2[0])OTE(a2)`,
+  `XIC(a1)SQI(arr2,d2,arr1[0],ctl1,10,0)OTE(a2)` and the other five, our writer wrote the export, and the real Logix
+  Designer SDK imported and built it — **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
+  the exact accepted text, so a later operand edit cannot silently change what Studio approved.
+- **Function block diagrams can now be composed, and Studio proved the sheet builds.** `draft_fbd` stages an FBD sheet —
+  blocks, references and wires — and `draft_apply` writes it. The rule that took the longest to find: **a block is an
+  instance**, so its `Operand` must name a tag whose data type is the block's structure (`FBD_MATH` for `ADD`), and wires
+  name the pin on the block side (`ToParam` into an input, `FromParam` out of an output). The tool validates that the
+  backing tag exists in scope and carries that structure, that every reference resolves, and that each wire names a node
+  and a pin the block shows. Verification: `draft_fbd` → `draft_apply` → `verify_offline_l5x` imported and built the sheet
+  with **0 warnings, 0 errors and an ACD written**. Six tests cover the accepted XML plus the refusals (wrong routine
+  language, undeclared backing tag, wrong structure type, unknown node id, unknown pin). This closes the capability gap
+  that mattered most: the competition composes four languages; two are no longer enough.
+- **An FBD routine can now be created, and blocks chain directly.** `draft_routine` accepts `language: "FBD"` and writes
+  an empty `FBDContent` (a body is refused, because a diagram is not code); `draft_fbd` then sees a routine staged earlier
+  in the same draft, so the two calls work in either order. Two corrections came out of Studio builds: a **block-to-block
+  wire is legal** (`FromParam` on the driving block, `ToParam` on the reading block) and is how blocks are chained — my
+  first version refused it — while a sheet that **both writes and reads one tag** makes Studio abort the import, so the
+  engine now refuses it with the fix spelled out (*"wire the blocks to each other directly, or move the read to another
+  sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
+  passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
+- **Sequential function charts can be created, staged, and built.** `draft_routine` accepts `language: "SFC"` and
+  writes an empty `SFCContent`; the new `draft_sfc` stages steps, transitions and directed links in the shape a
+  production export uses (`Step` with `InitialStep` and `<Action>`, `Transition` with a Structured Text condition,
+  `DirectedLink`, and no `Sheet` wrapper — the test fixture has one; a real project does not). A step is backed by an
+  `SFC_STEP` tag whose `Structure` must list every state member, and a transition by a plain BOOL tag; the tool states
+  that where a caller reads it. Verification by build: a chart of one initial step and one transition with condition
+  `Step_1.DN` imported and built with **0 warnings, 0 errors and an ACD written**. Two rules found on the way: an empty
+  `Structure` imports with `XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM`, and a condition that is not a tag reference — my first
+  attempt used `TRUE` — is read as an undefined tag (`RxSTX_E_TAG_NOT_FOUND`), which is how the first chart failed to
+  build. Six tests cover creation, the generated XML and the refusals.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
@@ -268,46 +305,6 @@
   "MainTask_10ms"; it is declared in controller."*), backed by a new `declaringScopes` helper that answers controller,
   program and AOI scopes.
 
-- **Eight instructions the composer used to refuse now compose, and Studio proved they build.** `FFL`, `FFU`, `LFL`,
-  `LFU`, `DTR`, `ATAN2`, `SQI` and `EVENT` were among the ~100 instructions the catalogue did not carry; their operand
-  lists come from the installed Logix 5000 instruction help (`Help\ENU\rs5000`), which states each slot by name,
-  including the pseudo-operands `Length` and `Position` that are real operands in the rung text. The catalogue goes from
-  128 to **136**. Verification is not a unit test alone: the composer built
-  `XIC(a1)FFL(arr1[0],arr2,ctl1,10,0)`, `XIC(a1)DTR(arr1[0],d2,arr2[0])OTE(a2)`,
-  `XIC(a1)SQI(arr2,d2,arr1[0],ctl1,10,0)OTE(a2)` and the other five, our writer wrote the export, and the real Logix
-  Designer SDK imported and built it — **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
-  the exact accepted text, so a later operand edit cannot silently change what Studio approved.
-
-- **Function block diagrams can now be composed, and Studio proved the sheet builds.** `draft_fbd` stages an FBD sheet —
-  blocks, references and wires — and `draft_apply` writes it. The rule that took the longest to find: **a block is an
-  instance**, so its `Operand` must name a tag whose data type is the block's structure (`FBD_MATH` for `ADD`), and wires
-  name the pin on the block side (`ToParam` into an input, `FromParam` out of an output). The tool validates that the
-  backing tag exists in scope and carries that structure, that every reference resolves, and that each wire names a node
-  and a pin the block shows. Verification: `draft_fbd` → `draft_apply` → `verify_offline_l5x` imported and built the sheet
-  with **0 warnings, 0 errors and an ACD written**. Six tests cover the accepted XML plus the refusals (wrong routine
-  language, undeclared backing tag, wrong structure type, unknown node id, unknown pin). This closes the capability gap
-  that mattered most: the competition composes four languages; two are no longer enough.
-
-- **An FBD routine can now be created, and blocks chain directly.** `draft_routine` accepts `language: "FBD"` and writes
-  an empty `FBDContent` (a body is refused, because a diagram is not code); `draft_fbd` then sees a routine staged earlier
-  in the same draft, so the two calls work in either order. Two corrections came out of Studio builds: a **block-to-block
-  wire is legal** (`FromParam` on the driving block, `ToParam` on the reading block) and is how blocks are chained — my
-  first version refused it — while a sheet that **both writes and reads one tag** makes Studio abort the import, so the
-  engine now refuses it with the fix spelled out (*"wire the blocks to each other directly, or move the read to another
-  sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
-  passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
-
-- **Sequential function charts can be created and staged, with one limit stated where it is met.** `draft_routine` accepts
-  `language: "SFC"` and writes an empty `SFCContent` — **verified by a Logix Designer build: passed, 0 warnings** — and
-  the new `draft_sfc` stages steps, transitions and directed links in the shape a real export uses (taken from a
-  production project: `Step` with `InitialStep` and `<Action>`, `Transition` with a Structured Text condition,
-  `DirectedLink`, and no `Sheet` wrapper). The chart imports into Studio cleanly once its tags exist, but a full build
-  verdict is **not yet reached**: Studio's tags for a step are `SFC_STEP` structures whose every state member must be
-  written (`XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM` when the structure is empty), transitions are plain BOOL tags, and the
-  generated chart still reports `RxSTX_E_TAG_NOT_FOUND` at build. Generating that step state is the remaining work, and
-  the tool description says so where a caller will read it. Six tests cover routine creation, the generated XML, and the
-  refusals (no initial step, unknown link, wrong routine language).
-
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -319,7 +316,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-350 package tests and 70 bundle tests pass.
+326 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
