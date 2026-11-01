@@ -684,6 +684,12 @@
   base tag, a produced tag with two consumers and unicast permitted, and the listing row. 412 package tests. Follow-up: AOI
   `<Parameter TagType="Alias" AliasFor=...>` uses the same attribute, and the AOI model does not read it yet.
 
+- **An AOI input parameter now names the tag array element it aliases.** The tag model learned `aliasFor` in round 97; the AOI parameter model
+  did not, so the Carpenter safety permissive AOI looked self-contained. `L5xAoiParameter` now carries `tagType` and `aliasFor`, and the real
+  export answers: **`AOI_PermCheck` has 32 aliased parameters**, `INP_Perm0` -> `Alias` -> `WRK_PermArray.0`, description "Permissive input 0
+  (TRUE = OK)". That is the wiring an engineer must see before changing a permissive: the value comes from a tag array element, not from the
+  instruction's own interface. Test covers the parameter record. 413 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

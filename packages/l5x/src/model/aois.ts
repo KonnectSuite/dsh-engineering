@@ -86,6 +86,8 @@ function aoiParameters(aoi: XmlElement): readonly L5xAoiParameter[] {
       description?: string
       required?: boolean
       visible?: boolean
+      tagType?: string
+      aliasFor?: string
     } = {
       name: optionalAttribute(parameter, 'Name', ''),
       dataType: optionalAttribute(parameter, 'DataType', ''),
@@ -95,6 +97,11 @@ function aoiParameters(aoi: XmlElement): readonly L5xAoiParameter[] {
     if (description !== '') entry.description = description
     if (parameter.attrs['Required'] === 'true') entry.required = true
     if (parameter.attrs['Visible'] === 'false') entry.visible = false
+    const tagType = parameter.attrs['TagType']
+    if (tagType !== undefined) entry.tagType = tagType
+    // An alias parameter points into a tag array; without it the parameter looks self-contained.
+    const aliasFor = parameter.attrs['AliasFor']
+    if (aliasFor !== undefined) entry.aliasFor = aliasFor
     results.push(entry)
   }
   return results

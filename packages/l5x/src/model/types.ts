@@ -82,6 +82,10 @@ export interface L5xAoiParameter {
   readonly description?: string
   /** Present and true only when the export marks the parameter `Required="true"`. */
   readonly required?: boolean
+  /** Declared tag type as written, e.g. Base or Alias. */
+  readonly tagType?: string
+  /** For an alias parameter, the tag or member it points at. */
+  readonly aliasFor?: string
   /** Present and false only when the export marks the parameter `Visible="false"`. */
   readonly visible?: boolean
 }

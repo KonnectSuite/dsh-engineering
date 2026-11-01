@@ -213,3 +213,19 @@ describe('produced and consumed tags', () => {
     expect(row?.consumerOf).toBe('CCI_Ethernet_Port_Controller')
   })
 })
+
+
+/** One AOI whose input parameter aliases into a tag array. */
+const AOI_ALIAS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"AoiAlias\" ProcessorType=\"5069-L320ER\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"WRK_PermArray\" TagType=\"Base\" DataType=\"BOOL\" Dimensions=\"32\"/></Tags>\n    <AddOnInstructionDefinitions>\n      <AddOnInstructionDefinition Name=\"AOI_PermCheck\" Revision=\"1\" ExecutePrescan=\"false\" ExecutePostscan=\"false\" ExecuteEnableInFalse=\"false\" CreatedDate=\"2026-01-01T00:00:00\" ModifiedDate=\"2026-01-01T00:00:00\">\n        <Parameters>\n          <Parameter Name=\"INP_Perm0\" TagType=\"Alias\" Usage=\"Input\" AliasFor=\"WRK_PermArray.0\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/>\n          <Parameter Name=\"Out\" Usage=\"Output\" DataType=\"BOOL\" Required=\"true\" Visible=\"true\" ExternalAccess=\"Read/Write\"/>\n        </Parameters>\n      </AddOnInstructionDefinition>\n    </AddOnInstructionDefinitions>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('an AOI parameter that aliases', () => {
+  it('names the tag array element it points at', async () => {
+    const l5x = harness(new Map([['a.l5x', new TextEncoder().encode(AOI_ALIAS_L5X)]]))
+    await l5x.call('open_project', { path: 'a.l5x' })
+    const aoi = await l5x.call('get_component', { kind: 'aoi', name: 'AOI_PermCheck' })
+    const parameters = (aoi.data?.component?.parameters ?? []) as { name: string; tagType?: string; aliasFor?: string }[]
+    const input = parameters.find(parameter => parameter.name === 'INP_Perm0')
+    expect(input?.tagType).toBe('Alias')
+    expect(input?.aliasFor).toBe('WRK_PermArray.0')
+  })
+})
