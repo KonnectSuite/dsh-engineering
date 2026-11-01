@@ -1137,6 +1137,12 @@
 - **SQRT over a DINT is legal, and a test now says so.** The opposite probe to STD: `SQRT(Count,Count)` with a DINT source and destination built with
   0 warnings / 0 errors, so no REAL-only restriction belongs on SQR. The test keeps a future edit from adding one. 485 package tests.
 
+- **AOI calls now start with their instance tag, because Studio requires it.** Real ladder text is `AOI_Alarm(ALM_MCR_AOI, ...)`, and `ALM_MCR_AOI` is a
+  tag of type `AOI_Alarm`. The composer used to emit parameters only; a real-project build of such a call failed with `RxCMP_E_AUDIT_INVALIDOPTYPE`.
+  Composing `AOI_Alarm(ALM_MCR_AOI,EmergencyStops_OkStatus,Clear_Faults_Pulse)` into the Carpenter project now builds with **0 warnings / 0 errors** and
+  `download_ready: true`. The composer requires the instance tag, checks its data type is the AOI, and refuses a literal or a non-instance first operand.
+  486 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

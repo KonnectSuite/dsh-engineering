@@ -330,10 +330,23 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       nearestInstructions(node.instr),
     )
   }
-  // AOI pins are declared by the AOI, not by this catalog; the operand text is
-  // still resolved so a typo in a tag cannot reach the draft.
-  for (const argument of args) checkOperand(project, argument, 'ANY', operands)
-  return { text: `${aoi.name}(${args.join(',')})`, grounding: 'aoi' }
+  // A real AOI call begins with its instance tag: AOI_Alarm(ALM_MCR_AOI, In, Cmd). The parameter
+  // values alone produced text Studio refused with INVALIDOPTYPE because the first slot expected
+  // an instance of the AOI, not an input.
+  if (args.length === 0) {
+    throw new L5xError('INVALID_OPERAND', `${aoi.name} needs its instance tag as the first operand.`, `Pass the declared tag whose data type is ${aoi.name}, for example ${aoi.name}(MyInstance, In1, Out1).`)
+  }
+  const instance = checkOperand(project, args[0], 'ANY', operands)
+  if (isLiteral(instance.text)) {
+    throw new L5xError('INVALID_OPERAND', `${instance.text} is a literal where ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Declare an instance with draft_tag data_type "${aoi.name}", or pass the declared instance first.`)
+  }
+  if ((instance.data_type ?? '').toUpperCase() !== aoi.name.toUpperCase()) {
+    throw new L5xError('INVALID_OPERAND', `${instance.text} is ${instance.data_type ?? 'an unknown type'}; ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Pass the declared ${aoi.name} instance first, or declare one with draft_tag data_type "${aoi.name}".`)
+  }
+  // AOI pins are declared by the AOI, not by this catalog; the remaining operand text is still
+  // resolved so a typo in a tag cannot reach the draft.
+  const parameters = args.slice(1).map(argument => checkOperand(project, argument, 'ANY', operands).text)
+  return { text: `${aoi.name}(${[instance.text, ...parameters].join(',')})`, grounding: 'aoi' }
 }
 /** True for a plain object a composition node can be. */
 function isSpecNode(value: unknown): value is LadderNodeSpec {

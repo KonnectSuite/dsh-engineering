@@ -513,3 +513,29 @@ describe('an arithmetic slot that accepts integers', () => {
     expect(rungs?.[0]?.neutral_text).toBe('SQRT(Count,Count);')
   })
 })
+
+describe('an add-on instruction call', () => {
+  it('starts with the instance tag and refuses parameters without one', async () => {
+    // Real calls do: AOI_Alarm(ALM_MCR_AOI, ...), where ALM_MCR_AOI is the tag whose data type is
+    // the AOI. Parameters alone failed a Studio build with RxCMP_E_AUDIT_INVALIDOPTYPE.
+    const project = l5x({
+      name: 'AoiCallGuard',
+      tags: tag('MyAoi_1', 'MyAoi') + tag('In1', 'BOOL') + tag('Out1', 'BOOL'),
+      aois: aoi('MyAoi', { parameters: [parameter('In1', { usage: 'Input', dataType: 'BOOL' }), parameter('Out1', { usage: 'Output', dataType: 'BOOL' })] }),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['aoi.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1'] }] }) })
+    expect(good.error).toBeUndefined()
+    const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
+    expect(rungs?.[0]?.neutral_text).toBe('MyAoi(MyAoi_1,In1,Out1);')
+    const noInstance = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['In1', 'Out1'] }] }) })
+    expect(noInstance.error?.code).toBe('INVALID_OPERAND')
+    expect(noInstance.error?.message).toContain('needs an instance tag of type MyAoi')
+    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['5', 'In1', 'Out1'] }] }) })
+    expect(literal.error?.code).toBe('INVALID_OPERAND')
+    expect(literal.error?.message).toContain('needs an instance tag')
+  })
+})
