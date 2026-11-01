@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.74.0] - 2026-11-01
+
 ### Added
 
 - **A composed rung matches the instruction spelling its project already reads.** Logix Designer 36 renamed
