@@ -268,6 +268,16 @@
   "MainTask_10ms"; it is declared in controller."*), backed by a new `declaringScopes` helper that answers controller,
   program and AOI scopes.
 
+- **Eight instructions the composer used to refuse now compose, and Studio proved they build.** `FFL`, `FFU`, `LFL`,
+  `LFU`, `DTR`, `ATAN2`, `SQI` and `EVENT` were among the ~100 instructions the catalogue did not carry; their operand
+  lists come from the installed Logix 5000 instruction help (`Help\ENU\rs5000`), which states each slot by name,
+  including the pseudo-operands `Length` and `Position` that are real operands in the rung text. The catalogue goes from
+  128 to **136**. Verification is not a unit test alone: the composer built
+  `XIC(a1)FFL(arr1[0],arr2,ctl1,10,0)`, `XIC(a1)DTR(arr1[0],d2,arr2[0])OTE(a2)`,
+  `XIC(a1)SQI(arr2,d2,arr1[0],ctl1,10,0)OTE(a2)` and the other five, our writer wrote the export, and the real Logix
+  Designer SDK imported and built it — **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
+  the exact accepted text, so a later operand edit cannot silently change what Studio approved.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -279,7 +289,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-326 package tests and 70 bundle tests pass.
+334 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

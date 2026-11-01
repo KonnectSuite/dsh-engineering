@@ -324,3 +324,34 @@ describe('an instruction whose operands are not modelled', () => {
     expect(staged.error).toBeUndefined()
   })
 })
+
+
+/** An export with the array, control and scalar tags these instructions need. */
+const COMPOSER_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Composer\" ProcessorType=\"5069-L320ERMS2\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags>\n      <Tag Name=\"a1\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"a2\" TagType=\"Base\" DataType=\"BOOL\"/>\n      <Tag Name=\"d1\" TagType=\"Base\" DataType=\"DINT\"/><Tag Name=\"d2\" TagType=\"Base\" DataType=\"DINT\"/>\n      <Tag Name=\"r1\" TagType=\"Base\" DataType=\"REAL\"/><Tag Name=\"r2\" TagType=\"Base\" DataType=\"REAL\"/>\n      <Tag Name=\"r3\" TagType=\"Base\" DataType=\"REAL\"/>\n      <Tag Name=\"ctl1\" TagType=\"Base\" DataType=\"CONTROL\"/>\n      <Tag Name=\"arr1\" TagType=\"Base\" DataType=\"DINT\" Dimensions=\"10\"/>\n      <Tag Name=\"arr2\" TagType=\"Base\" DataType=\"DINT\" Dimensions=\"10\"/>\n    </Tags>\n    <Programs><Program Name=\"Main\" MainRoutineName=\"R\">\n      <Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n        <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung>\n      </RLLContent></Routine></Routines>\n    </Program></Programs>\n    <Tasks><Task Name=\"MainTask\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('instructions verified by a Studio build', () => {
+  // Each rung below was accepted by Logix Designer (build passed, 0 import warnings) on
+  // 2026-11-01; the composer must keep emitting exactly this text.
+  const cases: readonly (readonly [string, readonly string[], boolean])[] = [
+    ['FFL', ['arr1[0]', 'arr2', 'ctl1', '10', '0'], true],
+    ['FFU', ['arr2', 'd1', 'ctl1', '10', '0'], true],
+    ['LFL', ['arr1[0]', 'arr2', 'ctl1', '10', '0'], true],
+    ['LFU', ['arr2', 'd1', 'ctl1', '10', '0'], true],
+    ['DTR', ['arr1[0]', 'd2', 'arr2[0]'], false],
+    ['ATAN2', ['r1', 'r2', 'r3'], true],
+    ['SQI', ['arr2', 'd2', 'arr1[0]', 'ctl1', '10', '0'], false],
+    ['EVENT', ['MainTask'], true],
+  ]
+
+  for (const [name, args, output] of cases) {
+    it(`composes ${name} in the operand order Studio accepted`, async () => {
+      const l5x = harness(new Map([['composer.l5x', new TextEncoder().encode(COMPOSER_L5X)]]), { editing: true })
+      await l5x.call('open_project', { path: 'composer.l5x' })
+      const series = [{ instr: 'XIC', args: ['a1'] }, { instr: name, args }, ...(output ? [] : [{ instr: 'OTE', args: ['a2'] }])]
+      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series }) })
+      expect(result.error).toBeUndefined()
+      const expected = `XIC(a1)${name}(${args.join(',')})${output ? '' : 'OTE(a2)'};`
+      expect(result.data?.rungs?.[0]?.neutral_text).toBe(expected)
+    })
+  }
+})

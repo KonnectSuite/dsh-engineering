@@ -195,6 +195,17 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SFR', category: 'Program control', summary: 'Reset an SFC routine to a target state.', operands: [], notModelled: true },
   { name: 'SFP', category: 'Program control', summary: 'Pause an SFC routine at a target state.', operands: [], notModelled: true },
 
+  // Operand lists transcribed from the installed Logix 5000 instruction help (Help\ENU\rs5000),
+  // which states each slot by name; pseudo-operands Length and Position are real operands here.
+  { name: 'FFL', category: 'File and array', summary: 'FIFO load: copy the source into the next FIFO element.', operands: [any('Source'), any('FIFO'), any('Control'), num('Length'), num('Position')] },
+  { name: 'FFU', category: 'File and array', summary: 'FIFO unload: move the oldest FIFO element into the destination.', operands: [any('FIFO'), any('Destination'), any('Control'), num('Length'), num('Position')] },
+  { name: 'LFL', category: 'File and array', summary: 'LIFO load: push the source onto a LIFO stack.', operands: [any('Source'), any('LIFO'), any('Control'), num('Length'), num('Position')] },
+  { name: 'LFU', category: 'File and array', summary: 'LIFO unload: pop the most recent LIFO element into the destination.', operands: [any('LIFO'), any('Destination'), any('Control'), num('Length'), num('Position')] },
+  { name: 'DTR', category: 'Compare', summary: 'Data transition: pass source bits through the mask and compare them with the reference.', operands: [any('Source'), any('Mask'), any('Reference')] },
+  { name: 'ATAN2', category: 'Math', summary: 'Two-argument arctangent: the angle of Source Y over Source X.', operands: [any('Source Y'), any('Source X'), any('Dest')] },
+  { name: 'SQI', category: 'Sequencer', summary: 'Sequencer input: compare the source with one masked step of the array.', operands: [any('Array'), any('Mask'), any('Source'), any('Control'), num('Length'), num('Position')] },
+  { name: 'EVENT', category: 'Program control', summary: 'Trigger an event task.', operands: [keyword('Task')] },
+
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({
     name: instruction.name,
