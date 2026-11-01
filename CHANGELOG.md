@@ -247,6 +247,18 @@
   `probe`, printed one progress line and then blocked past both a 180-second and a 300-second budget, so a reader can
   now see that the engine never left the open step rather than guessing which part of their logic is wrong.
 
+- **A real 60-routine v37 GuardLogix project cut `run_checks` from 537 findings to 271, and two of those classes were our
+  bugs.** Module-defined tags are now resolved from the module that declares them, so `BottomKnife_MP2600iec:I.Data[0].3`
+  no longer reads as an unknown symbol (236 findings to 0). Radix literals no longer yield symbols, so `MOVE(16#F000,
+  Wrk_Mask)` stops inventing a tag named `F000` (the last 15). `DUPLICATE_OUTPUT` keys on the whole address rather than
+  the text before the first dot, so two bits of one I/O word are no longer one output driven twice (31 findings to 1,
+  and the survivor is a genuine double write). Safety-locked is now read by value: a standard GuardLogix export carries
+  `<SafetyInfo SafetyLocked="false">`, which presence-testing would have refused as a locked controller.
+- **The safety refusal is confirmed against real hardware.** The supplied project declares `SafetyProgram1` with
+  `Class="Safety"`, a safety Task and safety network ports, so `verify_offline_l5x` refuses it by design — the offline
+  import aborts on safety controllers. Its 7 uncatalogued "instructions" (`MAM_YASKAWA`, `MCFG_YASKAWA`, …) are Yaskawa
+  add-on-profile instructions rather than AOIs, so reporting them as unmodelled is correct.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -258,7 +270,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-319 package tests and 70 bundle tests pass.
+322 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

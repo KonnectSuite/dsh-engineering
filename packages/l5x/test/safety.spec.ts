@@ -31,6 +31,8 @@ describe('safety detection', () => {
   it('recognises safety network ports and a locked controller', () => {
     expect(isSafetyProject('<Port Id="1" SafetyNetwork="16#0000_4e1a_0357_fe21"/>')).toBe(true)
     expect(safetyEvidence('<Controller SafetyLocked="true"/>')).toContain('a safety-locked controller')
+  // Observed in a real GuardLogix export: the element is present, the attribute is false.
+  expect(safetyEvidence('<SafetyInfo SafetyLocked="false" SignatureRunModeProtect="false" SafetyLevel="SIL2/PLd"/>')).toEqual([])
   })
 
   it('stays quiet on a standard controller', () => {

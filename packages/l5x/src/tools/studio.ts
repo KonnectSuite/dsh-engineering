@@ -276,7 +276,9 @@ export function safetyEvidence(xml: string): string[] {
   if (/Type\s*=\s*"SAFETY"/iu.test(xml)) evidence.push('a module typed SAFETY')
   if (/<SafetyNetworkNumber\b/u.test(xml)) evidence.push('a SafetyNetworkNumber element')
   if (/SafetyNetwork(?:Number)?\s*=\s*"16#/iu.test(xml)) evidence.push('safety network ports')
-  if (/SafetyLocked\b/u.test(xml)) evidence.push('a safety-locked controller')
+  // The attribute's presence says nothing: a GuardLogix export carries SafetyInfo even when
+  // the safety portion is unused (SafetyLocked="false"). Only the value does.
+  if (/SafetyLocked\s*=\s*"true"/iu.test(xml)) evidence.push('a safety-locked controller')
   return evidence
 }
 

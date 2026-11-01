@@ -176,7 +176,19 @@ function resolveSymbolDirect(document: L5xDocument, scope: string, symbol: strin
   return `${tag?.scope ?? scope}::${resolvedBase}${parts.length > 0 ? `.${parts.join('.')}` : ''}`
 }
 
-function tokens(text: string): string[] { return [...text.matchAll(TOKEN)].map(match => match[0]).filter(token => !KEYWORDS.has(token.toUpperCase()) && !/^\d/u.test(token)) }
+function tokens(text: string): string[] {
+  const found: string[] = []
+  for (const match of text.matchAll(TOKEN)) {
+    const at = match.index ?? 0
+    // A radix literal — 16#F000, 2#1010, 8#777 — must not hand back the digits after the #
+    // as a symbol. On a real project every hex mask became an unresolved reference.
+    if (at > 0 && text.charAt(at - 1) === '#') continue
+    const token = match[0]
+    if (KEYWORDS.has(token.toUpperCase()) || /^\d/u.test(token)) continue
+    found.push(token)
+  }
+  return found
+}
 
 function add(out: Evidence[], document: L5xDocument, routine: L5xRoutine, symbol: string, access: Access, context: string, location: { rung?: number; line?: number; sheet?: number; nodeId?: string }, confidence: Evidence['confidence']): void {
   const resolved = resolveSymbol(document, routine.program, symbol)

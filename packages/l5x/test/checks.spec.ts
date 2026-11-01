@@ -370,3 +370,36 @@ describe('named bindings that point at nothing', () => {
     expect(noisy).toEqual([])
   })
 })
+
+
+/** An export with a module-defined tag, a radix literal, and two bits of one output word. */
+const NOISE_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Noise\" ProcessorType=\"5069-L320\" MajorRev=\"37\" MinorRev=\"0\">\n    <Modules><Module Name=\"Card1\" CatalogNumber=\"5069-IB16\" ParentModule=\"Local\" ParentModPortId=\"1\" Major=\"1\" Minor=\"0\" Inhibited=\"false\"/></Modules>\n    <Tags>\n      <Tag Name=\"Flag\" TagType=\"Base\" DataType=\"BOOL\"/>\n      <Tag Name=\"Mask\" TagType=\"Base\" DataType=\"DINT\"/>\n      <Tag Name=\"Out1\" TagType=\"Base\" DataType=\"BOOL\"/>\n    </Tags>\n    <Programs>\n      <Program Name=\"Main\" MainRoutineName=\"R\">\n        <Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n          <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(Card1:I.Data[0].0)OTE(Out1);]]></Text></Rung>\n          <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(Card1:I.Data[0].1)OTE(Out1);]]></Text></Rung>\n          <Rung Number=\"2\" Type=\"N\"><Text><![CDATA[XIC(Flag)MOVE(16#F000,Mask);]]></Text></Rung>\n          <Rung Number=\"3\" Type=\"N\"><Text><![CDATA[XIC(Card1:O.Data[0].0)OTE(Card1:O.Data[0].0);]]></Text></Rung>\n          <Rung Number=\"4\" Type=\"N\"><Text><![CDATA[XIC(Card1:O.Data[0].1)OTE(Card1:O.Data[0].1);]]></Text></Rung>\n        </RLLContent></Routine></Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+
+describe('the noise a real project produced', () => {
+  async function findings(rule: string) {
+    const l5x = harness(new Map([['noise.l5x', new TextEncoder().encode(NOISE_L5X)]]))
+    await l5x.call('open_project', { path: 'noise.l5x' })
+    const result = await l5x.call('run_checks', { rule, limit: 50 })
+    return (result.data?.findings ?? []) as { message: string }[]
+  }
+
+  it('resolves a tag the module declares, such as Card1:I.Data[0].0', async () => {
+    // 236 of 537 findings on a real 60-routine project were these.
+    expect(await findings('UNRESOLVED_REFERENCE')).toEqual([])
+  })
+
+  it('does not read a radix literal as a tag', async () => {
+    // MOVE(16#F000, Mask) must not produce a reference to F000.
+    const rows = await findings('UNRESOLVED_REFERENCE')
+    expect(rows.some(row => row.message.includes('F000'))).toBe(false)
+  })
+
+  it('treats different bits of one output word as different outputs', async () => {
+    // Two bits of Card1:O.Data[0] are not one output driven twice, but Out1 written on two
+    // rungs is.
+    const rows = await findings('DUPLICATE_OUTPUT')
+    expect(rows.length).toBe(1)
+    expect(rows[0]?.message).toContain('Out1')
+    expect(rows.some(row => row.message.includes('Card1:O'))).toBe(false)
+  })
+})

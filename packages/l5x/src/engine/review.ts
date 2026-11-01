@@ -144,6 +144,11 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     if (systemFlag) continue
     const baseDeclared = resolveSymbol(doc, ref.scope, base)
     if (baseDeclared !== undefined) continue
+    // A module-defined tag — BottomKnife_MP2600iec:I.Data[0].3 — is declared by the module,
+    // not in <Tags>, and the export lists the module. Reporting it as unresolved put 236
+    // findings on one real project that compiles.
+    const moduleName = /^([A-Za-z_][A-Za-z0-9_]*):/u.exec(ref.symbol)?.[1]
+    if (moduleName !== undefined && doc.modules.some(module => module.name !== '' && module.name.toUpperCase() === moduleName.toUpperCase())) continue
     const key = `${ref.scope}::${ref.symbol}`
     unresolved.set(key, [...unresolved.get(key) ?? [], ref])
   }
@@ -210,8 +215,11 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     for (const rung of routine.body.rungs) {
       for (const match of rung.text.matchAll(/(OTL|OTU|OTE)\(([^)]*)\)/gu)) {
         const kind = match[1]
-        const text = (match[2] ?? '').trim()
-        const tag = text.split(/[.\s]/u)[0] ?? ''
+        const operand = (match[2] ?? '').trim()
+        // The whole address identifies the output. Splitting at the first dot made every bit of
+        // one I/O word look like the same output (BottomKnife_MP2600iec:O.Data[1].0 and .1 were
+        // reported as one tag driven twice on a real project).
+        const tag = operand
         if (tag === '') continue
         if (kind === 'OTU') { reset.add(tag.toLowerCase()); continue }
         // Keep the tag's own casing: a finding that lowercases it reports a name the project does not use.
