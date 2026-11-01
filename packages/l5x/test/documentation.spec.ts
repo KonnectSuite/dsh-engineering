@@ -231,7 +231,11 @@ describe('documenting an AOI routine', () => {
   it('writes the AOI logic to its own rung file', async () => {
     const l5x = harness(new Map([['dl.l5x', new TextEncoder().encode(DOC_AOI_LOGIC_L5X)]]), { editing: true })
     expect((await l5x.call('open_project', { path: 'dl.l5x' })).error).toBeUndefined()
-    expect((await l5x.call('document_project', { output_root: 'docs-aoi', include: ['rungs'] })).error).toBeUndefined()
+    const documented = await l5x.call('document_project', { output_root: 'docs-aoi', include: ['rungs'] })
+    expect(documented.error).toBeUndefined()
+    // The count must include what the bundle writes; "1 routine" alone hid the AOI's logic.
+    expect(documented.data?.counts?.aoiRoutines).toBe(1)
+    expect(String(documented.summary)).toContain('1 AOI routine(s)')
     const entry = [...l5x.written.entries()].find(([key]) => String(key).endsWith('AOI-AOI_Step.md'))
     expect(entry).toBeDefined()
     const doc = String(entry?.[1] ?? '')

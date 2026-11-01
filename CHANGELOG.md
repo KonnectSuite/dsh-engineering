@@ -819,6 +819,11 @@
   was invisible. A rung request now also writes one file per AOI with RLL routines: `rungs/AOI-FC_SFTY_SSOV.md` documents the routines, comments, NeutralText,
   instructions and tags, verified on the real export. The test pins the section, rung and comment. 431 package tests.
 
+- **The bundle's counts now include the AOI routines it writes.** Round 125 documented AOI logic, but the summary still said "257 routine(s)" for a project that also
+  carries 29 AOI routines - `document_project` wrote files the count did not mention. `counts.aoiRoutines` now reports them and the summary reads
+  **"257 routine(s) and 29 AOI routine(s)"** on the real export, with the PROJECT.md counts line naming them too. A test asserts the count and the summary
+  sentence for an AOI with one routine. 432 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
