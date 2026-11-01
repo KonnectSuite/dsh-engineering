@@ -663,6 +663,13 @@ describe('a tag-only operand slot', () => {
     const copSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['5', 'Arr2', '10'] }] }) })
     expect(copSource.error?.code).toBe('INVALID_OPERAND')
     expect(copSource.error?.message).toContain('needs a tag for Source')
+    // Studio answered MUSTBEDISCRETE for COP(Arr,Arr2,10); COP(Arr[0],Arr2[0],10) built 0/0.
+    const copWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr', 'Arr2', '10'] }] }) })
+    expect(copWhole.error?.code).toBe('INVALID_OPERAND')
+    expect(copWhole.error?.message).toContain('array element')
+    const copGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
+    expect(copGood.error).toBeUndefined()
+    expect((copGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('COP(Arr[0],Arr2[0],10);')
   })
 })
 

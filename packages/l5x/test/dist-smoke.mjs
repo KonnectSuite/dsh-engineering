@@ -38,12 +38,14 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   // The vendor restricts STD's Destination to REAL; the built slot must carry that type.
   const destination = instructionByName('STD')?.operands.find(operand => operand.name === 'Destination')
   assert.deepEqual(destination?.types, ['REAL'])
-  // CPS copies between array elements: Source is tag-only, Dest writable, both element-addressed.
-  const cps = instructionByName('CPS')?.operands ?? []
-  assert.equal(cps[0]?.tagOnly, true)
-  assert.equal(cps[0]?.arrayElement, true)
-  assert.equal(cps[1]?.writable, true)
-  assert.equal(cps[1]?.arrayElement, true)
+  // CPS and COP copy between array elements: Source is tag-only, Dest writable, both element-addressed.
+  for (const name of ['CPS', 'COP']) {
+    const copy = instructionByName(name)?.operands ?? []
+    assert.equal(copy[0]?.tagOnly, true, name)
+    assert.equal(copy[0]?.arrayElement, true, name)
+    assert.equal(copy[1]?.writable, true, name)
+    assert.equal(copy[1]?.arrayElement, true, name)
+  }
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {

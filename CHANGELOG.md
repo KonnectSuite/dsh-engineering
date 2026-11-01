@@ -1193,6 +1193,10 @@
 
 - **Generated client faces refreshed** after the ISINF/ISNAN catalogue change, so repository bytes match the rebuilt artifact.
 
+- **COP also copies between array elements, not array tags.** `COP(Arr,Arr2,10)` failed Studio with `MUSTBEDISCRETE`; `COP(Arr[0],Arr2[0],10)`
+  built 0/0. Both operands are now element-addressed (Source tag-only, Destination writable) like CPS, the composer refuses the whole-array form,
+  and tests plus the dist smoke hold both copy instructions. 492 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
