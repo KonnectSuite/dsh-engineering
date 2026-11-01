@@ -212,7 +212,10 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         }
         const controller = project.document.controller.name
         const title = `${controller} · ${rows.length} rung(s) · ${routines.length} ladder routine(s)`
-        const slug = 'l5x-diagram'
+        const at = startRung + 1
+        const through = startRung + rows.length
+        // A page beyond the first carries its range, or each page overwrites the last image.
+        const slug = startRung === 0 && omitted === 0 ? 'l5x-diagram' : `l5x-diagram-r${at}-${through}`
         const folder = optionalString(args, 'output') ?? '.l5x-diagram'
         const resolvedTarget = await session.resolvePath(`${folder}/${slug}.svg`, exec)
         const target = isAbsolute(resolvedTarget) ? resolvedTarget : resolve(resolvedTarget)
@@ -221,8 +224,6 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
         // say why the image is missing, the way l5x_routine_diagram does, instead of failing the
         // call over an argument the caller never passed.
         const writable = isAbsolute(target)
-        const at = startRung + 1
-        const through = startRung + rows.length
         const pageNote = `${at}-${through} of ${at - 1 + rows.length + omitted} rung(s)` + (omitted === 0 ? '' : ` · next page start_rung ${through}`)
         const raster = writable ? await writeLadderRaster(folderOf(target), slug, renderProjectDiagram(rows, title, pageNote)) : undefined
         const drawn = raster === undefined ? '' : raster.png ?? raster.svg

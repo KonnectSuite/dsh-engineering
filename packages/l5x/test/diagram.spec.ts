@@ -120,6 +120,25 @@ describe('l5x_diagram', () => {
 })
 
 
+describe('paging a project diagram', () => {
+  it('gives each page its own image path', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const first = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 2 })
+    const second = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 2, start_rung: 2 })
+    expect(first.error).toBeUndefined()
+    expect(second.error).toBeUndefined()
+    const firstPng = first.data?.diagram_png
+    const secondPng = second.data?.diagram_png
+    if (typeof firstPng === 'string' && typeof secondPng === 'string') {
+      // Page two must not overwrite page one's file.
+      expect(firstPng).not.toBe(secondPng)
+      expect(firstPng).toContain('r1-2')
+      expect(secondPng).toContain('r3-4')
+    }
+  })
+})
+
 describe('a defaulted output folder', () => {
   it('writes the page to an absolute path instead of reporting a relative one', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))

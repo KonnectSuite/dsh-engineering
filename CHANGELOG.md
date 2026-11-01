@@ -712,6 +712,13 @@
   name. A test draws two pages of a six-rung routine and asserts the distinct absolute paths. 417 package tests. Found by testing the two
   paths round 93 listed as untested: `rungs_per_file` was fine; the diagram was not.
 
+- **A paged project diagram no longer overwrites the previous page.** Round 103 made `l5x_diagram` write an absolute file, but every page still used
+  `l5x-diagram.png`, so paging a 60-rung routine kept one image. A page beyond the first now carries its range: verified against the source,
+  page 1 writes `l5x-diagram-r1-4.png` and page 2 `l5x-diagram-r5-8.png`, with `next_start` continuing. A whole-diagram draw keeps the plain
+  name, and a test draws two pages and asserts distinct paths. One thing this round proved again: the **live MCP session runs an older build**,
+  so my first two real calls returned the old single filename - the fix is verified through the plugin source, not through the running app.
+  418 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
