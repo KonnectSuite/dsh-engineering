@@ -99,13 +99,27 @@ export function controllerElementOf(document: L5xDocument): XmlElement {
 
 /** The controller's own metadata. */
 function controllerSummary(controller: XmlElement): L5xControllerSummary {
-  return {
+  const summary: {
+    name: string
+    processorType: string
+    description: string
+    majorRev: string
+    minorRev: string
+    projectSerialNumber?: string
+    commPath?: string
+  } = {
     name: optionalAttribute(controller, 'Name', ''),
     processorType: optionalAttribute(controller, 'ProcessorType', ''),
     description: descriptionOf(controller),
     majorRev: optionalAttribute(controller, 'MajorRev', ''),
     minorRev: optionalAttribute(controller, 'MinorRev', ''),
   }
+  // The saved route is the only place an export says how to reach the controller.
+  const projectSerialNumber = controller.attrs['ProjectSN']
+  if (projectSerialNumber !== undefined) summary.projectSerialNumber = projectSerialNumber
+  const commPath = controller.attrs['CommPath']
+  if (commPath !== undefined) summary.commPath = commPath
+  return summary
 }
 
 /** The controller's programs. */

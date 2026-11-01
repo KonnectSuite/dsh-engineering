@@ -736,6 +736,11 @@
   `Seco_Homogenizer`: **10 safety modules** (starting `SA_DIG_IN_1`) and **2 safety AOIs** (`FC_SFTY_BURNER_DIRECT`, `FC_SFTY_SSOV`), with
   standard modules and AOIs reporting false. A test covers the safety and standard case for each. 421 package tests.
 
+- **The controller record now carries the saved route and project serial number.** `CommPath` and `ProjectSN` were in every production export and read by nothing, so
+  `project_overview` could describe a controller without saying how the project reaches it - the first thing a live operation needs and the last thing an
+  engineer wants to discover from a failure. `L5xControllerSummary` now exposes `commPath` and `projectSerialNumber`; verified on `Seco_Homogenizer`, which
+  reports `CIM_Prep\10.211.100.100\Backplane\0` and `16#0163_1759`, and a test pins both through `project_overview`. 422 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

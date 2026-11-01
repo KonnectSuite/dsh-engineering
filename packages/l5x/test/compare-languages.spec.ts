@@ -364,3 +364,18 @@ describe('safety hardware and safety instructions', () => {
     expect(aoiRows.find(row => row.name === 'FC_Adj_Ratio_SP')?.safety).toBe(false)
   })
 })
+
+
+/** A controller whose export remembers its route and project serial number. */
+const ROUTED_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Use=\"Target\" Name=\"Routed\" ProcessorType=\"1756-L81ES\" MajorRev=\"36\" MinorRev=\"11\" CommPath=\"CIM_Prep\\10.211.100.100\\Backplane\\0\" ProjectSN=\"16#0163_1759\" MatchProjectToController=\"false\">\n    <Tags/>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines><Routine Name=\"R\" Type=\"RLL\"><RLLContent/></Routine></Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('controller metadata', () => {
+  it('carries the saved communication path and project serial number', async () => {
+    const l5x = harness(new Map([['r.l5x', new TextEncoder().encode(ROUTED_L5X)]]))
+    await l5x.call('open_project', { path: 'r.l5x' })
+    const overview = await l5x.call('project_overview')
+    const controller = (overview.data?.controller ?? {}) as { commPath?: string; projectSerialNumber?: string }
+    expect(controller.commPath).toContain('10.211.100.100')
+    expect(controller.projectSerialNumber).toBe('16#0163_1759')
+  })
+})

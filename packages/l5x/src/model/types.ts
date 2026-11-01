@@ -260,6 +260,10 @@ export interface L5xControllerSummary {
   readonly majorRev: string
   /** Minor revision as written, empty string when the export omits it. */
   readonly minorRev: string
+  /** Project serial number the export declares, when it declares one. */
+  readonly projectSerialNumber?: string
+  /** Communication path saved in the export, when it declares one. */
+  readonly commPath?: string
 }
 
 /**
