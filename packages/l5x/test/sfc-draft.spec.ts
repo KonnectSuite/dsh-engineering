@@ -68,6 +68,28 @@ describe('sequential function charts', () => {
     expect(text).toContain('<DirectedLink FromID="0" ToID="2" Show="true"/>')
   })
 
+  it('lays a chart out down the sheet when the caller gives no positions', async () => {
+    // Studio accepts a chart whose steps all sit on one point and draws one box on top of the other: structure
+    // is right, presentation is not, and no build can see it - the first IDE render of a two-step chart showed
+    // a single step. The defaults now place each step below the previous one and the transition between them.
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', {
+      program: 'Main',
+      routine: 'Chart',
+      steps: JSON.stringify([{ id: 0, name: 'Step_1', initial: true }, { id: 1, name: 'Step_2' }]),
+      transitions: JSON.stringify([{ id: 2, name: 'Tran_1', condition: 'a1' }]),
+      links: JSON.stringify([{ from: 0, to: 2 }, { from: 2, to: 1 }]),
+    })
+    expect(chart.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'layout.L5X' })
+    expect(applied.error).toBeUndefined()
+    const text = l5x.written.get('layout.L5X') ?? ''
+    expect(text).toContain('<Step ID="0" X="300" Y="100"')
+    expect(text).toContain('<Step ID="1" X="300" Y="300"')
+    expect(text).toContain('<Transition ID="2" X="300" Y="200"')
+  })
+
   it('composes a chart the SFC checks call clean', async () => {
     const l5x = await opened()
     await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })

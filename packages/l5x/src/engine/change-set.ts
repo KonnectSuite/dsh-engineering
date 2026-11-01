@@ -911,6 +911,11 @@ function sfcLinks(value: unknown): readonly SfcLinkOp[] {
 /**
  * One SFC chart in the shape Studio writes: steps with optional actions, transitions with a
  * Structured Text condition, and directed links. Studio adds no Sheet element here.
+ *
+ * Positions are presentation, not structure, so Studio accepts a chart whose steps all land on one
+ * point - it simply draws one box on top of the other. The defaults therefore lay the chart out the
+ * way Studio does: steps down the sheet at a 200 pitch, each transition between the steps it links.
+ * An explicit x/y still wins.
  */
 function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_sheet' }>): string {
   const ids = new Set<number>()
@@ -927,20 +932,28 @@ function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_shee
     if (!ids.has(link.from) || !ids.has(link.to)) throw new EngineeringError('INVALID_CHANGE_SET', `A link names id ${link.from} or ${link.to}, which no step or transition uses`)
   }
   const parts: string[] = []
+  // The Y a step takes when the caller gave none: declaration order runs down the sheet.
+  const stepY = new Map<number, number>()
+  for (const [index, step] of operation.steps.entries()) stepY.set(step.id, step.y ?? 100 + index * 200)
   for (const step of operation.steps) {
     const x = step.x ?? 300
-    const y = step.y ?? 100
+    const y = stepY.get(step.id) ?? 100
     const head = `<Step ID="${step.id}" X="${x}" Y="${y}" Operand="${escapeXml(step.name)}" HideDesc="false" DescX="${x + 40}" DescY="${y - 20}" DescWidth="0" InitialStep="${step.initial === true ? 'true' : 'false'}" PresetUsesExpr="false" LimitHighUsesExpr="false" LimitLowUsesExpr="false" ShowActions="true"`
     const actions = step.actions ?? []
     if (actions.length === 0) { parts.push(`${head}/>`); continue }
     const body = actions.map(action => `<Action ID="${action.id}" Operand="${escapeXml(action.name)}" Qualifier="${escapeXml(action.qualifier)}" IsBoolean="${action.boolean === false ? 'false' : 'true'}" PresetUsesExpr="false"/>`).join('')
     parts.push(`${head}>${body}</Step>`)
   }
-  for (const transition of operation.transitions) {
+  for (const [index, transition] of operation.transitions.entries()) {
     const x = transition.x ?? 300
-    const y = transition.y ?? 200
+    // Between the two steps it joins when the links say which those are; otherwise its own slot.
+    const from = operation.links.find(link => link.to === transition.id && stepY.has(link.from))
+    const to = operation.links.find(link => link.from === transition.id && stepY.has(link.to))
+    const fromY = from === undefined ? undefined : stepY.get(from.from)
+    const toY = to === undefined ? undefined : stepY.get(to.to)
+    const y = transition.y ?? (fromY === undefined || toY === undefined ? 200 + index * 200 : Math.round((fromY + toY) / 2))
     const lines = transition.condition.split(/\r?\n/u).filter(line => line.trim() !== '')
-      .map((line, index) => `<Line Number="${index}"><![CDATA[${line}]]></Line>`).join('')
+      .map((line, lineIndex) => `<Line Number="${lineIndex}"><![CDATA[${line}]]></Line>`).join('')
     parts.push(`<Transition ID="${transition.id}" X="${x}" Y="${y}" Operand="${escapeXml(transition.name)}" HideDesc="false" DescX="${x + 60}" DescY="${y - 20}" DescWidth="0"><Condition><STContent>${lines}</STContent></Condition></Transition>`)
   }
   for (const link of operation.links) {

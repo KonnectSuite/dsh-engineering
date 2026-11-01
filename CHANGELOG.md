@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+- **A composed SFC chart now draws its steps on separate rows, because the IDE showed them stacked.** `draft_sfc`
+  defaulted every step to `X=300, Y=100` and every transition to `Y=200`, so a two-step chart was written with both steps
+  at the same point; Studio draws one box on top of the other and does not object, because coordinates are presentation
+  rather than structure. The SDK build therefore reported 0 warnings / 0 errors, and no gate could see it. The defaults
+  now lay the chart out the way Studio does — steps down the sheet at a 200 pitch, each transition between the two steps
+  its links join — and an explicit `x`/`y` still wins. Found by opening a composed ACD in Logix Designer and looking at
+  it, which is the one check the compiler cannot make. Verified both ways: the fixed chart imports and builds 0/0, and
+  Logix Designer draws `Step_1`, `Tran_1` and `Step_2` in three places. A test now asserts that a two-step chart with no
+  positions emits two distinct Y values with the transition between them.
 - **The `run_checks` description now derives the rule count it states.** It said `41 rules` while the tool carried
   **42**, and it said it twice — `docs/reference/tools.md` copies the description verbatim, so the wrong number shipped
   in the generated reference with every gate green. Both places now interpolate `FINDING_RULES.length`, so a rule added
