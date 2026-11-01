@@ -10,6 +10,7 @@ const PROJECT = `<?xml version="1.0" encoding="UTF-8"?>
       <Tag Name="r1" TagType="Base" DataType="REAL"/><Tag Name="r2" TagType="Base" DataType="REAL"/>
       <Tag Name="r3" TagType="Base" DataType="REAL"/>
       <Tag Name="add1" TagType="Base" DataType="FBD_MATH"/>
+      <Tag Name="add2" TagType="Base" DataType="FBD_MATH"/>
     </Tags>
     <Programs>
       <Program Name="Main" MainRoutineName="R">
@@ -100,5 +101,72 @@ describe('draft_fbd', () => {
     expect(staged.error).toBeUndefined()
     const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error?.code).toBe('INVALID_CHANGE_SET')
+  })
+})
+
+
+describe('creating the routine and chaining blocks', () => {
+  it('creates an FBD routine with no body, then stages a sheet into it', async () => {
+    const l5x = await opened()
+    const routine = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
+    expect(routine.error).toBeUndefined()
+    // A routine staged in the same draft is visible to draft_fbd.
+    const sheet = await l5x.call('draft_fbd', { ...SHEET, routine: 'G' })
+    expect(sheet.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'new.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('new.L5X') ?? ''
+    expect(written).toContain('<Routine Name="G" Type="FBD"><FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape">')
+  })
+
+  it('refuses an FBD routine that carries a body', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD', code: 'XIC(a1)OTE(a2);' })
+    expect(result.error?.code).toBe('INVALID_ARGUMENT')
+  })
+
+  it('wires two blocks directly, naming the output and input pins', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_fbd', {
+      program: 'Main', routine: 'F', sheet: 2,
+      blocks: JSON.stringify([
+        { id: 3, type: 'ADD', tag: 'add1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
+        { id: 4, type: 'ADD', tag: 'add2', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
+      ]),
+      refs: JSON.stringify([{ id: 0, direction: 'in', tag: 'r1' }, { id: 1, direction: 'in', tag: 'r2' }, { id: 6, direction: 'out', tag: 'r3' }]),
+      wires: JSON.stringify([
+        { from: 0, to: 3, to_pin: 'SourceA' }, { from: 1, to: 3, to_pin: 'SourceB' },
+        { from: 3, to: 4, from_pin: 'Dest', to_pin: 'SourceA' },
+        { from: 1, to: 4, to_pin: 'SourceB' }, { from: 4, to: 6, from_pin: 'Dest' },
+      ]),
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'chain.L5X' })
+    expect(applied.error).toBeUndefined()
+    // This chain built in Studio with zero warnings.
+    expect(l5x.written.get('chain.L5X')).toContain('<Wire FromID="3" FromParam="Dest" ToID="4" ToParam="SourceA"/>')
+  })
+
+  it('refuses a sheet that both writes and reads one tag', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_fbd', {
+      program: 'Main', routine: 'F', sheet: 3,
+      blocks: JSON.stringify([
+        { id: 3, type: 'ADD', tag: 'add1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
+        { id: 4, type: 'ADD', tag: 'add2', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
+      ]),
+      refs: JSON.stringify([
+        { id: 0, direction: 'in', tag: 'r1' }, { id: 1, direction: 'in', tag: 'r2' },
+        { id: 5, direction: 'out', tag: 'r3' }, { id: 2, direction: 'in', tag: 'r3' }, { id: 6, direction: 'out', tag: 'r2' },
+      ]),
+      wires: JSON.stringify([
+        { from: 0, to: 3, to_pin: 'SourceA' }, { from: 1, to: 3, to_pin: 'SourceB' }, { from: 3, to: 5, from_pin: 'Dest' },
+        { from: 2, to: 4, to_pin: 'SourceA' }, { from: 1, to: 4, to_pin: 'SourceB' }, { from: 4, to: 6, from_pin: 'Dest' },
+      ]),
+    })
+    expect(staged.error).toBeUndefined()
+    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    expect(validated.error?.code).toBe('INVALID_CHANGE_SET')
+    expect(String(validated.error?.message)).toContain('both writes and reads')
   })
 })

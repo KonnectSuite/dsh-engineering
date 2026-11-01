@@ -288,6 +288,15 @@
   language, undeclared backing tag, wrong structure type, unknown node id, unknown pin). This closes the capability gap
   that mattered most: the competition composes four languages; two are no longer enough.
 
+- **An FBD routine can now be created, and blocks chain directly.** `draft_routine` accepts `language: "FBD"` and writes
+  an empty `FBDContent` (a body is refused, because a diagram is not code); `draft_fbd` then sees a routine staged earlier
+  in the same draft, so the two calls work in either order. Two corrections came out of Studio builds: a **block-to-block
+  wire is legal** (`FromParam` on the driving block, `ToParam` on the reading block) and is how blocks are chained — my
+  first version refused it — while a sheet that **both writes and reads one tag** makes Studio abort the import, so the
+  engine now refuses it with the fix spelled out (*"wire the blocks to each other directly, or move the read to another
+  sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
+  passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -299,7 +308,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-340 package tests and 70 bundle tests pass.
+344 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

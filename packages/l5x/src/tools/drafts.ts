@@ -373,9 +373,16 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const program = requiredString(args, 'program')
         const routineName = requiredString(args, 'routine')
 
-        const routine = project.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
-        if (routine === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine" and program to see the declared names.')
-        if (routine.type !== 'FBD') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a function block diagram.`, 'Create an FBD routine with draft_routine once FBD is offered there, or extend a routine that is already FBD.')
+        // The routine may be staged in this same draft, before it exists in the document.
+        const draft = drafts.forProject(exec, project.id)
+        const view = withStagedTags(project, stagedFromDraft(draft.operations, project))
+        const stagedRoutine = draft.operations.some(operation => operation.operation === 'add_routine'
+          && String(operation.program) === program
+          && String(operation.name).toLowerCase() === routineName.toLowerCase()
+          && String(operation.language) === 'FBD')
+        const routine = view.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
+        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine" and program to see the declared names, or stage the routine first with draft_routine language "FBD".')
+        if (routine !== undefined && routine.type !== 'FBD') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a function block diagram.`, 'Extend a routine that is already FBD, or create one with draft_routine language "FBD".')
 
         const blocks = jsonArrayArg(args, 'blocks')
         const refs = args.refs === undefined ? [] : jsonArrayArg(args, 'refs')
@@ -387,13 +394,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           if (instructionByName(type) === undefined) throw new L5xError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction.`, 'Call list_instructions to see the catalogued names.')
           const tag = String((block as Record<string, unknown>).tag ?? '')
           const structure = String((block as Record<string, unknown>).structure ?? '')
-          const declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
+          const declared = view.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
           if (declared === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `The block's tag ${tag} is not declared in ${program} or controller scope.`, `Declare it first: draft_tag scope "${program}" name "${tag}" data_type "${structure}" — a block is an instance of its structure.`)
           if (declared.dataType.toUpperCase() !== structure.toUpperCase()) throw new L5xError('TYPE_MISMATCH', `Tag ${tag} is ${declared.dataType}, but the block needs a ${structure} instance.`, 'Declare a tag whose data type is the block structure, for example FBD_MATH for ADD.')
         }
         for (const [index, ref] of refs.entries()) {
           const tag = String((ref as Record<string, unknown>).tag ?? '')
-          if (resolveSymbol(project.document, program, tag) === undefined) throw new L5xError('TAG_NOT_FOUND', `refs[${index}] names ${tag}, which does not resolve in scope ${program}.`, 'Reference a declared tag, or declare it with draft_tag first.')
+          if (resolveSymbol(view.document, program, tag) === undefined) throw new L5xError('TAG_NOT_FOUND', `refs[${index}] names ${tag}, which does not resolve in scope ${program}.`, 'Reference a declared tag, or declare it with draft_tag first.')
         }
 
         const operation: DraftOperation = {
@@ -414,18 +421,23 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       parameters: object({
         program: string('Program that will own the new routine. Example: "MainProgram".'),
         name: string('New routine name, a Logix identifier of at most 40 characters. Example: "Calc".'),
-        language: choice('Language of the new routine: RLL for ladder, ST for Structured Text.', ['RLL', 'ST']),
-        code: string('Body: NeutralText rungs for RLL, statements for ST.'),
+        language: choice('Language of the new routine: RLL for ladder, ST for Structured Text, FBD for a function block diagram.', ['RLL', 'ST', 'FBD']),
+        code: string('Body: NeutralText rungs for RLL, statements for ST. An FBD routine takes no body; add sheets with draft_fbd.'),
         project_id: PROJECT_ID,
-      }, ['program', 'name', 'language', 'code']),
+      }, ['program', 'name', 'language']),
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
+        const language = requiredString(args, 'language')
+        if (language !== 'RLL' && language !== 'ST' && language !== 'FBD') throw new L5xError('INVALID_ARGUMENT', 'language must be "RLL", "ST" or "FBD"', 'Pass "RLL" for ladder, "ST" for Structured Text, or "FBD" for a function block diagram.')
+        const code = optionalString(args, 'code') ?? ''
+        if (language === 'FBD' && code.trim() !== '') throw new L5xError('INVALID_ARGUMENT', 'An FBD routine takes no body; create it and add sheets with draft_fbd.', 'Omit code, then stage the diagram with draft_fbd.')
+        if (language !== 'FBD' && code.trim() === '') throw new L5xError('INVALID_ARGUMENT', 'RLL and ST routines need a body in code.', 'Pass the rungs or statements in code.')
         const operation: DraftOperation = {
           operation: 'add_routine',
           program: requiredString(args, 'program'),
           name: requiredString(args, 'name'),
-          language: requiredString(args, 'language'),
-          code: requiredString(args, 'code'),
+          language,
+          code,
         }
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },

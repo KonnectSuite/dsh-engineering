@@ -329,8 +329,8 @@ Append one new routine to the chat draft. Nothing is written until draft_apply.
 |---|---|---|---|
 | `program` | string | yes | Program that will own the new routine. Example: "MainProgram". |
 | `name` | string | yes | New routine name, a Logix identifier of at most 40 characters. Example: "Calc". |
-| `language` | string (RLL \| ST) | yes | Language of the new routine: RLL for ladder, ST for Structured Text. |
-| `code` | string | yes | Body: NeutralText rungs for RLL, statements for ST. |
+| `language` | string (RLL \| ST \| FBD) | yes | Language of the new routine: RLL for ladder, ST for Structured Text, FBD for a function block diagram. |
+| `code` | string | no | Body: NeutralText rungs for RLL, statements for ST. An FBD routine takes no body; add sheets with draft_fbd. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 
 #### `draft_tag`

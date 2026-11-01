@@ -44,7 +44,7 @@ type Operation =
   | { readonly operation: 'insert_rung'; readonly program: string; readonly routine: string; readonly rung: number; readonly text: string; readonly before_rung?: number; readonly comment?: string }
   | { readonly operation: 'set_rung_comment'; readonly program: string; readonly routine: string; readonly rung: number; readonly comment: string }
   | { readonly operation: 'replace_st'; readonly program: string; readonly routine: string; readonly code: string }
-  | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST'; readonly code: string }
+  | { readonly operation: 'add_routine'; readonly program: string; readonly name: string; readonly language: 'RLL' | 'ST' | 'FBD'; readonly code: string }
   | { readonly operation: 'add_tag'; readonly scope: string; readonly name: string; readonly data_type: string; readonly value?: number; readonly dimensions?: string; readonly external_access?: string; readonly description: string }
   | { readonly operation: 'set_tag_description'; readonly scope: string; readonly name: string; readonly description: string }
   | { readonly operation: 'add_udt_member'; readonly udt: string; readonly name: string; readonly data_type: string; readonly description: string }
@@ -63,7 +63,7 @@ insert_rung {program,routine,rung,text,before_rung?,comment?} — rung is the po
 delete_rung {program,routine,rung}
 set_rung_comment {program,routine,rung,comment}
 replace_st {program,routine,code}
-add_routine {program,name,language:"RLL"|"ST",code}
+add_routine {program,name,language:"RLL"|"ST"|"FBD",code} — an FBD routine takes an empty code; add sheets with insert_fbd_sheet
 insert_fbd_sheet {program,routine,sheet,blocks,refs,wires} — blocks {id,type,tag,structure,pins}, refs {id,direction,tag}, wires {from,to,from_pin?,to_pin?}; the block tag must carry the structure type Studio expects (FBD_MATH for ADD)
 add_tag {scope,name,data_type,description,value? scalar, dimensions? "4 2", external_access? "Read/Write"|"Read Only"|"None"}
 set_tag_description {scope,name,description}
@@ -194,7 +194,8 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       return { operation: row.operation, program: identifier(row, 'program'), routine: identifier(row, 'routine'), code: text(row, 'code') }
     case 'add_routine': {
       fields(row, ['operation', 'program', 'name', 'language', 'code'])
-      if (row.language !== 'RLL' && row.language !== 'ST') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL" or "ST"')
+      if (row.language !== 'RLL' && row.language !== 'ST' && row.language !== 'FBD') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL", "ST" or "FBD"')
+    if (row.language === 'FBD' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An FBD routine takes no code; create it empty and add sheets with draft_fbd')
       return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
     }
     case 'insert_fbd_sheet': {
@@ -355,9 +356,10 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     requireIdentifier(operation.name, 'Routine')
     if (routines.children.some(routine => routine.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Routine already exists')
     let body: string
-    if (operation.language === 'ST') body = stContent(operation.code)
+    if (operation.language === 'FBD') body = '<FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape"/>'
+    else if (operation.language === 'ST') body = stContent(operation.code)
     else {
-      const lines = operation.code.split('\n').filter(line => line.trim() !== '')
+      const lines = (operation.code ?? '').split('\n').filter(line => line.trim() !== '')
       for (const line of lines) checkRungText(line)
       body = '<RLLContent>' + lines.map((line, index) => `<Rung Number="${index}" Type="N"><Text>${cdata(line)}</Text></Rung>`).join('') + '</RLLContent>'
     }
@@ -676,11 +678,21 @@ function fbdSheetXml(operation: Extract<Operation, { operation: 'insert_fbd_shee
     const from = ids.get(wire.from)
     const to = ids.get(wire.to)
     if (from === undefined || to === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `A wire names id ${wire.from} or ${wire.to}, which no node uses`)
-    if (from === 'block' && to === 'block') throw new EngineeringError('INVALID_CHANGE_SET', 'A wire between two blocks does not name an output pin')
     if (from === 'block' && wire.from_pin === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `The wire from block ${wire.from} must name from_pin`)
     if (to === 'block' && wire.to_pin === undefined) throw new EngineeringError('INVALID_CHANGE_SET', `The wire into block ${wire.to} must name to_pin`)
     if (wire.from_pin !== undefined && pins.get(wire.from)?.has(wire.from_pin) !== true) throw new EngineeringError('INVALID_CHANGE_SET', `Block ${wire.from} does not show pin "${wire.from_pin}"`)
     if (wire.to_pin !== undefined && pins.get(wire.to)?.has(wire.to_pin) !== true) throw new EngineeringError('INVALID_CHANGE_SET', `Block ${wire.to} does not show pin "${wire.to_pin}"`)
+  }
+
+  // One sheet cannot both drive and read a tag: Studio aborts the import for it. Chained blocks
+  // are wired directly, and a tag written on one sheet is read on another.
+  const written = new Set(operation.refs.filter(ref => ref.direction === 'out').map(ref => ref.tag.toLowerCase()))
+  for (const ref of operation.refs) {
+    if (ref.direction === 'in' && written.has(ref.tag.toLowerCase())) {
+      throw new EngineeringError('INVALID_CHANGE_SET',
+        `Sheet ${operation.sheet} both writes and reads tag "${ref.tag}", which Studio refuses to import.`,
+        'Wire the blocks to each other directly (from_pin on the driving block, to_pin on the reading block), or move the read to another sheet.')
+    }
   }
 
   const parts: string[] = []
