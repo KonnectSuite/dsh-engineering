@@ -824,6 +824,11 @@
   **"257 routine(s) and 29 AOI routine(s)"** on the real export, with the PROJECT.md counts line naming them too. A test asserts the count and the summary
   sentence for an AOI with one routine. 432 package tests.
 
+- **The skill now names the behaviours the last rounds added.** It told a reader to open the project and read, but not that `project_overview` states the
+  export's limits first; it listed the check families but not the three safety rules; it described `compare_projects` without saying a controller-level
+  change is reported; and it described the bundle without the Safety and Add-On Instruction tables or the `rungs/AOI-<name>.md` files. All four are now
+  in the skill, body 7648 of 8000 characters. A skill that omits a capability is a capability the assistant will not use. 432 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

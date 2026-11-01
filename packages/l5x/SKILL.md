@@ -21,6 +21,7 @@ truth. Never write to `<workspace>/_backups`.
 
 1. `open_project` with the export path; keep `project_id`. Later calls may omit it when one project is open.
 2. A read refuses a changed export with `STALE_EXPORT`; reopen before continuing.
+3. `project_overview` states the export's limits first: protected routines, vendor types, safety tasks.
 
 ## Find the thing
 
@@ -38,8 +39,10 @@ truth. Never write to `<workspace>/_backups`.
 
 - `run_checks`: findings with rule, severity and site; filter by either. Covers unused tags, unresolved references,
   unscheduled programs, undocumented logic, latch and duplicate output, mnemonic mismatch, FBD graph, rung shape,
-  and instructions the controller family cannot build.
-- `compare_projects`: semantic diff by component; export timestamps and formatting are ignored.
+  and instructions the controller family cannot build. Safety rules also cover a safety instruction called from
+  standard logic, a safety program in a standard task, and a safety module with no network number.
+- `compare_projects`: semantic diff by component; export timestamps and formatting are ignored. A controller-level
+  change (processor, saved route, project serial) is reported too.
 
 ## Live reads
 
@@ -121,3 +124,5 @@ truth. Never write to `<workspace>/_backups`.
 
 `document_project` writes a NEW folder: `PROJECT.md`, `io.md`/`io.csv`, `tags.csv` and `tags-studio.csv` (the
 `Tag Name,Description` shape Studio imports), and `rungs/<program>.md`. Structure and citations, not prose.
+`PROJECT.md` also carries Safety and Add-On Instructions tables; `rungs/AOI-<name>.md` documents an AOI's own
+routines; the summary counts program and AOI routines separately.
