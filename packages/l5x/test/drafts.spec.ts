@@ -334,3 +334,21 @@ describe('built-in structure tags', () => {
     expect(String(applied.error?.message)).toContain('NOT_A_TYPE')
   })
 })
+
+
+/** A project whose only program runs in a safety task. */
+const SAFETY_DRAFT_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"37.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"SafetyDraft\" ProcessorType=\"1756-L8\" MajorRev=\"37\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"B\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"Safe\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent><Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)OTE(B);]]></Text></Rung></RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks>\n      <Task Name=\"SafetyTask\" Type=\"PERIODIC\" Rate=\"20\" Priority=\"10\" Class=\"Safety\"><ScheduledPrograms><ScheduledProgram Name=\"Safe\"/></ScheduledPrograms></Task>\n    </Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('editing a safety-scheduled program', () => {
+  it('is refused before anything is written', async () => {
+    // On the real Seco export, draft_rung staged and draft_validate refused with
+    // "Safety programs cannot be changed". The same contract is pinned here; whichever step owns the
+    // check, the edit must never reach draft_apply.
+    const l5x = harness(new Map([['s.l5x', new TextEncoder().encode(SAFETY_DRAFT_L5X)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 's.l5x' })).error).toBeUndefined()
+    const staged = await l5x.call('draft_rung', { program: 'Safe', routine: 'R', rung: 0, mode: 'replace', text: 'XIC(B)OTE(B);' })
+    const refusal = staged.error ?? (await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })).error
+    expect(refusal?.code).toBe('PROTECTED_TARGET')
+    expect(String(refusal?.message).toLowerCase()).toContain('safety')
+  })
+})

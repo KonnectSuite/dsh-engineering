@@ -529,6 +529,15 @@
   and `find_references` both accept an `AOI::Member` symbol; and `document_project` filters to one program correctly (23 routines,
   1210 rungs). A test pins the one-rung diff so the fidelity cannot regress.
 
+- **The safety inconsistency from round 73 is resolved: the guard is real, and it fires at validation.** On the actual Seco export,
+  `draft_rung` against `MOTION_SAFETY/A04_Pull_Rope` **staged**, and `draft_validate` refused with
+  `PROTECTED_TARGET: Safety programs cannot be changed`. That is the correct contract - staging is a draft, validation is the
+  gate - and the earlier unit-test result was a mismatch between the two steps, not a missing guard. A test now pins the
+  contract without caring which step refuses: `refusal = staged.error ?? validate.error` must be `PROTECTED_TARGET` naming
+  safety, so the edit can never reach `draft_apply`. What remains is a UX nicety, not a safety gap: the refusal could come at
+  staging time so a draft never holds an operation that cannot apply, which needs the guard's logic factored out of
+  `change-set.ts` rather than duplicated.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
