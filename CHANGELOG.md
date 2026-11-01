@@ -302,6 +302,15 @@
   once eight probes failed. The test that composed a `FAL` rung now asserts the refusal, and `SKILL.md` says to write
   these two by hand until a real export shows the accepted form.
 
+- **`run_checks` now catches the `JSR` a build proved wrong.** Round 40 established that `JSR(Sub)` is refused with
+  `RxCMP_E_AUDIT_INVALIDNOOFOPS` and `JSR(Sub,0)` builds, and the composer enforces it - but an export that **already
+  contains** the broken call had no finding. The new rule `JSR_WITHOUT_RETURN` reports it as **critical**, names the rung,
+  and puts the fix in the message (`Write JSR(Sub,0) when the subroutine returns nothing`), so a reader does not have to
+  know the rule name to act. Two tests pin it: `JSR(Sub)` is reported, `JSR(Sub,0)` is silent. The `run_checks`
+  description names the rule, so the tool reference regenerated. This is the difference between a composer that refuses to
+  write a defect and a checker that finds one already in the file - the second is what an engineer needs when they open
+  somebody else's project.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

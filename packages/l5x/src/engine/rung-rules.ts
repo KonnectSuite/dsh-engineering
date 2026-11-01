@@ -90,6 +90,19 @@ export function rungFindings(routine: L5xRoutine, options: { readonly processorT
     }
   }
 
+  // JSR carries its return-parameter slot. A build proved JSR(Sub) alone is refused.
+  for (const rung of routine.body.rungs) {
+    const jsr = /(?:^|[^A-Za-z0-9_])JSR[ \t]*\([ \t]*([^,()]+?)[ \t]*\)/u.exec(rung.text)
+    if (jsr === null) continue
+    findings.push({
+      rule: 'JSR_WITHOUT_RETURN',
+      severity: 'critical',
+      message: `${where(rung.number)} calls JSR(${jsr[1]}) without a return-parameter slot; Studio refuses it with RxCMP_E_AUDIT_INVALIDNOOFOPS. Write JSR(${jsr[1]},0) when the subroutine returns nothing.`,
+      evidence: { program: routine.program, routine: routine.name, rung: rung.number, text: rung.text.slice(0, 400) },
+      confidence: 'high',
+    })
+  }
+
   // A subroutine's SBR opens the routine. Anywhere else, the routine cannot build.
   const opens = routine.body.rungs[0]
   if (opens !== undefined) {

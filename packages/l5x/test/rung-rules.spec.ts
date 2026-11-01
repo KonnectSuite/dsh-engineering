@@ -106,3 +106,19 @@ describe('a serial-port instruction on a processor without one', () => {
     expect(found.filter(entry => entry.rule === 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED').length).toBe(1)
   })
 })
+
+
+describe('a JSR with no return slot', () => {
+  it('reports JSR(Routine) and explains the fix', () => {
+    // A build proved JSR(Sub) is refused with RxCMP_E_AUDIT_INVALIDNOOFOPS; JSR(Sub,0) builds.
+    const found = rungFindings(ladder('XIC(Start)JSR(Sub);'))
+    const rule = found.find(entry => entry.rule === 'JSR_WITHOUT_RETURN')
+    expect(rule).toBeDefined()
+    expect(rule?.severity).toBe('critical')
+    expect(rule?.message).toContain('JSR(Sub,0)')
+  })
+
+  it('stays quiet once the return slot is present', () => {
+    expect(rules(ladder('XIC(Start)JSR(Sub,0);'))).not.toContain('JSR_WITHOUT_RETURN')
+  })
+})
