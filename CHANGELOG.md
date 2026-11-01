@@ -1389,6 +1389,11 @@
   f06f2121...). Separately, a provider write denial escaped as `INTERNAL` with "plugin defect" advice; it is now `WRITE_DENIED` naming the
   destination, the provider reason and a usable fix, with a regression test. 517 package tests.
 
+- **Both write paths report a denied write the same way.** `document_project` also writes through the provider; a denial there was
+  untested. The test now asserts `WRITE_DENIED` naming the reason and that no file was written. Live check: `read_controller_clock` on
+  the 5069-L320ER/A at 192.168.1.3 reports `clock_supported: false` with the vendor reason instead of guessing, beside controller identity and host
+  time. 518 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -6,7 +6,7 @@
  * and that the parts arrive where the readers expect them.
  */
 import { describe, expect, it } from 'vitest'
-import { harness } from './harness.ts'
+import { fixtureBytes, harness } from './harness.ts'
 import { aoi, encodedAoi, l5x, member, module, parameter, program, rllRoutine, tag, task, userType } from './l5x-build.ts'
 
 const built = l5x({
@@ -811,6 +811,15 @@ describe('a denied draft write', () => {
     expect(applied.error?.message).toContain('refused to write')
     expect(applied.error?.message).toContain('denied')
     expect(applied.error?.fix).toContain('provider allows')
+    expect(l5xTool.written.size).toBe(0)
+  })
+
+  it('reports a denied documentation write the same way', async () => {
+    const l5xTool = harness(new Map([['docs.l5x', fixtureBytes()]]), { denyWrite: true })
+    expect((await l5xTool.call('open_project', { path: 'docs.l5x' })).error).toBeUndefined()
+    const documented = await l5xTool.call('document_project', { output_root: 'denied-docs' })
+    expect(documented.error?.code).toBe('WRITE_DENIED')
+    expect(documented.error?.message).toContain('refused to write')
     expect(l5xTool.written.size).toBe(0)
   })
 })
