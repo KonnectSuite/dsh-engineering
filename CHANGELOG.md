@@ -748,6 +748,12 @@
   and I restored `documentation.spec.ts` from HEAD rather than leave a broken spec; the line is exercised by the existing bundle tests but **not
   asserted for these two fields**, which is recorded as the gap.
 
+- **The missing assertion from round 110 now exists.** Last round shipped the `PROJECT.md` line reading `Project serial: ...; saved path: ...` without a test that
+  asserts it - I had broken the spec twice with scripted insertions and restored it from HEAD. This round added the assertion with the `edit` tool on a
+  controller declaring `CommPath` and `ProjectSN`, and it passes: the bundle contains `Project serial: 16#0163_1759` and
+  `saved path: CIM_Prep/10.211.100.100/Backplane/0`. 423 package tests. The lesson is mechanical: **edit test files with an editor, not with a template
+  literal in a patch script** - three attempts across two rounds, and only the editor worked first time.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

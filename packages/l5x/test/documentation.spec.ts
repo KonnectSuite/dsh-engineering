@@ -152,3 +152,24 @@ describe('documenting a source-protected export', () => {
     expect(all).toMatch(/\| P \| [RS] \|/)
   })
 })
+
+/** A controller whose export remembers its project serial number and saved route. */
+const DOC_ROUTE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="DocRoute" ProcessorType="1756-L81ES" MajorRev="36" MinorRev="11" CommPath="CIM_Prep/10.211.100.100/Backplane/0" ProjectSN="16#0163_1759">
+    <Tags/>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('documenting a routed project', () => {
+  it('states the project serial and saved path in the overview', async () => {
+    const l5x = harness(new Map([['dr.l5x', new TextEncoder().encode(DOC_ROUTE_L5X)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'dr.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('document_project', { output_root: 'docs-route' })).error).toBeUndefined()
+    const all = [...l5x.written.values()].map(value => String(value)).join('\n')
+    expect(all).toContain('Project serial: 16#0163_1759')
+    expect(all).toContain('saved path: CIM_Prep/10.211.100.100/Backplane/0')
+  })
+})
