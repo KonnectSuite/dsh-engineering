@@ -1290,6 +1290,8 @@
   `BSL(Arr,Ctrl,Bit,8)` built 0/0. BSL and BSR Control slots now accept CONTROL only; the existing bit-shift test holds both refusals alongside the
   valid rungs, and the dist smoke checks the built catalogue. 500 package tests.
 
+- **Generated client faces refreshed** after the BSL/BSR control restriction, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
