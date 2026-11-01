@@ -173,6 +173,17 @@
   already held, and the latch finding keeps the tag's own casing (`latches Latch`, not `latches latch`). Each one is
   data the record already carried; only the sentence was withholding it.
 
+- **An instruction the catalogue cannot model no longer claims to take no operands.** `EOT`, `SFR` and `SFP` came from
+  the compact table's empty slot lists, so `compose_rung` answered `SFP takes 0 operand(s); 2 were supplied` and then
+  told the reader to call `list_instructions` — which would repeat the same wrong answer. That is worse than absence: a
+  confident false arity with no way forward. Those three now carry `notModelled`, `compose_rung` refuses them with
+  `INSTRUCTION_NOT_MODELLED`, and `list_instructions` reports `operands_modelled: false` with a note rather than an
+  empty slot list.
+- **Every "unknown instruction" refusal now names the path that does not need the catalogue.** About a hundred of the
+  vendor's instructions are not modelled here, so a valid name was previously a dead end. The refusal now says to write
+  the rung text with `draft_rung` and run `draft_validate` — verified to accept an uncatalogued mnemonic, since the text
+  path validates syntax and tags while Studio remains the arity gate.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -184,7 +195,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-299 package tests and 70 bundle tests pass.
+302 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

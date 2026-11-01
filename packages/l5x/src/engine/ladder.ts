@@ -273,6 +273,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   }
   const instruction = instructionByName(mnemonic)
   if (instruction !== undefined) {
+    // Refuse an unmodelled operand list explicitly. Claiming an arity this catalogue cannot
+    // check is worse than refusing: it answers with confidence and leaves no way forward.
+    if (instruction.notModelled === true) {
+      throw new L5xError('INSTRUCTION_NOT_MODELLED', `${instruction.name} is catalogued, but this catalogue does not model its operands.`, `Write the rung text with draft_rung (for example {"text":"${instruction.name}(...);"}) and run draft_validate; draft_rung does not use the catalogue for arity. Call list_instructions to see which names are modelled.`)
+    }
     // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
     // parameters as its target routine declares.
     const restSlot = instruction.operands.find(slot => slot.rest === true)
@@ -297,7 +302,8 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     throw new L5xError(
       'UNKNOWN_INSTRUCTION',
       `"${mnemonic}" is neither a catalogued instruction nor an AOI declared in this export.`,
-      'Call list_instructions for the catalog; an AOI must be declared in the project.',
+      // A name this catalogue does not carry may still be a valid instruction: about a hundred of the set are not modelled here. Point at the path that does not need the catalogue.
+      'Call list_instructions for the catalogued names; an AOI must be declared in the project. If the name is a real instruction this catalogue does not carry, write the rung text with draft_rung and run draft_validate instead.',
       nearestInstructions(node.instr),
     )
   }

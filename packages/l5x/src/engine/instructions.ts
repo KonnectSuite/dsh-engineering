@@ -38,6 +38,11 @@ export interface InstructionInfo {
   readonly summary: string
   /** Operand slots in written order. */
   readonly operands: readonly InstructionOperand[]
+  /**
+   * True when the catalogue knows the mnemonic but not its operand list. The composer refuses
+   * these rather than claim an arity it cannot check; the rung text path still accepts them.
+   */
+  readonly notModelled?: boolean
 }
 
 /** Scalar data types the composer treats as numbers. */
@@ -182,6 +187,13 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   // operand is a routine, not an address. The compact table had a routine name, a source
   // and an expression, which is neither the right count nor the right meaning.
   { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), num('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
+
+  // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
+  // source for, and the compact table's empty slot list made them claim "takes 0 operands" —
+  // a confident wrong answer with no way forward. Drafting the rung text still works.
+  { name: 'EOT', category: 'Program control', summary: 'End of transition, for a Sequential Function Chart step.', operands: [], notModelled: true },
+  { name: 'SFR', category: 'Program control', summary: 'Reset an SFC routine to a target state.', operands: [], notModelled: true },
+  { name: 'SFP', category: 'Program control', summary: 'Pause an SFC routine at a target state.', operands: [], notModelled: true },
 
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map(instruction => ({

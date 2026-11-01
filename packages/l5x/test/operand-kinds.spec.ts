@@ -299,3 +299,28 @@ describe('a declaration in another scope', () => {
     expect(result.data?.scopes).toBeUndefined()
   })
 })
+
+
+describe('an instruction whose operands are not modelled', () => {
+  it('refuses to compose it rather than claiming an arity', async () => {
+    const l5x = await opened()
+    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SFP', args: ['MainRoutine', '2'] }] }) })
+    expect(result.error?.code).toBe('INSTRUCTION_NOT_MODELLED')
+    expect(result.error?.message).toContain('SFP')
+    // The refusal has to leave a way forward, or a model loops on it.
+    expect(result.error?.fix).toContain('draft_rung')
+  })
+
+  it('says so in the listing instead of listing zero operands', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'sfp' })).data?.rows as { name: string; operands_modelled?: boolean }[]
+    const row = rows.find(entry => entry.name === 'SFP')
+    expect(row?.operands_modelled).toBe(false)
+  })
+
+  it('still lets the rung text path carry it', async () => {
+    const l5x = await opened()
+    const staged = await l5x.call('draft_rung', { program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace', text: 'XIC(StartPB)SFP(MainRoutine,2);' })
+    expect(staged.error).toBeUndefined()
+  })
+})

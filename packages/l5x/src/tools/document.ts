@@ -50,6 +50,9 @@ function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
     // carries the other published spelling so a caller does not have to know which
     // one this export happens to read; compose_rung accepts either.
     ...(alternate === undefined ? {} : { also_published_as: alternate }),
+    // A row whose operand list this catalogue cannot model says so, instead of listing zero
+    // operands and letting a reader believe the instruction takes none.
+    ...(instruction.notModelled === true ? { operands_modelled: false, note: 'operands not modelled: compose this rung with draft_rung text instead' } : {}),
   }
 }
 
