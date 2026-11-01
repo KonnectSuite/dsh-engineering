@@ -1153,6 +1153,11 @@
   and `draft_tag` is documented as accepting an AOI name. The prose it replaced was redundant, so the body is 7,929 of 8,000 characters - smaller than before
   the addition. 486 package tests.
 
+- **AOI structure parameters are type-checked.** A BOOL tag where `MAFR_Yaskawa`'s InOut Axis needs a `Yaskawa_EIP_Servo` failed Studio with
+  `RxCMP_E_AUDIT_INVALIDOPTYPE`, while the declared structure built 0/0 with `download_ready: true` (verification `111434c2`). The composer now
+  compares the resolved tag type with the parameter's declared type for non-scalar parameters and refuses a literal or a wrong structure, naming both
+  types. A test holds the right, wrong and literal shapes. 487 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

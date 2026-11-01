@@ -364,9 +364,20 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   }
   const parameters = supplied.map((argument, index) => {
     const parameter = required[index]!
-    const operand = checkOperand(project, argument, kindOf(parameter.dataType), operands)
+    const kind = kindOf(parameter.dataType)
+    const operand = checkOperand(project, argument, kind, operands)
     if ((parameter.usage === 'Output' || parameter.usage === 'InOut') && isLiteral(operand.text)) {
       throw new L5xError('INVALID_OPERAND', `${operand.text} is a literal where ${aoi.name}'s ${parameter.usage} parameter ${parameter.name} needs a tag.`, `Pass a declared ${parameter.dataType} tag for ${parameter.name}.`)
+    }
+    // A parameter whose type is not a scalar is still strongly typed: an InOut structure of type
+    // Yaskawa_EIP_Servo refused a BOOL tag with RxCMP_E_AUDIT_INVALIDOPTYPE, while the right type built.
+    if (kind === 'ANY') {
+      if (isLiteral(operand.text)) {
+        throw new L5xError('INVALID_OPERAND', `${operand.text} is a literal where ${aoi.name} parameter ${parameter.name} needs a ${parameter.dataType} tag.`, `Pass a declared tag of type ${parameter.dataType}.`)
+      }
+      if (operand.resolved && operand.data_type !== undefined && operand.data_type.toUpperCase() !== parameter.dataType.toUpperCase()) {
+        throw new L5xError('INVALID_OPERAND', `${operand.text} is ${operand.data_type}; ${aoi.name} parameter ${parameter.name} needs ${parameter.dataType}.`, `Pass a declared tag of type ${parameter.dataType}.`)
+      }
     }
     return operand.text
   })

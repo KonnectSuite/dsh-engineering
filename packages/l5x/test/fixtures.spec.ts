@@ -560,3 +560,29 @@ describe('an add-on instruction call', () => {
     expect(literalOutput.error?.message).toContain('BOOL tag is required')
   })
 })
+
+describe('an AOI structure parameter', () => {
+  it('requires a tag of the parameter type', async () => {
+    // Studio refused a BOOL tag where MAFR_Yaskawa's InOut Axis needs a Yaskawa_EIP_Servo with
+    // RxCMP_E_AUDIT_INVALIDOPTYPE, while a tag of the right type built 0/0.
+    const project = l5x({
+      name: 'AoiStructGuard',
+      dataTypes: userType('MyUdt', [member('X', 'DINT')]),
+      tags: tag('MyStructAoi_1', 'MyStructAoi') + tag('Axis', 'MyUdt') + tag('NotAxis', 'BOOL'),
+      aois: aoi('MyStructAoi', { parameters: [parameter('Axis', { usage: 'InOut', dataType: 'MyUdt' })] }),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['struct.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'struct.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'Axis'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MyStructAoi(MyStructAoi_1,Axis);')
+    const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'NotAxis'] }] }) })
+    expect(wrong.error?.code).toBe('INVALID_OPERAND')
+    expect(wrong.error?.message).toContain('needs MyUdt')
+    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', '5'] }] }) })
+    expect(literal.error?.code).toBe('INVALID_OPERAND')
+    expect(literal.error?.message).toContain('needs a tag')
+  })
+})
