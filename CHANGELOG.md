@@ -107,6 +107,18 @@
   `XIC(a1)STD(realArr,0,dest,ctl,10,0)OTE(a2)` and `XIC(a1)SIZE(arr,0,size)OTE(a2)` through our own composer: **0
   warnings, 0 errors and an ACD written**. Two tests pin the counts and assert the five removed mnemonics stay absent.
 
+- **Both alarm instructions take five operands, not one, and the count was settled by build.** `ALMD` is
+  `ALMD(tag, ProgAck, ProgReset, ProgDisable, ProgEnable)` and `ALMA` is
+  `ALMA(tag, In, ProgAckAll, ProgDisable, ProgEnable)` — the compact table had each at a single slot. Getting there
+  took a bisection worth recording: the help's ladder table lists **six** operands for `ALMD`, and six fails with
+  `RxCMP_E_AUDIT_INVALIDNOOFOPS`; counts 1 through 4 and 6 all fail the same way, and **5** builds. The sixth
+  (`MinDurationPRE`) is a structure member the page presents in the operand table, not a rung operand. `ALM` itself is
+  Function Block and Structured Text only, so it stays out of a ladder catalogue, which is why `ALMD` and `ALMA` are the
+  alarm instructions here. Verification is a Studio build through our own composer:
+  `XIC(a1)ALMD(almD,progAck,progReset,progDisable,progEnable)OTE(a2)` and
+  `XIC(a1)ALMA(almA,inVal,ackAll,progDisable,progEnable)OTE(a2)`, **0 warnings, 0 errors and an ACD written**. Two
+  tests pin the counts and the accepted text.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

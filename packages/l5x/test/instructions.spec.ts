@@ -272,6 +272,46 @@ describe('arities a Studio build proved', () => {
     expect(instructionByName('ARD')?.operands.length).toBe(5)
   })
 
+  it('keeps both alarm instructions at the five slots a build accepted', () => {
+    // ALMD(alm, ProgAck, ProgReset, ProgDisable, ProgEnable) and
+    // ALMA(alm, In, ProgAckAll, ProgDisable, ProgEnable). The help table also lists MinDurationPRE
+    // for ALMD, but Studio counts five operands: that one is a structure member.
+    expect(instructionByName('ALMD')?.operands.length).toBe(5)
+    expect(instructionByName('ALMA')?.operands.length).toBe(5)
+  })
+
+  it('composes the alarm rungs that built', async () => {
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="AlarmTest" ProcessorType="5069-L320ERMS2" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="a1" TagType="Base" DataType="BOOL"/><Tag Name="a2" TagType="Base" DataType="BOOL"/>
+      <Tag Name="almD" TagType="Base" DataType="ALARM_DIGITAL"/>
+      <Tag Name="almA" TagType="Base" DataType="ALARM_ANALOG"/>
+      <Tag Name="inVal" TagType="Base" DataType="REAL"/>
+      <Tag Name="progAck" TagType="Base" DataType="BOOL"/><Tag Name="progReset" TagType="Base" DataType="BOOL"/>
+      <Tag Name="progDisable" TagType="Base" DataType="BOOL"/><Tag Name="progEnable" TagType="Base" DataType="BOOL"/>
+      <Tag Name="ackAll" TagType="Base" DataType="BOOL"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['alarm.l5x', new TextEncoder().encode(xml)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
+    for (const [spec, expected] of [
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ALMD', args: ['almD', 'progAck', 'progReset', 'progDisable', 'progEnable'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ALMD(almD,progAck,progReset,progDisable,progEnable)OTE(a2);'],
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ALMA', args: ['almA', 'inVal', 'ackAll', 'progDisable', 'progEnable'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ALMA(almA,inVal,ackAll,progDisable,progEnable)OTE(a2);'],
+    ] as const) {
+      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      expect(result.error).toBeUndefined()
+      const rungs = result.data?.rungs as { neutral_text: string }[]
+      expect(rungs[0]?.neutral_text).toBe(expected)
+    }
+  })
+
   it('keeps the second audit batch: STD six slots, SIZE three, JXR two', () => {
     expect(instructionByName('STD')?.operands.length).toBe(6)
     expect(instructionByName('SIZE')?.operands.length).toBe(3)
