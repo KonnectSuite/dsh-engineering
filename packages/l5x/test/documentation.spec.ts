@@ -35,6 +35,21 @@ describe('document_project', () => {
     expect(result.data?.counts).toMatchObject({ programs: 2, routines: 3, rungs: 11, comments: 11 })
   })
 
+  it('documents the pin a function-block wire lands on', async () => {
+    const before = new TextDecoder().decode(readFileSync(new URL('./fixtures/engineering-synthetic.l5x', import.meta.url)))
+    const withPin = before.replace('<Wire FromID="1" ToID="2"/>', '<Wire FromID="1" ToID="2" ToParam="SourceA"/>')
+    expect(withPin).not.toBe(before)
+    const l5x = harness(new Map([['synthetic.l5x', new TextEncoder().encode(withPin)]]), { editing: true })
+    const open = await l5x.call('open_project', { path: 'synthetic.l5x' })
+    expect(open.error).toBeUndefined()
+    const result = await l5x.call('document_project', { output_root: 'docs' })
+    expect(result.error).toBeUndefined()
+    const text = l5x.written.get('docs/rungs/Main.md') ?? ''
+    expect(text).toContain('From pin')
+    expect(text).toContain('To pin')
+    expect(text).toContain('SourceA')
+  })
+
   it('summarises the project with its tasks and programs', async () => {
     const l5x = await opened()
     await l5x.call('document_project', { output_root: 'docs' })

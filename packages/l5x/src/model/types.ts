@@ -132,6 +132,10 @@ export interface L5xDiagramNode {
   readonly operand?: string
   readonly fromId?: string
   readonly toId?: string
+  /** Input pin a wire lands on, when the export names one (SourceA, Dest, ...). */
+  readonly toParam?: string
+  /** Output pin a wire leaves from, when the export names one. */
+  readonly fromParam?: string
   /** Connector name on an ICon/OCon, which pairs the two across a routine. */
   readonly name?: string
   readonly text?: string

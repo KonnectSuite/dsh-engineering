@@ -1099,6 +1099,10 @@
   effect - built-in types, the embedded Local module, the release patch revision, diagram node ids and ST padding do not count as changes - and a test holds
   the Local-module case alongside the patch-revision, task-priority and tag-radix cases. 477 package tests.
 
+- **Function-block wires are documented by pin, not just by node id.** The diagram model now keeps `FromParam`/`ToParam`, so a generated document says
+  `Wire 0 -> 2 SourceA` instead of `Wire 0 -> 2`. Verified on the composed all-language project (SourceA, SourceB, Dest) and held by a test.
+  478 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
