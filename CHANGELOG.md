@@ -172,6 +172,14 @@
   imported before usually means the **controller name is still registered**. The body is now **5545 characters**, so the
   next proven rule fits without a fight.
 
+- **`CPT` had its operands in the wrong order, and a build proved it.** The catalogue listed `CPT(expression, destination)`;
+  Studio answers `RxCMP_E_AUDIT_INVALIDOPKIND` for that text and builds `CPT(destination, expression)` - the help's ladder
+  table puts `Dest` first too. The catalogue is corrected, and so are the four places that pinned the old order: three
+  spec trees and one operand-kind assertion. This is the first defect the audit found in an instruction that had been
+  catalogued since early in the cycle, and it is a reminder that "catalogued" was never the same as "verified": the
+  expression slot made the rung look plausible either way, so no build had exercised it. The corrected rung
+  `XIC(StartPB)CPT(FaultCount,LineSpeed + 5.0)` is what the test now pins.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

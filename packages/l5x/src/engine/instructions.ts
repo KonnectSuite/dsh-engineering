@@ -112,7 +112,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'DIV', category: 'Math', summary: 'Divide source A by source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'MOD', category: 'Math', summary: 'Remainder of source A divided by source B.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), num('Destination')] },
-  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination.', operands: [expression(), num('Destination')] },
+  { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination; the destination comes first in the rung text.', operands: [num('Destination'), expression()] },
 
   { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), num('Destination'), any('Control'), num('Length'), num('Position')] },
   { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [any('Source'), num('Dimension to Vary'), num('Size')] },

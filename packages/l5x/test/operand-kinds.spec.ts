@@ -68,10 +68,10 @@ describe('an expression is not a tag', () => {
   it('composes a CPT with operators in the source', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'CPT', args: ['LineSpeed + 5.0', 'FaultCount'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'CPT', args: ['FaultCount', 'LineSpeed + 5.0'] }] }),
     })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('XIC(StartPB)CPT(LineSpeed + 5.0,FaultCount);')
+    expect(text(result.data)).toBe('XIC(StartPB)CPT(FaultCount,LineSpeed + 5.0);')
   })
 
   it('composes a CMP comparison', async () => {
@@ -86,7 +86,7 @@ describe('an expression is not a tag', () => {
   it('refuses an unbalanced expression', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['(LineSpeed + 5.0', 'FaultCount'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['FaultCount', '(LineSpeed + 5.0'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('balanced')
@@ -95,7 +95,7 @@ describe('an expression is not a tag', () => {
   it('refuses an expression carrying a rung terminator', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['LineSpeed;5', 'FaultCount'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['FaultCount', 'LineSpeed;5'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
   })
@@ -105,7 +105,7 @@ describe('the listing names the kinds', () => {
   it('reports EXPRESSION, ROUTINE and LABEL', async () => {
     const l5x = harness(fixtureBytes)
     const rows = (await l5x.call('list_instructions', { filter: 'cpt' })).data?.rows as { name: string; operands: { kind: string }[] }[]
-    expect(rows.find(row => row.name === 'CPT')?.operands.map(slot => slot.kind)).toEqual(['EXPRESSION', 'NUMBER'])
+    expect(rows.find(row => row.name === 'CPT')?.operands.map(slot => slot.kind)).toEqual(['NUMBER', 'EXPRESSION'])
     const jsr = (await l5x.call('list_instructions', { filter: 'jsr' })).data?.rows as { name: string; operands: { kind: string }[] }[]
     expect(jsr.find(row => row.name === 'JSR')?.operands[0]?.kind).toBe('ROUTINE')
     const jmp = (await l5x.call('list_instructions', { filter: 'jmp' })).data?.rows as { name: string; operands: { kind: string }[] }[]
