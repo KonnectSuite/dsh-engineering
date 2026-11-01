@@ -248,6 +248,38 @@ describe('reference rows', () => {
   })
 })
 
+describe('the listing and the reader', () => {
+  it('agree: every listed component can be read by name', async () => {
+    const built = l5x({
+      name: 'ListingReader',
+      tags: tag('CTRL'),
+      dataTypes: userType('MY_UDT', [member('A')]),
+      aois: aoi('AOI_ONE', { parameters: [parameter('P')], routines: rllRoutine('Logic', [{ text: 'XIC(P)OTE(P);' }]) }),
+      modules: module('Local:1', '5069-IB16'),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'XIC(CTRL)OTE(OUT);' }]), { tags: tag('OUT') }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['lr.l5x', new TextEncoder().encode(built)]]))
+    expect((await l5xTool.call('open_project', { path: 'lr.l5x' })).error).toBeUndefined()
+    const cases: [string, string | undefined][] = [
+      ['program', undefined], ['task', undefined], ['udt', undefined], ['aoi', undefined],
+      ['module', undefined], ['tag', 'controller'], ['routine', 'Main'], ['tag', 'Main'],
+    ]
+    const failures: string[] = []
+    let checked = 0
+    for (const [kind, scope] of cases) {
+      const listed = await l5xTool.call('list_components', { kind, ...(scope === undefined ? {} : { scope }), limit: 50 })
+      for (const row of (listed.data?.rows ?? [])) {
+        checked += 1
+        const read = await l5xTool.call('get_component', { kind, name: row.name, ...(scope === undefined ? {} : { scope }) })
+        if (read.error !== undefined) failures.push(kind + ' ' + (scope ?? 'controller') + '/' + row.name + ': ' + read.error.code)
+      }
+    }
+    expect(failures).toEqual([])
+    expect(checked).toBeGreaterThan(5)
+  })
+})
+
 describe('searching safety logic', () => {
   it('marks a match inside a safety program and not one in standard logic', async () => {
     const built = l5x({
