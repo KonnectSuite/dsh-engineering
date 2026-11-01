@@ -1296,6 +1296,8 @@
   `INVALIDOPTYPE`; the same rungs with a CONTROL tag built 0/0. Both Control slots now accept CONTROL only, completing the rule across the five
   array instructions that carry one. Tests hold both refusals and both valid rungs; the dist smoke checks the built catalogue. 501 package tests.
 
+- **Generated client faces refreshed** after the SRT/STD control restriction, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
