@@ -37,7 +37,7 @@ truth. Never write to `<workspace>/_backups`.
 
 ## Checks and comparison
 
-- `run_checks`: findings with rule, severity and site; filter by either. Covers unused tags, unresolved references,
+- `run_checks`: findings with rule, severity, site and a fix when known; filter by either. Covers unused tags, unresolved references,
   unscheduled programs, undocumented logic, latch and duplicate output, mnemonic mismatch, FBD graph, rung shape,
   and instructions the controller family cannot build. Safety rules also cover a safety instruction called from
   standard logic, a safety program in a standard task, and a safety module with no network number.

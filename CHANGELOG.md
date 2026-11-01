@@ -920,6 +920,10 @@
   `Seco_Homogenizer`: **100 of the first 100 findings** carry one, e.g. `DUPLICATE_OUTPUT -> Confirm intent and keep a single writer per tag, or split the
   tag.` A test pins the unused-tag remedy. 444 package tests.
 
+- **The remedy field is now discoverable.** Round 149 added `fix` to findings, but the `run_checks` description and the skill still said "rule, severity and
+  site" - a caller reading either would not know the field exists. Both now name it, and `docs/reference/tools.md` is regenerated. Skill body 7648 of 8000
+  characters. 444 package tests, 90 bundle, docs current.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
