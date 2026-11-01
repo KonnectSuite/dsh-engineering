@@ -147,7 +147,18 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const symbol = qualified ? parts.slice(1).join('::') : requested
         const direction = optionalString(args, 'direction') === 'downstream' ? 'downstream' : 'upstream'
         const depth = Math.min(Math.max(integerArg(args, 'depth', 3), 1), 6)
-        const graph = traceDependencies(project, symbol, scope, direction, {
+        // A tag declared in exactly one program is unambiguous: adopt that scope rather than make the
+        // caller retry. find_references already searches every scope; tracing should not be stricter.
+        let effectiveScope = scope
+        let adoptedFrom = ''
+        if (explicitScope === undefined && !qualified && scope === 'controller') {
+          const elsewhere = [...new Set(declaringScopes(project.document, symbol))].filter(name => name !== 'controller')
+          if (elsewhere.length === 1 && elsewhere[0] !== undefined) {
+            effectiveScope = elsewhere[0]
+            adoptedFrom = elsewhere[0]
+          }
+        }
+        const graph = traceDependencies(project, symbol, effectiveScope, direction, {
           depth,
           nodes: 50,
           edges: 100,
@@ -183,7 +194,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           ],
         }
         return success(
-          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${graph.truncated === true ? ' (truncated)' : ''}.`,
+          `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}${graph.truncated === true ? ' (truncated)' : ''}.`,
           graph,
           [
             { tool: 'find_references', args: { symbol: requested }, why: 'See every occurrence rather than the dependency graph.' },

@@ -453,6 +453,15 @@
   export" reading was wrong about the cause, and an engineer told "0 routines" would think their export had failed rather than
   that a vendor protected the code. A test pins it with two encrypted routines.
 
+- **`trace_dependencies` now adopts a unique declaring scope instead of making the caller retry.** On the production export,
+  `trace_dependencies System_ONS` refused with `UNRESOLVED_SYMBOL` - "it is declared in SYSTEM" - while `find_references`
+  happily searched every scope and returned 10 uses. The message was right and the behaviour was inconsistent: a tag that
+  exactly one program declares is unambiguous, so the trace now resolves it and says
+  `1 symbol and 0 edges upstream of System_ONS (declared in SYSTEM; scope adopted)`. An explicitly wrong scope still
+  refuses and still names where the declaration lives, so the escape hatch did not get looser - it just stopped taxing the
+  common case. The test that pinned the old refusal now asserts adoption plus a second case that an explicit bad scope is
+  still an error.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

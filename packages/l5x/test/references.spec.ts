@@ -129,15 +129,23 @@ describe('usage_map', () => {
 
 
 describe('a symbol declared in another scope', () => {
-  it('names that scope instead of saying it is absent from the export', async () => {
+  it('adopts that scope instead of making the caller retry', async () => {
     const l5x = harness()
     await l5x.call('open_project', { path: 'sample.l5x' })
-    // VFD_SpeedRef is a program tag of MotorProgram, not a controller tag.
+    // VFD_SpeedRef is a program tag of MotorProgram, not a controller tag. Exactly one program
+    // declares it, so the trace adopts that scope and says so.
     const result = await l5x.call('trace_dependencies', { symbol: 'VFD_SpeedRef' })
+    expect(result.error).toBeUndefined()
+    expect(String(result.summary)).toContain('declared in MotorProgram')
+    expect(String(result.summary)).toContain('scope adopted')
+  })
+
+  it('still refuses when two programs declare the same name', async () => {
+    const l5x = harness()
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('trace_dependencies', { symbol: 'VFD_SpeedRef', scope: 'NoSuchProgram' })
     expect(result.error?.code).toBe('UNRESOLVED_SYMBOL')
-    expect(String(result.error?.message)).toContain('declared in')
     expect(String(result.error?.message)).toContain('MotorProgram')
-    expect(String(result.error?.fix)).toContain('scope')
   })
 
   it('traces it once the declaring scope is passed', async () => {
