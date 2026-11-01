@@ -909,6 +909,11 @@
   (Studio's element order), the cached regions are re-read, and the tag is inserted. SDK-proven: the same fixture that failed now builds
   with **0 warnings, 0 errors**, one tag added. 442 package tests.
 
+- **New descriptions are inserted first, where a real export keeps them.** `setDescription` appended a `<Description>` child to the end of the element, so a
+  DataType got it after `Members` and a tag after `Data` - reversed from every export Studio writes (Seco's `FR_E_R_A` puts it before `Members`, `AIR_TC_READY`
+  before `Data`). It now inserts at the element's content start. SDK-proven together with the UDT-member path: setting a UDT description and a tag description
+  builds with **0 warnings, 0 errors**, two changes. The test asserts the order for both. 443 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

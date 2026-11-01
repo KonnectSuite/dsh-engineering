@@ -77,6 +77,29 @@ describe('adding a UDT member', () => {
   })
 })
 
+describe('descriptions added to existing components', () => {
+  it('are inserted first, where a real export keeps them', async () => {
+    const built = l5x({
+      name: 'DescOrder',
+      tags: tag('T'),
+      dataTypes: userType('MY_UDT', [member('A')]),
+      programs: program('Main', rllRoutine('MainRoutine', [{ text: 'NOP();' }])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['do.l5x', new TextEncoder().encode(built)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'do.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_udt_description', { udt: 'MY_UDT', description: 'type description' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_tag_description', { scope: 'controller', name: 'T', description: 'tag description' })).error).toBeUndefined()
+    expect((await l5xTool.call('draft_apply', { output_path: 'do-edited.l5x' })).error).toBeUndefined()
+    const text = String(l5xTool.written.get('do-edited.l5x') ?? '')
+    const udt = text.slice(text.indexOf('<DataType Name="MY_UDT"'), text.indexOf('</DataType>'))
+    expect(udt.indexOf('<Description>')).toBeLessThan(udt.indexOf('<Members>'))
+    const tagAt = text.indexOf('<Tag Name="T"')
+    const tagBlock = text.slice(tagAt, text.indexOf('</Tag>', tagAt))
+    expect(tagBlock).toContain('<Description>tag description</Description>')
+  })
+})
+
 describe('a project with no Tags element', () => {
   it('gets one when the first tag is added', async () => {
     const built = l5x({

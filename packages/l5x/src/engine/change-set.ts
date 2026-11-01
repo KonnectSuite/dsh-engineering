@@ -353,7 +353,9 @@ function setDescription(xml: string, region: XmlRegion, value: string): string {
   if (/\sDescription="/u.test(open)) return replace(xml, region.start, region.contentStart, open.replace(/(\sDescription=")[^"]*(")/u, (_match, start: string, end: string) => `${start}${escape(value)}${end}`))
   const child = region.children.find(entry => entry.kind === 'Description')
   if (child !== undefined) return replace(xml, child.start, child.end, element)
-  return insert(xml, region, element)
+  // A real export puts Description first inside Tag, DataType and Member - before Data or
+  // Members. Appending it to the region end put it after those children, out of element order.
+  return replace(xml, region.contentStart, region.contentStart, element)
 }
 
 interface ApplyContext {
