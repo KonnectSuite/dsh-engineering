@@ -242,7 +242,21 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
   if (kind === 'routine') {
     const matches = listRoutines(document, scope ?? '').filter(routine => routine.name === name)
     const first = matches[0]
-    if (first === undefined) throw notFound(kind, name, listRoutines(document, scope ?? '').map(routine => routine.name))
+    if (first === undefined) {
+      // The export may carry the routine as an encrypted body. Saying "no routine named" sends a
+      // reader looking for a name that is right there in the export.
+      const protectedHit = document.protectedRoutines.filter(entry =>
+        entry.name.toLowerCase() === name.toLowerCase() && (scope === undefined || entry.program === scope))
+      if (protectedHit.length > 0) {
+        throw new L5xError(
+          'PROTECTED_TARGET',
+          `Routine ${name}${scope === undefined ? '' : ` in ${scope}`} is source-protected in this export; its body cannot be read.`,
+          'Obtain an unprotected export or the source project from the vendor.',
+          protectedHit.map(entry => entry.program),
+        )
+      }
+      throw notFound(kind, name, listRoutines(document, scope ?? '').map(routine => routine.name))
+    }
     if (matches.length > 1) {
       throw new L5xError(
         'AMBIGUOUS_COMPONENT',

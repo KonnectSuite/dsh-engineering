@@ -582,6 +582,13 @@
   routine says "No routine named MainRoutine in this export", which is the misleading sentence this round removed from staging but
   not yet from the reader.
 
+- **The reader now agrees with the editor about source-protected routines.** `get_component kind:"routine"` on the encrypted
+  `BLOWERS/MainRoutine` in `Seco_Cooler` used to answer `COMPONENT_NOT_FOUND: No routine named "MainRoutine" in this export` -
+  the same misleading sentence round 79 removed from staging. It now answers
+  `PROTECTED_TARGET: Routine MainRoutine in BLOWERS is source-protected in this export; its body cannot be read.`, with the
+  program named in the candidates so a caller can offer the choice. Verified on that real export, and the test that pins the
+  staging refusal now asserts the reader's answer too, so the two surfaces cannot drift apart again.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

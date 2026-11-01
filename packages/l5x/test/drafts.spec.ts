@@ -404,5 +404,9 @@ describe('editing a source-protected routine', () => {
     const staged = await l5x.call('draft_rung', { program: 'P', routine: 'R', rung: 0, mode: 'replace', text: 'NOP();' })
     expect(staged.error?.code).toBe('PROTECTED_TARGET')
     expect(String(staged.error?.message)).toContain('source-protected')
+    // The reader must agree with the editor instead of reporting a missing routine.
+    const read = await l5x.call('get_component', { kind: 'routine', name: 'R', scope: 'P' })
+    expect(read.error?.code).toBe('PROTECTED_TARGET')
+    expect(String(read.error?.message)).toContain('source-protected')
   })
 })
