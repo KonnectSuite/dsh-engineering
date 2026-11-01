@@ -338,6 +338,17 @@
   so `DCM`/`DCS`/`CROUT` are a genuine motion-catalogue gap to close next; the 8 `UNRESOLVED_REFERENCE` rows sit in a
   program that really is named `RECIPE`, so they are likely legitimate rather than resolver noise.
 
+- **The biggest catalogue gap on real code is closed: `DCM`, `DCS` and `CROUT` are now catalogued.** Round 49's production run
+  named them as the only uncatalogued mnemonics with real usage - `DCM` on **62 rungs**, `CROUT` on 7, `DCS` on 4 - and they
+  were not AOIs, so they were a true gap rather than a false alarm. The vendor help supplies names (Dual Channel Input
+  Monitor, Dual Channel Input Stop, Configurable Redundant Output) and the production rungs supply the **operand counts**:
+  eight, ten and nine. They are marked **not modelled**, because their safety-function and input-type operands are
+  drop-down names rather than tags and the composer would otherwise emit something Studio rejects - the same judgement as
+  `FAL`/`FSC`. Re-running the checks on that export now reports **two** uncatalogued instructions, `CABLE` (2 rungs) and
+  `AOI56MCM` (1), with neither defined in the export, so they stay honestly unlabelled. Two tests had used `CROUT` as their
+  "instruction the catalogue does not carry" example; they now use a fictional `FROB`, so the behaviour they pin is real
+  rather than accidental.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

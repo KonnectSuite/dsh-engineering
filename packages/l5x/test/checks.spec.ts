@@ -259,7 +259,7 @@ describe('findings name the places they found', () => {
 
 
 /** An export whose rung names an instruction this catalogue does not carry. */
-const UNCATALOGUED_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Coverage\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"Main\" MainRoutineName=\"R\">\n        <Routines>\n          <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)CROUT(Out,5);]]></Text></Rung>\n            <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)XIC(Out)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
+const UNCATALOGUED_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Coverage\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"Out\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs>\n      <Program Name=\"Main\" MainRoutineName=\"R\">\n        <Routines>\n          <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n            <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)FROB(Out,5);]]></Text></Rung>\n            <Rung Number=\"1\" Type=\"N\"><Text><![CDATA[XIC(A)XIC(Out)OTE(Out);]]></Text></Rung>\n          </RLLContent></Routine>\n        </Routines>\n      </Program>\n    </Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"Main\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"].join('')
 
 describe('logic the catalogue could not check', () => {
   it('names the instruction it could not arity-check, and says why that is not an error', async () => {
@@ -269,7 +269,7 @@ describe('logic the catalogue could not check', () => {
     const rows = result.data?.findings as { message: string; severity: string; evidence: { catalogue_size?: number; note?: string } }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.severity).toBe('info')
-    expect(rows[0]?.message).toContain('CROUT')
+    expect(rows[0]?.message).toContain('FROB')
     expect(rows[0]?.evidence.catalogue_size).toBeGreaterThan(100)
     expect(String(rows[0]?.evidence.note)).toContain('Studio remains the arity gate')
   })
@@ -290,7 +290,7 @@ describe('a staged rung the catalogue cannot check', () => {
     await l5x.call('open_project', { path: 'sample.l5x' })
     const staged = await l5x.call('draft_rung', {
       program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace',
-      text: 'XIC(StartPB)CROUT(FaultCount,5);',
+      text: 'XIC(StartPB)FROB(FaultCount,5);',
     })
     expect(staged.error).toBeUndefined()
     const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
