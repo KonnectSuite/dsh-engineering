@@ -189,7 +189,7 @@ function selectRows(document: L5xDocument, kind: Kind, scope: string | undefined
     : kind === 'task'
       ? document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs, safety: task.safety === true }))
       : kind === 'tag'
-        ? listTags(document, scope ?? '').map(tag => ({ name: tag.name, scope: tag.scope, dataType: tag.dataType, description: tag.description ?? '', externalAccess: tag.externalAccess ?? '', ...(tag.tagType === undefined ? {} : { tagType: tag.tagType }), ...(tag.consumerOf === undefined ? {} : { consumerOf: tag.consumerOf }), ...(tag.aliasFor === undefined ? {} : { aliasFor: tag.aliasFor }) }))
+        ? listTags(document, scope ?? '').map(tag => ({ name: tag.name, scope: tag.scope, dataType: tag.dataType, description: tag.description ?? '', externalAccess: tag.externalAccess ?? '', ...(tag.tagType === undefined ? {} : { tagType: tag.tagType }), ...(tag.consumerOf === undefined ? {} : { consumerOf: tag.consumerOf }), ...(tag.aliasFor === undefined ? {} : { aliasFor: tag.aliasFor }), safety: document.programs.some(program => program.safety && program.name.toUpperCase() === tag.scope.toUpperCase()) }))
         : kind === 'udt'
           ? document.udts.map(udt => ({ name: udt.name, members: udt.members.length, description: udt.description }))
           : kind === 'routine'
@@ -247,7 +247,9 @@ function readComponent(document: L5xDocument, kind: Kind, name: string, scope: s
         matches.map(tag => tag.scope),
       )
     }
-    return first as L5xTag
+    // A tag declared in a safety program is part of the safety function; the CSV and the listing say so.
+    const safetyScope = document.programs.some(program => program.safety && program.name.toUpperCase() === first.scope.toUpperCase())
+    return { ...first, ...(safetyScope ? { safety: true } : {}) } as L5xTag
   }
   if (kind === 'udt') {
     const matches = getUdt(document, name)

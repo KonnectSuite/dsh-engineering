@@ -864,6 +864,11 @@
   declaring program is `Class="Safety"`, verified with a built fixture holding `Guard/SafeTag` and `Main/PlainTag`; the Studio import shape stays exactly
   `Tag Name,Description`. The builder gained program-tag support to write that fixture. 437 package tests.
 
+- **A safety-program tag now says so in the listing and the reader, not only the CSV.** Round 134 put `safety` in `tags.csv`; `list_components kind:"tag"` and
+  `get_component` still showed the tag as ordinary. Both now derive the flag from the declaring program: in the built fixture `Guard/SafeTag` reports
+  `safety: true` in the row and the record, `Main/PlainTag` reports `false` in the row and omits the field in the record. The test that checked the CSV now
+  asserts all three surfaces together, so they cannot disagree. 437 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

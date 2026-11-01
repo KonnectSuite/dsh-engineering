@@ -285,5 +285,14 @@ describe('the tag CSV safety column', () => {
     expect(csv).toContain('Guard,SafeTag,')
     expect(csv).toMatch(/Guard,SafeTag,[^\n]*,true$/mu)
     expect(csv).toMatch(/Main,PlainTag,[^\n]*,false$/mu)
+    // The listing and the reader must agree with the CSV.
+    const listed = await l5xTool.call('list_components', { kind: 'tag', limit: 20 })
+    const rows = (listed.data?.rows ?? []) as { name: string; scope: string; safety?: boolean }[]
+    expect(rows.find(row => row.name === 'SafeTag' && row.scope === 'Guard')?.safety).toBe(true)
+    expect(rows.find(row => row.name === 'PlainTag' && row.scope === 'Main')?.safety).toBe(false)
+    const safe = await l5xTool.call('get_component', { kind: 'tag', name: 'SafeTag', scope: 'Guard' })
+    expect(safe.data?.component?.safety).toBe(true)
+    const plain = await l5xTool.call('get_component', { kind: 'tag', name: 'PlainTag', scope: 'Main' })
+    expect(plain.data?.component?.safety).toBeUndefined()
   })
 })
