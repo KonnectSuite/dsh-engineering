@@ -116,6 +116,14 @@
   `scope: "MainProgram"` instead of concluding the tag does not exist. A name no scope declares still answers
   *"absent from the export"*.
 
+- **Alarms, every component kind and both diagram languages are now tested.** The word "alarm" appeared nowhere in
+  the suite, so a project's `TagBasedAlarm` list was advertised and unverified — a kind that silently returns nothing
+  looks exactly like a project with no alarms. `packages/l5x/test/surface-contract.spec.ts` holds the positive case:
+  the alarm is listed by name, kind and description, it opens, and the overview counts it. The same file walks all
+  eight component kinds (list, then open the first row), asserts an absent name is a repairable `COMPONENT_NOT_FOUND`
+  rather than a crash, and checks that `search_logic` reaches a Sequential Function Chart step operand and an FBD
+  reference operand while finding nothing for a topology element that carries no label.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -127,7 +135,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-265 package tests and 70 bundle tests pass.
+274 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 
