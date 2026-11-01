@@ -94,6 +94,19 @@
   0 errors and an ACD written**. Two tests pin the audited slot counts and the accepted text so the compact table cannot
   quietly drift back.
 
+- **The compact table's second audit batch: three arities fixed, five entries that should never have been there removed.**
+  `STD` takes **six** slots (`Array`, `Dimension to Vary`, `Destination`, `Control`, `Length`, `Position`), `SIZE` takes
+  **three** (`Source`, `Dimension to Vary`, `Size`), and `JXR` takes **two** (`External routine name`,
+  `External routine control`, with optional parameters and a return tag after them) — the first two confirmed by a build,
+  the third by a build that parsed both operands and failed only on the undeclared routine
+  (`RxCMP_E_AUDIT_ROUTINENOTFOUND`). Five entries are gone: `ACN`, `ASR` and `AEX` have **no page in the installed help
+  and no meaning in Studio** — a deliberately bogus `ZZZZ(d1)` fails a build with exactly the same
+  `RxCMP_E_AUDIT_INVALIDOPTYPE` those mnemonics produced — and `SCL` and `PIDE` are **Function Block and Structured Text
+  only**, so a ladder catalogue must not offer them. The catalogue is **135** instructions, and it is smaller because it
+  is now more nearly true. Verification of the fixed ones is a Studio build of
+  `XIC(a1)STD(realArr,0,dest,ctl,10,0)OTE(a2)` and `XIC(a1)SIZE(arr,0,size)OTE(a2)` through our own composer: **0
+  warnings, 0 errors and an ACD written**. Two tests pin the counts and assert the five removed mnemonics stay absent.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

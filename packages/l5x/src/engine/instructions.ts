@@ -114,6 +114,9 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), num('Destination')] },
   { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination.', operands: [expression(), num('Destination')] },
 
+  { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), num('Destination'), any('Control'), num('Length'), num('Position')] },
+  { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [any('Source'), num('Dimension to Vary'), num('Size')] },
+  { name: 'JXR', category: 'Program control', summary: 'Run an external routine; parameters and a return tag may follow the control structure.', operands: [routine('External routine name'), any('External routine control')] },
   // Audited against the installed help and a Studio build: the compact table had these wrong.
   { name: 'SRT', category: 'File and array', summary: 'Sort the elements of an array in place, using a control structure for length and position.', operands: [any('Array'), num('Dimension to Vary'), any('Control'), num('Length'), num('Position')] },
   { name: 'SWPB', category: 'Move', summary: 'Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.', operands: [num('Source'), num('Order Mode'), num('Dest')] },

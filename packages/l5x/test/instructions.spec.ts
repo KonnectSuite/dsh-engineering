@@ -272,6 +272,21 @@ describe('arities a Studio build proved', () => {
     expect(instructionByName('ARD')?.operands.length).toBe(5)
   })
 
+  it('keeps the second audit batch: STD six slots, SIZE three, JXR two', () => {
+    expect(instructionByName('STD')?.operands.length).toBe(6)
+    expect(instructionByName('SIZE')?.operands.length).toBe(3)
+    expect(instructionByName('JXR')?.operands.length).toBe(2)
+  })
+
+  it('does not offer mnemonics Studio does not have, or FBD-only ones as ladder', () => {
+    // A bogus mnemonic and ACN fail a build the same way (RxCMP_E_AUDIT_INVALIDOPTYPE), and the
+    // help has no page for any of ACN, ASR or AEX. SCL and PIDE are Function Block and Structured
+    // Text only, so a ladder catalogue must not offer them.
+    for (const name of ['ACN', 'ASR', 'AEX', 'SCL', 'PIDE']) {
+      expect(instructionByName(name), name).toBeUndefined()
+    }
+  })
+
   it('composes the sort, byte swap and string-to-real rungs that built', async () => {
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
