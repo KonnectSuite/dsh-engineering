@@ -354,7 +354,7 @@ Append one new tag to the chat draft. Nothing is written until draft_apply.
 |---|---|---|---|
 | `scope` | string | yes | Declaring scope: "controller" or a program name. Example: "controller". |
 | `name` | string | yes | New tag name, a Logix identifier of at most 40 characters. Example: "SP_Start". |
-| `data_type` | string | yes | Declared data type. Example: "REAL" or a UDT name. |
+| `data_type` | string | yes | Declared data type. Example: "REAL", a UDT name, or a built-in structure Studio defaults: CONTROL, SERIAL_PORT_CONTROL, ALARM_DIGITAL, ALARM_ANALOG. |
 | `description` | string | yes | Tag description shown in Studio. Example: "Start threshold". |
 | `value` | integer | no | Optional scalar initial value. Example: 80. |
 | `dimensions` | string | no | Optional array dimensions, space separated. Example: "4 2". |

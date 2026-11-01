@@ -119,6 +119,16 @@
   `XIC(a1)ALMA(almA,inVal,ackAll,progDisable,progEnable)OTE(a2)`, **0 warnings, 0 errors and an ACD written**. Two
   tests pin the counts and the accepted text.
 
+- **An alarm can now be created from nothing: `draft_tag` declares the structures Studio defaults itself.** `CONTROL`,
+  `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL` are accepted as data types, and the tag is written exactly
+  as Studio writes it for those types — no `Data` block, because Studio fills the members in. That closes the last
+  generation gap in the ladder surface: until now a composed `ALMD` or `ALMA` needed a project that already had an alarm
+  structure, and a composed `SRT` or ASCII rung had the same problem with `CONTROL`. Verification is end to end through
+  our own tools: `draft_tag` created `almD` as `ALARM_DIGITAL` and `almA` as `ALARM_ANALOG` in a project that had
+  neither, `compose_rung` built the two alarm rungs, `draft_apply` wrote the export, and Logix Designer built it with
+  **0 warnings, 0 errors and an ACD written**. Two tests cover the accepted types and keep an unknown type refused, with
+  the type check asserted where it actually fires — when the draft is applied, not when it is staged.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

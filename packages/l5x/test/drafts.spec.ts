@@ -305,3 +305,32 @@ describe('composition payload', () => {
     expect(JSON.parse(JSON.stringify(composed))).toEqual(composed)
   })
 })
+
+
+describe('built-in structure tags', () => {
+  it('creates the alarm and control structures Studio defaults', async () => {
+    // An export that declares these with no Data block builds: ALMD/ALMA, SRT/STD and the ASCII
+    // instructions were all build-verified in this cycle with exactly such tags.
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    for (const [name, type] of [['almD', 'ALARM_DIGITAL'], ['almA', 'ALARM_ANALOG'], ['ctl', 'CONTROL'], ['spc', 'SERIAL_PORT_CONTROL']]) {
+      const created = await l5x.call('draft_tag', { scope: 'controller', name, data_type: type, description: type })
+      expect(created.error, name).toBeUndefined()
+    }
+    const applied = await l5x.call('draft_apply', { output_path: 'structures.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('structures.L5X') ?? ''
+    expect(written).toContain('<Tag Name="almD" TagType="Base" DataType="ALARM_DIGITAL"')
+    expect(written).toContain('<Tag Name="spc" TagType="Base" DataType="SERIAL_PORT_CONTROL"')
+  })
+
+  it('still refuses a type the project does not declare', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const created = await l5x.call('draft_tag', { scope: 'controller', name: 'x', data_type: 'NOT_A_TYPE', description: 'no' })
+    expect(created.error).toBeUndefined()
+    // The type is checked when the draft is applied, not while it is staged.
+    const applied = await l5x.call('draft_apply', { output_path: 'badtype.L5X' })
+    expect(String(applied.error?.message)).toContain('NOT_A_TYPE')
+  })
+})

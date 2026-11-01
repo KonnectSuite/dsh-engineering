@@ -88,6 +88,13 @@ type Operation =
 | { readonly operation: 'insert_sfc_sheet'; readonly program: string; readonly routine: string; readonly steps: readonly SfcStepOp[]; readonly transitions: readonly SfcTransitionOp[]; readonly links: readonly SfcLinkOp[] }
 | { readonly operation: 'insert_fbd_sheet'; readonly program: string; readonly routine: string; readonly sheet: number; readonly blocks: readonly FbdBlockOp[]; readonly refs: readonly FbdRefOp[]; readonly wires: readonly FbdWireOp[] }
 
+/**
+ * Built-in structure types Studio defaults by itself: an export that declares the tag with no Data
+ * block builds, which is how a CONTROL, a SERIAL_PORT_CONTROL and both alarm structures were used in
+ * build-verified rungs this cycle. Listing them here lets add_tag create them.
+ */
+const BUILTIN_STRUCTURE_TYPES = new Set(['control', 'serial_port_control', 'alarm_analog', 'alarm_digital'])
+
 /** Scalar types the plugin can create with a literal initial value. */
 const SCALAR_TYPES = new Set(['BOOL', 'SINT', 'INT', 'DINT', 'LINT', 'USINT', 'UINT', 'UDINT', 'ULINT', 'REAL', 'LREAL'])
 /** Operation names accepted by a version-1 change set. */
@@ -558,6 +565,7 @@ function rungWith(rung: XmlRegion, text: string, comment: string | undefined): s
 /** Every type name a change may reference: scalars plus declared types. */
 function declaredTypeNames(project: ProjectSnapshot): ReadonlySet<string> {
   const names = new Set<string>([...SCALAR_TYPES].map(name => name.toLowerCase()))
+  for (const name of BUILTIN_STRUCTURE_TYPES) names.add(name)
   for (const name of typeIndex(project.document).keys()) names.add(name)
   return names
 }
