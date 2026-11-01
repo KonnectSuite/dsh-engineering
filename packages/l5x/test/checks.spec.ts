@@ -549,3 +549,16 @@ describe('an output written more than once', () => {
     expect(rows[0]?.message).toContain('Valve_Output')
   })
 })
+
+
+/** A vendor AOI whose source is protected: the definition is EncodedData, not a plain element. */
+const PROTECTED_AOI_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"Protected\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/><Tag Name=\"MCM\" TagType=\"Base\" DataType=\"DINT\"/></Tags>\n    <AddOnInstructionDefinitions>\n      <EncodedData EncodedType=\"AddOnInstructionDefinition\" Name=\"AOI56MCM\" Class=\"Standard\" Revision=\"2.8\" EncryptionConfig=\"9\"/>\n    </AddOnInstructionDefinitions>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <Routine Name=\"R\" Type=\"RLL\"><RLLContent>\n        <Rung Number=\"0\" Type=\"N\"><Text><![CDATA[XIC(A)AOI56MCM(MCM,Local:16:I.Data,Local:16:O.Data,MCM);]]></Text></Rung>\n      </RLLContent></Routine>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('a source-protected AOI', () => {
+  it('counts as a declared instruction, not an uncatalogued one', async () => {
+    const l5x = harness(new Map([['protected.l5x', new TextEncoder().encode(PROTECTED_AOI_L5X)]]))
+    await l5x.call('open_project', { path: 'protected.l5x' })
+    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    expect(result.data?.findings).toEqual([])
+  })
+})

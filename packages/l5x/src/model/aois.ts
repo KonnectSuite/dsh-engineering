@@ -64,7 +64,13 @@ export function buildAois(controller: XmlElement): readonly L5xAoiDefinition[] {
 /** The `<AddOnInstructionDefinition>` elements, in written order. */
 function aoiElements(controller: XmlElement): readonly XmlElement[] {
   const definitions = firstChild(controller, 'AddOnInstructionDefinitions')
-  return definitions === undefined ? [] : elementChildren(definitions, 'AddOnInstructionDefinition')
+  if (definitions === undefined) return []
+  // A vendor or source-protected AOI is written as EncodedData with the type in an attribute. Missing
+  // those made a production project report a declared ProSoft AOI as an uncatalogued instruction.
+  const plain = elementChildren(definitions, 'AddOnInstructionDefinition')
+  const encoded = elementChildren(definitions, 'EncodedData')
+    .filter(element => optionalAttribute(element, 'EncodedType', '') === 'AddOnInstructionDefinition')
+  return [...plain, ...encoded]
 }
 
 /** One instruction's parameters, in written order. */

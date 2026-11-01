@@ -367,6 +367,15 @@
   Two tests pin both directions - a routine set of `Logic`/`EnableInFalse`/`Prescan` produces nothing, while `Logic`/`Other`
   produces the finding with the tag named - so the exemption cannot swallow a genuine defect.
 
+- **Protected AOIs were being reported as uncatalogued instructions, and fixing it took two production projects to zero.** A vendor
+  Add-On Instruction ships as `<EncodedData EncodedType="AddOnInstructionDefinition" Name="...">`, not as a plain
+  `<AddOnInstructionDefinition>` element, and the loader only collected the plain form. The consequence was a false positive
+  on exactly the libraries real plants buy: on the Carpenter project **all seven** uncatalogued mnemonics (`MAM_YASKAWA`,
+  `MCFG_YASKAWA`, `MAFR_YASKAWA` and siblings) were protected AOIs, and on the Seco project `AOI56MCM` - a ProSoft AOI with a
+  full encoded definition - was one too. `aoiElements` now collects both forms, and the two projects report **zero** and
+  **one** (`CABLE`, still undefined) respectively. This also corrects round 50's claim that `AOI56MCM` was not defined in
+  the export: it was, as encoded data, and my grep pattern was the thing that was wrong.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
