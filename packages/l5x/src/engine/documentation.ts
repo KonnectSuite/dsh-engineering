@@ -43,6 +43,8 @@ export interface DocumentBundle {
     udts: number
     /** Add-on instruction definitions the export declares. */
     aois: number
+    /** Alarm definitions the export declares. */
+    alarms: number
     /** Vendor and product-defined data types, counted but not documented. */
     vendorTypes: number
     tasks: number
@@ -167,7 +169,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   // The saved route and project serial are what a handover reader needs to reach and identify the machine.
   text += `- Project serial: ${controller.projectSerialNumber ?? 'not declared'}; saved path: ${controller.commPath ?? 'not declared'}\n`
-  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines} (${counts.aoiRungs} rungs); rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}; data types: ${counts.udts}; vendor/product-defined data types: ${counts.vendorTypes} (not listed); add-on instructions: ${counts.aois}\n\n`
+  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines} (${counts.aoiRungs} rungs); rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}; data types: ${counts.udts}; vendor/product-defined data types: ${counts.vendorTypes} (not listed); add-on instructions: ${counts.aois}; alarms: ${counts.alarms}\n\n`
   if ((project.protectedRoutines ?? 0) > 0) text += `- Source-protected routines: ${project.protectedRoutines}. Their bodies are encrypted in this export and were not documented.\n`
   text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Safety | Programs |\n|---|---|---|---|---|---|\n'
   for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.safety === true, task.programs.join(', '))
@@ -188,6 +190,11 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
       // An encrypted instruction has routines we cannot see; 0 would claim it has none.
       text += mdRow(aoi.name, aoi.revision, aoi.safety === true ? 'yes' : 'no', aoi.parameters.length, aoi.protected === true ? 'encrypted' : aoi.routines.length, aoi.description)
     }
+  }
+  // Alarms are configuration a handover reader needs: name, element kind and description.
+  if (document.alarms.length > 0) {
+    text += '\n## Alarms\n\n| Alarm | Kind | Description |\n|---|---|---|\n'
+    for (const alarm of document.alarms) text += mdRow(alarm.name, alarm.kind, alarm.description)
   }
   // A handover reader must know which parts of the project are safety before touching anything.
   const safetyTasks = document.tasks.filter(task => task.safety)
@@ -364,6 +371,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
       : 0,
     udts: document.udts.length,
     aois: document.aois.length,
+    alarms: document.alarms.length,
     vendorTypes: document.vendorUdts.length,
     routines: 0,
     rungs: 0,

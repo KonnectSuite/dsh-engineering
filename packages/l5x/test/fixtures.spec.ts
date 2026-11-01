@@ -820,6 +820,18 @@ describe('comparing alarm definitions', () => {
     expect(missing.error?.code).toBe('COMPONENT_NOT_FOUND')
   })
 
+  it('documents alarm definitions in PROJECT.md', async () => {
+    const l5xTool = harness(new Map([['alarm-doc.L5X', new TextEncoder().encode(withAlarm('old alarm text'))]]), {})
+    expect((await l5xTool.call('open_project', { path: 'alarm-doc.L5X' })).error).toBeUndefined()
+    const documented = await l5xTool.call('document_project', { output_root: 'alarm-docs' })
+    expect(documented.error).toBeUndefined()
+    expect(documented.data?.counts?.alarms).toBe(1)
+    const project = String([...l5xTool.written.entries()].find(([path]) => String(path).endsWith('PROJECT.md'))?.[1] ?? '')
+    expect(project).toContain('## Alarms')
+    expect(project).toContain('| HiTemp | Alarm | old alarm text |')
+    expect(project).toContain('alarms: 1')
+  })
+
   it('reports an alarm description change and an added alarm', async () => {
     const before = withAlarm('old alarm text')
     const after = withAlarm('new alarm text')

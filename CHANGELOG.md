@@ -1402,6 +1402,10 @@
   `get_component`, refuses an unknown alarm name with `COMPONENT_NOT_FOUND`, and compares an export with no alarm against one with an alarm to get a
   single `added` change. The alarm reader is now covered from list through compare. 520 package tests.
 
+- **The documentation bundle now carries alarm definitions.** PROJECT.md gained an `## Alarms` table (name, element kind, description), the bundle
+  counts expose `alarms` and the summary line states the count. A test documents an export with one `HiTemp` alarm and asserts the section, the row,
+  the count field and the summary. 521 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
