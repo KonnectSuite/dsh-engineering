@@ -630,3 +630,40 @@ describe('a user type member change', () => {
     expect(fields).toContain('second description')
   })
 })
+
+/** An AOI whose own Logic routine reads a tag that is not declared. */
+const AOI_BAD_REFERENCE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="AoiRefs" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/></Tags>
+    <AddOnInstructionDefinitions>
+      <AddOnInstructionDefinition Name="AOI_Bad" Class="Standard" Revision="1.0" ExecutePrescan="false" ExecutePostscan="false" ExecuteEnableInFalse="false">
+        <Parameters><Parameter Name="P" Usage="Input" DataType="BOOL" Required="true" Visible="true" ExternalAccess="Read/Write"/></Parameters>
+        <Routines>
+          <Routine Name="Logic" Type="RLL"><RLLContent>
+            <Rung Number="0" Type="N"><Text><![CDATA[XIC(NoSuchTag)OTE(P);]]></Text></Rung>
+          </RLLContent></Routine>
+        </Routines>
+      </AddOnInstructionDefinition>
+    </AddOnInstructionDefinitions>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('logic inside an add-on instruction', () => {
+  it('is in the reference scan, so an undeclared tag there is reported', async () => {
+    const l5x = harness(new Map([['aoi.l5x', new TextEncoder().encode(AOI_BAD_REFERENCE_L5X)]]))
+    expect((await l5x.call('open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
+    const checks = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    const findings = (checks.data?.findings ?? []) as { message: string; evidence: { examples?: { scope?: string; routine?: string; rung?: number }[] } }[]
+    expect(findings.length).toBe(1)
+    expect(String(findings[0]?.message)).toContain('NoSuchTag')
+    const example = findings[0]?.evidence?.examples?.[0]
+    expect(example?.scope).toBe('AOI_Bad')
+    expect(example?.routine).toBe('Logic')
+    expect(Number(example?.rung)).toBe(0)
+    const refs = await l5x.call('find_references', { symbol: 'NoSuchTag' })
+    expect(Number(refs.data?.total)).toBe(1)
+  })
+})

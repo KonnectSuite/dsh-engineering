@@ -834,6 +834,10 @@
   tables, the per-AOI routine files, or that counts separate program and AOI routines. All three updated and `docs/reference/tools.md` regenerated, so the public
   reference matches the product. My first patch dropped the trailing comma and broke the file; `tsc` caught it before any test ran. 432 package tests.
 
+- **AOI internal logic is confirmed to be in the reference scan.** Asking whether `run_checks` ever looks inside an add-on instruction, a fixture whose AOI `Logic` routine reads an
+  undeclared tag answered yes: one `UNRESOLVED_REFERENCE` naming `NoSuchTag` with evidence `scope: AOI_Bad, routine: Logic, rung: 0`, and `find_references` returns the same
+  occurrence. That coverage existed and was held by no test; it is now pinned, including the scope and rung evidence. 433 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
