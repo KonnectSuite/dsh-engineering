@@ -138,6 +138,7 @@ function decodeDiagram(routine: XmlElement, contentName: string): readonly L5xDi
           ...(child.attrs['Operand'] === undefined ? {} : { operand: child.attrs['Operand'] }),
           ...(child.attrs['FromID'] === undefined ? {} : { fromId: child.attrs['FromID'] }),
           ...(child.attrs['ToID'] === undefined ? {} : { toId: child.attrs['ToID'] }),
+          ...(child.attrs['Name'] === undefined ? {} : { name: child.attrs['Name'] }),
           ...(text === undefined ? {} : { text }),
         }
         nodes.push(node)

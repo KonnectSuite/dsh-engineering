@@ -14,7 +14,17 @@
   at most 40 characters — and `add_tag`, `add_routine` and `add_udt_member` now run them before staging. Each
   failure carries the repair and a legal suggestion (`1Pump` → `_1Pump`, `Start PB` → `Start_PB`), so the author
   fixes it in one turn instead of at build time.
-
+- **A function block diagram is checked as a graph, not just drawn.** An FBD routine is a wire graph the export
+  never describes, so a sheet Studio refuses is indistinguishable from one it accepts. The new
+  packages/l5x/src/engine/fbd.ts reads the nodes the reference walker already decoded and reports
+  FBD_DANGLING_WIRE (a wire naming an element that is not on the sheet), IREF_TAG_NOT_PROVIDED /
+  OREF_TAG_NOT_PROVIDED, OREF_DUPLICATE_DESTINATION (one tag written from two output references, matched
+  case-insensitively), the connector rules ICON_NAME_NOT_PROVIDED, OCON_NAME_NOT_PROVIDED,
+  ICON_NO_MATCHING_OCON, OCON_DUPLICATE_NAME, ICON_NO_OUTBOUND_WIRE, OCON_NO_INBOUND_WIRE, and
+  FBD_FEEDBACK_CYCLE for a wire loop that cannot be scheduled. un_checks runs it over every FBD routine; an
+  SFC routine is never judged by these rules, because its DirectedLink elements are a different language.
+  Covered by packages/l5x/test/fbd.spec.ts, which drives the mutation through un_checks on the committed
+  synthetic export and the loop and connector rules through the checker directly: 210 package tests pass.
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a

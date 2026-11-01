@@ -3,6 +3,7 @@ import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
 import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn } from './mnemonics.ts'
+import { validateDiagram } from './fbd.ts'
 
 export interface Change {
   readonly kind: 'added' | 'removed' | 'changed'
@@ -193,6 +194,12 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
         `${entry.used} is the pre-v${MNEMONIC_RENAME_MAJOR} spelling; this project is v${majorRev} and publishes ${entry.preferred}`,
         { used: entry.used, preferred: entry.preferred, majorVersion: majorRev, rungs: entry.rungs, truncated: entry.rungs.length >= 20 }, 'high')
     }
+  }
+  // Structure pass: an FBD routine is a wire graph, and an export states no rule for
+  // it, so a diagram Studio refuses looks exactly like one it accepts.
+  for (const routine of doc.routines) {
+    if (routine.body.type !== 'FBD') continue
+    findings.push(...validateDiagram(routine))
   }
   const byRule: Record<string, number> = {}
   const bySeverity: Record<string, number> = {}

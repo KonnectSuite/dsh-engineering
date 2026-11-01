@@ -112,6 +112,8 @@ export interface L5xDiagramNode {
   readonly operand?: string
   readonly fromId?: string
   readonly toId?: string
+  /** Connector name on an ICon/OCon, which pairs the two across a routine. */
+  readonly name?: string
   readonly text?: string
 }
 
