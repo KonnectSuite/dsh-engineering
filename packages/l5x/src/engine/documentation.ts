@@ -37,6 +37,8 @@ export interface DocumentBundle {
     programs: number
     /** AOI routines documented alongside the program routines. */
     aoiRoutines: number
+    /** User-defined data types the export declares. */
+    udts: number
     tasks: number
     routines: number
     rungs: number
@@ -159,7 +161,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   text += `- Export: ${project.exportKind}; parser verification: ${project.verification}\n`
   // The saved route and project serial are what a handover reader needs to reach and identify the machine.
   text += `- Project serial: ${controller.projectSerialNumber ?? 'not declared'}; saved path: ${controller.commPath ?? 'not declared'}\n`
-  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines}; rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}\n\n`
+  text += `- Programs: ${counts.programs}; tasks: ${counts.tasks}; routines: ${counts.routines}; AOI routines: ${counts.aoiRoutines}; rungs: ${counts.rungs} (${counts.comments} with comments); tags: ${counts.tags}; modules: ${counts.modules}; data types: ${counts.udts}\n\n`
   if ((project.protectedRoutines ?? 0) > 0) text += `- Source-protected routines: ${project.protectedRoutines}. Their bodies are encrypted in this export and were not documented.\n`
   text += '## Tasks\n\n| Task | Type | Rate (ms) | Priority | Safety | Programs |\n|---|---|---|---|---|---|\n'
   for (const task of document.tasks) text += mdRow(task.name, task.type, task.rate, task.priority, task.safety === true, task.programs.join(', '))
@@ -167,6 +169,11 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
   for (const program of document.programs) {
     const routines = listRoutines(document, program.name)
     text += mdRow(program.name, program.mainRoutine, routines.length, program.safety === true, program.description)
+  }
+  // Data types are what the tags are made of; the section belongs to every project, not only AOI projects.
+  if (document.udts.length > 0) {
+    text += '\n## Data Types\n\n| Data type | Members | Description |\n|---|---|---|\n'
+    for (const udt of document.udts) text += mdRow(udt.name, udt.members.length, udt.description)
   }
   // AOIs are where much of a real project's behaviour lives; the bundle named none of them.
   if (document.aois.length > 0) {
@@ -345,6 +352,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
     programs: programs?.length ?? document.programs.length,
     tasks: document.tasks.length,
     aoiRoutines: programs === undefined ? document.aois.reduce((total, aoi) => total + aoi.routines.length, 0) : 0,
+    udts: document.udts.length,
     routines: 0,
     rungs: 0,
     comments: 0,

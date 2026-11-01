@@ -949,6 +949,11 @@
   spelling and resolve the AOI first; the same check then returns `true` for every safety AOI row. Tests cover a safety program tag and an AOI parameter.
   447 package tests.
 
+- **The handover bundle lists the data types.** `PROJECT.md` carried tasks, programs and AOIs, but a reader could not see the user-defined types the tags are made
+  of - on the real export that is nearly 50 types, including `AMM` and `BLOWER_ELEM`. A **Data Types** table now gives name, member count and description, and the
+  counts line ends with `data types: N`. The section is emitted for any project that declares a type, not only ones with AOIs - my first placement put it inside
+  the AOI block, and the builder fixture caught it. Verified on `Seco_Homogenizer`; test asserts the table, the row and `counts.udts`. 448 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
