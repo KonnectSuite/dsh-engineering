@@ -357,7 +357,7 @@ describe('arities a Studio build proved', () => {
     // A bogus mnemonic and ACN fail a build the same way (RxCMP_E_AUDIT_INVALIDOPTYPE), and the
     // help has no page for any of ACN, ASR or AEX. SCL and PIDE are Function Block and Structured
     // Text only, so a ladder catalogue must not offer them.
-    for (const name of ['ACN', 'ASR', 'AEX', 'SCL', 'PIDE']) {
+    for (const name of ['ACN', 'ASR', 'AEX', 'SCL', 'PIDE', 'SQC']) {
       expect(instructionByName(name), name).toBeUndefined()
     }
   })

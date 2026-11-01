@@ -150,6 +150,14 @@
   the element form still fails on type, so nothing is changed there until a shape builds. Two tests pin PID's seven slots
   and the accepted rung.
 
+- **`SQC` is gone: it is an SLC instruction, and Logix does not have it.** The catalogue listed `SQC=KLP` with three
+  slots; no operand count could make it build, and the help settled why. There is **no `SQC` page** among the sequencer
+  instructions (only `SQI`, `SQO` and `SQL`), and the SLC-to-Logix translation reference says it outright: *"145 SQC
+  instruction not supported. Each time a SQC instruction is found."* That page lists **23** instructions Logix does not
+  support, and sweeping the whole catalogue against it found **exactly one** clash - `SQC` - so removing it closes the
+  class of phantom entries the audit began with `ACN`, `ASR` and `AEX`. The catalogue is now **134** instructions, and
+  the test that keeps those mnemonics absent covers `SQC` too, so it cannot return by accident.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -15,7 +15,6 @@ const TABLE: readonly (readonly [string, string])[] = [
   ['Contacts and coils', 'UID= UIE='],
   ['Math', 'NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD '],
   ['Move', 'CPS=SDL'],
-  ['Sequencer', 'SQC=KLP'],
   ['Program control', 'BRK= NOP= TND='],
   ['Communications', 'MSG=K'],
   ['String', 'STOD=SD DTOS=SD'],
