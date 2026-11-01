@@ -1174,7 +1174,7 @@
   writable, covering `NEG`, `ABS`, `LN`, `SIN` and the other math instructions the earlier pass missed, and `MSG`'s Control. CPS moved out of the generic
   table into an explicit definition after a build showed it takes array **elements**: `CPS(Arr,Arr2,10)` failed `RxCMP_E_AUDIT_MUSTBEDISCRETE`, while
   `CPS(Arr[0],Arr2[0],10)` built 0/0. Studio also refused `COP(Arr,5,10)` and `NEG(5,5)` with `RxCMP_E_AUDIT_INVALIDOPKIND`. Tests cover CPS, COP,
-  NEG and the literal refusals; the dist smoke asserts CPS and generated Dest flags in the built catalogue. 492 package tests.
+  NEG and the literal refusals; the dist smoke asserts CPS and generated Dest flags in the built catalogue. 490 package tests.
 
 ## [0.74.0] - 2026-11-01
 
