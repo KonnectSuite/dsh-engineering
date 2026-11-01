@@ -1284,6 +1284,8 @@
   draft-declared array can drive SIZE. An existing SQO test that paired a COUNTER control with a whole-array destination was not build-valid and now
   declares a truthful fixture. 500 package tests.
 
+- **Generated client faces refreshed** after the SQO/staged-dimension changes, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
