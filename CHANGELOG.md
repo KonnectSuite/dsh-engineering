@@ -418,6 +418,14 @@
   `draft_routine` FBD -> `draft_fbd` (ADD wired to three tags) -> `draft_routine` SFC -> `draft_sfc` (two steps, two
   transitions) alongside an RLL rung, then builds with **0 warnings, 0 errors and an ACD written**.
 
+- **My bundle gate has been running the wrong directory, and the repo already had the right command.** The 70-test suite lives at
+  the **repo root** `test/`, not under `packages/l5x/test`; when rounds 58 and 59 ran the hand-written file list with the working
+  directory set to the package, `node --test` found only the three-test dist file and exited 0. So two commits were gated by a
+  suite that never ran, and I would not have noticed without a "file not found" from an unrelated probe. The fix is not a better
+  memory: `pnpm test` at the root already named the suite, and it also covers `packages/ftview-viewer` which my hand-written list
+  omitted entirely. `packages/l5x/test/dist-smoke.mjs` is now wired into that script, and a root run reports **90 tests, 90 pass,
+  0 fail**. The lesson is the same one as the fixtures: a gate you invoke by hand from the wrong place is not a gate.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -56,7 +56,7 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/instruction-coverage.spec.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/instruction-coverage.spec.mjs packages/l5x/test/dist-smoke.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
