@@ -1167,6 +1167,8 @@
   Destination unmarked. Studio refused `SWPB(5,0,5)` with `RxCMP_E_AUDIT_INVALIDOPKIND`, so the composer now refuses a literal in all of them. Tests hold
   SWPB and MVM; the dist smoke asserts the built catalogue carries both. 489 package tests.
 
+- **Generated client faces refreshed** after the catalogue change, so the committed bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
