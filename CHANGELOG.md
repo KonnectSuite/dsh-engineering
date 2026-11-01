@@ -231,6 +231,16 @@
   `EQ`, `LIMIT`, `ADD`, `SUB`, `MUL`, `DIV`, `SQRT`, `TON`, `TOF`, `RTO`, `CTU` and `CTD`. That is the "build per family"
   the last round asked for, and it found a defect on the way that no fixture rung had exercised.
 
+- **The string family is verified, and `STOD`/`DTOS` were typed as numeric on both sides.** Seven string instructions
+  build through our composer: `MID(s1,5,1,s2)`, `INSERT(s1,s2,1,s3)`, `DELETE(s1,5,1,s2)`, `FIND(s1,s2,1,d1)`,
+  `STOD(s1,d1)`, `DTOS(d1,s2)` and `RTOS(r1,s3)`. Two findings came out of the sweep. **String `Start` is 1-based**: with
+  `0` the compiler answers `RxCMP_E_AUDIT_OUTOFRANGE`, and all four positioning instructions failed until the probe used
+  `1` - a trap worth knowing, because `0` is the natural first guess. And `STOD`/`DTOS` were declared in the compact table
+  with both slots numeric (`SD`), so the composer refused `STOD(s1,d1)` outright; they are now declared explicitly as
+  `STOD(Source: STRING, Dest: NUMBER)` and `DTOS(Source: NUMBER, Dest: STRING)`. Separately, `BTD` was **already** five
+  slots (`Source`, `Source bit`, `Dest`, `Dest bit`, `Length`) and a build of `BTD(d1,0,d2,0,8)` passes - my earlier
+  four-operand probe was what was wrong, not the catalogue.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

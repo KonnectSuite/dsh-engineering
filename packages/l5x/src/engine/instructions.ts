@@ -5,8 +5,8 @@
  * could previously name any identifier and still parse. This table is the
  * contract: an instruction, its operand slots and the kind each slot accepts.
  *
- * The set covers what engineering programs actually use — measured against a
- * 1279-tag, 860-rung project — rather than every instruction the vendor ships.
+ * The set covers what engineering programs actually use â€” measured against a
+ * 1279-tag, 860-rung project â€” rather than every instruction the vendor ships.
  * An unknown name is refused with the nearest catalog names; an AOI declared by
  * the project is accepted separately, because its pins live in the export.
  *
@@ -123,6 +123,8 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   // Audited against the installed help and a Studio build: the compact table had these wrong.
   { name: 'SRT', category: 'File and array', summary: 'Sort the elements of an array in place, using a control structure for length and position.', operands: [any('Array'), num('Dimension to Vary'), any('Control'), num('Length'), num('Position')] },
   { name: 'SWPB', category: 'Move', summary: 'Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.', operands: [num('Source'), num('Order Mode'), num('Dest')] },
+  { name: 'STOD', category: 'String', summary: 'Convert a string to an integer value in the destination.', operands: [str('Source'), num('Dest')] },
+  { name: 'DTOS', category: 'String', summary: 'Convert an integer value to its decimal string in the destination.', operands: [num('Source'), str('Dest')] },
   { name: 'STOR', category: 'String', summary: 'Convert a string to a REAL value in the destination.', operands: [str('Source'), num('Destination')] },
 
   // Move
@@ -214,7 +216,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'FOR', category: 'Program control', summary: 'For loop: run the named routine, adding the step to the index, until the index passes the terminal value.', operands: [routine(), num('Index'), num('Initial value'), num('Terminal value'), num('Step size')] },
 
   // Mnemonics the catalogue knows but cannot model. Each needs operands this catalogue has no
-  // source for, and the compact table's empty slot list made them claim "takes 0 operands" —
+  // source for, and the compact table's empty slot list made them claim "takes 0 operands" â€”
   // a confident wrong answer with no way forward. Drafting the rung text still works.
   { name: 'EOT', category: 'Program control', summary: 'End of transition, for a Sequential Function Chart step.', operands: [], notModelled: true },
   { name: 'SFR', category: 'Program control', summary: 'Reset an SFC routine to a target state.', operands: [], notModelled: true },
@@ -243,7 +245,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
 /**
  * Alternate spellings resolved to the catalog name.
  *
- * Logix Designer 36 renamed sixteen ladder instructions — `EQU` became `EQ`,
+ * Logix Designer 36 renamed sixteen ladder instructions â€” `EQU` became `EQ`,
  * `SQR` became `SQRT`, and so on. The catalog keeps one name per instruction,
  * because that name is also the key the viewer labels a block with, so composed
  * text, parsed text and a rendered block agree. Lookup still accepts the other
