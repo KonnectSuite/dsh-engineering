@@ -1176,6 +1176,8 @@
   `CPS(Arr[0],Arr2[0],10)` built 0/0. Studio also refused `COP(Arr,5,10)` and `NEG(5,5)` with `RxCMP_E_AUDIT_INVALIDOPKIND`. Tests cover CPS, COP,
   NEG and the literal refusals; the dist smoke asserts CPS and generated Dest flags in the built catalogue. 490 package tests.
 
+- **Generated client faces refreshed** after the tag-only and CPS catalogue change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

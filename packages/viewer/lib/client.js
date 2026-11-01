@@ -318,7 +318,6 @@ function ladderSegments(text) {
 var TABLE = [
   ["Contacts and coils", "UID= UIE="],
   ["Math", "NEG=SD ABS=SD XPY=ABD LN=SD LOG=SD EXP=SD DEG=SD RAD=SD TOD=SD FRD=SD TRUNC=SD SIN=SD COS=SD TAN=SD ASN=SD ACS=SD ATN=SD "],
-  ["Move", "CPS=SDL"],
   ["Program control", "BRK= NOP= TND="],
   ["Communications", "MSG=K"]
 ];
@@ -331,7 +330,7 @@ var slot = (code) => {
     case "S":
       return { name: "Source", kind: "NUMBER" };
     case "D":
-      return { name: "Dest", kind: "NUMBER" };
+      return { name: "Dest", kind: "NUMBER", writable: true };
     case "L":
       return { name: "Length", kind: "NUMBER" };
     case "P":
@@ -341,7 +340,7 @@ var slot = (code) => {
     case "C":
       return { name: "Counter", kind: "COUNTER" };
     case "K":
-      return { name: "Control", kind: "ANY" };
+      return { name: "Control", kind: "ANY", writable: true };
     case "X":
       return { name: "Expression", kind: "EXPRESSION" };
     case "R":
@@ -426,27 +425,28 @@ var INSTRUCTIONS = [
   { name: "MOD", category: "Math", summary: "Remainder of source A divided by source B.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
   { name: "SQR", category: "Math", summary: "Square root of the source into the destination.", operands: [num("Source"), numW("Destination")] },
   { name: "CPT", category: "Math", summary: "Compute an expression into the destination; the destination comes first in the rung text.", operands: [numW("Destination"), expression()] },
-  { name: "STD", category: "File and array", summary: "Standard deviation of the array elements into a REAL destination.", operands: [any("Array"), num("Dimension to Vary"), { name: "Destination", kind: "NUMBER", writable: true, types: ["REAL"] }, { name: "Control", kind: "ANY", writable: true }, num("Length"), num("Position")] },
+  { name: "STD", category: "File and array", summary: "Standard deviation of the array elements into a REAL destination.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, num("Dimension to Vary"), { name: "Destination", kind: "NUMBER", writable: true, types: ["REAL"] }, { name: "Control", kind: "ANY", writable: true }, num("Length"), num("Position")] },
   { name: "SIZE", category: "File and array", summary: "Number of elements in one dimension of an array into the size tag.", operands: [any("Source"), num("Dimension to Vary"), numW("Size")] },
-  { name: "JXR", category: "Program control", summary: "Run an external routine; parameters and a return tag may follow the control structure.", operands: [routine("External routine name"), any("External routine control")] },
-  { name: "PID", category: "Process", summary: "PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.", operands: [any("PID"), num("Process variable"), num("Tieback"), { name: "Control variable", kind: "NUMBER", writable: true }, any("PID master loop"), bool("Inhold bit"), num("Inhold value")] },
-  { name: "ALMA", category: "Alarm", summary: "Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.", operands: [any("Alarm"), num("In"), bool("ProgAckAll"), bool("ProgDisable"), bool("ProgEnable")] },
-  { name: "ALMD", category: "Alarm", summary: "Digital alarm: the condition in the ALARM_DIGITAL structure, acknowledged and reset from the program.", operands: [any("Alarm"), bool("ProgAck"), bool("ProgReset"), bool("ProgDisable"), bool("ProgEnable")] },
+  { name: "JXR", category: "Program control", summary: "Run an external routine; parameters and a return tag may follow the control structure.", operands: [routine("External routine name"), { name: "External routine control", kind: "ANY", writable: true }] },
+  { name: "PID", category: "Process", summary: "PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.", operands: [{ name: "PID", kind: "ANY", writable: true }, num("Process variable"), num("Tieback"), { name: "Control variable", kind: "NUMBER", writable: true }, any("PID master loop"), bool("Inhold bit"), num("Inhold value")] },
+  { name: "ALMA", category: "Alarm", summary: "Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.", operands: [{ name: "Alarm", kind: "ANY", writable: true }, num("In"), bool("ProgAckAll"), bool("ProgDisable"), bool("ProgEnable")] },
+  { name: "ALMD", category: "Alarm", summary: "Digital alarm: the condition in the ALARM_DIGITAL structure, acknowledged and reset from the program.", operands: [{ name: "Alarm", kind: "ANY", writable: true }, bool("ProgAck"), bool("ProgReset"), bool("ProgDisable"), bool("ProgEnable")] },
   // Audited against the installed help and a Studio build: the compact table had these wrong.
-  { name: "SRT", category: "File and array", summary: "Sort the elements of an array in place, using a control structure for length and position.", operands: [any("Array"), num("Dimension to Vary"), any("Control"), num("Length"), num("Position")] },
+  { name: "SRT", category: "File and array", summary: "Sort the elements of an array in place, using a control structure for length and position.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, num("Dimension to Vary"), { name: "Control", kind: "ANY", writable: true }, num("Length"), num("Position")] },
   { name: "SWPB", category: "Move", summary: "Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.", operands: [num("Source"), num("Order Mode"), { name: "Dest", kind: "NUMBER", writable: true }] },
   { name: "STOD", category: "String", summary: "Convert a string to an integer value in the destination.", operands: [str("Source"), { name: "Dest", kind: "NUMBER", writable: true }] },
   { name: "DTOS", category: "String", summary: "Convert an integer value to its decimal string in the destination.", operands: [num("Source"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "STOR", category: "String", summary: "Convert a string to a REAL value in the destination.", operands: [str("Source"), numW("Destination")] },
   // Move
   { name: "MOV", category: "Move", summary: "Move the source value into the destination.", operands: [num("Source"), numW("Destination")] },
-  { name: "COP", category: "Move", summary: "Copy elements from the source to the destination.", operands: [{ name: "Source", kind: "ANY" }, { name: "Destination", kind: "ANY" }, num("Length")] },
+  { name: "COP", category: "Move", summary: "Copy elements from the source to the destination.", operands: [{ name: "Source", kind: "ANY", tagOnly: true }, { name: "Destination", kind: "ANY", writable: true }, num("Length")] },
+  { name: "CPS", category: "Move", summary: "Synchronous copy: copy Source to Dest without allowing the source to change during the copy.", operands: [{ name: "Source", kind: "ANY", tagOnly: true, arrayElement: true }, { name: "Dest", kind: "ANY", writable: true, arrayElement: true }, num("Length")] },
   { name: "CLR", category: "Move", summary: "Clear the destination to zero.", operands: [numW("Destination")] },
   // Timer and counter
   { name: "TON", category: "Timer and counter", summary: "Timer on delay: accumulates while the rung is true; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
   { name: "TOF", category: "Timer and counter", summary: "Timer off delay: accumulates after the rung goes false; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
   { name: "RTO", category: "Timer and counter", summary: "Retentive timer on: accumulates and holds its value; the accumulator operand is written as 0.", operands: [{ name: "Timer", kind: "TIMER" }, num("Preset"), num("Accum")] },
-  { name: "RES", category: "Timer and counter", summary: "Reset a timer or counter structure.", operands: [{ name: "Structure", kind: "ANY" }] },
+  { name: "RES", category: "Timer and counter", summary: "Reset a timer or counter structure.", operands: [{ name: "Structure", kind: "ANY", writable: true }] },
   { name: "CTU", category: "Timer and counter", summary: "Count up on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset"), num("Accum")] },
   { name: "CTD", category: "Timer and counter", summary: "Count down on each false-to-true rung transition.", operands: [{ name: "Counter", kind: "COUNTER" }, num("Preset"), num("Accum")] },
   // Program control
@@ -460,20 +460,20 @@ var INSTRUCTIONS = [
   { name: "OR", category: "Bit", summary: "Bitwise OR of two sources into the destination.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
   { name: "XOR", category: "Bit", summary: "Bitwise exclusive OR of two sources into the destination.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
   { name: "NOT", category: "Bit", summary: "Bitwise complement of the source into the destination.", operands: [num("Source"), numW("Destination")] },
-  { name: "BSL", category: "Bit", summary: "Bit shift left through an array.", operands: [{ name: "Array", kind: "ANY" }, { name: "Control", kind: "ANY" }, num("Source bit"), num("Length")] },
-  { name: "BSR", category: "Bit", summary: "Bit shift right through an array.", operands: [{ name: "Array", kind: "ANY" }, { name: "Control", kind: "ANY" }, num("Source bit"), num("Length")] },
+  { name: "BSL", category: "Bit", summary: "Bit shift left through an array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, { name: "Control", kind: "ANY", writable: true }, num("Source bit"), num("Length")] },
+  { name: "BSR", category: "Bit", summary: "Bit shift right through an array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, { name: "Control", kind: "ANY", writable: true }, num("Source bit"), num("Length")] },
   // String. Operand order is the order the vendor's own instruction metadata uses, so a
   // composed rung reads the way an export from Studio does.
   { name: "CONCAT", category: "String", summary: "Concatenate: append source B to source A and write the joined string to the destination.", operands: [str("Source A"), str("Source B"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "MID", category: "String", summary: "Extract part of a string: copy Qty characters from Start into the destination string.", operands: [str("Source"), num("Qty"), num("Start"), { name: "Dest", kind: "STRING", writable: true }] },
-  { name: "FIND", category: "String", summary: "Find: search the source string and write the first position of Search to the result.", operands: [str("Source"), str("Search"), num("Start"), any("Result")] },
+  { name: "FIND", category: "String", summary: "Find: search the source string and write the first position of Search to the result.", operands: [str("Source"), str("Search"), num("Start"), { name: "Result", kind: "ANY", writable: true }] },
   { name: "INSERT", category: "String", summary: "Insert source B into source A at Start and write the result to the destination.", operands: [str("Source A"), str("Source B"), num("Start"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "DELETE", category: "String", summary: "Delete Qty characters from the source starting at Start into the destination.", operands: [str("Source"), num("Qty"), num("Start"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "LOWER", category: "String", summary: "Lower case: copy the source string to the destination in lower case.", operands: [str("Source"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "UPPER", category: "String", summary: "Upper case: copy the source string to the destination in upper case.", operands: [str("Source"), { name: "Dest", kind: "STRING", writable: true }] },
   { name: "RTOS", category: "String", summary: "Real to string: convert a REAL value into the destination string.", operands: [num("Source"), { name: "Dest", kind: "STRING", writable: true }] },
   // File and array
-  { name: "FLL", category: "File and array", summary: "File fill: fill Length elements at the destination with the source value.", operands: [num("Source"), any("Dest"), num("Length")] },
+  { name: "FLL", category: "File and array", summary: "File fill: fill Length elements at the destination with the source value.", operands: [num("Source"), { name: "Dest", kind: "ANY", writable: true }, num("Length")] },
   // Program control. SBR carries no operands: its parameters are the JSR arguments.
   { name: "SBR", category: "Program control", summary: "Subroutine label a JSR calls; its parameters are the arguments the JSR passes.", operands: [] },
   // Masked, array and system instructions. Their operand lists are the vendor operand
@@ -481,9 +481,9 @@ var INSTRUCTIONS = [
   // structure carries: the compact table below had several of these wrong, and a wrong
   // count is only caught by Studio.
   { name: "MVM", category: "Move", summary: "Masked move: copy the source through the mask into the destination.", operands: [num("Source"), num("Mask"), { name: "Dest", kind: "NUMBER", writable: true }] },
-  { name: "GSV", category: "Communications", summary: "Get system value: read one attribute of a class instance into the destination.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), any("Dest")] },
-  { name: "SSV", category: "Communications", summary: "Set system value: write the source into one attribute of a class instance.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), any("Source")] },
-  { name: "SQO", category: "Sequencer", summary: "Sequencer output: drive the destination from one masked step of the array.", operands: [any("Array"), num("Mask"), { name: "Dest", kind: "NUMBER", writable: true }, any("Control"), num("Length"), num("Position")] },
+  { name: "GSV", category: "Communications", summary: "Get system value: read one attribute of a class instance into the destination.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), { name: "Dest", kind: "ANY", writable: true }] },
+  { name: "SSV", category: "Communications", summary: "Set system value: write the source into one attribute of a class instance.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), { name: "Source", kind: "ANY", tagOnly: true }] },
+  { name: "SQO", category: "Sequencer", summary: "Sequencer output: drive the destination from one masked step of the array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, num("Mask"), { name: "Dest", kind: "NUMBER", writable: true }, { name: "Control", kind: "ANY", writable: true }, num("Length"), num("Position")] },
   { name: "SQL", category: "Sequencer", summary: "Sequencer load: store the source into the current step of the array.", operands: [any("Array"), num("Source"), any("Control"), num("Length"), num("Position")] },
   { name: "FAL", category: "File and array", summary: "File arithmetic and logic. Not modelled: eight operand shapes were refused by the compiler, so write this one by hand until a real export shows the accepted form.", notModelled: true, operands: [] },
   { name: "DCM", category: "Safety", summary: "Dual Channel Input Monitor. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "DCM", kind: "ANY" }, { name: "Safety Function", kind: "ANY" }, { name: "Input Type", kind: "ANY" }, { name: "Input Delay", kind: "NUMBER" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
