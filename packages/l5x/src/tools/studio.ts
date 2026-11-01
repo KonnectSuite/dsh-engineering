@@ -110,7 +110,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
     }),
     tool({
       name: 'verify_offline_l5x',
-      description: 'Import a full L5X into a new offline ACD and build it with the Studio SDK. Build needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. A safety controller is refused up front because the importer aborts it with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES. No controller operation.',
+      description: 'Import a full L5X into a new offline ACD and build it with the Studio SDK. The SDK opens a project with the Logix Designer release that matches the export revision, so that release must be installed — otherwise it answers STUDIO_VERSION_UNAVAILABLE and names the versions it has. A build then needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. A safety controller is refused up front because the importer aborts it with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES. No controller operation.',
       parameters: object({
         project_id: PROJECT_ID,
         baseline_id: string('Project handle of the unchanged baseline export this draft came from. Example: "3f2c...".'),

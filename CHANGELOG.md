@@ -213,6 +213,17 @@
   (`DUPLICATE_ROUTINE_NAME`, reported under the spelling declared first) all previously passed `run_checks` clean,
   though none of them builds. Each name is written in the export, so these need no vendor table.
 
+- **The SDK verify path checks the file before the SDK, and a missing export is no longer a plugin defect.**
+  `verify_offline_l5x` probed the Studio installation first and then read the export from disk, so a file that was moved,
+  deleted or (in a harness) never written surfaced as `INTERNAL: ENOENT: no such file or directory`. The local
+  preconditions now run first — the export must still be on disk and still match the hash taken at `open_project` — and
+  a missing file answers `FILE_NOT_FOUND` with the reopen it needs. That also makes the refusal deterministic: it no
+  longer depends on a Studio installation being present.
+- **`verify_offline_l5x` documents the gate that fires first.** Its description said only "Build needs project revision
+  37+", while the SDK actually refuses when the export's revision has no matching installed Logix Designer — observed
+  here as `STUDIO_VERSION_UNAVAILABLE: Studio 5000 v33 is not installed; … Installed versions: 36, 37`. The description
+  now states that gate, then the 37+ build requirement, then `probe=true`.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -224,7 +235,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-311 package tests and 70 bundle tests pass.
+312 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

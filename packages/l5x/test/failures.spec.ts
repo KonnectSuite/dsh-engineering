@@ -80,3 +80,22 @@ describe('a target that is not there', () => {
     expect(validated.error?.message).toContain('NoSuchRoutine')
   })
 })
+
+
+describe('verifying an export that is no longer on disk', () => {
+  it('reports it as not found instead of a plugin defect, before probing the SDK', async () => {
+    // The harness serves the export in memory, so nothing is on disk at its path. The refusal
+    // must be local and deterministic: no Studio installation is required to reach it.
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { studio: true })
+    const opened = await l5x.call('open_project', { path: 'sample.l5x' })
+    expect(opened.error).toBeUndefined()
+    const result = await l5x.call('verify_offline_l5x', {
+      project_id: opened.data?.project_id,
+      baseline_id: opened.data?.project_id,
+      output_path: 'verify.ACD',
+    })
+    expect(result.error?.code).toBe('FILE_NOT_FOUND')
+    expect(String(result.error?.message)).toContain('no longer on disk')
+    expect(String(result.error?.fix)).toContain('open_project')
+  })
+})
