@@ -1306,6 +1306,8 @@
   `INVALIDOPTYPE`; the build-proven PID(...,0,...) form passes the literal. The slot now carries `types: ['PID']` while still accepting 0, the PID
   test holds the refusal, and the dist smoke checks the built catalogue. 501 package tests.
 
+- **Generated client faces refreshed** after the PID master-loop restriction, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
