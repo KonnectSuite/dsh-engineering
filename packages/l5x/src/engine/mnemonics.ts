@@ -165,10 +165,17 @@ export function mnemonicsIn(text: string): readonly string[] {
  * @param used - Every mnemonic the export's ladder routines already write, upper case.
  * @returns The spelling to emit.
  */
-export function spellingForProject(name: string, used: ReadonlySet<string>): string {
-  const alternate = alternateMnemonic(name)
-  if (alternate === undefined) return name
-  return used.has(alternate.toUpperCase()) && !used.has(name.toUpperCase()) ? alternate : name
+export function spellingForProject(name: string, used: ReadonlySet<string>, majorRev = ''): string {
+  const pair = MNEMONIC_PAIRS.find(entry => entry.legacy.toUpperCase() === name.toUpperCase() || entry.modern.toUpperCase() === name.toUpperCase())
+  if (pair === undefined) return name
+  const legacyUsed = used.has(pair.legacy.toUpperCase())
+  const modernUsed = used.has(pair.modern.toUpperCase())
+  if (legacyUsed && !modernUsed) return pair.legacy
+  if (modernUsed && !legacyUsed) return pair.modern
+  // The project uses neither spelling, so follow the revision it publishes: a v36+ project has no
+  // MOV, EQU or SQR, and a build of a fresh 37 project refused all three.
+  const revision = Number.parseInt(majorRev, 10)
+  return Number.isFinite(revision) && revision >= 36 ? pair.modern : pair.legacy
 }
 
 /**

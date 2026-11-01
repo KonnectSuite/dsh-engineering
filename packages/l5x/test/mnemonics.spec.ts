@@ -89,9 +89,15 @@ describe('composed spelling', () => {
     expect(spellingForProject('TRUNC', new Set(['TRN']))).toBe('TRN')
   })
 
-  it('falls back to the catalog name when the project writes neither', () => {
-    expect(spellingForProject('SQR', new Set())).toBe('SQR')
-    expect(spellingForProject('TRUNC', new Set())).toBe('TRUNC')
+  it('falls back to the spelling the project revision publishes', () => {
+    // A build of a fresh v37 project refused MOV, EQU and SQR: those revisions have no such
+    // instructions, so the fallback follows MajorRev rather than the catalogue's legacy name.
+    expect(spellingForProject('MOV', new Set(), '37')).toBe('MOVE')
+    expect(spellingForProject('EQU', new Set(), '37')).toBe('EQ')
+    expect(spellingForProject('SQR', new Set(), '37')).toBe('SQRT')
+    expect(spellingForProject('MOV', new Set(), '19')).toBe('MOV')
+    expect(spellingForProject('SQR', new Set(), '')).toBe('SQR')
+    expect(spellingForProject('TRUNC', new Set(), '37')).toBe('TRUNC')
   })
 
   it('prefers the catalog name when the project writes both', () => {

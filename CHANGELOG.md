@@ -221,6 +221,16 @@
   defect in an instruction used by the fixtures since early in the cycle — the first was `CPT`'s operand order — and both
   were invisible until a build of *that* instruction, not of a neighbour.
 
+- **The composer was writing legacy instruction names into modern projects, and one build caught it.** A family sweep
+  through `compose_rung` against a fresh v37 project emitted `MOV`, `EQU`, `SQR` and `LIM` - and Studio **refused the
+  export** (`AUDIT_OUTPUTS`, then `INVALIDOPTYPE`) because those revisions renamed all four (`MOVE`, `EQ`, `SQRT`,
+  `LIMIT`). The fallback in `spellingForProject` only followed the spellings a project already *used*, so a project with
+  no rung using either spelling got the catalogue's legacy name. It now follows `MajorRev` when neither spelling appears:
+  v36+ gets the modern name, older revisions the legacy one. With that fixed, the same sweep **built with 0 warnings and
+  0 errors** in one project - eighteen instructions across five families: `MOVE`, `CLR`, `COP`, `CPS`, `FLL`, `MVM`,
+  `EQ`, `LIMIT`, `ADD`, `SUB`, `MUL`, `DIV`, `SQRT`, `TON`, `TOF`, `RTO`, `CTU` and `CTD`. That is the "build per family"
+  the last round asked for, and it found a defect on the way that no fixture rung had exercised.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

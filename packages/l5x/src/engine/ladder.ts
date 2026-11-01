@@ -349,7 +349,7 @@ function spellingsOf(project: ProjectSnapshot): ReadonlySet<string> {
  * @returns The spelling to write into the rung.
  */
 function emittedMnemonic(project: ProjectSnapshot, name: string): string {
-  return spellingForProject(name, spellingsOf(project))
+  return spellingForProject(name, spellingsOf(project), project.document.controller.majorRev)
 }
 
 function composeNode(project: ProjectSnapshot, node: LadderNodeSpec, operands: ComposedOperand[], counter: { instructions: number }, depth: number, grounds: Set<'catalog' | 'aoi'>): string {
