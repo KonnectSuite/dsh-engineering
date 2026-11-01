@@ -511,6 +511,15 @@
   documented." That is the third surface to get the same honesty after `open_project` and `run_checks` (rounds 61-62) - and
   the one where it matters most, because a documentation bundle is what a new engineer reads first.
 
+- **`CABLE` was never an instruction: it was the word inside a safety-function name, and the mnemonic scan now skips operand lists.**
+  The rung is `DCS(N_PULL_ROPE_DCS,CABLE (ROPE) PULL SWITCH,EQUIVALENT - ACTIVE HIGH,500,...)` - the DCS **Safety Function** operand
+  legitimately contains parentheses and spaces, and the scanner matched `CABLE (` as a call. Three rounds carried it as "a gap we
+  cannot close"; it was noise. `mnemonicsIn` now walks the text and **skips each instruction's argument list**, leaving the closing
+  parenthesis in place so adjacent instructions like `XIC(A)OTE(B)` are still both found. The Seco export now reports **zero
+  uncatalogued instructions**, and two tests pin both halves: adjacent instructions are found, and a safety-function name with
+  parentheses yields only `DCS`. That also means the earlier `DCM`/`DCS`/`CROUT` count from round 50 included this false name, so
+  the real production total was even smaller than reported.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

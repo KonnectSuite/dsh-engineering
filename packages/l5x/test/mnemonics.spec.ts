@@ -127,3 +127,17 @@ describe('review finding', () => {
     expect(mnemonicMismatchesIn('EQU(a,b)EQU(c,d)XIC(e);', '38')).toEqual([{ used: 'EQU', preferred: 'EQ', majorVersion: '38' }])
   })
 })
+
+
+describe('the mnemonic scan', () => {
+  it('finds adjacent instructions', () => {
+    expect(mnemonicsIn('XIC(A)OTE(B)')).toEqual(['XIC', 'OTE'])
+  })
+
+  it('never reports a name inside another instruction operand list', () => {
+    // A safety-function operand reads "CABLE (ROPE) PULL SWITCH"; a plain scan reported CABLE as an
+    // uncatalogued instruction on a production project.
+    const rung = 'DCS(N_PULL_ROPE_DCS,CABLE (ROPE) PULL SWITCH,EQUIVALENT - ACTIVE HIGH,500,AUTOMATIC,AUTOMATIC,Local:7:I.Pt00.Data)'
+    expect(mnemonicsIn(rung)).toEqual(['DCS'])
+  })
+})

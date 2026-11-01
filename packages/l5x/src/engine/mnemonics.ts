@@ -146,10 +146,31 @@ export function mnemonicMismatch(used: string, majorRev: string): MnemonicMismat
  */
 export function mnemonicsIn(text: string): readonly string[] {
   const names = new Set<string>()
-  for (const match of text.matchAll(MNEMONIC_CALL)) {
+  // A safety-function operand can read "CABLE (ROPE) PULL SWITCH", and a plain scan reported CABLE as
+  // an uncatalogued instruction on a production project. Skip each instruction's argument list.
+  let at = 0
+  while (at < text.length) {
+    MNEMONIC_CALL.lastIndex = at
+    const match = MNEMONIC_CALL.exec(text)
+    if (match === null) break
     const name = match[1]
     if (name !== undefined) names.add(name.toUpperCase())
+    const open = (match.index ?? 0) + match[0].length - 1
+    let depth = 0
+    let close = open + 1
+    for (let index = open; index < text.length; index += 1) {
+      const character = text.charAt(index)
+      if (character === '(') depth += 1
+      else if (character === ')') {
+        depth -= 1
+        if (depth === 0) { close = index + 1; break }
+      }
+    }
+    // Leave the closing parenthesis in place: it is the non-word prefix the pattern needs for the
+    // next instruction, as in XIC(A)OTE(B).
+    at = close > open ? close - 1 : open + 1
   }
+  MNEMONIC_CALL.lastIndex = 0
   return [...names]
 }
 
