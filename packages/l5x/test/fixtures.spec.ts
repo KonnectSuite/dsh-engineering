@@ -803,6 +803,14 @@ describe('a program scope', () => {
     expect((await l5xTool.call('draft_tag', { scope: 'Beta', name: 'StagedB', data_type: 'BOOL', description: 'b' })).error).toBeUndefined()
     const stagedRight = await compose({ series: [{ instr: 'XIC', args: ['StagedB'] }, { instr: 'OTE', args: ['LocalB'] }] })
     expect(stagedRight.error).toBeUndefined()
+    // Raw NeutralText takes the same rule: a pasted rung from another program is refused.
+    const rawWrong = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(LocalA)OTE(LocalB);' })
+    expect(rawWrong.error?.code).toBe('TAG_NOT_FOUND')
+    expect(rawWrong.error?.message).toContain('declared in Alpha')
+    const rawStagedWrong = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedA)OTE(LocalB);' })
+    expect(rawStagedWrong.error?.code).toBe('TAG_NOT_FOUND')
+    const rawRight = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedB)OTE(LocalB);' })
+    expect(rawRight.error).toBeUndefined()
   })
 })
 

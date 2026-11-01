@@ -1350,6 +1350,11 @@
   0/0 (ACD sha 5686d63f...). Two existing tests were themselves composing across programs (MotorProgram's tag into MainProgram, and a program named
   Main that does not exist); both now use valid scopes. 512 package tests.
 
+- **A pasted raw rung is tag-checked too.** `draft_rung` validated syntax and the right rail, but accepted any symbol, so a rung copied from another
+  program referenced a local tag that does not exist there and failed only at build (Studio: `RxCMP_E_OPERAND_TAGNOTFOUND`). The draft now resolves
+  every tag a catalogued instruction names against the composing program, the controller and this draft's staged tags; another program's local tag is
+  refused with the owning program named. Two draft tests had used undefined Start/Run tags and now use real program tags. 512 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

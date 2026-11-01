@@ -14,7 +14,7 @@ import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
 import { COUNTER_TYPES, instructionByName, nearestInstructions, NUMERIC_TYPES, STRING_TYPES, TIMER_TYPES, type InstructionInfo } from './instructions.ts'
-import { parseLadder, rightRailReader } from './logic-syntax.ts'
+import { parseLadder, rightRailReader, type LadderNode } from './logic-syntax.ts'
 import { mnemonicsIn, spellingForProject } from './mnemonics.ts'
 
 /** One instruction node. */
@@ -124,6 +124,56 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
   return direct
 }
 /** One tag or literal operand, checked against its slot kind. */
+/** The refusal for an operand that names no declaration, naming the program that owns it when known. */
+function missingTag(project: ProjectSnapshot, text: string): L5xError {
+  const base = text.split(/[.[:]/u)[0] ?? text
+  const near = project.document.tags
+    .map(tag => tag.name)
+    .filter(name => name.toLowerCase().includes(text.split('.')[0]!.toLowerCase()))
+    .slice(0, 5)
+  const scope = project.programScope
+  const elsewhere = scope === undefined ? [] : [...new Set(project.document.tags
+    .filter(tag => tag.name.toUpperCase() === base.toUpperCase() && tag.scope.toLowerCase() !== scope.toLowerCase())
+    .map(tag => tag.scope))]
+  // A tag local to another program exists in the export but not in this rung's program; saying
+  // "does not exist" would send the reader looking for a typo that is not there.
+  const message = scope !== undefined && elsewhere.length > 0
+    ? `${text} is not declared in program ${scope}; it is declared in ${elsewhere.join(', ')}.`
+    : `No tag named "${text}" resolves in this export.`
+  return new L5xError(
+    'TAG_NOT_FOUND',
+    message,
+    near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tag first.',
+    near,
+  )
+}
+
+/**
+ * Resolve every tag an existing rung names, so a raw NeutralText insert fails the same way the
+ * composer does. Only catalogued instructions are checked: an AOI call's pins are not in the
+ * catalogue, and slot kinds that are not tags (expression, routine, label, keyword) are skipped.
+ *
+ * @param project - The open project, with the composing program when known.
+ * @param nodes - Parsed rung nodes.
+ */
+export function validateRungTags(project: ProjectSnapshot, nodes: readonly LadderNode[]): void {
+  for (const node of nodes) {
+    if (node.kind === 'branch') {
+      for (const path of node.paths) validateRungTags(project, path)
+      continue
+    }
+    const instruction = instructionByName(node.name)
+    if (instruction === undefined) continue
+    for (const [index, tokens] of node.operands.entries()) {
+      const slot = instruction.operands[index]
+      if (slot === undefined) continue
+      if (slot.kind === 'EXPRESSION' || slot.kind === 'ROUTINE' || slot.kind === 'LABEL' || slot.kind === 'KEYWORD') continue
+      const text = tokens.map(token => token.text).join('')
+      if (text === '' || isLiteral(text) || !TAG_TEXT.test(text)) continue
+      if (!resolveOperand(project, text).resolved) throw missingTag(project, text)
+    }
+  }
+}
 /** A label or routine name is an identifier, never an address. */
 const IDENTIFIER_TEXT = /^[A-Za-z_][A-Za-z0-9_]*$/u
 
@@ -237,26 +287,7 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   }
   const resolution = resolveOperand(project, text)
   if (!resolution.resolved) {
-    const base = text.split(/[.[:]/u)[0] ?? text
-    const near = project.document.tags
-      .map(tag => tag.name)
-      .filter(name => name.toLowerCase().includes(text.split('.')[0]!.toLowerCase()))
-      .slice(0, 5)
-    const scope = project.programScope
-    const elsewhere = scope === undefined ? [] : [...new Set(project.document.tags
-      .filter(tag => tag.name.toUpperCase() === base.toUpperCase() && tag.scope.toLowerCase() !== scope.toLowerCase())
-      .map(tag => tag.scope))]
-    // A tag local to another program exists in the export but not in this rung's program; saying
-    // "does not exist" would send the reader looking for a typo that is not there.
-    const message = scope !== undefined && elsewhere.length > 0
-      ? `${text} is not declared in program ${scope}; it is declared in ${elsewhere.join(', ')}.`
-      : `No tag named "${text}" resolves in this export.`
-    throw new L5xError(
-      'TAG_NOT_FOUND',
-      message,
-      near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tag first.',
-      near,
-    )
+    throw missingTag(project, text)
   }
   const type = (resolution.data_type ?? '').toUpperCase()
   const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, ...(type === '' ? {} : { data_type: type }), ...(resolution.dimensions === undefined ? {} : { dimensions: resolution.dimensions }) }

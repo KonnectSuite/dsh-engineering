@@ -10,7 +10,8 @@
  */
 
 import { prepareChangeSet, checkRungText } from '../engine/change-set.ts'
-import { composePattern, composeRung, PATTERNS, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
+import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
+import { parseLadder } from '../engine/logic-syntax.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { getRoutine } from '../model/routines.ts'
@@ -160,7 +161,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
   return [
     tool({
       name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed, when its right power rail is not driven by an output instruction, or when a catalogued instruction names a tag that does not resolve in this program (controller tags and this draft\'s staged tags are visible; another program\'s local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
@@ -201,7 +202,15 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         }
         // Refuse malformed rungs and rungs that never reach the right rail now,
         // rather than carrying them in the draft until Studio's build rejects them.
-        if (mode !== 'delete' && text !== undefined) checkRungText(text)
+        if (mode !== 'delete' && text !== undefined) {
+          checkRungText(text)
+          // A raw rung is still composed against one program: its tags resolve only there and in
+          // the controller, plus tags this draft stages for that program.
+          const stagedNow = drafts.existing(exec, project.id)
+          const view = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
+          const parsed = parseLadder(text)
+          if (parsed.issues.length === 0) validateRungTags({ ...view, programScope: program }, parsed.nodes)
+        }
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },
     }),

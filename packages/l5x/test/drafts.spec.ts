@@ -31,7 +31,7 @@ describe('draft accumulation', () => {
     expect(id).toBeTypeOf('string')
     expect(first.data?.operation_count).toBe(1)
     const second = await l5x.call('draft_rung', {
-      program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(Start)OTE(Run);',
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(StartPB)OTE(SystemRunning);',
     })
     expect(second.error).toBeUndefined()
     expect(second.data?.draft_id).toBe(id)
@@ -195,7 +195,7 @@ describe('draft editing', () => {
   it('lists staged operations with the index each occupies', async () => {
     const l5x = await opened()
     await l5x.call('draft_tag', { scope: 'controller', name: 'SP_Start', data_type: 'REAL', description: 'Start threshold', value: 80 })
-    await l5x.call('draft_rung', { program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(Start)OTE(Run);' })
+    await l5x.call('draft_rung', { program: 'MainProgram', routine: 'MainRoutine', mode: 'replace', rung: 0, text: 'XIC(StartPB)OTE(SystemRunning);' })
     const list = await l5x.call('draft_list', {})
     expect(list.error).toBeUndefined()
     expect(list.data?.operation_count).toBe(2)

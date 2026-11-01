@@ -241,7 +241,7 @@ Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source 
 
 #### `draft_rung`
 
-Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed or when its right power rail is not driven by an output instruction, which Studio would reject at build time. Optionally carries the rung comment. Nothing is written until draft_apply.
+Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed, when its right power rail is not driven by an output instruction, or when a catalogued instruction names a tag that does not resolve in this program (controller tags and this draft's staged tags are visible; another program's local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
