@@ -929,6 +929,10 @@
   JSR target missing, label missing, main routine missing, multiple schedules, the three safety rules, scheduled program missing, uncatalogued instruction,
   unresolved routine, I/O module changed - gained one. A test asserts the safety finding carries its structured remedy as well as the message text. 444 package tests.
 
+- **Remedy coverage is now enforced by a test, not by a sweep.** Round 152 compared the 22 rules against the remedy map by hand; a new spec reads
+  `src/engine/review.ts`, extracts every `report('RULE' …)` and every remedy key, and fails when a rule has no remedy - so a future rule cannot ship
+  without one. This is the third consistency guard of the same kind: capability names (141), next-step names (142), and now rules (153). 445 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
