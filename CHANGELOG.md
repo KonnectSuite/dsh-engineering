@@ -495,6 +495,15 @@
   did not land (anchor mismatch, then the build budget ran out), so it is **recorded, not claimed**: next round patches
   `sfcTagXml`, rebuilds the qualifier bisect, and either confirms the cause or reports the real one.
 
+- **The SFC failure was a silent wrong-type reuse in my own fixtures, and the composer now refuses it.** `draft_sfc` guarded a chart
+  element with `has(name)`, a case-insensitive name test, so an action called `A1` matched the fixture's existing **`a1` BOOL tag**,
+  created nothing, and produced a chart whose operand had the wrong type - `RxSFC_E_SPECIFIER_INVALID_TYPE` from Studio, and three
+  rounds of my blaming the SFC writer. The guard now checks the **type**: a step needs `SFC_STEP`, a transition `BOOL`, an action
+  `SFC_ACTION`, and a mismatch raises `TYPE_MISMATCH` naming the tag, its declared type and the needed one. With a fresh name the
+  same chart **builds: 0 warnings, 0 errors, an ACD written**, and the `SFC_ACTION` tag is created. Two tests pin both sides:
+  the wrong-type name is refused with SFC_ACTION named, and a valid chart still composes. This is the sixth self-correction of
+  the cycle, and the most expensive: the defect was in the probe, not the product.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

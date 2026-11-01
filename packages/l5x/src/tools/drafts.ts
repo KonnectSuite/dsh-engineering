@@ -451,11 +451,34 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const staged = new Set(draft.operations
           .filter(entry => entry.operation === 'add_tag' || entry.operation === 'add_sfc_tag')
           .map(entry => String(entry.name).toLowerCase()))
+        const declaredType = (name: string): string | undefined => {
+          const stagedTag = draft.operations
+            .filter(entry => entry.operation === 'add_sfc_tag' && String(entry.name).toLowerCase() === name.toLowerCase())
+            .map(entry => String(entry.kind))
+          if (stagedTag.length > 0) {
+            const kind = stagedTag[stagedTag.length - 1]
+            return kind === 'step' ? 'SFC_STEP' : kind === 'transition' ? 'BOOL' : 'SFC_ACTION'
+          }
+          return view.document.tags.find(entry => entry.name.toLowerCase() === name.toLowerCase())?.dataType
+        }
         const has = (name: string): boolean => staged.has(name.toLowerCase())
           || view.document.tags.some(entry => entry.name.toLowerCase() === name.toLowerCase())
         const tagOperations: DraftOperation[] = []
         const ensure = (name: string, kind: 'step' | 'transition' | 'action', initial: boolean): void => {
-          if (has(name)) return
+          const wanted = kind === 'step' ? 'SFC_STEP' : kind === 'transition' ? 'BOOL' : 'SFC_ACTION'
+          if (has(name)) {
+            // Reusing a tag of another type produced RxSFC_E_SPECIFIER_INVALID_TYPE on a chart whose
+            // action name collided with an existing BOOL tag. Refuse it and say why.
+            const found = declaredType(name)
+            if (found !== undefined && found.toUpperCase() !== wanted) {
+              throw new L5xError(
+                'TYPE_MISMATCH',
+                `The chart names ${name} as a ${kind}, and ${name} is declared ${found}; Studio needs ${wanted}.`,
+                'Use another name for the chart element, or declare it with draft_tag using the needed type.',
+              )
+            }
+            return
+          }
           tagOperations.push({ operation: 'add_sfc_tag', scope: program, name, kind, ...(initial ? { initial: true } : {}) })
         }
         const allActions: { name: string; qualifier: string }[] = []

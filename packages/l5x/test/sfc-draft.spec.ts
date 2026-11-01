@@ -166,6 +166,22 @@ describe('actions and numeric conditions', () => {
 
 
 describe('an SFC Reset action', () => {
+  it('refuses a name already declared as another type', async () => {
+    // a1 is a BOOL tag in the fixture; naming an action a1 used to reuse it silently and the chart
+    // imported with RxSFC_E_SPECIFIER_INVALID_TYPE.
+    const l5x = harness(new Map([['q.l5x', new TextEncoder().encode(RESET_FIXTURE)]]), { editing: true })
+    await l5x.call('open_project', { path: 'q.l5x' })
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', {
+      program: 'Main', routine: 'Chart',
+      steps: JSON.stringify([{ id: 0, name: 'S1', initial: true, actions: [{ id: 10, name: 'a1', qualifier: 'NonStored' }] }, { id: 1, name: 'S2' }]),
+      transitions: JSON.stringify([{ id: 20, name: 'T1', condition: 'S1.DN' }, { id: 21, name: 'T2', condition: 'c1 > 5' }]),
+      links: JSON.stringify([{ from: 0, to: 20 }, { from: 20, to: 1 }, { from: 1, to: 21 }, { from: 21, to: 0 }]),
+    })
+    expect(chart.error?.code).toBe('TYPE_MISMATCH')
+    expect(String(chart.error?.message)).toContain('SFC_ACTION')
+  })
+
   it('is refused when nothing stores the same tag', async () => {
     // Studio answers RxSFC_E_RESET_WITHOUT_STORED; catching it at compose time names the fix.
     const l5x = harness(new Map([['q.l5x', new TextEncoder().encode(RESET_FIXTURE)]]), { editing: true })
@@ -174,7 +190,7 @@ describe('an SFC Reset action', () => {
     expect(routine.error).toBeUndefined()
     const chart = await l5x.call('draft_sfc', {
       program: 'Main', routine: 'Chart',
-      steps: JSON.stringify([{ id: 0, name: 'S1', initial: true, actions: [{ id: 10, name: 'A1', qualifier: 'Reset' }] }, { id: 1, name: 'S2' }]),
+      steps: JSON.stringify([{ id: 0, name: 'S1', initial: true, actions: [{ id: 10, name: 'Act1', qualifier: 'Reset' }] }, { id: 1, name: 'S2' }]),
       transitions: JSON.stringify([{ id: 20, name: 'T1', condition: 'S1.DN' }, { id: 21, name: 'T2', condition: 'c1 > 5' }]),
       links: JSON.stringify([{ from: 0, to: 20 }, { from: 20, to: 1 }, { from: 1, to: 21 }, { from: 21, to: 0 }]),
     })
