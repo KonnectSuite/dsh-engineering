@@ -281,6 +281,17 @@
   the destination slot answers `INVALIDOPKIND`, so the next probe needs mode 1-3 and a `ctl.POS` position rather than my
   guesses.
 
+- **`FAL` and `FSC` now carry the operand order the vendor help publishes, but they are help-verified, not build-verified,
+  and the round says so.** The help's ladder tables list `Control, Length, Position, Mode, Expression, Destination` for
+  `FAL` and the same without `Destination` for `FSC`; our catalogue had `Destination` **before** `Expression`, which is a
+  swap no passing build had ever caught. `Mode` is also a **number from 1** - `0` produces
+  `RxCMP_E_AUDIT_OUTOFRANGE`, and the `ALL`/`INC` in the help are dialog choices, not rung text, which a probe confirmed
+  when the composer emitted `ALL` and Studio rejected the kind. Four build attempts at the corrected shapes still end in
+  `RxCMP_E_AUDIT_INVALIDOPKIND`, so something else in my rung is wrong: the next probes are a **bare tag** destination
+  instead of an element, an expression that references `ctl.POS`, and `Length`/`Position` written as `ctl.LEN`/`ctl.POS`
+  given the help calls them pseudo-operands. Shipping an order change that agrees with the vendor documentation while the
+  build is still red is a deliberate, stated risk - the alternative is keeping an order the documentation contradicts.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

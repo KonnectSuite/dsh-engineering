@@ -145,10 +145,10 @@ describe('the operand counts the vendor fields give', () => {
   it('composes a file arithmetic rung with an expression operand', async () => {
     const l5x = await opened()
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'FAL', args: ['CycleCounter', '10', '0', '1', 'FaultCount', 'LineSpeed + 1.0'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'FAL', args: ['CycleCounter', '10', '0', '1', 'LineSpeed + 1.0', 'FaultCount'] }] }),
     })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('FAL(CycleCounter,10,0,1,FaultCount,LineSpeed + 1.0);')
+    expect(text(result.data)).toBe('FAL(CycleCounter,10,0,1,LineSpeed + 1.0,FaultCount);')
   })
 })
 
