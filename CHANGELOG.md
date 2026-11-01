@@ -445,6 +445,14 @@
   changing either"). After the change those three projects report **0 critical and 0 warnings**, and the whole corpus reports
   no build-fatal finding at all - which is what a set of compiling projects should look like.
 
+- **`Seco_Cooler` was not a partial export at all - it is source-protected, and we were calling that "0 routines".** The file carries
+  **144 `<EncodedData EncodedType="Routine">`** elements: the logic exists and is encrypted, so the project is complete and the
+  bodies are simply unreadable. `open_project` now says so exactly:
+  `Seco_Cooler: 11 programs, 1266 tags, 0 routines (144 source-protected, bodies not readable)`, and the payload carries
+  `protected_routines` so a caller can branch on it instead of parsing prose. That distinction matters: round 61's "partial
+  export" reading was wrong about the cause, and an engineer told "0 routines" would think their export had failed rather than
+  that a vendor protected the code. A test pins it with two encrypted routines.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

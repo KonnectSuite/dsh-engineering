@@ -590,3 +590,16 @@ describe('a partial export', () => {
     expect(result.data?.findings).toEqual([])
   })
 })
+
+
+/** An export whose routine bodies are encrypted. */
+const PROTECTED_LOGIC_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Content SchemaRevision=\"1.0\" SoftwareRevision=\"36.00\" TargetType=\"Controller\" ContainsContext=\"false\">\n  <Controller Name=\"ProtectedLogic\" ProcessorType=\"1756-L8\" MajorRev=\"36\" MinorRev=\"0\">\n    <Tags><Tag Name=\"A\" TagType=\"Base\" DataType=\"BOOL\"/></Tags>\n    <Programs><Program Name=\"P\" MainRoutineName=\"R\"><Routines>\n      <EncodedData EncodedType=\"Routine\" Name=\"R\"/>\n      <EncodedData EncodedType=\"Routine\" Name=\"S\"/>\n    </Routines></Program></Programs>\n    <Tasks><Task Name=\"T\" Type=\"CONTINUOUS\"><ScheduledPrograms><ScheduledProgram Name=\"P\"/></ScheduledPrograms></Task></Tasks>\n  </Controller>\n</RSLogix5000Content>"
+
+describe('an export with encrypted routine bodies', () => {
+  it('says how many are protected instead of implying the project has no logic', async () => {
+    const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(PROTECTED_LOGIC_L5X)]]))
+    const opened = await l5x.call('open_project', { path: 'p.l5x' })
+    expect(String(opened.summary)).toContain('2 source-protected')
+    expect((opened.data?.counts as { protected_routines?: number })?.protected_routines).toBe(2)
+  })
+})

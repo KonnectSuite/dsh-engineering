@@ -29,6 +29,8 @@ export interface ProjectSnapshot {
   readonly id: string
   /** Path as the caller supplied it. */
   readonly requestedPath: string
+  /** Routines whose bodies are encrypted in this export, so they cannot be read. */
+  readonly protectedRoutines?: number
   /** Resolved path the filesystem provider returned, for model- and engine-facing output. */
   readonly path: string
   /** Filesystem target used to re-read the export. */
@@ -150,6 +152,7 @@ export class ProjectSession {
       targetType,
       exportKind: targetType === 'Controller' ? 'controller' : 'component',
       features: featureLevels(xml),
+      protectedRoutines: (xml.match(/<EncodedData\b[^>]*EncodedType="Routine"/gu) ?? []).length,
       openedAt: new Date().toISOString(),
     }
     const projects = this.projectsOf(exec)

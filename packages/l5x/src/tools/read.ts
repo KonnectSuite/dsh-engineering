@@ -47,7 +47,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         const project = await session.open(requiredString(args, 'path'), exec)
         const document = project.document
         return success(
-          `${document.controller.name}: ${document.programs.length} programs, ${document.tags.length} tags, ${document.routines.length} routines.`,
+          `${document.controller.name}: ${document.programs.length} programs, ${document.tags.length} tags, ${document.routines.length} routines${(project.protectedRoutines ?? 0) === 0 ? '' : ` (${project.protectedRoutines} source-protected, bodies not readable)`}.`,
           {
             project_id: project.id,
             path: project.requestedPath,
@@ -56,7 +56,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
             export_revision: project.softwareRevision,
             verification: project.verification,
             controller: document.controller,
-            counts: countsOf(document),
+            counts: countsOf(document, project.protectedRoutines ?? 0),
             programs: document.programs.map(program => ({ name: program.name, mainRoutine: program.mainRoutine })),
             tasks: document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs })),
           },
@@ -80,7 +80,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
             revision: revisionOf(document),
             export_revision: project.softwareRevision,
             verification: project.verification,
-            counts: countsOf(document),
+            counts: countsOf(document, project.protectedRoutines ?? 0),
             programs: document.programs,
             tasks: document.tasks,
           },
@@ -160,13 +160,14 @@ function revisionOf(document: L5xDocument): string {
 }
 
 /** Component counts for a summary. */
-function countsOf(document: L5xDocument): Readonly<Record<string, number>> {
+function countsOf(document: L5xDocument, protectedRoutines = 0): Readonly<Record<string, number>> {
   return {
     programs: document.programs.length,
     tasks: document.tasks.length,
     tags: document.tags.length,
     udts: document.udts.length,
     routines: document.routines.length,
+    protected_routines: protectedRoutines,
     aois: document.aois.length,
     modules: document.modules.length,
     alarms: document.alarms.length,
