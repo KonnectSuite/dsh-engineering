@@ -232,17 +232,18 @@ export function validateSfcDiagram(routine: L5xRoutine): readonly DiagramFinding
     findings.push({ rule, severity, message, evidence, confidence })
   }
   const where = (node: L5xDiagramNode): string => `${routine.program}::${routine.name} sheet ${node.sheet} id ${node.id ?? '?'}`
-  const ids = idsBySheet(nodes)
+  // A chart's links may reach a step drawn on another sheet, so a target resolves anywhere in the
+  // routine; resolving per sheet would report a valid cross-sheet link as critical.
+  const chartIds = new Set(nodes.flatMap(node => node.id === undefined ? [] : [node.id]))
 
   // A link that names an element the chart does not contain cannot be followed.
   for (const node of nodes) {
     if (node.kind !== 'DirectedLink') continue
-    const sheetIds = ids.get(node.sheet) ?? new Set<string>()
     for (const [side, id] of [['FromID', node.fromId], ['ToID', node.toId]] as const) {
-      if (id === undefined || sheetIds.has(id)) continue
+      if (id === undefined || chartIds.has(id)) continue
       report('SFC_LINK_TARGET_MISSING', 'critical',
-        `${where(node)}: link ${side}="${id}" names no step or transition on that sheet`,
-        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, elements: sheetIds.size })
+        `${where(node)}: link ${side}="${id}" names no step or transition in this chart`,
+        { program: routine.program, routine: routine.name, sheet: node.sheet, side, id, elements: chartIds.size })
     }
   }
 

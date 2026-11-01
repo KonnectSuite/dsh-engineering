@@ -1448,6 +1448,9 @@
   were added: `SFC_LINK_TARGET_MISSING` (critical, a link to a step or transition the sheet does not hold), `SFC_NO_INITIAL_STEP` and
   `SFC_MULTIPLE_INITIAL_STEPS` (warning), each with the step ids. Tests cover all three and a clean chart; the rule list is 41. 536 package tests.
 
+- **An SFC link may cross sheets.** The link check resolved targets per sheet, so a valid link to a step drawn on another sheet would have been a critical
+  finding. Targets now resolve anywhere in the chart. A test links sheet 1 to a step on sheet 2 and expects no `SFC_LINK_TARGET_MISSING`. 537 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

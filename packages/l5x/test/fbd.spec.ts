@@ -178,6 +178,16 @@ describe('a sequential function chart', () => {
     expect(several[0]?.evidence).toMatchObject({ steps: ['1', '2'] })
   })
 
+  it('accepts a link that reaches a step drawn on another sheet', () => {
+    expect(validateSfcDiagram(chart([
+      { kind: 'Step', sheet: 1, id: '1', operand: 'A', initialStep: 'true' },
+      { kind: 'Transition', sheet: 1, id: '2', operand: 'T' },
+      { kind: 'Step', sheet: 2, id: '3', operand: 'B', initialStep: 'false' },
+      { kind: 'DirectedLink', sheet: 1, fromId: '1', toId: '2' },
+      { kind: 'DirectedLink', sheet: 1, fromId: '2', toId: '3' },
+    ])).filter(finding => finding.rule === 'SFC_LINK_TARGET_MISSING')).toEqual([])
+  })
+
   it('accepts one initial step and links that resolve', () => {
     expect(validateSfcDiagram(chart([
       { kind: 'Step', sheet: 1, id: '1', operand: 'A', initialStep: 'true' },
