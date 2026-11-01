@@ -1134,6 +1134,9 @@
   composer refuses a tag of another numeric type with both types named. `list_instructions` exposes `types`, tests hold the composition and the listing, and
   the dist smoke asserts the built slot. 484 package tests, 4/4 smoke.
 
+- **SQRT over a DINT is legal, and a test now says so.** The opposite probe to STD: `SQRT(Count,Count)` with a DINT source and destination built with
+  0 warnings / 0 errors, so no REAL-only restriction belongs on SQR. The test keeps a future edit from adding one. 485 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

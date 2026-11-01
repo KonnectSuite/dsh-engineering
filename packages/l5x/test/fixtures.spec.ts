@@ -494,3 +494,22 @@ describe('a slot that takes a tag of any type', () => {
     expect(rungs?.[0]?.neutral_text).toBe('STD(Arr,0,Dest,Ctrl,10,0);')
   })
 })
+
+describe('an arithmetic slot that accepts integers', () => {
+  it('composes SQRT over a DINT, which Studio built with 0 warnings and 0 errors', async () => {
+    // The opposite finding to STD: a build proved integer SQRT is legal, so no REAL-only
+    // restriction belongs on SQR. This test keeps a future edit from adding one.
+    const project = l5x({
+      name: 'SqrtInteger',
+      tags: tag('Count', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['sqrt.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'sqrt.l5x' })).error).toBeUndefined()
+    const composed = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQR', args: ['Count', 'Count'] }] }) })
+    expect(composed.error).toBeUndefined()
+    const rungs = (composed.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
+    expect(rungs?.[0]?.neutral_text).toBe('SQRT(Count,Count);')
+  })
+})
