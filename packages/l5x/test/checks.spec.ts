@@ -447,7 +447,7 @@ describe('a serial-port instruction on a processor without one', () => {
 const JSR_MISSING_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 <RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="36.00" TargetType="Controller" ContainsContext="false">
   <Controller Name="Calls" ProcessorType="1756-L8" MajorRev="36" MinorRev="0">
-    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/></Tags>
+    <Tags><Tag Name="A" TagType="Base" DataType="BOOL"/><Tag Name="Unused" TagType="Base" DataType="BOOL"/></Tags>
     <Programs><Program Name="P" MainRoutineName="R"><Routines>
       <Routine Name="R" Type="RLL"><RLLContent>
         <Rung Number="0" Type="N"><Text><![CDATA[XIC(A)JSR(S,0);]]></Text></Rung>
@@ -471,5 +471,17 @@ describe('a JSR naming a routine the program does not declare', () => {
     expect(rows[0]?.message).toContain('Nope')
     expect(rows[0]?.message).not.toContain('JSR(S')
     expect(rows[0]?.severity).toBe('critical')
+  })
+
+  it('pages critical findings before informational ones', async () => {
+    // The same project carries an unused tag, which is informational. The page must lead with the
+    // call that cannot build.
+    const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
+    await l5x.call('open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('run_checks', { limit: 5 })
+    const rows = (result.data?.findings ?? []) as { rule: string; severity: string }[]
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows[0]?.severity).toBe('critical')
+    expect(rows.some(row => row.rule === 'JSR_ROUTINE_MISSING')).toBe(true)
   })
 })

@@ -319,6 +319,15 @@
   sibling routine - the test proves both in one project by calling a declared routine and an undeclared one from adjacent
   rungs. `run_checks` names the rule in its description, so the tool reference regenerated.
 
+- **A real 10 MB production project is the best false-positive test we have, and it caught a usability defect.** Running
+  `run_checks` against a live plant export - 23 programs, 2651 tags, 257 routines - produced **zero findings** from
+  `JSR_ROUTINE_MISSING`, `JSR_WITHOUT_RETURN`, `RUNG_NO_OUTPUT` and `SBR_NOT_FIRST`, which is the validation those rules
+  needed. It also produced **701 findings**, and the unfiltered page returned **100 `UNUSED_TAG` rows before anything
+  critical**: page order was generation order, so the findings that stop a build sat behind hundreds that do not.
+  Findings are now ordered **critical, warning, info** before pagination, with generation order kept inside each rank so a
+  re-run is stable. A test pins it on a project carrying both an undeclared `JSR` and an unused tag: the first row is the
+  critical one. Summary counts were already by severity, so nothing else moved.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

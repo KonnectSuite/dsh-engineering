@@ -87,8 +87,16 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         const result = runChecks(project, baseline) as ChecksResult
         const rule = optionalString(args, 'rule')
         const severity = optionalString(args, 'severity')
-        const filtered = result.findings.filter(finding =>
-          (rule === undefined || finding.rule === rule) && (severity === undefined || finding.severity === severity))
+        const rank: Record<string, number> = { critical: 0, warning: 1, info: 2 }
+        // A production export returned 701 findings, and the unfiltered page showed 100 unused-tag rows
+        // before anything critical: page order has to put the findings that stop a build first.
+        const filtered = result.findings
+          .filter(finding =>
+            (rule === undefined || finding.rule === rule) && (severity === undefined || finding.severity === severity))
+          .map((finding, index) => ({ finding, index }))
+          .sort((left, right) =>
+            (rank[left.finding.severity] ?? 3) - (rank[right.finding.severity] ?? 3) || left.index - right.index)
+          .map(entry => entry.finding)
         const offset = integerArg(args, 'offset', 0)
         const limit = Math.min(Math.max(integerArg(args, 'limit', 20), 1), 100)
         const page = filtered.slice(offset, offset + limit)
