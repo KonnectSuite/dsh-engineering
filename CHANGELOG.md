@@ -1118,6 +1118,9 @@
   `SIZE` Size, and the description names it, so an agent can see the constraint instead of learning it from a refused build. Tested on ADD and FOR
   (Destination/Index marked, source and bound slots not). 482 package tests.
 
+- **Generated client faces refreshed.** The rebuild after the writable-slot changes regenerated both tracked client faces; they are committed so the
+  repository carries the same bytes the release assembly embeds.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
