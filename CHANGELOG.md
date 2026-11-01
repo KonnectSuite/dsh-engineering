@@ -241,6 +241,12 @@
   here; re-running against the real engine at 300 seconds confirmed the diagnosis (elapsed 301,936 ms, staged
   `timeout`), which also shows that a structurally minimal L5X does not open — the import waits indefinitely.
 
+- **A timed-out verification says how far it got.** The result now carries `reached` (the last line the bridge printed),
+  `export_revision` and `probe_build`, and the timeout advice quotes it: *"The run was stopped at its time budget… It
+  stopped after: Open project started."* That came from driving the real engine twice: a v36 export, opened under
+  `probe`, printed one progress line and then blocked past both a 180-second and a 300-second budget, so a reader can
+  now see that the engine never left the open step rather than guessing which part of their logic is wrong.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -252,7 +258,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-317 package tests and 70 bundle tests pass.
+319 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

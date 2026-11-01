@@ -68,3 +68,17 @@ describe('a run stopped at its time budget', () => {
     expect(advice).not.toContain('Read diagnostics')
   })
 })
+
+
+describe('the timeout advice names the last progress line', () => {
+  it('quotes where the run stopped', () => {
+    const advice = verifyNextStep({ passed: false, failureStage: 'timeout', sdkError: null, diagnosticCount: 0, reached: 'Open project started' })
+    expect(advice).toContain('It stopped after: Open project started')
+  })
+
+  it('says nothing extra when there was no progress line', () => {
+    const advice = verifyNextStep({ passed: false, failureStage: 'timeout', sdkError: null, diagnosticCount: 0, reached: null })
+    expect(advice).toContain('stopped at its time budget')
+    expect(advice).not.toContain('It stopped after')
+  })
+})

@@ -232,9 +232,14 @@ export function verifyNextStep(result: {
   readonly failureStage: string | null
   readonly sdkError: string | null
   readonly diagnosticCount: number
+  /** Last progress line the bridge printed, when there was one. */
+  readonly reached?: string | null
 }): string {
   if (result.passed) return 'Review the engineering diff and controller target before any approved download.'
-  if (result.failureStage === 'timeout') return 'The run was stopped at its time budget, so no diagnostic was produced and nothing was learned about the export. A cold first open starts the Studio engine and can take minutes: retry once the engine is warm, or open and build the export in Studio 5000. The log shows how far the run got.'
+  if (result.failureStage === 'timeout') {
+    const where = result.reached === undefined || result.reached === null ? '' : ` It stopped after: ${result.reached}`
+    return `The run was stopped at its time budget, so no diagnostic was produced and nothing was learned about the export.${where} A cold first open starts the Studio engine and can take minutes: retry once the engine is warm, or open and build the export in Studio 5000.`
+  }
   if (result.failureStage === 'import') return 'The SDK could not import this export; the failure is not the build revision. Read sdk_error and diagnostics, then compare an unedited export from this project before changing the draft.'
   if (result.sdkError === null && result.diagnosticCount === 0) {
     return `The Studio engine stopped at ${String(result.failureStage)} without reporting a diagnostic line, so there is nothing to read. The two gates to check are a Logix Designer release installed for this export revision, and project revision ${MIN_BUILD_REVISION} or later for a build. Keep log as the evidence, then compare an unedited export from this project before changing the draft.`
@@ -284,9 +289,12 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
     sdk_available: true, offline_build: passed ? 'passed' : 'failed', download_ready: passed,
     build_gate: { axis: 'project_revision', minimum: MIN_BUILD_REVISION },
     timeout_ms: verifyTimeoutMs,
+    export_revision: revision,
+    probe_build: options.probeBuild === true,
+    reached: lines.length === 0 ? null : lines[lines.length - 1] ?? null,
     output_bytes: outputInfo?.size ?? 0, import_warnings: summary === null ? null : Number(summary[1]), import_errors: summary === null ? null : Number(summary[2]),
     failure_stage: failureStage, sdk_error: sdkError, diagnostics, log,
-    next_step: verifyNextStep({ passed, failureStage, sdkError, diagnosticCount: diagnostics.length }),
+    next_step: verifyNextStep({ passed, failureStage, sdkError, diagnosticCount: diagnostics.length, reached: lines.length === 0 ? null : lines[lines.length - 1] ?? null }),
     controller_operation: 'none', studio_review: 'required',
   }
 }
