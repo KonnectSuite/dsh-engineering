@@ -468,3 +468,25 @@ describe('a SIZE result', () => {
     expect(rungs?.[0]?.neutral_text).toBe('SIZE(Arr,0,Arr[0]);')
   })
 })
+
+describe('a slot that takes a tag of any type', () => {
+  it('refuses a literal, as Studio does for the STD control block', async () => {
+    const project = l5x({
+      name: 'StdGuard',
+      tags: tag('Arr', 'REAL', ' Dimensions="10"') + tag('Dest', 'REAL') + tag('Ctrl', 'CONTROL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['std.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'std.l5x' })).error).toBeUndefined()
+    // Studio refused STD(Arr,0,Dest,5,10,0) at build with RxCMP_E_AUDIT_INVALIDOPKIND while
+    // STD(Arr,0,Dest,Ctrl,10,0) built 0/0.
+    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', '5', '10', '0'] }] }) })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('needs a writable control')
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', 'Ctrl', '10', '0'] }] }) })
+    expect(good.error).toBeUndefined()
+    const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
+    expect(rungs?.[0]?.neutral_text).toBe('STD(Arr,0,Dest,Ctrl,10,0);')
+  })
+})

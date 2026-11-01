@@ -302,7 +302,8 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       const slot = instruction.operands[index] ?? restSlot
       // Studio refuses a literal in a writable slot only at build time, with
       // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
-      // composer can refuse them and state the written order instead.
+      // composer can refuse them and state the written order instead. A slot of kind ANY is not
+      // automatically writable: JSR's return parameter and PID's master loop accept 0.
       if (slot?.writable === true && isLiteral(text)) {
         const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
         const fix = slot.name === 'Destination'

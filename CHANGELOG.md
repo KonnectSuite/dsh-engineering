@@ -1124,6 +1124,11 @@
 - **The built artifact must carry the writable-slot contract.** The dist smoke now asserts `ADD` Destination, `FOR` Index and `SIZE` Size are
   `writable` in `lib/`, and that a source slot is not, so an artifact built before the guard fails the smoke. 4/4 smoke checks pass.
 
+- **STD's Control block must be a tag, and the catalogue says so.** Studio refused `STD(Arr,0,Dest,5,10,0)` with `RxCMP_E_AUDIT_INVALIDOPKIND`; with a
+  CONTROL tag it built 0/0 (once the destination was REAL, per the installed instruction help). The `Control` slot is marked writable, the composer refuses a
+  literal there, a test holds both sides, and the dist smoke asserts the built catalog carries it. A blanket "ANY slots never take literals" rule was tried
+  and rejected because `JSR(Sub,0)` and a built PID rung legitimately use literals. 483 package tests, 4/4 smoke, bundle 91.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
