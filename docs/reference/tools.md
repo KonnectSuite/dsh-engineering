@@ -90,7 +90,7 @@ Find literal text in routine logic. Use it to locate a rung, ST line or operand 
 
 #### `find_references`
 
-Find where one symbol is read or written in exported logic, with scope, access and confidence. Use trace_dependencies for what feeds a symbol.
+Find where one symbol is read or written in exported logic, with scope, access, confidence and whether the site is safety code. Use trace_dependencies for what feeds a symbol.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
