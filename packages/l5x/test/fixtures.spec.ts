@@ -731,6 +731,35 @@ describe('an array dimension', () => {
   })
 })
 
+describe('tag array dimensions', () => {
+  it('accepts one to three positive sizes and refuses the rest', async () => {
+    const project = l5x({
+      name: 'DimensionsGuard',
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+    const valid = await l5xTool.call('draft_tag', { scope: 'controller', name: 'Grid', data_type: 'DINT', dimensions: '4 2', description: 'grid' })
+    expect(valid.error).toBeUndefined()
+    const applied = await l5xTool.call('draft_apply', { output_path: 'dims-out.l5x' })
+    expect(applied.error).toBeUndefined()
+    expect(String(l5xTool.written.get('dims-out.l5x'))).toContain('Dimensions="4 2"')
+    for (const dimensions of ['0', '10 0', 'abc', '1 2 3 4', '1000001', '4000 4000']) {
+      const badTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
+      expect((await badTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+      const added = await badTool.call('draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions, description: 'bad' })
+      const appliedBad = added.error === undefined ? await badTool.call('draft_apply', { output_path: 'bad-dims.l5x' }) : added
+      expect(appliedBad.error?.code, dimensions).toBe('INVALID_CHANGE_SET')
+    }
+    const valueTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await valueTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+    const withValue = await valueTool.call('draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions: '4', value: 0, description: 'bad' })
+    const appliedValue = withValue.error === undefined ? await valueTool.call('draft_apply', { output_path: 'bad-value.l5x' }) : withValue
+    expect(appliedValue.error?.code).toBe('INVALID_CHANGE_SET')
+  })
+})
+
 describe('tag types the catalogue needs', () => {
   it('can be declared through draft_tag', async () => {
     // draft_tag answered UNKNOWN_DATA_TYPE for TIMER, COUNTER, PID, STRING and MESSAGE, although the

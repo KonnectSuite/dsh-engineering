@@ -1316,6 +1316,10 @@
   (arrayElement/arrayTag/noArray), ordered minimum/maximum, non-empty type lists, and a repeating tail only on the last slot. It passes over every
   explicit and generated instruction. Live check: `read_controller_mode` on 192.168.1.3 returned **Run** over the saved route (read-only). 505 package tests.
 
+- **Array-dimension refusals are pinned by tests.** The dimension validator accepts one to three positive sizes and refuses zero, a zero later, text,
+  four sizes, an oversized single dimension, a total above the cap, and an array with a scalar initial value. The test also shows the timing: `draft_tag`
+  stages the operation and `draft_apply` reports `INVALID_CHANGE_SET`, so a caller must read the apply result for validation errors. 506 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
