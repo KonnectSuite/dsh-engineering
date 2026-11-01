@@ -809,6 +809,11 @@
   routine count, description - verified on the real export (`FC_Adj_Ratio_SP` 11 parameters 1 routine, and so on), with a test asserting the section and a row.
   The AOI routine count is the fact round 120 made reachable; this round puts it in the handover. 430 package tests.
 
+- **A user-type member change is reported with its member description.** Probing `compare_projects` on two exports differing only in one UDT member's description showed it is
+  already detected: `udt changed ["members [... "first description"] to [... "second description"]]`. That last row of the diff-coverage ledger is now pinned by a test, so
+  the whole table - controller, module revision, AOI parameter, tag radix/constant, UDT member, rung, ST, FBD and SFC diagrams - is held by tests. Alarms were also
+  probed: every production export parses zero alarm declarations, so alarm comparison cannot be exercised from the corpus and remains fixture-covered. 431 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

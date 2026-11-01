@@ -595,3 +595,38 @@ describe('an AOI that owns routines', () => {
     expect(routine.data?.component?.name).toBe('Logic')
   })
 })
+
+/** One user type whose only difference is a member description. */
+function udtVariant(description: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="UdtDiff" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="0">
+    <Tags/>
+    <DataTypes>
+      <DataType Name="MY_UDT" Family="NoFamily" Class="User"><Members>
+        <Member Name="A" DataType="DINT" Dimension="0"><Description><![CDATA[${description}]]></Description></Member>
+      </Members></DataType>
+    </DataTypes>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+}
+
+describe('a user type member change', () => {
+  it('is reported with the member description, not as an unchanged type', async () => {
+    const l5x = harness(new Map([
+      ['a.l5x', new TextEncoder().encode(udtVariant('first description'))],
+      ['b.l5x', new TextEncoder().encode(udtVariant('second description'))],
+    ]))
+    const one = await l5x.call('open_project', { path: 'a.l5x' })
+    const two = await l5x.call('open_project', { path: 'b.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
+    const udt = changes.find(change => change.component === 'udt')
+    expect(udt).toBeDefined()
+    const fields = (udt?.changed_fields ?? []).join(' ')
+    expect(fields).toContain('first description')
+    expect(fields).toContain('second description')
+  })
+})
