@@ -167,7 +167,7 @@ The instruction catalog the composer validates, and the handover bundle written 
 
 #### `list_instructions`
 
-List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable, or tag_only when it is read rather than written), whether it must name an array element (array_element) or a whole array tag (array_tag), a minimum or maximum value where the vendor enforces one (minimum, maximum), an accepted type where the vendor restricts it (types), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.
+List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable, or tag_only when it is read rather than written), whether it must name an array element (array_element), a whole array tag (array_tag), or must not name a whole array (no_array), a minimum or maximum value where the vendor enforces one (minimum, maximum), an accepted type where the vendor restricts it (types), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

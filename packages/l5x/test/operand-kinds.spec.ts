@@ -178,11 +178,17 @@ describe('the operand counts the vendor fields give', () => {
 
   it('composes a sequenced output with all six operands', async () => {
     const l5x = await opened()
+    // The sample has no array or CONTROL tag, and Studio refused a COUNTER control and a whole
+    // destination array; declare a build-shaped fixture in the same draft.
+    for (const [name, dataType, dimensions] of [['SeqArr', 'DINT', '10'], ['SeqDest', 'DINT', '10'], ['SeqCtl', 'CONTROL', undefined]] as const) {
+      const added = await l5x.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: name, ...(dimensions === undefined ? {} : { dimensions }) })
+      expect(added.error).toBeUndefined()
+    }
     const result = await l5x.call('compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['FaultCount', '5', 'FaultCount', 'CycleCounter', '10', '0'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['SeqArr', '5', 'SeqDest[0]', 'SeqCtl', '10', '0'] }] }),
     })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('SQO(FaultCount,5,FaultCount,CycleCounter,10,0);')
+    expect(text(result.data)).toBe('SQO(SeqArr,5,SeqDest[0],SeqCtl,10,0);')
   })
 
   it('refuses FAL, which is not modelled', async () => {

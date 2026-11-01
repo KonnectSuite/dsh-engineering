@@ -1278,6 +1278,12 @@
 
 - **Generated client faces refreshed** after the array-tag check, so repository bytes match the rebuilt artifact.
 
+- **SQO's destination is not the whole array, and its control is a CONTROL.** SQO(...,Dest,Ctrl,10,0) with the whole destination array failed
+  Studio with `MUSTBEDISCRETE`; `SQO(Arr,Mask,Dest[0],Ctrl,10,0)` built 0/0. A COUNTER in the control slot failed `INVALIDOPTYPE`. New
+  `noArray` metadata refuses a whole array in SQO Dest, SQO Control accepts only CONTROL, and staged tags now carry their dimensions so a
+  draft-declared array can drive SIZE. An existing SQO test that paired a COUNTER control with a whole-array destination was not build-valid and now
+  declares a truthful fixture. 500 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

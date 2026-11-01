@@ -19,6 +19,8 @@ export interface StagedTag {
   readonly name: string
   readonly scope: string
   readonly data_type: string
+  /** Declared array dimensions, so array-slot checks see a staged array as an array. */
+  readonly dimensions?: readonly number[]
 }
 
 /**
@@ -40,7 +42,10 @@ export function stagedTags(operations: readonly DraftOperation[], project: Proje
     const key = `${scope}:${name.toUpperCase()}`
     if (seen.has(key)) continue
     seen.add(key)
-    tags.push({ name, scope, data_type: dataType })
+    const dimensions = typeof operation.dimensions === 'string'
+      ? operation.dimensions.trim().split(/\s+/u).map(Number).filter(value => Number.isFinite(value) && value > 0)
+      : []
+    tags.push({ name, scope, data_type: dataType, ...(dimensions.length === 0 ? {} : { dimensions }) })
   }
   return tags
 }
@@ -59,6 +64,7 @@ export function withStagedTags(project: ProjectSnapshot, tags: readonly StagedTa
     dataType: tag.data_type,
     scope: tag.scope,
     description: 'Staged in this draft; nothing is written until draft_apply.',
+    ...(tag.dimensions === undefined ? {} : { dimensions: tag.dimensions }),
   }))
   return { ...project, stagedTags: declared }
 }

@@ -324,6 +324,10 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       if (slot?.arrayTag === true && operand.resolved && (text.includes('[') || (operand.dimensions?.length ?? 0) === 0)) {
         throw new L5xError('INVALID_OPERAND', `${text} must name a declared array tag for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag itself (Arr), not one element or a scalar tag.')
       }
+      // SQO(...,Dest,...) with the whole destination array failed MUSTBEDISCRETE; Dest[0] built.
+      if (slot?.noArray === true && operand.resolved && !text.includes('[') && (operand.dimensions?.length ?? 0) > 0) {
+        throw new L5xError('INVALID_OPERAND', `${text} is a whole array where ${instruction.name} ${slot.name} must name one element or a scalar tag.`, `Pass an element such as ${text}[0]; Studio answers RxCMP_E_AUDIT_MUSTBEDISCRETE for the whole array.`)
+      }
       // Studio answers RxCMP_E_AUDIT_OUTOFRANGE for a below-minimum literal: FIND(...,0,...) fails and
       // FIND(...,1,...) builds, and the string positioning operands are 1-based for the same reason.
       if (slot?.minimum !== undefined && isLiteral(text) && Number.isFinite(Number(text)) && Number(text) < slot.minimum) {

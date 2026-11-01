@@ -73,6 +73,10 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   const sizeSource = instructionByName('SIZE')?.operands.find(operand => operand.name === 'Source')
   assert.equal(sizeSource?.tagOnly, true)
   assert.equal(sizeSource?.arrayTag, true)
+  // SQO requires a CONTROL structure and does not take the whole destination array.
+  const sqoSlots = instructionByName('SQO')?.operands ?? []
+  assert.deepEqual(sqoSlots.find(operand => operand.name === 'Control')?.types, ['CONTROL'])
+  assert.equal(sqoSlots.find(operand => operand.name === 'Dest')?.noArray, true)
   for (const name of ['SIZE', 'SRT', 'STD']) {
     const dimension = instructionByName(name)?.operands.find(operand => operand.name === 'Dimension to Vary')
     assert.equal(dimension?.maximum, 2, name)

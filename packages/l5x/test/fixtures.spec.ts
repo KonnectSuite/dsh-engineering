@@ -608,6 +608,30 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('a sequencer instruction', () => {
+  it('takes a whole array, one destination element and a CONTROL structure', async () => {
+    // SQO(Arr,Mask,Dest,Ctrl,10,0) failed MUSTBEDISCRETE and SQO(...,Mask,...) failed INVALIDOPTYPE;
+    // SQO(Arr,Mask,Dest[0],Ctrl,10,0) built 0/0.
+    const project = l5x({
+      name: 'SqoGuard',
+      tags: tag('Arr', 'DINT', ' Dimensions="10"') + tag('Mask', 'DINT') + tag('Dest', 'DINT', ' Dimensions="10"') + tag('Ctrl', 'CONTROL') + tag('Pos', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['sqo.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'sqo.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Ctrl', '10', '0'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SQO(Arr,Mask,Dest[0],Ctrl,10,0);')
+    const wholeDest = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest', 'Ctrl', '10', '0'] }] }) })
+    expect(wholeDest.error?.code).toBe('INVALID_OPERAND')
+    expect(wholeDest.error?.message).toContain('must name one element or a scalar tag')
+    const wrongControl = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Mask', '10', '0'] }] }) })
+    expect(wrongControl.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongControl.error?.message).toContain('must be CONTROL')
+  })
+})
+
 describe('an alarm instruction', () => {
   it('takes its own alarm structure type', async () => {
     // ALMA(AlarmD,...) and ALMD(AlarmA,...) each failed INVALIDOPTYPE; the matching types built 0/0.
@@ -658,6 +682,12 @@ describe('an array dimension', () => {
     const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr[0]', '0', 'Pos'] }] }) })
     expect(element.error?.code).toBe('INVALID_OPERAND')
     expect(element.error?.message).toContain('must name a declared array tag')
+    // A tag staged in the same draft carries its dimensions, so the array slot sees an array.
+    const stagedTag = await l5xTool.call('draft_tag', { scope: 'controller', name: 'StagedArr', data_type: 'DINT', dimensions: '10', description: 'staged array' })
+    expect(stagedTag.error).toBeUndefined()
+    const staged = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['StagedArr', '0', 'Pos'] }] }) })
+    expect(staged.error).toBeUndefined()
+    expect((staged.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SIZE(StagedArr,0,Pos);')
     const two = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '2', 'Pos'] }] }) })
     expect(two.error).toBeUndefined()
     expect((two.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SIZE(Arr,2,Pos);')
