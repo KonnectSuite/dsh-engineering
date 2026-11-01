@@ -538,6 +538,14 @@
   staging time so a draft never holds an operation that cannot apply, which needs the guard's logic factored out of
   `change-set.ts` rather than duplicated.
 
+- **A safety edit is now refused when it is staged, not when it is validated.** Round 74 established that the guard is real but fires
+  late: `draft_rung` accepted a change to a safety program and `draft_validate` refused it, so a draft could hold an operation that
+  could never apply. The model now records **`safety`** on programs (`Class="Safety"`) and on tasks, a helper resolves the set
+  from all three signals the vendor uses (program class, a program literally named `safety`, a safety task that schedules it), and
+  `draft_rung` and the composer path refuse at staging with
+  `PROTECTED_TARGET: Program MOTION_SAFETY runs in a safety task, and safety logic cannot be changed.` Verified against the real
+  Seco export, where the same call previously staged; the test now asserts the staging refusal and that no draft id is returned.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

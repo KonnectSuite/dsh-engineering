@@ -347,8 +347,9 @@ describe('editing a safety-scheduled program', () => {
     const l5x = harness(new Map([['s.l5x', new TextEncoder().encode(SAFETY_DRAFT_L5X)]]), { editing: true })
     expect((await l5x.call('open_project', { path: 's.l5x' })).error).toBeUndefined()
     const staged = await l5x.call('draft_rung', { program: 'Safe', routine: 'R', rung: 0, mode: 'replace', text: 'XIC(B)OTE(B);' })
-    const refusal = staged.error ?? (await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })).error
-    expect(refusal?.code).toBe('PROTECTED_TARGET')
-    expect(String(refusal?.message).toLowerCase()).toContain('safety')
+    // Refused at staging: a draft never holds an operation that cannot apply.
+    expect(staged.error?.code).toBe('PROTECTED_TARGET')
+    expect(String(staged.error?.message)).toContain('safety task')
+    expect(staged.data?.draft_id).toBeUndefined()
   })
 })

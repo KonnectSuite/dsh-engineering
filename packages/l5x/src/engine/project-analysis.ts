@@ -1,5 +1,5 @@
 /** Shared static source analysis. Connections express dependencies, never runtime causality. */
-import type { L5xRoutine } from '../model/types.ts'
+import type { L5xDocument, L5xRoutine } from '../model/types.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { resolveTag } from './tag-resolution.ts'
 import { addressAt, lexLogic, parseLadder, type LadderNode, type LogicToken } from './logic-syntax.ts'
@@ -283,4 +283,17 @@ export function traceDependencies(project: ProjectSnapshot, symbol: string, scop
     }
   }
   return { project_id: project.id, source_sha256: project.sha256, resolution, direction, nodes: [...nodes].map(([symbol, depth]) => ({ symbol, depth })), edges: edges.map(edge => ({ ...edge, evidence: edge.evidence.map(index => analysis.references[index]) })), ...coverage, truncated, static_complete: analysis.static_complete && !truncated, runtime_causality_verified: false }
+}
+
+/** Program names whose logic is safety: declared safety, named "safety", or scheduled by a safety task. */
+export function safetyProgramNames(document: L5xDocument): ReadonlySet<string> {
+  const names = new Set<string>()
+  for (const program of document.programs) {
+    if (program.safety || /^safety$/iu.test(program.name)) names.add(program.name.toUpperCase())
+  }
+  for (const task of document.tasks) {
+    if (!task.safety) continue
+    for (const name of task.programs) names.add(name.toUpperCase())
+  }
+  return names
 }

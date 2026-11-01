@@ -94,6 +94,7 @@ function controllerSummary(controller: XmlElement): L5xControllerSummary {
 function buildPrograms(controller: XmlElement): readonly L5xProgram[] {
   return programElements(controller).map(program => ({
     name: optionalAttribute(program, 'Name', ''),
+    safety: /safety/iu.test(optionalAttribute(program, 'Class', '')),
     mainRoutine: optionalAttribute(program, 'MainRoutineName', ''),
     description: descriptionOf(program),
   }))
@@ -110,6 +111,7 @@ function buildTasks(controller: XmlElement): readonly L5xTask[] {
     priority: optionalAttribute(task, 'Priority', ''),
     description: descriptionOf(task),
     programs: scheduledPrograms(task),
+    safety: /safety/iu.test(optionalAttribute(task, 'Class', '')),
   }))
 }
 

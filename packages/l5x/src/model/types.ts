@@ -175,6 +175,8 @@ export interface L5xAoiDefinition extends L5xAoiInfo {
 export interface L5xProgram {
   /** Program name. */
   readonly name: string
+  /** True when the program declares Class="Safety". */
+  readonly safety: boolean
   /** Name of the program's main routine, empty string when the export omits it. */
   readonly mainRoutine: string
   /** Description, empty string when the program has none. */
@@ -195,6 +197,8 @@ export interface L5xTask {
   readonly description: string
   /** Names of the programs the task schedules, in the export's order. */
   readonly programs: readonly string[]
+  /** True when the task declares Class="Safety" (a GuardLogix safety task). */
+  readonly safety: boolean
 }
 
 /** One I/O module. */

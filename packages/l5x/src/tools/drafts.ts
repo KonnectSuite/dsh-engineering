@@ -16,6 +16,7 @@ import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-
 import { getRoutine } from '../model/routines.ts'
 import { instructionByName } from '../engine/instructions.ts'
 import { resolveSymbol } from '../engine/analysis.ts'
+import { safetyProgramNames } from '../engine/project-analysis.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
@@ -145,6 +146,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       async run(args, exec) {
         const project = await session.require(optionalString(args, 'project_id'), exec)
         const program = requiredString(args, 'program')
+        if (safetyProgramNames(project.document).has(program.toUpperCase())) {
+          throw new L5xError('PROTECTED_TARGET', `Program ${program} runs in a safety task, and safety logic cannot be changed.`, 'Edit the safety task in Studio with a safety signature update; this service refuses safety edits.')
+        }
         const routine = requiredString(args, 'routine')
         const mode = requiredString(args, 'mode')
         const text = optionalString(args, 'text')
@@ -294,6 +298,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           }
         }
         const program = requiredString(args, 'program')
+        if (safetyProgramNames(project.document).has(program.toUpperCase())) {
+          throw new L5xError('PROTECTED_TARGET', `Program ${program} runs in a safety task, and safety logic cannot be changed.`, 'Edit the safety task in Studio with a safety signature update; this service refuses safety edits.')
+        }
         const routine = requiredString(args, 'routine')
         const requested = optionalInteger(args, 'rung')
         const body = getRoutine(project.document, program, routine)?.body
