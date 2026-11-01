@@ -882,6 +882,13 @@
   heuristic caveat and a pointer to `run_checks`. Verified on `Seco_Homogenizer` (684 info, 7 warning; top rules UNDOCUMENTED_ROUTINE 257, UNDOCUMENTED_RUNG 237,
   UNUSED_TAG 149) and pinned with a built fixture whose unused tag produces a finding. 438 package tests.
 
+- **The capability report advertised eleven tools that do not exist.** `studio_capabilities` listed `propose_change`, `validate_proposal`, `prepare_change_set`,
+  `apply_change_set`, `propose_udt_change`, `trace_symbol`, `analyze_project`, `find_parsed_references`, `trace_signal`, `analyze_impact`,
+  `project_execution_graph`, plus a references family and `sample_live_tags` - none of which are tools here - and the UDT refusal told callers to use
+  `propose_udt_change`. Every list now names the real surface (analysis, draft and live), references reports itself unavailable, and the UDT message says to
+  change the type in Studio or remove instances first. A new spec walks every `tools` array the report returns and requires each entry to be a registered tool,
+  so a phantom name cannot ship again. 439 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

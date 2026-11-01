@@ -382,7 +382,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
       return setDescription(xml, member, operation.description)
     }
     const instances = typeInstances(context.document, operation.udt)
-    if (context.allowUdtInstances !== true && instances.length > 0) throw new EngineeringError('UDT_HAS_INSTANCES', `Data type ${operation.udt} has ${instances.length} instance(s) (first: ${instances[0]}); changing a member rewrites serialized tag data. Use propose_udt_change to emit a Data Type component for Studio import.`)
+    if (context.allowUdtInstances !== true && instances.length > 0) throw new EngineeringError('UDT_HAS_INSTANCES', `Data type ${operation.udt} has ${instances.length} instance(s) (first: ${instances[0]}); changing a member rewrites serialized tag data. Change the data type in Studio, or remove every instance first; a member change rewrites serialized tag data.`)
     requireIdentifier(operation.name, 'Data type member')
     if (members.children.some(member => member.attributes.Name?.toLowerCase() === operation.name.toLowerCase())) throw new EngineeringError('NAME_COLLISION', 'Member already exists in the data type')
     const dataType = operation.data_type.toUpperCase()
