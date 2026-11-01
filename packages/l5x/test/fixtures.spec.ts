@@ -797,14 +797,30 @@ describe('two output instructions in series', () => {
 })
 
 describe('comparing alarm definitions', () => {
-  it('reports an alarm description change', async () => {
-    const base = l5x({
-      name: 'AlarmCompare',
-      tags: tag('D', 'DINT'),
-      programs: program('Main', rllRoutine('MainRoutine', [])),
-      tasks: task('MainTask', ['Main']),
-    })
-    const withAlarm = (description: string): string => base.replace('</Controller>', `<Alarms><Alarm Name="HiTemp" Description="${description}"/></Alarms></Controller>`)
+  const baseProject = (): string => l5x({
+    name: 'AlarmCompare',
+    tags: tag('D', 'DINT'),
+    programs: program('Main', rllRoutine('MainRoutine', [])),
+    tasks: task('MainTask', ['Main']),
+  })
+  const withAlarm = (description: string): string => baseProject().replace('</Controller>', `<Alarms><Alarm Name="HiTemp" Description="${description}"/></Alarms></Controller>`)
+
+  it('lists and reads one alarm definition', async () => {
+    const xml = withAlarm('old alarm text')
+    const l5xTool = harness(new Map([['alarms.L5X', new TextEncoder().encode(xml)]]), {})
+    const opened = await l5xTool.call('open_project', { path: 'alarms.L5X' })
+    expect(opened.error).toBeUndefined()
+    expect((opened.data?.counts as { alarms: number }).alarms).toBe(1)
+    const listed = await l5xTool.call('list_components', { kind: 'alarm', limit: 10 })
+    const rows = listed.data?.rows as { name: string; kind: string; description: string }[]
+    expect(rows[0]).toEqual({ name: 'HiTemp', kind: 'Alarm', description: 'old alarm text' })
+    const read = await l5xTool.call('get_component', { kind: 'alarm', name: 'HiTemp' })
+    expect((read.data?.component as { name: string } | undefined)?.name).toBe('HiTemp')
+    const missing = await l5xTool.call('get_component', { kind: 'alarm', name: 'Nope' })
+    expect(missing.error?.code).toBe('COMPONENT_NOT_FOUND')
+  })
+
+  it('reports an alarm description change and an added alarm', async () => {
     const before = withAlarm('old alarm text')
     const after = withAlarm('new alarm text')
     const l5xTool = harness(new Map([['alarm-before.L5X', new TextEncoder().encode(before)], ['alarm-after.L5X', new TextEncoder().encode(after)]]), {})
@@ -820,6 +836,15 @@ describe('comparing alarm definitions', () => {
     expect(changes[0]?.component).toBe('alarm')
     expect(changes[0]?.key).toBe('HiTemp')
     expect(changes[0]?.kind).toBe('changed')
+    // An alarm only in the later export is an addition, not a silent difference.
+    const addedTool = harness(new Map([['alarm-none.L5X', new TextEncoder().encode(baseProject())], ['alarm-one.L5X', new TextEncoder().encode(withAlarm('first'))]]), {})
+    const none = await addedTool.call('open_project', { path: 'alarm-none.L5X' })
+    const one = await addedTool.call('open_project', { path: 'alarm-one.L5X' })
+    expect(none.error).toBeUndefined()
+    expect(one.error).toBeUndefined()
+    const added = await addedTool.call('compare_projects', { before_id: none.data?.project_id, after_id: one.data?.project_id })
+    expect(added.data?.count).toBe(1)
+    expect((added.data?.changes as { component: string; kind: string }[])[0]).toMatchObject({ component: 'alarm', kind: 'added' })
   })
 })
 

@@ -1398,6 +1398,10 @@
   one `<Alarm Name="HiTemp">` in each of two exports, confirms the reader counts it, changes only its description and asserts exactly one
   `alarm`/`HiTemp`/`changed` result. 519 package tests.
 
+- **Alarm definitions are listed, read and compared.** A third alarm test lists the alarm row (name, element kind, description), reads it with
+  `get_component`, refuses an unknown alarm name with `COMPONENT_NOT_FOUND`, and compares an export with no alarm against one with an alarm to get a
+  single `added` change. The alarm reader is now covered from list through compare. 520 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
