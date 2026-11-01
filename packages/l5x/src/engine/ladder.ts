@@ -164,6 +164,19 @@ export function validateRungTags(project: ProjectSnapshot, nodes: readonly Ladde
     }
     const instruction = instructionByName(node.name)
     if (instruction === undefined) continue
+    // An unmodelled instruction's operand list is not this catalogue's to judge; raw text is the
+    // supported way to write it.
+    if (instruction.notModelled === true) continue
+    const restSlot = instruction.operands.find(slot => slot.rest === true)
+    const required = instruction.operands.filter(slot => slot.optional !== true && slot.rest !== true).length
+    if (node.operands.length < required || (restSlot === undefined && node.operands.length > instruction.operands.length)) {
+      const shape = instruction.operands.map(slot => `${slot.name}${slot.optional === true ? '?' : ''}`).join(', ')
+      throw new L5xError(
+        'INVALID_OPERAND',
+        `${instruction.name} takes ${required === instruction.operands.length ? String(required) : `${required}-${instruction.operands.length}`} operand(s): ${shape}; ${node.operands.length} were supplied.`,
+        `Call list_instructions with filter "${instruction.name}" for the exact operand order, or compose the rung instead.`,
+      )
+    }
     for (const [index, tokens] of node.operands.entries()) {
       const slot = instruction.operands[index]
       if (slot === undefined) continue
@@ -329,7 +342,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // Refuse an unmodelled operand list explicitly. Claiming an arity this catalogue cannot
     // check is worse than refusing: it answers with confidence and leaves no way forward.
     if (instruction.notModelled === true) {
-      throw new L5xError('INSTRUCTION_NOT_MODELLED', `${instruction.name} is catalogued, but this catalogue does not model its operands.`, `Write the rung text with draft_rung (for example {"text":"${instruction.name}(...);"}) and run draft_validate; draft_rung does not use the catalogue for arity. Call list_instructions to see which names are modelled.`)
+      throw new L5xError('INSTRUCTION_NOT_MODELLED', `${instruction.name} is catalogued, but this catalogue does not model its operands.`, `Write the rung text with draft_rung (for example {"text":"${instruction.name}(...);"}); draft_rung accepts the raw operand list for an unmodelled instruction. Call list_instructions to see which names are modelled.`)
     }
     // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
     // parameters as its target routine declares.

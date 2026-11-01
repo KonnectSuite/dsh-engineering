@@ -1355,6 +1355,11 @@
   every tag a catalogued instruction names against the composing program, the controller and this draft's staged tags; another program's local tag is
   refused with the owning program named. Two draft tests had used undefined Start/Run tags and now use real program tags. 512 package tests.
 
+- **A raw rung must supply the right operand count.** `draft_rung` accepted `TON(T,500)`, which Studio refuses with
+  `RxCMP_E_AUDIT_INVALIDNOOFOPS`. The validator now checks arity for every modelled instruction (required-to-maximum range, repeating tails
+  allowed) and names the slot list and the supplied count; unmodelled instructions keep the raw escape hatch. Tests hold the short and long cases, a
+  valid TON, and an unmodelled FAL rung. 513 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

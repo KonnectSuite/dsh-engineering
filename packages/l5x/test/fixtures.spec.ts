@@ -773,6 +773,30 @@ describe('draft tag validation', () => {
   })
 })
 
+describe('a raw rung operand count', () => {
+  it('refuses a modelled instruction with too few or too many operands', async () => {
+    // TON(T,500) fails Studio with RxCMP_E_AUDIT_INVALIDNOOFOPS; the raw path now refuses it too.
+    const project = l5x({
+      name: 'RawArity',
+      tags: tag('D', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', []), { tags: tag('B', 'BOOL') + tag('T', 'TIMER') }),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['arity.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'arity.l5x' })).error).toBeUndefined()
+    const draft = (text: string) => l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text })
+    const short = await draft('XIC(B)TON(T,500);')
+    expect(short.error?.code).toBe('INVALID_OPERAND')
+    expect(short.error?.message).toContain('TON takes 3 operand(s)')
+    const long = await draft('XIC(B)ADD(D,1,D,2);')
+    expect(long.error?.code).toBe('INVALID_OPERAND')
+    expect(long.error?.message).toContain('ADD takes 3 operand(s)')
+    expect((await draft('XIC(B)TON(T,500,0);')).error).toBeUndefined()
+    // An unmodelled instruction keeps the raw escape hatch, since its operand list is not modelled.
+    expect((await draft('FAL(D,D)OTE(B);')).error).toBeUndefined()
+  })
+})
+
 describe('a program scope', () => {
   it('resolves only that program local tags and controller tags', async () => {
     // A rung staged in Beta that reads Alpha's LocalA built nowhere: Studio answered
