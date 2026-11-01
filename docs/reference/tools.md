@@ -176,7 +176,7 @@ List the ladder instructions the composer validates: mnemonic, category, summary
 
 #### `document_project`
 
-Write a documentation bundle for the open project into a NEW folder: project summary, I/O list, tag CSVs (including the Studio Tags and Comments shape) and per-program rung documentation with comments and referenced tags. Never writes to the export.
+Write a documentation bundle for the open project into a NEW folder: project summary, I/O list, tag CSVs (including the Studio Tags and Comments shape) and per-program logic documentation — rungs with their comments and referenced tags, and the decoded elements of function block and sequential function chart routines. Never writes to the export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

@@ -138,6 +138,14 @@
   document, a truncated export, an unclosed export, a missing path and five malformed specs at the tools and asserts
   every answer is a repairable code and **never** `INTERNAL`.
 
+- **Documentation covers the whole program, not just its ladder.** `document_project` skipped every routine whose body was
+  not `RLL`, so a bundle reporting "3 routines" documented one of them — and the committed fixture alone has a Structured
+  Text `FaultHandler` that appeared nowhere. A function block diagram is now written as a per-sheet element table (element,
+  reference, from-id, to-id), a sequential function chart the same, Structured Text as its quoted source, and a language
+  the reader does not decompose is named with its note. The tool description says what it produces, and
+  `packages/l5x/test/documentation.spec.ts` asserts all three: the ST routine's source, an FBD sheet with its `IRef` and
+  `Wire` rows, and an SFC sheet.
+
 ### Fixed
 
 - **Every renamed instruction resolves in both spellings.** The alias table covered 8 of the 16 pairs, so a
@@ -149,7 +157,7 @@
   `instructions.ts` and `instruction-set.ts`, so the catalogue was 121 entries for 118 names. One home per
   mnemonic: 118 entries, 118 names.
 
-285 package tests and 70 bundle tests pass.
+288 package tests and 70 bundle tests pass.
 
 ## [0.73.0] - 2026-10-31
 

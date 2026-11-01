@@ -92,7 +92,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
     }),
     tool({
       name: 'document_project',
-      description: 'Write a documentation bundle for the open project into a NEW folder: project summary, I/O list, tag CSVs (including the Studio Tags and Comments shape) and per-program rung documentation with comments and referenced tags. Never writes to the export.',
+      description: 'Write a documentation bundle for the open project into a NEW folder: project summary, I/O list, tag CSVs (including the Studio Tags and Comments shape) and per-program logic documentation — rungs with their comments and referenced tags, and the decoded elements of function block and sequential function chart routines. Never writes to the export.',
       parameters: object({
         output_root: string('New folder for the bundle. It must not exist. Example: "C:/Projects/Line/documentation".'),
         include: list('Optional parts to produce; default all. One of project, io, tags, rungs.', choice('One part.', DOCUMENT_PARTS)),

@@ -16,7 +16,7 @@
 import { L5xError } from '../core/errors.ts'
 import type { ProjectSnapshot } from '../session.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
-import type { L5xDocument, L5xRung, L5xTag } from '../model/types.ts'
+import type { L5xDocument, L5xRoutine, L5xRung, L5xTag } from '../model/types.ts'
 import { aliasesOf } from './configuration.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { resolveTag } from './tag-resolution.ts'
@@ -165,6 +165,43 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
 }
 
 /** Rung skeletons, one markdown file per program (and continuation). */
+/** One-line description of a diagram language. */
+const DIAGRAM_LANGUAGE: Readonly<Record<string, string>> = {
+  FBD: 'Function block diagram',
+  SFC: 'Sequential function chart',
+}
+
+/**
+ * Document one non-ladder routine from the elements the reader decoded.
+ *
+ * Execution semantics remain unverified, so this lists what the export records — an element,
+ * the reference it carries and the wires between ids — and never claims what runs.
+ *
+ * @param info - The routine's listing entry.
+ * @param routine - The routine whose body is not ladder.
+ * @returns A markdown section for the routine.
+ */
+function diagramSection(info: { readonly name: string; readonly description: string }, routine: L5xRoutine): string {
+  const body = routine.body
+  const heading = `\n## ${info.name}\n\n${info.description || 'No routine description.'}\n`
+  // Structured Text documents itself: the source is the logic, one <Line> per source line.
+  if (body.type === 'ST') return `${heading}\n\`\`\`\n${body.code}\n\`\`\`\n`
+  if (body.type === 'other') return `${heading}\nNot decomposed: ${body.note}.\n`
+  // Ladder is documented by the rung path, so it never reaches here.
+  if (body.type !== 'FBD' && body.type !== 'SFC') return ''
+  const nodes = body.nodes
+  const language = DIAGRAM_LANGUAGE[body.type] ?? body.type
+  const sheets = [...new Set(nodes.map(node => node.sheet))].sort((left, right) => left - right)
+  let text = `\n## ${info.name}\n\n${info.description || 'No routine description.'}\n\n${language}; ${nodes.length} element(s) on ${sheets.length} sheet(s).\n`
+  for (const sheet of sheets) {
+    text += `\n### Sheet ${sheet}\n\n| Element | Reference | From | To |\n|---|---|---|---|\n`
+    for (const node of nodes.filter(entry => entry.sheet === sheet)) {
+      text += mdRow(node.kind, node.operand ?? node.name ?? node.text ?? '', node.fromId ?? '', node.toId ?? '')
+    }
+  }
+  return text
+}
+
 function rungFiles(project: ProjectSnapshot, options: { programs: readonly string[] | undefined; routines: readonly string[] | undefined; perFile: number }): Map<string, string> {
   const files = new Map<string, string>()
   const document = project.document
@@ -179,7 +216,14 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
     for (const info of listRoutines(document, programName)) {
       if (options.routines !== undefined && !options.routines.includes(info.name)) continue
       const routine = getRoutine(document, programName, info.name)
-      if (routine === undefined || routine.body.type !== 'RLL') continue
+      if (routine === undefined) continue
+      // A project's logic is not always ladder. Dropping the other languages made a bundle
+      // that said "3 routines" document one of them, which reads as if the program were
+      // one rung long.
+      if (routine.body.type !== 'RLL') {
+        section += diagramSection(info, routine)
+        continue
+      }
       section += `\n## ${info.name}\n\n${info.description || 'No routine description.'}\n`
       for (const rung of routine.body.rungs) {
         const instructions = [...instructionsOf(parseLadder(rung.text).nodes)].join(', ')

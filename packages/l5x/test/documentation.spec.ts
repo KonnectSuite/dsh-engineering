@@ -2,6 +2,7 @@
  * The documentation bundle: files, counts, filters and refusals.
  */
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { fixtureBytes, harness } from './harness.ts'
 
 /** Open the fixture with the editing entry mounted. */
@@ -91,5 +92,44 @@ describe('document_project', () => {
     const result = await l5x.call('document_project', { output_root: 'docs', programs: ['NoSuchProgram'] })
     expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
     expect(result.error?.message).toContain('NoSuchProgram')
+  })
+})
+
+
+describe('documenting a routine that is not ladder', () => {
+  it('writes a Structured Text routine as its source', async () => {
+    const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
+    await l5x.call('open_project', { path: 'sample.l5x' })
+    const bundle = await l5x.call('document_project', { output_root: 'docs' })
+    expect(bundle.error).toBeUndefined()
+    const text = [...l5x.written].filter(([path]) => path.includes('rungs')).map(([, content]) => content).join(' | ')
+    expect(text).toContain('## FaultHandler')
+    // The source is the logic, so it is quoted rather than dropped.
+    // The source is the logic, so it is quoted rather than dropped.
+    const section = text.split('## FaultHandler')[1] ?? ''
+    expect(section.split('```').length).toBeGreaterThan(2)
+  })
+
+  it('writes a function block diagram as an element table', async () => {
+    const synthetic = new Uint8Array(readFileSync(new URL('./fixtures/engineering-synthetic.l5x', import.meta.url)))
+    const l5x = harness(new Map([['synthetic.l5x', synthetic]]))
+    await l5x.call('open_project', { path: 'synthetic.l5x' })
+    expect((await l5x.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    const doc = l5x.written.get('docs/rungs/Main.md') ?? ''
+    expect(doc).toContain('## Diagram')
+    expect(doc).toContain('Function block diagram')
+    expect(doc).toContain('| IRef | Start |')
+    expect(doc).toContain('| Wire |')
+  })
+
+  it('writes a sequential function chart as an element table', async () => {
+    const synthetic = new Uint8Array(readFileSync(new URL('./fixtures/engineering-synthetic.l5x', import.meta.url)))
+    const l5x = harness(new Map([['synthetic.l5x', synthetic]]))
+    await l5x.call('open_project', { path: 'synthetic.l5x' })
+    expect((await l5x.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    const doc = l5x.written.get('docs/rungs/Main.md') ?? ''
+    expect(doc).toContain('## Chart')
+    expect(doc).toContain('Sequential function chart')
+    expect(doc).toContain('Step')
   })
 })
