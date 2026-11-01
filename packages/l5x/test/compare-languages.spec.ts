@@ -149,6 +149,23 @@ describe('a change record', () => {
     expect(tagChange).toBeDefined()
     expect((tagChange?.changed_fields ?? []).join(' ')).toContain('description')
   })
+
+  it('names the pin a changed wire lands on', async () => {
+    const before = synthetic()
+    const after = before.replace('<Wire FromID="1" ToID="2"/>', '<Wire FromID="1" ToID="2" ToParam="SourceA"/>')
+    expect(after).not.toBe(before)
+    const l5x = harness(new Map([
+      ['old.l5x', new TextEncoder().encode(before)],
+      ['new.l5x', new TextEncoder().encode(after)],
+    ]))
+    const oldProject = await l5x.call('open_project', { path: 'old.l5x' })
+    const newProject = await l5x.call('open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: oldProject.data?.project_id, after_id: newProject.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
+    const diagram = changes.find(change => change.component === 'diagram')
+    expect(diagram).toBeDefined()
+    expect((diagram?.changed_fields ?? []).join(' ')).toContain('SourceA')
+  })
 })
 
 

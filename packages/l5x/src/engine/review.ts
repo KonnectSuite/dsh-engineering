@@ -221,9 +221,10 @@ function renderChangeValue(value: unknown): string {
     const record = value as Record<string, unknown>
     if (typeof record.kind === 'string') {
       const id = record.id !== undefined ? `#${String(record.id)}` : record.fromId !== undefined ? `#${String(record.fromId)}->${String(record.toId)}` : ''
+      const pins = `${record.fromParam === undefined ? '' : ` from ${String(record.fromParam)}`}${record.toParam === undefined ? '' : ` to ${String(record.toParam)}`}`
       const operand = record.operand !== undefined ? ` ${String(record.operand)}` : ''
       const content = record.text !== undefined ? ` ${String(record.text)}` : ''
-      return `${record.kind}${id}${operand}${content}`
+      return `${record.kind}${id}${pins}${operand}${content}`
     }
     return JSON.stringify(record)
   }

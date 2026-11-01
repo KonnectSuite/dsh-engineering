@@ -1103,6 +1103,9 @@
   `Wire 0 -> 2 SourceA` instead of `Wire 0 -> 2`. Verified on the composed all-language project (SourceA, SourceB, Dest) and held by a test.
   478 package tests.
 
+- **A changed wire pin is named in the change summary.** `renderChangeValue` now includes `from`/`to` pins, so a comparison that flips a wire from
+  `SourceA` to `SourceB` says exactly that instead of printing `Wire #0->2` on both sides. Held by a changed-fields test. 479 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
