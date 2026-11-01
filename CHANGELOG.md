@@ -1259,6 +1259,10 @@
   `TON(T1,1000,0)` against it, and applies both in one export, proving the reachability fix end to end rather than only tag presence.
   498 package tests.
 
+- **Each alarm instruction takes its own alarm structure.** ALMA(AlarmD,...) with a digital alarm and ALMD(AlarmA,...) with an analog alarm each failed
+  Studio with INVALIDOPTYPE, while ALMA(AlarmA,...) and ALMD(AlarmD,...) built 0/0. ALMA's Alarm slot now accepts ALARM_ANALOG only and ALMD's
+  ALARM_DIGITAL only; tests hold both refusals and both valid rungs, and the dist smoke checks the built catalogue. 499 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

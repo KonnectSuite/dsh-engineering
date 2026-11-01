@@ -61,6 +61,9 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   }
   // MSG takes a MESSAGE tag, not an arbitrary tag.
   assert.deepEqual(instructionByName('MSG')?.operands[0]?.types, ['MESSAGE'])
+  // Each alarm instruction takes its own alarm structure.
+  assert.deepEqual(instructionByName('ALMA')?.operands[0]?.types, ['ALARM_ANALOG'])
+  assert.deepEqual(instructionByName('ALMD')?.operands[0]?.types, ['ALARM_DIGITAL'])
   // FIND returns its position in a DINT.
   const findResult = instructionByName('FIND')?.operands.find(operand => operand.name === 'Result')
   assert.deepEqual(findResult?.types, ['DINT'])

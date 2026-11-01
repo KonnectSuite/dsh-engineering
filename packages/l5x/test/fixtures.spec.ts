@@ -608,6 +608,32 @@ describe('a mnemonic that is not in the Logix set', () => {
   })
 })
 
+describe('an alarm instruction', () => {
+  it('takes its own alarm structure type', async () => {
+    // ALMA(AlarmD,...) and ALMD(AlarmA,...) each failed INVALIDOPTYPE; the matching types built 0/0.
+    const project = l5x({
+      name: 'AlarmGuard',
+      tags: tag('AlarmA', 'ALARM_ANALOG') + tag('AlarmD', 'ALARM_DIGITAL') + tag('D', 'DINT') + tag('B1', 'BOOL') + tag('B2', 'BOOL') + tag('B3', 'BOOL') + tag('B4', 'BOOL'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+    const l5xTool = harness(new Map([['alarm.l5x', new TextEncoder().encode(project)]]), { editing: true })
+    expect((await l5xTool.call('open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
+    const almaWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmD', 'D', 'B1', 'B2', 'B3'] }] }) })
+    expect(almaWrong.error?.code).toBe('INVALID_OPERAND')
+    expect(almaWrong.error?.message).toContain('must be ALARM_ANALOG')
+    const almaGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmA', 'D', 'B1', 'B2', 'B3'] }] }) })
+    expect(almaGood.error).toBeUndefined()
+    expect((almaGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ALMA(AlarmA,D,B1,B2,B3);')
+    const almdWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmA', 'B1', 'B2', 'B3', 'B4'] }] }) })
+    expect(almdWrong.error?.code).toBe('INVALID_OPERAND')
+    expect(almdWrong.error?.message).toContain('must be ALARM_DIGITAL')
+    const almdGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmD', 'B1', 'B2', 'B3', 'B4'] }] }) })
+    expect(almdGood.error).toBeUndefined()
+    expect((almdGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ALMD(AlarmD,B1,B2,B3,B4);')
+  })
+})
+
 describe('an array dimension', () => {
   it('needs an array tag and a dimension from 0 to 2', async () => {
     // SIZE(5,0,Pos) failed MUSTBEARRAY and SIZE(Arr,3,Pos) failed OUTOFRANGE; SIZE(Arr,2,Pos) builds.
