@@ -130,3 +130,36 @@ describe('tags a chart needs are created with it', () => {
     expect((written.match(/<Tag Name="Tran_1"/gu) ?? []).length).toBe(1)
   })
 })
+
+
+describe('actions and numeric conditions', () => {
+  it('creates an SFC_ACTION tag and emits the qualifier', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', {
+      ...CHART,
+      steps: JSON.stringify([{ id: 0, name: 'Step_1', initial: true, actions: [{ id: 4, name: 'Action_1', qualifier: 'NonStored' }] }, { id: 1, name: 'Step_2' }]),
+    })
+    expect(chart.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'action.L5X' })
+    expect(applied.error).toBeUndefined()
+    const written = l5x.written.get('action.L5X') ?? ''
+    // This chart, with this generated action tag, built in Logix Designer with 0 warnings.
+    expect(written).toContain('<Tag Name="Action_1" TagType="Base" DataType="SFC_ACTION"')
+    expect(written).toContain('<Action ID="4" Operand="Action_1" Qualifier="NonStored" IsBoolean="true" PresetUsesExpr="false"/>')
+  })
+
+  it('keeps a numeric comparison condition verbatim', async () => {
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', {
+      ...CHART,
+      transitions: JSON.stringify([{ id: 2, name: 'Tran_1', condition: 'c1 > 5' }]),
+    })
+    expect(chart.error).toBeUndefined()
+    const applied = await l5x.call('draft_apply', { output_path: 'numeric.L5X' })
+    expect(applied.error).toBeUndefined()
+    // A numeric comparison is accepted by the SFC compiler; only a bare literal is not.
+    expect(l5x.written.get('numeric.L5X')).toContain('<![CDATA[c1 > 5]]>')
+  })
+})
