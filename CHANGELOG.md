@@ -1085,6 +1085,9 @@
   backticked snake_case name must be a registered tool, a compose pattern, a host-side Studio tool or a parameter - so a phantom name fails the build instead
   of sending the assistant hunting. A self-check holds `open_project` in the scan so an empty result cannot pass. 471 package tests.
 
+- **A failed batch stages nothing.** A third destination-guard test sends a two-rung `compose_batch` whose second rung has a literal destination: the batch is
+  refused with `INVALID_OPERAND` and no draft exists to clean up, so a later `draft_apply` cannot write half a change set. 472 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

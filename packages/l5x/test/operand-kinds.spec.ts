@@ -50,6 +50,22 @@ describe('a destination is a writable location, not a literal', () => {
     expect(good.error).toBeUndefined()
     expect(text(good.data)).toBe('MOV(5,LineSpeed);')
   })
+  it('refuses a whole batch when one rung has a literal destination', async () => {
+    const l5x = await opened()
+    const batch = await l5x.call('compose_batch', {
+      program: 'Main',
+      routine: 'MainRoutine',
+      rung: 0,
+      rungs_json: JSON.stringify([
+        { spec: { series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'OTE', args: ['StopPB'] }] } },
+        { spec: { series: [{ instr: 'ADD', args: ['LineSpeed', 'LineSpeed', '5'] }] } },
+      ]),
+    })
+    expect(batch.error?.code).toBe('INVALID_OPERAND')
+    // Refused before staging anything: either no draft exists yet, or it holds zero operations.
+    const list = await l5x.call('draft_list')
+    expect(list.error?.code === 'NO_DRAFT' || list.data?.operation_count === 0).toBe(true)
+  })
 })
 
 describe('a routine name is not a tag', () => {
