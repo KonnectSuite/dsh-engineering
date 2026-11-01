@@ -646,6 +646,10 @@ describe('a one-based start position', () => {
     const findOne = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Pos'] }] }) })
     expect(findOne.error).toBeUndefined()
     expect((findOne.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('FIND(Str1,Str2,1,Pos);')
+    // A STRING Result failed INVALIDOPTYPE; the position is a DINT.
+    const findWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Str2'] }] }) })
+    expect(findWrong.error?.code).toBe('INVALID_OPERAND')
+    expect(findWrong.error?.message).toContain('must be DINT')
     const midZero = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '0', 'Str2'] }] }) })
     expect(midZero.error?.code).toBe('INVALID_OPERAND')
     expect(midZero.error?.message).toContain('1-based')

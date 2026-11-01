@@ -61,6 +61,9 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   }
   // MSG takes a MESSAGE tag, not an arbitrary tag.
   assert.deepEqual(instructionByName('MSG')?.operands[0]?.types, ['MESSAGE'])
+  // FIND returns its position in a DINT.
+  const findResult = instructionByName('FIND')?.operands.find(operand => operand.name === 'Result')
+  assert.deepEqual(findResult?.types, ['DINT'])
 })
 
 test('the built engine knows an infinite check is input-type and REAL-only', { skip }, async () => {
