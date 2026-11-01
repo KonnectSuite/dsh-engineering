@@ -394,6 +394,14 @@
   not `matches`, and `usage_map` had already been naming the other scope since round 19. Both corrections are in the record
   because a defect claim that turns out to be a field-name mistake is the same class of error as a wrong operand order.
 
+- **The built artifact is now tested, not just the source.** Every test in this package imports TypeScript through `tsx`, which proves
+  the code we write - not the code the app ships. A new `dist-smoke.spec.mjs` imports the compiled `lib/` directly and checks
+  three things a user would notice if the build dropped them: `DCM`/`DCS`/`CROUT` are catalogued with **8/10/9** operands,
+  `spellingForProject('MOV', new Set(), '37')` returns **`MOVE`** while a v19 project still gets `MOV`, and `rungFindings`
+  still raises **`JSR_WITHOUT_RETURN`** for `JSR(Sub)`. It skips cleanly when `lib/` is absent, so a fresh clone stays green,
+  and all three pass against the build produced this cycle. This closes the gap between "the source is right" and "the artifact
+  is right" - the live app still bundles an older copy (round 57), but what we can build is now proven to carry every fix.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
