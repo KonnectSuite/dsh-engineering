@@ -1041,6 +1041,13 @@
   (`lib/client.js`, `packages/viewer/lib/client.js`) in line with the current instruction set, which they had lagged. This is the step that turns the
   plugin into a publishable package; installing it remains the user's decision. 457 package tests, 90 bundle, docs current.
 
+- **New check: a safety tag written from standard logic.** Studio 5000's installed help states `A standard parameter cannot write to a safety tag or a safety
+  parameter` (page 130692); nothing in `run_checks` enforced it. `SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC` now reports each such write with tag, writer program,
+  routine and rung, and a remedy to move the write into a safety program. Confirmed silent on the two safety-bearing production exports (0 findings on
+  Seco_Homogenizer and Carpenter) and firing exactly once on a built fixture. Writing the test exposed a **real reporting bug**: `run_checks` filtered the rows
+  but reported the unfiltered count in `total`, so a rule filter could say "691 findings" beside zero rows. `total` is now the filtered count, with
+  `total_unfiltered` retained. 458 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

@@ -327,6 +327,35 @@ describe('a module with no Name', () => {
   })
 })
 
+describe('a safety tag written from standard logic', () => {
+  it('is reported, and the same tag written from the safety program is not', async () => {
+    const base = (standardRung: string) => l5x({
+      name: 'SafetyWrite',
+      tags: tag('SAFE_TAG', 'BOOL', ' Class="Safety"'),
+      programs: [
+        program('SafetyProgram', rllRoutine('MainRoutine', [{ text: 'XIC(SAFE_TAG)OTE(SAFE_TAG);' }]), { safety: true }),
+        program('Main', rllRoutine('MainRoutine', [{ text: standardRung }])),
+      ].join(''),
+      tasks: [
+        task('SafetyTask', ['SafetyProgram'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
+        task('MainTask', ['Main']),
+      ].join(''),
+    })
+    const bad = harness(new Map([['sw.l5x', new TextEncoder().encode(base('XIC(SAFE_TAG)OTE(SAFE_TAG);'))]]))
+    expect((await bad.call('open_project', { path: 'sw.l5x' })).error).toBeUndefined()
+    const findings = await bad.call('run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
+    const rows = (findings.data?.findings ?? []) as { message: string; fix?: string; evidence: { program?: string; tag?: string } }[]
+    expect(rows.length).toBe(1)
+    expect(String(rows[0]?.message)).toContain('written from standard program Main')
+    expect(String(rows[0]?.fix)).toContain('safety program')
+    expect(rows[0]?.evidence?.tag).toBe('SAFE_TAG')
+    const good = harness(new Map([['sw.l5x', new TextEncoder().encode(base('NOP();'))]]))
+    await good.call('open_project', { path: 'sw.l5x' })
+    const silent = await good.call('run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
+    expect(Number(silent.data?.total)).toBe(0)
+  })
+})
+
 describe('an encrypted add-on instruction', () => {
   it('is marked protected, counted in the limits and not shown as zero routines', async () => {
     const built = l5x({

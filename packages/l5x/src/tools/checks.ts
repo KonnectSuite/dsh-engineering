@@ -108,8 +108,10 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         return success(
           `${filtered.length} ${filtered.length === 1 ? 'finding' : 'findings'}${rule === undefined ? '' : ` for rule ${rule}`} in ${project.document.controller.name} (${bySeverity.critical ?? 0} critical, ${bySeverity.warning ?? 0} warning, ${bySeverity.info ?? 0} info), ordered by severity.${result.skipped_readings === undefined ? '' : ' ' + result.skipped_readings.length + ' reading(s) skipped.'}`,
           {
-            total: result.count,
+            // total is what the caller filtered for; the unfiltered count stays available separately.
+            total: filtered.length,
             filtered_total: filtered.length,
+            ...(filtered.length === result.count ? {} : { total_unfiltered: result.count }),
             offset,
             limit,
             truncated: offset + limit < filtered.length,

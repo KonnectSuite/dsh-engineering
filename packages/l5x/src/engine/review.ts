@@ -1,6 +1,6 @@
 import type { ProjectSnapshot } from '../session.ts'
 import { evidenceOf, resolveSymbol, type Evidence } from './analysis.ts'
-import type { L5xDocument, L5xRoutine } from '../model/types.ts'
+import type { L5xDocument, L5xRoutine, L5xTag } from '../model/types.ts'
 import { engineeringTags, moduleConfigurations } from './configuration.ts'
 import { MNEMONIC_RENAME_MAJOR, mnemonicMismatchesIn, mnemonicsIn } from './mnemonics.ts'
 import { INSTRUCTIONS, instructionByName } from './instructions.ts'
@@ -74,6 +74,7 @@ const REMEDIES: Record<string, string> = {
   DUPLICATE_OUTPUT: 'Confirm intent and keep a single writer per tag, or split the tag.',
   MNEMONIC_VERSION_MISMATCH: 'Use the instruction spelling this project revision builds; list_instructions gives both spellings.',
   RUNG_NO_OUTPUT: 'Give the rung an output instruction, or delete it.',
+  SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC: 'Move the write into a safety program, or have standard logic write a standard tag that safety logic consumes.',
   DUPLICATE_ROUTINE_NAME: 'Two routines share a name in one scope; rename one in Studio - the draft tools do not rename.',
   IO_MODULE_CHANGED: 'This is a baseline difference, not a defect; confirm the module change was intended before applying it.',
   JSR_ROUTINE_MISSING: 'Declare the routine the JSR names, or correct the target; list_components kind "routine" shows the declared names.',
@@ -172,6 +173,32 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     // Every finding a reader can act on should say what to do; rules without a remedy stay silent.
     const remedy = fix ?? REMEDIES[rule]
     findings.push({ rule, severity, message, evidence, confidence, ...(remedy === undefined ? {} : { fix: remedy }) })
+  }
+  // Studio 5000 help (page 130692): "A standard parameter cannot write to a safety tag or a safety parameter."
+  const safetyTags = new Map<string, L5xTag>()
+  const safetyTagsByName = new Map<string, L5xTag>()
+  for (const tag of doc.tags) {
+    const isSafety = tag.safety === true || doc.programs.some(program => program.safety && program.name.toUpperCase() === tag.scope.toUpperCase())
+    if (!isSafety) continue
+    safetyTags.set(`${tag.scope.toUpperCase()}::${tag.name.toUpperCase()}`, tag)
+    safetyTagsByName.set(tag.name.toUpperCase(), tag)
+  }
+  for (const reference of references) {
+    if (reference.access !== 'write' && reference.access !== 'read_write') continue
+    if (reference.scope.startsWith('AOI::')) continue
+    const writer = doc.programs.find(program => program.name.toUpperCase() === reference.scope.toUpperCase())
+    if (writer === undefined || writer.safety === true) continue
+    const declared = reference.resolved === undefined
+      ? safetyTagsByName.get(reference.symbol.split('.')[0]?.toUpperCase() ?? '')
+      : safetyTags.get(reference.resolved.toUpperCase())
+    if (declared === undefined) continue
+    report(
+      'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC',
+      'warning',
+      `Safety tag ${declared.name} is written from standard program ${writer.name} (${reference.routine}${reference.rung === undefined ? '' : ` rung ${reference.rung}`}); Studio 5000 help states a standard parameter cannot write to a safety tag.`,
+      { tag: declared.name, tagScope: declared.scope, program: writer.name, routine: reference.routine, ...(reference.rung === undefined ? {} : { rung: reference.rung }), access: reference.access, context: reference.context },
+      'high',
+    )
   }
   const used = new Set<string>()
   for (const ref of references) {
