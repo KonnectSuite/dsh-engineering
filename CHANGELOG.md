@@ -1191,6 +1191,8 @@
   `ATAN2(R,R,R)`, built 0/0 and are real. Tests hold the type, the rail refusal and the legal driven form; the dist smoke checks the built engine.
   492 package tests.
 
+- **Generated client faces refreshed** after the ISINF/ISNAN catalogue change, so repository bytes match the rebuilt artifact.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
