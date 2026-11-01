@@ -593,7 +593,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       parameters: object({
         scope: string('Declaring scope: "controller" or a program name. Example: "controller".'),
         name: string('New tag name, a Logix identifier of at most 40 characters. Example: "SP_Start".'),
-        data_type: string('Declared data type. Example: "REAL", a UDT name, or a built-in structure Studio defaults: CONTROL, SERIAL_PORT_CONTROL, ALARM_DIGITAL, ALARM_ANALOG, FBD_MATH.'),
+        data_type: string('Declared data type. Example: "REAL", a UDT name, or a built-in structure: TIMER, COUNTER, PID, STRING, MESSAGE, CONTROL, SERIAL_PORT_CONTROL, ALARM_DIGITAL, ALARM_ANALOG, FBD_MATH, FBD_TIMER, FBD_COUNTER, FBD_COMPARE, FBD_LOGICAL.'),
         description: string('Tag description shown in Studio. Example: "Start threshold".'),
         value: integer('Optional scalar initial value. Example: 80.'),
         dimensions: string('Optional array dimensions, space separated. Example: "4 2".'),

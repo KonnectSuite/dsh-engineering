@@ -642,14 +642,14 @@ describe('tag types the catalogue needs', () => {
     })
     const l5xTool = harness(new Map([['types.l5x', new TextEncoder().encode(project)]]), { editing: true })
     expect((await l5xTool.call('open_project', { path: 'types.l5x' })).error).toBeUndefined()
-    for (const [name, dataType] of [['T1', 'TIMER'], ['C1', 'COUNTER'], ['P1', 'PID'], ['S1', 'STRING'], ['M1', 'MESSAGE']]) {
+    for (const [name, dataType] of [['T1', 'TIMER'], ['C1', 'COUNTER'], ['P1', 'PID'], ['S1', 'STRING'], ['M1', 'MESSAGE'], ['F1', 'FBD_TIMER'], ['F2', 'FBD_COUNTER'], ['F3', 'FBD_COMPARE'], ['F4', 'FBD_LOGICAL'], ['F5', 'FBD_MATH']]) {
       const added = await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: dataType })
       expect(added.error).toBeUndefined()
     }
     const applied = await l5xTool.call('draft_apply', { output_path: 'builtin-types.l5x' })
     expect(applied.error).toBeUndefined()
     const output = String(l5xTool.written.get('builtin-types.l5x'))
-    for (const type of ['TIMER', 'COUNTER', 'PID', 'STRING', 'MESSAGE']) expect(output).toContain(`DataType="${type}"`)
+    for (const type of ['TIMER', 'COUNTER', 'PID', 'STRING', 'MESSAGE', 'FBD_TIMER', 'FBD_COUNTER', 'FBD_COMPARE', 'FBD_LOGICAL', 'FBD_MATH']) expect(output).toContain(`DataType="${type}"`)
   })
 })
 

@@ -1251,6 +1251,10 @@
   use (TON, CTU, PID, string instructions), yet `draft_tag` answered UNKNOWN_DATA_TYPE for each; MESSAGE was fixed last round and STRING was
   missing too. The test declares all five through the tool and applies them, and the skill lists them. 498 package tests.
 
+- **FBD block structures are declarable, with one name excluded by build.** Studio accepted tags of FBD_MATH, FBD_TIMER, FBD_COUNTER, FBD_COMPARE and
+  FBD_LOGICAL (0/0) but aborted the import for FBD_MOVE, so only the five proven names were added to the built-in set. draft_tag's description lists them,
+  and the built-in-type test now declares ten types through the tool. 498 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added
