@@ -103,6 +103,14 @@ describe('a change to formatting only', () => {
     expect(changes.count).toBe(0)
   })
 
+  it('ignores the embedded Local module Studio adds when it saves', async () => {
+    const before = synthetic()
+    const after = before.replace('<Modules><Module Name="OutputCard"', '<Modules><Module Name="Local" CatalogNumber="5069-L320ER" Major="37" Minor="11"/><Module Name="OutputCard"')
+    expect(after).not.toBe(before)
+    const changes = await compare(before, after)
+    expect(changes.count).toBe(0)
+  })
+
   it('ignores the patch revision Studio stamps on a controller', async () => {
     const before = synthetic()
     const after = before.replace('MajorRev="36" MinorRev="0"', 'MajorRev="36" MinorRev="11"')

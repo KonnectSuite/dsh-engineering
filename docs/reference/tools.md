@@ -152,7 +152,7 @@ Run evidence-backed engineering checks on the open project: unused tags, unresol
 
 #### `compare_projects`
 
-Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored.
+Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored, and Studio-added defaults are compared by effect: built-in types, the embedded Local module, the release patch revision, diagram node ids and ST padding are not reported as changes.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

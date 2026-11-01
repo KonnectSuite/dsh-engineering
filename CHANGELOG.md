@@ -1095,6 +1095,10 @@
   only, and ignores the embedded Local module and patch revision. The same round trip now reports **0 changes**, while real operand/rung/ST changes are
   still reported. 476 package tests.
 
+- **The comparator's normalisation is stated where the caller reads it.** `compare_projects` now says that Studio-added defaults are compared by
+  effect - built-in types, the embedded Local module, the release patch revision, diagram node ids and ST padding do not count as changes - and a test holds
+  the Local-module case alongside the patch-revision, task-priority and tag-radix cases. 477 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

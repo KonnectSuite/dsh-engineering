@@ -133,7 +133,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
     }),
     tool({
       name: 'compare_projects',
-      description: 'Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored.',
+      description: 'Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored, and Studio-added defaults are compared by effect: built-in types, the embedded Local module, the release patch revision, diagram node ids and ST padding are not reported as changes.',
       parameters: object({
         before_id: string('Project id of the earlier export. Open both exports first with open_project.'),
         after_id: string('Project id of the later export.'),
