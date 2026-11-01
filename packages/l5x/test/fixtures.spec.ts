@@ -473,7 +473,7 @@ describe('a slot that takes a tag of any type', () => {
   it('refuses a literal, as Studio does for the STD control block', async () => {
     const project = l5x({
       name: 'StdGuard',
-      tags: tag('Arr', 'REAL', ' Dimensions="10"') + tag('Dest', 'REAL') + tag('Ctrl', 'CONTROL'),
+      tags: tag('Arr', 'REAL', ' Dimensions="10"') + tag('Dest', 'REAL') + tag('Ctrl', 'CONTROL') + tag('Count', 'DINT'),
       programs: program('Main', rllRoutine('MainRoutine', [])),
       tasks: task('MainTask', ['Main']),
     })
@@ -486,6 +486,10 @@ describe('a slot that takes a tag of any type', () => {
     expect(bad.error?.message).toContain('needs a writable control')
     const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', 'Ctrl', '10', '0'] }] }) })
     expect(good.error).toBeUndefined()
+    // A DINT destination fails Studio's type check (RxCMP_E_AUDIT_INVALIDOPTYPE); the composer names it.
+    const wrongType = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Count', 'Ctrl', '10', '0'] }] }) })
+    expect(wrongType.error?.code).toBe('INVALID_OPERAND')
+    expect(wrongType.error?.message).toContain('must be REAL')
     const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
     expect(rungs?.[0]?.neutral_text).toBe('STD(Arr,0,Dest,Ctrl,10,0);')
   })

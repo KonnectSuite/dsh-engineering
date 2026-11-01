@@ -1129,6 +1129,11 @@
   literal there, a test holds both sides, and the dist smoke asserts the built catalog carries it. A blanket "ANY slots never take literals" rule was tried
   and rejected because `JSR(Sub,0)` and a built PID rung legitimately use literals. 483 package tests, 4/4 smoke, bundle 91.
 
+- **A vendor type restriction is enforced and advertised.** The installed STD help says its Destination must be REAL; a DINT destination failed Studio with
+  `RxCMP_E_AUDIT_INVALIDOPTYPE` while REAL built. `InstructionOperand` now carries optional accepted `types`, STD's Destination is `['REAL']`, and the
+  composer refuses a tag of another numeric type with both types named. `list_instructions` exposes `types`, tests hold the composition and the listing, and
+  the dist smoke asserts the built slot. 484 package tests, 4/4 smoke.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

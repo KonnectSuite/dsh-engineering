@@ -24,6 +24,8 @@ export interface InstructionOperand {
   readonly kind: OperandKind
   /** True when the instruction accepts the slot but does not require it. */
   readonly optional?: boolean
+  /** Accepted tag types where the vendor restricts the slot; omitted means any type the kind allows. */
+  readonly types?: readonly string[]
   /** True when Studio requires a tag here: a literal is refused at build with RxCMP_E_AUDIT_INVALIDOPKIND. */
   readonly writable?: boolean
   /** True when this slot repeats for each remaining operand, as a JSR parameter list does. */
@@ -118,7 +120,7 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'SQR', category: 'Math', summary: 'Square root of the source into the destination.', operands: [num('Source'), numW('Destination')] },
   { name: 'CPT', category: 'Math', summary: 'Compute an expression into the destination; the destination comes first in the rung text.', operands: [numW('Destination'), expression()] },
 
-  { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), numW('Destination'), { name: 'Control', kind: 'ANY', writable: true }, num('Length'), num('Position')] },
+  { name: 'STD', category: 'File and array', summary: 'Standard deviation of the array elements into a REAL destination.', operands: [any('Array'), num('Dimension to Vary'), { name: 'Destination', kind: 'NUMBER', writable: true, types: ['REAL'] }, { name: 'Control', kind: 'ANY', writable: true }, num('Length'), num('Position')] },
   { name: 'SIZE', category: 'File and array', summary: 'Number of elements in one dimension of an array into the size tag.', operands: [any('Source'), num('Dimension to Vary'), numW('Size')] },
   { name: 'JXR', category: 'Program control', summary: 'Run an external routine; parameters and a return tag may follow the control structure.', operands: [routine('External routine name'), any('External routine control')] },
   { name: 'PID', category: 'Process', summary: 'PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.', operands: [any('PID'), num('Process variable'), num('Tieback'), num('Control variable'), any('PID master loop'), bool('Inhold bit'), num('Inhold value')] },

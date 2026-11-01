@@ -69,6 +69,14 @@ describe('list_instructions', () => {
     expect(forRow?.operands.find(slot => slot.name === 'Initial value')?.writable).toBeUndefined()
   })
 
+  it('states the vendor type restriction on a slot', async () => {
+    const l5x = harness(fixtureBytes)
+    const rows = (await l5x.call('list_instructions', { filter: 'STD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean; types?: string[] }[] }[]
+    const destination = rows.find(row => row.name === 'STD')?.operands.find(slot => slot.name === 'Destination')
+    expect(destination?.writable).toBe(true)
+    expect(destination?.types).toEqual(['REAL'])
+  })
+
   it('filters by name and by category', async () => {
     const l5x = harness(fixtureBytes)
     const byName = await l5x.call('list_instructions', { filter: 'ton' })

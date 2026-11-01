@@ -35,6 +35,9 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
     assert.equal(slot?.writable, true, `${name} ${slotName}`)
   }
   assert.equal(instructionByName('ADD')?.operands[0]?.writable, undefined)
+  // The vendor restricts STD's Destination to REAL; the built slot must carry that type.
+  const destination = instructionByName('STD')?.operands.find(operand => operand.name === 'Destination')
+  assert.deepEqual(destination?.types, ['REAL'])
 })
 
 test('the built engine reports a JSR without its return slot', { skip }, async () => {

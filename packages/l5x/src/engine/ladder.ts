@@ -295,15 +295,13 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // keeps the case the export uses, and a tag, literal or expression is unchanged
     // because checkOperand preserves the text it was given.
     const emitted = args.map((argument, index) => {
-      const text = checkOperand(project, argument, kindAt(index), operands).text
-      // Studio refuses a literal in a writable slot only at build time, with
-      // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. Catch it while composing and
-      // state the written order, so the caller never learns the order from a failed build.
-      const slot = instruction.operands[index] ?? restSlot
+      const operand = checkOperand(project, argument, kindAt(index), operands)
+      const text = operand.text
       // Studio refuses a literal in a writable slot only at build time, with
       // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
       // composer can refuse them and state the written order instead. A slot of kind ANY is not
       // automatically writable: JSR's return parameter and PID's master loop accept 0.
+      const slot = instruction.operands[index] ?? restSlot
       if (slot?.writable === true && isLiteral(text)) {
         const what = slot.name === 'Destination' ? 'destination' : slot.name.toLowerCase()
         const fix = slot.name === 'Destination'
@@ -312,6 +310,11 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
             ? 'Pass a declared DINT tag as the loop index; the initial, terminal and step values may be literals.'
             : `Pass a declared tag for the ${slot.name} slot; Studio refuses a literal there.`
         throw new L5xError('INVALID_OPERAND', `${text} is a literal where ${instruction.name} needs a writable ${what}.`, fix)
+      }
+      // Studio checks the declared type at build time too (RxCMP_E_AUDIT_INVALIDOPTYPE):
+      // STD's Destination must be REAL even though its slot kind is NUMBER.
+      if (slot?.types !== undefined && operand.resolved && operand.data_type !== undefined && !slot.types.includes(operand.data_type)) {
+        throw new L5xError('INVALID_OPERAND', `${text} is ${operand.data_type}; ${instruction.name} ${slot.name} must be ${slot.types.join(' or ')}.`, `Use a tag of type ${slot.types.join(' or ')}.`)
       }
       return text
     })
