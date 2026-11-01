@@ -3,7 +3,7 @@
  *
  * Everything here is derived from the parsed project: the generator provides the
  * structure and the citations, and the narrative prose stays the caller's job.
- * That split is deliberate  -  a generated narrative would be an unsourced claim,
+ * That split is deliberate - a generated narrative would be an unsourced claim,
  * while a rung with its number, comment, text and referenced tags is evidence a
  * reviewer can check in one click.
  *
@@ -238,8 +238,8 @@ const DIAGRAM_LANGUAGE: Readonly<Record<string, string>> = {
 /**
  * Document one non-ladder routine from the elements the reader decoded.
  *
- * Execution semantics remain unverified, so this lists what the export records  -  an element,
- * the reference it carries and the wires between ids  -  and never claims what runs.
+ * Execution semantics remain unverified, so this lists what the export records - an element,
+ * the reference it carries and the wires between ids - and never claims what runs.
  *
  * @param info - The routine's listing entry.
  * @param routine - The routine whose body is not ladder.
@@ -273,7 +273,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
   for (const programName of programs) {
     const program = document.programs.find(entry => entry.name === programName)
     if (program === undefined) continue
-    let section = `# ${programName}  -  rung documentation${program.safety === true ? ' (SAFETY program)' : ''}\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
+    let section = `# ${programName} - rung documentation${program.safety === true ? ' (SAFETY program)' : ''}\n\nProgram main routine: ${program.mainRoutine || 'not declared'}. ${program.description || 'No program description.'}\n`
     let part = 1
     let inFile = 0
     let headingWritten = false
@@ -303,7 +303,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
           part += 1
           inFile = 0
           headingWritten = true
-          section = `# ${programName}  -  rung documentation (continued)\n`
+          section = `# ${programName} - rung documentation (continued)\n`
         }
       }
     }

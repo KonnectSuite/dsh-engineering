@@ -1005,6 +1005,11 @@
   five source files, including the PROJECT.md "Generated from ... sha256 ...â€¦" line. All now read ASCII (` - ` and `...`), the repository's stated default:
   **0 occurrences remain**, and the generated header is `# COMBUSTION_SAFETY - rung documentation (SAFETY program)`. 454 package tests.
 
+- **Double spaces from the mojibake cleanup collapsed.** Replacing the corrupt dash with " - " left padding behind in four files, so the generated header read
+  `# COMBUSTION_SAFETY  -  rung documentation`. It now reads `# COMBUSTION_SAFETY - rung documentation (SAFETY program)`, verified on the real export.
+  A scan of the source for other non-ASCII found only legitimate text - the Chinese strings in `locales.ts` and meaningful symbols in comments and messages -
+  so nothing else was touched. 454 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

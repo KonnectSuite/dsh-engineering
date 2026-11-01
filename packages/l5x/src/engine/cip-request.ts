@@ -74,7 +74,7 @@ function declaredTag(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUP
  *
  * Reading is not writing: an alias resolves to the same value the controller
  * serves under either name, and ExternalAccess="None" only stops writes. Refusing
- * aliases here made the ordinary case  -  a BOOL alias onto a module point  -  look
+ * aliases here made the ordinary case - a BOOL alias onto a module point - look
  * like a mistyped tag.
  */
 function resolveReadable(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUPPORTED_WRITE_TAG' | 'UNSUPPORTED_POLL_TAG' = 'UNSUPPORTED_WRITE_TAG'): ScalarTag {
