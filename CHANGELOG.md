@@ -50,6 +50,18 @@
   rediscovered. `REF` was tried in the same batch and refused with `RxCMP_E_AUDIT_INVALIDOPTYPE` for both DINT and REAL
   operands, so it stays uncatalogued until a real export shows its operand type.
 
+- **Six serial ASCII instructions compose, and the table that had their operand counts wrong is corrected.** `ABL`,
+  `ACB`, `ARD`, `ARL`, `AWA` and `AWT` are now described with the operand types the installed help publishes — `Channel`
+  DINT, `Serial Port Control` a `SERIAL_PORT_CONTROL` structure, `Serial Port Control Length` and the character counts
+  DINT, `Destination`/`Source` STRING — so the catalogue counts **139** instructions. Five of them already existed in the
+  compact `instruction-set.ts` table with the wrong arity (`ABL=AL` is two slots; Studio takes three), which is how the
+  duplicate-mnemonic test found them; that table is now reduced to the four entries still generic. Verification is a
+  Studio build through our own composer: `compose_rung` produced `XIC(a1)ABL(chan,ctl,cnt)OTE(a2)`,
+  `ARD(chan,text,ctl,len,cnt)OTE(a2)` and `AWT(chan,text,ctl,len,cnt)OTE(a2)`, `draft_apply` wrote the export, and Logix
+  Designer built it with **0 warnings, 0 errors and an ACD written**. The family is **controller-gated**: on a 5069 and on
+  a 1756-L83E every operand combination returns `RxCMP_E_AUDIT_INVALIDOPTYPE`, while the same rungs build on a 1756-L73,
+  and the help states these instructions are unavailable on controllers without serial ports.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

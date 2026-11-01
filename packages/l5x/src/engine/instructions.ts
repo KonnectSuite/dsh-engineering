@@ -93,6 +93,16 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'ISINF', category: 'Comparison', summary: 'True when the source is infinite.', operands: [num('Source')] },
   { name: 'ISNAN', category: 'Comparison', summary: 'True when the source is not a number.', operands: [num('Source')] },
 
+  // ASCII serial port. These need a controller with a serial port: they build on ControlLogix 5570
+  // (1756-L73) and are refused on CompactLogix 5380 (5069) and ControlLogix 5580 (1756-L83E), where
+  // the compiler answers RxCMP_E_AUDIT_INVALIDOPTYPE for every operand combination tried.
+  { name: 'ABL', category: 'ASCII', summary: 'Count the characters in the serial port buffer until a line terminator.', operands: [num('Channel'), any('Serial Port Control'), num('Character Count')] },
+  { name: 'ACB', category: 'ASCII', summary: 'Count the characters still in the serial port buffer.', operands: [num('Channel'), any('Serial Port Control'), num('Character Count')] },
+  { name: 'ARD', category: 'ASCII', summary: 'Read characters from the serial port buffer into a destination.', operands: [num('Channel'), str('Destination'), any('Serial Port Control'), num('Serial Port Control Length'), num('Characters Read')] },
+  { name: 'ARL', category: 'ASCII', summary: 'Read a line from the serial port buffer into a destination.', operands: [num('Channel'), str('Destination'), any('Serial Port Control'), num('Serial Port Control Length'), num('Characters Read')] },
+  { name: 'AWA', category: 'ASCII', summary: 'Write characters to the serial port buffer, appended.', operands: [num('Channel'), str('Source'), any('Serial Port Control'), num('Serial Port Control Length'), num('Characters Sent')] },
+  { name: 'AWT', category: 'ASCII', summary: 'Write characters to the serial port buffer.', operands: [num('Channel'), str('Source'), any('Serial Port Control'), num('Serial Port Control Length'), num('Characters Sent')] },
+
   // Math
   { name: 'ADD', category: 'Math', summary: 'Add source A and source B into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },
   { name: 'SUB', category: 'Math', summary: 'Subtract source B from source A into the destination.', operands: [num('Source A'), num('Source B'), num('Destination')] },

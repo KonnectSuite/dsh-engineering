@@ -117,6 +117,40 @@ describe('composing with a newly catalogued instruction', () => {
     expect(rungs[0]?.neutral_text).toBe('XIC(StartPB)FLL(LineSpeed,FaultCount,5);')
   })
 
+  it('composes the serial ASCII rungs Studio built on a 5570', async () => {
+    // Verified by a Logix Designer build of a 1756-L73 export: 0 warnings, 0 errors, ACD written.
+    // These instructions need a controller with a serial port; a 5069 refuses every operand type.
+    const ascii = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Name="AsciiTest" ProcessorType="1756-L73" MajorRev="37" MinorRev="0">
+    <Tags>
+      <Tag Name="a1" TagType="Base" DataType="BOOL"/><Tag Name="a2" TagType="Base" DataType="BOOL"/>
+      <Tag Name="chan" TagType="Base" DataType="DINT"/>
+      <Tag Name="ctl" TagType="Base" DataType="SERIAL_PORT_CONTROL"/>
+      <Tag Name="text" TagType="Base" DataType="STRING"/>
+      <Tag Name="len" TagType="Base" DataType="DINT"/>
+      <Tag Name="cnt" TagType="Base" DataType="DINT"/>
+    </Tags>
+    <Programs><Program Name="Main" MainRoutineName="R"><Routines>
+      <Routine Name="R" Type="RLL"><RLLContent><Rung Number="0" Type="N"><Text><![CDATA[XIC(a1)OTE(a2);]]></Text></Rung></RLLContent></Routine>
+    </Routines></Program></Programs>
+    <Tasks><Task Name="MainTask" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+    const l5x = harness(new Map([['ascii.l5x', new TextEncoder().encode(ascii)]]), { editing: true })
+    expect((await l5x.call('open_project', { path: 'ascii.l5x' })).error).toBeUndefined()
+    for (const [spec, expected] of [
+      [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ABL', args: ['chan', 'ctl', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ABL(chan,ctl,cnt)OTE(a2);'],
+      [{ series: [{ instr: 'ARD', args: ['chan', 'text', 'ctl', 'len', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'ARD(chan,text,ctl,len,cnt)OTE(a2);'],
+      [{ series: [{ instr: 'AWT', args: ['chan', 'text', 'ctl', 'len', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'AWT(chan,text,ctl,len,cnt)OTE(a2);'],
+    ] as const) {
+      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      expect(result.error).toBeUndefined()
+      const rungs = result.data?.rungs as { neutral_text: string }[]
+      expect(rungs[0]?.neutral_text).toBe(expected)
+    }
+  })
+
   it('composes the float comparisons Studio built', async () => {
     // Verified by a Logix Designer build: passed, 0 warnings, 0 errors, ACD written.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
