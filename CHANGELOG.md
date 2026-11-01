@@ -766,6 +766,12 @@
   `Value leaves to 2 consumer(s); no downstream logic in this export.` Verified on `GrosfillexLine3`; the test that covered `find_references` for these tags
   now asserts both trace directions too. 424 package tests.
 
+- **`compare_projects` now reports a controller-level change.** Two exports with **different processor types and different saved routes** compared as
+  **"0 changes"**: the diff walked programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST and diagrams, but never the controller
+  record itself, so a firmware change or a new CommPath was invisible. It now emits a `controller` change, and `changed_fields` names the fields:
+  `processorType 1756-L81ES to 1756-L82ES`, `commPath CIM_Prep/10.211.100.100/Backplane/0 to .../101/...`. That is the first thing a release
+  review should see, and it was the one thing the comparison could not. A test pins it. 424 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

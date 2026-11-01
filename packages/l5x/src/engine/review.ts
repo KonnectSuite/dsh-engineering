@@ -56,6 +56,8 @@ export function compareProjects(before: ProjectSnapshot, after: ProjectSnapshot)
   const oldDiagrams = oldRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : [] }))
   const newDiagrams = newRoutines.filter(r => r.body.type === 'FBD' || r.body.type === 'SFC').map(r => ({ program: r.program, routine: r.name, type: r.type, nodes: r.body.type === 'FBD' || r.body.type === 'SFC' ? r.body.nodes : [] }))
   result.push(...changes('diagram', oldDiagrams, newDiagrams, v => `${v.program}::${v.routine}`))
+  // A processor change or a new saved route is a real change; comparing only components said "no changes".
+  result.push(...changes('controller', [{ ...before.document.controller }], [{ ...after.document.controller }], () => 'controller'))
   return { before: before.sha256, after: after.sha256, changes: result, count: result.length, coverage: { before: before.features, after: after.features } }
 }
 

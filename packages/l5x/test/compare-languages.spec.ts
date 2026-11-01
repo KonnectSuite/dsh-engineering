@@ -410,3 +410,31 @@ describe('who writes a networked tag', () => {
     expect(String(downstream.summary)).toContain('Value leaves to 2 consumer(s)')
   })
 })
+
+/** The same project on a different processor and a different saved route. */
+const CONTROLLER_VARIANT = (processor: string, commPath: string): string => `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetType="Controller" ContainsContext="false">
+  <Controller Use="Target" Name="Ctrl" ProcessorType="${processor}" MajorRev="36" MinorRev="11" CommPath="${commPath}" ProjectSN="16#0163_1759">
+    <Tags/>
+    <Programs><Program Name="P" MainRoutineName="R"><Routines><Routine Name="R" Type="RLL"><RLLContent/></Routine></Routines></Program></Programs>
+    <Tasks><Task Name="T" Type="CONTINUOUS"><ScheduledPrograms><ScheduledProgram Name="P"/></ScheduledPrograms></Task></Tasks>
+  </Controller>
+</RSLogix5000Content>`
+
+describe('a controller-level change', () => {
+  it('reports the processor and the saved route instead of "no changes"', async () => {
+    const l5x = harness(new Map([
+      ['a.l5x', new TextEncoder().encode(CONTROLLER_VARIANT('1756-L81ES', 'CIM_Prep/10.211.100.100/Backplane/0'))],
+      ['b.l5x', new TextEncoder().encode(CONTROLLER_VARIANT('1756-L82ES', 'CIM_Prep/10.211.100.101/Backplane/0'))],
+    ]))
+    const one = await l5x.call('open_project', { path: 'a.l5x' })
+    const two = await l5x.call('open_project', { path: 'b.l5x' })
+    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
+    const controller = changes.find(change => change.component === 'controller')
+    expect(controller).toBeDefined()
+    const fields = (controller?.changed_fields ?? []).join(' ')
+    expect(fields).toContain('processorType 1756-L81ES to 1756-L82ES')
+    expect(fields).toContain('commPath')
+  })
+})
