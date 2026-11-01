@@ -1243,6 +1243,10 @@
 
 - **Generated client faces refreshed** after the array-dimension metadata change, so repository bytes match the rebuilt artifact.
 
+- **A MESSAGE tag can now be declared through the tools.** MSG requires a MESSAGE tag, but `draft_tag` answered UNKNOWN_DATA_TYPE for one because
+  the built-in structure set lacked it. `message` joins CONTROL, SERIAL_PORT_CONTROL, ALARM_ANALOG, ALARM_DIGITAL and FBD_MATH; the test declares
+  Msg2 and applies it, and the skill lists MESSAGE. Studio already built `MSG(Msg)` with such a tag 0/0. 497 package tests.
+
 ## [0.74.0] - 2026-11-01
 
 ### Added

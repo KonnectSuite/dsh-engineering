@@ -648,6 +648,12 @@ describe('a message instruction', () => {
     const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['Msg'] }] }) })
     expect(good.error).toBeUndefined()
     expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MSG(Msg);')
+    // A MESSAGE tag has to be declarable through the tools, or MSG cannot be composed from scratch.
+    const messageTag = await l5xTool.call('draft_tag', { scope: 'controller', name: 'Msg2', data_type: 'MESSAGE', description: 'second message' })
+    expect(messageTag.error).toBeUndefined()
+    const applied = await l5xTool.call('draft_apply', { output_path: 'msg-tag.l5x' })
+    expect(applied.error).toBeUndefined()
+    expect(String(l5xTool.written.get('msg-tag.l5x'))).toContain('<Tag Name="Msg2"')
   })
 })
 
