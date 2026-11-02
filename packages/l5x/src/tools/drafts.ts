@@ -870,7 +870,12 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             operation_count: draft.operations.length,
             validation: prepared.validation,
           },
-          [{ tool: 'open_project', args: { path: target }, why: 'Reopen the written draft and review it.' }],
+          [
+            // The applied file is a real export, so the viewer draws all four languages from it. Showing it is
+            // the point at which a composed draft stops being text and becomes something to look at.
+            { tool: 'present', args: { files: [{ path: target, description: 'The applied draft, opened as logic' }] }, why: 'Show the written export so the composed logic can be read as ladder, ST, FBD or SFC.' },
+            { tool: 'open_project', args: { path: target }, why: 'Reopen the written draft and review it.' },
+          ],
           DRAFT_COVERAGE,
         )
       },

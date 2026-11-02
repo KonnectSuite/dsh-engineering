@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+- **Applying a draft now shows the export it wrote.** `draft_apply` is the moment a staged draft stops being text: the
+  file it writes is a real export, so the viewer draws the ladder, the Structured Text, the function block sheet or the
+  chart from it, in every language. It now offers `present` beside `open_project`.
 - **Every composed language now writes the document the chat draws.** `draft_st`, `draft_fbd` and `draft_sfc` used to
   leave the pane blank until `draft_apply` — only the rung composer produced a preview. Each now writes
   `.l5x-preview/<program>-<routine>.L5X` in the language it staged (`STContent`, `FBDContent` or `SFCContent`), built
