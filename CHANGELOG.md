@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+- **Every composed language now writes the document the chat draws.** `draft_st`, `draft_fbd` and `draft_sfc` used to
+  leave the pane blank until `draft_apply` — only the rung composer produced a preview. Each now writes
+  `.l5x-preview/<program>-<routine>.L5X` in the language it staged (`STContent`, `FBDContent` or `SFCContent`), built
+  by the same `fbdSheetXml`/`sfcChartXml` functions the apply path uses, so the preview is the sheet or chart that will
+  be written rather than an approximation of it. Each returns `preview_path` and points the answer at `present`.
+  Staging stays more permissive than applying: a body the builders refuse — a wire naming no node, a pin the block does
+  not show, a sheet that both writes and reads one tag — leaves the append successful without a preview, and the refusal
+  still belongs to `draft_validate` and `draft_apply`, which is exactly what the existing refusal tests pin.
+  The three tool descriptions say so, and the generated reference was regenerated.
 - **A diagram routine can now be copied, as the XML it actually is.** Rungs copy as NeutralText and Structured Text
   copies as source, but an FBD sheet and a chart have no text form to paste — Studio's *Paste ASCII / Neutral Text*
   does not apply to them. The pane therefore offers **Copy routine L5X** for a diagram routine and puts that routine's

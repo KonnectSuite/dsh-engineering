@@ -51,6 +51,22 @@ describe('sequential function charts', () => {
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
 
+  it('writes an SFC preview document the chat can draw', async () => {
+    // A staged chart used to be invisible until apply; the preview carries the same chart XML.
+    const l5x = await opened()
+    await l5x.call('draft_routine', { program: 'Main', name: 'Chart', language: 'SFC' })
+    const chart = await l5x.call('draft_sfc', CHART)
+    expect(chart.error).toBeUndefined()
+    const path = String((chart.data as { preview_path?: unknown } | undefined)?.preview_path ?? '')
+    expect(path).toBe('.l5x-preview/Main-Chart.L5X')
+    const xml = l5x.written.get(path) ?? ''
+    expect(xml).toContain('Type="SFC"')
+    expect(xml).toContain('<SFCContent')
+    expect(xml).toContain('Operand="Step_1"')
+    expect(xml).toContain('<DirectedLink FromID="0" ToID="2" Show="true"/>')
+    expect(chart.next?.map(step => step.tool)).toContain('present')
+  })
+
   it('writes steps, transitions and links in the shape a real export uses', async () => {
     const l5x = await opened()
 

@@ -11,6 +11,21 @@ async function opened(): Promise<Harness> {
 }
 
 describe('draft accumulation', () => {
+  it('writes a Structured Text preview the chat can draw', async () => {
+    // Staging an ST body used to leave the reader with nothing to look at until the whole draft applied.
+    const l5x = await opened()
+    const staged = await l5x.call('draft_st', { program: 'MainProgram', routine: 'Structured', code: 'Total := Total + 1;\nIF Total > 10 THEN Total := 0; END_IF;' })
+    expect(staged.error).toBeUndefined()
+    const path = String((staged.data as { preview_path?: unknown } | undefined)?.preview_path ?? '')
+    expect(path).toBe('.l5x-preview/MainProgram-Structured.L5X')
+    const xml = l5x.written.get(path) ?? ''
+    expect(xml).toContain('Type="ST"')
+    // One <Line> per source line, and no newline inside a CDATA: Studio refuses both.
+    expect((xml.match(/<Line Number="/gu) ?? []).length).toBe(2)
+    expect(/<!\[CDATA\[[^\]]*\n/u.test(xml)).toBe(false)
+    expect(staged.next?.map(step => step.tool)).toContain('present')
+  })
+
   it('refuses a rung whose right rail is not an output', async () => {
     const l5x = await opened()
     const result = await l5x.call('draft_rung', {

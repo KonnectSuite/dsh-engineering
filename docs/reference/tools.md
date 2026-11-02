@@ -299,7 +299,7 @@ Compose and stage many validated ladder rungs in one call: every rung is checked
 
 #### `draft_st`
 
-Append one Structured Text body replacement to the chat draft. Nothing is written until draft_apply.
+Append one Structured Text body replacement to the chat draft. Writes an ST preview document in .l5x-preview/ so the answer can draw it; the project is untouched until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -310,7 +310,7 @@ Append one Structured Text body replacement to the chat draft. Nothing is writte
 
 #### `draft_fbd`
 
-Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Nothing is written until draft_apply.
+Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Writes an FBD preview document in .l5x-preview/ carrying the same sheet XML the apply path writes; the project is untouched until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -324,7 +324,7 @@ Append one function block diagram sheet to the chat draft: blocks, references an
 
 #### `draft_sfc`
 
-Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Nothing is written until draft_apply.
+Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Writes an SFC preview document in .l5x-preview/ carrying the same chart XML the apply path writes; the project is untouched until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

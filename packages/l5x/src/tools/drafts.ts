@@ -9,10 +9,10 @@
  * @module dsh-engineering-l5x/tools/drafts
  */
 
-import { prepareChangeSet, checkRungText } from '../engine/change-set.ts'
+import { prepareChangeSet, checkRungText, fbdSheetXml, sfcChartXml } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
-import { previewDocument, previewSlug } from '../engine/preview-document.ts'
+import { previewDocument, previewDocumentOf, previewSlug, type PreviewBody } from '../engine/preview-document.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { getRoutine } from '../model/routines.ts'
@@ -103,13 +103,44 @@ function jsonObject(value: string | undefined, name: string): Record<string, unk
   return parsed as Record<string, unknown>
 }
 
-/** The success document every append answers with. */
-function appended(draft: Draft, operation: DraftOperation): unknown {
+/** The success document every append answers with, plus a preview when one could be written. */
+function appended(draft: Draft, operation: DraftOperation, preview?: { path: string; title: string }): unknown {
   return success(
-    `Draft ${draft.id}: ${draft.operations.length} ${draft.operations.length === 1 ? 'operation' : 'operations'}.`,
-    { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation },
-    [{ tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' }],
+    `Draft ${draft.id}: ${draft.operations.length} ${draft.operations.length === 1 ? 'operation' : 'operations'}.${preview === undefined ? '' : ` Preview at ${preview.path}.`}`,
+    { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation, ...(preview === undefined ? {} : { preview_path: preview.path }) },
+    [
+      ...(preview === undefined ? [] : [{ tool: 'present', args: { files: [{ path: preview.path, description: `Preview of ${preview.title}` }] }, why: 'Show the composed logic as a document in the chat.' }]),
+      { tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
+    ],
   )
+}
+
+/**
+ * Write the renderable preview for one staged operation.
+ *
+ * A staged draft is not a file yet, so the preview is the only thing the viewer can draw before
+ * `draft_apply`. It is scratch output in `.l5x-preview/`; a read-only workspace, or a body the
+ * builders refuse, returns undefined and the append still succeeds - staging is deliberately more
+ * permissive than applying, and the refusal belongs to `draft_validate` and `draft_apply`.
+ *
+ * @param write - Workspace writer bound to this call.
+ * @param title - Program-routine name the document is titled with.
+ * @param body - Builds the routine to draw, in the language that was staged.
+ * @returns The path and title, or undefined when the preview could not be produced.
+ */
+async function previewFor(
+  write: (path: string, text: string) => Promise<unknown>,
+  title: string,
+  body: () => PreviewBody,
+): Promise<{ path: string; title: string } | undefined> {
+  const slug = previewSlug(title)
+  const path = `.l5x-preview/${slug}.L5X`
+  try {
+    await write(path, previewDocumentOf(slug, body()))
+    return { path, title }
+  } catch {
+    return undefined
+  }
 }
 
 /** The fields worth showing for one staged operation. */
@@ -414,7 +445,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),    tool({
       name: 'draft_st',
-      description: 'Append one Structured Text body replacement to the chat draft. Nothing is written until draft_apply.',
+      description: 'Append one Structured Text body replacement to the chat draft. Writes an ST preview document in .l5x-preview/ so the answer can draw it; the project is untouched until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Structured Text routine to replace. Example: "Calc".'),
@@ -429,12 +460,14 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           routine: requiredString(args, 'routine'),
           code: requiredString(args, 'code'),
         }
-        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+        const appendedDraft = drafts.append(exec, project.id, operation, maxOperations)
+        const preview = await previewFor((path, text) => session.writeTextAt(path, text, exec), `${String(operation.program)}-${String(operation.routine)}`, () => ({ language: 'ST', code: String(operation.code) }))
+        return appended(appendedDraft, operation, preview)
       },
     }),
     tool({
       name: 'draft_fbd',
-      description: 'Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Nothing is written until draft_apply.',
+      description: 'Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Writes an FBD preview document in .l5x-preview/ carrying the same sheet XML the apply path writes; the project is untouched until draft_apply.',
       parameters: object({
         program: string('Program that owns the FBD routine. Example: "MainProgram".'),
         routine: string('Function block diagram routine to extend. Example: "LevelLoop".'),
@@ -491,12 +524,15 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           refs,
           wires,
         }
-        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+        const appendedDraft = drafts.append(exec, project.id, operation, maxOperations)
+        const preview = await previewFor((path, text) => session.writeTextAt(path, text, exec), `${program}-${routineName}`,
+          () => ({ language: 'FBD', content: fbdSheetXml(operation as Extract<DraftOperation, { operation: 'insert_fbd_sheet' }>) }))
+        return appended(appendedDraft, operation, preview)
       },
     }),
     tool({
       name: 'draft_sfc',
-      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Nothing is written until draft_apply.',
+      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Writes an SFC preview document in .l5x-preview/ carrying the same chart XML the apply path writes; the project is untouched until draft_apply.',
       parameters: object({
         program: string('Program that owns the SFC routine. Example: "MainProgram".'),
         routine: string('Sequential function chart routine to extend. Example: "Chart".'),
@@ -593,7 +629,10 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         }
         let updated: Draft = draft
         for (const tagOperation of tagOperations) updated = drafts.append(exec, project.id, tagOperation, maxOperations)
-        return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
+        const stagedDraft = drafts.append(exec, project.id, operation, maxOperations)
+        const preview = await previewFor((path, text) => session.writeTextAt(path, text, exec), `${program}-${routineName}`,
+          () => ({ language: 'SFC', content: sfcChartXml(operation as Extract<DraftOperation, { operation: 'insert_sfc_sheet' }>) }))
+        return appended(stagedDraft, operation, preview)
       },
     }),
     tool({

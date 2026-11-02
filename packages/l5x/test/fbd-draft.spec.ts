@@ -49,6 +49,22 @@ async function opened() {
 }
 
 describe('draft_fbd', () => {
+  it('writes an FBD preview document the chat can draw', async () => {
+    // The staged sheet used to be invisible until apply; the preview shows the same XML the apply path writes.
+    const l5x = await opened()
+    const staged = await l5x.call('draft_fbd', SHEET)
+    expect(staged.error).toBeUndefined()
+    const path = String((staged.data as { preview_path?: unknown } | undefined)?.preview_path ?? '')
+    expect(path).toBe('.l5x-preview/Main-F.L5X')
+    const xml = l5x.written.get(path) ?? ''
+    expect(xml).toContain('Type="FBD"')
+    expect(xml).toContain('<FBDContent')
+    expect(xml).toContain('<Block Type="ADD" ID="2"')
+    expect(xml).toContain('VisiblePins="SourceA SourceB Dest"')
+    expect(xml).toContain('<Wire FromID="2" FromParam="Dest" ToID="3"/>')
+    expect(staged.next?.map(step => step.tool)).toContain('present')
+  })
+
   it('writes the sheet in the shape Studio builds', async () => {
     const l5x = await opened()
     const staged = await l5x.call('draft_fbd', SHEET)

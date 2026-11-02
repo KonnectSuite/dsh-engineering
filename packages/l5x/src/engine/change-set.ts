@@ -791,7 +791,7 @@ function fbdWires(value: unknown): readonly FbdWireOp[] {
  * Verified against Logix Designer 37: a block is an instance, so its tag must carry the block's
  * structure type (FBD_MATH for ADD); input wires name ToParam, output wires name FromParam.
  */
-function fbdSheetXml(operation: Extract<Operation, { operation: 'insert_fbd_sheet' }>): string {
+export function fbdSheetXml(operation: Extract<Operation, { operation: 'insert_fbd_sheet' }>): string {
   const ids = new Map<number, 'block' | 'ref'>()
   const pins = new Map<number, ReadonlySet<string>>()
   for (const block of operation.blocks) {
@@ -917,7 +917,7 @@ function sfcLinks(value: unknown): readonly SfcLinkOp[] {
  * way Studio does: steps down the sheet at a 200 pitch, each transition between the steps it links.
  * An explicit x/y still wins.
  */
-function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_sheet' }>): string {
+export function sfcChartXml(operation: Extract<Operation, { operation: 'insert_sfc_sheet' }>): string {
   const ids = new Set<number>()
   const claim = (id: number, what: string): void => {
     if (ids.has(id)) throw new EngineeringError('INVALID_CHANGE_SET', `Node id ${id} is used twice (${what})`)
