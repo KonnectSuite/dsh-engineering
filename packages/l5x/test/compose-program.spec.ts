@@ -56,9 +56,9 @@ describe('a program composed only through the tools', () => {
     expect(rungs.map(rung => rung.text)).toEqual(RUNGS)
   })
 
-  it('hands a composed rung to the ladder preview so the chat can draw it', async () => {
-    // The composer used to end at "validate": nothing told the agent to render what it had just
-    // written, so a composed rung reached the reader as NeutralText unless they asked again.
+  it('writes the ladder preview itself so the chat can draw a composed rung', async () => {
+    // The composer used to end at "validate": nothing drew what it had just written, so a composed rung reached
+    // the reader as NeutralText unless they asked again. It now writes the viewer document in the same call.
     const base = l5x({ name: 'PreviewPointer', programs: program('Main', rllRoutine('MainRoutine', [])), tasks: task('MainTask', ['Main']) })
     const l5xTool = harness(new Map([['p.l5x', new TextEncoder().encode(base)]]), { editing: true })
     await l5xTool.call('open_project', { path: 'p.l5x' })
@@ -70,9 +70,20 @@ describe('a program composed only through the tools', () => {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['Start'] }, { instr: 'OTE', args: ['Run'] }] }),
     })
     expect(composed.error).toBeUndefined()
-    const preview = composed.next?.find(step => step.tool === 'l5x_rung_preview')
-    expect(preview).toBeDefined()
-    expect(preview?.args).toMatchObject({ title: 'Main-MainRoutine' })
-    expect(String((preview?.args as { rungs?: string }).rungs)).toContain('XIC(Start)OTE(Run);')
+    const previewPath = String((composed.data as { preview_path?: unknown } | undefined)?.preview_path ?? '')
+    expect(previewPath).toBe('.l5x-preview/Main-MainRoutine.L5X')
+    const xml = l5xTool.written.get(previewPath) ?? ''
+    expect(xml).toContain('<Rung Number="0" Type="N">')
+    expect(xml).toContain('XIC(Start)OTE(Run);')
+    expect(composed.next?.map(step => step.tool)).toContain('present')
+    // Only the scratch preview is written: the project file still waits for draft_apply.
+    expect([...l5xTool.written.keys()].filter(path => path !== previewPath)).toEqual([])
+    // The viewer parses this document client-side, so it has to be an L5X our own reader accepts.
+    const reopened = harness(new Map([[previewPath, new TextEncoder().encode(xml)]]))
+    expect((await reopened.call('open_project', { path: previewPath })).error).toBeUndefined()
+    const drawn = await reopened.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'Preview' })
+    expect(drawn.error).toBeUndefined()
+    const rungs = (drawn.data?.component as { body: { rungs: { text: string }[] } }).body.rungs
+    expect(rungs.map(rung => rung.text)).toEqual(['XIC(Start)OTE(Run);'])
   })
 })

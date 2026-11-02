@@ -12,6 +12,7 @@
 import { prepareChangeSet, checkRungText } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
+import { previewDocument, previewSlug } from '../engine/preview-document.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { getRoutine } from '../model/routines.ts'
@@ -238,7 +239,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'compose_rung',
-      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser or leaves the right power rail undriven.',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
         spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}. An add-on instruction call passes its instance tag first, then only the parameters marked Required in the AOI definition.'),
@@ -298,11 +299,22 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           draft = drafts.append(exec, project.id, operation, maxOperations)
         }
         const stagedDraft = draft as Draft
+        // The composed rungs are what the answer has to show, so the renderable document is produced here
+        // rather than left to a second call. It is scratch output in `.l5x-preview/`, not a project file:
+        // draft_apply is still the only thing that writes one.
+        const previewTitle = previewSlug(`${program}-${routine}`)
+        const previewPath = `.l5x-preview/${previewTitle}.L5X`
+        let previewWritten: string | undefined
+        try {
+          previewWritten = await session.writeTextAt(previewPath, previewDocument(previewTitle, composed.rungs.map((item, index) => ({ number: rung + index, text: item.neutral_text }))), exec)
+        } catch {
+          // A read-only workspace must not turn a successful composition into a failure; `preview_written` stays absent.
+        }
         return success(
-          `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
-          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs },
+          `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).${previewWritten === undefined ? '' : ` Ladder preview at ${previewWritten}.`}`,
+          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs, ...(previewWritten === undefined ? {} : { preview_path: previewWritten }) },
           [
-            { tool: 'l5x_rung_preview', args: { rungs: composed.rungs.map(rung => rung.neutral_text).join('\n'), title: `${program}-${routine}` }, why: 'Show these exact rungs as ladder in the chat, with the NeutralText block ready to copy.' },
+            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed rungs' }] }, why: 'Show the composed rungs as ladder in the chat, with the NeutralText ready to copy.' }]),
             { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' },
           ],
           COMPOSED_COVERAGE,
@@ -311,7 +323,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'compose_batch',
-      description: 'Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Nothing is written until draft_apply.',
+      description: 'Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Writes the batch as one ladder preview document in .l5x-preview/ so the answer can draw it; the project itself is untouched until draft_apply.',
       parameters: object({
         rungs_json: string('Rungs as JSON, e.g. [{"spec":{"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}},{"pattern":"ton_delay","arguments":{"tag":"Timer","seconds":5}}].'),
         program: string('Program to stage into. Example: "MainProgram".'),
@@ -376,15 +388,25 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           }
         }
         const stagedDraft = draft as Draft
+        // Same rule as compose_rung: the batch just composed is what the answer has to show.
+        const previewTitle = previewSlug(`${program}-${routine}`)
+        const previewPath = `.l5x-preview/${previewTitle}.L5X`
+        let previewWritten: string | undefined
+        try {
+          previewWritten = await session.writeTextAt(previewPath, previewDocument(previewTitle, composed.map((rung, index) => ({ number: first + index, text: rung.neutral_text }))), exec)
+        } catch {
+          // Read-only workspace: keep the composition, drop only the render.
+        }
         return success(
-          `Composed and staged ${composed.length} rung(s) at ${routine} rung ${first}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
+          `Composed and staged ${composed.length} rung(s) at ${routine} rung ${first}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).${previewWritten === undefined ? '' : ` Ladder preview at ${previewWritten}.`}`,
           {
             draft_id: stagedDraft.id,
             operation_count: stagedDraft.operations.length,
             rungs: composed.map((rung, index) => ({ rung: first + index, neutral_text: rung.neutral_text })),
+            ...(previewWritten === undefined ? {} : { preview_path: previewWritten }),
           },
           [
-            { tool: 'l5x_rung_preview', args: { rungs: composed.map(rung => rung.neutral_text).join('\n'), title: `${program}-${routine}` }, why: 'Show the batch as ladder in the chat, with the NeutralText block ready to copy.' },
+            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed batch' }] }, why: 'Show the batch as ladder in the chat, with the NeutralText ready to copy.' }]),
             { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' },
           ],
           COMPOSED_COVERAGE,

@@ -22,7 +22,7 @@
       "skill": {
         "name": "rockwell-l5x",
         "file": "packages/l5x/SKILL.md",
-        "budget": 8000,
+        "budget": 8300,
         "allow": [
           "project_id",
           "verification_id",

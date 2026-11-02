@@ -15,6 +15,7 @@ import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
+import { previewDocument, previewSlug } from '../engine/preview-document.ts'
 import { parseLadder } from '../engine/logic-syntax.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
@@ -39,19 +40,6 @@ interface PreviewRung {
   readonly text: string
   readonly comment?: string
   readonly instructions: readonly string[]
-}
-
-/** Escape text for XML element content. */
-function escapeXml(value: string): string {
-  return value
-    .replace(/&/gu, '&amp;')
-    .replace(/</gu, '&lt;')
-    .replace(/>/gu, '&gt;')
-}
-
-/** Escape text for an XML attribute value. */
-function escapeAttribute(value: string): string {
-  return escapeXml(value).replace(/"/gu, '&quot;')
 }
 
 /** Instruction mnemonics in one rung, in written order. */
@@ -80,37 +68,6 @@ function rungsOf(text: string, comments: string | undefined): string[] {
  * @param rungs - Validated rungs.
  * @returns L5X text.
  */
-function documentOf(title: string, rungs: readonly PreviewRung[]): string {
-  const name = escapeAttribute(title)
-  const body = rungs.map(rung => {
-    const comment = rung.comment === undefined || rung.comment === ''
-      ? ''
-      : `\n          <Comment>${escapeXml(rung.comment)}</Comment>`
-    return `        <Rung Number="${rung.number}" Type="N">${comment}\n          <Text>${escapeXml(rung.text)}</Text>\n        </Rung>`
-  }).join('\n')
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetName="${name}" TargetType="Controller" ContainsContext="true" Owner="AryaCode" ExportDate="Preview">
-  <Controller Use="Target" Name="${name}" ProcessorType="1756-L83E" MajorRev="37" MinorRev="11" TimeSlice="20" ProjectCreationDate="Preview">
-    <Programs>
-      <Program Use="Target" Name="Preview" MainRoutineName="MainRoutine" Description="Rungs proposed in chat">
-        <Tags/>
-        <Routines>
-          <Routine Use="Target" Name="MainRoutine" Type="RLL" Description="Preview rungs">
-            <RLLContent>
-${body}
-            </RLLContent>
-          </Routine>
-        </Routines>
-      </Program>
-    </Programs>
-    <Tasks/>
-    <Modules/>
-    <DataTypes/>
-    <AddOnInstructionDefinitions/>
-  </Controller>
-</RSLogix5000Content>
-`
-}
 
 /**
  * The preview tool.
@@ -160,9 +117,9 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
             instructions: instructionsOf(line),
           }
         })
-        const slug = title.replace(/[^A-Za-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '') || 'Preview'
+        const slug = previewSlug(title)
         const path = optionalString(args, 'output') ?? `.l5x-preview/${slug}.L5X`
-        const written = await session.writeTextAt(path, documentOf(slug, rungs), exec)
+        const written = await session.writeTextAt(path, previewDocument(slug, rungs), exec)
         const pasteText = rungs.map(rung => rung.text).join('\n')
         let image: { svg: string; png?: string } = { svg: '' }
         let rasterError: string | undefined

@@ -92,7 +92,9 @@ truth. Never write to `<workspace>/_backups`.
   `analog_scale` source/destination/in_min/in_max/out_min/out_max;
   `totalizer` enable/rate/total; `run_hour_meter` run/timer/hours (plus preset_ms, default one hour; two rungs).
   Stage with `program`, `routine`, `mode` and `rung`.
-- `l5x_rung_preview` validates/draws rungs; `l5x_routine_diagram` draws existing logic.
+- `compose_rung` and `compose_batch` write the rungs they composed to `.l5x-preview/<program>-<routine>.L5X`; `present`
+  that file so the reader sees ladder and can copy the whole block, instead of reading NeutralText.
+  `l5x_rung_preview` draws any other rungs; `l5x_routine_diagram` draws existing logic.
 - Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in v36+. `compose_rung` writes the project's spelling.
 - `draft_routine` takes RLL, ST, FBD or SFC. **FBD and SFC take no body**: create the routine, then `draft_fbd`/`draft_sfc`.
 - FBD: a block **is an instance** - its first operand names a tag of the block's structure (`FBD_MATH` for `ADD`).

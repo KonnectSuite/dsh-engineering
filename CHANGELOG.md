@@ -1,12 +1,16 @@
 ## [Unreleased]
 
-- **Composed rungs now lead straight to a ladder render, and a routine's whole NeutralText block copies in one action.**
-  `compose_rung` and `compose_batch` used to end at "validate", so a composed rung reached the reader as text unless they
-  asked for a picture separately; both now hand the exact composed text to `l5x_rung_preview`, whose preview document the
-  viewer draws as ladder and whose result still carries the paste-ready block. The project viewer gained **Copy all rungs
-  as NeutralText** beside the existing per-rung, per-instruction and per-operand copies, so a whole routine leaves the pane
-  in the shape Studio's *Paste ASCII / Neutral Text* accepts. English and Chinese strings move together, and a test pins
-  the composer-to-preview hand-off — its title and the exact NeutralText.
+- **Composing a rung now produces the ladder the chat draws, and a routine's whole NeutralText block copies in one
+  action.** `compose_rung` and `compose_batch` used to end at "validate", so a composed rung reached the reader as text
+  unless they asked for a picture separately. Both now write the rungs they composed to
+  `.l5x-preview/<program>-<routine>.L5X` — the document the project viewer draws — return its `preview_path`, and point
+  the answer at `present` so the ladder is in the conversation rather than an image file beside it. The preview writer is
+  shared with `l5x_rung_preview`, so both tools produce the identical document. It is scratch output: the project file
+  still waits for `draft_apply`, and a read-only workspace drops the render instead of failing the composition. The
+  project viewer gained **Copy all rungs as NeutralText** beside the existing per-rung, per-instruction and per-operand
+  copies, so a whole routine leaves the pane in the shape Studio's *Paste ASCII / Neutral Text* accepts. The
+  `rockwell-l5x` guidance says to present the preview and its budget moves 8000 → 8300 for that sentence; English and
+  Chinese strings move together; a test pins the written document, the rung text and the `present` step.
 
 ## [0.75.0] - 2026-11-01
 

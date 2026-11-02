@@ -268,7 +268,7 @@ Append one rung-comment change to the chat draft. Sets or clears the comment Stu
 
 #### `compose_rung`
 
-Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Never emits text that fails the ladder parser or leaves the right power rail undriven.
+Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -286,7 +286,7 @@ Compose one validated ladder rung from a structure or a named pattern, checking 
 
 #### `compose_batch`
 
-Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Nothing is written until draft_apply.
+Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Writes the batch as one ladder preview document in .l5x-preview/ so the answer can draw it; the project itself is untouched until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
