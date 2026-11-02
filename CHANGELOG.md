@@ -1,3 +1,7 @@
+## [0.77.0] - 2026-11-01
+
+- **Report generator scaffolding, not yet exposed.** `packages/l5x/src/engine/report.ts` builds a self-contained HTML document from an export: cover, numbered sections, a ladder figure per routine, rung tables, tag and I/O tables, print CSS. `scripts/example-report.mts` drives it and prints a PDF through headless Chrome. The ladder in this version is drawn by the plugin's SVG renderer; the capture path that renders it through the shipped viewer exists only in the example script, so **no tool exposes the report yet** and nothing in the product uses this module.
+
 ## [0.76.0] - 2026-11-01
 
 - **The docs now say what evidence exists per surface, including where none does.** `docs/capabilities.md` carries a table of all four products: Studio 5000 and FactoryTalk View ME have captures, MotionWorks IEC and FactoryTalk Optix say **none** and why (no reachable IDE bridge on this host) instead of borrowing a figure from another surface. The two empty rows are the honest state of the repository, not a judgement about the tools.
