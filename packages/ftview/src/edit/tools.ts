@@ -11,7 +11,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { EngineeringError, targetPath, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition } from '../core.ts'
+import { EngineeringError, targetPath, choice, integer, object, optionalInteger, optionalString, requiredString, string, success, tool, type Coverage, type ExecContext, type FsService, type NextStep, type ToolDefinition, type SandboxPolicyResolver } from '../core.ts'
 import type { ViewSession } from '../session.ts'
 import type { EditDraft, EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
@@ -261,7 +261,13 @@ function unresolvedIn(
   return [...new Set(roots.filter(root => root !== '' && !declared.has(root)))]
 }
 
-export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown): readonly ToolDefinition[] {
+export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsService, maxOperations: number, profileOf?: (id: string) => unknown, policy?: SandboxPolicyResolver): readonly ToolDefinition[] {
+  /** The policy this call must be judged by, resolved from its session. */
+  const policyFor = (exec: ExecContext | undefined): unknown => {
+    if (policy === undefined) return undefined
+    const owner = (exec?.agent as { readonly session?: unknown } | undefined)?.session
+    return policy.resolve(owner === undefined ? {} : { session: owner })
+  }
   /** Where each draft came from, so a result can judge its connections against that export. */
   const apps = new Map<string, { readonly tags: readonly { readonly name: string }[] }>()
 
@@ -1275,18 +1281,18 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             if (fs.writeBytes === undefined) {
               throw new EngineeringError('OUTPUT_UNAVAILABLE', `The filesystem provider cannot copy ${file.file}, which is a binary export file.`, 'Use a profile whose filesystem provider allows binary writes; artwork must travel with the displays.')
             }
-            await fs.writeBytes(`${outputRoot}/${file.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal)
+            await fs.writeBytes(`${outputRoot}/${file.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
             writtenFiles.push(file.file)
             written += 1
             continue
           }
           const text = prepared.texts.get(file.file) ?? new TextDecoder('utf-8').decode(bytes)
-          await fs.writeText(`${outputRoot}/${file.file}`, text, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeText(`${outputRoot}/${file.file}`, text, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           written += 1
         }
         for (const file of prepared.added) {
           const text = prepared.texts.get(file) as string
-          await fs.writeText(`${outputRoot}/${file}`, text, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeText(`${outputRoot}/${file}`, text, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           written += 1
         }
         // The vendor's own import file: Studio's Batch Import reads this list
@@ -1322,7 +1328,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           }
           const bytes = await fs.readBytes(found.path, exec.signal, 32 * 1024 * 1024)
           if (fs.writeBytes === undefined) throw new EngineeringError('OUTPUT_UNAVAILABLE', 'This profile cannot copy binary files.', 'Use a profile whose filesystem provider writes bytes.')
-          await fs.writeBytes(`${outputRoot}/Images/${found.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeBytes(`${outputRoot}/Images/${found.file}`, bytes, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           copiedImages.push(found.file)
           written += 1
         }
@@ -1339,7 +1345,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             return { name, kind, line: `    <import importFile="${escaped}.xml" importType="${kind}" display="${escaped}"/>` }
           })
           manifest = `Displays/BatchImport_${view.app.name}.xml`
-          await fs.writeText(`${outputRoot}/${manifest}`, `<?xml version="1.0" encoding="UTF-8"?>\n<gfxImport>\n${rows.map(row => row.line).join('\n')}\n</gfxImport>\n`, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeText(`${outputRoot}/${manifest}`, `<?xml version="1.0" encoding="UTF-8"?>\n<gfxImport>\n${rows.map(row => row.line).join('\n')}\n</gfxImport>\n`, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           written += 1
           const creates = rows.filter(row => row.kind === 'create').map(row => row.name)
           const updates = rows.filter(row => row.kind === 'update').map(row => row.name)
@@ -1362,7 +1368,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             '3. Run `ftview_verify_import` to prove the import matches this draft.',
             '',
           ].join('\n')
-          await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal)
+          await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           written += 1
         }
         session.recordApplied(outputRoot, writtenFiles)

@@ -173,8 +173,8 @@ export interface FsService {
   stat(path: string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(path: string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   listDir?(path: string, signal?: AbortSignal): Promise<readonly DirEntry[]>
-  writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
-  writeBytes?(path: string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
+  writeText?(path: string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
+  writeBytes?(path: string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
 }
 
 /** A path resolved by the harness filesystem into its backend identity. */
@@ -205,8 +205,8 @@ export interface RawFsService {
   stat(target: FsTarget | string, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(target: FsTarget | string, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   listDir?(target: FsTarget | string, signal?: AbortSignal): Promise<readonly DirEntry[]>
-  writeText?(target: FsTarget | string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
-  writeBytes?(target: FsTarget | string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal): Promise<void>
+  writeText?(target: FsTarget | string, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
+  writeBytes?(target: FsTarget | string, bytes: Uint8Array, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
 }
 
 /**
@@ -239,13 +239,13 @@ export function stringFs(service: RawFsService): FsService {
     fs.listDir = async (path, signal) => await service.listDir!(await targetOf(path, signal), signal)
   }
   if (service.writeText !== undefined) {
-    fs.writeText = async (path, text, options, signal) => {
-      await service.writeText!(await targetOf(path, signal), text, options, signal)
+    fs.writeText = async (path, text, options, signal, sandboxPolicy) => {
+      await service.writeText!(await targetOf(path, signal), text, options, signal, sandboxPolicy)
     }
   }
   if (service.writeBytes !== undefined) {
-    fs.writeBytes = async (path, bytes, options, signal) => {
-      await service.writeBytes!(await targetOf(path, signal), bytes, options, signal)
+    fs.writeBytes = async (path, bytes, options, signal, sandboxPolicy) => {
+      await service.writeBytes!(await targetOf(path, signal), bytes, options, signal, sandboxPolicy)
     }
   }
   return fs
@@ -269,8 +269,20 @@ export interface ExecContext {
   readonly signal?: AbortSignal
   readonly cwd?: string
   readonly chat?: object
+  /** The calling agent; its session carries the sandbox policy of this call. */
+  readonly agent?: unknown
 }
 
+/**
+ * The host's per-session sandbox policy service.
+ *
+ * A confining provider decides whether a mutation is allowed from the policy
+ * stamped on THAT call. Omitted, it falls back to the deployment default
+ * (workspace-write), which refuses a write in a session whose mode is wider.
+ */
+export interface SandboxPolicyResolver {
+  resolve(options: { readonly session?: unknown }): unknown
+}
 /** One text block the transcript renders. */
 export interface TextBlock {
   readonly type: 'text'

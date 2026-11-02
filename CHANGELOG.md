@@ -1,3 +1,20 @@
+## [0.83.0] - 2026-11-02
+
+- **FTView and the migration surface now write with the session's sandbox policy too.** 0.82.0 fixed this in the L5X
+  store; the same omission existed in the other two components — six writes in `ftview`'s edit tools and two in
+  `migration`'s, all calling the provider with four arguments. A confining provider fills the missing fifth with
+  `ctx.sandboxPolicy.resolve()` (no session), which is the deployment default `workspace-write`, so `ftview_apply` and
+  `migration_report` were refused in a session switched to `danger-full-access`. Both now resolve the policy for the
+  calling session and pass it, and both accept the `sandboxPolicy` service as optional so a composition without a
+  confining provider is unchanged.
+- **A dropped abort signal, restored.** `migration` passed its `AbortSignal` in the *options* position of
+  `fs.writeText`, so cancellation never reached the provider and the options object was a signal. The call is now
+  `(target, text, options, signal, policy)`.
+- **Two suite failures are pre-existing and unrelated**, verified by re-running them on the untouched tree:
+  `ftview` `workflow.spec.ts > stops a draft whose XML the vendor schema rejects` (`apply_blocked` is false) and
+  `migration` `knowledge.spec.ts > has a page for every PCE code the row documents`. They are not caused by this change
+  and are not fixed here.
+
 ## [0.82.0] - 2026-11-02
 
 - **A draft writes with the session's sandbox policy, not the deployment default.** `draft_apply`, `document_project` and

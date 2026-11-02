@@ -15,7 +15,7 @@
 
 import { migrationTools } from './tools.ts'
 import * as skill from './skill.ts'
-import type { PluginContext } from './core/tool.ts'
+import type { PluginContext, SandboxPolicyResolver } from './core/tool.ts'
 
 /** Plugin name in a composition. */
 export const name = 'engineering-migration'
@@ -49,7 +49,7 @@ export interface Config {
  */
 export function apply(ctx: PluginContext, config: Config = {}): void {
   try {
-    for (const definition of migrationTools(ctx.fs)) {
+    for (const definition of migrationTools(ctx.fs, ctx.get?.('sandboxPolicy') as SandboxPolicyResolver | undefined)) {
       if (definition.name === 'slc_read' && config.read === false) continue
       if (definition.name === 'migration_assess' && config.assess === false) continue
       if (definition.name === 'l5k_lint' && config.lint === false) continue

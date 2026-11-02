@@ -37,7 +37,7 @@ import {
   type StageId,
   type StageStatus,
 } from './engine/plan.ts'
-import { jsonText, type FsService, type ToolDefinition, type ToolExec } from './core/tool.ts'
+import { jsonText, type FsService, type SandboxPolicyResolver, type ToolDefinition, type ToolExec } from './core/tool.ts'
 
 /** The largest file these tools will read. */
 const MAX_BYTES = 64 * 1024 * 1024
@@ -339,10 +339,10 @@ async function readPlanFile(fs: FsService, path: string, exec: ToolExec): Promis
 }
 
 /** Write the plan document back. */
-async function writePlanFile(fs: FsService, path: string, plan: MigrationPlan, exec: ToolExec): Promise<void> {
+async function writePlanFile(fs: FsService, path: string, plan: MigrationPlan, exec: ToolExec, sandboxPolicy?: unknown): Promise<void> {
   const target = await fs.resolve(path, { cwd: exec.cwd })
   try {
-    await fs.writeText(target, `${JSON.stringify(plan, undefined, 2)}\n`, exec.signal)
+    await fs.writeText(target, `${JSON.stringify(plan, undefined, 2)}\n`, undefined, exec.signal, sandboxPolicy)
   } catch (error) {
     const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
     throw new MigrationError(
@@ -359,7 +359,13 @@ async function writePlanFile(fs: FsService, path: string, plan: MigrationPlan, e
  * @param fs - The filesystem provider the composition supplies.
  * @returns The two tool definitions, in registration order.
  */
-export function migrationTools(fs: FsService): readonly ToolDefinition[] {
+export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): readonly ToolDefinition[] {
+  /** The policy this call must be judged by, resolved from its session. */
+  const policyFor = (exec: ToolExec): unknown => {
+    if (policy === undefined) return undefined
+    const owner = (exec.agent as { readonly session?: unknown } | undefined)?.session
+    return policy.resolve(owner === undefined ? {} : { session: owner })
+  }
   const lintTool: ToolDefinition = {
     name: 'l5k_lint',
     description:
@@ -826,7 +832,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
             : 'unknown'
           let plan = createPlan({ project: baseName(source).replace(/\.[^.]+$/u, ''), source: { family, path: source } })
           plan = withDecisions(plan, decisions())
-          await writePlanFile(fs, path, plan, exec)
+          await writePlanFile(fs, path, plan, exec, policyFor(exec))
           return {
             summary: `Created ${path} for ${plan.project}: ${openQuestions(plan).length} interview question(s) remain before the plan is unblocked.`,
             data: { path, plan, state: planState(plan), next: nextAction(plan) },
@@ -845,7 +851,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
         }
         if (action === 'answer') {
           const answered = withDecisions(plan, decisions())
-          await writePlanFile(fs, path, answered, exec)
+          await writePlanFile(fs, path, answered, exec, policyFor(exec))
           return {
             summary: `Recorded the decisions in ${path}; ${openQuestions(answered).length} question(s) still open. ${nextAction(answered)}`,
             data: { path, plan: answered, state: planState(answered), open_questions: openQuestions(answered) },
@@ -869,7 +875,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
           const evidence = typeof args.evidence === 'string' ? args.evidence.split(/\r?\n/u).map(line => line.trim()).filter(line => line !== '') : []
           const note = typeof args.note === 'string' && args.note.trim() !== '' ? args.note.trim() : undefined
           const staged = withStage(plan, stage, status, evidence, note)
-          await writePlanFile(fs, path, staged, exec)
+          await writePlanFile(fs, path, staged, exec, policyFor(exec))
           return {
             summary: `Stage ${stage} recorded as ${status} in ${path}${evidence.length === 0 ? '' : `, with ${evidence.length} evidence line(s)`}. ${nextAction(staged)}`,
             data: { path, plan: staged, state: planState(staged), stage: currentStage(staged) },
@@ -886,7 +892,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
             ? args.exception_status as PlanExceptionStatus
             : 'open'
           const excepted = withException(plan, { id, kind, description, rationale, status: exceptionStatus })
-          await writePlanFile(fs, path, excepted, exec)
+          await writePlanFile(fs, path, excepted, exec, policyFor(exec))
           const open = excepted.exceptions.filter(entry => entry.status === 'open').length
           return {
             summary: `Recorded exception ${id} as ${exceptionStatus} in ${path}; ${open} exception(s) remain open. ${nextAction(excepted)}`,
@@ -1011,7 +1017,7 @@ export function migrationTools(fs: FsService): readonly ToolDefinition[] {
             written = document.length
             writtenUnit = 'byte(s)'
           } else {
-            await fs.writeText(target, markdown, exec.signal)
+            await fs.writeText(target, markdown, undefined, exec.signal, policyFor(exec))
           }
         } catch (error) {
           const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined

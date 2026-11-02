@@ -9,7 +9,7 @@
  * @module dsh-engineering-ftview/edit
  */
 
-import { stringFs, type PluginContext } from './core.ts'
+import { stringFs, type PluginContext, type SandboxPolicyResolver } from './core.ts'
 import { EditDrafts } from './edit/drafts.ts'
 import { editTools } from './edit/tools.ts'
 import type { ViewSession } from './session.ts'
@@ -42,7 +42,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
     throw new Error('ftview-edit: maxDraftOperations must be a positive integer')
   }
   const profiles = ctx.get?.('engineeringProfiles') as { get(id: string): unknown } | undefined
-  for (const definition of editTools(session, new EditDrafts(), stringFs(ctx.fs), maxDraftOperations, profiles?.get.bind(profiles))) ctx.tools.register(definition)
+  for (const definition of editTools(session, new EditDrafts(), stringFs(ctx.fs), maxDraftOperations, profiles?.get.bind(profiles), ctx.get?.('sandboxPolicy') as SandboxPolicyResolver | undefined)) ctx.tools.register(definition)
 }
 
 export { EditDrafts } from './edit/drafts.ts'

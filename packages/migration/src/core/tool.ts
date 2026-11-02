@@ -25,8 +25,20 @@ export interface ToolExec {
   readonly signal?: AbortSignal
   readonly cwd?: string
   readonly sessionId?: string
+  /** The calling agent; its session carries the sandbox policy of this call. */
+  readonly agent?: unknown
 }
 
+/**
+ * The host's per-session sandbox policy service.
+ *
+ * A confining provider decides whether a mutation is allowed from the policy
+ * stamped on THAT call. Omitted, it falls back to the deployment default
+ * (workspace-write), which refuses a write in a session whose mode is wider.
+ */
+export interface SandboxPolicyResolver {
+  resolve(options: { readonly session?: unknown }): unknown
+}
 /** A registered tool. */
 export interface ToolDefinition {
   readonly name: string
@@ -55,7 +67,7 @@ export interface FsService {
   stat(target: FsTarget, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(target: FsTarget, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
   /** Write one UTF-8 text file; the provider creates missing parents. */
-  writeText(target: FsTarget, text: string, signal?: AbortSignal): Promise<void>
+  writeText(target: FsTarget, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
 }
 
 /** The services a composition must provide before this plugin loads. */
