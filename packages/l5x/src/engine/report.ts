@@ -44,13 +44,22 @@ export interface ReportOptions {
   readonly title?: string
   /** Generation date for the cover, ISO `YYYY-MM-DD`; defaults to today. */
   readonly generated?: string
+  /**
+   * The caller's own narrative, as Markdown, printed as a `Changes` section after
+   * the cover.
+   *
+   * A report that only inventories the export cannot say what changed or why. The
+   * writer supplies that prose; this generator supplies the structure, the ladder
+   * and the citations it can prove.
+   */
+  readonly notes?: string
 }
 
 /** The report text and the counts a caller can compare with `project_overview`. */
 export interface ReportDocument {
   readonly html: string
   /** Sections this document carries, in page order. */
-  readonly sections: readonly ReportSectionName[]
+  readonly sections: readonly (ReportSectionName | 'changes')[]
   readonly counts: {
     readonly programs: number
     readonly routines: number
@@ -162,8 +171,53 @@ function ladderHtml(rungs: readonly { readonly number: number; readonly text: st
   return `<div class="ldr">${rows.join('')}</div>`
 }
 
+/** Escape text and turn a small Markdown subset into report HTML. */
+function markdownHtml(markdown: string): string {
+  const inline = (line: string): string => escapeHtml(line)
+    .replace(/`([^`]+)`/gu, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/gu, '<strong>$1</strong>')
+  const out: string[] = []
+  let list: 'ul' | 'ol' | null = null
+  let code = false
+  const closeList = (): void => { if (list !== null) { out.push(`</${list}>`); list = null } }
+  for (const raw of markdown.split(/\r?\n/u)) {
+    const line = raw.trimEnd()
+    if (/^```/u.test(line)) {
+      if (code) { out.push('</code></pre>'); code = false }
+      else { closeList(); out.push('<pre><code>'); code = true }
+      continue
+    }
+    if (code) { out.push(escapeHtml(raw)); continue }
+    if (line.trim() === '') { closeList(); continue }
+    const heading = /^(#{1,4})\s+(.*)$/u.exec(line)
+    if (heading !== null) {
+      closeList()
+      const level = Math.min(6, heading[1]!.length + 1)
+      out.push(`<h${level}>${inline(heading[2]!)}</h${level}>`)
+      continue
+    }
+    const bullet = /^[-*]\s+(.*)$/u.exec(line)
+    if (bullet !== null) {
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul' }
+      out.push(`<li>${inline(bullet[1]!)}</li>`)
+      continue
+    }
+    const numbered = /^\d+[.)]\s+(.*)$/u.exec(line)
+    if (numbered !== null) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol' }
+      out.push(`<li>${inline(numbered[1]!)}</li>`)
+      continue
+    }
+    closeList()
+    out.push(`<p>${inline(line)}</p>`)
+  }
+  if (code) out.push('</code></pre>')
+  closeList()
+  return out.join('\n')
+}
 /** The heading each declared section prints. */
-const SECTION_TITLES: Record<ReportSectionName, string> = {
+const SECTION_TITLES: Record<ReportSectionName | 'changes', string> = {
+  changes: 'Changes',
   glance: 'At a glance',
   logic: 'Logic',
   tags: 'Tags',
@@ -290,16 +344,19 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
 
   // The declared shape, filled here and checked before the page is assembled: a
   // section that came out empty is a generator defect, not an empty project.
-  const rendered: Record<ReportSectionName, string> = {
+  // The declared shape plus, when the caller supplied prose, the Changes section.
+  const ordered = (options.notes === undefined ? REPORT_SECTIONS : ['changes', ...REPORT_SECTIONS]) as readonly (ReportSectionName | 'changes')[]
+  const rendered: Record<string, string> = {
+    ...(options.notes === undefined ? {} : { changes: markdownHtml(options.notes) }),
     glance,
     logic: sections.join('\n') || '<p class="empty">No programs were selected.</p>',
     tags: table(['Scope', 'Name', 'Type', 'Description'], tagRows, 'The export declares no tags.'),
     io: table(['Module', 'Catalog', 'Parent', 'Description'], moduleRows, 'The export declares no I/O modules.'),
   }
-  const missing = REPORT_SECTIONS.filter(name => rendered[name].trim() === '')
+  const missing = ordered.filter(name => (rendered[name] ?? '').trim() === '')
   if (missing.length > 0) throw new Error(`report is missing section(s): ${missing.join(', ')}`)
-  const sectionNumber = (name: ReportSectionName): string => String(REPORT_SECTIONS.indexOf(name) + 1).padStart(2, '0')
-  const toc = `<nav class="toc"><h2>Contents</h2><ol>${REPORT_SECTIONS.map(name => `<li><a href="#${name}"><span class="num">${sectionNumber(name)}</span>${SECTION_TITLES[name]}</a></li>`).join('')}</ol></nav>`
+  const sectionNumber = (name: ReportSectionName | 'changes'): string => String(ordered.indexOf(name) + 1).padStart(2, '0')
+  const toc = `<nav class="toc"><h2>Contents</h2><ol>${ordered.map(name => `<li><a href="#${name}"><span class="num">${sectionNumber(name)}</span>${SECTION_TITLES[name]}</a></li>`).join('')}</ol></nav>`
 
   const html = `<!doctype html>
 <html lang="en">
@@ -328,16 +385,17 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
 
 ${toc}
 
-<h2 id="glance"><span class="num">01</span>At a glance</h2>
+${options.notes === undefined ? '' : `<h2 class="section" id="changes"><span class="num">${sectionNumber('changes')}</span>Changes</h2>\n${rendered.changes}`}
+<h2 id="glance"><span class="num">${sectionNumber('glance')}</span>At a glance</h2>
 ${rendered.glance}
 
-<h2 class="section" id="logic"><span class="num">02</span>Logic</h2>
+<h2 class="section" id="logic"><span class="num">${sectionNumber('logic')}</span>Logic</h2>
 ${rendered.logic}
 
-<h2 class="section" id="tags"><span class="num">03</span>Tags</h2>
+<h2 class="section" id="tags"><span class="num">${sectionNumber('tags')}</span>Tags</h2>
 ${rendered.tags}
 
-<h2 class="section" id="io"><span class="num">04</span>I/O</h2>
+<h2 class="section" id="io"><span class="num">${sectionNumber('io')}</span>I/O</h2>
 ${rendered.io}
 
 <footer>
@@ -350,5 +408,5 @@ ${rendered.io}
 </body>
 </html>
 `
-  return { html, sections: REPORT_SECTIONS, counts }
+  return { html, sections: ordered, counts }
 }

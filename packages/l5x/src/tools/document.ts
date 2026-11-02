@@ -105,6 +105,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
         routines: list('Optional routine names to restrict the rung documentation to.', string('Routine name.')),
         rungs_per_file: integer('Most rungs per rung-documentation file before a continuation file is written. Defaults to 200.', { minimum: 1, maximum: 2000 }),
         report_format: choice('Report file to write for the report part: html (default), pdf, or both. A PDF needs Chrome or Edge on this machine.', ['html', 'pdf', 'both']),
+        report_notes: string('Optional path to a Markdown file holding your own narrative — what changed and why — printed as the report\'s Changes section, ahead of the logic the generator draws itself.'),
         project_id: PROJECT_ID,
       }, ['output_root']),
       async run(args, exec) {
@@ -120,11 +121,15 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
         if (await session.exists(outputRoot, exec)) {
           throw new L5xError('OUTPUT_EXISTS', `A file or folder already exists at ${outputRoot}.`, 'Pass a new output_root; the generator never merges into an existing folder.')
         }
+        // The writer's own prose, when supplied, becomes the report's Changes section.
+        const notesPath = optionalString(args, 'report_notes')
+        const notes = notesPath === undefined ? undefined : await session.readTextAt(notesPath, exec)
         const bundle = buildDocumentation(project, {
           ...(include === undefined ? {} : { include }),
           ...(Array.isArray(args.programs) ? { programs: args.programs.map(String) } : {}),
           ...(Array.isArray(args.routines) ? { routines: args.routines.map(String) } : {}),
           ...(typeof args.rungs_per_file === 'number' ? { rungsPerFile: args.rungs_per_file } : {}),
+          ...(notes === undefined ? {} : { notes }),
         })
         const written: { path: string; bytes: number }[] = []
         for (const [path, text] of bundle.files) {

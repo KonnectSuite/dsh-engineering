@@ -1,3 +1,15 @@
+## [0.85.0] - 2026-11-02
+
+- **A report you asked for can carry your own narrative, with the ladder still drawn.** `document_project` takes
+  `report_notes`: a path to a Markdown file. Its content becomes the report's first section, **Changes**, ahead of
+  *At a glance* — so a change report is prose you wrote plus the ladder the generator draws from the export, in one
+  branded document, rather than a hand-built HTML page that can only show NeutralText.
+- **Markdown, rendered not echoed:** headings, paragraphs, ordered and unordered lists, fenced code, `code` and
+  **bold**. The section is listed in the contents and numbered, so the rest of the report renumbers around it; with no
+  notes the report is exactly what it was.
+- **Two tests** pin the section's presence, its numbering, the contents entry, that Markdown became structure, and that
+  a report without notes is unchanged.
+
 ## [0.84.0] - 2026-11-02
 
 - **A multidimensional array element with a member now composes.** `Alarm_Timer[0,8].DN` was refused with

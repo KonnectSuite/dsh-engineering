@@ -5,7 +5,13 @@
  */
 import { describe, expect, it } from 'vitest'
 import { fixtureBytes, harness } from './harness.ts'
-import { highlightSt, REPORT_SECTIONS } from '../src/engine/report.ts'
+import { buildReportHtml, highlightSt, REPORT_SECTIONS } from '../src/engine/report.ts'
+import { loadL5x } from '../src/model/parse.ts'
+
+/** The fixture export as text, for the pure generator. */
+function fixtureText(): string {
+  return new TextDecoder().decode(fixtureBytes())
+}
 
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
@@ -67,5 +73,30 @@ describe('document_project report', () => {
     expect(html).toContain('st-number')
     // Stripped of markup the body is unchanged: highlighting cannot rewrite logic.
     expect(html.replace(/<[^>]+>/gu, '')).toBe(code)
+  })
+})
+
+describe('report notes', () => {
+  it('prints the writer\'s prose as a Changes section ahead of the logic', () => {
+    const report = buildReportHtml({ document: loadL5x(fixtureText()) } as never, {
+      notes: '## What changed\nThe laser now faults when the beam is off target.\n\n- new tag NS_Dist_Laser_On_Target\n- debounce 2000 ms',
+    })
+    const html = report.html
+    // The section exists, is numbered first, and is listed in the contents.
+    expect(html).toContain('id="changes"')
+    expect(html).toContain('<span class="num">01</span>Changes')
+    expect(report.sections[0]).toBe('changes')
+    // The Markdown became structure, not literal text.
+    expect(html).toContain('<p>The laser now faults when the beam is off target.</p>')
+    expect(html).toContain('<li>new tag NS_Dist_Laser_On_Target</li>')
+    // At a glance moved to 02, and the ladder is still drawn.
+    expect(html).toContain('<span class="num">02</span>At a glance')
+    expect(html).toContain('class="ldr-')
+  })
+
+  it('omits the section, and the numbering, when there are no notes', () => {
+    const report = buildReportHtml({ document: loadL5x(fixtureText()) } as never, {})
+    expect(report.html).not.toContain('id="changes"')
+    expect(report.sections).toEqual(REPORT_SECTIONS)
   })
 })

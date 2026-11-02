@@ -71,6 +71,8 @@ export interface DocumentOptions {
   readonly rungsPerFile?: number
   /** Title the generated report prints on its cover. */
   readonly title?: string
+  /** The caller's own Markdown narrative, printed as the report's Changes section. */
+  readonly notes?: string
 }
 
 /** CSV cell with quoting when the value needs it. */
@@ -429,6 +431,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
       ...(programs === undefined ? {} : { programs }),
       ...(routines === undefined ? {} : { routines }),
       ...(options.title === undefined ? {} : { title: options.title }),
+      ...(options.notes === undefined ? {} : { notes: options.notes }),
     }).html)
   }
   return {
