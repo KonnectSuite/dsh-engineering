@@ -53,6 +53,77 @@ function coloursFor(name: string): { fill: string; stroke: string } {
   return group === undefined ? { fill: '#16202E', stroke: '#4B5B6E' } : { fill: group.fill, stroke: group.stroke }
 }
 
+/** Colours for one drawing surface. */
+export interface LadderPalette {
+  /** Page or pane behind the drawing. */
+  readonly background: string
+  /** Heading above the rungs. */
+  readonly title: string
+  /** The note under the heading. */
+  readonly note: string
+  /** The rung number in the margin. */
+  readonly number: string
+  /** Rung comment lines. */
+  readonly comment: string
+  /** The horizontal rung line. */
+  readonly wire: string
+  /** The two power rails. */
+  readonly rail: string
+  /** Instruction labels. */
+  readonly text: string
+  /** Block colours the layout assigns, mapped for this surface. */
+  readonly blocks: Readonly<Record<string, string>>
+}
+
+/**
+ * The dark palette the in-app preview pane draws with.
+ *
+ * Kept as the default so every existing caller — the preview tool, the diagram
+ * tool, the tests — draws exactly what it drew before a paper palette existed.
+ */
+export const DARK_PALETTE: LadderPalette = {
+  background: '#0B1220',
+  title: '#94A3B8',
+  note: '#64748B',
+  number: '#7D8CA3',
+  comment: '#9FB0C6',
+  wire: '#334155',
+  rail: '#64748B',
+  text: '#E2E8F0',
+  blocks: {},
+}
+
+/**
+ * The paper palette a printed document draws with.
+ *
+ * The document is white, so the pane's dark blocks would be a hole in the page —
+ * the defect that made the first generated report show near-black panels inside
+ * a white sheet. The drawing code, the geometry and the rung parsing stay the
+ * same; only these colours change.
+ */
+export const PAPER_PALETTE: LadderPalette = {
+  background: '#FFFFFF',
+  title: '#57534E',
+  note: '#78716C',
+  number: '#78716C',
+  comment: '#57534E',
+  wire: '#44403C',
+  rail: '#44403C',
+  text: '#1C1917',
+  blocks: {
+    '#14251F': '#E8F1EB',
+    '#2F6F55': '#2F6F55',
+    '#1B2436': '#E9EDF7',
+    '#3B5BA5': '#3B5BA5',
+    '#2A2117': '#F4EEE3',
+    '#8A6A2F': '#8A6A2F',
+    '#16202E': '#F5F5F4',
+    '#4B5B6E': '#78716C',
+    '#64748B': '#A8A29E',
+    '#E2E8F0': '#1C1917',
+  },
+}
+
 /** One drawn box: the label, its rectangle and its colours. */
 interface Cell {
   readonly label: string
@@ -191,17 +262,17 @@ function commentLines(comment: string | undefined): string[] {
 }
 
 /** Draw one rung row and return the SVG fragments plus the height it consumed. */
-function drawRung(rung: RungSpec, top: number, left: number, right: number, flattened: string[]): { shapes: string[]; height: number } {
+function drawRung(rung: RungSpec, top: number, left: number, right: number, flattened: string[], palette: LadderPalette): { shapes: string[]; height: number } {
   const parsed = parseLadder(rung.text)
   const comment = commentLines(rung.comment)
   const shapes: string[] = []
   const numberY = top + 11
-  shapes.push(`<text x="${left + 4}" y="${numberY}" font-size="11" font-family="Consolas, monospace" fill="#7D8CA3">${rung.number}</text>`)
+  shapes.push(`<text x="${left + 4}" y="${numberY}" font-size="11" font-family="Consolas, monospace" fill="${palette.number}">${rung.number}</text>`)
   let cursor = top
   if (comment.length > 0) {
     cursor += COMMENT_LINE / 2
     for (const line of comment) {
-      shapes.push(`<text x="${left + 26}" y="${cursor + 10}" font-size="11.5" font-family="Segoe UI, Arial, sans-serif" fill="#9FB0C6">${escapeXml(line)}</text>`)
+      shapes.push(`<text x="${left + 26}" y="${cursor + 10}" font-size="11.5" font-family="Segoe UI, Arial, sans-serif" fill="${palette.comment}">${escapeXml(line)}</text>`)
       cursor += COMMENT_LINE
     }
     cursor += 4
@@ -209,29 +280,36 @@ function drawRung(rung: RungSpec, top: number, left: number, right: number, flat
   const centre = cursor + topExtent(parsed.nodes) + 6
   const laid = laySequence(parsed.nodes, left + 26, centre, flattened)
   const height = Math.max(centre + BOX_HEIGHT / 2 - top + ROW_GAP, ...laid.cells.map(cell => cell.y + cell.height - top + ROW_GAP / 2))
-  shapes.push(`<line x1="${left}" y1="${centre}" x2="${right}" y2="${centre}" stroke="#334155" stroke-width="1"/>`)
-  shapes.push(`<line x1="${left}" y1="${top}" x2="${left}" y2="${top + height}" stroke="#64748B" stroke-width="2"/>`)
-  shapes.push(`<line x1="${right}" y1="${top}" x2="${right}" y2="${top + height}" stroke="#64748B" stroke-width="2"/>`)
+  shapes.push(`<line x1="${left}" y1="${centre}" x2="${right}" y2="${centre}" stroke="${palette.wire}" stroke-width="1"/>`)
+  shapes.push(`<line x1="${left}" y1="${top}" x2="${left}" y2="${top + height}" stroke="${palette.rail}" stroke-width="2"/>`)
+  shapes.push(`<line x1="${right}" y1="${top}" x2="${right}" y2="${top + height}" stroke="${palette.rail}" stroke-width="2"/>`)
   for (const cell of laid.cells) {
     if (cell.label === '') {
-      shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" fill="none" stroke="${cell.stroke}"/>`)
+      shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" fill="none" stroke="${palette.blocks[cell.stroke] ?? cell.stroke}"/>`)
       continue
     }
-    shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" rx="3" fill="${cell.fill}" stroke="${cell.stroke}"/>`)
+    shapes.push(`<rect x="${cell.x}" y="${cell.y}" width="${cell.width}" height="${cell.height}" rx="3" fill="${palette.blocks[cell.fill] ?? cell.fill}" stroke="${palette.blocks[cell.stroke] ?? cell.stroke}"/>`)
     const lines = cell.lines ?? [cell.label]
     const centreX = cell.x + cell.width / 2
     if (lines.length > 1) {
-      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 - 3}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(lines[0] ?? '')}</text>`)
-      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 11}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(lines[1] ?? '')}</text>`)
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 - 3}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="${palette.text}">${escapeXml(lines[0] ?? '')}</text>`)
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 11}" text-anchor="middle" font-size="${FONT - 1.5}" font-family="Consolas, monospace" fill="${palette.text}">${escapeXml(lines[1] ?? '')}</text>`)
     } else {
-      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 4.5}" text-anchor="middle" font-size="${FONT}" font-family="Consolas, monospace" fill="#E2E8F0">${escapeXml(cell.label)}</text>`)
+      shapes.push(`<text x="${centreX}" y="${cell.y + cell.height / 2 + 4.5}" text-anchor="middle" font-size="${FONT}" font-family="Consolas, monospace" fill="${palette.text}">${escapeXml(cell.label)}</text>`)
     }
   }
   return { shapes, height }
 }
 
+/** How one drawing is painted; the geometry is the same on every surface. */
+export interface LadderRenderOptions {
+  /** Defaults to the dark preview palette. */
+  readonly palette?: LadderPalette
+}
+
 /** Render rungs to one SVG document. */
-export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder preview', note?: string): LadderRaster {
+export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder preview', note?: string, options: LadderRenderOptions = {}): LadderRaster {
+  const palette = options.palette ?? DARK_PALETTE
   const flattened: string[] = []
   const widest = Math.max(
     420,
@@ -247,7 +325,7 @@ export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder prev
   const shapes: string[] = []
   let top = note === undefined ? 34 : 52
   for (const rung of rungs) {
-    const drawn = drawRung(rung, top, left, right, flattened)
+    const drawn = drawRung(rung, top, left, right, flattened, palette)
     shapes.push(...drawn.shapes)
     top += drawn.height
   }
@@ -255,9 +333,9 @@ export function renderLadderSvg(rungs: readonly RungSpec[], title = 'Ladder prev
   const svg = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
-    `<rect x="0" y="0" width="${width}" height="${height}" fill="#0B1220"/>`,
-    `<text x="16" y="18" font-size="12" font-family="Segoe UI, Arial, sans-serif" fill="#94A3B8">${escapeXml(title)}</text>`,
-    ...(note === undefined ? [] : [`<text x="16" y="34" font-size="11" font-family="Segoe UI, Arial, sans-serif" fill="#64748B">${escapeXml(note)}</text>`]),
+    `<rect x="0" y="0" width="${width}" height="${height}" fill="${palette.background}"/>`,
+    `<text x="16" y="18" font-size="12" font-family="Segoe UI, Arial, sans-serif" fill="${palette.title}">${escapeXml(title)}</text>`,
+    ...(note === undefined ? [] : [`<text x="16" y="34" font-size="11" font-family="Segoe UI, Arial, sans-serif" fill="${palette.note}">${escapeXml(note)}</text>`]),
     ...shapes,
     '</svg>',
     '',
@@ -292,6 +370,32 @@ export async function rasterise(svgPath: string, pngPath: string, width: number,
     child.on('exit', () => { clearTimeout(timer); resolvePromise(true) })
   })
   return ok && existsSync(absolutePng)
+}
+
+/** Print one HTML file to PDF with a headless browser; true when a PDF appeared. */
+export async function printPdf(htmlPath: string, pdfPath: string): Promise<boolean> {
+  const browser = findChromium()
+  if (browser === undefined) return false
+  mkdirSync(join(pdfPath, '..'), { recursive: true })
+  const absoluteHtml = resolve(htmlPath)
+  const absolutePdf = resolve(pdfPath)
+  const url = `file:///${absoluteHtml.replace(/\\/gu, '/').replace(/^\/+/u, '')}`
+  const args = [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    // The report prints its own footer, so the browser's header and footer are off.
+    '--no-pdf-header-footer',
+    `--print-to-pdf=${absolutePdf}`,
+    url,
+  ]
+  const ok = await new Promise<boolean>(resolvePromise => {
+    const child = spawn(browser, args, { stdio: 'ignore' })
+    const timer = setTimeout(() => { child.kill(); resolvePromise(false) }, 120_000)
+    child.on('error', () => { clearTimeout(timer); resolvePromise(false) })
+    child.on('exit', () => { clearTimeout(timer); resolvePromise(true) })
+  })
+  return ok && existsSync(absolutePdf)
 }
 
 /** Write the SVG beside its PNG and rasterise it when a browser exists. */

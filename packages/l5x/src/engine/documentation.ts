@@ -21,12 +21,13 @@ import { aliasesOf } from './configuration.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { resolveTag } from './tag-resolution.ts'
 import { remedyFor, runChecks } from './review.ts'
+import { buildReportHtml } from './report.ts'
 
 /** One documentation part a caller can ask for. */
-export type DocumentPart = 'project' | 'io' | 'tags' | 'rungs'
+export type DocumentPart = 'project' | 'io' | 'tags' | 'rungs' | 'report'
 
 /** Every part, in the order the files are produced. */
-export const DOCUMENT_PARTS: readonly DocumentPart[] = ['project', 'io', 'tags', 'rungs']
+export const DOCUMENT_PARTS: readonly DocumentPart[] = ['project', 'io', 'tags', 'rungs', 'report']
 
 /** What one generation produced. */
 export interface DocumentBundle {
@@ -68,6 +69,8 @@ export interface DocumentOptions {
   readonly routines?: readonly string[]
   /** Most rungs per generated file before a continuation file is written. */
   readonly rungsPerFile?: number
+  /** Title the generated report prints on its cover. */
+  readonly title?: string
 }
 
 /** CSV cell with quoting when the value needs it. */
@@ -417,6 +420,16 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
   if (include.has('rungs')) {
     const perFile = Math.max(1, options.rungsPerFile ?? 200)
     for (const [path, text] of rungFiles(project, { programs, routines, perFile })) files.set(path, text)
+  }
+  if (include.has('report')) {
+    // The document, as opposed to the bundle's Markdown: one printable page with
+    // the ladder drawn inside it. Same generator the report tool uses, so the
+    // two can never disagree about what the export contains.
+    files.set('report.html', buildReportHtml(project, {
+      ...(programs === undefined ? {} : { programs }),
+      ...(routines === undefined ? {} : { routines }),
+      ...(options.title === undefined ? {} : { title: options.title }),
+    }).html)
   }
   return {
     files,

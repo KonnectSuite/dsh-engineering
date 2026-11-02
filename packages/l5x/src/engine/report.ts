@@ -18,7 +18,19 @@
 import type { ProjectSnapshot } from '../session.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import type { L5xDiagramNode } from '../model/types.ts'
-import { renderLadderSvg } from './render-ladder.ts'
+import { PAPER_PALETTE, renderLadderSvg } from './render-ladder.ts'
+
+/**
+ * The sections every report contains, in order.
+ *
+ * A declared shape, rather than an ad-hoc assembly: a generator that loses a
+ * section (an empty filter, a branch that returns early) fails here instead of
+ * shipping a document that is quietly missing its tag list.
+ */
+export const REPORT_SECTIONS = ['glance', 'logic', 'tags', 'io'] as const
+
+/** One named report section. */
+export type ReportSectionName = typeof REPORT_SECTIONS[number]
 
 /** What a caller may narrow or title. */
 export interface ReportOptions {
@@ -35,6 +47,8 @@ export interface ReportOptions {
 /** The report text and the counts a caller can compare with `project_overview`. */
 export interface ReportDocument {
   readonly html: string
+  /** Sections this document carries, in page order. */
+  readonly sections: readonly ReportSectionName[]
   readonly counts: {
     readonly programs: number
     readonly routines: number
@@ -42,6 +56,62 @@ export interface ReportDocument {
     readonly tags: number
     readonly modules: number
   }
+}
+
+/** Structured Text words that are keywords at the start of a statement or clause. */
+const ST_KEYWORDS = new Set([
+  'IF', 'THEN', 'ELSIF', 'ELSE', 'END_IF', 'CASE', 'OF', 'END_CASE',
+  'FOR', 'TO', 'BY', 'DO', 'END_FOR', 'WHILE', 'END_WHILE', 'REPEAT', 'UNTIL', 'END_REPEAT',
+  'RETURN', 'EXIT', 'CONTINUE',
+  'PROGRAM', 'END_PROGRAM', 'FUNCTION', 'END_FUNCTION', 'FUNCTION_BLOCK', 'END_FUNCTION_BLOCK',
+  'VAR', 'VAR_INPUT', 'VAR_OUTPUT', 'VAR_IN_OUT', 'VAR_TEMP', 'VAR_GLOBAL', 'END_VAR',
+  'CONSTANT', 'RETAIN', 'NON_RETAIN', 'AT',
+  'TRUE', 'FALSE', 'AND', 'OR', 'XOR', 'NOT', 'MOD',
+])
+
+/**
+ * Highlight one Structured Text body.
+ *
+ * Not Prism and not a parser: a small scanner over the text that colours what a
+ * reader needs to skim — comments, string literals, keywords, numbers and
+ * directives — and leaves everything else as text. It runs in Node with no
+ * dependency and cannot change what the document says, because every token is
+ * escaped before it is wrapped in a span.
+ *
+ * @param code - The routine body as the export records it.
+ * @returns HTML with the tokens wrapped in `st-*` spans.
+ */
+export function highlightSt(code: string): string {
+  const parts: string[] = []
+  let index = 0
+  while (index < code.length) {
+    const rest = code.slice(index)
+    // Block comment, line comment, string literal, number, word, anything else.
+    const match = /^(\(\*[\s\S]*?\*\))|^(\/\/[^\n]*)|^('(?:[^'$]|\$(?:"|'))*')|^(\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|^([A-Za-z_][A-Za-z0-9_]*)|^([\s\S])/u.exec(rest)
+    if (match === null) break
+    const [token] = match
+    const isComment = match[1] !== undefined || match[2] !== undefined
+    const isString = match[3] !== undefined
+    const isNumber = match[4] !== undefined
+    const isWord = match[5] !== undefined
+    const kind = isComment ? 'comment'
+      : isString ? 'string'
+        : isNumber ? 'number'
+          : isWord && ST_KEYWORDS.has(token.toUpperCase()) ? 'keyword'
+            : undefined
+    parts.push(kind === undefined ? escapeHtml(token) : `<span class="st-${kind}">${escapeHtml(token)}</span>`)
+    index += token.length
+  }
+  return parts.join('')
+}
+
+
+/** The heading each declared section prints. */
+const SECTION_TITLES: Record<ReportSectionName, string> = {
+  glance: 'At a glance',
+  logic: 'Logic',
+  tags: 'Tags',
+  io: 'I/O',
 }
 
 /** Escape text for HTML content and attributes. */
@@ -101,6 +171,15 @@ figcaption { font-size: 10px; color: #78716c; margin-top: 4px; }
 pre { background: #f5f5f4; border: 1px solid #e7e5e4; border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 11px; }
 code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; }
 footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #d6d3d1; font-size: 10px; color: #78716c; }
+.tag { font: 600 9px/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .06em; color: #57534e; border: 1px solid #d6d3d1; border-radius: 3px; padding: 2px 4px; vertical-align: 2px; }
+.toc { margin: 0 0 18px; }
+.toc ol { margin: 4px 0 0; padding-left: 20px; font-size: 12px; }
+.toc li { margin: 2px 0; }
+.toc a { color: #1c1917; text-decoration: none; border-bottom: 1px dotted #a8a29e; }
+.st-keyword { color: #7c3aed; font-weight: 600; }
+.st-comment { color: #78716c; font-style: italic; }
+.st-string { color: #15803d; }
+.st-number { color: #b45309; }
 `
 
 /**
@@ -135,7 +214,7 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
         // The same renderer the diagram tool uses: one picture of the logic, not a second one.
         const drawing = routine.body.rungs.length === 0
           ? '<p class="empty">This routine has no rungs.</p>'
-          : `<figure>${renderLadderSvg(routine.body.rungs, `${program.name} / ${info.name}`).svg}<figcaption>${escapeHtml(`${program.name} / ${info.name}`)} — drawn by this bundle's ladder renderer; the NeutralText is listed below.</figcaption></figure>`
+          : `<figure>${renderLadderSvg(routine.body.rungs, `${program.name} / ${info.name}`, undefined, { palette: PAPER_PALETTE }).svg}<figcaption>${escapeHtml(`${program.name} / ${info.name}`)} — drawn by this bundle's ladder renderer; the NeutralText is listed below.</figcaption></figure>`
         const rungs = routine.body.rungs.map(rung => row([
           String(rung.number),
           escapeHtml(rung.comment ?? ''),
@@ -143,7 +222,7 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
         ]))
         body.push(`<h3>${escapeHtml(info.name)} <span class="tag">RLL</span></h3><p>${description}</p>${drawing}${table(['Rung', 'Comment', 'NeutralText'], rungs, 'This routine has no rungs.')}`)
       } else if (routine.body.type === 'ST') {
-        body.push(`<h3>${escapeHtml(info.name)} <span class="tag">ST</span></h3><p>${description}</p><pre><code>${escapeHtml(routine.body.code)}</code></pre>`)
+        body.push(`<h3>${escapeHtml(info.name)} <span class="tag">ST</span></h3><p>${description}</p><pre><code>${highlightSt(routine.body.code)}</code></pre>`)
       } else if (routine.body.type === 'FBD' || routine.body.type === 'SFC') {
         const language = routine.body.type === 'FBD' ? 'Function block diagram' : 'Sequential function chart'
         body.push(`<h3>${escapeHtml(info.name)} <span class="tag">${routine.body.type}</span></h3><p>${description}</p><p>${language}; ${routine.body.nodes.length} element(s). Execution semantics are not verified.</p>${diagramTable(routine.body.nodes)}`)
@@ -187,6 +266,18 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
     'The export is empty.',
   )
 
+  // The declared shape, filled here and checked before the page is assembled: a
+  // section that came out empty is a generator defect, not an empty project.
+  const rendered: Record<ReportSectionName, string> = {
+    glance,
+    logic: sections.join('\n') || '<p class="empty">No programs were selected.</p>',
+    tags: table(['Scope', 'Name', 'Type', 'Description'], tagRows, 'The export declares no tags.'),
+    io: table(['Module', 'Catalog', 'Parent', 'Description'], moduleRows, 'The export declares no I/O modules.'),
+  }
+  const missing = REPORT_SECTIONS.filter(name => rendered[name].trim() === '')
+  if (missing.length > 0) throw new Error(`report is missing section(s): ${missing.join(', ')}`)
+  const toc = `<nav class="toc"><h2>Contents</h2><ol>${REPORT_SECTIONS.map(name => `<li><a href="#${name}">${SECTION_TITLES[name]}</a></li>`).join('')}</ol></nav>`
+
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -209,17 +300,19 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
   <p class="sub">${escapeHtml(`${allRoutines.length} routine(s) listed in ${programs.length} program(s).`)}</p>
 </section>
 
-<h2>At a glance</h2>
-${glance}
+${toc}
 
-<h2 class="section">Logic</h2>
-${sections.join('\n') || '<p class="empty">No programs were selected.</p>'}
+<h2 id="glance">At a glance</h2>
+${rendered.glance}
 
-<h2 class="section">Tags</h2>
-${table(['Scope', 'Name', 'Type', 'Description'], tagRows, 'The export declares no tags.')}
+<h2 class="section" id="logic">Logic</h2>
+${rendered.logic}
 
-<h2 class="section">I/O</h2>
-${table(['Module', 'Catalog', 'Parent', 'Description'], moduleRows, 'The export declares no I/O modules.')}
+<h2 class="section" id="tags">Tags</h2>
+${rendered.tags}
+
+<h2 class="section" id="io">I/O</h2>
+${rendered.io}
 
 <footer>
   <p>Generated from the export only. This document does not prove that the logic is correct, that a preset suits the
@@ -229,5 +322,5 @@ ${table(['Module', 'Catalog', 'Parent', 'Description'], moduleRows, 'The export 
 </body>
 </html>
 `
-  return { html, counts }
+  return { html, sections: REPORT_SECTIONS, counts }
 }

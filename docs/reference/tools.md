@@ -177,15 +177,16 @@ List the ladder instructions the composer validates: mnemonic, category, summary
 
 #### `document_project`
 
-Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately. Never writes to the export.
+Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately, and writes one printable report whose ladder is drawn inside the page. Never writes to the export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `output_root` | string | yes | New folder for the bundle. It must not exist. Example: "C:/Projects/Line/documentation". |
-| `include` | array | no | Optional parts to produce; default all. One of project, io, tags, rungs. |
+| `include` | array | no | Optional parts to produce; default all. One of project, io, tags, rungs, report. |
 | `programs` | array | no | Optional program names to restrict the bundle to. |
 | `routines` | array | no | Optional routine names to restrict the rung documentation to. |
 | `rungs_per_file` | integer | no | Most rungs per rung-documentation file before a continuation file is written. Defaults to 200. |
+| `report_format` | string (html \| pdf \| both) | no | Report file to write for the report part: html (default), pdf, or both. A PDF needs Chrome or Edge on this machine. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 
 ### L5X preview

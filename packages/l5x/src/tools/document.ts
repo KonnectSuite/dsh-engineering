@@ -8,7 +8,9 @@
  * @module dsh-engineering-l5x/tools/document
  */
 
+import { statSync } from 'node:fs'
 import { DOCUMENT_PARTS, buildDocumentation, type DocumentPart } from '../engine/documentation.ts'
+import { printPdf } from '../engine/render-ladder.ts'
 import { INSTRUCTIONS, type InstructionInfo } from '../engine/instructions.ts'
 import { alternateMnemonic } from '../engine/mnemonics.ts'
 import { L5xError } from '../core/errors.ts'
@@ -95,13 +97,14 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
     }),
     tool({
       name: 'document_project',
-      description: 'Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately. Never writes to the export.',
+      description: 'Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately, and writes one printable report whose ladder is drawn inside the page. Never writes to the export.',
       parameters: object({
         output_root: string('New folder for the bundle. It must not exist. Example: "C:/Projects/Line/documentation".'),
-        include: list('Optional parts to produce; default all. One of project, io, tags, rungs.', choice('One part.', DOCUMENT_PARTS)),
+        include: list('Optional parts to produce; default all. One of project, io, tags, rungs, report.', choice('One part.', DOCUMENT_PARTS)),
         programs: list('Optional program names to restrict the bundle to.', string('Program name.')),
         routines: list('Optional routine names to restrict the rung documentation to.', string('Routine name.')),
         rungs_per_file: integer('Most rungs per rung-documentation file before a continuation file is written. Defaults to 200.', { minimum: 1, maximum: 2000 }),
+        report_format: choice('Report file to write for the report part: html (default), pdf, or both. A PDF needs Chrome or Edge on this machine.', ['html', 'pdf', 'both']),
         project_id: PROJECT_ID,
       }, ['output_root']),
       async run(args, exec) {
@@ -128,6 +131,22 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
           const destination = await session.writeTextAt(`${outputRoot.replace(/[\\/]+$/u, '')}/${path}`, text, exec)
           written.push({ path: destination, bytes: new TextEncoder().encode(text).length })
         }
+        // The report is HTML from a pure generator; a PDF is the same page printed by
+        // the local browser. Absence of a browser is reported, never silently skipped.
+        const format = optionalString(args, 'report_format') ?? 'html'
+        const wantsReport = include === undefined || include.includes('report')
+        let reportPdf: string | undefined
+        let reportPdfUnavailable: string | undefined
+        if (wantsReport && (format === 'pdf' || format === 'both')) {
+          const html = written.find(entry => entry.path.endsWith('report.html'))
+          if (html === undefined) {
+            reportPdfUnavailable = 'the report part was not written'
+          } else {
+            const pdfPath = html.path.replace(/report\.html$/u, 'report.pdf')
+            if (await printPdf(html.path, pdfPath)) reportPdf = pdfPath
+            else reportPdfUnavailable = 'no Chrome or Edge on this machine, so report.html is the printable copy'
+          }
+        }
         return success(
           `Wrote ${written.length} file(s) for ${bundle.counts.programs} program(s), ${bundle.counts.routines} routine(s)${(project.protectedRoutines ?? 0) === 0 ? '' : ` plus ${project.protectedRoutines} source-protected`}${bundle.counts.aoiRoutines === 0 ? '' : ` and ${bundle.counts.aoiRoutines} AOI routine(s) (${bundle.counts.aoiRungs} rung(s))`}, ${bundle.counts.rungs} rung(s) (${bundle.counts.comments} commented) to ${outputRoot}.`,
           {
@@ -135,6 +154,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
             files: written,
             counts: bundle.counts,
             excluded: bundle.excluded,
+            report: { format, pdf: reportPdf ?? null, unavailable: reportPdfUnavailable ?? null },
           },
           [{ tool: 'draft_rung_comment', why: 'Write the approved narrative back as rung comments, then apply the draft.' }],
           DOCUMENT_COVERAGE,
