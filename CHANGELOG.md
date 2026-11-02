@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+- **The documentation's viewer figures are generated from the shipped pane.** `pnpm docs:figures` renders four screenshots of `packages/viewer/lib/client.js` in headless Chrome through the document-preview contract - ladder, Structured Text, a function block sheet and a chart - and writes them to `docs/figures`, where `docs/capabilities.md` uses them with the same what-it-proves/what-it-does-not captions as the rest. A hand-drawn figure drifts silently; a regenerated one shows up as a diff.
 - **Applying a draft now shows the export it wrote.** `draft_apply` is the moment a staged draft stops being text: the
   file it writes is a real export, so the viewer draws the ladder, the Structured Text, the function block sheet or the
   chart from it, in every language. It now offers `present` beside `open_project`.
