@@ -22,7 +22,9 @@ const PACKAGES = [
 ]
 
 async function latestOf(name) {
-  const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name).replace(/%40/gu, '@')}/latest`, {
+  // Cache-buster: a plain /latest can be served from a warm edge that predates the publish,
+  // which is what made an earlier version of this script report a live release as "staged".
+  const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name).replace(/%40/gu, '@')}/latest?t=${Date.now()}`, {
     headers: { accept: 'application/json' },
   })
   if (response.status === 404) return { error: 'no version is published yet' }
@@ -53,7 +55,8 @@ async function main() {
     }
     if (seen.version !== local) {
       console.log(`FAIL ${pkg.name}: registry latest is ${seen.version}, this repository is ${local}`)
-      console.log(`     ${Number(seen.version.split('.')[1]) < Number(local.split('.')[1]) ? 'the publish is staged — approve it at npmjs.com' : 'the repository is behind the registry'}`)
+      const behind = Number(seen.version.split('.')[1]) < Number(local.split('.')[1])
+      console.log(`     ${behind ? 'this registry edge may still be serving the previous version — retry in a minute; there is no approval step to perform' : 'the repository is behind the registry'}`)
       failed = true
       continue
     }
