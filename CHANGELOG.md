@@ -1,3 +1,13 @@
+## [0.85.3] - 2026-11-02
+
+- **A block draws what it writes on the right and what it reads on the left.** Instruction blocks listed every operand
+  down the middle, so `ADD(Count,1,Count)` read as three values in a column with no indication which one the instruction
+  writes — the destination looked like a third input. The catalog already marks the written slot (`ADD`'s
+  `Destination` is `numW`, `RES`'s `Structure` is `writable`), so the drawing now places those pins on the right in
+  bold and the rest on the left: `ADD` shows `Count`, `1` then **`Count`**, while `GE` (a compare, which writes
+  nothing) keeps both operands on the left and `TON` keeps `Timer`/`Preset`/`Accum` there, because none of them is a
+  written slot. Contacts and coils were already in flow order; a coil is the right-hand element of its rung.
+
 ## [0.85.2] - 2026-11-02
 
 - **Ladder labels sit above their symbol and reserve their own width.** A contact's tag was absolutely positioned

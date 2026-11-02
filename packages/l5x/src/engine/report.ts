@@ -19,6 +19,7 @@ import type { ProjectSnapshot } from '../session.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import type { L5xDiagramNode } from '../model/types.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
+import { instructionByName } from './instructions.ts'
 import { REPORT_STYLESHEET } from './report-styles.ts'
 import { BRAND, brandFontCss, brandLockupHtml, brandMarkDataUri, brandPackageVersion } from './brand.ts'
 
@@ -146,14 +147,40 @@ function elementHtml(node: Extract<LadderNode, { kind: 'instruction' }>): string
     const text = operandText(node.operands[0] ?? [])
     return `<span class="ldr-el" style="${width(text, 30)}"><i class="ldr-coil"></i><b class="ldr-label">${escapeHtml(text)}</b></span>`
   }
-  const pins = node.operands.map(operand => operandText(operand)).filter(value => value !== '')
-  return `<span class="ldr-el"><span class="ldr-block"><strong>${escapeHtml(node.name)}</strong>${pins.map(pin => `<span>${escapeHtml(pin)}</span>`).join('')}</span></span>`
+  // What a block writes goes on the right, what it reads on the left, the way the
+  // programming manual draws it. The catalog marks the written slots (`writable`),
+  // so a destination is placed by data rather than by guessing from position.
+  const info = instructionByName(node.name)
+  const inputs: string[] = []
+  const outputs: string[] = []
+  node.operands.forEach((operand, index) => {
+    const value = operandText(operand)
+    if (value === '') return
+    if (info?.operands[index]?.writable === true) outputs.push(value)
+    else inputs.push(value)
+  })
+  const rows = Math.max(inputs.length, outputs.length)
+  const pins = Array.from({ length: rows }, (_, row) => `<span class="ldr-in">${escapeHtml(inputs[row] ?? '')}</span><span class="ldr-out">${escapeHtml(outputs[row] ?? '')}</span>`).join('')
+  return `<span class="ldr-el"><span class="ldr-block"><strong>${escapeHtml(node.name)}</strong><span class="ldr-pins">${pins}</span></span></span>`
 }
 
-/** A sequence of elements joined by wire. */
-function flowHtml(nodes: readonly LadderNode[]): string {
+/**
+ * A sequence of elements joined by wire.
+ *
+ * A rung reads left to right and ends at its output: the last element is pushed to
+ * the right rail and the wire before it takes the slack, which is how the pane and
+ * Studio draw it. Without the spread, a coil sat just after the last contact with
+ * empty wire to its right, so the output read as another input.
+ * @param nodes - The sequence, already parsed.
+ * @param spread - True for a rung's own flow; false inside a branch path, where
+ *   elements stay adjacent to the rail that closes them.
+ */
+function flowHtml(nodes: readonly LadderNode[], spread = false): string {
   const parts = nodes.map(node => node.kind === 'branch' ? branchHtml(node) : elementHtml(node))
-  return `${parts.join('<span class="ldr-wire"></span>')}<span class="ldr-wire ldr-tail"></span>`
+  const tail = '<span class="ldr-wire ldr-tail"></span>'
+  if (!spread || parts.length < 2) return `${parts.join('<span class="ldr-wire"></span>')}${tail}`
+  const head = parts.slice(0, -1).join('<span class="ldr-wire"></span>')
+  return `${head}<span class="ldr-wire ldr-grow"></span>${parts[parts.length - 1]!}${tail}`
 }
 
 /** Parallel paths as a bordered column, the way the pane draws a branch. */
@@ -171,7 +198,7 @@ function ladderHtml(rungs: readonly { readonly number: number; readonly text: st
       : `<div class="ldr-comment">${escapeHtml(rung.comment)}</div>`
     const flow = parsed.nodes.length === 0
       ? '<span class="ldr-empty">This rung did not parse into a sequence.</span>'
-      : flowHtml(parsed.nodes)
+      : flowHtml(parsed.nodes, true)
     return `<div class="ldr-rung"><div class="ldr-num">${rung.number}</div><div class="ldr-body">${comment}<div class="ldr-flow">${flow}</div></div></div>`
   })
   return `<div class="ldr">${rows.join('')}</div>`
