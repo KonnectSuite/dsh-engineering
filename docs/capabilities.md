@@ -45,6 +45,26 @@ What these prove: the export parses client-side, the ladder, the Structured Text
 each language carries its own copy affordance. What they do not prove: execution, live values (the numbers shown are
 what the export recorded), or that the pane is what Studio itself would draw.
 
+### Pasting a composed rung into Studio 5000
+
+![Rung 4 of MainProgram/MainRoutine holding XIC(Run)TON(Timer,2000,0), with the build reporting 0 errors and 0 warnings](figures/studio-neutral-text-paste.png)
+
+A composed rung reaches Studio as text, and the editor has to be told which text it is:
+
+1. Open the routine, select the `(End)` rung and press **Enter** to open the rung editor.
+2. Set the editor's format dropdown from **In ASCII Text** to **In Neutral Text**. This is the step that matters: a rung
+   typed into *ASCII Text* is rejected with `Invalid or unrecognized instruction`, and Studio replaces it with an
+   `Unknown Instruction` placeholder — even when the text itself is correct.
+3. Type or paste the composed NeutralText — `XIC(Run)TON(Timer,2000,0);` — and accept it.
+4. **Build** (`Ctrl+B`).
+
+The figure is the result: rung 4 holding the composed logic and the Errors pane at **0 errors, 0 warnings, 0 messages**,
+on `E2E_Standard` in a 5069-L320ER at revision 37.11.
+
+What it proves: the text this bundle's composer emits is what Studio accepts, and a project builds clean with it. What it
+does not prove: that the preset the rung names suits the machine, that the logic does what the comment says, or anything
+about runtime — a build verdict is a syntax-and-reference verdict, nothing more.
+
 ### Reviewing logic you did not write
 
 `l5x_routine_diagram` draws a routine from the parsed rungs, so an unfamiliar program can be read as a picture before
