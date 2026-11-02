@@ -71,7 +71,20 @@ export interface FsService {
   resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget>
   stat(target: FsTarget, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(target: FsTarget, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
-  writeText?(target: FsTarget, text: string, options?: { readonly kind?: 'createIfAbsent' }, signal?: AbortSignal): Promise<void>
+  writeText?(target: FsTarget, text: string, options?: { readonly kind?: 'createIfAbsent' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
+}
+
+/**
+ * The host's per-session sandbox policy service.
+ *
+ * A confining provider decides whether a mutation is allowed from the policy
+ * stamped on THAT call. Omitted, it falls back to the deployment default
+ * (workspace-write), which is why every write through this plugin failed in a
+ * session switched to danger-full-access: the host resolves this service per
+ * call and passes it, and this plugin did not.
+ */
+export interface SandboxPolicyResolver {
+  resolve(options: { readonly session?: unknown }): unknown
 }
 
 /** The services a composition must provide before this plugin loads. */

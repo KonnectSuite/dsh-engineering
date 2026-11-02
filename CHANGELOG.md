@@ -1,3 +1,20 @@
+## [0.82.0] - 2026-11-02
+
+- **A draft writes with the session's sandbox policy, not the deployment default.** `draft_apply`, `document_project` and
+  every other writer in this package called `fs.writeText(target, text, options, signal)` and stopped there. A confining
+  provider fills the missing fifth argument with `ctx.sandboxPolicy.resolve()` — no session — which is the *deployment
+  default*, `workspace-write`. So a session switched to `danger-full-access` could stage a draft, validate it, and then be
+  refused the write with `file access denied under workspace-write mode`, naming a mode the user had already left. The
+  host's own `write`/`edit` tools resolve `sandboxPolicy.resolve({ session })` per call and pass it; this package now does
+  the same, from the `sandboxPolicy` service when the composition has one.
+- **The regression is pinned by a behavioural test**, not a text check: a recording provider asserts that the fifth
+  argument is exactly what the policy service resolved for the calling session, and that a composition without the
+  service passes nothing.
+- **Known, not yet fixed: the same omission in the sibling components.** `ftview` writes at six call sites and
+  `migration` at two; `migration` also passes its abort signal in the *options* position, so cancellation never reaches
+  the provider either. Both fail the same way in a wider-than-default session. They are separate packages with their own
+  `FsService` types and need the same threading.
+
 ## [0.81.0] - 2026-11-02
 
 - **The report is branded.** A generated document now carries the production brand kit: the monochrome mark and the

@@ -9,7 +9,7 @@
  * @module dsh-engineering-l5x
  */
 
-import type { PluginContext } from './core/tool.ts'
+import type { PluginContext, SandboxPolicyResolver } from './core/tool.ts'
 import { ProjectSession } from './session.ts'
 import { readTools } from './tools/read.ts'
 import { referenceTools } from './tools/references.ts'
@@ -44,7 +44,9 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   if (!Number.isInteger(maxFileBytes) || maxFileBytes <= 0) {
     throw new Error('l5x-read: maxFileBytes must be a positive integer')
   }
-  const session = new ProjectSession(ctx.fs, maxFileBytes)
+  // Optional: a composition without a confining provider has no policy service.
+  const policy = ctx.get?.('sandboxPolicy') as SandboxPolicyResolver | undefined
+  const session = new ProjectSession(ctx.fs, maxFileBytes, policy)
   ctx.provide?.(PROJECTS_SERVICE, session)
   for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session), ...documentTools(session), ...previewTools(session), ...diagramTools(session)]) {
     ctx.tools.register(definition)

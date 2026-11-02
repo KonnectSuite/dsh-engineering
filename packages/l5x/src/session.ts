@@ -18,7 +18,7 @@ import { styleProfileOf, type L5xStyleProfile } from './engine/style.ts'
 import type { ExecContext } from './core/tool.ts'
 import { L5xError } from './core/errors.ts'
 import { decodeExport } from './fs.ts'
-import type { FsService, FsTarget } from './core/tool.ts'
+import type { FsService, FsTarget, SandboxPolicyResolver } from './core/tool.ts'
 
 /** How completely one export feature can be analyzed. */
 export type FeatureLevel = 'analyzed' | 'partial' | 'unsupported' | 'not_present'
@@ -86,10 +86,12 @@ export class ProjectSession {
   /**
    * @param fs - Filesystem provider for the profile.
    * @param maxFileBytes - Largest export one open will read.
+   * @param policy - Per-session sandbox policy, resolved for every mutation this store writes.
    */
   constructor(
     private readonly fs: FsService,
     private readonly maxFileBytes: number,
+    private readonly policy?: SandboxPolicyResolver,
   ) {}
 
   /**
@@ -253,6 +255,21 @@ export class ProjectSession {
    * @param exec - Calling context: cancellation and workspace root.
    * @returns The resolved destination.
    */
+  /**
+   * The sandbox policy to stamp on one mutation.
+   *
+   * The provider falls back to the deployment default when this is absent, so an
+   * omitted policy is not "no policy": it is workspace-write, even in a session
+   * whose mode is wider. Resolve what the host service says about this session.
+   * @param exec - The calling tool execution context.
+   * @returns The policy, or undefined when this composition has no policy service.
+   */
+  private policyFor(exec?: ExecContext): unknown {
+    if (this.policy === undefined) return undefined
+    const owner = (exec?.agent as { readonly session?: unknown } | undefined)?.session
+    return this.policy.resolve(owner === undefined ? {} : { session: owner })
+  }
+
   async writeTextAt(requestedPath: string, text: string, exec?: ExecContext): Promise<string> {
     if (this.fs.writeText === undefined) {
       throw new L5xError(
@@ -265,7 +282,7 @@ export class ProjectSession {
       ...(exec?.cwd === undefined ? {} : { cwd: exec.cwd }),
       ...(exec?.signal === undefined ? {} : { signal: exec.signal }),
     })
-    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal).catch((error: unknown) => {
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal, this.policyFor(exec)).catch((error: unknown) => {
       // A provider denial is an environment condition, not a plugin defect: state the destination
       // and what to change, and say plainly that nothing was written.
       throw new L5xError(
@@ -326,7 +343,7 @@ export class ProjectSession {
         'Use a profile whose filesystem provider allows writes, or copy the draft text into Studio manually.',
       )
     }
-    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal).catch((error: unknown) => {
+    await this.fs.writeText(target, text, { kind: 'createIfAbsent' }, exec?.signal, this.policyFor(exec)).catch((error: unknown) => {
       throw new L5xError(
         'WRITE_DENIED',
         `The filesystem provider refused to write ${target.displayPath}: ${error instanceof Error ? error.message : String(error)}`,
