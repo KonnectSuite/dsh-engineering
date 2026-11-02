@@ -1,6 +1,6 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.78.1",
+  "version": "0.79.0",
   "description": "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
   "keywords": [
     "dsh",
@@ -60,7 +60,7 @@
   "scripts": {
     "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/diagram-face.spec.mjs test/arya-automation.spec.mjs test/instruction-coverage.spec.mjs packages/l5x/test/dist-smoke.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
-    "docs:check": "tsx scripts/gen-tool-reference.ts --check",
+    "docs:check": "tsx scripts/gen-tool-reference.ts --check && tsx scripts/gen-print-css.mts --check",
     "docs:figures": "node scripts/gen-doc-figures.mjs",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
     "resources:build": "node scripts/resources.mjs",
@@ -73,7 +73,9 @@
     "e2e:actions": "node packages/viewer/test/render/interactions.mjs",
     "e2e:instructions": "node packages/viewer/test/render/instructions.mjs",
     "assemble": "node scripts/assemble.mjs",
-    "prepack": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs && node scripts/assemble.mjs"
+    "prepack": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs && node scripts/assemble.mjs",
+    "docs:print-css": "tsx scripts/gen-print-css.mts",
+    "docs:handbook": "python scripts/gen-handbook.py"
   },
   "dependencies": {
     "fast-xml-parser": "5.11.1",

@@ -50,9 +50,12 @@ The gap is that our documents are **raster and text**, where theirs are **render
    (`packages/viewer/src/client/diagram.ts` → `diagramSvg`) that runs in Node. Those figures become vector, generated
    from the same code the pane runs, with no browser in the loop. Ladder keeps the browser, because its geometry is the
    DOM's.
-2. **One print path for the handbook.** A print stylesheet in this repository that the handbook and the docs pages share,
-   with a cover block, so a document we generate and a document we render agree. The handbook stops being a separate
-   artefact with its own layout rules.
+2. **One print path for the handbook.** **Done.** The stylesheet lives once, in
+   `packages/l5x/src/engine/report-styles.ts`; `pnpm docs:print-css` writes `docs/print.css` from it and `docs:check`
+   fails when the file drifts. The handbook no longer has a layout of its own: `scripts/gen-handbook.py` emits the same
+   cover, table of contents, section and table markup a report uses, links that stylesheet, and its PDF is printed by
+   `scripts/print-pdf.mts` — the same Chrome path, with the same `--no-pdf-header-footer` — instead of reportlab. The
+   DOCX output stays, because it is the editable copy and has no print path to share.
 3. **Structured Text highlighting.** Adopt the `iecst` grammar for ST fences (Prism ships it, as their bundle shows), so
    an ST example reads as IEC 61131-3 rather than as generic text.
 4. **A declared shape for our reports.** `migration_report` already produces DOCX/Markdown; give its payload the same

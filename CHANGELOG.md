@@ -1,3 +1,8 @@
+## [0.79.0] - 2026-11-02
+
+- **One print path: the handbook and a report are now the same kind of document.** The report's stylesheet moved to `packages/l5x/src/engine/report-styles.ts`; `pnpm docs:print-css` writes `docs/print.css` from that one definition and `docs:check` fails when the file drifts. `scripts/gen-handbook.py` emits the same cover, table of contents, section and table markup a report uses, links that stylesheet, and prints its PDF through `scripts/print-pdf.mts` — the same Chrome invocation as `report_format: "pdf"` — so reportlab and its parallel typography are gone. The regenerated handbook is 8 pages, produced by Skia/PDF, where it used to be built by a second engine. The DOCX path is untouched: it is the editable copy and has no printing to share.
+- **`docs/print.css` ships with the package** like the rest of the documentation, so an installed copy and this repository print identically.
+
 ## [0.78.1] - 2026-11-02
 
 - **The docs map now covers the report.** `docs/index.md` gains a "Reports and documents" section that separates the

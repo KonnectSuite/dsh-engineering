@@ -14,21 +14,15 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from PIL import Image
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt, RGBColor
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import Image as RlImage
-from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parent.parent
 DIAGRAMS = ROOT / "docs" / "diagrams"
@@ -36,10 +30,6 @@ OUT = ROOT / "docs" / "handbook"
 VERSION = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
 TODAY = date.today().isoformat()
 
-INK = colors.HexColor("#1f2933")
-MUTED = colors.HexColor("#52606d")
-ACCENT = colors.HexColor("#1f6feb")
-RULE = colors.HexColor("#d9e2ec")
 
 
 @dataclass
@@ -178,119 +168,84 @@ REQUIREMENTS = [
 ]
 
 
-def pdf() -> Path:
+PRINT_CSS = ROOT / "docs" / "print.css"
+PRINT_CLI = ROOT / "scripts" / "print-pdf.mts"
+
+
+def html() -> Path:
+    """Write the handbook HTML, styled by the same stylesheet a report uses."""
     OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / "Engineering-Handbook.pdf"
-    styles = getSampleStyleSheet()
-    title = ParagraphStyle("title", parent=styles["Title"], fontName="Helvetica-Bold", fontSize=30, leading=36, textColor=INK, spaceAfter=6)
-    subtitle = ParagraphStyle("subtitle", parent=styles["Normal"], fontName="Helvetica", fontSize=13, leading=19, textColor=MUTED)
-    h1 = ParagraphStyle("h1", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=19, leading=24, textColor=INK, spaceBefore=14, spaceAfter=5)
-    lead = ParagraphStyle("lead", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=10.5, leading=15, textColor=MUTED, spaceAfter=10)
-    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontName="Helvetica-Bold", fontSize=12.5, leading=16, textColor=ACCENT, spaceBefore=10, spaceAfter=4)
-    body = ParagraphStyle("body", parent=styles["Normal"], fontName="Helvetica", fontSize=10.2, leading=15, textColor=INK, spaceAfter=4, leftIndent=10)
-    caption = ParagraphStyle("caption", parent=styles["Normal"], fontName="Helvetica-Oblique", fontSize=9, leading=13, textColor=MUTED, alignment=TA_CENTER, spaceAfter=10)
-
-    story: list = []
-    story.append(Spacer(1, 40 * mm))
-    story.append(Paragraph("AryaCode Engineering", title))
-    story.append(Paragraph("Workflow Handbook", ParagraphStyle("t2", parent=title, fontSize=22, leading=28, textColor=ACCENT)))
-    story.append(Spacer(1, 6 * mm))
-    story.append(Paragraph(
-        "How the four engineering surfaces work, what the agent does, what stays with you, and what each "
-        "result can and cannot prove.", subtitle))
-    story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph(f"Version {VERSION} · {TODAY} · @aryacode/dsh-engineering", subtitle))
-    story.append(PageBreak())
-
-    story.append(Paragraph("What this handbook covers", h1))
-    story.append(Paragraph(
-        "One install adds four products to AryaCode: Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC "
-        "and FactoryTalk Optix. Each is a row you can switch off, and each registers a skill that tells the "
-        "agent how to work and tools that say what it can do. You never call a tool by name: you say what "
-        "you want, and the agent selects the surface.", subtitle))
-    story.append(Spacer(1, 4 * mm))
-    rows = [["Product", "Without vendor software", "Needs for the rest"]] + [list(r) for r in REQUIREMENTS]
-    table = Table(rows, colWidths=[38 * mm, 55 * mm, 85 * mm])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), ACCENT),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("LEADING", (0, 0), (-1, -1), 12),
-        ("GRID", (0, 0), (-1, -1), 0.4, RULE),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    story.append(table)
-    story.append(PageBreak())
-
+    path = OUT / "Engineering-Handbook.html"
+    toc = [("what", "What this handbook covers")] + [(section.id, section.title) for section in SECTIONS] + [("proof", "What proves what")]
+    body: list[str] = []
+    body.append(f"""<section class="cover">
+  <h1>AryaCode Engineering — Workflow Handbook</h1>
+  <p class="sub">How the four engineering surfaces work, what the agent does, what stays with you, and what each result can and cannot prove.</p>
+  <dl>
+    <dt>Version</dt><dd>{VERSION}</dd>
+    <dt>Generated</dt><dd>{TODAY}</dd>
+    <dt>Package</dt><dd>@aryacode/dsh-engineering</dd>
+    <dt>Sections</dt><dd>{len(SECTIONS)}</dd>
+  </dl>
+</section>""")
+    body.append('<nav class="toc"><h2>Contents</h2><ol>')
+    for anchor, title in toc:
+        body.append(f'<li><a href="#{anchor}">{title}</a></li>')
+    body.append("</ol></nav>")
+    body.append('<h2 id="what">What this handbook covers</h2>')
+    body.append("<p>One install adds four products to AryaCode: Studio 5000 L5X, FactoryTalk View ME, "
+                "MotionWorks IEC and FactoryTalk Optix. Each is a row you can switch off, and each registers "
+                "a skill and tools. You never call a tool by name: you say what you want, and the agent "
+                "selects the surface.</p>")
+    body.append("<table><thead><tr><th>Product</th><th>Without vendor software</th><th>Needs for the rest</th></tr></thead><tbody>")
+    for row in REQUIREMENTS:
+        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
+    body.append("</tbody></table>")
     for section in SECTIONS:
-        story.append(Paragraph(section.title, h1))
-        story.append(Paragraph(section.lead, lead))
+        body.append(f'<h2 class="section" id="{section.id}">{section.title}</h2>')
+        body.append(f'<p>{section.lead}</p>')
         if section.figure:
-            image = DIAGRAMS / f"{section.figure}-figure.png"
-            if image.exists():
-                with Image.open(image) as source:
-                    ratio = source.height / source.width
-                width = 176 * mm
-                story.append(RlImage(str(image), width=width, height=width * ratio))
-                story.append(Paragraph(f"Figure — {section.title}", caption))
+            body.append(f'<figure><img src="../diagrams/{section.figure}-figure.svg" alt="{section.title} workflow">'
+                        f'<figcaption>Figure — {section.title}</figcaption></figure>')
         for heading, bullets in section.body:
-            story.append(Paragraph(heading, h2))
+            body.append(f"<h3>{heading}</h3><ul>")
             for bullet in bullets:
-                story.append(Paragraph(bullet.replace("**", ""), body, bulletText="•"))
-        story.append(Spacer(1, 3 * mm))
+                body.append(f"<li>{re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', bullet)}</li>")
+            body.append("</ul>")
+    body.append('<h2 class="section" id="proof">What proves what</h2>')
+    body.append('<p>A release claim is only as good as the step that checked it.</p>')
+    body.append("<table><thead><tr><th>Product</th><th>Proof the agent can produce</th><th>Still yours</th></tr></thead><tbody>")
+    for row in VERIFICATION:
+        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
+    body.append("</tbody></table>")
+    body.append("<h3>Where to look next</h3><ul>"
+                "<li>docs/getting-started.md — the first session, with a paste-ready prompt per product.</li>"
+                "<li>docs/examples.md — end-to-end sessions with call shapes and results.</li>"
+                "<li>docs/reference/tools.md — every tool, parameter and description (generated).</li>"
+                "<li>docs/architecture.md — rows, services, client faces and packaging.</li></ul>")
+    body.append('<footer><p>Generated from this repository by <code>scripts/gen-handbook.py</code>. This page and a '
+                'generated report are printed with one stylesheet (<code>docs/print.css</code>) and one printer '
+                '(<code>scripts/print-pdf.mts</code>), so the two documents cannot drift apart in typography.</p></footer>')
+    path.write_text(
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f'<title>AryaCode Engineering — Workflow Handbook</title><link rel="stylesheet" href="../print.css"></head>'
+        f"<body>{''.join(body)}</body></html>", encoding="utf-8")
+    return path
 
-    story.append(PageBreak())
-    story.append(Paragraph("What proves what", h1))
-    story.append(Paragraph("A release claim is only as good as the step that checked it.", lead))
-    rows = [["Product", "Proof the agent can produce", "Still yours"]] + [list(r) for r in VERIFICATION]
-    table = Table(rows, colWidths=[38 * mm, 75 * mm, 65 * mm])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), INK),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, -1), 8.5),
-        ("LEADING", (0, 0), (-1, -1), 12),
-        ("GRID", (0, 0), (-1, -1), 0.4, RULE),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    story.append(table)
-    story.append(Spacer(1, 8 * mm))
-    story.append(Paragraph("Where to look next", h2))
-    for line in [
-        "docs/getting-started.md — the first session, with a paste-ready prompt per product.",
-        "docs/examples.md — end-to-end sessions with call shapes and results.",
-        "docs/reference/tools.md — every tool, parameter and description (generated).",
-        "docs/architecture.md — rows, services, client faces and packaging.",
-    ]:
-        story.append(Paragraph(line, body, bulletText="•"))
 
-    doc = SimpleDocTemplate(
-        str(path), pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=20 * mm, bottomMargin=18 * mm,
-        title="AryaCode Engineering — Workflow Handbook", author="AryaCode", subject=f"Version {VERSION}",
+def pdf() -> Path:
+    """Print that HTML with the same browser path a generated report uses."""
+    OUT.mkdir(parents=True, exist_ok=True)
+    source = html()
+    path = OUT / "Engineering-Handbook.pdf"
+    result = subprocess.run(
+        ["node", "--import", "tsx", str(PRINT_CLI), str(source), str(path)],
+        cwd=ROOT, capture_output=True, text=True,
     )
-
-    def footer(canvas, document) -> None:
-        canvas.saveState()
-        canvas.setFont("Helvetica", 8)
-        canvas.setFillColor(MUTED)
-        canvas.drawString(18 * mm, 10 * mm, f"AryaCode Engineering — Workflow Handbook · {VERSION}")
-        canvas.drawRightString(A4[0] - 18 * mm, 10 * mm, str(document.page))
-        canvas.restoreState()
-
-    doc.build(story, onFirstPage=footer, onLaterPages=footer)
+    if result.returncode != 0:
+        sys.stderr.write(result.stdout + result.stderr)
+        raise SystemExit("gen-handbook: the PDF was not printed; the HTML is the printable copy")
     return path
 
 
@@ -361,85 +316,8 @@ def docx() -> Path:
     return path
 
 
-def html() -> Path:
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / "Engineering-Handbook.html"
-    body: list[str] = []
-    body.append(f"""<header class="cover">
-  <p class="eyebrow">AryaCode Engineering</p>
-  <h1>Workflow Handbook</h1>
-  <p class="lede">How the four engineering surfaces work, what the agent does, what stays with you, and
-  what each result can and cannot prove.</p>
-  <p class="meta">Version {VERSION} · {TODAY} · @aryacode/dsh-engineering</p>
-</header>""")
-    body.append("<section><h2>What this handbook covers</h2>")
-    body.append("<p>One install adds four products to AryaCode: Studio 5000 L5X, FactoryTalk View ME, "
-                "MotionWorks IEC and FactoryTalk Optix. Each is a row you can switch off, and each registers "
-                "a skill and tools. You never call a tool by name: you say what you want, and the agent "
-                "selects the surface.</p>")
-    body.append("<table><thead><tr><th>Product</th><th>Without vendor software</th><th>Needs for the rest</th></tr></thead><tbody>")
-    for row in REQUIREMENTS:
-        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-    body.append("</tbody></table></section>")
-    for section in SECTIONS:
-        body.append(f'<section><h2>{section.title}</h2><p class="lede">{section.lead}</p>')
-        if section.figure:
-            body.append(f'<figure><img src="../diagrams/{section.figure}-figure.svg" alt="{section.title} workflow">'
-                        f'<figcaption>Figure — {section.title}</figcaption></figure>')
-        for heading, bullets in section.body:
-            body.append(f"<h3>{heading}</h3><ul>")
-            for bullet in bullets:
-                html_bullet = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", bullet)
-                body.append(f"<li>{html_bullet}</li>")
-            body.append("</ul>")
-        body.append("</section>")
-    body.append("<section><h2>What proves what</h2><p class=\"lede\">A release claim is only as good as the step that checked it.</p>")
-    body.append("<table><thead><tr><th>Product</th><th>Proof the agent can produce</th><th>Still yours</th></tr></thead><tbody>")
-    for row in VERIFICATION:
-        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-    body.append("</tbody></table>")
-    body.append("<h3>Where to look next</h3><ul>"
-                "<li>docs/getting-started.md — the first session, with a paste-ready prompt per product.</li>"
-                "<li>docs/examples.md — end-to-end sessions with call shapes and results.</li>"
-                "<li>docs/reference/tools.md — every tool, parameter and description (generated).</li>"
-                "<li>docs/architecture.md — rows, services, client faces and packaging.</li></ul></section>")
-    css = """
-:root { --ink:#1f2933; --muted:#52606d; --accent:#1f6feb; --rule:#d9e2ec; --bg:#ffffff; }
-* { box-sizing:border-box; }
-body { margin:0 auto; max-width:980px; padding:48px 28px 72px; background:var(--bg); color:var(--ink);
-  font:15px/1.65 "Segoe UI", system-ui, sans-serif; }
-.cover { border-bottom:3px solid var(--accent); padding-bottom:28px; margin-bottom:36px; }
-.eyebrow { text-transform:uppercase; letter-spacing:.14em; font-size:12px; color:var(--accent); font-weight:600; margin:0 0 6px; }
-h1 { font-size:44px; line-height:1.05; margin:0 0 12px; letter-spacing:-.02em; }
-.lede { color:var(--muted); font-size:17px; max-width:60ch; }
-.meta { color:var(--muted); font-size:13px; }
-section { margin:40px 0; }
-h2 { font-size:26px; margin:0 0 8px; letter-spacing:-.01em; }
-h3 { font-size:15px; text-transform:uppercase; letter-spacing:.08em; color:var(--accent); margin:22px 0 6px; }
-ul { margin:6px 0 0 18px; }
-li { margin:5px 0; }
-figure { margin:22px 0 26px; padding:14px; border:1px solid var(--rule); border-radius:12px; background:#fbfcfe; }
-figure img { width:100%; height:auto; display:block; }
-figcaption { color:var(--muted); font-size:12px; text-align:center; margin-top:8px; }
-table { width:100%; border-collapse:collapse; margin:16px 0; font-size:14px; }
-th { background:var(--ink); color:#fff; text-align:left; padding:9px 10px; }
-td { border-bottom:1px solid var(--rule); padding:9px 10px; vertical-align:top; }
-tr:nth-child(even) td { background:#f8fafc; }
-@media print { body { max-width:none; padding:0; } section { break-inside:avoid; } .cover { break-after:page; } }
-"""
-    path.write_text(
-        f"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        f"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        f"<title>AryaCode Engineering — Workflow Handbook</title><style>{css}</style></head>"
-        f"<body>{''.join(body)}</body></html>", encoding="utf-8")
-    return path
-
-
 def main() -> None:
-    pdf_path = pdf()
-    docx_path = docx()
-    html_path = html()
-    for path in (pdf_path, docx_path, html_path):
+    for path in (html(), pdf(), docx()):
         print(f"{path.relative_to(ROOT)} — {path.stat().st_size // 1024} KB")
 
 
