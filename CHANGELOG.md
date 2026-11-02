@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+- **The diagram drawing is judged end to end in a browser, not only from synthetic geometry.** `pnpm e2e:diagrams` mounts
+  the shipped `packages/viewer/lib/client.js` in headless Chrome, reads the committed fixture
+  (`packages/viewer/test/fixtures/diagrams.L5X`) through the document-preview contract, clicks the FBD routine and the
+  SFC chart in the organizer, and asserts on the SVG that arrives in the pane: four boxes and three lines for the sheet
+  with `add1`/`SourceA`/`SourceB`/`Dest`/`r3` legible, three boxes and two lines for the chart with `Step_1`/`Tran_1`/
+  `Step_2`/`Timer.DN` legible. The harness gained a `diagram` mode for routines that draw no ladder instructions — it
+  waits for the project view instead of an instruction node and skips the ladder invariants, which belong to ladder.
 - **Function block diagrams and sequential function charts now draw in the viewer.** Both were rendered as
   "unsupported (FBD)" — the pane could draw ladder and show Structured Text, and stopped there, so half of what the
   composer writes could not be seen in chat at all. The client parser now reads `FBDContent` and `SFCContent` with the

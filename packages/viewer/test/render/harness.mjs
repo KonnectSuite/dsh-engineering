@@ -313,6 +313,9 @@ export function judge(measurement, options = {}) {
   const failures = []
   const requireValues = options.requireValues ?? true
   if (measurement.error !== undefined) return [measurement.error]
+  // A diagram routine draws no ladder instructions, so the ladder invariants below do not apply to it;
+  // the diagram case asserts on the SVG itself instead.
+  if (options.diagram === true) return failures
   if (measurement.instructions === 0) failures.push('no instruction rendered, so nothing was verified')
   if (measurement.clipped.length > 0) {
     failures.push(`${measurement.clipped.length} clipped text node(s): ${measurement.clipped.slice(0, 6).map(item => `"${item.text}"`).join(', ')}`)
@@ -405,7 +408,11 @@ export async function renderLadderFace(options = {}) {
       throw new Error(`harness: the page never reported a state; ${problems.join('; ') || 'no console output'}`)
     }
     if (state.status !== 'mounted') throw new Error(`harness: ${state.status}: ${state.detail ?? ''}`)
-    await tab.waitForFunction(() => document.querySelectorAll('[data-l5x-instruction]').length > 0, undefined, { timeout: 30_000 })
+    // A ladder case waits for instruction nodes; a diagram routine has none, so it waits for the
+    // project view itself and lets the case open the routine and assert on the drawing.
+    await tab.waitForFunction(options.diagram === true
+      ? () => document.querySelector('[data-l5x-project-view]') !== null
+      : () => document.querySelectorAll('[data-l5x-instruction]').length > 0, undefined, { timeout: 30_000 })
     // Every routine the organizer lists: the row prints an icon, the name and a
     // language tag, which is what separates a routine from a program or a task.
     const discovered = await tab.evaluate(() => [...document.querySelectorAll('[data-l5x-project-view] button')]

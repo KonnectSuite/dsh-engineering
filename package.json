@@ -65,6 +65,7 @@
     "build:faces": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs",
     "build:client": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-client.mjs",
     "e2e:ladder": "node packages/viewer/test/render/suite.mjs",
+    "e2e:diagrams": "node packages/viewer/test/render/diagrams.mjs",
     "e2e:routines": "node packages/viewer/test/render/routines.mjs",
     "e2e:actions": "node packages/viewer/test/render/interactions.mjs",
     "e2e:instructions": "node packages/viewer/test/render/instructions.mjs",

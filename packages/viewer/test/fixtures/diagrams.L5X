@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="37.00" TargetName="DiagramFixture" TargetType="Controller" ContainsContext="true" Owner="AryaCode" ExportDate="Fixture">
+  <Controller Use="Target" Name="DiagramFixture" ProcessorType="5069-L320ER" MajorRev="37" MinorRev="11" TimeSlice="20">
+    <Tags>
+      <Tag Name="r1" TagType="Base" DataType="REAL"/>
+      <Tag Name="r2" TagType="Base" DataType="REAL"/>
+      <Tag Name="r3" TagType="Base" DataType="REAL"/>
+      <Tag Name="Timer" TagType="Base" DataType="TIMER"/>
+    </Tags>
+    <Programs>
+      <Program Use="Target" Name="Main" MainRoutineName="MainRoutine" Description="Diagram fixture">
+        <Tags/>
+        <Routines>
+          <Routine Name="MainRoutine" Type="RLL" Description="Empty ladder routine; the diagrams are below">
+            <RLLContent/>
+          </Routine>
+          <Routine Name="Fb" Type="FBD" Description="One ADD block fed by two references">
+            <FBDContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape">
+              <Sheet Number="1">
+                <IRef ID="0" X="180" Y="60" Operand="r1" HideDesc="false"/>
+                <IRef ID="1" X="180" Y="140" Operand="r2" HideDesc="false"/>
+                <Block Type="ADD" ID="2" X="300" Y="20" Operand="add1" VisiblePins="SourceA SourceB Dest" HideDesc="false"/>
+                <ORef ID="3" X="520" Y="80" Operand="r3" HideDesc="false"/>
+                <Wire FromID="0" ToID="2" ToParam="SourceA"/>
+                <Wire FromID="1" ToID="2" ToParam="SourceB"/>
+                <Wire FromID="2" FromParam="Dest" ToID="3"/>
+              </Sheet>
+            </FBDContent>
+          </Routine>
+          <Routine Name="Chart" Type="SFC" Description="Two steps with one transition between them">
+            <SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape">
+              <Step ID="0" X="300" Y="100" Operand="Step_1" HideDesc="false" DescX="340" DescY="80" DescWidth="0" InitialStep="true" PresetUsesExpr="false" LimitHighUsesExpr="false" LimitLowUsesExpr="false" ShowActions="true"/>
+              <Step ID="1" X="300" Y="300" Operand="Step_2" HideDesc="false" DescX="340" DescY="280" DescWidth="0" InitialStep="false" PresetUsesExpr="false" LimitHighUsesExpr="false" LimitLowUsesExpr="false" ShowActions="true"/>
+              <Transition ID="2" X="300" Y="200" Operand="Tran_1" HideDesc="false" DescX="360" DescY="180" DescWidth="0">
+                <Condition>
+                  <STContent>
+                    <Line Number="0"><![CDATA[Timer.DN]]></Line>
+                  </STContent>
+                </Condition>
+              </Transition>
+              <DirectedLink FromID="0" ToID="2" Show="true"/>
+              <DirectedLink FromID="2" ToID="1" Show="true"/>
+            </SFCContent>
+          </Routine>
+        </Routines>
+      </Program>
+    </Programs>
+    <Tasks>
+      <Task Name="MainTask" Type="CONTINUOUS">
+        <ScheduledPrograms><ScheduledProgram Name="Main"/></ScheduledPrograms>
+      </Task>
+    </Tasks>
+    <Modules/>
+    <DataTypes/>
+    <AddOnInstructionDefinitions/>
+  </Controller>
+</RSLogix5000Content>
