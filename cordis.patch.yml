@@ -57,3 +57,11 @@
     # carries every surface and no component package is a dependency.
     - id: optix
       name: '@aryacode/dsh-engineering/optix'
+
+    # Arya Automation Engineer: the agent preset this bundle is for. Installing the
+    # engineering bundle is what should make the automation-engineering agent
+    # available — the persona, the engineering-tuned compaction and the ledger of
+    # what was read, checked, written and verified. The preset registers through the
+    # host's own agentPresets service and tolerates a composition without one.
+    - id: engineering-preset
+      name: '@aryacode/dsh-engineering/preset'

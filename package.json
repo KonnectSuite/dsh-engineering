@@ -36,7 +36,8 @@
     "vendor/**/*",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "presets/**/*"
   ],
   "dsh": {
     "bundle": {
@@ -56,7 +57,7 @@
     }
   },
   "scripts": {
-    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/diagram-face.spec.mjs test/instruction-coverage.spec.mjs packages/l5x/test/dist-smoke.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
+    "test": "node --import tsx --test test/patch.spec.mjs test/docs.spec.mjs test/tool-reference.spec.mjs test/components.spec.mjs test/manifests.spec.mjs test/client-face.spec.mjs test/config.spec.mjs test/netlogic.spec.mjs test/resources.spec.mjs test/viewer-face-css.spec.mjs test/diagram-face.spec.mjs test/arya-automation.spec.mjs test/instruction-coverage.spec.mjs packages/l5x/test/dist-smoke.mjs packages/ftview-viewer/test/render.spec.mjs packages/ftview-viewer/test/face.spec.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check",
     "docs:figures": "node scripts/gen-doc-figures.mjs",
@@ -81,11 +82,20 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.4",
-    "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2"
+    "@deepseek-ai/dsh-compaction-basic": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
+    "@deepseek-ai/dsh-llm": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
+    "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2",
+    "@deepseek-ai/dsh-util-values": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
+    "@deepseek-ai/schemastery": "^0.2.1-rc.3 || ^0.2.2-alpha.2"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-compaction-basic": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-llm": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-util-values": "0.2.2-alpha.2",
+    "@deepseek-ai/schemastery": "3.18.5",
     "js-yaml": "^4.1.0",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "zod": "^4.6.7"
   },
   "exports": {
     ".": {
@@ -113,6 +123,9 @@
     "./mwi/verify": "./vendor/mwi/lib/verify.js",
     "./mwi/edit": "./vendor/mwi/lib/edit.js",
     "./resources": "./entries/resources.js",
-    "./migration": "./entries/migration.js"
+    "./migration": "./entries/migration.js",
+    "./preset": "./entries/preset.js",
+    "./arya-standard": "./presets/arya-standard/engine.js",
+    "./arya-standard-policy": "./presets/arya-standard/policy.js"
   }
 }
