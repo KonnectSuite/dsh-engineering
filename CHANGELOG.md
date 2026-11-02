@@ -1,3 +1,14 @@
+## [0.85.2] - 2026-11-02
+
+- **Ladder labels sit above their symbol and reserve their own width.** A contact's tag was absolutely positioned
+  *below* the glyph and the element was 15px wide, so `Timer.DN` printed over the next block, `Stop` and `Run` ran into
+  each other on the wire, and a branch's lower path put its tag inside the row beneath. Each element now reserves
+  `max(symbol, label)` pixels and prints its tag above the symbol, and the flow and branch rows are tall enough to hold
+  it — the drawing no longer needs the reader to work out which tag belongs to which glyph.
+- **A wrapped line in the Changes section belongs to its block.** The renderer treated every source line as a paragraph,
+  so a bullet written across two lines came out as a bullet plus a stray paragraph. Blocks now continue until a blank
+  line, a heading, a fence or a new marker.
+
 ## [0.85.1] - 2026-11-02
 
 - **The tool reference is regenerated for `report_notes`.** 0.85.0 shipped the parameter and left `docs/reference/tools.md`

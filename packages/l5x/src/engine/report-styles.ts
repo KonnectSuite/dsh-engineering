@@ -58,23 +58,23 @@ footer { margin-top: 28px; padding-top: 10px; border-top: 1px solid #d6d3d1; fon
 .ldr-num { color: #78716c; font: 10px/1 ui-monospace, Consolas, monospace; padding: 10px 4px 0 0; text-align: right; }
 .ldr-body { border-left: 2px solid #44403c; border-right: 2px solid #44403c; padding: 10px 12px 10px 22px; }
 .ldr-comment { color: #57534e; font-size: 10px; margin: 0 0 8px; }
-.ldr-flow { display: flex; align-items: center; min-height: 46px; }
+.ldr-flow { display: flex; align-items: center; min-height: 62px; padding-top: 16px; }
 .ldr-flow:first-child { padding-top: 2px; }
 .ldr-flow + .ldr-path { border-top: 1px solid #d6d3d1; }
-.ldr-el { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 16px; flex: 0 0 auto; }
+.ldr-el { position: relative; display: inline-flex; align-items: center; justify-content: center; height: 16px; flex: 0 0 auto; padding: 0 2px; }
 .ldr-contact { display: block; width: 15px; height: 15px; border-left: 2px solid #17703a; border-right: 2px solid #17703a; }
 .ldr-contact.neg { position: relative; }
 .ldr-contact.neg::after { content: ''; position: absolute; left: -4px; top: 6px; width: 19px; height: 1.5px; transform: rotate(-35deg); background: #17703a; }
 .ldr-coil { display: block; width: 20px; height: 16px; border: 2px solid #17703a; border-radius: 50%; }
-.ldr-label { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); font: 10px/1.1 ui-monospace, Consolas, monospace; color: #1c1917; white-space: nowrap; }
+.ldr-label { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); font: 10px/1.1 ui-monospace, Consolas, monospace; color: #1c1917; white-space: nowrap; }
 .ldr-wire { flex: 0 0 14px; height: 2px; background: #44403c; }
 .ldr-tail { flex: 1 1 auto; }
 .ldr-branch { display: inline-flex; flex-direction: column; border-left: 2px solid #44403c; border-right: 2px solid #44403c; flex: 0 0 auto; min-width: 48px; margin: 0 3px; }
-.ldr-path { display: flex; align-items: center; min-height: 30px; padding: 0 10px; }
+.ldr-path { display: flex; align-items: center; min-height: 44px; padding: 14px 10px 2px; }
 .ldr-path + .ldr-path { border-top: 1px solid #d6d3d1; }
-.ldr-block { display: inline-flex; flex-direction: column; min-width: 64px; border: 1px solid #44403c; background: #fff; }
+.ldr-block { display: inline-flex; flex-direction: column; min-width: 78px; border: 1px solid #44403c; background: #fff; }
 .ldr-block > strong { display: block; padding: 2px 5px; background: #f5f5f4; border-bottom: 1px solid #e7e5e4; font: 600 9px/1.3 ui-monospace, Consolas, monospace; }
-.ldr-block > span { display: block; padding: 1px 5px; font: 9px/1.35 ui-monospace, Consolas, monospace; color: #57534e; }
+.ldr-block > span { display: block; padding: 1px 5px; font: 9px/1.35 ui-monospace, Consolas, monospace; color: #57534e; overflow-wrap: anywhere; }
 .ldr-empty { color: #78716c; font-style: italic; }
 
 /* ---- AryaCode brand layer -------------------------------------------------

@@ -133,12 +133,18 @@ function operandText(tokens: readonly { readonly text: string }[]): string {
  */
 function elementHtml(node: Extract<LadderNode, { kind: 'instruction' }>): string {
   const name = node.name.toUpperCase()
+  // The label sits above the symbol and is wider than it, so the element reserves
+  // the label's own width. Without this, two adjacent contacts printed their tags
+  // into each other: `Stop` and `Run` overlapped on the wire.
+  const width = (label: string, symbol: number): string => `min-width:${Math.max(symbol, label.length * 6 + 12)}px`
   if (name === 'XIC' || name === 'XIO') {
     const negated = name === 'XIO' ? ' neg' : ''
-    return `<span class="ldr-el"><i class="ldr-contact${negated}"></i><b class="ldr-label">${escapeHtml(operandText(node.operands[0] ?? []))}</b></span>`
+    const text = operandText(node.operands[0] ?? [])
+    return `<span class="ldr-el" style="${width(text, 26)}"><i class="ldr-contact${negated}"></i><b class="ldr-label">${escapeHtml(text)}</b></span>`
   }
   if (name === 'OTE' || name === 'OTL' || name === 'OTU') {
-    return `<span class="ldr-el"><i class="ldr-coil"></i><b class="ldr-label">${escapeHtml(operandText(node.operands[0] ?? []))}</b></span>`
+    const text = operandText(node.operands[0] ?? [])
+    return `<span class="ldr-el" style="${width(text, 30)}"><i class="ldr-coil"></i><b class="ldr-label">${escapeHtml(text)}</b></span>`
   }
   const pins = node.operands.map(operand => operandText(operand)).filter(value => value !== '')
   return `<span class="ldr-el"><span class="ldr-block"><strong>${escapeHtml(node.name)}</strong>${pins.map(pin => `<span>${escapeHtml(pin)}</span>`).join('')}</span></span>`
@@ -171,26 +177,47 @@ function ladderHtml(rungs: readonly { readonly number: number; readonly text: st
   return `<div class="ldr">${rows.join('')}</div>`
 }
 
-/** Escape text and turn a small Markdown subset into report HTML. */
+/**
+ * Render a small Markdown subset as report HTML.
+ *
+ * Wrapped source lines belong to the same paragraph or list item — a hard line
+ * break inside a bullet is the writer's margin, not a new block. Blocks end at a
+ * blank line, a heading, a fence or a new list marker.
+ * @param markdown - The caller's narrative.
+ * @returns HTML for the Changes section.
+ */
 function markdownHtml(markdown: string): string {
   const inline = (line: string): string => escapeHtml(line)
     .replace(/`([^`]+)`/gu, '<code>$1</code>')
     .replace(/\*\*([^*]+)\*\*/gu, '<strong>$1</strong>')
   const out: string[] = []
   let list: 'ul' | 'ol' | null = null
+  let paragraph: string[] = []
+  let item: string[] | null = null
   let code = false
-  const closeList = (): void => { if (list !== null) { out.push(`</${list}>`); list = null } }
+  const flushItem = (): void => {
+    if (item !== null) { out.push(`<li>${inline(item.join(' '))}</li>`); item = null }
+  }
+  const closeList = (): void => {
+    flushItem()
+    if (list !== null) { out.push(`</${list}>`); list = null }
+  }
+  const flushParagraph = (): void => {
+    if (paragraph.length > 0) { out.push(`<p>${inline(paragraph.join(' '))}</p>`); paragraph = [] }
+  }
   for (const raw of markdown.split(/\r?\n/u)) {
     const line = raw.trimEnd()
     if (/^```/u.test(line)) {
-      if (code) { out.push('</code></pre>'); code = false }
-      else { closeList(); out.push('<pre><code>'); code = true }
+      flushParagraph()
+      closeList()
+      if (code) { out.push('</code></pre>'); code = false } else { out.push('<pre><code>'); code = true }
       continue
     }
     if (code) { out.push(escapeHtml(raw)); continue }
-    if (line.trim() === '') { closeList(); continue }
+    if (line.trim() === '') { flushParagraph(); closeList(); continue }
     const heading = /^(#{1,4})\s+(.*)$/u.exec(line)
     if (heading !== null) {
+      flushParagraph()
       closeList()
       const level = Math.min(6, heading[1]!.length + 1)
       out.push(`<h${level}>${inline(heading[2]!)}</h${level}>`)
@@ -198,23 +225,27 @@ function markdownHtml(markdown: string): string {
     }
     const bullet = /^[-*]\s+(.*)$/u.exec(line)
     if (bullet !== null) {
-      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul' }
-      out.push(`<li>${inline(bullet[1]!)}</li>`)
+      if (list !== 'ul') { flushParagraph(); closeList(); out.push('<ul>'); list = 'ul' }
+      flushItem()
+      item = [bullet[1]!]
       continue
     }
     const numbered = /^\d+[.)]\s+(.*)$/u.exec(line)
     if (numbered !== null) {
-      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol' }
-      out.push(`<li>${inline(numbered[1]!)}</li>`)
+      if (list !== 'ol') { flushParagraph(); closeList(); out.push('<ol>'); list = 'ol' }
+      flushItem()
+      item = [numbered[1]!]
       continue
     }
-    closeList()
-    out.push(`<p>${inline(line)}</p>`)
+    if (item !== null) { item.push(line.trim()); continue }
+    paragraph.push(line.trim())
   }
-  if (code) out.push('</code></pre>')
+  flushParagraph()
   closeList()
+  if (code) out.push('</code></pre>')
   return out.join('\n')
 }
+
 /** The heading each declared section prints. */
 const SECTION_TITLES: Record<ReportSectionName | 'changes', string> = {
   changes: 'Changes',
