@@ -55,4 +55,24 @@ describe('a program composed only through the tools', () => {
     const rungs = (routine.data?.component as { body: { rungs: { text: string }[] } }).body.rungs
     expect(rungs.map(rung => rung.text)).toEqual(RUNGS)
   })
+
+  it('hands a composed rung to the ladder preview so the chat can draw it', async () => {
+    // The composer used to end at "validate": nothing told the agent to render what it had just
+    // written, so a composed rung reached the reader as NeutralText unless they asked again.
+    const base = l5x({ name: 'PreviewPointer', programs: program('Main', rllRoutine('MainRoutine', [])), tasks: task('MainTask', ['Main']) })
+    const l5xTool = harness(new Map([['p.l5x', new TextEncoder().encode(base)]]), { editing: true })
+    await l5xTool.call('open_project', { path: 'p.l5x' })
+    for (const [name, dataType] of [['Start', 'BOOL'], ['Run', 'BOOL']] as const) {
+      await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: name })
+    }
+    const composed = await l5xTool.call('compose_rung', {
+      program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0,
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['Start'] }, { instr: 'OTE', args: ['Run'] }] }),
+    })
+    expect(composed.error).toBeUndefined()
+    const preview = composed.next?.find(step => step.tool === 'l5x_rung_preview')
+    expect(preview).toBeDefined()
+    expect(preview?.args).toMatchObject({ title: 'Main-MainRoutine' })
+    expect(String((preview?.args as { rungs?: string }).rungs)).toContain('XIC(Start)OTE(Run);')
+  })
 })

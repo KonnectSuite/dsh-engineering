@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **Composed rungs now lead straight to a ladder render, and a routine's whole NeutralText block copies in one action.**
+  `compose_rung` and `compose_batch` used to end at "validate", so a composed rung reached the reader as text unless they
+  asked for a picture separately; both now hand the exact composed text to `l5x_rung_preview`, whose preview document the
+  viewer draws as ladder and whose result still carries the paste-ready block. The project viewer gained **Copy all rungs
+  as NeutralText** beside the existing per-rung, per-instruction and per-operand copies, so a whole routine leaves the pane
+  in the shape Studio's *Paste ASCII / Neutral Text* accepts. English and Chinese strings move together, and a test pins
+  the composer-to-preview hand-off — its title and the exact NeutralText.
+
 ## [0.75.0] - 2026-11-01
 
 - **A composed SFC chart now draws its steps on separate rows, because the IDE showed them stacked.** `draft_sfc`

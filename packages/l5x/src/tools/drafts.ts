@@ -301,7 +301,10 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         return success(
           `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).`,
           { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs },
-          [{ tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' }],
+          [
+            { tool: 'l5x_rung_preview', args: { rungs: composed.rungs.map(rung => rung.neutral_text).join('\n'), title: `${program}-${routine}` }, why: 'Show these exact rungs as ladder in the chat, with the NeutralText block ready to copy.' },
+            { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' },
+          ],
           COMPOSED_COVERAGE,
         )
       },
@@ -380,7 +383,10 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             operation_count: stagedDraft.operations.length,
             rungs: composed.map((rung, index) => ({ rung: first + index, neutral_text: rung.neutral_text })),
           },
-          [{ tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' }],
+          [
+            { tool: 'l5x_rung_preview', args: { rungs: composed.map(rung => rung.neutral_text).join('\n'), title: `${program}-${routine}` }, why: 'Show the batch as ladder in the chat, with the NeutralText block ready to copy.' },
+            { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' },
+          ],
           COMPOSED_COVERAGE,
         )
       },

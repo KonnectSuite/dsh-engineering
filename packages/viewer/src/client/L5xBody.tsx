@@ -428,6 +428,9 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
         <div className={css.editorTools}><strong>{tagView === undefined ? `${current?.program} / ${selected?.name ?? t('noSelection')}` : tagView === 'controller' ? t('tags') : `${current?.program} / ${t('programTags')}`}</strong><span>{tagView === undefined ? selected?.type ?? '—' : t('offlineValues')}</span>
           <span className={css.toolSpacer} />
           <button type="button" onClick={() => { setShowSource(value => !value) }} aria-pressed={showSource}>{t('source')}</button>
+          {tagView === undefined && selected?.type === 'RLL' && selected.rungs.length > 0 && <button type="button"
+            onClick={() => { void navigator.clipboard.writeText(selected.rungs.map(rung => rung.text).join('\n')) }}
+          >{t('copyAllRungs')}</button>}
           <button type="button" onClick={() => { setChatUnavailable(!ask(resourceAddress, `Explain and review the offline routine ${current?.program}/${current?.routine} in the current L5X export. Use the L5X engineering plugin tools for references and checks. Do not change a controller.`)) }}>{t('askRoutine')}</button>
         </div>
         {tagView === undefined && focused !== undefined && <div className={css.focusBar} role="status">
