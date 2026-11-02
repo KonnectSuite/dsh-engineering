@@ -155,6 +155,20 @@ function diagramSvg(diagram) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" role="img" aria-label="${language}"><title>${language}</title>${parts.join("")}</svg>`;
 }
 
+// packages/viewer/src/client/routine-xml.ts
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+function extractRoutineXml(xml, name) {
+  if (name === "") return void 0;
+  const open = new RegExp(`<Routine\\b[^>]*\\bName="${escapeRegExp(name)}"`, "u");
+  const start = xml.search(open);
+  if (start < 0) return void 0;
+  const close = xml.indexOf("</Routine>", start);
+  if (close < 0) return void 0;
+  return xml.slice(start, close + "</Routine>".length);
+}
+
 // packages/viewer/src/client/model.ts
 var children = (parent, name) => parent === null ? [] : Array.from(parent.children).filter((child2) => child2.tagName === name);
 var child = (parent, name) => children(parent, name)[0] ?? null;
@@ -935,6 +949,14 @@ function instructionSymbols(mnemonic, operands) {
   if (mnemonic.toUpperCase() === "JSR") return [];
   return operandParts(operands).filter((part) => /^[A-Za-z_][\w:]*/u.test(part));
 }
+async function copyRoutineXml(read, address, name) {
+  try {
+    const { xml } = await read(address, new AbortController().signal);
+    const fragment = extractRoutineXml(xml, name);
+    if (fragment !== void 0) await navigator.clipboard.writeText(fragment);
+  } catch {
+  }
+}
 function L5xBody(props) {
   const { resourceAddress, content: content2, t, read, ask, scrollportRef } = props;
   const request = content2.kind === "renderer" ? content2 : void 0;
@@ -1453,6 +1475,16 @@ function L5xBody(props) {
                 void navigator.clipboard.writeText(selected.rungs.map((rung) => rung.text).join("\n"));
               },
               children: t("copyAllRungs")
+            }
+          ),
+          tagView === void 0 && selected?.diagram !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                if (selected !== void 0) void copyRoutineXml(read, resourceAddress, selected.name);
+              },
+              children: t("copyRoutineXml")
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => {
@@ -2341,6 +2373,7 @@ var en = {
   copyRung: "Copy rung source",
   openCalledRoutine: "Open called routine",
   copyAllRungs: "Copy all rungs as NeutralText",
+  copyRoutineXml: "Copy routine L5X",
   askRung: "Ask Arya about rung",
   watchRung: "Watch every tag on this rung",
   editRungComment: "Ask Arya to change the rung comment",
@@ -2478,6 +2511,7 @@ var zh = {
   copyRung: "\u590D\u5236\u68AF\u7EA7\u6E90\u4EE3\u7801",
   openCalledRoutine: "\u6253\u5F00\u8C03\u7528\u7684\u4F8B\u7A0B",
   copyAllRungs: "\u590D\u5236\u5168\u90E8\u68AF\u7EA7\u4E3A\u4E2D\u6027\u6587\u672C",
+  copyRoutineXml: "\u590D\u5236\u4F8B\u7A0B L5X",
   askRung: "\u8BE2\u95EE Arya \u6B64\u68AF\u7EA7",
   watchRung: "\u76D1\u89C6\u6B64\u68AF\u7EA7\u4E0A\u7684\u6240\u6709\u6807\u7B7E",
   editRungComment: "\u8BF7 Arya \u4FEE\u6539\u68AF\u7EA7\u6CE8\u91CA",

@@ -7,7 +7,9 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { diagramSvg } from '../packages/viewer/src/client/diagram.ts'
+import { extractRoutineXml } from '../packages/viewer/src/client/routine-xml.ts'
 
 /** One element with the fields the drawing reads, defaulted. */
 const element = overrides => ({
@@ -67,4 +69,27 @@ test('a wire that names an element the routine does not carry draws nothing', ()
 
 test('a routine with no elements draws nothing', () => {
   assert.equal(diagramSvg({ language: 'SFC', elements: [] }), '')
+})
+
+test('a diagram routine leaves the pane as its own XML', () => {
+  // A diagram has no NeutralText: what the composer wrote for an FBD sheet or a chart is the routine element.
+  const xml = readFileSync(new URL('../packages/viewer/test/fixtures/diagrams.L5X', import.meta.url), 'utf8')
+  const fbd = extractRoutineXml(xml, 'Fb')
+  assert.ok(fbd !== undefined)
+  assert.ok(fbd.startsWith('<Routine Name="Fb"'))
+  assert.ok(fbd.trimEnd().endsWith('</Routine>'))
+  assert.ok(fbd.includes('<FBDContent'))
+  assert.ok(fbd.includes('<Wire FromID="0" ToID="2" ToParam="SourceA"/>'))
+  const chart = extractRoutineXml(xml, 'Chart')
+  assert.ok(chart?.includes('<SFCContent'))
+  assert.ok(chart?.includes('<DirectedLink FromID="0" ToID="2" Show="true"/>'))
+  // The empty ladder routine must not swallow its neighbours.
+  const ladder = extractRoutineXml(xml, 'MainRoutine')
+  assert.ok(ladder?.endsWith('</Routine>'))
+  assert.ok(!ladder.includes('FBDContent'))
+})
+
+test('a routine the export does not carry yields nothing', () => {
+  assert.equal(extractRoutineXml('<RSLogix5000Content/>', 'Nope'), undefined)
+  assert.equal(extractRoutineXml('<RSLogix5000Content/>', ''), undefined)
 })

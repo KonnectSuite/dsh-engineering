@@ -25,6 +25,7 @@ const inspect = async tab => await tab.evaluate(() => {
     lines: svg.querySelectorAll('line').length,
     text: svg.textContent ?? '',
     label: svg.getAttribute('aria-label') ?? '',
+    buttons: [...document.querySelectorAll('[data-l5x-project-view] button')].map(button => (button.textContent ?? '').trim()),
   }
 })
 
@@ -48,6 +49,8 @@ async function diagramCase(routine, expect) {
       for (const text of expect.text) {
         if (!found.text.includes(text)) failures.push(`"${text}" is not legible on the drawing`)
       }
+      // A diagram has no NeutralText, so the pane has to offer its XML instead.
+      if (!found.buttons.includes('Copy routine L5X')) failures.push('the pane offers no way to copy the routine XML')
       return { failures, found }
     },
     width: 1280,

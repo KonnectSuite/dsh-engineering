@@ -5,6 +5,7 @@ import { MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
 import { diagramSvg } from './diagram.ts'
+import { extractRoutineXml } from './routine-xml.ts'
 import { exportedDatum, findReferences, ladderSegments, parseProject, type ExportedDatum, type LadderSegment, type Module, type Program, type Project, type Routine, type Rung, type Tag, timerState, type TimerState } from './model.ts'
 import { instructionPins } from './instructions.ts'
 import { inspectProject } from './inspection.ts'
@@ -92,8 +93,28 @@ function instructionSymbols(mnemonic: string, operands: string): string[] {
   return operandParts(operands).filter(part => /^[A-Za-z_][\w:]*/u.test(part))
 }
 
-export function L5xBody(props: L5xBodyProps): ReactNode {
-  const { resourceAddress, content, t, read, ask, scrollportRef } = props
+/**
+ * Put one routine's XML on the clipboard.
+ *
+ * A diagram has no NeutralText to paste, so the composer's actual output — the routine element — is
+ * what leaves the pane. The viewer keeps the parsed model rather than the file text, so the export is
+ * read again for the fragment. A failed read or a refused clipboard leaves the pane as it was.
+ *
+ * @param read - Injected workspace reader.
+ * @param address - File address of the export.
+ * @param name - Routine name as the organizer prints it.
+ */
+async function copyRoutineXml(read: L5xBodyInjected['read'], address: string, name: string): Promise<void> {
+  try {
+    const { xml } = await read(address, new AbortController().signal)
+    const fragment = extractRoutineXml(xml, name)
+    if (fragment !== undefined) await navigator.clipboard.writeText(fragment)
+  } catch {
+    // Leave the pane unchanged: a copy that cannot happen is not an error state for the reader.
+  }
+}
+
+export function L5xBody(props: L5xBodyProps): ReactNode {  const { resourceAddress, content, t, read, ask, scrollportRef } = props
   const request = content.kind === 'renderer' ? content : undefined
   const [loaded, setLoaded] = useState<Loaded>()
   const [failure, setFailure] = useState<string>()
@@ -432,6 +453,9 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
           {tagView === undefined && selected?.type === 'RLL' && selected.rungs.length > 0 && <button type="button"
             onClick={() => { void navigator.clipboard.writeText(selected.rungs.map(rung => rung.text).join('\n')) }}
           >{t('copyAllRungs')}</button>}
+          {tagView === undefined && selected?.diagram !== undefined && <button type="button"
+            onClick={() => { if (selected !== undefined) void copyRoutineXml(read, resourceAddress, selected.name) }}
+          >{t('copyRoutineXml')}</button>}
           <button type="button" onClick={() => { setChatUnavailable(!ask(resourceAddress, `Explain and review the offline routine ${current?.program}/${current?.routine} in the current L5X export. Use the L5X engineering plugin tools for references and checks. Do not change a controller.`)) }}>{t('askRoutine')}</button>
         </div>
         {tagView === undefined && focused !== undefined && <div className={css.focusBar} role="status">

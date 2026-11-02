@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+- **A diagram routine can now be copied, as the XML it actually is.** Rungs copy as NeutralText and Structured Text
+  copies as source, but an FBD sheet and a chart have no text form to paste — Studio's *Paste ASCII / Neutral Text*
+  does not apply to them. The pane therefore offers **Copy routine L5X** for a diagram routine and puts that routine's
+  `<Routine>` element on the clipboard: the element the composer wrote, pasteable into an export and comparable
+  against one. The extraction is a pure function (`extractRoutineXml`) with its own tests, including that the empty
+  ladder routine in the fixture does not swallow its neighbours, and the browser suite asserts the button is offered
+  on both diagram routines.
 - **The diagram drawing is judged end to end in a browser, not only from synthetic geometry.** `pnpm e2e:diagrams` mounts
   the shipped `packages/viewer/lib/client.js` in headless Chrome, reads the committed fixture
   (`packages/viewer/test/fixtures/diagrams.L5X`) through the document-preview contract, clicks the FBD routine and the
