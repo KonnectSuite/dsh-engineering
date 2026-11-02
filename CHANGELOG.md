@@ -1,3 +1,9 @@
+## [0.78.1] - 2026-11-02
+
+- **The docs map now covers the report.** `docs/index.md` gains a "Reports and documents" section that separates the
+  handover bundle from the printable report, names the generator and the palette behind its ladder, and repeats the
+  footer's limit: a document is evidence of what the export contains, not of what the machine does.
+
 ## [0.78.0] - 2026-11-02
 
 - **The report is a tool, not scaffolding.** `document_project` takes a new `report` part: one self-contained HTML document with a cover, a table of contents, at-a-glance counts, the ladder drawn inside each routine, rung tables, tag and I/O tables, and a footer that states what a generated document cannot prove. `report_format` is `html` (default), `pdf`, or `both`; a PDF is the same page printed by the local Chrome or Edge, and when neither is installed the answer says so instead of writing nothing. The module the previous release shipped unused (`engine/report.ts`) is now called by the bundle and by the tool, so the document and the handover bundle cannot disagree about what the export contains.
