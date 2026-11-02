@@ -20,6 +20,7 @@ import { getRoutine, listRoutines } from '../model/routines.ts'
 import type { L5xDiagramNode } from '../model/types.ts'
 import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { REPORT_STYLESHEET } from './report-styles.ts'
+import { BRAND, brandFontCss, brandLockupHtml, brandMarkDataUri, brandPackageVersion } from './brand.ts'
 
 /**
  * The sections every report contains, in order.
@@ -297,17 +298,21 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
   }
   const missing = REPORT_SECTIONS.filter(name => rendered[name].trim() === '')
   if (missing.length > 0) throw new Error(`report is missing section(s): ${missing.join(', ')}`)
-  const toc = `<nav class="toc"><h2>Contents</h2><ol>${REPORT_SECTIONS.map(name => `<li><a href="#${name}">${SECTION_TITLES[name]}</a></li>`).join('')}</ol></nav>`
+  const sectionNumber = (name: ReportSectionName): string => String(REPORT_SECTIONS.indexOf(name) + 1).padStart(2, '0')
+  const toc = `<nav class="toc"><h2>Contents</h2><ol>${REPORT_SECTIONS.map(name => `<li><a href="#${name}"><span class="num">${sectionNumber(name)}</span>${SECTION_TITLES[name]}</a></li>`).join('')}</ol></nav>`
 
   const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${REPORT_STYLESHEET}</style>
+<style>${brandFontCss()}${REPORT_STYLESHEET}</style>
 </head>
 <body>
 <section class="cover">
+  <div class="brandbar"></div>
+  ${brandLockupHtml()}
+  <p class="eyebrow">Engineering report</p>
   <h1>${escapeHtml(title)}</h1>
   <p class="sub">Generated from an offline L5X export. Nothing in this document was read from a running controller.</p>
   <dl>
@@ -323,19 +328,21 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
 
 ${toc}
 
-<h2 id="glance">At a glance</h2>
+<h2 id="glance"><span class="num">01</span>At a glance</h2>
 ${rendered.glance}
 
-<h2 class="section" id="logic">Logic</h2>
+<h2 class="section" id="logic"><span class="num">02</span>Logic</h2>
 ${rendered.logic}
 
-<h2 class="section" id="tags">Tags</h2>
+<h2 class="section" id="tags"><span class="num">03</span>Tags</h2>
 ${rendered.tags}
 
-<h2 class="section" id="io">I/O</h2>
+<h2 class="section" id="io"><span class="num">04</span>I/O</h2>
 ${rendered.io}
 
 <footer>
+  <div class="footer-rule"></div>
+  <p>${brandMarkDataUri() === undefined ? '' : `<img class="mark-small" src="${brandMarkDataUri()}" alt="">`}<strong>${BRAND.name} Engineering</strong> · @aryacode/dsh-engineering${brandPackageVersion() === undefined ? '' : ` ${brandPackageVersion()}`} · generated ${escapeHtml(generated)}</p>
   <p>Generated from the export only. This document does not prove that the logic is correct, that a preset suits the
   process, that a module is wired as drawn, or anything about runtime behaviour — the ladder is a drawing of the parsed
   rungs, and the coordinates of a chart are what the export recorded, not a verification of it.</p>

@@ -1,3 +1,15 @@
+## [0.81.0] - 2026-11-02
+
+- **The report is branded.** A generated document now carries the production brand kit: the monochrome mark and the
+  `Arya`/`Code` wordmark with the tagline, the violet→blue→cyan rule above the cover and again above the footer, numbers
+  per section (`01`…`04`) in the table of contents and beside each heading, and a footer line naming the product and the
+  package version it came from. Sora sets the text and JetBrains Mono the code, rung labels and rung numbers.
+- **The typefaces travel inside the document.** `packages/l5x/assets/brand/` carries the mark, both variable fonts and
+  their OFL licences; the generator embeds them as `@font-face` data URIs, so a report prints the same on a machine that
+  has never installed the brand kit. When an install has pruned those assets the generator falls back to the system stack
+  and omits the mark rather than failing.
+- **`assets/**` ships** like the rest of the package, so an installed copy can generate a branded report.
+
 ## [0.80.0] - 2026-11-02
 
 - **The report draws ladder in the pane's language, not as coloured boxes.** A generated document used `renderLadderSvg`, the blocky box-and-label drawing the preview tools use, so a report showed a symbol-free picture of logic the app itself draws as contacts and coils. The report now emits the pane's own markup: `.ldr-contact` is two green bars with a negation slash for `XIO`, `.ldr-coil` is an oval, instruction blocks are `.ldr-block` cards with the mnemonic as a header and one row per operand, rails are two thick rules at the ends of the rung, a branch is a bordered column of parallel paths, and every symbol carries its tag underneath. The styles live in `report-styles.ts` beside the rest of the print CSS, so a document and a printed page agree on them.
