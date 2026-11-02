@@ -187,6 +187,7 @@ Write a documentation bundle for the open project into a NEW folder: project sum
 | `routines` | array | no | Optional routine names to restrict the rung documentation to. |
 | `rungs_per_file` | integer | no | Most rungs per rung-documentation file before a continuation file is written. Defaults to 200. |
 | `report_format` | string (html \| pdf \| both) | no | Report file to write for the report part: html (default), pdf, or both. A PDF needs Chrome or Edge on this machine. |
+| `report_notes` | string | no | Optional path to a Markdown file holding your own narrative — what changed and why — printed as the report's Changes section, ahead of the logic the generator draws itself. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |
 
 ### L5X preview

@@ -1,3 +1,9 @@
+## [0.85.1] - 2026-11-02
+
+- **The tool reference is regenerated for `report_notes`.** 0.85.0 shipped the parameter and left `docs/reference/tools.md`
+  stale; `pnpm docs:check` caught it (the reference is generated from the schemas, so a new parameter must appear there).
+  No behaviour change from 0.85.0.
+
 ## [0.85.0] - 2026-11-02
 
 - **A report you asked for can carry your own narrative, with the ladder still drawn.** `document_project` takes
