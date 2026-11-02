@@ -30,15 +30,16 @@ the pane into something Studio accepts.
 
 Structured Text: the same export's `FaultHandler`, shown as a body rather than as a diagram.
 
-![The FBD sheet: two input references, an ADD block with SourceA/SourceB/Dest, one output reference](figures/viewer-fbd.png)
+![The FBD sheet: two input references, an ADD block with SourceA/SourceB/Dest, one output reference](figures/viewer-fbd.svg)
 
 Function block: `Main/Fb` of the diagram fixture, drawn from the geometry the export records — two input references
 left, the `ADD` block with its three visible pins, the output reference right, and the pin name on the wire.
 
-![The SFC chart: Step_1 marked initial, Tran_1 carrying Timer.DN, Step_2 below](figures/viewer-sfc.png)
+![The SFC chart: Step_1 marked initial, Tran_1 carrying Timer.DN, Step_2 below](figures/viewer-sfc.svg)
 
 Chart: `Main/Chart` of the same fixture — two steps, the initial-step marker, and the transition's Structured Text
-condition written under it.
+condition written under it. The two diagram figures are **vector**: `docs:figures` captures the SVG element the pane drew,
+so the document shows the renderer's own output rather than a picture of it.
 
 What these prove: the export parses client-side, the ladder, the Structured Text, the sheet and the chart all draw, and
 each language carries its own copy affordance. What they do not prove: execution, live values (the numbers shown are

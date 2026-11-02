@@ -9,7 +9,7 @@
  *
  * Usage: node scripts/gen-doc-figures.mjs [--only <name>]
  */
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { renderLadderFace } from '../packages/viewer/test/render/harness.mjs'
 
 /** The figures to draw: one routine of one export, at a size that fits a README. */
@@ -38,6 +38,7 @@ const FIGURES = [
     routine: 'Fb',
     diagram: true,
     shot: 'docs/figures/viewer-fbd.png',
+    svg: 'docs/figures/viewer-fbd.svg',
     width: 1280,
     height: 760,
     note: 'A function block sheet drawn from the geometry the export records.',
@@ -48,6 +49,7 @@ const FIGURES = [
     routine: 'Chart',
     diagram: true,
     shot: 'docs/figures/viewer-sfc.png',
+    svg: 'docs/figures/viewer-sfc.svg',
     width: 1280,
     height: 760,
     note: 'A chart: steps, the initial-step marker, the transition and its condition.',
@@ -73,7 +75,22 @@ for (const figure of FIGURES) {
       height: figure.height,
       // A figure only has to look right; the assertions belong to the e2e suites.
       requireValues: false,
+      // The pane draws diagrams as one SVG. Capturing that element is the difference between a
+      // picture of the renderer and the renderer's own output: vector, themeable, and exact.
+      scenario: figure.svg === undefined ? undefined : async tab => ({
+        svg: await tab.evaluate(() => document.querySelector('[data-l5x-project-view] svg')?.outerHTML ?? ''),
+      }),
     })
+    if (figure.svg !== undefined) {
+      const svg = String(result.scenario?.svg ?? '')
+      if (svg.startsWith('<svg')) {
+        writeFileSync(new URL(`../${figure.svg}`, import.meta.url), `${svg}\n`)
+        console.log(`     ${figure.svg} (${svg.length} bytes, vector)`)
+      } else {
+        failed = true
+        console.log(`FAIL ${figure.name}: the pane produced no SVG to capture`)
+      }
+    }
     // A diagram routine has no ladder instructions, so the ladder judge reports that as a failure;
     // it is not a figure failure and is dropped here rather than passed on.
     const failures = (result.failures ?? []).filter(failure => !failure.includes('no instruction rendered'))
