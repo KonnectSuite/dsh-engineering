@@ -35,6 +35,8 @@
 .source { display:block; margin-top:12px; font-size:10px; color:var(--dsw-alias-label-secondary); white-space:pre-wrap; overflow-wrap:anywhere; }
 .neutral,.structured { font-family:monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
 .structured { padding:15px; }
+.diagram { padding:15px; overflow:auto; }
+.diagram svg { display:block; max-width:100%; height:auto; }
 .status { padding:20px; color:var(--dsw-alias-label-secondary); }
 .status button { margin-left:8px; }
 .searchLabel { display:flex; flex-direction:column; gap:5px; font-weight:600; }

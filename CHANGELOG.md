@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+- **Function block diagrams and sequential function charts now draw in the viewer.** Both were rendered as
+  "unsupported (FBD)" — the pane could draw ladder and show Structured Text, and stopped there, so half of what the
+  composer writes could not be seen in chat at all. The client parser now reads `FBDContent` and `SFCContent` with the
+  position the export records for every block, reference, step and transition, and the viewer draws them as one SVG:
+  boxes where Studio puts them, a line per wire or link between the elements it joins, block pins listed on the block,
+  the initial step marked and a transition's condition written under it. Stroking is schematic — structure, not
+  execution — and a routine whose wires name nothing draws nothing rather than an empty frame. Four tests judge the
+  drawing from synthetic geometry: element counts, the pin a wire lands on, the initial-step marker, the condition text,
+  and the empty cases.
 - **Composing a rung now produces the ladder the chat draws, and a routine's whole NeutralText block copies in one
   action.** `compose_rung` and `compose_batch` used to end at "validate", so a composed rung reached the reader as text
   unless they asked for a picture separately. Both now write the rungs they composed to

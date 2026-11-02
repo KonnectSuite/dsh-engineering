@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { MenuSurface } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { DocumentPreviewProps } from '@deepseek-ai/dsh-client-ui-sidebar-documentpreview/client'
+import { diagramSvg } from './diagram.ts'
 import { exportedDatum, findReferences, ladderSegments, parseProject, type ExportedDatum, type LadderSegment, type Module, type Program, type Project, type Routine, type Rung, type Tag, timerState, type TimerState } from './model.ts'
 import { instructionPins } from './instructions.ts'
 import { inspectProject } from './inspection.ts'
@@ -473,7 +474,9 @@ export function L5xBody(props: L5xBodyProps): ReactNode {
                 {selected.rungs.length > rungLimit && <button type="button" className={css.loadMore} onClick={() => { setRungLimit(limit => limit + 80) }}>{t('loadMore')} ({selected.rungs.length - rungLimit})</button>}
               </>)}
               {selected.type === 'ST' && <pre className={css.structured} onContextMenu={(event) => { contextFor(event, selected.code) }}>{selected.code}</pre>}
-              {selected.type !== 'RLL' && selected.type !== 'ST' && <div className={css.status}>{t('unsupported')} ({selected.type})</div>}
+              {selected.type !== 'RLL' && selected.type !== 'ST' && (selected.diagram === undefined
+                ? <div className={css.status}>{t('unsupported')} ({selected.type})</div>
+                : <div className={css.diagram} dangerouslySetInnerHTML={{ __html: diagramSvg(selected.diagram) }} />)}
             </>}
         </main>
       </section>

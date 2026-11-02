@@ -1,5 +1,42 @@
 /** Small, read-only projection of an L5X export for the project viewer. */
 export interface Rung { readonly number: string; readonly comment: string; readonly text: string }
+/**
+ * One drawn element of a function block diagram or a sequential function chart.
+ *
+ * The export carries the sheet position of every element, so a diagram can be drawn where Studio puts
+ * it. Wire and link elements carry no position of their own: they join two ids and are drawn between
+ * the elements those ids name.
+ */
+export interface DiagramElement {
+  /** Export element name: Block, IRef, ORef, ICon, OCon, Wire, Step, Transition or DirectedLink. */
+  readonly kind: string
+  /** Export id, empty for a wire or a link. */
+  readonly id: string
+  /** Sheet position as the export writes it. */
+  readonly x: number
+  readonly y: number
+  /** Operand, connector name or transition name. */
+  readonly label: string
+  /** Visible pins of a block, space separated as the export writes them. */
+  readonly pins: string
+  /** Structured Text condition of a transition, one line per source line. */
+  readonly condition: string
+  /** Marks the initial step of a chart. */
+  readonly initial: boolean
+  /** Wire or link source id. */
+  readonly from: string
+  /** Wire or link target id. */
+  readonly to: string
+  /** Pin the wire leaves, when the export names one. */
+  readonly fromPin: string
+  /** Pin the wire arrives on, when the export names one. */
+  readonly toPin: string
+}
+/** A function block diagram or a chart, as the viewer draws it. */
+export interface Diagram {
+  readonly language: 'FBD' | 'SFC'
+  readonly elements: readonly DiagramElement[]
+}
 /** Routine logic and comments retained from an L5X export. */
 export interface Routine {
   readonly name: string
@@ -7,6 +44,8 @@ export interface Routine {
   readonly description: string
   readonly rungs: readonly Rung[]
   readonly code: string
+  /** Diagram carried by an FBD or SFC routine; absent for RLL and ST. */
+  readonly diagram?: Diagram
 }
 /** Program routines, tags and configured main routine. */
 export interface Program {
@@ -135,6 +174,53 @@ function dimensionsOf(element: Element): string {
 }
 
 /**
+ * Elements a diagram draws. An `Action` is drawn with its step and a `Sheet` is only a container.
+ */
+const DRAWABLE = new Set(['Block', 'IRef', 'ORef', 'ICon', 'OCon', 'Wire', 'Step', 'Transition', 'DirectedLink'])
+
+/**
+ * Read the nodes of a function block diagram or a chart, with the positions the export records.
+ *
+ * An FBD sheet nests its elements in `Sheet`; an SFC chart writes them directly under the content.
+ * A wire carries no position, so it is kept as the pair of ids it joins and drawn between them.
+ *
+ * @param routine - Routine element.
+ * @returns The diagram, or undefined for a routine that is neither FBD nor SFC.
+ */
+function diagramOf(routine: Element): Diagram | undefined {
+  const fbd = child(routine, 'FBDContent')
+  const sfc = fbd === null ? child(routine, 'SFCContent') : null
+  const content = fbd ?? sfc
+  if (content === null) return undefined
+  const elements: DiagramElement[] = []
+  for (const sheet of fbd === null ? [content] : children(content, 'Sheet')) {
+    for (const node of Array.from(sheet.children)) {
+      const kind = node.tagName
+      if (!DRAWABLE.has(kind)) continue
+      const condition = kind === 'Transition'
+        ? children(child(child(node, 'Condition'), 'STContent'), 'Line').map(line => line.textContent ?? '').join('\n')
+        : ''
+      const wire = kind === 'Wire' || kind === 'DirectedLink'
+      elements.push({
+        kind,
+        id: attr(node, 'ID'),
+        x: Number(attr(node, 'X')) || 0,
+        y: Number(attr(node, 'Y')) || 0,
+        label: wire ? '' : (attr(node, 'Operand') || attr(node, 'Name')),
+        pins: attr(node, 'VisiblePins'),
+        condition,
+        initial: attr(node, 'InitialStep') === 'true' || attr(node, 'InitialStep') === '1',
+        from: attr(node, 'FromID'),
+        to: attr(node, 'ToID'),
+        fromPin: attr(node, 'FromParam'),
+        toPin: attr(node, 'ToParam'),
+      })
+    }
+  }
+  return { language: fbd === null ? 'SFC' : 'FBD', elements }
+}
+
+/**
  * Parse a controller export without retaining XML nodes or customer source text.
  * @param xml - L5X XML text to parse.
  * @returns Parsed read-only controller export.
@@ -173,14 +259,18 @@ export function parseProject(xml: string): Project {
   })
   const programs = children(child(controller, 'Programs'), 'Program').map((program) => {
     const name = attr(program, 'Name')
-    const routines = children(child(program, 'Routines'), 'Routine').map(routine => ({
-      name: attr(routine, 'Name'), type: attr(routine, 'Type'), description: description(routine),
-      rungs: children(child(routine, 'RLLContent'), 'Rung').map(rung => ({
-        number: attr(rung, 'Number'), comment: content(child(rung, 'Comment')) || attr(rung, 'Comment'),
-        text: content(child(rung, 'Text')),
-      })),
-      code: children(child(routine, 'STContent'), 'Line').map(line => line.textContent).join('\n'),
-    }))
+    const routines = children(child(program, 'Routines'), 'Routine').map((routine) => {
+      const diagram = diagramOf(routine)
+      return {
+        name: attr(routine, 'Name'), type: attr(routine, 'Type'), description: description(routine),
+        rungs: children(child(routine, 'RLLContent'), 'Rung').map(rung => ({
+          number: attr(rung, 'Number'), comment: content(child(rung, 'Comment')) || attr(rung, 'Comment'),
+          text: content(child(rung, 'Text')),
+        })),
+        code: children(child(routine, 'STContent'), 'Line').map(line => line.textContent).join('\n'),
+        ...(diagram === undefined ? {} : { diagram }),
+      }
+    })
     return { name, main: attr(program, 'MainRoutineName'), description: description(program), routines, tags: tagsOf(program, name) }
   })
   const tasks = children(child(controller, 'Tasks'), 'Task').map(task => ({
