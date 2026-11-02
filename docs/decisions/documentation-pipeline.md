@@ -61,6 +61,11 @@ The gap is that our documents are **raster and text**, where theirs are **render
 4. **A declared shape for our reports.** `migration_report` already produces DOCX/Markdown; give its payload the same
    treatment their `report-shape` implies — a shape the generator validates, so a report cannot silently lose a section.
 
+**Where the report stands.** It draws in the pane's *language*, not with the pane: contacts, coils, block cards and
+rails are emitted as HTML and styled from the same stylesheet, because the pane is a React client that needs the app
+shell and a standalone document cannot mount it. A preview tool still draws with `renderLadderSvg`, which runs in Node
+with no browser — that difference is deliberate, and the report is the surface that gets the pane's look.
+
 What we do **not** adopt: a second renderer, or embedding the whole application in a document. Item 1 is the one that
 matters — the user asked for our own ladder viewer to be the illustration engine, and it already is for screenshots; this
 makes it so for diagrams.

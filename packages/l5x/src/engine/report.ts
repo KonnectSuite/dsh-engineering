@@ -18,7 +18,7 @@
 import type { ProjectSnapshot } from '../session.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import type { L5xDiagramNode } from '../model/types.ts'
-import { PAPER_PALETTE, renderLadderSvg } from './render-ladder.ts'
+import { parseLadder, type LadderNode } from './logic-syntax.ts'
 import { REPORT_STYLESHEET } from './report-styles.ts'
 
 /**
@@ -107,6 +107,60 @@ export function highlightSt(code: string): string {
 }
 
 
+/** The text of one operand, as the export wrote it. */
+function operandText(tokens: readonly { readonly text: string }[]): string {
+  return tokens.map(token => token.text).join('')
+}
+
+/**
+ * One ladder element in the pane's own language.
+ *
+ * A contact is two bars with an optional negation slash, a coil is an oval, and
+ * everything else is a block card with the mnemonic as its header. The tag the
+ * element operates on sits underneath it, which is how the app's pane draws a
+ * rung — the document used to draw a coloured box with `XIC(Start)` inside it,
+ * a picture that read as a different component from the one the app shows.
+ */
+function elementHtml(node: Extract<LadderNode, { kind: 'instruction' }>): string {
+  const name = node.name.toUpperCase()
+  if (name === 'XIC' || name === 'XIO') {
+    const negated = name === 'XIO' ? ' neg' : ''
+    return `<span class="ldr-el"><i class="ldr-contact${negated}"></i><b class="ldr-label">${escapeHtml(operandText(node.operands[0] ?? []))}</b></span>`
+  }
+  if (name === 'OTE' || name === 'OTL' || name === 'OTU') {
+    return `<span class="ldr-el"><i class="ldr-coil"></i><b class="ldr-label">${escapeHtml(operandText(node.operands[0] ?? []))}</b></span>`
+  }
+  const pins = node.operands.map(operand => operandText(operand)).filter(value => value !== '')
+  return `<span class="ldr-el"><span class="ldr-block"><strong>${escapeHtml(node.name)}</strong>${pins.map(pin => `<span>${escapeHtml(pin)}</span>`).join('')}</span></span>`
+}
+
+/** A sequence of elements joined by wire. */
+function flowHtml(nodes: readonly LadderNode[]): string {
+  const parts = nodes.map(node => node.kind === 'branch' ? branchHtml(node) : elementHtml(node))
+  return `${parts.join('<span class="ldr-wire"></span>')}<span class="ldr-wire ldr-tail"></span>`
+}
+
+/** Parallel paths as a bordered column, the way the pane draws a branch. */
+function branchHtml(node: Extract<LadderNode, { kind: 'branch' }>): string {
+  const paths = node.paths.map(path => `<span class="ldr-path">${flowHtml(path)}</span>`).join('')
+  return `<span class="ldr-branch">${paths}</span>`
+}
+
+/** Every rung of one routine, drawn from its parsed NeutralText. */
+function ladderHtml(rungs: readonly { readonly number: number; readonly text: string; readonly comment?: string }[]): string {
+  const rows = rungs.map(rung => {
+    const parsed = parseLadder(rung.text)
+    const comment = rung.comment === undefined || rung.comment === ''
+      ? ''
+      : `<div class="ldr-comment">${escapeHtml(rung.comment)}</div>`
+    const flow = parsed.nodes.length === 0
+      ? '<span class="ldr-empty">This rung did not parse into a sequence.</span>'
+      : flowHtml(parsed.nodes)
+    return `<div class="ldr-rung"><div class="ldr-num">${rung.number}</div><div class="ldr-body">${comment}<div class="ldr-flow">${flow}</div></div></div>`
+  })
+  return `<div class="ldr">${rows.join('')}</div>`
+}
+
 /** The heading each declared section prints. */
 const SECTION_TITLES: Record<ReportSectionName, string> = {
   glance: 'At a glance',
@@ -177,10 +231,11 @@ export function buildReportHtml(project: ProjectSnapshot, options: ReportOptions
       const description = info.description === '' ? 'No routine description.' : escapeHtml(info.description)
       if (routine.body.type === 'RLL') {
         rungCount += routine.body.rungs.length
-        // The same renderer the diagram tool uses: one picture of the logic, not a second one.
+        // The pane's own language: contacts, coils and block cards, not a second
+        // drawing of the logic in coloured boxes.
         const drawing = routine.body.rungs.length === 0
           ? '<p class="empty">This routine has no rungs.</p>'
-          : `<figure>${renderLadderSvg(routine.body.rungs, `${program.name} / ${info.name}`, undefined, { palette: PAPER_PALETTE }).svg}<figcaption>${escapeHtml(`${program.name} / ${info.name}`)} — drawn by this bundle's ladder renderer; the NeutralText is listed below.</figcaption></figure>`
+          : `<figure>${ladderHtml(routine.body.rungs)}<figcaption>${escapeHtml(`${program.name} / ${info.name}`)} — drawn from the parsed NeutralText; the text itself is listed below.</figcaption></figure>`
         const rungs = routine.body.rungs.map(rung => row([
           String(rung.number),
           escapeHtml(rung.comment ?? ''),

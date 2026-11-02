@@ -34,13 +34,19 @@ describe('document_project report', () => {
     expect(text).toContain('<nav class="toc">')
   })
 
-  it('draws ladder on white paper rather than in the dark pane palette', async () => {
+  it('draws ladder in the pane\'s language rather than as coloured boxes', async () => {
     const l5x = await opened()
     await l5x.call('document_project', { output_root: 'docs', include: ['report'] })
     const text = String(l5x.written.get('docs/report.html'))
-    // The defect this fixes: a document whose ladder was near-black inside a white page.
-    expect(text).toContain('fill="#FFFFFF"')
-    expect(text).not.toContain('fill="#0B1220"')
+    // The pane draws contacts as two bars, coils as an oval and block cards with
+    // a header; the document used to draw a second picture in coloured boxes.
+    expect(text).toContain('class="ldr-rung"')
+    expect(text).toContain('ldr-contact')
+    expect(text).toContain('ldr-coil')
+    expect(text).toContain('ldr-label')
+    // No second drawing: the document carries no ladder SVG at all.
+    expect(text).not.toContain('<svg')
+    expect(text).not.toContain('#0B1220')
   })
 
   it('reports PDF unavailability instead of silently skipping the PDF', async () => {
