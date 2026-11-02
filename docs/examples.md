@@ -1,5 +1,6 @@
 # Examples
 
+- [Composing a rung, seeing it, and getting it into Studio](examples/composer-to-studio.md) — one rung end to end: compose, draw, copy, paste as Neutral Text, build 0/0.
 Worked sessions for both products. Each call shows only the arguments that matter; every tool also
 accepts the handle (`project_id` or `view_id`) when more than one is open. The full parameter list is
 in the [tool reference](reference/tools.md).
