@@ -1,3 +1,16 @@
+## [0.84.0] - 2026-11-02
+
+- **A multidimensional array element with a member now composes.** `Alarm_Timer[0,8].DN` was refused with
+  `INVALID_OPERAND: "Alarm_Timer[0,8].DN" is not a tag or a number.`, which read as though the tag did not exist. It did:
+  the address resolver splits comma-separated indices and resolves the member correctly — the gate in front of it is a
+  character class for what an address may contain, and it omitted the comma. So every two-dimensional timer, `Tmr[1,0].DN`,
+  was unreachable from `compose_rung` and `draft_rung` while the one-subscript form worked, which is what made the
+  refusal look like a missing declaration.
+- **The gate admits the comma; the resolver still decides.** `TAG_TEXT` keeps rejecting spaces, quotes and anything else
+  an address cannot contain, and a wrong rank or an unparsable address still fails — with the rank or the shape named,
+  not with "not a tag or a number". Three tests pin the three cases: two subscripts plus a member, one subscript plus a
+  member, and a wrong rank that must not read as a missing tag.
+
 ## [0.83.0] - 2026-11-02
 
 - **FTView and the migration surface now write with the session's sandbox policy too.** 0.82.0 fixed this in the L5X

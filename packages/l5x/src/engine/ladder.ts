@@ -82,7 +82,10 @@ export type PatternName = (typeof PATTERNS)[number]
 const MAX_INSTRUCTIONS = 64
 const MAX_DEPTH = 16
 const LITERAL = /^-?(?:\d+\.?\d*|\.\d+)$/u
-const TAG_TEXT = /^[A-Za-z_][A-Za-z0-9_:.[\]]*$/u
+// A subscript may hold several indices (`Tmr[0,8].DN`), and one element may carry a
+// member (`Alarm_Timer[0,8].DN`). A comma is part of an address, so this gate has to
+// admit it; the resolver, not this character class, decides whether it is real.
+const TAG_TEXT = /^[A-Za-z_][A-Za-z0-9_:.,[\]]*$/u
 
 /** A numeric literal, which is not a declaration. */
 const isLiteral = (text: string): boolean => LITERAL.test(text)
