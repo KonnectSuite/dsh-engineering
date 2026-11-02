@@ -56,6 +56,29 @@ describe('a program composed only through the tools', () => {
     expect(rungs.map(rung => rung.text)).toEqual(RUNGS)
   })
 
+  it('writes a timer with the accumulator Studio requires', async () => {
+    // Studio's NeutralText is TON(Timer,2000,0). A caller composing a timer writes two operands, and the
+    // short form is the one Studio rejected on paste; the composer supplies the trailing 0 instead.
+    const base = l5x({ name: 'Accumulator', programs: program('Main', rllRoutine('MainRoutine', [])), tasks: task('MainTask', ['Main']) })
+    const l5xTool = harness(new Map([['p.l5x', new TextEncoder().encode(base)]]), { editing: true })
+    await l5xTool.call('open_project', { path: 'p.l5x' })
+    for (const [name, dataType] of [['Start', 'BOOL'], ['Timer', 'TIMER']] as const) {
+      await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: name })
+    }
+    const composed = await l5xTool.call('compose_rung', {
+      program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0,
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['Start'] }, { instr: 'TON', args: ['Timer', '2000'] }] }),
+    })
+    expect(composed.error).toBeUndefined()
+    expect((composed.data as { rungs: { neutral_text: string }[] }).rungs[0].neutral_text).toBe('XIC(Start)TON(Timer,2000,0);')
+    // An explicit accumulator is honoured and not doubled.
+    const explicit = await l5xTool.call('compose_rung', {
+      program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 1,
+      spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['Start'] }, { instr: 'TON', args: ['Timer', '2000', '0'] }] }),
+    })
+    expect((explicit.data as { rungs: { neutral_text: string }[] }).rungs[0].neutral_text).toBe('XIC(Start)TON(Timer,2000,0);')
+  })
+
   it('writes the ladder preview itself so the chat can draw a composed rung', async () => {
     // The composer used to end at "validate": nothing drew what it had just written, so a composed rung reached
     // the reader as NeutralText unless they asked again. It now writes the viewer document in the same call.

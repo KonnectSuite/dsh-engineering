@@ -417,9 +417,18 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
     // parameters as its target routine declares.
     const restSlot = instruction.operands.find(slot => slot.rest === true)
+    // Studio's NeutralText carries the accumulator: a timer is TON(Timer,2000,0), not TON(Timer,2000),
+    // and the short form is rejected on paste with "invalid or unrecognized instruction" (or, when
+    // Studio is lenient, silently completed with a warning). A caller composing a timer should not have
+    // to know that, so the trailing 0 is written here when it was left off.
+    const lastSlot = instruction.operands[instruction.operands.length - 1]
+    const accumulatorOmitted = restSlot === undefined
+      && lastSlot?.name === 'Accum'
+      && args.length === instruction.operands.length - 1
+    const written = accumulatorOmitted ? [...args, '0'] : args
     const kindAt = (index: number): InstructionInfo['operands'][number]['kind'] => (instruction.operands[index] ?? restSlot)?.kind ?? 'ANY'
     const required = instruction.operands.filter(slot => slot.optional !== true && slot.rest !== true).length
-    if (args.length < required || (restSlot === undefined && args.length > instruction.operands.length)) {
+    if (written.length < required || (restSlot === undefined && written.length > instruction.operands.length)) {
       const shape = instruction.operands.map(slot => `${slot.name}${slot.optional === true ? '?' : ''}`).join(', ')
       throw new L5xError(
         'INVALID_OPERAND',
@@ -430,7 +439,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // Emit the resolved operand text rather than the caller's spelling: a routine name
     // keeps the case the export uses, and a tag, literal or expression is unchanged
     // because checkOperand preserves the text it was given.
-    const emitted = args.map((argument, index) => {
+    const emitted = written.map((argument, index) => {
       const operand = checkOperand(project, argument, kindAt(index), operands)
       const text = operand.text
       const slot = instruction.operands[index] ?? restSlot
