@@ -13,7 +13,7 @@ mapping is [mwi-mapping.json](mwi-mapping.json).
 Ship MotionWorks IEC as a component of `dsh-engineering`: one package, stable row ids, a typed tool
 surface, its own skill, and the same installer and upgrade path as the other products. When the
 redesign is mounted and verified, `dsh-tool-motionworks-iec` is retired under
-[the retirement checklist](retirement.md) â€” unmounted, uninstalled and gone.
+[the retirement checklist](retirement.md) — unmounted, uninstalled and gone.
 
 The product drives a running MotionWorks IEC 3 Pro IDE through a 32-bit COM bridge and edits the live
 staged project. The bridge is implementation, not the API: the redesign keeps the proven bridge where
@@ -71,7 +71,7 @@ mounts edit-only code.
 | `mwi-edit` | **off** | 7 |
 | `mwi-skill` | on | the `motionworks-iec` guidance |
 
-### `mwi-session` â€” project and IDE lifecycle
+### `mwi-session` — project and IDE lifecycle
 
 | Tool | Intent |
 |---|---|
@@ -83,7 +83,7 @@ mounts edit-only code.
 | `mw_worksheet_open` | Open one code or variable worksheet by saved identity and verify the active view |
 | `mw_project_close` | Close the IDE project with explicit consent |
 
-### `mwi-read` â€” live project model
+### `mwi-read` — live project model
 
 | Tool | Intent |
 |---|---|
@@ -95,7 +95,7 @@ mounts edit-only code.
 | `mw_review` | Scope, type and bounds review, unsupported constructs, graphical listing |
 | `mw_help` | Installed help and reviewed references, plus reference-index sync |
 
-### `mwi-verify` â€” compiler verdict
+### `mwi-verify` — compiler verdict
 
 | Tool | Intent |
 |---|---|
@@ -103,7 +103,7 @@ mounts edit-only code.
 | `mw_diagnostics` | IDE error list, mapped to documented causes |
 | `mw_verify` | Baseline capture and saved/native state comparison for a staged change |
 
-### `mwi-edit` â€” staged changes
+### `mwi-edit` — staged changes
 
 | Tool | Intent |
 |---|---|
@@ -179,7 +179,7 @@ wholesale.
 
 Each phase ends with its contract tests passing and a real-IDE smoke on a disposable workspace.
 
-### Phase 0 â€” core and skill
+### Phase 0 — core and skill
 
 Create `packages/mwi` with the manifest, the shared tool core (params, result, errors), the typed
 bridge client interface, the rewritten `SKILL.md` and the skill entry. No patch row yet; the legacy
@@ -188,15 +188,15 @@ plugin still registers the same skill.
 Acceptance: package builds; skill registers with its budget test and non-Windows skip; the tool core
 has unit tests; the legacy inventory and mapping are referenced by the package README.
 
-### Phase 1 â€” session row
+### Phase 1 — session row
 
 Implement `mwi-session`, the project service, staging, open/close consent, wrapper preflight and the
 IDE state/status tools. This is the smallest set that proves the bridge from the new package.
 
-Acceptance: on a disposable workspace, find â†’ stage â†’ open â†’ status â†’ worksheet â†’ close behaves as
+Acceptance: on a disposable workspace, find → stage → open → status → worksheet → close behaves as
 specified; wrong-project, stale-wrapper, modal and duplicate-start refusals are exercised.
 
-### Phase 2 â€” read row
+### Phase 2 — read row
 
 Implement `mwi-read` over the shared model and bridge: overview, list, get, search, references,
 review and help.
@@ -204,7 +204,7 @@ review and help.
 Acceptance: results match the legacy plugin on the fixture project for the same inputs, with the new
 envelope; `coverage` states what the saved model cannot prove.
 
-### Phase 3 â€” verify row
+### Phase 3 — verify row
 
 Implement `mw_compile`, `mw_diagnostics` and `mw_verify`; map exact compiler text to documented causes
 and keep the baseline/verification hashes.
@@ -212,14 +212,14 @@ and keep the baseline/verification hashes.
 Acceptance: compile verdict and error text match the legacy plugin on the same source; a changed
 source invalidates a baseline.
 
-### Phase 4 â€” edit row
+### Phase 4 — edit row
 
 Implement the seven edit intents, the expected-hash guards, validate and apply, and sync-back consent.
 
 Acceptance: a staged edit round trip (edit, validate, compile, save, sync back) passes on the
 disposable fixture; a wrong hash or a changed source refuses before writing.
 
-### Phase 5 â€” flip and retire
+### Phase 5 — flip and retire
 
 Add the five rows to `cordis.patch.yml`, remove the standalone plugin from the bundle template,
 `apps/cli`, the authored inventory and the installer payload, and retire the legacy rows from profiles

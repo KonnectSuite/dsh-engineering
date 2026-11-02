@@ -302,7 +302,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         }
         for (const tag of app.tags) {
           if (tag.name.toLowerCase().includes(query) || tag.description.toLowerCase().includes(query)) {
-            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ${tag.description}`}` })
+            matches.push({ kind: 'tag', where: 'tag CSV', text: `${tag.name}${tag.description === '' ? '' : ` — ${tag.description}`}` })
           }
         }
         const limit = optionalInteger(args, 'limit') ?? 50
@@ -434,7 +434,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_object_types',
-      description: 'Catalog the object types the export uses, with each typeâ€™s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
+      description: 'Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
       parameters: object({
         view_id: VIEW_ID,
         type: string('Optional exact element type, e.g. "momentaryButton", to list its attributes.'),
@@ -527,7 +527,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_live_map',
-      description: 'Map the exportâ€™s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.',
+      description: 'Map the export’s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.',
       parameters: object({
         view_id: VIEW_ID,
         limit: integer('Most tag rows to return. Defaults to 40.', { minimum: 1, maximum: 500 }),
@@ -588,7 +588,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_studio_export_accept',
-      description: 'Validate a tag CSV or alarm XML produced by Rockwellâ€™s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.',
+      description: 'Validate a tag CSV or alarm XML produced by Rockwell’s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.',
       parameters: object({
         kind: choice('Asset kind to accept: tags (CSV) or alarms (XML).', ['tags', 'alarms']),
         source: string('File the wizard wrote.'),
@@ -735,7 +735,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
 
     tool({
       name: 'ftview_studio_import_prepare',
-      description: 'Package displays from an applied export for Studioâ€™s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',
+      description: 'Package displays from an applied export for Studio’s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.',
       parameters: object({
         export_root: string('Applied export folder that contains Displays/.'),
         displays: string('Display names to import, separated by commas, without .xml.'),

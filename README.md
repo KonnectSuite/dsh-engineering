@@ -262,6 +262,7 @@ even when the implementation behind a row is replaced.
 
 | Document | Owns |
 |---|---|
+| [Documentation map](docs/index.md) | Every page by task and by surface, with the figures and the records in one place |
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
 | [Capabilities, shown](docs/capabilities.md) | Figures per surface, the exact call behind each one, and what a picture cannot prove |
 | [Arya Automation Engineer](docs/preset-arya-automation.md) | The agent preset this bundle ships: the five-step contract, the engineering-tuned compaction, the ledger, and what a preset cannot make true |

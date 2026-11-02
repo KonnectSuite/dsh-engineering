@@ -862,7 +862,7 @@ Compare two opened exports: displays added or removed, tags added or removed, ta
 
 #### `ftview_object_types`
 
-Catalog the object types the export uses, with each typeâ€™s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.
+Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -892,7 +892,7 @@ Measure every display against the house theme: backdrop, header band, footer ban
 
 #### `ftview_live_map`
 
-Map the exportâ€™s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.
+Map the export’s HMI tags to controller tags using the tag CSV Address column, and report how many can be live. Read-only: no controller contact and no invented values.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -912,7 +912,7 @@ Plan a fresh tag-database or alarm export for one application: resolve its .med,
 
 #### `ftview_studio_export_accept`
 
-Validate a tag CSV or alarm XML produced by Rockwellâ€™s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.
+Validate a tag CSV or alarm XML produced by Rockwell’s wizards, count its contents and optionally copy it into an export folder. Refuses empty or wrong-shaped files.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -959,7 +959,7 @@ Review an Alarms.xml: every trigger and message, plus findings a reviewer can ac
 
 #### `ftview_studio_import_prepare`
 
-Package displays from an applied export for Studioâ€™s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.
+Package displays from an applied export for Studio’s Graphics Import Export Wizard: copies the selected <gfx> display XML files and writes the gfxImport batch file, then returns the wizard steps. Does not import by itself.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
