@@ -28,7 +28,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { EcadEntity, EcadSheetModel, EcadTitleBlock, EcadTitleBlockField } from '../engine/types.ts'
-import { conversionOf, sourceFormatOf, type EcadConversionSummary, type EcadFailure, type EcadOpen, type EcadOpenEnvelope } from './artifacts.ts'
+import { conversionOf, sourceFormatOf, type EcadApply, type EcadApplyEnvelope, type EcadCapabilities, type EcadConversionSummary, type EcadFailure, type EcadOpen, type EcadOpenEnvelope } from './artifacts.ts'
 import {
   coverageOf,
   factsOf,
@@ -39,6 +39,7 @@ import {
   layersOf,
   layerNameOf,
   sceneOf,
+  textLines,
   unitLabel,
   type EcadCoverage,
   type EcadFit,
@@ -46,6 +47,32 @@ import {
   type EcadSceneGeometry,
   type EcadScenePrimitive,
 } from './scene.ts'
+import {
+  defaultLayer,
+  defaultTextHeight,
+  draftCounts,
+  draftOps,
+  draftPreview,
+  editableEntityId,
+  parseNumberField,
+  stageErase,
+  stageMove,
+  stageText,
+  worldAt,
+  worldDelta,
+  type EcadDraftCounts,
+  type EcadStagedOp,
+} from './edits.ts'
+import {
+  ApplyOutcomePanel,
+  DraftPanel,
+  EditBar,
+  EditModeToggle,
+  WrittenBanner,
+  type EcadApplyOutcome,
+  type EcadMode,
+  type EcadPlacementDraft,
+} from './EcadDraft.tsx'
 import { parseFileAddress } from './vendor/workspace-path.ts'
 import css from './EcadBody.module.css'
 
@@ -65,6 +92,8 @@ export interface EcadRendererContent {
 export interface EcadBodyInjected {
   /** Open one drawing and return its sheet model, or the failure envelope. */
   readonly open: EcadOpen
+  /** Apply one staged draft; the host writes a new drawing and never the source. */
+  readonly apply: EcadApply
   /** Append a review prompt to the conversation draft; false when chat is absent. */
   readonly ask: (address: string, context: string) => boolean
 }
@@ -203,7 +232,7 @@ function CloseIcon({ size = 13 }: IconProps): ReactElement {
 /** The status a body is showing. */
 type BodyState =
   | { readonly phase: 'loading' }
-  | { readonly phase: 'ready'; readonly summary: EcadOpenEnvelope; readonly model: EcadSheetModel }
+  | { readonly phase: 'ready'; readonly summary: EcadOpenEnvelope; readonly model: EcadSheetModel; readonly capabilities?: EcadCapabilities }
   | { readonly phase: 'error'; readonly error: EcadFailure }
 
 /**
@@ -328,26 +357,66 @@ function SceneShape({ geometry, paint, className }: SceneShapeProps): ReactEleme
   }
 }
 
+/** The screen point a pointer event carries, for placement and dragging. */
+interface ScreenPointEvent {
+  readonly clientX: number
+  readonly clientY: number
+  readonly pointerId: number
+  readonly button: number
+  readonly stopPropagation: () => void
+  readonly preventDefault?: () => void
+}
+
 /** Props of {@link ScenePrimitiveView}. */
 interface ScenePrimitiveViewProps {
   readonly primitive: EcadScenePrimitive
   readonly selected: boolean
   readonly hovered: boolean
-  readonly onSelect: (id: string) => void
+  readonly faded: boolean
+  readonly onSelect: (id: string, event: { readonly stopPropagation: () => void; readonly clientX: number; readonly clientY: number }) => void
   readonly onHover: (id: string | undefined) => void
+  readonly onEditPointerDown: ((id: string, event: ScreenPointEvent) => void) | undefined
 }
 
 /**
- * One selected primitive: its geometry in the reading paint, then the selection
- * halo and accent on top so the highlight is legible over any layer colour.
+ * Render one primitive's text runs, shared by the sheet and its ghosts.
+ * @param primitive - the primitive whose runs to draw.
+ * @param fill - CSS paint for the glyphs.
+ * @param underline - whether the run is the selected one.
+ * @returns the text elements.
+ */
+function textRuns(primitive: EcadScenePrimitive, fill: string, underline: boolean): ReactElement[] {
+  return primitive.text.map((line, index) => createElement(
+    'text',
+    {
+      key: `${primitive.id}:text:${index}`,
+      x: 0,
+      y: 0,
+      transform: `translate(${line.x} ${line.y}) scale(1 -1) rotate(${Number((-line.degrees).toFixed(4))})`,
+      fontSize: line.height,
+      textAnchor: line.anchor,
+      dominantBaseline: line.baseline,
+      fill,
+      fontFamily: 'inherit',
+      ...(underline ? { textDecoration: 'underline' } : {}),
+      'aria-hidden': true,
+    },
+    line.text,
+  ))
+}
+
+/**
+ * One primitive: its geometry in the reading paint, then the selection halo and
+ * accent on top so the highlight is legible over any layer colour. A staged
+ * erase fades it; an edit-mode drag starts on it.
  * @param props - the primitive and its interaction state.
  */
-function ScenePrimitiveView({ primitive, selected, hovered, onSelect, onHover }: ScenePrimitiveViewProps): ReactElement {
+function ScenePrimitiveView({ primitive, selected, hovered, faded, onSelect, onHover, onEditPointerDown }: ScenePrimitiveViewProps): ReactElement {
   const filled = primitive.geometry.t === 'path' && (primitive.geometry.fill || primitive.geometry.hatch)
   const interaction = {
-    onClick: (event: { stopPropagation: () => void }) => {
+    onClick: (event: { stopPropagation: () => void; clientX: number; clientY: number }) => {
       event.stopPropagation()
-      onSelect(primitive.id)
+      onSelect(primitive.id, event)
     },
     onPointerEnter: () => {
       onHover(primitive.id)
@@ -355,20 +424,25 @@ function ScenePrimitiveView({ primitive, selected, hovered, onSelect, onHover }:
     onPointerLeave: () => {
       onHover(undefined)
     },
+    ...(onEditPointerDown === undefined
+      ? {}
+      : {
+        onPointerDown: (event: ScreenPointEvent) => {
+          onEditPointerDown(primitive.id, event)
+        },
+      }),
   }
-  const textPaint: CSSProperties = selected
-    ? { fill: 'var(--ecad-accent)' }
-    : { fill: primitive.ink }
   return createElement(
     'g',
     {
       ...interaction,
-      className: [css.primitive, hovered ? css.hovered : ''].filter(Boolean).join(' ') || undefined,
+      className: [css.primitive, hovered ? css.hovered : '', faded ? css.faded : ''].filter(Boolean).join(' ') || undefined,
       'data-ecad-id': primitive.id,
       'data-ecad-kind': primitive.kind,
       'data-ecad-layer': primitive.layer,
       ...(primitive.approx ? { 'data-ecad-approx': 'true' } : {}),
       ...(selected ? { 'data-ecad-selected': 'true' } : {}),
+      ...(faded ? { 'data-ecad-faded': 'true' } : {}),
     },
     primitive.geometry.t === 'none' ? null : createElement(SceneShape, { geometry: primitive.geometry, paint: paintOf(primitive, selected, filled) }),
     // A filled primitive already carries the accent on its outline; an unfilled
@@ -380,23 +454,7 @@ function ScenePrimitiveView({ primitive, selected, hovered, onSelect, onHover }:
     selected && primitive.geometry.t !== 'none' && !filled
       ? createElement(SceneShape, { geometry: primitive.geometry, paint: { fill: 'none', stroke: 'var(--ecad-accent)', strokeWidth: 2.5 }, className: css.selection })
       : null,
-    primitive.text.map((line, index) => createElement(
-      'text',
-      {
-        key: `${primitive.id}:text:${index}`,
-        x: 0,
-        y: 0,
-        transform: `translate(${line.x} ${line.y}) scale(1 -1) rotate(${Number((-line.degrees).toFixed(4))})`,
-        fontSize: line.height,
-        textAnchor: line.anchor,
-        dominantBaseline: line.baseline,
-        fill: textPaint.fill,
-        fontFamily: 'inherit',
-        ...(selected ? { textDecoration: 'underline' } : {}),
-        'aria-hidden': true,
-      },
-      line.text,
-    )),
+    textRuns(primitive, selected ? 'var(--ecad-accent)' : primitive.ink, selected),
   )
 }
 
@@ -410,18 +468,42 @@ interface SceneViewProps {
   readonly view: ViewState
   readonly selectedId: string | undefined
   readonly hoveredId: string | undefined
-  readonly onSelect: (id: string) => void
+  readonly onSelect: (id: string, event: { readonly stopPropagation: () => void; readonly clientX: number; readonly clientY: number }) => void
   readonly onHover: (id: string | undefined) => void
+  readonly onEditPointerDown: ((id: string, event: ScreenPointEvent) => void) | undefined
   readonly label: string
+  /** Entities a staged erase removes; faded on the sheet until the draft applies. */
+  readonly fadedIds?: ReadonlySet<string>
+  /** Staged moves, drawn as accent ghosts over the source geometry. */
+  readonly ghostMoves?: readonly { readonly key: string; readonly id: string; readonly delta: readonly [number, number] }[]
+  /** Text annotations a draft adds, or the annotation a click is placing. */
+  readonly ghostTexts?: readonly { readonly key: string; readonly point: readonly [number, number]; readonly text: string; readonly height: number; readonly rotation: number }[]
+  /** The point a placement click chose, marked with a crosshair. */
+  readonly pendingPoint?: readonly [number, number] | undefined
 }
 
 /**
  * The sheet as SVG: one outer group for the user's pan and zoom, one inner group
  * for the fit with the Y axis flipped, so CAD orientation reads correctly and a
  * zoom never rebuilds a primitive.
- * @param props - the scene and its view state.
+ *
+ * Staged changes are drawn here as accent ghosts: the source model is not
+ * mutated, and the ghosts are what "staged" looks like before the host writes.
+ * @param props - the scene, its view state and the draft overlay.
  */
-function SceneView({ scene, fit, view, selectedId, hoveredId, onSelect, onHover, label }: SceneViewProps): ReactElement {
+function SceneView({ scene, fit, view, selectedId, hoveredId, onSelect, onHover, onEditPointerDown, label, fadedIds, ghostMoves, ghostTexts, pendingPoint }: SceneViewProps): ReactElement {
+  const byId = useMemo(() => {
+    const map = new Map<string, EcadScenePrimitive>()
+    for (const primitive of scene.primitives) map.set(primitive.id, primitive)
+    return map
+  }, [scene])
+  const span = Math.max(scene.bounds.max[0] - scene.bounds.min[0], scene.bounds.max[1] - scene.bounds.min[1])
+  const marker = Math.max(span * 0.012, 1e-6)
+  const ghosts = (ghostMoves ?? []).flatMap((move) => {
+    const primitive = byId.get(move.id)
+    if (primitive === undefined) return []
+    return [{ move, primitive }]
+  })
   return createElement(
     'svg',
     { className: css.canvas, role: 'img', 'aria-label': label, 'data-ecad-canvas': 'true' },
@@ -436,9 +518,55 @@ function SceneView({ scene, fit, view, selectedId, hoveredId, onSelect, onHover,
           primitive,
           selected: primitive.id === selectedId,
           hovered: primitive.id === hoveredId,
+          faded: fadedIds?.has(primitive.id) === true,
           onSelect,
           onHover,
+          onEditPointerDown,
         })),
+        ...ghosts.map(({ move, primitive }) => createElement(
+          'g',
+          {
+            key: `ghost-${move.key}-${move.id}`,
+            transform: `translate(${move.delta[0]} ${move.delta[1]})`,
+            className: css.ghostGroup,
+            'data-ecad-ghost': move.id,
+            'aria-hidden': true,
+            style: { pointerEvents: 'none' },
+          },
+          primitive.geometry.t === 'none' ? null : createElement(SceneShape, {
+            geometry: primitive.geometry,
+            paint: { fill: 'none', stroke: 'var(--ecad-accent)', strokeWidth: 1.5, strokeDasharray: '5 3' },
+          }),
+          textRuns(primitive, 'var(--ecad-accent)', false),
+        )),
+        (ghostTexts ?? []).flatMap((ghost) => {
+          const runs = textLines({ id: `ghost-${ghost.key}`, k: 'text', layer: '', color: 7, p: ghost.point, t: ghost.text, h: ghost.height, rot: ghost.rotation })
+          return runs.map((line, index) => createElement(
+            'text',
+            {
+              key: `ghost-text-${ghost.key}-${index}`,
+              x: 0,
+              y: 0,
+              transform: `translate(${line.x} ${line.y}) scale(1 -1) rotate(${Number((-line.degrees).toFixed(4))})`,
+              fontSize: line.height,
+              textAnchor: line.anchor,
+              dominantBaseline: line.baseline,
+              className: css.ghostText,
+              fontFamily: 'inherit',
+              'aria-hidden': true,
+            },
+            line.text,
+          ))
+        }),
+        pendingPoint === undefined
+          ? null
+          : createElement(
+            'g',
+            { key: 'placement-marker', 'aria-hidden': true, style: { pointerEvents: 'none' }, 'data-ecad-placement': `${pendingPoint[0]},${pendingPoint[1]}` },
+            createElement('line', { className: css.placementMarker, x1: pendingPoint[0] - marker, y1: pendingPoint[1], x2: pendingPoint[0] + marker, y2: pendingPoint[1] }),
+            createElement('line', { className: css.placementMarker, x1: pendingPoint[0], y1: pendingPoint[1] - marker, x2: pendingPoint[0], y2: pendingPoint[1] + marker }),
+            createElement('circle', { className: css.placementMarker, cx: pendingPoint[0], cy: pendingPoint[1], r: marker * 0.45 }),
+          ),
       ),
     ),
   )
@@ -510,22 +638,94 @@ interface InspectorProps {
   readonly entity: EcadEntity | undefined
   readonly model: EcadSheetModel
   readonly chatUnavailable: boolean
+  readonly editing: boolean
+  readonly moveDx: string
+  readonly moveDy: string
+  readonly onMoveDx: (value: string) => void
+  readonly onMoveDy: (value: string) => void
+  readonly onStageMove: () => void
+  readonly onStageErase: () => void
   readonly onAsk: (entity: EcadEntity) => void
   readonly onClear: () => void
   readonly t: Translate
 }
 
 /**
+ * The edit controls for the selected entity: the delta fields and the two
+ * staged operations. A flattened block member cannot be edited in place.
+ * @param props - the entity, the move fields and the stage actions.
+ */
+function EditActions({ entity, editing, moveDx, moveDy, onMoveDx, onMoveDy, onStageMove, onStageErase, t }: Pick<InspectorProps, 'entity' | 'editing' | 'moveDx' | 'moveDy' | 'onMoveDx' | 'onMoveDy' | 'onStageMove' | 'onStageErase' | 't'>): ReactElement | null {
+  if (entity === undefined || !editing) return null
+  if (!editableEntityId(entity.id)) return createElement('p', { className: css.editHint }, t('editFlattened'))
+  const dx = parseNumberField(moveDx)
+  const dy = parseNumberField(moveDy)
+  const canMove = dx !== undefined && dy !== undefined && (dx !== 0 || dy !== 0)
+  return createElement(
+    'div',
+    { className: css.editActionsBlock, 'data-ecad-edit-actions': 'true' },
+    createElement('p', { className: css.editHint }, t('editEntityHint')),
+    createElement(
+      'div',
+      { className: css.moveFields },
+      createElement('label', { className: css.moveField },
+        createElement('span', {}, t('moveDx')),
+        createElement('input', {
+          type: 'text',
+          inputMode: 'decimal',
+          value: moveDx,
+          'aria-label': t('moveDx'),
+          onChange: (event: { target: { value: string } }) => {
+            onMoveDx(event.target.value)
+          },
+          'data-ecad-move-dx': 'true',
+        }),
+      ),
+      createElement('label', { className: css.moveField },
+        createElement('span', {}, t('moveDy')),
+        createElement('input', {
+          type: 'text',
+          inputMode: 'decimal',
+          value: moveDy,
+          'aria-label': t('moveDy'),
+          onChange: (event: { target: { value: string } }) => {
+            onMoveDy(event.target.value)
+          },
+          'data-ecad-move-dy': 'true',
+        }),
+      ),
+    ),
+    createElement(
+      'div',
+      { className: css.inspectorActions },
+      createElement('button', {
+        type: 'button',
+        className: css.applyButton,
+        disabled: !canMove,
+        onClick: onStageMove,
+        'data-ecad-stage-move': 'true',
+      }, t('moveAction')),
+      createElement('button', {
+        type: 'button',
+        className: css.button,
+        onClick: onStageErase,
+        'data-ecad-stage-erase': 'true',
+      }, t('eraseAction')),
+    ),
+  )
+}
+
+/**
  * The selected primitive's properties.
  * @param props - the selection and the actions on it.
  */
-function Inspector({ entity, model, chatUnavailable, onAsk, onClear, t }: InspectorProps): ReactElement {
+function Inspector({ entity, model, chatUnavailable, editing, moveDx, moveDy, onMoveDx, onMoveDy, onStageMove, onStageErase, onAsk, onClear, t }: InspectorProps): ReactElement {
   if (entity === undefined) {
     return createElement(
       'section',
       { className: `${css.panelSection} ${css.inspectorSection}` },
       createElement('div', { className: css.panelHeading }, t('inspector')),
-      createElement('div', { className: css.inspector }, createElement('p', { className: css.inspectorHint }, t('noSelection'))),
+      createElement('div', { className: css.inspector }, createElement('p', { className: css.inspectorHint }, editing ? t('editNoEntity') : t('noSelection'))),
     )
   }
   const facts = factsOf(entity)
@@ -561,6 +761,7 @@ function Inspector({ entity, model, chatUnavailable, onAsk, onClear, t }: Inspec
         createElement('button', { type: 'button', className: css.button, onClick: onClear }, t('clearSelection')),
       ),
       chatUnavailable ? createElement('p', { className: css.inspectorHint }, t('askUnavailable')) : null,
+      createElement(EditActions, { entity, editing, moveDx, moveDy, onMoveDx, onMoveDy, onStageMove, onStageErase, t }),
     ),
   )
 }
@@ -650,6 +851,9 @@ interface DrawingToolbarProps {
   readonly format: string | undefined
   readonly conversion: EcadConversionSummary | undefined
   readonly writes: boolean
+  readonly editable: boolean
+  readonly mode: EcadMode
+  readonly onModeChange: (mode: EcadMode) => void
   readonly panelsOpen: boolean
   readonly chatUnavailable: boolean
   readonly onFit: () => void
@@ -663,7 +867,7 @@ interface DrawingToolbarProps {
  * The pane's one quiet toolbar: coverage, view controls, panels and Ask Arya.
  * @param props - coverage, read posture and control callbacks.
  */
-function DrawingToolbar({ coverage, coverageText, coverageTitle, ready, format, conversion, writes, panelsOpen, chatUnavailable, onFit, onZoom, onTogglePanels, onAsk, t }: DrawingToolbarProps): ReactElement {
+function DrawingToolbar({ coverage, coverageText, coverageTitle, ready, format, conversion, writes, editable, mode, onModeChange, panelsOpen, chatUnavailable, onFit, onZoom, onTogglePanels, onAsk, t }: DrawingToolbarProps): ReactElement {
   return createElement(
     'div',
     { className: css.toolbar },
@@ -688,6 +892,9 @@ function DrawingToolbar({ coverage, coverageText, coverageTitle, ready, format, 
     createElement(
       'div',
       { className: css.toolbarGroup },
+      editable
+        ? createElement(EditModeToggle, { mode, onChange: onModeChange, t })
+        : null,
       createElement('button', { type: 'button', className: `${css.button} ${css.iconButton}`, title: t('fit'), 'aria-label': t('fit'), disabled: !ready, onClick: onFit }, createElement(FitIcon, {})),
       createElement('button', { type: 'button', className: `${css.button} ${css.iconButton}`, title: t('zoomOut'), 'aria-label': t('zoomOut'), disabled: !ready, onClick: () => { onZoom(1 / 1.3) } }, createElement(MinusIcon, {})),
       createElement('button', { type: 'button', className: `${css.button} ${css.iconButton}`, title: t('zoomIn'), 'aria-label': t('zoomIn'), disabled: !ready, onClick: () => { onZoom(1.3) } }, createElement(PlusIcon, {})),
@@ -761,7 +968,7 @@ function FailureState({ error, onRetry, onAsk, chatUnavailable, t }: FailureStat
  * @param props - shell props plus the injected service and conversation bridges.
  */
 export function EcadBody(props: EcadBodyProps): ReactNode {
-  const { resourceAddress, content, t, open, ask } = props
+  const { resourceAddress, content, t, open, apply, ask } = props
   const request = content?.kind === 'renderer' ? content as EcadRendererContent : undefined
   const revision = request?.revision ?? 0
   const [localRevision, setLocalRevision] = useState(0)
@@ -775,6 +982,25 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   const [chatUnavailable, setChatUnavailable] = useState(false)
   const [view, setView] = useState<ViewState>({ zoom: 1, panX: 0, panY: 0 })
   const [panning, setPanning] = useState(false)
+  // -- editing state -------------------------------------------------------
+  // The mode is the reader's choice; the host's write switch is the permission.
+  const [mode, setMode] = useState<EcadMode>('view')
+  const [tool, setTool] = useState<'text' | undefined>(undefined)
+  const [placement, setPlacement] = useState<EcadPlacementDraft | undefined>(undefined)
+  const [staged, setStaged] = useState<readonly EcadStagedOp[]>([])
+  const [dragGhost, setDragGhost] = useState<{ readonly id: string; readonly dx: number; readonly dy: number } | undefined>(undefined)
+  const [moveDx, setMoveDx] = useState('0')
+  const [moveDy, setMoveDy] = useState('0')
+  const [applying, setApplying] = useState(false)
+  const [outcome, setOutcome] = useState<EcadApplyOutcome | undefined>(undefined)
+  // The written drawing replaces the displayed model, never the source view's
+  // state: returning to the source is one action and needs no remote call.
+  const [written, setWritten] = useState<{ readonly path: string; readonly model: EcadSheetModel; readonly version: string } | undefined>(undefined)
+  /** The written sheet a successful apply produced, shown only when opened. */
+  const [writtenCandidate, setWrittenCandidate] = useState<{ readonly path: string; readonly model: EcadSheetModel; readonly version: string } | undefined>(undefined)
+  const draftKeyRef = useRef(0)
+  const editDragRef = useRef<{ id: string; startX: number; startY: number; pointerId: number; moved: boolean; dx: number; dy: number } | undefined>(undefined)
+  const applyAbortRef = useRef<AbortController | undefined>(undefined)
   // The sheet element is state, not a ref, because the first render is the
   // loading state: the wheel listener and the size observer must attach when the
   // canvas actually mounts.
@@ -806,16 +1032,30 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   useEffect(() => {
     if (resourceAddress === '') return
     const controller = new AbortController()
+    applyAbortRef.current?.abort()
+    applyAbortRef.current = undefined
     setState({ phase: 'loading' })
     setSelectedId(undefined)
     setHoveredId(undefined)
     setView({ zoom: 1, panX: 0, panY: 0 })
     setHidden(new Set())
     setLayoutId(undefined)
+    // A reload retires the draft: it was staged against the version being replaced.
+    setMode('view')
+    setTool(undefined)
+    setPlacement(undefined)
+    setStaged([])
+    setApplying(false)
+    setOutcome(undefined)
+    setWritten(undefined)
+    setWrittenCandidate(undefined)
+    setDragGhost(undefined)
+    setMoveDx('0')
+    setMoveDy('0')
     void open(resourceAddress, controller.signal).then((result) => {
       if (controller.signal.aborted) return
       if (result.ok) {
-        setState({ phase: 'ready', summary: result.summary, model: result.model })
+        setState({ phase: 'ready', summary: result.summary, model: result.model, ...(result.capabilities === undefined ? {} : { capabilities: result.capabilities }) })
         request?.loaded(result.summary.version)
       } else {
         setState({ phase: 'error', error: result.error })
@@ -835,30 +1075,39 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     })
     return () => {
       controller.abort()
+      applyAbortRef.current?.abort()
     }
   }, [resourceAddress, revision, localRevision, open, t])
 
   const model = state.phase === 'ready' ? state.model : undefined
   const summary = state.phase === 'ready' ? state.summary : undefined
+  const capabilities = state.phase === 'ready' ? state.capabilities : undefined
+  // What the pane draws: the source sheet, or the drawing the host just wrote.
+  const displayModel = written?.model ?? model
   // The source format the service reports, and the conversion it names for a
   // DWG source. The face defaults to DXF only for an older service that sent no
   // format, and never claims more fidelity than the service reports.
   const format = summary === undefined ? undefined : sourceFormatOf(summary)
   const conversion = summary === undefined ? undefined : conversionOf(summary.converted)
   const formatLabel = format === undefined ? 'ECAD' : format.toUpperCase()
-  const layers = useMemo(() => (model === undefined ? new Map() : layersOf(model)), [model])
+  // The host owns the write switch: the capability report wins over the open
+  // envelope's snapshot, and an edit is offered only while both would allow it.
+  const writesAuthoritative = state.phase === 'ready' ? (capabilities?.writes ?? state.summary.writes) : false
+  const editable = state.phase === 'ready' && writesAuthoritative && written === undefined
+  const editing = editable && mode === 'edit'
+  const layers = useMemo(() => (displayModel === undefined ? new Map() : layersOf(displayModel)), [displayModel])
   const activeLayout = useMemo(() => {
-    if (model === undefined) return undefined
-    return model.layouts.find(layout => layout.id === layoutId)
-      ?? model.layouts.find(layout => layout.kind === 'model')
-      ?? model.layouts[0]
-  }, [model, layoutId])
+    if (displayModel === undefined) return undefined
+    return displayModel.layouts.find(layout => layout.id === layoutId)
+      ?? displayModel.layouts.find(layout => layout.kind === 'model')
+      ?? displayModel.layouts[0]
+  }, [displayModel, layoutId])
   const activeLayoutId = activeLayout?.id
   const scene = useMemo(
     () => (activeLayout === undefined ? undefined : sceneOf(activeLayout, layers, hidden)),
     [activeLayout, layers, hidden],
   )
-  const coverage = useMemo(() => (model === undefined ? undefined : coverageOf(model)), [model])
+  const coverage = useMemo(() => (displayModel === undefined ? undefined : coverageOf(displayModel)), [displayModel])
   const coverageText = coverage === undefined
     ? ''
     : coverage.unsupportedTotal > 0
@@ -875,6 +1124,53 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (scene === undefined) return { scale: 1, translateX: 0, translateY: 0 }
     return fitBox(scene.bounds, Math.max(size.width, 1), Math.max(size.height, 1), FIT_MARGIN)
   }, [scene, size.width, size.height])
+
+  // -- draft derived values -------------------------------------------------
+  const counts = useMemo(() => draftCounts(staged), [staged])
+  const preview = useMemo(() => draftPreview(staged), [staged])
+  // The draft's layout as the panel prints it: one layout, or an explicit
+  // "several" when the reader staged across layout tabs.
+  const draftLayoutName = useMemo(() => {
+    const ids = [...new Set(staged.map(item => item.layout))]
+    if (ids.length === 0) return activeLayout?.name ?? ''
+    if (ids.length > 1) return ''
+    return displayModel?.layouts.find(layout => layout.id === ids[0])?.name ?? (ids[0] as string)
+  }, [activeLayout, displayModel, staged])
+  const placementLayers = useMemo(() => (displayModel?.layers ?? []).map(layer => layer.name), [displayModel])
+  const defaultAnnotationHeight = activeLayout === undefined
+    ? 1
+    : defaultTextHeight(scene?.bounds ?? activeLayout.extents, activeLayout)
+  const defaultAnnotationLayer = displayModel === undefined
+    ? undefined
+    : defaultLayer(displayModel, activeLayout) ?? placementLayers[0]
+  const ghostMoves = useMemo(() => {
+    const moves = [...preview.moves]
+    if (dragGhost !== undefined) moves.push({ key: 'drag', id: dragGhost.id, delta: [dragGhost.dx, dragGhost.dy] as const })
+    return moves
+  }, [preview.moves, dragGhost])
+  const ghostTexts = useMemo(() => {
+    const texts: { key: string; point: readonly [number, number]; text: string; height: number; rotation: number }[] = preview.adds.map(add => ({
+      key: add.key, point: add.point, text: add.text, height: add.height, rotation: add.rotation,
+    }))
+    if (placement !== undefined) {
+      const height = parseNumberField(placement.height)
+      texts.push({
+        key: 'placement',
+        point: placement.point,
+        text: placement.text,
+        height: height !== undefined && height > 0 ? height : defaultAnnotationHeight,
+        rotation: 0,
+      })
+    }
+    return texts
+  }, [preview.adds, placement, defaultAnnotationHeight])
+  const pendingPoint = placement?.point
+  const canStageMove = parseNumberField(moveDx) !== undefined && parseNumberField(moveDy) !== undefined
+  const applyDisabledReason = staged.length === 0
+    ? t('applyDisabledEmpty')
+    : !editable
+      ? t('readOnlyHint')
+      : undefined
 
   const applyView = useCallback((next: (current: ViewState) => ViewState) => {
     setView(next)
@@ -903,8 +1199,208 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     }
   }, [canvasElement])
 
-  const beginPan = useCallback((event: { button: number; clientX: number; clientY: number; pointerId: number; currentTarget: HTMLElement }) => {
+  // One appended draft entry; the key counter keeps React keys stable while an
+  // op's own ids repeat (two moves of one entity are two entries).
+  const addStaged = useCallback((item: EcadStagedOp) => {
+    setStaged(current => [...current, item])
+  }, [])
+  const nextDraftKey = useCallback((): string => {
+    draftKeyRef.current += 1
+    return `draft-${draftKeyRef.current}`
+  }, [])
+
+  // -- edit handlers -------------------------------------------------------
+  const placeAnnotation = useCallback((screen: { readonly x: number; readonly y: number }) => {
+    const element = canvasElement
+    if (element === null || !editing || tool !== 'text') return
+    const rect = element.getBoundingClientRect()
+    const point = worldAt({ x: screen.x - rect.left, y: screen.y - rect.top }, fit, view)
+    setPlacement(current => ({
+      point,
+      text: current?.text ?? '',
+      height: current?.height ?? String(Number(defaultAnnotationHeight.toFixed(4))),
+      layer: current?.layer ?? defaultAnnotationLayer ?? '',
+    }))
+  }, [canvasElement, defaultAnnotationHeight, defaultAnnotationLayer, editing, fit, tool, view])
+
+  const handleSelect = useCallback((id: string, event: { readonly stopPropagation: () => void; readonly clientX: number; readonly clientY: number }) => {
+    if (suppressClickRef.current) return
+    if (editing && tool === 'text') {
+      placeAnnotation({ x: event.clientX, y: event.clientY })
+      return
+    }
+    setSelectedId(id)
+  }, [editing, placeAnnotation, tool])
+
+  const changeMode = useCallback((next: EcadMode) => {
+    setMode(next)
+    if (next === 'view') {
+      setTool(undefined)
+      setPlacement(undefined)
+      setDragGhost(undefined)
+    }
+  }, [])
+
+  const toggleTextTool = useCallback(() => {
+    if (!editing) return
+    setTool(current => (current === 'text' ? undefined : 'text'))
+    setPlacement(undefined)
+  }, [editing])
+
+  const changePlacement = useCallback((field: 'text' | 'height' | 'layer', value: string) => {
+    setPlacement(current => (current === undefined ? current : { ...current, [field]: value }))
+  }, [])
+
+  const cancelPlacement = useCallback(() => {
+    setPlacement(undefined)
+    setTool(undefined)
+  }, [])
+
+  const stagePlacement = useCallback(() => {
+    if (!editing || placement === undefined || activeLayout === undefined) return
+    const text = placement.text.trim()
+    const height = parseNumberField(placement.height)
+    if (text === '' || height === undefined || height <= 0) return
+    addStaged(stageText(
+      nextDraftKey(),
+      activeLayout.id,
+      placement.point,
+      text,
+      height,
+      placement.layer === '' ? undefined : placement.layer,
+    ))
+    setPlacement(undefined)
+  }, [activeLayout, addStaged, editing, nextDraftKey, placement])
+
+  const stageMoveNow = useCallback(() => {
+    if (!editing || activeLayout === undefined || selected === undefined || !editableEntityId(selected.id)) return
+    const dx = parseNumberField(moveDx)
+    const dy = parseNumberField(moveDy)
+    if (dx === undefined || dy === undefined || (dx === 0 && dy === 0)) return
+    addStaged(stageMove(nextDraftKey(), activeLayout.id, selected.id, dx, dy))
+    setMoveDx('0')
+    setMoveDy('0')
+  }, [activeLayout, addStaged, editing, moveDx, moveDy, nextDraftKey, selected])
+
+  const stageEraseNow = useCallback(() => {
+    if (!editing || activeLayout === undefined || selected === undefined || !editableEntityId(selected.id)) return
+    addStaged(stageErase(nextDraftKey(), activeLayout.id, selected.id))
+  }, [activeLayout, addStaged, editing, nextDraftKey, selected])
+
+  const removeStaged = useCallback((key: string) => {
+    setStaged(current => current.filter(item => item.key !== key))
+  }, [])
+
+  const clearDraft = useCallback(() => {
+    setStaged([])
+    setPlacement(undefined)
+    setTool(undefined)
+  }, [])
+
+  const dismissOutcome = useCallback(() => {
+    setOutcome(undefined)
+  }, [])
+
+  const backToSource = useCallback(() => {
+    setWritten(undefined)
+    setSelectedId(undefined)
+    setHoveredId(undefined)
+    setLayoutId(undefined)
+    setView({ zoom: 1, panX: 0, panY: 0 })
+    setOutcome(current => (current?.kind === 'applied' ? { ...current, showingWritten: false } : current))
+  }, [])
+
+  /** Show the sheet the host just wrote; this is the reader's explicit choice. */
+  const openWritten = useCallback(() => {
+    if (writtenCandidate === undefined) return
+    setWritten(writtenCandidate)
+    setSelectedId(undefined)
+    setHoveredId(undefined)
+    setLayoutId(undefined)
+    setView({ zoom: 1, panX: 0, panY: 0 })
+    setOutcome(current => (current?.kind === 'applied' ? { ...current, showingWritten: true } : current))
+  }, [writtenCandidate])
+
+  const applyNow = useCallback(() => {
+    if (!editable || applying || staged.length === 0 || summary === undefined) return
+    const controller = new AbortController()
+    applyAbortRef.current?.abort()
+    applyAbortRef.current = controller
+    setApplying(true)
+    setOutcome(undefined)
+    const ops = draftOps(staged)
+    void apply(resourceAddress, summary.version, ops, controller.signal).then((result) => {
+      if (controller.signal.aborted) return
+      setApplying(false)
+      if (!result.ok) {
+        setOutcome({ kind: 'failed', error: result.error })
+        return
+      }
+      setStaged([])
+      setPlacement(undefined)
+      setTool(undefined)
+      // The write is done; the pane keeps showing the source until the reader
+      // asks to open the written drawing.
+      if (result.written !== undefined) {
+        setWrittenCandidate({ path: result.result.outputPath, model: result.written.model, version: result.written.version })
+        setOutcome({ kind: 'applied', result: result.result, hasWritten: true })
+      } else {
+        setOutcome({ kind: 'applied', result: result.result, ...(result.writtenError === undefined ? {} : { writtenNote: result.writtenError.message }) })
+      }
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return
+      setApplying(false)
+      setOutcome({
+        kind: 'failed',
+        error: {
+          code: 'ECAD_DISABLED',
+          message: error instanceof Error ? error.message : String(error),
+          fix: t('applyFailureFix'),
+        },
+      })
+    })
+  }, [apply, applying, editable, resourceAddress, staged, summary, t])
+
+  // A composition that turns writes off (a reload with the switch closed) must
+  // not keep an edit surface that cannot be applied.
+  useEffect(() => {
+    if (!editable && mode === 'edit') setMode('view')
+  }, [editable, mode])
+
+  // The placement form lives in the side panel; a placement opens that panel so
+  // the form is visible at any pane width.
+  useEffect(() => {
+    if (placement === undefined || panelsOpen) return
+    panelsTouchedRef.current = true
+    setPanelsOpen(true)
+  }, [placement, panelsOpen])
+
+  // Escape cancels an armed tool or a pending placement even while focus is in
+  // the form's fields: the sheet's own key handler cannot see that focus.
+  useEffect(() => {
+    if (!editing || (tool === undefined && placement === undefined)) return
+    const onEscape = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      setPlacement(undefined)
+      setTool(undefined)
+    }
+    document.addEventListener('keydown', onEscape)
+    return () => {
+      document.removeEventListener('keydown', onEscape)
+    }
+  }, [editing, placement, tool])
+
+  // The sheet is a large click target: a pointer down on one of its own overlays
+  // (the written banner, a form control) belongs to that control, not to a pan.
+  const interactiveTarget = (target: unknown): boolean => {
+    const element = target as { closest?: (selector: string) => unknown } | null
+    if (element === null || typeof element?.closest !== 'function') return false
+    return element.closest('button, a, input, select, textarea, form, summary') !== null
+  }
+
+  const beginPan = useCallback((event: { button: number; clientX: number; clientY: number; pointerId: number; currentTarget: HTMLElement; target: unknown }) => {
     if (event.button !== 0) return
+    if (interactiveTarget(event.target)) return
     // Clicking the sheet focuses the pane for its keyboard controls; nothing
     // takes focus away from the conversation on mount.
     event.currentTarget.focus({ preventScroll: true })
@@ -914,6 +1410,18 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   }, [view.panX, view.panY])
 
   const movePan = useCallback((event: { clientX: number; clientY: number }) => {
+    const editDrag = editDragRef.current
+    if (editDrag !== undefined) {
+      const dxPx = event.clientX - editDrag.startX
+      const dyPx = event.clientY - editDrag.startY
+      if (!editDrag.moved && Math.abs(dxPx) < DRAG_THRESHOLD && Math.abs(dyPx) < DRAG_THRESHOLD) return
+      editDrag.moved = true
+      const [dx, dy] = worldDelta({ x: dxPx, y: dyPx }, fit, view)
+      editDrag.dx = dx
+      editDrag.dy = dy
+      setDragGhost({ id: editDrag.id, dx, dy })
+      return
+    }
     const drag = dragRef.current
     if (drag === undefined) return
     const dx = event.clientX - drag.x
@@ -921,9 +1429,22 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (!drag.moved && Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return
     drag.moved = true
     setView(current => ({ zoom: current.zoom, panX: drag.panX + dx, panY: drag.panY + dy }))
-  }, [])
+  }, [fit, view])
 
   const endPan = useCallback(() => {
+    const editDrag = editDragRef.current
+    if (editDrag !== undefined) {
+      editDragRef.current = undefined
+      setDragGhost(undefined)
+      if (editDrag.moved && (editDrag.dx !== 0 || editDrag.dy !== 0) && activeLayout !== undefined) {
+        addStaged(stageMove(nextDraftKey(), activeLayout.id, editDrag.id, editDrag.dx, editDrag.dy))
+        suppressClickRef.current = true
+        window.setTimeout(() => {
+          suppressClickRef.current = false
+        }, 0)
+      }
+      return
+    }
     const drag = dragRef.current
     dragRef.current = undefined
     setPanning(false)
@@ -933,13 +1454,37 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
         suppressClickRef.current = false
       }, 0)
     }
-  }, [])
+  }, [activeLayout, addStaged, nextDraftKey])
+
+  const beginEditDrag = useCallback((id: string, event: ScreenPointEvent) => {
+    if (!editing || tool !== undefined || !editableEntityId(id)) return
+    // The entity drag replaces the pan for this gesture, so the sheet does not
+    // move underneath the primitive the reader is adjusting.
+    event.stopPropagation()
+    event.preventDefault?.()
+    editDragRef.current = { id, startX: event.clientX, startY: event.clientY, pointerId: event.pointerId, moved: false, dx: 0, dy: 0 }
+    canvasElement?.setPointerCapture?.(event.pointerId)
+    setSelectedId(id)
+  }, [canvasElement, editing, tool])
 
   const onKeyDown = useCallback((event: { key: string; preventDefault: () => void }) => {
     switch (event.key) {
       case 'Escape':
-        setSelectedId(undefined)
-        setHoveredId(undefined)
+        if (placement !== undefined) {
+          setPlacement(undefined)
+          setTool(undefined)
+        } else if (tool !== undefined) {
+          setTool(undefined)
+        } else {
+          setSelectedId(undefined)
+          setHoveredId(undefined)
+        }
+        break
+      case 'Enter':
+        if (editing && tool === 'text') {
+          event.preventDefault()
+          placeAnnotation({ x: size.width / 2, y: size.height / 2 })
+        }
         break
       case 'ArrowLeft':
         event.preventDefault()
@@ -970,7 +1515,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       default:
         break
     }
-  }, [applyView, zoomBy])
+  }, [applyView, editing, placement, placeAnnotation, size.height, size.width, tool, zoomBy])
 
   const askReview = useCallback(() => {
     const told = ask(resourceAddress, t('askReview', { format: formatLabel, path: pathOf(resourceAddress) }))
@@ -988,10 +1533,6 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     setChatUnavailable(!told)
   }, [ask, formatLabel, resourceAddress, t])
 
-  const select = useCallback((id: string) => {
-    if (suppressClickRef.current) return
-    setSelectedId(id)
-  }, [])
   const hover = useCallback((id: string | undefined) => {
     setHoveredId(id)
   }, [])
@@ -1016,7 +1557,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     setHidden(new Set())
   }, [])
 
-  const layouts = model?.layouts ?? []
+  const layouts = displayModel?.layouts ?? []
   const layoutTabs = layouts.length > 1
     ? createElement(
       'div',
@@ -1066,6 +1607,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     )
   } else {
     const panelToggle = panelsOpen ? '' : ` ${css.sidePanelHidden}`
+    const canvasLabel = t('canvasLabel', { path: pathOf(resourceAddress) })
     stage = createElement(
       'div',
       { className: css.stage },
@@ -1073,34 +1615,50 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
         'div',
         {
           ref: setCanvasElement,
-          className: `${css.canvasWrap}${panning ? ` ${css.panning}` : ''}`,
+          className: `${css.canvasWrap}${panning ? ` ${css.panning}` : ''}${editing && tool === 'text' ? ` ${css.placingText}` : ''}`,
           tabIndex: 0,
           role: 'group',
-          'aria-label': t('canvasLabel', { path: pathOf(resourceAddress) }),
-          title: `${t('panHint')} · ${t('keyboardHint')}`,
+          'aria-label': canvasLabel,
+          title: editing && tool === 'text' ? t('placementHint') : `${t('panHint')} · ${t('keyboardHint')}`,
           onKeyDown,
           onPointerDown: beginPan,
           onPointerMove: movePan,
           onPointerUp: endPan,
           onPointerCancel: endPan,
-          onClick: () => {
-            if (!suppressClickRef.current) setSelectedId(undefined)
+          onClick: (event: { clientX: number; clientY: number; target: unknown }) => {
+            if (suppressClickRef.current) return
+            if (interactiveTarget(event.target)) return
+            if (editing && tool === 'text') {
+              placeAnnotation({ x: event.clientX, y: event.clientY })
+              return
+            }
+            setSelectedId(undefined)
           },
         },
-        SceneView({
+        // SceneView is a component, not an inlined helper: it owns hooks (the
+        // ghost lookup memo), so it must be rendered through React.
+        createElement(SceneView, {
           scene,
           fit,
           view,
           selectedId,
           hoveredId,
-          onSelect: select,
+          onSelect: handleSelect,
           onHover: hover,
-          label: t('canvasLabel', { path: pathOf(resourceAddress) }),
+          onEditPointerDown: beginEditDrag,
+          label: canvasLabel,
+          fadedIds: preview.erases,
+          ghostMoves: editing ? ghostMoves : [],
+          ghostTexts: editing ? ghostTexts : [],
+          pendingPoint: editing ? pendingPoint : undefined,
         }),
+        written === undefined
+          ? null
+          : createElement(WrittenBanner, { t, path: written.path, onBackToSource: backToSource }),
         coverage.truncated
           ? createElement(
             'div',
-            { className: css.notice, role: 'status' },
+            { className: `${css.notice}${written === undefined ? '' : ` ${css.noticeBelowBanner}`}`, role: 'status' },
             createElement(WarningIcon, {}),
             createElement('span', { className: css.noticeText }, t('truncated')),
           )
@@ -1124,8 +1682,27 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
             },
           }, createElement(CloseIcon, {})),
         ),
+        editing || outcome !== undefined
+          ? createElement(DraftPanel, {
+            t,
+            staged,
+            counts,
+            layoutName: draftLayoutName,
+            placement: editing ? placement : undefined,
+            layers: placementLayers,
+            invalidHeight: placement !== undefined && (parseNumberField(placement.height) === undefined || (parseNumberField(placement.height) ?? 0) <= 0),
+            onPlacementChange: changePlacement,
+            onStagePlacement: stagePlacement,
+            onCancelPlacement: cancelPlacement,
+            onRemove: removeStaged,
+            outcome,
+            onDismissOutcome: dismissOutcome,
+            onOpenWritten: openWritten,
+            onBackToSource: backToSource,
+          })
+          : null,
         createElement(LayerPanel, {
-          model: state.model,
+          model: displayModel ?? (state.model),
           layoutEntities: activeLayout?.entities ?? [],
           hidden,
           onToggle: toggleLayer,
@@ -1134,24 +1711,35 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
         }),
         createElement(Inspector, {
           entity: selected,
-          model: state.model,
+          model: displayModel ?? state.model,
           chatUnavailable,
+          editing,
+          moveDx,
+          moveDy,
+          onMoveDx: setMoveDx,
+          onMoveDy: setMoveDy,
+          onStageMove: stageMoveNow,
+          onStageErase: stageEraseNow,
           onAsk: askEntity,
           onClear: clearSelection,
           t,
         }),
-        createElement(SheetSection, {
-          titleBlock: summary.titleBlock,
-          coverage: coverage ?? { entities: 0, approximate: 0, unsupportedTotal: 0, unsupported: [], truncated: false },
-          coverageText,
-          coverageTitle,
-          format: format ?? 'dxf',
-          conversion: conversion ?? { warnings: 0, warningTexts: [] },
-          dxfVersion: summary.dxfVersion,
-          units: summary.units,
-          version: summary.version,
-          t,
-        }),
+        // The sheet's identity gives way to the draft while the pane is editing:
+        // the panel has no room for both, and the read state returns in view mode.
+        editing || outcome !== undefined
+          ? null
+          : createElement(SheetSection, {
+            titleBlock: summary.titleBlock,
+            coverage: coverage ?? { entities: 0, approximate: 0, unsupportedTotal: 0, unsupported: [], truncated: false },
+            coverageText,
+            coverageTitle,
+            format: format ?? 'dxf',
+            conversion: conversion ?? { warnings: 0, warningTexts: [] },
+            dxfVersion: summary.dxfVersion,
+            units: summary.units,
+            version: summary.version,
+            t,
+          }),
       ),
     )
   }
@@ -1163,6 +1751,8 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       'data-ecad-pane': 'drawing',
       'data-ecad-state': state.phase,
       ...(format === undefined ? {} : { 'data-ecad-format': format }),
+      ...(editable ? { 'data-ecad-editable': 'true' } : {}),
+      ...(editing ? { 'data-ecad-editing': 'true' } : {}),
     },
     createElement(DrawingToolbar, {
       coverage: coverage ?? { entities: 0, approximate: 0, unsupportedTotal: 0, unsupported: [], truncated: false },
@@ -1171,7 +1761,10 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       ready: state.phase === 'ready' && coverage !== undefined,
       format,
       conversion,
-      writes: state.phase === 'ready' ? state.summary.writes : false,
+      writes: writesAuthoritative,
+      editable,
+      mode,
+      onModeChange: changeMode,
       panelsOpen,
       chatUnavailable,
       onFit: fitView,
@@ -1184,6 +1777,19 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       t,
     }),
     layoutTabs,
+    editing
+      ? createElement(EditBar, {
+        t,
+        tool,
+        onToggleText: toggleTextTool,
+        stagedCount: staged.length,
+        applying,
+        canApply: staged.length > 0 && !applying,
+        applyDisabledReason,
+        onApply: applyNow,
+        onClear: clearDraft,
+      })
+      : null,
     stage,
   )
 }

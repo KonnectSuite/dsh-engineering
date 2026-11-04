@@ -82,6 +82,8 @@ function loadBundle() {
 /** A client context that records what the faces register. */
 function fakeContext() {
   const registrations = []
+  /** The injected props of the last body registration that declares some. */
+  let slotInject
   const ctx = {
     effect: run => run(),
     // Optional services (sessions, conversation, betterSidebar) are absent in a
@@ -103,11 +105,12 @@ function fakeContext() {
       inject: (_name, register) => register(),
       register: (options) => {
         registrations.push(`slot:${options.name}#${options.key ?? ''}`)
+        if (typeof options.inject === 'function') slotInject = options.inject()
         return () => {}
       },
     },
   }
-  return { ctx, registrations }
+  return { ctx, registrations, injected: () => slotInject }
 }
 
 test('lib/client.js is the current build of every committed face', () => {
@@ -258,7 +261,7 @@ test('the ECAD face mounts its drawing preview without a Remote carrier or Bette
   // The same bare context the other faces are judged in: no remote carrier, no
   // sessions, no conversation and no Better Sidebar. A face that throws here
   // would take the whole merged bundle down at boot.
-  const { ctx, registrations: mounted } = fakeContext()
+  const { ctx, registrations: mounted, injected } = fakeContext()
   plugin.apply(ctx)
   for (const expected of [
     'locale:sidebarEcad',
@@ -268,6 +271,23 @@ test('the ECAD face mounts its drawing preview without a Remote carrier or Bette
   ]) {
     assert.ok(mounted.includes(expected), `the ECAD face did not register ${expected} (got ${mounted.join(', ')})`)
   }
+  // The body is handed the three bridges it needs: the reader, the writer and
+  // the conversation draft. The writer is what edit mode calls; a body without
+  // it would offer an apply it cannot perform.
+  const body = injected()
+  assert.ok(body !== undefined, 'the ECAD body registration injects no props')
+  for (const method of ['open', 'apply', 'ask']) {
+    assert.equal(typeof body[method], 'function', `the ECAD body is not injected with ${method}()`)
+  }
+})
+
+test('the ECAD editing copy is part of the same dictionary', () => {
+  // The mode switch, the staged list and the apply action all read from the
+  // dictionary; a missing key would print a raw key in the panel.
+  for (const key of ['viewMode', 'editMode', 'addTextTool', 'stagedOps', 'apply', 'applyFailureFix', 'moveAction', 'eraseAction', 'verification', 'dwgRoundTrip']) {
+    assert.ok(Object.hasOwn(en, key), `the editing dictionary is missing ${key}`)
+    assert.ok(Object.hasOwn(zh, key), `the editing dictionary is missing the Chinese ${key}`)
+  }
 })
 
 test('the ECAD dictionaries agree on keys, and the body only asks for keys they define', () => {
@@ -276,8 +296,8 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
     assert.ok(value.length > 0, `en.${key} is empty`)
     assert.ok(zh[key].length > 0, `zh.${key} is empty`)
   }
-  // Every literal key the body asks the locale service for must exist.
-  for (const file of ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/index.tsx']) {
+  // Every literal key the UI asks the locale service for must exist.
+  for (const file of ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx', 'packages/ecad/src/client/index.tsx']) {
     const source = read(file)
     for (const match of source.matchAll(/\bt\('([A-Za-z][\w.]*)'/gu)) {
       assert.ok(Object.hasOwn(en, match[1]), `${file} asks for the missing locale key ${match[1]}`)
@@ -288,16 +308,16 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   }
 })
 
-test('the ECAD stylesheet defines exactly the classes its body reads', () => {
+test('the ECAD stylesheet defines exactly the classes its bodies read', () => {
   // Comments are removed first: prose such as "palette.ts" is not a selector.
   const css = read('packages/ecad/src/client/EcadBody.module.css').replaceAll(/\/\*[\s\S]*?\*\//gu, '')
-  const source = read('packages/ecad/src/client/EcadBody.tsx')
+  const sources = ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx'].map(read)
   const defined = new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/gu)].map(match => match[1]))
-  const used = new Set([...source.matchAll(/\bcss\.([A-Za-z][A-Za-z0-9_]*)/gu)].map(match => match[1]))
+  const used = new Set(sources.flatMap(source => [...source.matchAll(/\bcss\.([A-Za-z][A-Za-z0-9_]*)/gu)].map(match => match[1])))
   assert.deepEqual([...used].filter(name => !defined.has(name)).sort(), [],
-    'every css.<name> the body reads must exist in the stylesheet')
+    'every css.<name> the bodies read must exist in the stylesheet')
   assert.deepEqual([...defined].filter(name => !used.has(name)).sort(), [],
-    'a class the body never reads is dead; delete it or use it')
-  assert.deepEqual([...source.matchAll(/\bcss\s*\[/gu)].map(match => match[0]), [],
+    'a class the bodies never read is dead; delete it or use it')
+  assert.deepEqual(sources.flatMap(source => [...source.matchAll(/\bcss\s*\[/gu)].map(match => match[0])), [],
     'a computed css[...] access hides the class name from this check')
 })
