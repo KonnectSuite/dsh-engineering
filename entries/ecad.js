@@ -18,16 +18,16 @@ export const name = 'engineering-ecad'
 export const inject = ['tools', 'fs']
 
 export const Config = z.object({
-  writes: z.boolean().default(false).description(
+  writes: z.boolean().default(false).volatile().description(
     'Allow ECAD writes: draft apply writes a NEW drawing beside the source, and documentation or backups name their own new output. Off by default; a customer drawing is never overwritten.',
   ),
-  maxFiles: z.natural().default(2000).description(
+  maxFiles: z.natural().default(2000).volatile().description(
     'Most drawings a scan, review or backup call may touch in one call.',
   ),
-  maxFileBytes: z.natural().default(67108864).description(
+  maxFileBytes: z.natural().default(67108864).volatile().description(
     'Largest drawing file the tools will read, in bytes (64 MiB by default).',
   ),
-  maxEntities: z.natural().default(200000).description(
+  maxEntities: z.natural().default(200000).volatile().description(
     'Most primitives per layout the render model builds before the layout is reported as truncated.',
   ),
 })

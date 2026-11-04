@@ -1,11 +1,15 @@
 ## [Unreleased]
 
-- **The ECAD row now has a Configure page in Plugins.** The bundle's settings face registered
-  `plugins.row.config` for `l5x`, `ftview`, `mwi` and `optix` but not `ecad`, so the row showed no
-  Configure control and there was no way from the UI to turn its `writes` switch on — leaving the panel
-  permanently read-only. The face now registers `@aryacode/dsh-engineering#ecad` with a page explaining
-  that reads and review are always on and a single **Allow ECAD writes (new drawing only)** switch; the
-  client-face test asserts the fifth registration. Unreleased: it ships with the next batch.
+- **The ECAD row now has a working Configure page in Plugins.** The bundle's settings face registered
+  `plugins.row.config` for `l5x`, `ftview`, `mwi` and `optix` but not `ecad`, so the row had no
+  Configure control; and the row's own `Config` fields were declared without `.volatile()`, so even
+  after adding the page the Host settings document exposed no `ecad` namespace and the page reported
+  *“This row has no configuration to change.”* Both are fixed: the five row pages are registered, and
+  `writes`/`maxFiles`/`maxFileBytes`/`maxEntities` are volatile (the numeric limits read their live
+  getter like the write switch). A clean dev profile now lists an `ecad` settings namespace with
+  `{ writes: false, maxFiles: 2000, maxFileBytes: 67108864, maxEntities: 200000 }`, so the page shows
+  **Allow ECAD writes (new drawing only)** and saves through the normal revision-checked path; the
+  client-face test asserts the fifth registration. Unreleased: this ships with the next batch.
 - **Flattened block linework now lands where the insert puts it.** The block flattener applied the insert
   transform to every primitive except `LINE`, so block line segments were written at block-local
   coordinates. On the real print set that piled stray geometry into the bottom-left corner of nearly

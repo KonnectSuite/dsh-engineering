@@ -33,21 +33,21 @@ export const DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 
 /** The row configuration. */
 export const Config = z.object({
-  writes: z.boolean().default(false).description(
+  writes: z.boolean().default(false).volatile().description(
     'Allow the ECAD tools and the drawing panel to write: draft apply writes a NEW drawing beside the source, and documentation or backups name their own new output. Off by default; sources are never overwritten.'
   ),
-  maxFiles: z.natural().default(2000).description('Most drawings a scan, review or backup call may touch in one call.'),
-  maxFileBytes: z.natural().default(DEFAULT_MAX_FILE_BYTES).description('Largest drawing file the tools will read, in bytes.'),
-  maxEntities: z.natural().default(200_000).description('Most primitives per layout the render model builds before it reports the layout as truncated.')
+  maxFiles: z.natural().default(2000).volatile().description('Most drawings a scan, review or backup call may touch in one call.'),
+  maxFileBytes: z.natural().default(DEFAULT_MAX_FILE_BYTES).volatile().description('Largest drawing file the tools will read, in bytes.'),
+  maxEntities: z.natural().default(200_000).volatile().description('Most primitives per layout the render model builds before it reports the layout as truncated.')
 })
 
 /** The configuration shape `apply` receives after schema validation. */
 export interface RowConfig {
   /** Write switch; a volatile reference is accepted and read live. */
   readonly writes?: boolean | { get(): unknown }
-  readonly maxFiles?: number
-  readonly maxFileBytes?: number
-  readonly maxEntities?: number
+  readonly maxFiles?: number | { get(): unknown }
+  readonly maxFileBytes?: number | { get(): unknown }
+  readonly maxEntities?: number | { get(): unknown }
 }
 
 /** The Remote service shape this row configures when it is mounted beside it. */
@@ -76,8 +76,11 @@ function switchOf(input: boolean | { get(): unknown } | undefined, fallback: boo
  * @param input - the raw field.
  * @param fallback - value used when the field is absent or not a positive integer.
  */
-function limitOf(input: number | undefined, fallback: number): number {
-  return typeof input === 'number' && Number.isInteger(input) && input > 0 ? input : fallback
+function limitOf(input: number | { get(): unknown } | undefined, fallback: number): number {
+  const current = input !== null && typeof input === 'object' && typeof (input as { get?: unknown }).get === 'function'
+    ? (input as { get(): unknown }).get()
+    : input
+  return typeof current === 'number' && Number.isInteger(current) && current > 0 ? current : fallback
 }
 
 /**
