@@ -71,7 +71,9 @@ product, and `components.json` records the ceiling:
 A component added with `default: "off"` leaves both ceilings where they are. Make one default-on only
 by raising the ceiling in the same change, with the measurement in the changelog. The 9 vendored Optix
 definitions are not generated from source here, so the character ceiling covers the 133 generated
-definitions while the tool ceiling covers every default-on tool.
+definitions while the tool ceiling covers every default-on tool. The generated reference and the
+README's tool total count **every** registered tool; only the budget counts the default-on subset, so a
+component that ships off still appears in both without moving a ceiling.
 
 ## Adding a component
 
@@ -83,9 +85,13 @@ definitions while the tool ceiling covers every default-on tool.
 2. **Add the bundle entry** `entries/<id>.js` that applies the package's entries with the
    row's config, and the export `"./<id>"` in the root `package.json` `exports`. Decide the
    component's `default` posture here: `off` unless the change raises the context budget for it.
+   A component that registers tools also gets its group in `scripts/gen-tool-reference.ts` — the
+   `GROUPS` entry, the product union and the `collectTools` source — so the generated reference and
+   inventory see it.
 3. **Add the patch row** in `cordis.patch.yml` with `id: <id>` and
-   `name: '@aryacode/dsh-engineering/<id>'`. The patch only inserts; never target another
-   bundle's row.
+   `name: '@aryacode/dsh-engineering/<id>'`, plus `disabled: true` when the `default` is `off`. The
+   patch only inserts; never target another bundle's row. `test/patch.spec.mjs` lists the inserted
+   rows explicitly, so append the new one there too.
 4. **Write the skill** (`SKILL.md`) as a decision tree, not tool documentation: the choice
    table, the safety boundary and the order of operations. Depth goes in `docs/` and is linked.
    Keep the body inside its budget.
@@ -100,8 +106,10 @@ definitions while the tool ceiling covers every default-on tool.
 9. **Add fixtures** under `packages/<id>/test/fixtures` from a real export, and tests for the
    probe, the gate and the skill registration.
 10. **Run the checks**: `node --import tsx --test test/components.spec.mjs` (manifest, rows,
-    skills, budgets, stale tool names, tool counts, documents), `pnpm docs:tools`, and the full
-    bundle suite.
+    skills, budgets, stale tool names, tool counts, namespaces, documents), `pnpm docs:tools`, and the
+    full bundle suite. The failures pin the remaining numbers: the reference count in
+    `test/tool-reference.spec.mjs`, the bundle line (`N tools · N rows`), the per-component table row
+    and the documentation link in the README.
 
 ## Templates
 
@@ -194,9 +202,8 @@ export function apply(ctx) {
 }
 ```
 
-Then add the patch row (with `disabled: true` when the component's `default` is `off`), the
-`scripts/assemble.mjs` COMPONENTS entry, a README table row and the document the manifest names. The
-checks fail on whichever one is missing.
+Then add the `scripts/assemble.mjs` COMPONENTS entry, a README table row and the document the
+manifest names. The checks fail on whichever one is missing.
 
 ## What the checks enforce
 
@@ -239,6 +246,10 @@ row, and only the users who need the add-on install it. An add-on inserts its ow
 targets a core row, because an absent row fails composition. Cross-product joins stay in the core
 bundle: a join needs both components present. CAD is the first candidate; the README's "CAD mounts as
 an independent plugin" stays true — it would be that add-on bundle.
+
+The L5X legacy names are the one scheduled rename: do it in a single release, with no aliases (an
+alias registers the same schema twice) and its own changelog entry. Until then the exemption in
+`components.json` is the only legacy exemption this bundle carries.
 
 Release cadence follows the one-version-per-batch rule in [`AGENTS.md`](../../AGENTS.md): the bundle is
 only cheaper than separate plugins while each release carries a batch of changes.

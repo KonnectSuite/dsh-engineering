@@ -193,6 +193,11 @@ Client faces add no model context, so context cost is unaffected. The tool rows 
 switching `l5x-read` or `ftview-read` off removes schemas and guidance and leaves the previews
 mounted.
 
+**Adding a preview is adding a face.** `scripts/build-client.mjs` folds each face into the one
+registration, so a new document preview is a face there, not a row. A preview that needs its own
+release becomes its own package whose row names the exact package root — the Shell rejects a subpath —
+never a second row over this bundle.
+
 ## Distribution
 
 The bundle is packed as one self-contained tarball; its one dependency is the Optix component from the

@@ -5,6 +5,7 @@ import { load } from 'js-yaml'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const manifest = JSON.parse(read('package.json'))
+const components = JSON.parse(read('components.json')).components
 const patch = load(read('cordis.patch.yml'))
 const readme = read('README.md')
 const changelog = read('CHANGELOG.md')
@@ -64,12 +65,17 @@ test('every vendored component dependency is declared here', () => {
   // `vendor/<component>` is the component's own code, and it imports the
   // component's own libraries. Vendoring drops the component manifest, so the
   // bundle has to carry those dependencies: a missing one surfaces at mount as
-  // ERR_MODULE_NOT_FOUND and the row fails to import.
-  for (const component of ['l5x', 'ftview', 'mwi', 'optix']) {
-    const componentManifest = JSON.parse(read(`packages/${component}/package.json`))
+  // ERR_MODULE_NOT_FOUND and the row fails to import. The component list comes
+  // from the manifest, so a new vendored component is covered without editing a
+  // second place.
+  const vendored = components.filter(component => component.vendor === true)
+  assert.ok(vendored.length > 0, 'components.json marks no component vendored')
+  for (const component of vendored) {
+    const packagePath = Array.isArray(component.package) ? component.package[0] : component.package
+    const componentManifest = JSON.parse(read(`${packagePath}/package.json`))
     for (const [name, range] of Object.entries(componentManifest.dependencies ?? {})) {
       assert.equal(manifest.dependencies?.[name], range,
-        `${component} imports ${name}@${range}, but the bundle does not declare it`)
+        `${component.id} imports ${name}@${range}, but the bundle does not declare it`)
     }
   }
 })

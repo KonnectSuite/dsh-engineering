@@ -20,6 +20,13 @@
   [`AGENTS.md`](AGENTS.md).
 - **The tarball carries runtime files only.** `docs/**` and `CHANGELOG.md` no longer ship in the npm
   package; the README is still the market detail document. This removes about 2.6 MB from every install.
+- **The add-a-component path was rehearsed with a throwaway ninth component.** A scratch worktree carried a
+  real package, entry, row, skill and document through the full suite before anything shipped. It exposed
+  two checks that would have blocked or missed the next component: `test/patch.spec.mjs` carried a closed
+  allowlist of row ids, so any new row failed there first, and `test/docs.spec.mjs` hand-listed the four
+  vendored components whose dependencies the bundle must declare. Both now derive from `components.json`,
+  and the checklist names the generator group and the pinned numbers a new component updates. Nothing from
+  the rehearsal ships.
 - **Documentation corrected.** The README and the L5X editing config no longer claim stale draft-tool
   counts, the generated reference states the measured 133 definitions (plus 9 vendored Optix tools), and
   `docs/print.css` now matches the report stylesheet it is generated from.

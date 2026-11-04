@@ -61,9 +61,14 @@ test('the product entries it names exist and declare a config form', () => {
 })
 
 test('row ids cannot shadow a harness service name', () => {
+  // The row id is what a profile addressable switch is named, so it has to be a
+  // stable lowercase id and must not collide with a harness service name. This
+  // test used to carry a closed list of the current ids, which made every new
+  // product row fail here before components.spec could judge it; the manifest
+  // agreement there is the real set check.
   const reserved = new Set(['resources', 'tools', 'skills', 'fs', 'approval', 'session', 'storage', 'workspace', 'http'])
   for (const row of inserted.insert) {
     assert.ok(!reserved.has(row.id), `${row.id} would shadow the harness service of the same name`)
-    assert.match(row.id, /^(l5x|ftview|mwi|optix|viewers|migration|engineering-[a-z-]+)$/u, `${row.id} is not a namespaced row id`)
+    assert.match(row.id, /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/u, `${row.id} is not a lowercase kebab-case row id`)
   }
 })

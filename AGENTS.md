@@ -30,7 +30,7 @@ A change is not finished until the documentation it invalidates is updated in th
 | `package.json` | Name, version, bundle patch path, dependencies, peer compatibility |
 | `scripts/gen-tool-reference.ts` | The generator for the reference and inventory |
 | `test/patch.spec.mjs` | Invariants of the patch file itself |
-| `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only dependencies |
+| `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only and vendored dependencies |
 | `test/tool-reference.spec.mjs` | The reference freshness, tool count and unique tool names |
 | `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, namespaces, context budget, README counts and owning documents |
 | `docs/port/*.md` | Port decisions and measurements, kept as design history |
