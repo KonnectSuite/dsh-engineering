@@ -601,8 +601,8 @@ export function layerNameOf(model: EcadSheetModel, name: string): string {
 
 /** Drawing-unit labels for the `$INSUNITS` codes a print set commonly carries. */
 const UNIT_LABELS: Readonly<Record<number, string>> = {
-  1: 'in', 2: 'ft', 3: 'mi', 4: 'mm', 5: 'cm', 6: 'm', 7: 'km', 8: 'µin', 9: 'mil', 10: 'yd',
-  11: 'Å', 12: 'nm', 13: 'µm', 14: 'dm', 15: 'dam', 16: 'hm',
+  1: 'in', 2: 'ft', 3: 'mi', 4: 'mm', 5: 'cm', 6: 'm', 7: 'km', 8: 'Âµin', 9: 'mil', 10: 'yd',
+  11: 'Ã…', 12: 'nm', 13: 'Âµm', 14: 'dm', 15: 'dam', 16: 'hm',
 }
 
 /**

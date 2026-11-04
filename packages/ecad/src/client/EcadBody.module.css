@@ -139,6 +139,10 @@
 .primaryButton:focus-visible,
 .layoutTab:focus-visible,
 .layerToggle:focus-visible,
+.layerMiniButton:focus-visible,
+.paletteButton:focus-visible,
+.statusChip:focus-visible,
+.contextMenuItem:focus-visible,
 .canvasWrap:focus-visible {
   outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
   outline-offset: 1px;
@@ -232,11 +236,7 @@
 }
 
 .primitive {
-  pointer-events: visiblePainted;
-}
-
-.hovered {
-  cursor: pointer;
+  pointer-events: none;
 }
 
 /* A selection is drawn as a paper-coloured halo under an accent stroke, so it
@@ -357,7 +357,9 @@
   width: 228px;
   min-height: 0;
   border-left: 0.5px solid var(--dsw-alias-border-l2);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .sidePanelHidden {
@@ -1014,11 +1016,6 @@
   opacity: 0.9;
 }
 
-/* The annotation tool changes the sheet's cursor and nothing else. */
-.placingText {
-  cursor: crosshair;
-}
-
 /* A truncation notice under the written-drawing banner keeps both readable. */
 .noticeBelowBanner {
   top: 46px;
@@ -1115,5 +1112,575 @@
 
   .applyLabelShort {
     display: inline;
+  }
+}
+
+/* The CAD workspace — selection, navigation, drawing aids, the tool palette and
+ * the command surfaces. Appended as one block, tokens only, like the panes above.
+ */
+
+/* The sheet column: the canvas keeps every spare pixel and the status line is a
+   single quiet footer under it. */
+.canvasColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+
+/* The tool rail: a compact vertical palette inside the stage's left edge. A
+   grouping label sits above each run of buttons; every button is a 24 px target. */
+.toolRail {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 38px;
+  min-height: 0;
+  padding: 4px 2px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-document-preview);
+  scrollbar-width: thin;
+}
+
+.paletteGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 0 4px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.paletteGroup:last-child {
+  border-bottom: 0;
+}
+
+.paletteGroupLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.paletteTools {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.paletteButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0.5px solid transparent;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+}
+
+.paletteButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* The command bar under the toolbar: the armed tool's instruction, the numeric
+   entry a command accepts, and the cancel action. */
+.commandBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 32px;
+  box-sizing: border-box;
+  padding: 3px 10px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-interactive-bg-hover);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.commandText {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.commandTool {
+  flex: none;
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.commandMeta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+}
+
+.commandField {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+}
+
+.commandField .formInput {
+  width: 84px;
+}
+
+.commandActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+/* Context menu: an elevated list at the pointer, closed by Escape or a click on
+   the backdrop. */
+.contextBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: transparent;
+}
+
+.contextMenu {
+  position: absolute;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  min-width: 176px;
+  max-width: 260px;
+  padding: 4px;
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: var(--dsw-elevation-panel);
+}
+
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.contextMenuItem:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.contextMenuLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contextMenuShortcut {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.contextMenuSeparator {
+  height: 0.5px;
+  margin: 3px 4px;
+  background: var(--dsw-alias-border-l2);
+}
+
+/* Status footer: coordinates, sheet size and the drawing-aid state. State is a
+   labelled chip with aria-pressed, never colour alone. */
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 24px;
+  box-sizing: border-box;
+  padding: 2px 8px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.statusItem {
+  flex: none;
+}
+
+.statusGrow {
+  flex: 1;
+  min-width: 8px;
+}
+
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 20px;
+  padding: 0 5px;
+  border: 0.5px solid transparent;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.statusChip[aria-pressed='true'] {
+  border-color: var(--dsw-alias-border-l3);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Canvas overlays: the selection outline, the marquee rectangle, the snap marker
+   and the grip handles all live in screen space on top of the transformed scene. */
+.selectionOverlay {
+  pointer-events: none;
+}
+
+.marqueeWindow {
+  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);
+  stroke: var(--dsw-alias-state-business-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.marqueeCrossing {
+  fill: color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent);
+  stroke: var(--dsw-alias-state-success-primary);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+
+.gridLine {
+  stroke: var(--dsw-alias-border-l2);
+  stroke-width: 0.5;
+  opacity: 0.6;
+}
+
+.snapMarker {
+  fill: none;
+  stroke: var(--dsw-alias-state-warn-primary);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.snapLabel {
+  fill: var(--dsw-alias-state-warn-label);
+  font-size: 10px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--ecad-paper);
+  stroke-width: 3;
+  pointer-events: none;
+}
+
+.gripHandle {
+  fill: var(--ecad-paper);
+  stroke: var(--ecad-accent);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.gripHandleActive {
+  fill: var(--ecad-accent);
+  stroke: var(--ecad-accent);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.gripLine {
+  stroke: var(--ecad-accent);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  fill: none;
+  pointer-events: none;
+}
+
+.previewLine {
+  stroke: var(--ecad-accent);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 3;
+  fill: none;
+  pointer-events: none;
+}
+
+.previewShape {
+  stroke: var(--ecad-accent);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+  fill: none;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* Properties panel: edit sub-blocks reuse the inspector's key/value rows. */
+.propertyHeading {
+  margin: 10px 0 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Layers: the current-layer line, per-row action buttons, and the create/edit
+   forms. The layer row keeps the existing toggle's grid and adds its actions. */
+.layerCurrent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 6px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.layerCurrent .formInput {
+  flex: 1;
+  min-width: 0;
+}
+
+.layerRow {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.layerRow .layerToggle {
+  flex: 1;
+  min-width: 0;
+}
+
+.layerMiniButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  cursor: pointer;
+}
+
+.layerMiniButton[aria-pressed='true'] {
+  color: var(--dsw-alias-label-primary);
+}
+
+.layerForm {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px 6px;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.layerFormRow {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.layerFormRow .formInput {
+  min-height: 22px;
+}
+
+/* An actionable notice (engine operation pending, export failure) must accept a
+   pointer so it can be dismissed; the warning notice over the sheet stays inert. */
+.noticeActionable {
+  pointer-events: auto;
+}
+
+.noticeInfo {
+  border-color: var(--dsw-alias-state-business-primary);
+  background: var(--dsw-alias-bg-document-preview);
+}
+
+.noticeError {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+/* Print: only the drawing page goes to the printer. The sheet column fills the
+   page, the header names what is printed, and every control is hidden. */
+@media print {
+  .noPrint {
+    display: none !important;
+  }
+
+  .printOnly {
+    display: block !important;
+  }
+
+  /* The sheet is the printed page: selection, snaps, grips, ghosts, the command
+     bar and the written-drawing banner are screen chrome, not drawing content. */
+  .selectionOverlay,
+  .snapMarker,
+  .snapLabel,
+  .gripHandle,
+  .gripHandleActive,
+  .gripLine,
+  .previewLine,
+  .previewShape,
+  .placementMarker,
+  .marqueeWindow,
+  .marqueeCrossing,
+  .gridLine,
+  .ghostGroup,
+  .ghostText,
+  .commandBar,
+  .writtenBanner,
+  .notice {
+    display: none !important;
+  }
+
+  .root {
+    height: auto;
+    min-height: 0;
+    background: #ffffff;
+  }
+
+  .stage {
+    display: block;
+  }
+
+  .canvasColumn {
+    display: block;
+  }
+
+  .canvasWrap {
+    height: 84vh;
+    border: 0;
+    outline: none;
+    background: #ffffff;
+  }
+
+  /* The focused canvas keeps no focus ring on paper. */
+  .canvasWrap:focus-visible {
+    outline: none;
+  }
+
+  .statusBar {
+    display: none;
+  }
+}
+
+.printOnly {
+  display: none;
+}
+
+.printHeader {
+  padding: 6px 0 4px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+}
+
+.printTitle {
+  font-weight: 600;
+}
+
+.printMeta {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+}
+
+/* The tool rail yields its width to the sheet on a genuinely narrow pane. */
+@container (max-width: 420px) {
+  .toolRail {
+    width: 32px;
+  }
+
+  .paletteButton {
+    width: 24px;
+    height: 24px;
+  }
+
+  .paletteGroupLabel {
+    display: none;
+  }
+}
+
+@media (hover: hover) {
+  .paletteButton:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+
+  .contextMenuItem:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+
+  .statusChip:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+
+  .layerMiniButton:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+}
+
+.paletteButton:active:not(:disabled),
+.statusChip:active,
+.layerMiniButton:active {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .contextMenu {
+    scroll-behavior: auto;
   }
 }

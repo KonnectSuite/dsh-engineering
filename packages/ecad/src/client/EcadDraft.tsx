@@ -121,7 +121,7 @@ export interface EditBarProps {
 export function EditBar({ t, tool, onToggleText, stagedCount, applying, canApply, applyDisabledReason, onApply, onClear }: EditBarProps): ReactElement {
   return createElement(
     'div',
-    { className: css.editBar, role: 'group', 'aria-label': t('editBarLabel') },
+    { className: `${css.editBar} ${css.noPrint}`, role: 'group', 'aria-label': t('editBarLabel') },
     createElement('div', { className: css.editBarGroup },
       createElement('button', {
         type: 'button',
@@ -230,6 +230,94 @@ export function PlacementForm({ t, value, layers, invalidHeight, onChange, onSta
     invalidHeight ? createElement('p', { className: css.formError, role: 'alert' }, t('heightHint')) : null,
     createElement('div', { className: css.formActions },
       createElement('button', { type: 'submit', className: css.applyButton, disabled: value.text.trim() === '' || invalidHeight || value.layer === '' }, t('stagePlacement')),
+      createElement('button', { type: 'button', className: css.button, onClick: onCancel }, t('cancel')),
+    ),
+  )
+}
+
+/** The value the block-insert form is editing. */
+export interface EcadBlockPlacementDraft {
+  readonly point: readonly [number, number]
+  readonly block: string
+  readonly rotation: string
+  readonly scale: string
+}
+
+/** Props of {@link BlockPlacementForm}. */
+export interface BlockPlacementFormProps {
+  readonly t: Translate
+  readonly value: EcadBlockPlacementDraft
+  readonly blocks: readonly string[]
+  readonly onChange: (field: 'block' | 'rotation' | 'scale', value: string) => void
+  readonly onStage: () => void
+  readonly onCancel: () => void
+}
+
+/**
+ * The compact block-insert form opened by a placement click. The block list is
+ * the drawing's own block table, so an insert can name an existing definition.
+ * @param props - the form value, the block list and the actions.
+ */
+export function BlockPlacementForm({ t, value, blocks, onChange, onStage, onCancel }: BlockPlacementFormProps): ReactElement {
+  return createElement(
+    'form',
+    {
+      className: css.placementForm,
+      onSubmit: (event: { preventDefault: () => void }) => {
+        event.preventDefault()
+        onStage()
+      },
+      'data-ecad-block-form': 'true',
+    },
+    createElement('div', { className: css.panelHeading }, t('blockPlacementTitle', { point: `${value.point[0]}, ${value.point[1]}` })),
+    blocks.length === 0
+      ? createElement('p', { className: css.inspectorHint }, t('noBlocks'))
+      : createElement(
+        'div',
+        null,
+        createElement('label', { className: css.formRow },
+          createElement('span', { className: css.formLabel }, t('blockPlacementLabel')),
+          createElement('select', {
+            className: css.formInput,
+            value: value.block,
+            'aria-label': t('blockPlacementLabel'),
+            onChange: (event: { target: { value: string } }) => {
+              onChange('block', event.target.value)
+            },
+            'data-ecad-block-name': 'true',
+          }, blocks.map(block => createElement('option', { key: block, value: block }, block))),
+        ),
+        createElement('label', { className: css.formRow },
+          createElement('span', { className: css.formLabel }, t('blockRotation')),
+          createElement('input', {
+            className: css.formInput,
+            type: 'text',
+            inputMode: 'decimal',
+            value: value.rotation,
+            'aria-label': t('blockRotation'),
+            onChange: (event: { target: { value: string } }) => {
+              onChange('rotation', event.target.value)
+            },
+            'data-ecad-block-rotation': 'true',
+          }),
+        ),
+        createElement('label', { className: css.formRow },
+          createElement('span', { className: css.formLabel }, t('blockScale')),
+          createElement('input', {
+            className: css.formInput,
+            type: 'text',
+            inputMode: 'decimal',
+            value: value.scale,
+            'aria-label': t('blockScale'),
+            onChange: (event: { target: { value: string } }) => {
+              onChange('scale', event.target.value)
+            },
+            'data-ecad-block-scale': 'true',
+          }),
+        ),
+      ),
+    createElement('div', { className: css.formActions },
+      createElement('button', { type: 'submit', className: css.applyButton, disabled: blocks.length === 0 || value.block === '' }, t('stageBlockPlacement')),
       createElement('button', { type: 'button', className: css.button, onClick: onCancel }, t('cancel')),
     ),
   )
@@ -348,13 +436,20 @@ export interface DraftPanelProps {
   readonly t: Translate
   readonly staged: readonly EcadStagedOp[]
   readonly counts: EcadDraftCounts
-  readonly layoutName: string
+  /** One line describing which layouts the draft touches (or the layer table). */
+  readonly hint: string
   readonly placement: EcadPlacementDraft | undefined
   readonly layers: readonly string[]
   readonly invalidHeight: boolean
   readonly onPlacementChange: (field: 'text' | 'height' | 'layer', value: string) => void
   readonly onStagePlacement: () => void
   readonly onCancelPlacement: () => void
+  /** The block-insert form, when the block tool placed one. */
+  readonly blockPlacement?: EcadBlockPlacementDraft
+  readonly blocks?: readonly string[]
+  readonly onBlockChange?: (field: 'block' | 'rotation' | 'scale', value: string) => void
+  readonly onStageBlock?: () => void
+  readonly onCancelBlock?: () => void
   readonly onRemove: (key: string) => void
   readonly outcome: EcadApplyOutcome | undefined
   readonly onDismissOutcome: () => void
@@ -366,15 +461,38 @@ export interface DraftPanelProps {
  * The staged-change list and the annotation form, in the side panel.
  * @param props - the draft, the pending placement and the outcome.
  */
-export function DraftPanel({ t, staged, counts, layoutName, placement, layers, invalidHeight, onPlacementChange, onStagePlacement, onCancelPlacement, onRemove, outcome, onDismissOutcome, onOpenWritten, onBackToSource }: DraftPanelProps): ReactElement {
+export function DraftPanel({ t, staged, counts, hint, placement, layers, invalidHeight, onPlacementChange, onStagePlacement, onCancelPlacement, blockPlacement, blocks, onBlockChange, onStageBlock, onCancelBlock, onRemove, outcome, onDismissOutcome, onOpenWritten, onBackToSource }: DraftPanelProps): ReactElement {
   const summarize = (item: EcadStagedOp): string => {
     const op = item.op
     if (op.op === 'addText') return t('stageTextSummary', { text: op.text, point: `${op.p[0]}, ${op.p[1]}` })
     if (op.op === 'move') return t('stageMoveSummary', { id: op.ids[0] ?? '', dx: op.dx, dy: op.dy })
     if (op.op === 'erase') return t('stageEraseSummary', { id: op.ids[0] ?? '' })
-    return op.op
+    if (op.op === 'addBlock') return t('stageBlockSummary', { block: op.block, point: `${op.p[0]}, ${op.p[1]}` })
+    if (op.op === 'rotate') return t('stageRotateSummary', { count: op.ids.length, angle: op.angleDeg })
+    if (op.op === 'copy') return t('stageCopySummary', { count: op.ids.length, dx: op.dx, dy: op.dy })
+    if (op.op === 'scale' || op.op === 'mirror') return t('stageModifySummary', { op: op.op, count: op.ids.length })
+    if (op.op === 'offset') return t('stageOffsetSummary', { id: op.id, distance: op.distance })
+    if (op.op === 'trim' || op.op === 'extend' || op.op === 'setLine' || op.op === 'setPolyline') return t('stageGripSummary', { op: op.op, id: op.id })
+    if (op.op === 'addLayer' || op.op === 'renameLayer' || op.op === 'setLayerColor') return t('stageLayerSummary', { op: op.op, name: 'name' in op ? op.name : op.from })
+    if (op.op === 'setText' || op.op === 'setAttribute' || op.op === 'setLayer') return t('stagePropertySummary', { op: op.op, id: op.id })
+    if (op.op === 'addLine' || op.op === 'addPolyline' || op.op === 'addRectangle' || op.op === 'addRevisionCloud' || op.op === 'addLeader') {
+      const points = 'pts' in op ? op.pts.length : 'a' in op && 'b' in op ? 2 : 2
+      return t('stageDrawSummary', { op: op.op, count: points })
+    }
+    if (op.op === 'addCircle' || op.op === 'addArc') return t('stageDrawSummary', { op: op.op, count: 1 })
+    // Exhaustive union: this is only reached by an operation a later build adds.
+    return (op as { readonly op?: string }).op ?? 'op'
   }
-  const kindLabel = (kind: EcadStagedOp['op']['op']): string => (kind === 'addText' ? t('opAddText') : kind === 'move' ? t('opMove') : t('opErase'))
+  const kindLabel = (kind: EcadStagedOp['op']['op']): string => {
+    if (kind === 'addText') return t('opAddText')
+    if (kind === 'move') return t('opMove')
+    if (kind === 'erase') return t('opErase')
+    if (kind === 'rotate') return t('opRotate')
+    if (kind === 'copy' || kind === 'scale' || kind === 'mirror' || kind === 'offset' || kind === 'trim' || kind === 'extend' || kind === 'setLine' || kind === 'setPolyline') return t('opModify')
+    if (kind === 'addLayer' || kind === 'renameLayer' || kind === 'setLayerColor') return t('opLayer')
+    if (kind === 'setText' || kind === 'setAttribute' || kind === 'setLayer') return t('opProperty')
+    return t('opDraw')
+  }
   return createElement(
     'section',
     { className: `${css.panelSection} ${css.draftSection}`, 'data-ecad-draft': 'true' },
@@ -392,6 +510,16 @@ export function DraftPanel({ t, staged, counts, layoutName, placement, layers, i
       onStage: onStagePlacement,
       onCancel: onCancelPlacement,
     }),
+    blockPlacement === undefined || blocks === undefined || onBlockChange === undefined || onStageBlock === undefined || onCancelBlock === undefined
+      ? null
+      : createElement(BlockPlacementForm, {
+        t,
+        value: blockPlacement,
+        blocks,
+        onChange: onBlockChange,
+        onStage: onStageBlock,
+        onCancel: onCancelBlock,
+      }),
     createElement(
       'div',
       { className: css.draftList, role: 'list', 'aria-label': t('stagedOps') },
@@ -414,7 +542,7 @@ export function DraftPanel({ t, staged, counts, layoutName, placement, layers, i
           )
         }),
     ),
-    createElement('p', { className: css.draftHint }, layoutName === '' ? t('draftSeveralLayouts') : t('draftLayoutHint', { layout: layoutName })),
+    createElement('p', { className: css.draftHint }, hint),
     staged.length === 0 ? null : createElement('div', { className: css.draftCounts },
       counts.addText === 0 ? null : createElement('span', {}, `${counts.addText} ${t('addTextTool')}`),
       counts.move === 0 ? null : createElement('span', {}, `${counts.move} ${t('moveAction')}`),
