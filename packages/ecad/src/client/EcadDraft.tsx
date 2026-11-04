@@ -473,6 +473,8 @@ export function DraftPanel({ t, staged, counts, hint, placement, layers, invalid
     if (op.op === 'scale' || op.op === 'mirror') return t('stageModifySummary', { op: op.op, count: op.ids.length })
     if (op.op === 'offset') return t('stageOffsetSummary', { id: op.id, distance: op.distance })
     if (op.op === 'trim' || op.op === 'extend' || op.op === 'setLine' || op.op === 'setPolyline') return t('stageGripSummary', { op: op.op, id: op.id })
+    if (op.op === 'setCircle' || op.op === 'setArc' || op.op === 'setEllipse') return t('stageSetterSummary', { op: op.op, id: op.id })
+    if (op.op === 'setColor') return t('stageColorSummary', { color: op.color, count: op.ids.length })
     if (op.op === 'addLayer' || op.op === 'renameLayer' || op.op === 'setLayerColor') return t('stageLayerSummary', { op: op.op, name: 'name' in op ? op.name : op.from })
     if (op.op === 'setText' || op.op === 'setAttribute' || op.op === 'setLayer') return t('stagePropertySummary', { op: op.op, id: op.id })
     if (op.op === 'addLine' || op.op === 'addPolyline' || op.op === 'addRectangle' || op.op === 'addRevisionCloud' || op.op === 'addLeader') {
@@ -488,9 +490,9 @@ export function DraftPanel({ t, staged, counts, hint, placement, layers, invalid
     if (kind === 'move') return t('opMove')
     if (kind === 'erase') return t('opErase')
     if (kind === 'rotate') return t('opRotate')
-    if (kind === 'copy' || kind === 'scale' || kind === 'mirror' || kind === 'offset' || kind === 'trim' || kind === 'extend' || kind === 'setLine' || kind === 'setPolyline') return t('opModify')
+    if (kind === 'copy' || kind === 'scale' || kind === 'mirror' || kind === 'offset' || kind === 'trim' || kind === 'extend' || kind === 'setLine' || kind === 'setPolyline' || kind === 'setCircle' || kind === 'setArc' || kind === 'setEllipse') return t('opModify')
     if (kind === 'addLayer' || kind === 'renameLayer' || kind === 'setLayerColor') return t('opLayer')
-    if (kind === 'setText' || kind === 'setAttribute' || kind === 'setLayer') return t('opProperty')
+    if (kind === 'setText' || kind === 'setAttribute' || kind === 'setLayer' || kind === 'setColor') return t('opProperty')
     return t('opDraw')
   }
   return createElement(

@@ -119,17 +119,19 @@ test('every tool operation is supported by the merged engine', () => {
   for (const op of [
     'addText', 'addLine', 'addPolyline', 'addRectangle', 'addRevisionCloud', 'addLeader', 'addBlock',
     'addCircle', 'addArc', 'setText', 'setAttribute', 'setLayer', 'move', 'rotate', 'copy', 'scale',
-    'mirror', 'offset', 'trim', 'extend', 'setLine', 'setPolyline', 'erase', 'addLayer', 'setLayerColor', 'renameLayer',
+    'mirror', 'offset', 'trim', 'extend', 'setLine', 'setPolyline', 'setCircle', 'setArc', 'setEllipse',
+    'setColor', 'erase', 'addLayer', 'setLayerColor', 'renameLayer',
   ]) {
     assert.equal(engineOpAvailable(op), true, `${op} should be supported by the merged engine`)
   }
-  // The prepared setters the parallel engine change adds are still pending on
-  // this branch; the grip/colour UI is wired and names the pending operation.
-  for (const op of ['setCircle', 'setArc', 'setEllipse', 'setColor', 'setGeometry', 'setDimension']) {
-    assert.equal(engineOpAvailable(op), false, `${op} should still be pending until the engine merge`)
+  // The setters graduated from preparation into the merged engine; only the
+  // generic geometry fallbacks remain pending.
+  for (const op of ['setGeometry', 'setDimension']) {
+    assert.equal(engineOpAvailable(op), false, `${op} should still be pending`)
   }
   for (const op of PREPARED_ENGINE_OPS) {
-    assert.ok(PENDING_ENGINE_OPS.includes(op), `${op} is prepared but not listed as pending`)
+    assert.ok(ENGINE_OPS_SUPPORTED.has(op), `${op} was prepared and now must be supported`)
+    assert.ok(!PENDING_ENGINE_OPS.includes(op), `${op} is supported, not pending`)
   }
   assert.equal(PENDING_ENGINE_OPS.length, new Set(PENDING_ENGINE_OPS).size)
   assert.equal(asEcadOp({ op: 'copy', layout: 'Model', ids: ['a'], dx: 1, dy: 2 }).op, 'copy')

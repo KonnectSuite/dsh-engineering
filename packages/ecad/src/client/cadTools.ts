@@ -154,6 +154,10 @@ export const ENGINE_OPS_SUPPORTED: ReadonlySet<string> = new Set([
   'extend',
   'setLine',
   'setPolyline',
+  'setCircle',
+  'setArc',
+  'setEllipse',
+  'setColor',
   'erase',
   'addLayer',
   'setLayerColor',
@@ -161,25 +165,23 @@ export const ENGINE_OPS_SUPPORTED: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Grip and property edits the pinned engine still has no operation for.
+ * Grip and property edits that still have no engine operation behind them.
  *
- * `setCircle`, `setArc`, `setEllipse` and `setColor` are fully built here against
- * the shapes the parallel engine change adds; until that lands they stay in this
- * list so the pane previews the edit and names the pending operation instead of
- * faking a stage. Moving one of these into {@link ENGINE_OPS_SUPPORTED} is the
- * whole switch.
+ * A face is now fully wired to the engine's setters; only the fallback grips
+ * for geometry whose setter the engine does not carry (generic geometry and
+ * dimension definitions) preview without staging, naming the pending operation.
  */
 export const PENDING_ENGINE_OPS: readonly string[] = [
-  'setCircle',
-  'setArc',
-  'setEllipse',
-  'setColor',
   'setGeometry',
   'setDimension',
 ]
 
-/** The operations the face builds against an engine branch not yet merged. */
+/** The operations that graduated from preparation to the merged engine. */
 export const PREPARED_ENGINE_OPS: readonly string[] = ['setCircle', 'setArc', 'setEllipse', 'setColor']
+
+/**
+ * @returns true when the pinned engine accepts the operation.
+ */
 
 /** Whether one engine operation can be staged against the pinned engine. */
 export function engineOpAvailable(op: string): boolean {

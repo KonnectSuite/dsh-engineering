@@ -436,6 +436,7 @@ test('the CAD workspace locale strings exist in both languages', () => {
     'engineOpPending', 'commandBarLabel', 'contextMenuLabel', 'properties', 'layersCurrent',
     'statusBarLabel', 'snapEndpoint', 'snapIntersection', 'snapMidpoint', 'snapCenter', 'snapNearest', 'snapGrid',
     'propertiesColor', 'propertiesColorApply', 'propertiesColorHint', 'propertiesColorInvalid',
+    'stageSetterSummary', 'stageColorSummary',
     'marqueeWindowLabel', 'marqueeCrossingLabel', 'gripOpPending', 'undo', 'redo', 'print',
     'exportSvg', 'exportPng', 'layerOpPending',
   ]) {

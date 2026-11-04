@@ -43,6 +43,8 @@ function buildModel() {
   add({ id: 'dev-arc', k: 'arc', layer: 'DEVICES', color: 3, c: [250, 150], r: 45, a0: 0, a1: Math.PI / 2 })
   add({ id: 'dev-box', k: 'polyline', layer: 'DEVICES', color: 3, pts: [[320, 120], [380, 120], [380, 160], [320, 160]], closed: true })
   add({ id: 'dev-label', k: 'text', layer: 'TEXT', color: 2, p: [330, 140], t: 'M1', h: 4 })
+  // An ellipse: the setEllipse grip's fixture.
+  add({ id: 'dev-ellipse', k: 'ellipse', layer: 'DEVICES', color: 3, c: [350, 200], rx: 30, ry: 12, rot: 0, a0: 0, a1: Math.PI * 2, closed: true })
   // Terminals.
   for (let index = 0; index < 6; index += 1) {
     add({ id: `term-${index}`, k: 'circle', layer: 'DEVICES', color: 3, c: [40 + index * 24, 130], r: 4 })

@@ -227,6 +227,7 @@ type CadPreviewElement =
   | { readonly kind: 'rect'; readonly a: EcadPoint; readonly b: EcadPoint }
   | { readonly kind: 'circle'; readonly c: EcadPoint; readonly r: number }
   | { readonly kind: 'arc'; readonly c: EcadPoint; readonly r: number; readonly a0: number; readonly a1: number }
+  | { readonly kind: 'ellipse'; readonly c: EcadPoint; readonly rx: number; readonly ry: number; readonly deg: number }
 
 /** One glyph's geometry, drawn in the theme's label colour. */
 interface IconProps {
@@ -497,6 +498,16 @@ function PreviewView({ elements }: PreviewViewProps): ReactElement | null {
             d: `M ${fmt(start[0]!)} ${fmt(start[1]!)} A ${fmt(Math.abs(element.r))} ${fmt(Math.abs(element.r))} 0 ${large} 1 ${fmt(end[0]!)} ${fmt(end[1]!)}`,
           })
         }
+        case 'ellipse':
+          return createElement('ellipse', {
+            key,
+            className: css.previewShape,
+            cx: element.c[0],
+            cy: element.c[1],
+            rx: Math.abs(element.rx),
+            ry: Math.abs(element.ry),
+            transform: `rotate(${Number(element.deg.toFixed(4))} ${element.c[0]} ${element.c[1]})`,
+          })
         default:
           return null
       }
@@ -504,8 +515,81 @@ function PreviewView({ elements }: PreviewViewProps): ReactElement | null {
   )
 }
 
-/** Props of {@link SceneView}. */
-interface SceneViewProps {
+/** A world point read from an untyped setter payload. */
+function payloadPoint(value: unknown): EcadPoint | undefined {
+  if (!Array.isArray(value) || value.length < 2) return undefined
+  const x = Number(value[0])
+  const y = Number(value[1])
+  return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : undefined
+}
+
+/** The visible geometry of a mover's translated entity, for the grip preview. */
+function movedPreviewOf(entity: EcadEntity, dx: number, dy: number): CadPreviewElement | undefined {
+  const shift = (point: EcadPoint | undefined): EcadPoint | undefined => (point === undefined ? undefined : [point[0] + dx, point[1] + dy])
+  if (entity.k === 'circle') {
+    const center = shift(entity.c)
+    return center === undefined ? undefined : { kind: 'circle', c: center, r: Math.abs(entity.r ?? 0) }
+  }
+  if (entity.k === 'arc') {
+    const center = shift(entity.c)
+    if (center === undefined) return undefined
+    let a1 = entity.a1 ?? 0
+    const a0 = entity.a0 ?? 0
+    if (a1 < a0) a1 += Math.PI * 2
+    return { kind: 'arc', c: center, r: Math.abs(entity.r ?? 0), a0, a1 }
+  }
+  if (entity.k === 'ellipse') {
+    const center = shift(entity.c)
+    return center === undefined
+      ? undefined
+      : { kind: 'ellipse', c: center, rx: Math.abs(entity.rx ?? 0), ry: Math.abs(entity.ry ?? 0), deg: ((entity.rot ?? 0) * 180) / Math.PI }
+  }
+  return undefined
+}
+
+/** The geometry an engine setter would produce, for the grip preview. */
+function setterPreviewOf(op: string, payload: Readonly<Record<string, unknown>>): CadPreviewElement | undefined {
+  if (op === 'setCircle') {
+    const center = payloadPoint(payload.center)
+    const radius = Number(payload.radius)
+    return center === undefined || !Number.isFinite(radius) ? undefined : { kind: 'circle', c: center, r: Math.abs(radius) }
+  }
+  if (op === 'setArc') {
+    const center = payloadPoint(payload.center)
+    const radius = Number(payload.radius)
+    const start = Number(payload.startAngleDeg)
+    const end = Number(payload.endAngleDeg)
+    if (center === undefined || !Number.isFinite(radius) || !Number.isFinite(start) || !Number.isFinite(end)) return undefined
+    const radians = Math.PI / 180
+    let a0 = start * radians
+    let a1 = end * radians
+    if (a1 <= a0) a1 += Math.PI * 2
+    return { kind: 'arc', c: center, r: Math.abs(radius), a0, a1 }
+  }
+  if (op === 'setEllipse') {
+    const center = payloadPoint(payload.center)
+    const rx = Number(payload.rx)
+    const ry = Number(payload.ry)
+    const rotDeg = Number(payload.rotDeg)
+    return center === undefined || !Number.isFinite(rx) || !Number.isFinite(ry) || !Number.isFinite(rotDeg)
+      ? undefined
+      : { kind: 'ellipse', c: center, rx: Math.abs(rx), ry: Math.abs(ry), deg: rotDeg }
+  }
+  if (op === 'setLine') {
+    const a = payloadPoint(payload.a)
+    const b = payloadPoint(payload.b)
+    return a === undefined || b === undefined ? undefined : { kind: 'line', a, b }
+  }
+  if (op === 'setPolyline') {
+    const points = Array.isArray(payload.pts)
+      ? (payload.pts as unknown[]).map(payloadPoint).filter((point): point is EcadPoint => point !== undefined)
+      : []
+    return points.length >= 2 ? { kind: 'polyline', points } : undefined
+  }
+  return undefined
+}
+
+/** Props of {@link SceneView}. */interface SceneViewProps {
   readonly scene: EcadScene
   readonly fit: EcadFit
   readonly view: ViewState
@@ -2269,7 +2353,19 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   // -- preview geometry -----------------------------------------------------
   const previewElements = useMemo((): readonly CadPreviewElement[] => {
     if (gripDrag !== undefined) {
-      return [{ kind: 'line', a: gripDrag.original, b: gripDrag.point }]
+      const elements: CadPreviewElement[] = [{ kind: 'line', a: gripDrag.original, b: gripDrag.point }]
+      const entity = activeLayout?.entities.find(candidate => candidate.id === gripDrag.entityId)
+      if (entity !== undefined) {
+        const request = gripRequestFor(entity, gripDrag.grip, gripDrag.point)
+        // A grip previews the geometry the staged setter will produce, not just
+        // the pointer line: a radius, angle or axis change is visible before the
+        // reader releases.
+        const shape = request.kind === 'move'
+          ? movedPreviewOf(entity, request.dx, request.dy)
+          : setterPreviewOf(request.op, request.payload)
+        if (shape !== undefined) elements.push(shape)
+      }
+      return elements
     }
     if (command === undefined || command.points.length === 0) return []
     const cursor = command.cursor
@@ -2311,7 +2407,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       default:
         return []
     }
-  }, [command, gripDrag])
+  }, [activeLayout, command, gripDrag])
 
   const grips = useMemo((): readonly CadGrip[] => {
     if (!editing) return []
