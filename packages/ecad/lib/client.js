@@ -210,6 +210,13 @@ async function readWorkspaceText(read, sessionId, path, signal, chunk = PREVIEW_
   text += decoder.decode();
   return { text, version };
 }
+function unwrapRemoteValue(result) {
+  if (result !== null && typeof result === "object") {
+    const wrapper = result;
+    if (wrapper.ok === true && "value" in wrapper) return wrapper.value;
+  }
+  return result;
+}
 function parsePreviewArtifact(text) {
   let parsed;
   try {
@@ -2007,7 +2014,8 @@ ${prompt}`);
     signal.throwIfAborted();
     let payload;
     try {
-      payload = await call("open", file.sessionId, file.path);
+      const raw = await call("open", file.sessionId, file.path);
+      payload = unwrapRemoteValue(raw);
     } catch (error) {
       return { ok: false, error: failureOf(error, { code: "ECAD_DISABLED", fix: t("unavailableFix") }) };
     }

@@ -297,8 +297,18 @@ The packaged bundle was installed and booted on the development home
   client-face or composition error appeared. Screenshots from this pass are in
   `tmp/ecad-dev-shots/` (`09-ecad-row-visible.png`, `10-ecad-config.png`); they are evidence, not
   committed assets.
-- **Still to drive interactively.** Opening a DXF/DWG from an app workspace was not exercised in this
-  pass because the dev home has no workspace holding the print set; the panel path is covered by the
-  headless face harness (15 screenshots against a real sheet) and by the real-DWG service probe above.
-  The next commissioning pass mounts the print set in a dev workspace and drives the preview from the
-  file tree.
+- **The drawing panel opened a real DWG in the app.** Two prints were placed in the dev default
+  workspace (`prints/20136-004.dwg`, `prints/FC1000495-001.dxf`), a session was started in that
+  workspace, the DWG was attached through the composer's `@` file menu, and clicking the attachment
+  opened the document preview. It rendered the sheet with the **DWG badge**, `Approximate`, `213
+  entities · all drawn as carried geometry`, Model/Layout1 tabs, the layer list, the title-block fields
+  (`004`, `DTG-#20136`, `20136`, `DTG`), the inspector hint, and the provenance rows
+  (`Format DWG`, `Converted via wasm`, `DXF version AC1027`, file version). Screenshot:
+  `tmp/ecad-dev-shots/25-dwg-preview.png`.
+- **The live pass found a real integration bug, now fixed.** The first click reported
+  `ECAD_PREVIEW_INVALID`: the Remote carrier resolves a successful call to `{ ok, value }`, and the
+  face was reading `modelPath`/`layouts` off that wrapper instead of off the service envelope. The pane
+  now unwraps the success wrapper (`unwrapRemoteValue` in `artifacts.ts`), with a regression test for the
+  wrapper, a direct envelope and a failure wrapper; the packaged bundle was rebuilt and the same click
+  then rendered the drawing. This was invisible to the headless harness because its fake call returned
+  the envelope directly, which is exactly why the interactive dev pass exists.

@@ -159,8 +159,9 @@ Where each surface actually stands, based on what has been exercised.
   (~90 % shared geometry) rather than as equality.
 - ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
   sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
-  empty, truncated and DWG states — with zero console errors; the in-app shell mount is verified with the
-  Dev AryaCode pass below.
+  empty, truncated and DWG states — with zero console errors. The Dev AryaCode pass then opened a real
+  DWG in the app's right panel: DWG badge, 213 entities, layer list, title-block fields and conversion
+  provenance, with no client error.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins

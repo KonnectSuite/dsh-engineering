@@ -22,6 +22,7 @@ import { EcadBody, type EcadBodyProps, type EcadBodyInjected, type Translate } f
 import {
   EcadArtifactError,
   readPreviewArtifact,
+  unwrapRemoteValue,
   type EcadFailure,
   type EcadOpenEnvelope,
   type EcadOpenResult,
@@ -239,7 +240,11 @@ export function apply(ctx: ClientContext): void {
     signal.throwIfAborted()
     let payload: unknown
     try {
-      payload = await call('open', file.sessionId, file.path)
+      const raw = await call('open', file.sessionId, file.path)
+      // The Remote layer returns `{ ok, value }` for a successful call; the ECAD
+      // envelope itself is the value. Unwrap it, or every field below reads as
+      // missing and the pane reports a bogus unreadable preview.
+      payload = unwrapRemoteValue(raw)
     } catch (error) {
       return { ok: false, error: failureOf(error, { code: 'ECAD_DISABLED', fix: t('unavailableFix') }) }
     }

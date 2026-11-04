@@ -16,6 +16,7 @@ import {
   parsePreviewArtifact,
   readPreviewArtifact,
   readWorkspaceText,
+  unwrapRemoteValue,
 } from '../../src/client/artifacts.ts'
 
 /** A model just complete enough for the artifact parser. */
@@ -167,4 +168,15 @@ test('a DWG source reports the conversion the service names', () => {
     warningTexts: [],
   })
   assert.equal(conversionOf({}).warnings, 0)
+})
+
+test('a successful Remote result is unwrapped to the service envelope', () => {
+  const envelope = { ok: true, contractVersion: 1, modelPath: '.ecad/previews/a.json', layouts: [], version: 'v1' }
+  assert.deepEqual(unwrapRemoteValue({ ok: true, value: envelope }), envelope)
+  // A test double (and an older carrier) may hand back the envelope directly.
+  assert.deepEqual(unwrapRemoteValue(envelope), envelope)
+  // A failed call keeps its wrapper so the pane can read the error.
+  const failure = { ok: false, error: { code: 'ECAD_WRITES_DISABLED', message: 'off', fix: 'enable it' } }
+  assert.deepEqual(unwrapRemoteValue(failure), failure)
+  assert.equal(unwrapRemoteValue(null), null)
 })
