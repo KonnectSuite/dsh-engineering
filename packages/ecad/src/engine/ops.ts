@@ -142,6 +142,10 @@ const OP_KINDS: readonly string[] = [
   'extend',
   'setLine',
   'setPolyline',
+  'setCircle',
+  'setArc',
+  'setEllipse',
+  'setColor',
   'addLayer',
   'setLayerColor',
   'renameLayer',
@@ -633,6 +637,61 @@ export function validateOps(opened: OpenedSheet, draft: EcadDraft | readonly Eca
         }
         break
       }
+      case 'setCircle': {
+        const slot = checkId(opIndex, op.id)
+        if (!slot) break
+        const type = checkKind(opIndex, slot, ['CIRCLE'], 'setCircle', 'Pass a CIRCLE id; use setArc for an arc and setEllipse for an ellipse.')
+        if (type !== 'CIRCLE') break
+        if (!checkPoints(opIndex, [op.center], 1)) break
+        if (!requireNumbers(opIndex, [op.radius], 'radius')) break
+        if (!(op.radius > 0)) {
+          error(opIndex, 'setCircle radius must be greater than 0', 'Pass a positive radius in drawing units.')
+        }
+        break
+      }
+      case 'setArc': {
+        const slot = checkId(opIndex, op.id)
+        if (!slot) break
+        const type = checkKind(opIndex, slot, ['ARC'], 'setArc', 'Pass an ARC id; use setCircle for a full circle and setEllipse for an ellipse.')
+        if (type !== 'ARC') break
+        if (!checkPoints(opIndex, [op.center], 1)) break
+        if (!requireNumbers(opIndex, [op.radius, op.startAngleDeg, op.endAngleDeg], 'radius and angles')) break
+        if (!(op.radius > 0)) {
+          error(opIndex, 'setArc radius must be greater than 0', 'Pass a positive radius in drawing units.')
+          break
+        }
+        const sweep = wrapAngle2Pi(((op.endAngleDeg - op.startAngleDeg) * Math.PI) / 180)
+        if (sweep <= GEOM_EPSILON || Math.PI * 2 - sweep <= GEOM_EPSILON) {
+          error(opIndex, 'setArc start and end angles describe no sweep', 'Pass two angles that differ; use setCircle for a full circle.')
+        }
+        break
+      }
+      case 'setEllipse': {
+        const slot = checkId(opIndex, op.id)
+        if (!slot) break
+        const type = checkKind(opIndex, slot, ['ELLIPSE'], 'setEllipse', 'Pass an ELLIPSE id; use setCircle or setArc for a circular entity.')
+        if (type !== 'ELLIPSE') break
+        if (!checkPoints(opIndex, [op.center], 1)) break
+        if (!requireNumbers(opIndex, [op.rx, op.ry, op.rotDeg], 'radii and rotation')) break
+        if (!(op.rx > 0) || !(op.ry > 0)) {
+          error(opIndex, 'setEllipse radii must be greater than 0', 'Pass a positive major radius and a positive minor radius in drawing units.')
+        }
+        break
+      }
+      case 'setColor': {
+        if (!checkIds(opIndex, op.ids, checkId, error)) break
+        const rawColor: unknown = (op as { color?: unknown }).color
+        const named = typeof rawColor === 'string' ? rawColor.trim().toUpperCase() : undefined
+        if (rawColor === 0 || rawColor === 256 || named === 'BYBLOCK' || named === 'BYLAYER') {
+          const byBlock = rawColor === 0 || named === 'BYBLOCK'
+          error(opIndex, `setColor cannot set a ${byBlock ? 'ByBlock' : 'ByLayer'} colour on an entity`, 'Pass an ACI colour from 1 to 255; for a colour taken from the layer, change the layer with setLayerColor, or move the entity to another layer with setLayer.')
+          break
+        }
+        if (typeof rawColor !== 'number' || !Number.isInteger(rawColor) || rawColor < 1 || rawColor > 255) {
+          error(opIndex, `entity colour ${JSON.stringify(rawColor)} is not an ACI index`, 'Pass an AutoCAD Color Index from 1 to 255; for a layer-driven colour use setLayerColor or setLayer.')
+        }
+        break
+      }
       case 'addLayer': {
         if (!checkDrawingLayer(opIndex, op.name)) break
         if (plannedLayers.has(op.name.toUpperCase())) {
@@ -1089,6 +1148,72 @@ export function applyOps(opened: OpenedSheet, ops: EcadDraft | readonly EcadOp[]
           count('setPolyline', 1)
           break
         }
+        case 'setCircle': {
+          const slot = index.entities.get(op.id)
+          if (!slot) continue
+          const current = circularGeometryOf(slot.entity)
+          if (!current) continue
+          if (samePointValue(current.center, op.center) && sameNumber(current.radius, op.radius)) break
+          const circle = slot.entity as AcDbCircle
+          circle.center = new AcGePoint3d(op.center[0], op.center[1], 0)
+          circle.radius = op.radius
+          push(slot.entity)
+          count('setCircle', 1)
+          break
+        }
+        case 'setArc': {
+          const slot = index.entities.get(op.id)
+          if (!slot) continue
+          const current = arcGeometryOf(slot.entity)
+          if (!current) continue
+          const start = (op.startAngleDeg * Math.PI) / 180
+          const end = (op.endAngleDeg * Math.PI) / 180
+          if (samePointValue(current.center, op.center) && sameNumber(current.radius, op.radius) && sameAngle(current.startAngle, start) && sameAngle(current.endAngle, end)) break
+          const arc = slot.entity as AcDbArc
+          arc.center = new AcGePoint3d(op.center[0], op.center[1], 0)
+          arc.radius = op.radius
+          arc.startAngle = wrapAngle2Pi(start)
+          arc.endAngle = wrapAngle2Pi(end)
+          push(slot.entity)
+          count('setArc', 1)
+          break
+        }
+        case 'setEllipse': {
+          const slot = index.entities.get(op.id)
+          if (!slot) continue
+          const current = ellipseGeometryOf(slot.entity)
+          if (!current) continue
+          const rotation = (op.rotDeg * Math.PI) / 180
+          if (samePointValue(current.center, op.center) && sameNumber(current.rx, op.rx) && sameNumber(current.ry, op.ry) && sameAngle(current.rot, rotation)) break
+          const ellipse = slot.entity as AcDbEllipse
+          ellipse.center = new AcGePoint3d(op.center[0], op.center[1], 0)
+          ellipse.majorAxisRadius = op.rx
+          ellipse.minorAxisRadius = op.ry
+          // The pinned data-model has no major-axis setter, so a changed
+          // rotation is applied as a rotation of the whole ellipse about its
+          // own (already updated) centre; the radii and parameter range stay put.
+          const delta = signedAngleDelta(current.rot, rotation)
+          if (Math.abs(delta) > GEOM_EPSILON) ellipse.transformBy(rotationMatrix(op.center, delta))
+          push(slot.entity)
+          count('setEllipse', 1)
+          break
+        }
+        case 'setColor': {
+          let recoloured = 0
+          for (const id of op.ids) {
+            const slot = index.entities.get(id)
+            if (!slot) continue
+            // A colour that resolves to the requested ACI is invisible in the
+            // model, so it is a no-op: writing an explicit ByLayer-equivalent
+            // colour would change the file without changing the drawing.
+            if (resolvedAciColorOf(slot.entity) === op.color) continue
+            slot.entity.color = aciColor(op.color)
+            push(slot.entity)
+            recoloured += 1
+          }
+          if (recoloured > 0) count('setColor', recoloured)
+          break
+        }
       }
     }
   })
@@ -1313,6 +1438,32 @@ function circularGeometryOf(entity: AcDbEntity): { center: EcadPoint; radius: nu
 }
 
 /**
+ * The centre, radius and sweep angles of an ARC, or `undefined` for another kind.
+ *
+ * @param entity - source entity.
+ */
+function arcGeometryOf(entity: AcDbEntity): { center: EcadPoint; radius: number; startAngle: number; endAngle: number } | undefined {
+  if (dxfTypeNameOf(entity) !== 'ARC') return undefined
+  const arc = entity as AcDbArc
+  const center = arc.center
+  return { center: [center.x, center.y], radius: arc.radius, startAngle: arc.startAngle, endAngle: arc.endAngle }
+}
+
+/**
+ * The placement of an ELLIPSE: centre, major/minor radius and the rotation of the
+ * major axis (radians), or `undefined` for another kind.
+ *
+ * @param entity - source entity.
+ */
+function ellipseGeometryOf(entity: AcDbEntity): { center: EcadPoint; rx: number; ry: number; rot: number } | undefined {
+  if (dxfTypeNameOf(entity) !== 'ELLIPSE') return undefined
+  const ellipse = entity as AcDbEllipse
+  const center = ellipse.center
+  const major = ellipse.majorAxis
+  return { center: [center.x, center.y], rx: ellipse.majorAxisRadius, ry: ellipse.minorAxisRadius, rot: Math.atan2(major.y, major.x) }
+}
+
+/**
  * Uniform scale about a world point.
  *
  * @param center - fixed point of the scale.
@@ -1321,6 +1472,19 @@ function circularGeometryOf(entity: AcDbEntity): { center: EcadPoint; radius: nu
 function scaleMatrix(center: EcadPoint, factor: number): AcGeMatrix3d {
   const matrix = new AcGeMatrix3d()
   matrix.multiplyMatrices(AcGeMatrix3d.makeTranslation(center[0], center[1], 0), new AcGeMatrix3d().makeScale(factor, factor, 1))
+  matrix.multiply(AcGeMatrix3d.makeTranslation(-center[0], -center[1], 0))
+  return matrix
+}
+
+/**
+ * Rotation about a world point, used to turn an ellipse's major axis.
+ *
+ * @param center - fixed point of the rotation.
+ * @param radians - rotation angle, counter-clockwise.
+ */
+function rotationMatrix(center: EcadPoint, radians: number): AcGeMatrix3d {
+  const matrix = new AcGeMatrix3d()
+  matrix.multiplyMatrices(AcGeMatrix3d.makeTranslation(center[0], center[1], 0), new AcGeMatrix3d().makeRotationZ(radians))
   matrix.multiply(AcGeMatrix3d.makeTranslation(-center[0], -center[1], 0))
   return matrix
 }
@@ -1525,6 +1689,75 @@ function trimEndAt(segment: Segment, intersection: EcadPoint, pick: EcadPoint | 
 function pointAt(point: readonly number[] | undefined, x: number, y: number): boolean {
   if (!point) return false
   return Math.abs(point[0]! - x) <= GEOM_EPSILON && Math.abs(point[1]! - y) <= GEOM_EPSILON
+}
+
+/**
+ * True when two points are the same within the shared geometry tolerance.
+ *
+ * @param a - first point.
+ * @param b - second point.
+ */
+function samePointValue(a: EcadPoint, b: EcadPoint): boolean {
+  return pointAt(a, b[0], b[1])
+}
+
+/**
+ * True when two drawing-unit lengths are the same within the geometry tolerance.
+ *
+ * @param a - first length.
+ * @param b - second length.
+ */
+function sameNumber(a: number, b: number): boolean {
+  return Math.abs(a - b) <= GEOM_EPSILON
+}
+
+/**
+ * True when two angles describe the same direction, modulo a full turn.
+ *
+ * @param a - first angle, radians.
+ * @param b - second angle, radians.
+ */
+function sameAngle(a: number, b: number): boolean {
+  const turn = Math.PI * 2
+  const diff = wrapAngle2Pi(a - b)
+  return diff <= GEOM_EPSILON || turn - diff <= GEOM_EPSILON
+}
+
+/**
+ * The shortest signed rotation from one angle to another, in `(-π, π]`.
+ *
+ * @param from - source angle, radians.
+ * @param to - target angle, radians.
+ */
+function signedAngleDelta(from: number, to: number): number {
+  const turn = Math.PI * 2
+  let delta = (to - from) % turn
+  if (delta > Math.PI) delta -= turn
+  if (delta <= -Math.PI) delta += turn
+  return delta
+}
+
+/**
+ * The ACI index an entity currently resolves to, for `setColor`'s no-op test.
+ *
+ * The model records an entity's colour after layer resolution, so an explicit
+ * ACI equal to the layer colour is invisible in a write; treating that as a
+ * no-op keeps the operation and the verification counter consistent.
+ *
+ * @param entity - source entity.
+ * @returns the resolved ACI index, or `undefined` for a true-colour entity.
+ */
+function resolvedAciColorOf(entity: AcDbEntity): number | undefined {
+  try {
+    const resolved = entity.resolvedColor
+    const index = resolved?.colorIndex
+    if (typeof index === 'number') return index
+  } catch {
+    // An unattached entity cannot resolve; fall back to its stored colour.
+  }
+  const stored = entity.color
+  const index = stored?.colorIndex
+  return typeof index === 'number' ? index : undefined
 }
 
 /**
