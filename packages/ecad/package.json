@@ -1,0 +1,43 @@
+{
+  "name": "@aryacode/dsh-engineering-ecad",
+  "version": "0.1.0",
+  "description": "ECAD drawings for the AryaCode engineering bundle: read, review, cross-reference and draft DXF prints, with a verification gate on every written file.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./skill": {
+      "types": "./lib/skill.d.ts",
+      "default": "./lib/skill.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "files": [
+    "SKILL.md",
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@mlightcad/data-model": "1.15.21"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "typescript": "^6.0.3"
+  },
+  "license": "MIT",
+  "dsh": {
+    "component": true
+  },
+  "private": true
+}

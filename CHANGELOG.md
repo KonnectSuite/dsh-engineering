@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **ECAD (DXF) groundwork — feasibility measured on the owner's real print set.** The 34-sheet DXF
+  corpus parses with `@mlightcad/data-model@1.15.21` (MIT) and round-trips with **no** model
+  difference on any sheet (entities, types, text/layer values, block names, layers and block-attribute
+  values), at 693 ms to parse and 554 ms to write the whole set; rename, move, new text on a new layer,
+  `WD_M` attribute edit, block insert and erase all survive a write/re-read with the intended changes
+  only. `docs/port/ecad.md` records the measurements and what the corpus is (AutoCAD Electrical IEC
+  drawings, exploded symbols, `TITLE_BLOCK` text, an index sheet). The component itself, its tools and
+  the panel are not in this change yet.
 - **The default-on surface has a budget, and a new component ships off until it is raised.** `components.json`
   records the tools and the characters of model-visible schema a fresh install may mount
   (`contextBudget`), measured from the generated reference: 142 tools and 115,116 characters of the 133
