@@ -272,7 +272,7 @@ keep apply as a **new verified file** (DXF or DWG, never overwrite), plus writte
 a clean drawing page, SVG/PNG export, layout tabs and zoom extents. With writes off, selection,
 navigation, print/export remain and every write control (including the colour control) is absent.
 
-Verification: 394 bundle tests (38 new client tests for the CAD helpers, command state machine, snaps,
+Verification: 397 bundle tests (38 new client tests for the CAD helpers, command state machine, snaps,
 export and face registrations), typecheck clean, and a committed headless interaction harness
 (`packages/ecad/test/client/screenshot-harness.mjs`) driving real Chrome input against the committed
 face bundle and a fake bridge: 23 screenshots (light/dark, right-drag pan with menu suppression,

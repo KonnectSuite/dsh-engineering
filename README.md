@@ -181,7 +181,7 @@ Where each surface actually stands, based on what has been exercised.
   write control disappears. Verified by 38 new client tests and a 23-shot headless interaction
   harness (right-drag pan, marquee, multi-select, context menu, grips/setter previews, intersection
   snap, layer/colour staging, apply with verification 4/4, print, read-only, 10k-primitive sheet),
-  inside a 394-test bundle suite.
+  inside a 397-test bundle suite.
 - ECAD conversation intelligence: every `ecad_*` tool renders as a themed card instead of the generic
   row — open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
   and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
