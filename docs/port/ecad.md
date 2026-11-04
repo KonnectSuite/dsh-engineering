@@ -159,6 +159,15 @@ artifact's freshness; `packages/ecad/test/client/{scene,artifacts}.spec.mjs` cov
 artifact helpers. The in-app Shell mount and a real DWG in the panel were then verified in the Dev
 AryaCode pass below.
 
+**Post-release fix found on the real set.** A user screenshot of the installed 0.86.0 panel showed short
+electrical fragments in the bottom-left corner of the sheet. Reproduced on `FC1000495-025`: the block
+flattener transformed circles, arcs, text, polylines and hatches, but `LINE` was emitted from its raw
+block-local start/end points, so every block's line segments piled up at the block origin while the other
+primitives stayed at the insert. The line case now applies the insert transform like the rest; a synthetic
+block fixture carries a line and asserts its world coordinates. Re-rendering the real sheet puts the
+contacts, coils and terminal bars back in place and removes the corner cluster. The fix is in
+`[Unreleased]`; the published 0.86.0 artifact is unchanged until a 0.86.1 batch is approved.
+
 ## M4 — in-panel editing
 
 The drawing body edits when the row's `writes` switch is on, and is honestly read-only when it is not:

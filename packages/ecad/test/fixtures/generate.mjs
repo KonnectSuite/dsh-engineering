@@ -200,6 +200,9 @@ function wdM(db) {
   box.addVertexAt(3, new AcGePoint2d(0, 1), 0)
   box.closed = true
   symbol.appendEntity(box)
+  // A line inside the block proves flattened linework is transformed into world
+  // coordinates like every other primitive.
+  symbol.appendEntity(new AcDbLine(new AcGePoint3d(0.5, 0.5, 0), new AcGePoint3d(0.5, 1.5, 0)))
   text(symbol, 'M', 0.2, 0.2, 0.2)
   attdef(symbol, 'TAG', 'M1', new AcGePoint3d(0.2, 1.2, 0), 0.15)
   const insert = new AcDbBlockReference('MOTOR')

@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **Flattened block linework now lands where the insert puts it.** The block flattener applied the insert
+  transform to every primitive except `LINE`, so block line segments were written at block-local
+  coordinates. On the real print set that piled stray geometry into the bottom-left corner of nearly
+  every sheet — the panel showed short electrical fragments at the origin while circles, arcs and text
+  were in place. `LINE` now goes through the same `applyPoint(xf, …)` path as the other primitives, a
+  synthetic fixture block carries a line and asserts its world coordinates, and sheet
+  `FC1000495-025` re-renders with its contacts, coils and terminal bars complete and no corner cluster.
+  This is unreleased: 0.86.0 is unchanged on the registry and the fix needs a 0.86.1 batch.
 - **The synthetic ECAD index fixture no longer carries a customer drawing number.** Its title-block
   filename cell read `FC1000495-001`; it now reads `SYNTH-001`. The committed DXFs are generated
   synthetic drawings and were always described as such, but a generated fixture should not quote a real

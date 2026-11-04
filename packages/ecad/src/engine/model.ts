@@ -264,7 +264,10 @@ class Converter {
     switch (type) {
       case 'LINE': {
         const line = entity as unknown as { startPoint: Vec3; endPoint: Vec3 }
-        this.push({ ...base, k: 'line', pts: [toPoint(line.startPoint), toPoint(line.endPoint)] })
+        // A block's line must go through the same transform as its circles and
+        // text; reading the raw points put every flattened block line at the
+        // block-local origin, which drew stray geometry in the sheet corner.
+        this.push({ ...base, k: 'line', pts: [applyPoint(xf, line.startPoint), applyPoint(xf, line.endPoint)] })
         return
       }
       case 'LWPOLYLINE': {
@@ -844,15 +847,6 @@ function rotateAngle(xf: Xform, angle: number): number {
 function angleOf(vector: Vec3 | undefined): number {
   if (!vector) return 0
   return Math.atan2(numberOr(vector.y, 0), numberOr(vector.x, 0))
-}
-
-/**
- * Convert a data-model point to the JSON tuple.
- *
- * @param point - data-model point.
- */
-function toPoint(point: Vec3 | undefined): EcadPoint {
-  return [numberOr(point?.x, 0), numberOr(point?.y, 0)]
 }
 
 /**

@@ -39,7 +39,7 @@ test('layers resolve their ACI colours and block definitions are summarised', as
   assert.equal(byName.get('TITLE_BLOCK').color, 7)
   assert.equal(byName.get('0').visible, true)
   const blocks = new Map(model.blocks.map(block => [block.name, block]))
-  assert.equal(blocks.get('MOTOR').entities, 3)
+  assert.equal(blocks.get('MOTOR').entities, 4)
   assert.equal(blocks.get('WD_M').entities, 10)
   assert.equal(blocks.get('MOTOR').external, false)
 })
@@ -63,6 +63,14 @@ test('block references flatten into world coordinates and record the owner', asy
   const tag = children.find(entity => entity.k === 'text' && entity.t === 'M7')
   ok(tag, 'the attribute value is flattened as text')
   ok(tag.t === 'M7')
+  // The block's own line must be transformed with the insert too: reading the raw
+  // line points put it (and every other block line) at the block-local origin.
+  const lead = children.find(entity => entity.k === 'line')
+  ok(lead, 'the block line is flattened')
+  for (const point of lead.pts) {
+    ok(point[0] >= 21.4 && point[0] <= 23, `line x ${point[0]} is not in world coordinates`)
+    ok(point[1] >= 3.9 && point[1] <= 5.7, `line y ${point[1]} is not in world coordinates`)
+  }
   // ATTDEF prompts are definitions, not geometry: they never appear.
   assert.equal(entities.filter(entity => entity.t === 'TAG').length, 0)
 })
