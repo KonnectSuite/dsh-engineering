@@ -29,7 +29,7 @@ __export(index_exports, {
   inject: () => inject
 });
 module.exports = __toCommonJS(index_exports);
-var import_react3 = require("react");
+var import_react4 = require("react");
 
 // src/remote/ecad-contract.js
 var ECAD_PACKAGE = "@aryacode/dsh-engineering";
@@ -2140,8 +2140,8 @@ function EcadBody(props) {
     setTool((current) => current === "text" ? void 0 : "text");
     setPlacement(void 0);
   }, [editing]);
-  const changePlacement = (0, import_react2.useCallback)((field, value) => {
-    setPlacement((current) => current === void 0 ? current : { ...current, [field]: value });
+  const changePlacement = (0, import_react2.useCallback)((field2, value) => {
+    setPlacement((current) => current === void 0 ? current : { ...current, [field2]: value });
   }, []);
   const cancelPlacement = (0, import_react2.useCallback)(() => {
     setPlacement(void 0);
@@ -2650,6 +2650,824 @@ function pathOf2(address) {
   return parseFileAddress(address)?.path ?? address;
 }
 
+// packages/ecad/src/client/EcadCards.tsx
+var import_react3 = require("react");
+
+// packages/ecad/src/client/toolCards.ts
+var ECAD_TOOL_NAMES = [
+  "ecad_capabilities",
+  "ecad_profile",
+  "ecad_scan",
+  "ecad_open",
+  "ecad_overview",
+  "ecad_find",
+  "ecad_cross_reference",
+  "ecad_checks",
+  "ecad_render",
+  "ecad_compare",
+  "ecad_draft_ops",
+  "ecad_draft_apply",
+  "ecad_draft_discard",
+  "ecad_verify",
+  "ecad_document",
+  "ecad_backup"
+];
+var LIMIT = 8;
+var TEXT_LIMIT = 400;
+function recordOf(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+}
+function textOf(value) {
+  return typeof value === "string" && value.trim() !== "" ? value : void 0;
+}
+function numberOf(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : void 0;
+}
+function arrayOf(value) {
+  return Array.isArray(value) ? value : void 0;
+}
+function stringsOf(value) {
+  return (arrayOf(value) ?? []).filter((entry) => typeof entry === "string" && entry.trim() !== "");
+}
+function countSum(value) {
+  const record = recordOf(value);
+  if (record === void 0) return void 0;
+  let total = 0;
+  for (const entry of Object.values(record)) {
+    const count = numberOf(entry);
+    if (count === void 0) continue;
+    total += count;
+  }
+  return total;
+}
+function bounded(text) {
+  const trimmed = text.trim();
+  return trimmed.length > TEXT_LIMIT ? `${trimmed.slice(0, TEXT_LIMIT - 1)}\u2026` : trimmed;
+}
+function textOfContent(content) {
+  return (content ?? []).flatMap((block) => (block.type === void 0 || block.type === "text") && typeof block.text === "string" ? [block.text] : []).join("\n").trim();
+}
+function formatOf(data, path) {
+  const named = textOf(data.format) ?? textOf(data.outputFormat) ?? textOf(data.sourceFormat);
+  if (named === "dwg") return "dwg";
+  if (named === "dxf") return "dxf";
+  return path !== void 0 && path.toLowerCase().endsWith(".dwg") ? "dwg" : "dxf";
+}
+function errorOf(record) {
+  const error = recordOf(record.error);
+  if (error === void 0) return void 0;
+  const code = textOf(error.code);
+  const message = textOf(error.message);
+  if (code === void 0 && message === void 0) return void 0;
+  const fix = textOf(error.fix);
+  return {
+    code: code ?? "ECAD_TOOL_ERROR",
+    message: message ?? "",
+    ...fix === void 0 ? {} : { fix },
+    candidates: stringsOf(error.candidates)
+  };
+}
+function plainCard(summary, text, error) {
+  return {
+    kind: "generic",
+    summary: bounded(summary),
+    text: bounded(text),
+    fields: [],
+    ...error === void 0 ? {} : { error }
+  };
+}
+function scalarFields(data, names) {
+  const fields = [];
+  for (const name of names) {
+    const value = data[name];
+    const text = typeof value === "string" ? textOf(value) : typeof value === "number" && Number.isFinite(value) ? String(value) : typeof value === "boolean" ? String(value) : void 0;
+    if (text === void 0) continue;
+    fields.push({ name, value: bounded(text) });
+    if (fields.length >= LIMIT) break;
+  }
+  return fields;
+}
+function openCardOf(data, summary) {
+  if (textOf(data.path) === void 0 && textOf(data.modelPath) === void 0 && numberOf(data.entities) === void 0) return void 0;
+  const path = textOf(data.path) ?? textOf(data.requestedPath);
+  const converted = recordOf(data.converted);
+  const titleBlock = recordOf(data.titleBlock);
+  const titleFields = titleBlock === void 0 ? void 0 : recordOf(titleBlock.fields);
+  return {
+    kind: "open",
+    summary,
+    ...path === void 0 ? {} : { path },
+    ...textOf(data.requestedPath) === void 0 ? {} : { requestedPath: textOf(data.requestedPath) },
+    format: formatOf(data, path),
+    converted: converted !== void 0,
+    dwgWarnings: converted === void 0 ? 0 : stringsOf(converted.warnings).length,
+    ...numberOf(data.entities) === void 0 ? {} : { entities: numberOf(data.entities) },
+    ...arrayOf(data.layouts) === void 0 ? {} : { layouts: arrayOf(data.layouts).length },
+    ...numberOf(data.unsupportedTotal) === void 0 ? {} : { unsupported: numberOf(data.unsupportedTotal) },
+    ...numberOf(data.approximate) === void 0 ? {} : { approximate: numberOf(data.approximate) },
+    truncated: data.truncated === true,
+    titleBlock: titleFields !== void 0 && Object.keys(titleFields).length > 0,
+    ...textOf(data.modelPath) === void 0 ? {} : { modelPath: textOf(data.modelPath) }
+  };
+}
+function scanCardOf(data, summary) {
+  if (textOf(data.indexPath) === void 0 && numberOf(data.sheets) === void 0) return void 0;
+  const formats = recordOf(data.formats);
+  const sets = recordOf(data.sets);
+  const skipped = arrayOf(data.skipped);
+  return {
+    kind: "scan",
+    summary,
+    ...textOf(data.indexPath) === void 0 ? {} : { indexPath: textOf(data.indexPath) },
+    ...numberOf(data.sheets) === void 0 ? {} : { sheets: numberOf(data.sheets) },
+    ...sets === void 0 ? {} : { sets: Object.keys(sets).length },
+    formats: {
+      dxf: formats === void 0 ? 0 : numberOf(formats.dxf) ?? 0,
+      dwg: formats === void 0 ? 0 : numberOf(formats.dwg) ?? 0
+    },
+    ...numberOf(data.unsupported) === void 0 ? {} : { unsupported: numberOf(data.unsupported) },
+    skipped: skipped === void 0 ? 0 : skipped.length,
+    truncated: data.truncated === true
+  };
+}
+function checksCardOf(data, summary) {
+  const findings = arrayOf(data.findings);
+  if (findings === void 0) return void 0;
+  const rows = [];
+  let critical = 0;
+  let warning = 0;
+  let info = 0;
+  for (const entry of findings) {
+    const finding = recordOf(entry);
+    if (finding === void 0) continue;
+    const severity = textOf(finding.severity) === "critical" ? "critical" : textOf(finding.severity) === "warning" ? "warning" : "info";
+    if (severity === "critical") critical += 1;
+    else if (severity === "warning") warning += 1;
+    else info += 1;
+    if (rows.length < LIMIT) {
+      rows.push({
+        rule: textOf(finding.rule) ?? "ECAD",
+        severity,
+        message: textOf(finding.message) ?? "",
+        ...textOf(finding.sheet) === void 0 ? {} : { sheet: textOf(finding.sheet) }
+      });
+    }
+  }
+  return {
+    kind: "checks",
+    summary,
+    total: findings.length,
+    critical,
+    warning,
+    info,
+    findings: rows,
+    ...textOf(data.scope) === void 0 ? {} : { scope: textOf(data.scope) }
+  };
+}
+function crossReferenceCardOf(data, summary) {
+  const rows = arrayOf(data.rows);
+  if (rows === void 0) return void 0;
+  const totals = recordOf(data.totals);
+  const byStatus = totals === void 0 ? void 0 : recordOf(totals.byStatus);
+  const countStatus = (status) => {
+    if (byStatus === void 0) return 0;
+    let total = 0;
+    for (const [key, value] of Object.entries(byStatus)) {
+      if (!key.endsWith(`:${status}`)) continue;
+      const count = numberOf(value);
+      if (count !== void 0) total += count;
+    }
+    return total;
+  };
+  const candidates = [];
+  for (const entry of rows) {
+    const row = recordOf(entry);
+    if (row === void 0) continue;
+    const value = textOf(row.value);
+    if (value === void 0) continue;
+    if (candidates.length >= LIMIT) break;
+    candidates.push({
+      value,
+      kind: textOf(row.kind) ?? "candidate",
+      status: textOf(row.status) ?? "ok",
+      confidence: numberOf(row.confidence) ?? 0,
+      occurrences: numberOf(row.occurrences) ?? 1,
+      ...textOf(row.note) === void 0 ? {} : { note: textOf(row.note) }
+    });
+  }
+  return {
+    kind: "crossReference",
+    summary,
+    ...numberOf(data.sheets) === void 0 ? {} : { sheets: numberOf(data.sheets) },
+    total: rows.length,
+    rows: candidates,
+    duplicate: countStatus("duplicate"),
+    unresolved: countStatus("unresolved"),
+    oneSided: countStatus("one-sided")
+  };
+}
+function renderCardOf(data, summary) {
+  if (textOf(data.svgPath) === void 0) return void 0;
+  return {
+    kind: "render",
+    summary,
+    ...textOf(data.path) === void 0 ? {} : { path: textOf(data.path) },
+    ...textOf(data.layout) === void 0 ? {} : { layout: textOf(data.layout) },
+    ...textOf(data.svgPath) === void 0 ? {} : { svgPath: textOf(data.svgPath) },
+    ...numberOf(data.characters) === void 0 ? {} : { characters: numberOf(data.characters) },
+    ...numberOf(data.entities) === void 0 ? {} : { entities: numberOf(data.entities) },
+    supported: numberOf(data.drawn) ?? 0,
+    ...numberOf(data.unsupported) === void 0 ? {} : { unsupported: numberOf(data.unsupported) },
+    ...numberOf(data.approximate) === void 0 ? {} : { approximate: numberOf(data.approximate) },
+    truncated: data.truncated === true
+  };
+}
+function roundTripOf(value) {
+  const record = recordOf(value);
+  if (record === void 0) return void 0;
+  return {
+    ok: record.ok === true,
+    added: numberOf(record.added) ?? 0,
+    removed: numberOf(record.removed) ?? 0,
+    changed: numberOf(record.changed) ?? 0,
+    ...numberOf(record.hardChanges) === void 0 ? {} : { hardChanges: numberOf(record.hardChanges) },
+    ...numberOf(record.metadataChanges) === void 0 ? {} : { metadataChanges: numberOf(record.metadataChanges) },
+    warnings: stringsOf(record.warnings).length
+  };
+}
+function applyCardOf(data, summary) {
+  const outputPath = textOf(data.outputPath);
+  if (outputPath === void 0) return void 0;
+  const verification = recordOf(data.verification);
+  const touched = numberOf(data.touched);
+  return {
+    kind: "apply",
+    summary,
+    ...textOf(data.sourcePath) === void 0 ? {} : { sourcePath: textOf(data.sourcePath) },
+    outputPath,
+    format: formatOf(data, outputPath),
+    changes: countSum(data.changes) ?? 0,
+    ...touched === void 0 ? {} : { touched },
+    verificationOk: verification !== void 0 && verification.ok === true,
+    problems: verification === void 0 ? [] : stringsOf(verification.problems).slice(0, 4),
+    notes: verification === void 0 ? 0 : stringsOf(verification.notes).length,
+    ...roundTripOf(data.dwgRoundTrip) === void 0 ? {} : { roundTrip: roundTripOf(data.dwgRoundTrip) }
+  };
+}
+function fieldsOf(toolName, data) {
+  switch (toolName) {
+    case "ecad_compare": {
+      const paths = [];
+      for (const side of ["a", "b"]) {
+        const path = textOf(recordOf(data[side])?.path);
+        if (path !== void 0) paths.push({ name: side, value: path });
+      }
+      return [...paths, ...scalarFields(data, ["added", "removed", "changed", "truncated"])].slice(0, LIMIT);
+    }
+    case "ecad_verify":
+      return scalarFields(data, ["outputPath", "draftId", "mode", "outputChanged"]);
+    case "ecad_capabilities":
+      return scalarFields(data, ["engine", "writes", "profileSource", "maxFileBytes"]);
+    case "ecad_profile":
+      return scalarFields(data, ["path", "source", "sheets"]);
+    case "ecad_overview":
+      return scalarFields(data, ["sheets", "source", "truncated"]);
+    case "ecad_find":
+      return scalarFields(data, ["rows", "sheets", "truncated"]);
+    case "ecad_draft_ops":
+      return scalarFields(data, ["draftId", "ops", "path", "baseVersion"]);
+    case "ecad_document":
+      return scalarFields(data, ["outputPath", "files", "format"]);
+    case "ecad_backup":
+      return scalarFields(data, ["outputPath", "files", "format"]);
+    default:
+      return scalarFields(data, ["path", "outputPath", "sheets", "rows", "drafts", "format", "writes"]);
+  }
+}
+function cardOfValue(toolName, value, text, isError = false) {
+  const record = recordOf(value);
+  if (record === void 0) {
+    return plainCard(text, text, isError ? { code: "ECAD_TOOL_ERROR", message: "", candidates: [] } : void 0);
+  }
+  const error = errorOf(record);
+  if (error !== void 0) return plainCard(error.message === "" ? error.code : error.message, text, error);
+  if (isError) return plainCard(text, text, { code: "ECAD_TOOL_ERROR", message: textOf(record.summary) ?? "", candidates: [] });
+  const summary = textOf(record.summary) ?? bounded(text);
+  const data = recordOf(record.data);
+  if (data === void 0) return plainCard(summary, text);
+  switch (toolName) {
+    case "ecad_open": {
+      const card = openCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    case "ecad_scan": {
+      const card = scanCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    case "ecad_checks": {
+      const card = checksCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    case "ecad_cross_reference": {
+      const card = crossReferenceCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    case "ecad_render": {
+      const card = renderCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    case "ecad_draft_apply": {
+      const card = applyCardOf(data, summary);
+      if (card !== void 0) return card;
+      break;
+    }
+    default:
+      return {
+        kind: "generic",
+        summary,
+        text: bounded(text),
+        fields: fieldsOf(toolName, data)
+      };
+  }
+  return plainCard(summary, text);
+}
+function cardOfContent(toolName, content, isError = false) {
+  const text = textOfContent(content);
+  if (text === "") {
+    return plainCard("", "", isError ? { code: "ECAD_TOOL_ERROR", message: "", candidates: [] } : void 0);
+  }
+  let value;
+  try {
+    value = JSON.parse(text);
+  } catch {
+    return plainCard(firstLine(text), text, isError ? { code: "ECAD_TOOL_ERROR", message: "", candidates: [] } : void 0);
+  }
+  return cardOfValue(toolName, value, text, isError);
+}
+function firstLine(text) {
+  const line = text.split("\n").find((entry) => entry.trim() !== "");
+  return line === void 0 ? "" : bounded(line);
+}
+function sheetSetOf(sheetsValue, capabilitiesValue) {
+  const sheets = recordOf(sheetsValue);
+  const rows = sheets === void 0 ? void 0 : arrayOf(sheets.sheets);
+  if (rows === void 0) return void 0;
+  let dwg = 0;
+  for (const entry of rows) {
+    const row = recordOf(entry);
+    if (row === void 0) continue;
+    const path = textOf(row.path);
+    if (textOf(row.format) === "dwg" || path !== void 0 && path.toLowerCase().endsWith(".dwg")) dwg += 1;
+  }
+  const capabilities = recordOf(capabilitiesValue);
+  const profileSource = capabilities === void 0 ? void 0 : textOf(capabilities.profileSource);
+  return {
+    drawings: rows.length,
+    dwg,
+    truncated: sheets?.truncated === true,
+    ...capabilities === void 0 ? {} : { writes: capabilities.writes === true },
+    ...profileSource === void 0 ? {} : { profileConfirmed: profileSource === "workspace" }
+  };
+}
+function sheetSetVisible(set) {
+  return set !== void 0 && set.drawings > 0;
+}
+
+var css2 = "/* The ECAD conversation surfaces: tool-result cards and the composer dock chip.\n *\n * These sit inside the transcript and the composer, so they follow the host's\n * own card and chip conventions (the schedule card beside them): one bordered\n * surface, 13/20 title, 10/16 tertiary detail, and the alias tokens for every\n * colour, radius, depth and focus ring. Nothing here is a new palette.\n */\n\n._tz6yGZ_card {\n  box-sizing: border-box;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  width: 100%;\n  padding: 8px 10px;\n  overflow: hidden;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n}\n\n._tz6yGZ_cardRunning {\n  gap: 2px;\n}\n\n._tz6yGZ_header {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n._tz6yGZ_icon {\n  display: grid;\n  flex: none;\n  place-items: center;\n  width: 20px;\n  height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_titleWrap {\n  display: flex;\n  flex: 1 1 auto;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n}\n\n._tz6yGZ_title {\n  overflow: hidden;\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_summary {\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_badges {\n  display: inline-flex;\n  flex: none;\n  flex-wrap: wrap;\n  gap: 4px;\n  justify-content: flex-end;\n  max-width: 60%;\n}\n\n._tz6yGZ_badge {\n  display: inline-flex;\n  align-items: center;\n  box-sizing: border-box;\n  padding: 0 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n  line-height: 16px;\n  white-space: nowrap;\n}\n\n._tz6yGZ_badge_warn {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label, var(--dsw-alias-state-warn-primary));\n}\n\n._tz6yGZ_badge_error {\n  border-color: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_badge_success {\n  border-color: var(--dsw-alias-state-success-primary);\n  color: var(--dsw-alias-state-success-primary);\n}\n\n._tz6yGZ_badge_business {\n  border-color: var(--dsw-alias-state-business-primary);\n  color: var(--dsw-alias-state-business-primary);\n}\n\n._tz6yGZ_body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n  padding-left: 28px;\n}\n\n._tz6yGZ_field {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_fieldWide {\n  flex-direction: column;\n  gap: 0;\n  align-items: stretch;\n}\n\n._tz6yGZ_fieldLabel {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_fieldValue {\n  overflow: hidden;\n  min-width: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 18px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_fieldWide ._tz6yGZ_fieldValue {\n  white-space: normal;\n  word-break: break-all;\n}\n\n._tz6yGZ_fieldValueMono {\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10.5px;\n}\n\n/* Findings and candidates keep one list row per volume; the card never grows\n   into the transcript's own scroll region. */\n\n._tz6yGZ_finding {\n  display: flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_severity {\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 4px;\n  border-radius: var(--dsw-radius-xs);\n  font-size: 9.5px;\n  line-height: 15px;\n  text-transform: uppercase;\n}\n\n._tz6yGZ_severity_critical {\n  background: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-bg-layer-1);\n}\n\n._tz6yGZ_severity_warning {\n  background: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-bg-layer-1);\n}\n\n._tz6yGZ_severity_info {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_findingRule {\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n}\n\n._tz6yGZ_findingText {\n  overflow: hidden;\n  min-width: 0;\n  color: var(--dsw-alias-label-primary);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_findingSheet {\n  flex: none;\n  overflow: hidden;\n  max-width: 34%;\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 9.5px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_candidate {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_candidateValue {\n  flex: none;\n  color: var(--dsw-alias-label-primary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10.5px;\n}\n\n._tz6yGZ_candidateKind,\n._tz6yGZ_candidateMeta {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n}\n\n._tz6yGZ_candidateStatus {\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 4px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 9.5px;\n  line-height: 15px;\n}\n\n._tz6yGZ_status_duplicate,\n._tz6yGZ_status_oneSided {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label, var(--dsw-alias-state-warn-primary));\n}\n\n._tz6yGZ_status_unresolved {\n  border-color: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_candidateNote {\n  flex-basis: 100%;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_more,\n._tz6yGZ_scope,\n._tz6yGZ_problem,\n._tz6yGZ_hint,\n._tz6yGZ_runningLabel {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_problem {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_scope {\n  border-top: 0.5px solid var(--dsw-alias-border-l3);\n  margin-top: 2px;\n  padding-top: 4px;\n}\n\n/* The error envelope keeps the code, message and fix readable in one block. */\n\n._tz6yGZ_errorBlock {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 6px 8px;\n  border: 0.5px solid var(--dsw-alias-state-error-primary);\n  border-radius: var(--dsw-radius-xs);\n  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, transparent);\n}\n\n._tz6yGZ_errorHead {\n  display: flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n}\n\n._tz6yGZ_errorCode {\n  flex: none;\n  color: var(--dsw-alias-state-error-primary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n}\n\n._tz6yGZ_errorText {\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_errorFix {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_candidateList {\n  margin: 0;\n  padding-left: 16px;\n  color: var(--dsw-alias-label-secondary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_actionRow {\n  display: flex;\n  align-items: center;\n  min-height: 24px;\n  padding-top: 2px;\n}\n\n._tz6yGZ_openButton {\n  box-sizing: border-box;\n  min-height: 24px;\n  padding: 2px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n  line-height: 18px;\n  cursor: pointer;\n}\n\n._tz6yGZ_openButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n._tz6yGZ_openButton:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n._tz6yGZ_openButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._tz6yGZ_fallback {\n  margin: 0;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n  line-height: 16px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n/* The composer dock chip: one quiet status line, never a control. */\n\n._tz6yGZ_dockRow {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 6px;\n  box-sizing: border-box;\n  min-width: 0;\n  padding: 0 2px 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_dockIcon {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_dockChip {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  white-space: nowrap;\n}\n\n._tz6yGZ_dockChipStrong {\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-variant-numeric: tabular-nums;\n  white-space: nowrap;\n}\n\n._tz6yGZ_dockSep {\n  color: var(--dsw-alias-label-tertiary);\n  opacity: 0.6;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._tz6yGZ_openButton {\n    transition: none;\n  }\n}\n";
+var tagId2 = "@aryacode/dsh-engineering-ecad/EcadCards.module.css";
+if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId2) + "]") === null) {
+  const tag = document.createElement("style");
+  tag.dataset.plugin = "@aryacode/dsh-engineering-ecad";
+  tag.dataset.pluginCss = tagId2;
+  tag.textContent = css2;
+  document.head.appendChild(tag);
+}
+var classes2 = {
+  "card": "_tz6yGZ_card",
+  "cardRunning": "_tz6yGZ_cardRunning",
+  "header": "_tz6yGZ_header",
+  "icon": "_tz6yGZ_icon",
+  "titleWrap": "_tz6yGZ_titleWrap",
+  "title": "_tz6yGZ_title",
+  "summary": "_tz6yGZ_summary",
+  "badges": "_tz6yGZ_badges",
+  "badge": "_tz6yGZ_badge",
+  "badge_warn": "_tz6yGZ_badge_warn",
+  "badge_error": "_tz6yGZ_badge_error",
+  "badge_success": "_tz6yGZ_badge_success",
+  "badge_business": "_tz6yGZ_badge_business",
+  "body": "_tz6yGZ_body",
+  "field": "_tz6yGZ_field",
+  "fieldWide": "_tz6yGZ_fieldWide",
+  "fieldLabel": "_tz6yGZ_fieldLabel",
+  "fieldValue": "_tz6yGZ_fieldValue",
+  "fieldValueMono": "_tz6yGZ_fieldValueMono",
+  "finding": "_tz6yGZ_finding",
+  "severity": "_tz6yGZ_severity",
+  "severity_critical": "_tz6yGZ_severity_critical",
+  "severity_warning": "_tz6yGZ_severity_warning",
+  "severity_info": "_tz6yGZ_severity_info",
+  "findingRule": "_tz6yGZ_findingRule",
+  "findingText": "_tz6yGZ_findingText",
+  "findingSheet": "_tz6yGZ_findingSheet",
+  "candidate": "_tz6yGZ_candidate",
+  "candidateValue": "_tz6yGZ_candidateValue",
+  "candidateKind": "_tz6yGZ_candidateKind",
+  "candidateMeta": "_tz6yGZ_candidateMeta",
+  "candidateStatus": "_tz6yGZ_candidateStatus",
+  "status_duplicate": "_tz6yGZ_status_duplicate",
+  "status_oneSided": "_tz6yGZ_status_oneSided",
+  "status_unresolved": "_tz6yGZ_status_unresolved",
+  "candidateNote": "_tz6yGZ_candidateNote",
+  "more": "_tz6yGZ_more",
+  "scope": "_tz6yGZ_scope",
+  "problem": "_tz6yGZ_problem",
+  "hint": "_tz6yGZ_hint",
+  "runningLabel": "_tz6yGZ_runningLabel",
+  "errorBlock": "_tz6yGZ_errorBlock",
+  "errorHead": "_tz6yGZ_errorHead",
+  "errorCode": "_tz6yGZ_errorCode",
+  "errorText": "_tz6yGZ_errorText",
+  "errorFix": "_tz6yGZ_errorFix",
+  "candidateList": "_tz6yGZ_candidateList",
+  "actionRow": "_tz6yGZ_actionRow",
+  "openButton": "_tz6yGZ_openButton",
+  "fallback": "_tz6yGZ_fallback",
+  "dockRow": "_tz6yGZ_dockRow",
+  "dockIcon": "_tz6yGZ_dockIcon",
+  "dockChip": "_tz6yGZ_dockChip",
+  "dockChipStrong": "_tz6yGZ_dockChipStrong",
+  "dockSep": "_tz6yGZ_dockSep"
+};
+var EcadCards_default = classes2;
+
+// packages/ecad/src/client/EcadCards.tsx
+function recordOf2(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : void 0;
+}
+function contentOf(block) {
+  const content = recordOf2(block)?.content;
+  return Array.isArray(content) ? content : void 0;
+}
+function DrawingIcon() {
+  return (0, import_react3.createElement)(
+    "svg",
+    { viewBox: "0 0 16 16", width: 14, height: 14, "aria-hidden": "true", focusable: "false" },
+    (0, import_react3.createElement)("path", {
+      d: "M3.5 2h6l3 3v9h-9z",
+      fill: "none",
+      stroke: "currentColor",
+      strokeWidth: 1.2,
+      strokeLinejoin: "round"
+    }),
+    (0, import_react3.createElement)("path", { d: "M6 6.5h4M6 8.5h4M6 10.5h2.5", stroke: "currentColor", strokeWidth: 1, strokeLinecap: "round" })
+  );
+}
+var TONE_CLASS = {
+  warn: EcadCards_default.badge_warn,
+  error: EcadCards_default.badge_error,
+  success: EcadCards_default.badge_success,
+  business: EcadCards_default.badge_business
+};
+function badge(t, text, tone) {
+  const toneClass = tone === void 0 ? "" : ` ${TONE_CLASS[tone] ?? ""}`;
+  return (0, import_react3.createElement)("span", { className: `${EcadCards_default.badge}${toneClass}` }, text);
+}
+function field(label, value, options) {
+  const valueClass = options?.mono === true ? ` ${EcadCards_default.fieldValueMono}` : "";
+  const classes3 = options?.wide === true ? `${EcadCards_default.field} ${EcadCards_default.fieldWide}` : EcadCards_default.field;
+  return (0, import_react3.createElement)(
+    "div",
+    { className: classes3 },
+    (0, import_react3.createElement)("span", { className: EcadCards_default.fieldLabel }, label),
+    (0, import_react3.createElement)("span", { className: `${EcadCards_default.fieldValue}${valueClass}`, title: value }, value)
+  );
+}
+function header(title, summary, badges) {
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.header },
+    (0, import_react3.createElement)("span", { className: EcadCards_default.icon }, (0, import_react3.createElement)(DrawingIcon, {})),
+    (0, import_react3.createElement)(
+      "span",
+      { className: EcadCards_default.titleWrap },
+      (0, import_react3.createElement)("span", { className: EcadCards_default.title }, title),
+      summary === "" ? null : (0, import_react3.createElement)("span", { className: EcadCards_default.summary, title: summary }, summary)
+    ),
+    badges.length === 0 ? null : (0, import_react3.createElement)("span", { className: EcadCards_default.badges }, ...badges)
+  );
+}
+function body(children) {
+  return (0, import_react3.createElement)("div", { className: EcadCards_default.body }, ...children.filter((entry) => entry !== null));
+}
+function openAction(t, path, openFile, written = false) {
+  if (path === void 0) return null;
+  const label = written ? t("cardOpenWritten") : t("cardOpenDrawing");
+  const onOpen = openFile;
+  if (onOpen === void 0 || typeof onOpen !== "function") {
+    return (0, import_react3.createElement)("div", { className: EcadCards_default.actionRow }, (0, import_react3.createElement)("span", { className: EcadCards_default.hint }, t("cardOpenHint", { path })));
+  }
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.actionRow },
+    (0, import_react3.createElement)("button", {
+      type: "button",
+      className: EcadCards_default.openButton,
+      onClick: () => {
+        try {
+          onOpen(path);
+        } catch {
+        }
+      }
+    }, label)
+  );
+}
+function errorBlock(error, t) {
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.errorBlock, role: "alert" },
+    (0, import_react3.createElement)(
+      "div",
+      { className: EcadCards_default.errorHead },
+      (0, import_react3.createElement)("span", { className: EcadCards_default.errorCode }, error.code),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.errorText }, error.message === "" ? t("cardToolError") : error.message)
+    ),
+    error.fix === void 0 ? null : (0, import_react3.createElement)("div", { className: EcadCards_default.errorFix }, error.fix),
+    error.candidates.length === 0 ? null : (0, import_react3.createElement)("ul", { className: EcadCards_default.candidateList }, ...error.candidates.map((candidate, index) => (0, import_react3.createElement)("li", { key: `${index}-${candidate}`, className: EcadCards_default.candidateValue }, candidate)))
+  );
+}
+function severityLabel(t, severity) {
+  return severity === "critical" ? t("cardCritical") : severity === "warning" ? t("cardWarning") : t("cardInfo");
+}
+var SEVERITY_CLASS = {
+  critical: EcadCards_default.severity_critical,
+  warning: EcadCards_default.severity_warning,
+  info: EcadCards_default.severity_info
+};
+var CANDIDATE_STATUS_CLASS = {
+  ok: "",
+  duplicate: EcadCards_default.status_duplicate,
+  "one-sided": EcadCards_default.status_oneSided,
+  unresolved: EcadCards_default.status_unresolved
+};
+function checksBody(card, t) {
+  return [
+    ...card.findings.map((finding, index) => (0, import_react3.createElement)(
+      "div",
+      { key: `${index}-${finding.rule}-${finding.message}`, className: EcadCards_default.finding },
+      (0, import_react3.createElement)("span", { className: `${EcadCards_default.severity} ${SEVERITY_CLASS[finding.severity]}` }, severityLabel(t, finding.severity)),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.findingRule }, finding.rule),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.findingText, title: finding.message }, finding.message),
+      finding.sheet === void 0 ? null : (0, import_react3.createElement)("span", { className: EcadCards_default.findingSheet, title: finding.sheet }, finding.sheet)
+    )),
+    card.total > card.findings.length ? (0, import_react3.createElement)("div", { className: EcadCards_default.more }, t("cardMoreFindings", { count: card.total - card.findings.length })) : null,
+    card.scope === void 0 ? null : (0, import_react3.createElement)("div", { className: EcadCards_default.scope }, card.scope)
+  ];
+}
+function crossReferenceBody(card, t) {
+  return [
+    ...card.rows.map((row, index) => (0, import_react3.createElement)(
+      "div",
+      { key: `${index}-${row.kind}-${row.value}`, className: EcadCards_default.candidate },
+      (0, import_react3.createElement)("span", { className: EcadCards_default.candidateValue, title: row.value }, row.value),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.candidateKind }, row.kind),
+      (0, import_react3.createElement)("span", { className: `${EcadCards_default.candidateStatus} ${CANDIDATE_STATUS_CLASS[row.status] ?? ""}` }, row.status),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.candidateMeta }, `${t("cardConfidence")} ${Math.round(row.confidence * 100)}%`),
+      (0, import_react3.createElement)("span", { className: EcadCards_default.candidateMeta }, t("cardOccurrences", { count: row.occurrences })),
+      row.note === void 0 ? null : (0, import_react3.createElement)("span", { className: EcadCards_default.candidateNote }, row.note)
+    )),
+    card.total > card.rows.length ? (0, import_react3.createElement)("div", { className: EcadCards_default.more }, t("cardMoreCandidates", { count: card.total - card.rows.length })) : null
+  ];
+}
+function openCardView(card, t, openFile) {
+  const badges = [badge(t, card.format.toUpperCase(), "business")];
+  if (card.converted) badges.push(badge(t, card.dwgWarnings === 0 ? t("cardDwgConverted") : t("cardDwgWarnings", { count: card.dwgWarnings }), card.dwgWarnings === 0 ? "business" : "warn"));
+  if (card.truncated) badges.push(badge(t, t("cardTruncated"), "warn"));
+  const rows = [
+    card.path === void 0 ? null : field(t("cardDrawing"), card.path, { wide: true, mono: true }),
+    card.entities === void 0 ? null : field(t("cardEntities"), String(card.entities)),
+    card.layouts === void 0 ? null : field(t("cardLayouts"), String(card.layouts)),
+    card.unsupported === void 0 ? null : field(t("cardUnsupported"), String(card.unsupported)),
+    card.approximate === void 0 ? null : field(t("cardApproximate"), String(card.approximate)),
+    card.titleBlock ? field(t("cardTitleBlock"), t("cardTitleBlockRead")) : null,
+    openAction(t, card.path, openFile)
+  ];
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "open", "data-tool": "ecad_open" },
+    header(t("cardTitleOpen"), card.summary, badges),
+    body(rows)
+  );
+}
+function scanCardView(card, t, openFile) {
+  const badges = [];
+  if (card.truncated) badges.push(badge(t, t("cardTruncated"), "warn"));
+  const formats = t("cardFormats", { dxf: card.formats.dxf, dwg: card.formats.dwg });
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "scan", "data-tool": "ecad_scan" },
+    header(t("cardTitleScan"), card.summary, badges),
+    body([
+      card.indexPath === void 0 ? null : field(t("cardIndex"), card.indexPath, { wide: true, mono: true }),
+      card.sheets === void 0 ? null : field(t("cardSheets"), String(card.sheets)),
+      card.sets === void 0 ? null : field(t("cardSets"), String(card.sets)),
+      field(t("cardFormatsLabel"), formats),
+      card.unsupported === void 0 ? null : field(t("cardUnsupported"), String(card.unsupported)),
+      card.skipped > 0 ? field(t("cardSkipped"), String(card.skipped)) : null,
+      card.indexPath === void 0 ? null : openAction(t, card.indexPath, openFile)
+    ])
+  );
+}
+function checksCardView(card, t) {
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "checks", "data-tool": "ecad_checks" },
+    header(t("cardTitleChecks"), card.summary, [
+      badge(t, t("cardCriticalCount", { count: card.critical }), card.critical > 0 ? "error" : void 0),
+      badge(t, t("cardWarningCount", { count: card.warning }), card.warning > 0 ? "warn" : void 0),
+      badge(t, t("cardInfoCount", { count: card.info }))
+    ]),
+    body(checksBody(card, t))
+  );
+}
+function crossReferenceCardView(card, t) {
+  const badges = [];
+  if (card.duplicate > 0) badges.push(badge(t, t("cardDuplicateCount", { count: card.duplicate }), "warn"));
+  if (card.unresolved > 0) badges.push(badge(t, t("cardUnresolvedCount", { count: card.unresolved }), "warn"));
+  if (card.oneSided > 0) badges.push(badge(t, t("cardOneSidedCount", { count: card.oneSided })));
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "crossReference", "data-tool": "ecad_cross_reference" },
+    header(t("cardTitleCrossReference"), card.summary, badges),
+    body(crossReferenceBody(card, t))
+  );
+}
+function renderCardView(card, t) {
+  const size = card.characters === void 0 ? void 0 : `${Math.max(1, Math.round(card.characters / 1024))} KB`;
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "render", "data-tool": "ecad_render" },
+    header(t("cardTitleRender"), card.summary, [
+      ...card.truncated ? [badge(t, t("cardTruncated"), "warn")] : []
+    ]),
+    body([
+      card.path === void 0 ? null : field(t("cardDrawing"), card.path, { wide: true, mono: true }),
+      card.layout === void 0 ? null : field(t("cardLayout"), card.layout),
+      card.svgPath === void 0 ? null : field(t("cardSvg"), card.svgPath, { wide: true, mono: true }),
+      card.entities === void 0 ? null : field(t("cardDrawn"), `${card.supported} / ${card.entities}`),
+      size === void 0 ? null : field(t("cardSize"), size),
+      card.unsupported === void 0 ? null : field(t("cardUnsupported"), String(card.unsupported)),
+      card.approximate === void 0 ? null : field(t("cardApproximate"), String(card.approximate)),
+      (0, import_react3.createElement)("div", { className: EcadCards_default.actionRow }, (0, import_react3.createElement)("span", { className: EcadCards_default.hint }, t("cardRenderHint")))
+    ])
+  );
+}
+function roundTripRows(card, t) {
+  const trip = card.roundTrip;
+  if (trip === void 0) return [];
+  const rows = [
+    field(t("cardRoundTrip"), trip.ok ? t("cardRoundTripOk") : t("cardRoundTripDiff", { added: trip.added, removed: trip.removed, changed: trip.changed }))
+  ];
+  if (trip.hardChanges !== void 0 && trip.hardChanges > 0) rows.push(field(t("cardRoundTripHard"), String(trip.hardChanges)));
+  if (trip.metadataChanges !== void 0 && trip.metadataChanges > 0) rows.push(field(t("cardRoundTripMetadata"), String(trip.metadataChanges)));
+  if (trip.warnings > 0) rows.push(field(t("cardRoundTripWarnings"), String(trip.warnings)));
+  return rows;
+}
+function applyCardView(card, t, openFile) {
+  const rows = [
+    card.outputPath === void 0 ? null : field(t("cardOutput"), card.outputPath, { wide: true, mono: true }),
+    card.sourcePath === void 0 ? null : field(t("cardSource"), card.sourcePath, { wide: true, mono: true }),
+    field(t("cardFormat"), card.format.toUpperCase()),
+    field(t("cardChanges"), String(card.changes)),
+    card.touched === void 0 ? null : field(t("cardTouched"), String(card.touched)),
+    ...roundTripRows(card, t),
+    ...card.problems.map((problem, index) => (0, import_react3.createElement)("div", { key: `problem-${index}`, className: EcadCards_default.problem }, problem)),
+    openAction(t, card.outputPath, openFile, true)
+  ];
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "apply", "data-tool": "ecad_draft_apply" },
+    header(t("cardTitleApply"), card.summary, [
+      badge(t, card.verificationOk ? t("cardVerified") : t("cardNotVerified"), card.verificationOk ? "success" : "error"),
+      badge(t, card.format.toUpperCase(), "business")
+    ]),
+    body(rows)
+  );
+}
+function genericCardView(card, toolName, t) {
+  const title = toolName === "" ? t("cardTitleTool", { tool: "ECAD" }) : t("cardTitleTool", { tool: toolName });
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.card, "data-ecad-card": "generic", "data-tool": toolName },
+    header(title, card.summary, []),
+    body([
+      card.error === void 0 ? null : errorBlock(card.error, t),
+      ...card.fields.map((entry, index) => (0, import_react3.createElement)(
+        "div",
+        { key: `${index}-${entry.name}`, className: EcadCards_default.field },
+        (0, import_react3.createElement)("span", { className: EcadCards_default.fieldLabel }, entry.name),
+        (0, import_react3.createElement)("span", { className: `${EcadCards_default.fieldValue} ${EcadCards_default.fieldValueMono}`, title: entry.value }, entry.value)
+      )),
+      card.error === void 0 && card.fields.length === 0 && card.text !== "" ? (0, import_react3.createElement)("pre", { className: EcadCards_default.fallback }, card.text) : null
+    ])
+  );
+}
+function cardView(card, toolName, t, openFile) {
+  switch (card.kind) {
+    case "open":
+      return openCardView(card, t, openFile);
+    case "scan":
+      return scanCardView(card, t, openFile);
+    case "checks":
+      return checksCardView(card, t);
+    case "crossReference":
+      return crossReferenceCardView(card, t);
+    case "render":
+      return renderCardView(card, t);
+    case "apply":
+      return applyCardView(card, t, openFile);
+    case "generic":
+      return genericCardView(card, toolName, t);
+  }
+}
+function EcadToolCardView({ t, toolName, phase, block, openFile }) {
+  const name = toolName ?? "";
+  if (phase !== "result") {
+    const title = t(titleKeyOf(name), { tool: name });
+    return (0, import_react3.createElement)(
+      "div",
+      { className: `${EcadCards_default.card} ${EcadCards_default.cardRunning}`, "data-ecad-card": "running", "data-tool": name },
+      header(title, "", []),
+      (0, import_react3.createElement)("div", { className: EcadCards_default.runningLabel }, t(phase === "preparing" ? "cardPreparing" : "cardRunning"))
+    );
+  }
+  const card = cardOfContent(name, contentOf(block), recordOf2(block)?.isError === true);
+  return cardView(card, name, t, openFile);
+}
+function titleKeyOf(toolName) {
+  switch (toolName) {
+    case "ecad_open":
+      return "cardTitleOpen";
+    case "ecad_scan":
+      return "cardTitleScan";
+    case "ecad_checks":
+      return "cardTitleChecks";
+    case "ecad_cross_reference":
+      return "cardTitleCrossReference";
+    case "ecad_render":
+      return "cardTitleRender";
+    case "ecad_draft_apply":
+      return "cardTitleApply";
+    default:
+      return "cardTitleTool";
+  }
+}
+function EcadSheetDock({ t, session, readSheetSet }) {
+  const sessionId = typeof session?.sessionId === "string" && session.sessionId !== "" ? session.sessionId : void 0;
+  const [set, setSet] = (0, import_react3.useState)(void 0);
+  const readerRef = (0, import_react3.useRef)(readSheetSet);
+  readerRef.current = readSheetSet;
+  (0, import_react3.useEffect)(() => {
+    setSet(void 0);
+    if (sessionId === void 0) return;
+    const reader = readerRef.current;
+    if (reader === void 0) return;
+    let live = true;
+    void Promise.resolve().then(() => reader(sessionId)).then((value) => {
+      if (live) setSet(value);
+    }).catch(() => {
+      if (live) setSet(void 0);
+    });
+    return () => {
+      live = false;
+    };
+  }, [sessionId]);
+  if (!sheetSetVisible(set)) return null;
+  const chips = [
+    (0, import_react3.createElement)("span", { key: "drawings", className: EcadCards_default.dockChipStrong }, t("dockDrawings", { count: set.drawings }))
+  ];
+  if (set.dwg > 0) chips.push((0, import_react3.createElement)("span", { key: "dwg", className: EcadCards_default.dockChip }, t("dockDwg", { count: set.dwg })));
+  if (set.profileConfirmed !== void 0) {
+    chips.push((0, import_react3.createElement)("span", { key: "profile", className: EcadCards_default.dockChip }, set.profileConfirmed ? t("dockProfileConfirmed") : t("dockProfileDefault")));
+  }
+  if (set.writes !== void 0) {
+    chips.push((0, import_react3.createElement)("span", { key: "writes", className: EcadCards_default.dockChip }, set.writes ? t("dockWritesOn") : t("dockWritesOff")));
+  }
+  if (set.truncated) chips.push((0, import_react3.createElement)("span", { key: "truncated", className: EcadCards_default.dockChip }, t("cardTruncated")));
+  const label = t("dockLabel", { count: set.drawings, dwg: set.dwg });
+  return (0, import_react3.createElement)(
+    "div",
+    { className: EcadCards_default.dockRow, "data-ecad-dock": "sheet-set", "aria-label": label, title: label },
+    (0, import_react3.createElement)("span", { className: EcadCards_default.dockIcon, "aria-hidden": "true" }, (0, import_react3.createElement)(DrawingIcon, {})),
+    ...chips.flatMap((chip, index) => index === 0 ? [chip] : [(0, import_react3.createElement)("span", { key: `sep-${index}`, className: EcadCards_default.dockSep, "aria-hidden": "true" }, "\xB7"), chip])
+  );
+}
+
 // packages/ecad/src/client/locales.ts
 var en = {
   title: "ECAD drawing",
@@ -2803,7 +3621,74 @@ var en = {
   editEntityHint: "Edits move and erase the entity as the drawing stores it.",
   editFlattened: "This entity comes from a block definition and cannot be edited in place.",
   editNoEntity: "Select an entity to move or erase it.",
-  draftLayoutHint: "Changes target the {layout} layout."
+  draftLayoutHint: "Changes target the {layout} layout.",
+  cardTitleOpen: "Drawing opened",
+  cardTitleScan: "Workspace indexed",
+  cardTitleChecks: "Review findings",
+  cardTitleCrossReference: "Cross-reference candidates",
+  cardTitleRender: "Drawing rendered",
+  cardTitleApply: "Drawing written",
+  cardTitleTool: "{tool} result",
+  cardPreparing: "Preparing call\u2026",
+  cardRunning: "Running\u2026",
+  cardToolError: "The tool reported an error.",
+  cardOpenDrawing: "Open drawing",
+  cardOpenWritten: "Open written drawing",
+  cardOpenHint: "Open {path} from the drawing panel.",
+  cardDrawing: "Drawing",
+  cardFormat: "Format",
+  cardEntities: "Entities",
+  cardLayouts: "Layouts",
+  cardUnsupported: "Unsupported",
+  cardApproximate: "Approximate",
+  cardTitleBlock: "Title block",
+  cardTitleBlockRead: "read",
+  cardTruncated: "truncated",
+  cardDwgConverted: "DWG converted",
+  cardDwgWarnings: "{count} conversion warnings",
+  cardIndex: "Index",
+  cardSheets: "Drawings",
+  cardSets: "Sheet sets",
+  cardSkipped: "Skipped",
+  cardFormatsLabel: "Formats",
+  cardFormats: "{dxf} DXF \xB7 {dwg} DWG",
+  cardCritical: "critical",
+  cardWarning: "warning",
+  cardInfo: "info",
+  cardCriticalCount: "{count} critical",
+  cardWarningCount: "{count} warnings",
+  cardInfoCount: "{count} info",
+  cardMoreFindings: "{count} more findings",
+  cardMoreCandidates: "{count} more candidates",
+  cardConfidence: "confidence",
+  cardOccurrences: "{count}\xD7",
+  cardDuplicateCount: "{count} duplicate",
+  cardUnresolvedCount: "{count} unresolved",
+  cardOneSidedCount: "{count} one-sided",
+  cardLayout: "Layout",
+  cardSvg: "SVG",
+  cardDrawn: "Drawn / total",
+  cardSize: "Size",
+  cardRenderHint: "The SVG is written under .ecad/renders and opens in a browser.",
+  cardOutput: "Output",
+  cardSource: "Source",
+  cardChanges: "Changes",
+  cardTouched: "Entities touched",
+  cardVerified: "verified",
+  cardNotVerified: "not verified",
+  cardRoundTrip: "DWG round trip",
+  cardRoundTripOk: "matched",
+  cardRoundTripDiff: "{added} added \xB7 {removed} removed \xB7 {changed} changed",
+  cardRoundTripHard: "{count} hard changes",
+  cardRoundTripMetadata: "{count} metadata-only",
+  cardRoundTripWarnings: "{count} converter warnings",
+  dockDrawings: "{count} drawings",
+  dockDwg: "{count} DWG",
+  dockProfileConfirmed: "profile confirmed",
+  dockProfileDefault: "default profile",
+  dockWritesOn: "writes on",
+  dockWritesOff: "writes off",
+  dockLabel: "Workspace drawings: {count}, {dwg} DWG"
 };
 var zh = {
   title: "ECAD \u56FE\u7EB8",
@@ -2957,7 +3842,74 @@ var zh = {
   editEntityHint: "\u7F16\u8F91\u4F1A\u6309\u56FE\u7EB8\u5B58\u50A8\u7684\u65B9\u5F0F\u79FB\u52A8\u6216\u5220\u9664\u56FE\u5143\u3002",
   editFlattened: "\u6B64\u56FE\u5143\u6765\u81EA\u5757\u5B9A\u4E49\uFF0C\u65E0\u6CD5\u5C31\u5730\u7F16\u8F91\u3002",
   editNoEntity: "\u9009\u62E9\u56FE\u5143\u4EE5\u79FB\u52A8\u6216\u5220\u9664\u3002",
-  draftLayoutHint: "\u66F4\u6539\u76EE\u6807\u662F {layout} \u5E03\u5C40\u3002"
+  draftLayoutHint: "\u66F4\u6539\u76EE\u6807\u662F {layout} \u5E03\u5C40\u3002",
+  cardTitleOpen: "\u5DF2\u6253\u5F00\u56FE\u7EB8",
+  cardTitleScan: "\u5DE5\u4F5C\u533A\u5DF2\u7D22\u5F15",
+  cardTitleChecks: "\u5BA1\u67E5\u53D1\u73B0",
+  cardTitleCrossReference: "\u4EA4\u53C9\u5F15\u7528\u5019\u9009",
+  cardTitleRender: "\u56FE\u7EB8\u5DF2\u6E32\u67D3",
+  cardTitleApply: "\u56FE\u7EB8\u5DF2\u5199\u5165",
+  cardTitleTool: "{tool} \u7ED3\u679C",
+  cardPreparing: "\u6B63\u5728\u51C6\u5907\u8C03\u7528\u2026",
+  cardRunning: "\u6B63\u5728\u8FD0\u884C\u2026",
+  cardToolError: "\u5DE5\u5177\u62A5\u544A\u4E86\u9519\u8BEF\u3002",
+  cardOpenDrawing: "\u6253\u5F00\u56FE\u7EB8",
+  cardOpenWritten: "\u6253\u5F00\u5DF2\u5199\u5165\u7684\u56FE\u7EB8",
+  cardOpenHint: "\u5728\u56FE\u7EB8\u9762\u677F\u4E2D\u6253\u5F00 {path}\u3002",
+  cardDrawing: "\u56FE\u7EB8",
+  cardFormat: "\u683C\u5F0F",
+  cardEntities: "\u56FE\u5143",
+  cardLayouts: "\u5E03\u5C40",
+  cardUnsupported: "\u4E0D\u652F\u6301",
+  cardApproximate: "\u8FD1\u4F3C",
+  cardTitleBlock: "\u6807\u9898\u680F",
+  cardTitleBlockRead: "\u5DF2\u8BFB\u53D6",
+  cardTruncated: "\u5DF2\u622A\u65AD",
+  cardDwgConverted: "DWG \u5DF2\u8F6C\u6362",
+  cardDwgWarnings: "{count} \u6761\u8F6C\u6362\u8B66\u544A",
+  cardIndex: "\u7D22\u5F15",
+  cardSheets: "\u56FE\u7EB8",
+  cardSets: "\u56FE\u7EB8\u96C6",
+  cardSkipped: "\u5DF2\u8DF3\u8FC7",
+  cardFormatsLabel: "\u683C\u5F0F",
+  cardFormats: "{dxf} DXF \xB7 {dwg} DWG",
+  cardCritical: "\u4E25\u91CD",
+  cardWarning: "\u8B66\u544A",
+  cardInfo: "\u4FE1\u606F",
+  cardCriticalCount: "{count} \u4E25\u91CD",
+  cardWarningCount: "{count} \u8B66\u544A",
+  cardInfoCount: "{count} \u4FE1\u606F",
+  cardMoreFindings: "\u53E6\u6709 {count} \u6761\u53D1\u73B0",
+  cardMoreCandidates: "\u53E6\u6709 {count} \u4E2A\u5019\u9009",
+  cardConfidence: "\u7F6E\u4FE1\u5EA6",
+  cardOccurrences: "{count} \u5904",
+  cardDuplicateCount: "{count} \u91CD\u590D",
+  cardUnresolvedCount: "{count} \u672A\u89E3\u6790",
+  cardOneSidedCount: "{count} \u5355\u4FA7",
+  cardLayout: "\u5E03\u5C40",
+  cardSvg: "SVG",
+  cardDrawn: "\u5DF2\u7ED8\u5236 / \u603B\u6570",
+  cardSize: "\u5927\u5C0F",
+  cardRenderHint: "SVG \u5199\u5165 .ecad/renders\uFF0C\u53EF\u5728\u6D4F\u89C8\u5668\u4E2D\u6253\u5F00\u3002",
+  cardOutput: "\u8F93\u51FA",
+  cardSource: "\u6E90\u6587\u4EF6",
+  cardChanges: "\u66F4\u6539",
+  cardTouched: "\u6D89\u53CA\u56FE\u5143",
+  cardVerified: "\u5DF2\u9A8C\u8BC1",
+  cardNotVerified: "\u672A\u9A8C\u8BC1",
+  cardRoundTrip: "DWG \u5F80\u8FD4",
+  cardRoundTripOk: "\u4E00\u81F4",
+  cardRoundTripDiff: "\u65B0\u589E {added} \xB7 \u79FB\u9664 {removed} \xB7 \u53D8\u66F4 {changed}",
+  cardRoundTripHard: "{count} \u9879\u5B9E\u9645\u53D8\u66F4",
+  cardRoundTripMetadata: "{count} \u9879\u4EC5\u5143\u6570\u636E",
+  cardRoundTripWarnings: "{count} \u6761\u8F6C\u6362\u5668\u8B66\u544A",
+  dockDrawings: "{count} \u5F20\u56FE\u7EB8",
+  dockDwg: "{count} DWG",
+  dockProfileConfirmed: "\u914D\u7F6E\u5DF2\u786E\u8BA4",
+  dockProfileDefault: "\u9ED8\u8BA4\u914D\u7F6E",
+  dockWritesOn: "\u5199\u5165\u5F00\u542F",
+  dockWritesOff: "\u5199\u5165\u5173\u95ED",
+  dockLabel: "\u5DE5\u4F5C\u533A\u56FE\u7EB8\uFF1A{count} \u5F20\uFF0C{dwg} \u5F20 DWG"
 };
 
 // packages/ecad/src/client/index.tsx
@@ -3099,6 +4051,19 @@ ${prompt}`);
       return void 0;
     }
   };
+  const readSheetSet = async (sessionId) => {
+    const call = await ready;
+    if (call === void 0) return void 0;
+    try {
+      const [sheets, capabilities] = await Promise.all([
+        call("sheets", sessionId, 500),
+        call("capabilities", sessionId).catch(() => void 0)
+      ]);
+      return sheetSetOf(unwrapRemoteValue(sheets), capabilities === void 0 ? void 0 : unwrapRemoteValue(capabilities));
+    } catch {
+      return void 0;
+    }
+  };
   const applyDraft = async (address, baseVersion, ops, signal) => {
     let file;
     try {
@@ -3204,8 +4169,8 @@ ${prompt}`);
     ask: (address, context) => draft(address, context)
   };
   function WorkspaceEcadBody(props) {
-    const [revision, setRevision] = (0, import_react3.useState)(0);
-    return (0, import_react3.createElement)(EcadBody, {
+    const [revision, setRevision] = (0, import_react4.useState)(0);
+    return (0, import_react4.createElement)(EcadBody, {
       resourceAddress: fileAddressFor(props.scope.sessionId, props.scope.cwd, props.path),
       content: {
         kind: "renderer",
@@ -3253,6 +4218,17 @@ ${prompt}`);
     locale: NS,
     inject: () => injected
   }, EcadBody)), "ecad-preview: document body");
+  ctx.effect(() => ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
+    name: "conversation.input.dock",
+    id: "ecad-sheet-set",
+    order: 12,
+    locale: NS,
+    inject: () => ({ readSheetSet })
+  }, EcadSheetDock)), "ecad-preview: sheet-set dock");
+  ctx.effect(() => ctx.slots.inject("tool.call.toolview", () => ECAD_TOOL_NAMES.map((name) => ctx.slots.register(
+    { name: "tool.call.toolview", key: name, locale: NS },
+    EcadToolCardView
+  ))), "ecad-preview: tool cards");
 }
 
     return module.exports
