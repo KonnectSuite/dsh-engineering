@@ -222,6 +222,9 @@ function normalise(entity: EcadEntity, tolerance: number): Normalised {
   const angle = (value: number | undefined): number | undefined => {
     if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
     const wrapped = ((value % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+    // A full turn and no turn are the same angle; a writer that reports the end
+    // angle as 2π−ε must not read as a change against the same arc's 0.
+    if (wrapped > Math.PI * 2 - tolerance / 2) return 0
     return quantise(wrapped, tolerance)
   }
   return {
@@ -289,12 +292,19 @@ function signatureOf(entity: Normalised): string {
 /**
  * Snap a number to the tolerance grid, avoiding float noise in snapshots.
  *
+ * The nudge moves a value that lands on a half-step boundary (for example
+ * `0.1375 / 0.001 = 137.5`) consistently to the same side, so a writer that
+ * reports `0.13749999999999996` is not compared as `0.137` against `0.138`.
+ * Without it, float noise of one ulp became a reported change.
+ *
  * @param value - number.
  * @param tolerance - grid step (any positive number, including one above 1).
  */
 function quantise(value: number, tolerance: number): number {
   const step = tolerance > 0 && Number.isFinite(tolerance) ? tolerance : 1
-  return Number((Math.round(value / step) * step).toFixed(9))
+  const scaled = value / step
+  const nudged = scaled + Math.sign(scaled) * 1e-9
+  return Number((Math.round(nudged) * step).toFixed(9))
 }
 
 /**
