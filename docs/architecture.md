@@ -89,6 +89,12 @@ A row is a plugin, so a disabled row is an unloaded plugin and its tool schemas 
 is the whole switch mechanism in this product line. The optional surfaces ship on by default, and the
 row's config form can turn them off, so a read-only or low-context profile does not pay for them.
 
+A row is inserted with `disabled: true` when a component ships off by default: the row is still listed,
+and enabling it writes the profile overlay, so an unloaded plugin is the whole switch either way.
+`components.json` records a context budget for the default-on surface; a component that would exceed it
+ships off until the ceiling is raised with its measurement. Both checks are in
+[components](reference/components.md).
+
 The patch **only inserts**. An entry that targets another bundle's row (`- id: something-else`) is a
 hard failure when that row is absent — `dsh: [...] patch: entry "..." not found` — and the bundle then
 refuses to apply. 0.4.0 and 0.4.1 shipped exactly that and were uninstallable; `test/patch.spec.mjs`

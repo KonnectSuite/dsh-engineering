@@ -41,11 +41,13 @@ test('is one row per product plus the component rows', () => {
   ])
 })
 
-test('keeps fine-grained control inside the product row, not the row list', () => {
-  // The optional surfaces are the entry's config now: a `disabled` row would put
-  // the toggle back in the list, which is the shape this change exists to avoid.
+test('the optional surfaces stay inside the product row, not the row list', () => {
+  // The optional surfaces are the entry's config: config in the patch would put
+  // the fine-grained toggle back in the row list, which is the shape this change
+  // exists to avoid. A row-wide `disabled` is a different decision — a component
+  // that ships off by default — and components.spec checks it against the
+  // manifest, so this test leaves it alone.
   for (const row of inserted.insert) {
-    assert.equal(row.disabled, undefined, `${row.id} is a product row; its parts belong in its config`)
     assert.equal(row.config, undefined, `${row.id} takes its defaults from the entry's Config schema`)
   }
 })

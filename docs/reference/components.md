@@ -42,6 +42,8 @@ is written before the first `gateway-api` component ships, not after.
 | `id` | The row id, stable across releases. Also the patch row. |
 | `kind` | `product`, `support` or `surface`. |
 | `capability` | The class above; the workflow skill routes by it. |
+| `default` | `on` or `off`: whether a fresh install mounts this row. `on` must stay inside the context budget below. |
+| `namespace` | The tool-name prefixes the component owns; `null` when it registers no tools. `{ "prefixes": ["ftview_"], "legacy": false }`, or the L5X-only `{ "prefixes": [], "legacy": true, "note": "…" }`. |
 | `row` / `rowName` | The patch row and the package entry it mounts (`@aryacode/dsh-engineering/<id>`). |
 | `entry` | The bundle entry file that applies the row, or `null` for a surface mounted from the package root. |
 | `package` | The package directory (or directories, for `viewers`). |
@@ -55,13 +57,32 @@ is written before the first `gateway-api` component ships, not after.
 | `gate` | The tool whose verdict proves a change (`tool` + `why`). |
 | `docs` | Documents this component owns. Every path must exist. |
 
+## Context budget
+
+A row that mounts on a fresh install costs every request: the host sends each registered tool's name,
+description and parameter schema. `docs/reference/tools.json` measures that surface per group and per
+product, and `components.json` records the ceiling:
+
+| Field | Ceiling |
+|---|---|
+| `defaultOnTools` | The tools a fresh install mounts. Exact: one more default-on tool fails the suite. |
+| `defaultOnSchemaCharacters` | The characters of the generated default-on definitions, plus a small allowance for wording changes. |
+
+A component added with `default: "off"` leaves both ceilings where they are. Make one default-on only
+by raising the ceiling in the same change, with the measurement in the changelog. The 9 vendored Optix
+definitions are not generated from source here, so the character ceiling covers the 133 generated
+definitions while the tool ceiling covers every default-on tool.
+
 ## Adding a component
 
 1. **Create the package** under `packages/<id>` with `src/index.ts` (tool factories),
    `src/skill.ts` (registration) and `SKILL.md`. Copy an existing package's `package.json`,
-   `tsconfig.json` and test setup; never edit `packages/l5x` to host another product.
+   `tsconfig.json` and test setup; never edit `packages/l5x` to host another product. Every tool the
+   package registers takes one of its `namespace` prefixes (`tia_`, `ftview_`, …); a new component
+   never adds an unprefixed tool name.
 2. **Add the bundle entry** `entries/<id>.js` that applies the package's entries with the
-   row's config, and the export `"./<id>"` in the root `package.json` `exports`.
+   row's config, and the export `"./<id>"` in the root `package.json` `exports`. Decide the
+   component's `default` posture here: `off` unless the change raises the context budget for it.
 3. **Add the patch row** in `cordis.patch.yml` with `id: <id>` and
    `name: '@aryacode/dsh-engineering/<id>'`. The patch only inserts; never target another
    bundle's row.
@@ -158,6 +179,8 @@ export function apply(ctx) {
   "title": "<Product>",
   "kind": "product",
   "capability": "offline-file",
+  "default": "off",
+  "namespace": { "prefixes": ["<prefix>_"], "legacy": false },
   "row": "<id>",
   "rowName": "@aryacode/dsh-engineering/<id>",
   "entry": "entries/<id>.js",
@@ -171,8 +194,9 @@ export function apply(ctx) {
 }
 ```
 
-Then add the patch row, the `scripts/assemble.mjs` COMPONENTS entry, a README table row and the
-document the manifest names. The checks fail on whichever one is missing.
+Then add the patch row (with `disabled: true` when the component's `default` is `off`), the
+`scripts/assemble.mjs` COMPONENTS entry, a README table row and the document the manifest names. The
+checks fail on whichever one is missing.
 
 ## What the checks enforce
 
@@ -188,8 +212,33 @@ document the manifest names. The checks fail on whichever one is missing.
   `tools.count` that disagrees with the inventory
 - a README that does not state the total tool count, or a product row whose number is stale
 - a vendored component whose tools are absent from the reference without the README saying so
+- a component whose `default` and its patch row's `disabled` disagree
+- a tool name outside its component's namespace, a shared or ambiguous prefix, or a second component
+  claiming the L5X legacy exemption
+- a fresh install above the recorded tool or character budget
 
 The per-skill budgets are policy, not physics: a body costs about a token per four characters
 each time the skill is invoked. The current product pair (`rockwell-l5x` 7,981 and
 `factorytalk-view` 7,975 characters) costs roughly 4k tokens together; a routing skill should
 stay near 3k so a three-skill task stays near 6k. Raise a budget only with a measurement.
+
+## Growth policy
+
+The bundle grows one product row at a time, and one install surface stays the default. Split a
+product out only when one of these is true:
+
+- **Licensing or IP.** The component cannot ship under this repository's licence or maintainer.
+- **A different host line.** It needs a DSH or Cordis version this bundle's peer range cannot ride.
+- **A heavy optional payload.** It carries an SDK, runtime or dataset most users will not install.
+- **An independent cadence.** It cannot follow this bundle's release train.
+
+Then ship an **add-on bundle**, not a separate product plugin: its own package with its own
+`dsh.bundle.patch`, its own rows (ids namespaced for the domain, e.g. `cad-*`), and its own component
+manifest and checks. A profile may hold several bundle layers, so the Plugins page still lists every
+row, and only the users who need the add-on install it. An add-on inserts its own rows only — it never
+targets a core row, because an absent row fails composition. Cross-product joins stay in the core
+bundle: a join needs both components present. CAD is the first candidate; the README's "CAD mounts as
+an independent plugin" stays true — it would be that add-on bundle.
+
+Release cadence follows the one-version-per-batch rule in [`AGENTS.md`](../../AGENTS.md): the bundle is
+only cheaper than separate plugins while each release carries a batch of changes.

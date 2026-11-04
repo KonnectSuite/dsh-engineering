@@ -173,3 +173,83 @@ test('every probe and gate names a tool that exists', () => {
 test('the README links the component contract', () => {
   assert.ok(readme.includes('docs/reference/components.md'), 'the README does not link the component contract')
 })
+
+test('every component states its default posture and the patch row agrees', () => {
+  for (const component of components) {
+    assert.ok(component.default === 'on' || component.default === 'off',
+      `${component.id} has an unknown default ${component.default}`)
+    const row = rows.find(candidate => candidate.id === component.id)
+    assert.equal(row?.disabled === true, component.default === 'off',
+      `${component.id}: default "${component.default}" and the patch row disagree on disabled`)
+  }
+})
+
+test('every tool name stays inside its component namespace', () => {
+  const namesByProduct = new Map()
+  for (const group of inventory.groups) {
+    namesByProduct.set(group.product, [...(namesByProduct.get(group.product) ?? []), ...group.tools])
+  }
+  const claimed = new Map()
+  for (const component of components) {
+    if (component.tools.count === 0) {
+      assert.equal(component.namespace, null, `${component.id} registers no tools and must not declare a namespace`)
+      continue
+    }
+    const namespace = component.namespace
+    assert.ok(namespace !== null && typeof namespace === 'object', `${component.id} registers tools and declares no namespace`)
+    if (namespace.legacy === true) {
+      assert.deepEqual(namespace.prefixes, [], `${component.id} is a legacy exemption, so it cannot declare prefixes`)
+      assert.ok(typeof namespace.note === 'string' && namespace.note.length > 40,
+        `${component.id}: a legacy namespace exemption must say what it exempts and how it ends`)
+      continue
+    }
+    assert.equal(namespace.legacy, false, `${component.id}: namespace.legacy must be false when prefixes are declared`)
+    assert.ok(Array.isArray(namespace.prefixes) && namespace.prefixes.length > 0, `${component.id} declares no tool prefix`)
+    for (const prefix of namespace.prefixes) {
+      assert.match(prefix, /^[a-z][a-z0-9]*_$/u, `${component.id}: ${prefix} is not a lowercase tool prefix`)
+      const owner = claimed.get(prefix)
+      assert.equal(owner, undefined, `${component.id} and ${owner} share the tool prefix ${prefix}`)
+      claimed.set(prefix, component.id)
+    }
+    if (component.tools.inReference === true) {
+      const outside = (namesByProduct.get(component.tools.product) ?? [])
+        .filter(name => !namespace.prefixes.some(prefix => name.startsWith(prefix)))
+      assert.deepEqual(outside, [], `${component.id}: tool names outside its namespace: ${outside.join(', ')}`)
+    }
+  }
+  const prefixes = [...claimed.keys()]
+  for (const prefix of prefixes) {
+    for (const other of prefixes) {
+      if (prefix !== other) assert.ok(!other.startsWith(prefix), `the tool prefix ${prefix} is ambiguous beside ${other}`)
+    }
+  }
+  // A grandfathered component must not already sit in a prefix a later component owns.
+  for (const component of components) {
+    if (component.namespace?.legacy !== true || component.tools.inReference !== true) continue
+    const captured = (namesByProduct.get(component.tools.product) ?? [])
+      .filter(name => prefixes.some(prefix => name.startsWith(prefix)))
+    assert.deepEqual(captured, [], `${component.id}: legacy tool names already inside another component's namespace: ${captured.join(', ')}`)
+  }
+})
+
+test('the default-on surface stays inside the recorded context budget', () => {
+  const budget = catalog.contextBudget
+  assert.ok(budget !== undefined, 'components.json declares no contextBudget')
+  assert.ok(Number.isInteger(budget.defaultOnTools) && budget.defaultOnTools > 0,
+    'contextBudget.defaultOnTools must be a positive integer')
+  assert.ok(Number.isInteger(budget.defaultOnSchemaCharacters) && budget.defaultOnSchemaCharacters > 0,
+    'contextBudget.defaultOnSchemaCharacters must be a positive integer')
+  assert.ok(typeof budget.note === 'string' && budget.note.length > 60,
+    'contextBudget needs a note saying what each ceiling covers')
+  assert.ok(inventory.context !== undefined, 'docs/reference/tools.json has no context measurement; run pnpm docs:tools')
+
+  const mounted = components.filter(component => component.default === 'on')
+  const tools = mounted.reduce((total, component) => total + component.tools.count, 0)
+  assert.ok(tools <= budget.defaultOnTools,
+    `a fresh install mounts ${tools} tools; the recorded ceiling is ${budget.defaultOnTools}. Ship the component off by default, or raise the ceiling with the measurement.`)
+  const characters = mounted.reduce((total, component) => component.tools.inReference === true
+    ? total + (inventory.context.byProduct[component.tools.product] ?? 0)
+    : total, 0)
+  assert.ok(characters <= budget.defaultOnSchemaCharacters,
+    `default-on generated definitions are ${characters} characters; the recorded ceiling is ${budget.defaultOnSchemaCharacters}. Ship the component off by default, or raise the ceiling with the measurement.`)
+})

@@ -31,3 +31,19 @@ test('the reference covers every registered tool', () => {
 test('tool names are unique across the bundle', () => {
   assert.equal(new Set(names).size, names.length, 'two tools register the same name')
 })
+
+test('the inventory accounts for the context it measures', () => {
+  const inventory = JSON.parse(read('docs/reference/tools.json'))
+  for (const group of inventory.groups) {
+    assert.ok(Number.isInteger(group.contextChars) && group.contextChars > 50,
+      `${group.group} reports no readable contextChars`)
+  }
+  let total = 0
+  for (const [product, characters] of Object.entries(inventory.context.byProduct)) {
+    const measured = inventory.groups.filter(group => group.product === product)
+      .reduce((sum, group) => sum + group.contextChars, 0)
+    assert.equal(characters, measured, `the ${product} context total disagrees with its groups`)
+    total += characters
+  }
+  assert.equal(inventory.context.characters, total, 'the inventory context total disagrees with its byProduct breakdown')
+})

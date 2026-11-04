@@ -38,13 +38,18 @@ read-only or low-context profile does not need:
 
 | Product row | Config option | Default | What turning it on adds |
 |---|---|---|---|
-| `l5x` | `editing` | on | the nine `draft_*` schemas |
+| `l5x` | `editing` | on | the 17 staged-draft schemas |
 | `l5x` | `studio` | on | the Logix Designer SDK and supervised controller schemas |
 | `l5x` | `live` | on | the EtherNet/IP read, batch, discovery, clock and trend schemas |
 | `l5x` | `allowWrites` | on | the two approval-gated writes (tag, wall clock) |
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
 | `mwi` | `edit` | on | the seven MotionWorks edit schemas |
 | `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `ocrExecutable` | on | Studio authoring, destructive ops, method invocation, emulator preview and OCR when Tesseract is set |
+
+The default-on surface is a budgeted quantity: `components.json` records the tools and the characters
+of model-visible schema a fresh install may mount, and a component that would exceed either ceiling
+ships switched off until the ceiling is raised with its measurement. The
+[component contract](docs/reference/components.md#context-budget) owns the budget.
 
 The previews are independent of the tools — switching a product off does not remove the ladder viewer.
 Both previews mount from **one** row (`viewers`), because a package registers exactly one browser
@@ -63,7 +68,7 @@ bundle.
 
 Tool groups, by product:
 
-- **L5X** — 13 read (`open_project` … `document_project`), 15 staged edits (`draft_*`, `compose_rung`, `compose_batch`), 6 Logix
+- **L5X** — 13 read (`open_project` … `document_project`), 17 staged edits (`draft_*`, `compose_rung`, `compose_batch`), 6 Logix
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes), 2 preview and 1 diagram
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
@@ -91,6 +96,9 @@ down:
 | `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
+A row can also be inserted `disabled` when a component ships off by default: the row is still listed,
+and one switch enables it. Every row in this release ships on.
+
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
 switches"*), so a group switch is a shell feature, not a bundle one. Four product rows and three support rows with config is
@@ -112,7 +120,7 @@ Where each surface actually stands, based on what has been exercised.
 **Working and verified**
 
 - L5X offline reads, references, usage, checks and comparison against revision 19+ projects
-- Staged L5X editing — eleven `draft_*` tools, the instruction catalog, `compose_rung`, validation and one new file on apply
+- Staged L5X editing — fifteen `draft_*` tools, the instruction catalog, `compose_rung`, validation and one new file on apply
 - Logix Designer SDK: a real ACD exported to a 3.0 MB L5X against SDK v37
 - Supervised controller access — upload, mode change and download behind per-call approval, with
   downloads accepting only a verification id produced by a passed build
@@ -144,7 +152,7 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 131 tools built from this repository; the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README
+- The generated tool reference covers the 133 tools built from this repository; the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README, and the context budget's character ceiling covers the 133 generated definitions only — the tool-count ceiling covers every default-on tool including Optix
 
 **Not in this repository** — CAD mounts as an independent plugin.
 

@@ -143,7 +143,8 @@
         "project_overview",
         "list_components",
         "get_component"
-      ]
+      ],
+      "contextChars": 2786
     },
     {
       "product": "L5X",
@@ -154,7 +155,8 @@
         "trace_dependencies",
         "resolve_tag",
         "usage_map"
-      ]
+      ],
+      "contextChars": 3869
     },
     {
       "product": "L5X",
@@ -162,7 +164,8 @@
       "tools": [
         "run_checks",
         "compare_projects"
-      ]
+      ],
+      "contextChars": 2646
     },
     {
       "product": "L5X",
@@ -170,7 +173,8 @@
       "tools": [
         "list_instructions",
         "document_project"
-      ]
+      ],
+      "contextChars": 3213
     },
     {
       "product": "L5X",
@@ -178,14 +182,16 @@
       "tools": [
         "l5x_rung_preview",
         "l5x_routine_diagram"
-      ]
+      ],
+      "contextChars": 2563
     },
     {
       "product": "L5X",
       "group": "L5X diagrams",
       "tools": [
         "l5x_diagram"
-      ]
+      ],
+      "contextChars": 1130
     },
     {
       "product": "L5X",
@@ -208,7 +214,8 @@
         "draft_remove_op",
         "draft_validate",
         "draft_apply"
-      ]
+      ],
+      "contextChars": 17202
     },
     {
       "product": "L5X",
@@ -220,7 +227,8 @@
         "verify_offline_l5x",
         "build_acd_from_draft",
         "studio_review_evidence"
-      ]
+      ],
+      "contextChars": 4238
     },
     {
       "product": "L5X",
@@ -233,7 +241,8 @@
         "read_live_tag",
         "change_controller_mode",
         "download_project"
-      ]
+      ],
+      "contextChars": 3987
     },
     {
       "product": "L5X",
@@ -246,7 +255,8 @@
         "write_live_tag",
         "write_controller_clock",
         "start_plc_trend"
-      ]
+      ],
+      "contextChars": 7026
     },
     {
       "product": "Migration",
@@ -259,7 +269,8 @@
         "migration_resolve",
         "migration_report",
         "migration_plan"
-      ]
+      ],
+      "contextChars": 8607
     },
     {
       "product": "Engineering resources",
@@ -267,7 +278,8 @@
       "tools": [
         "engineering_reference",
         "engineering_profile"
-      ]
+      ],
+      "contextChars": 1454
     },
     {
       "product": "FactoryTalk View",
@@ -295,7 +307,8 @@
         "ftview_capabilities",
         "ftview_apps",
         "ftview_export"
-      ]
+      ],
+      "contextChars": 15886
     },
     {
       "product": "FactoryTalk View",
@@ -323,7 +336,8 @@
         "ftview_verify_import",
         "ftview_apply",
         "ftview_render"
-      ]
+      ],
+      "contextChars": 20831
     },
     {
       "product": "FactoryTalk View",
@@ -332,7 +346,8 @@
         "ftview_studio_status",
         "ftview_studio_preflight",
         "ftview_studio_handoff"
-      ]
+      ],
+      "contextChars": 1692
     },
     {
       "product": "MotionWorks IEC",
@@ -345,7 +360,8 @@
         "mw_ide_start",
         "mw_worksheet_open",
         "mw_project_close"
-      ]
+      ],
+      "contextChars": 3819
     },
     {
       "product": "MotionWorks IEC",
@@ -358,7 +374,8 @@
         "mw_references",
         "mw_review",
         "mw_help"
-      ]
+      ],
+      "contextChars": 4352
     },
     {
       "product": "MotionWorks IEC",
@@ -367,7 +384,8 @@
         "mw_compile",
         "mw_diagnostics",
         "mw_verify"
-      ]
+      ],
+      "contextChars": 1448
     },
     {
       "product": "MotionWorks IEC",
@@ -380,7 +398,18 @@
         "mw_transfer_pou",
         "mw_validate",
         "mw_apply"
-      ]
+      ],
+      "contextChars": 8367
     }
-  ]
+  ],
+  "context": {
+    "characters": 115116,
+    "byProduct": {
+      "L5X": 48660,
+      "Migration": 8607,
+      "Engineering resources": 1454,
+      "FactoryTalk View": 38409,
+      "MotionWorks IEC": 17986
+    }
+  }
 }

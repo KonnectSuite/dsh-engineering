@@ -35,9 +35,7 @@
     "locale/*.json",
     "vendor/**/*",
     "README.md",
-    "CHANGELOG.md",
     "LICENSE",
-    "docs/**/*",
     "presets/**/*"
   ],
   "dsh": {

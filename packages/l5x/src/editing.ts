@@ -2,7 +2,7 @@
  * The L5X editing entry: drafts over the read entry's project handles.
  *
  * Kept separate so a profile that only reads, checks and compares does not pay
- * for nine draft schemas. It consumes the `l5xProjects` service the read entry
+ * for the draft schemas. It consumes the `l5xProjects` service the read entry
  * provides, so a project is opened once and both entries see the same handle.
  *
  * @module dsh-engineering-l5x/editing

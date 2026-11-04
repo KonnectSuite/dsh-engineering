@@ -122,6 +122,30 @@ function cell(text: string): string {
   return text.replaceAll('|', '\\|')
 }
 
+/**
+ * Characters the model pays for one registered definition.
+ *
+ * The definition the host sends is its name, its description and its parameter
+ * schema; this is the same value as JSON with no whitespace, so it tracks a
+ * wording change as faithfully as a new tool.
+ *
+ * @param tool - One documented tool.
+ * @returns The character count of its model-visible definition.
+ */
+function definitionCharacters(tool: ToolRow): number {
+  return JSON.stringify({ name: tool.name, description: tool.description, parameters: tool.parameters }).length
+}
+
+/**
+ * Characters the model pays for every tool in one group.
+ *
+ * @param group - Tool group in registration order.
+ * @returns The summed definition characters.
+ */
+function groupCharacters(group: ToolGroup): number {
+  return group.tools.reduce((total, tool) => total + definitionCharacters(tool), 0)
+}
+
 /** Render one parameter type, including literal choices. */
 function typeOf(schema: Readonly<Record<string, unknown>>): string {
   const type = typeof schema.type === 'string' ? schema.type : 'value'
@@ -137,6 +161,7 @@ function typeOf(schema: Readonly<Record<string, unknown>>): string {
  */
 export function renderMarkdown(groups: readonly ToolGroup[]): string {
   const total = groups.reduce((sum, group) => sum + group.tools.length, 0)
+  const characters = groups.reduce((sum, group) => sum + groupCharacters(group), 0)
   const products = [...new Set(groups.map(group => group.product))]
   const lines: string[] = [
     '# Tool reference',
@@ -145,6 +170,8 @@ export function renderMarkdown(groups: readonly ToolGroup[]): string {
     '',
     `The engineering bundle registers **${total} tools** for ${products.join(' and ')}. Each tool answers with a summary,`,
     'structured data and suggested next calls; expected failures return a code, a message and a fix.',
+    `Those ${total} definitions total **${characters} characters** of model-visible JSON — name, description and`,
+    'parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.',
     'See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.',
     '',
     '| Product | Group | Tools |',
@@ -190,8 +217,12 @@ export function renderInventory(groups: readonly ToolGroup[]): string {
     product: group.product,
     group: group.group,
     tools: group.tools.map(tool => tool.name),
+    contextChars: groupCharacters(group),
   }))
-  return `${JSON.stringify({ tools: groups.flatMap(group => group.tools.map(tool => tool.name)), groups: products }, null, 2)}\n`
+  const byProduct: Record<string, number> = {}
+  for (const group of groups) byProduct[group.product] = (byProduct[group.product] ?? 0) + groupCharacters(group)
+  const characters = Object.values(byProduct).reduce((total, value) => total + value, 0)
+  return `${JSON.stringify({ tools: groups.flatMap(group => group.tools.map(tool => tool.name)), groups: products, context: { characters, byProduct } }, null, 2)}\n`
 }
 
 const referenceDir = fileURLToPath(new URL('../docs/reference/', import.meta.url))

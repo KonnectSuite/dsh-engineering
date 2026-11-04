@@ -1,3 +1,29 @@
+## [Unreleased]
+
+- **The default-on surface has a budget, and a new component ships off until it is raised.** `components.json`
+  records the tools and the characters of model-visible schema a fresh install may mount
+  (`contextBudget`), measured from the generated reference: 142 tools and 115,116 characters of the 133
+  generated definitions today. `test/components.spec.mjs` fails when either ceiling is crossed, and a
+  component's `default` must agree with its patch row's `disabled`, so a row can ship switched off and be
+  enabled from the Plugins page. Nothing here turns a row off: every row still ships on, and the budget is
+  the ratchet for the next component. The tool reference now prints the measured total, and the README
+  says the default-on surface is budgeted.
+- **Tool names are namespaced.** Every component that registers tools declares the `namespace` prefixes
+  it owns (`ftview_`, `mw_`, `optix_`, `engineering_`, `migration_`/`l5k_`/`slc_`); the suite fails on a
+  name outside its namespace, a shared or ambiguous prefix, or a second component claiming L5X's legacy
+  exemption. L5X is the one grandfathered component — its unprefixed names (`open_project`,
+  `draft_apply`, …) need a planned prefixed rename before another product can use those words.
+- **Growth policy is written down.** [`docs/reference/components.md`](docs/reference/components.md) now owns
+  when a component splits out of the bundle (licence/IP, a different host line, a heavy optional payload,
+  an independent cadence) and the add-on-bundle path for CAD-class payloads. The release rule that keeps
+  that model cheaper than separate plugins — one version per batch, never one per change — is now in
+  [`AGENTS.md`](AGENTS.md).
+- **The tarball carries runtime files only.** `docs/**` and `CHANGELOG.md` no longer ship in the npm
+  package; the README is still the market detail document. This removes about 2.6 MB from every install.
+- **Documentation corrected.** The README and the L5X editing config no longer claim stale draft-tool
+  counts, the generated reference states the measured 133 definitions (plus 9 vendored Optix tools), and
+  `docs/print.css` now matches the report stylesheet it is generated from.
+
 ## [0.85.3] - 2026-11-02
 
 - **A block draws what it writes on the right and what it reads on the left.** Instruction blocks listed every operand

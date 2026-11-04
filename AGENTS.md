@@ -22,8 +22,8 @@ A change is not finished until the documentation it invalidates is updated in th
 | `docs/capabilities.md` | The figures: which call produced each one, and what an image cannot prove |
 | `docs/reference/tools.md` | Every registered tool, its description and parameters (generated) |
 | `docs/reference/tools.json` | The machine-readable tool and group inventory (generated) |
-| `components.json` | The component manifest: kind, capability class, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents |
-| `docs/reference/components.md` | What a component is, the capability classes, the manifest fields and the checklist for adding one |
+| `components.json` | The component manifest: kind, capability class, default posture, tool namespace, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents, and the default-on context budget |
+| `docs/reference/components.md` | What a component is, the capability classes, the manifest fields, the context budget, the checklist for adding one and the growth policy |
 | `docs/reference/migration.md` | The migration row: the two tools, the formats, the lint rules, the five-step workflow and its limits |
 | `CHANGELOG.md` | Released and unreleased changes, one entry per version |
 | `cordis.patch.yml` | The composed behavior, with comments explaining why each entry has its shape |
@@ -32,7 +32,7 @@ A change is not finished until the documentation it invalidates is updated in th
 | `test/patch.spec.mjs` | Invariants of the patch file itself |
 | `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only dependencies |
 | `test/tool-reference.spec.mjs` | The reference freshness, tool count and unique tool names |
-| `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, README counts and owning documents |
+| `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, namespaces, context budget, README counts and owning documents |
 | `docs/port/*.md` | Port decisions and measurements, kept as design history |
 
 ## Documentation is checked
@@ -47,7 +47,8 @@ A change is not finished until the documentation it invalidates is updated in th
 - a dependency, optional dependency or peer is a URL, git or workspace spec,
 - the committed `lib/client.js` is stale against the faces it is built from,
 - `docs/reference/tools.md` or `tools.json` is stale,
-- `components.json` disagrees with the patch rows, a tool count, a skill budget or body, a tool name cited by a skill, a README table number or a document a component owns.
+- `components.json` disagrees with the patch rows, a tool count, a skill budget or body, a tool name cited by a skill, a README table number or a document a component owns,
+- a component's `default` posture disagrees with its patch row's `disabled`, a tool name leaves its component's namespace, or the default-on surface exceeds the recorded context budget.
 
 When one of these fails, fix the documentation — not the test — unless the documented behavior itself is what changed.
 
@@ -58,6 +59,7 @@ When one of these fails, fix the documentation — not the test — unless the d
 - **Release evidence calls a changed tool.** The packaged smoke must exercise at least one tool whose behavior changed, end to end, and the release body records the command and result. A boot smoke and a green unit suite do not prove a tool works.
 - **Every documented switch or command is checked.** Generated inventories are mandatory; a README claim without a test is a defect.
 - **Tag the release commit.** Create `vX.Y.Z` in this repository at the commit the bundle was built from; artifacts live on the download host, but the tag is what maps payload to source.
+- **One version per batch, not per change.** Every change stages under `## [Unreleased]`; a batch ships as one version. The one-bundle model is only cheaper than separate plugins while each release carries a batch — a publish per change turns into an approval request per change, which the owner rejected explicitly.
 - **Withholding is documented.** If this bundle stays private or out of the market index, the README records that decision and the reason.
 
 Retirement includes packaging scripts and their tests, generated catalogs and profile-local packages; follow `docs/port/retirement.md`.

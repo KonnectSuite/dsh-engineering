@@ -4,6 +4,8 @@
 
 The engineering bundle registers **133 tools** for L5X and Migration and Engineering resources and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
+Those 133 definitions total **115116 characters** of model-visible JSON — name, description and
+parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
 | Product | Group | Tools |
