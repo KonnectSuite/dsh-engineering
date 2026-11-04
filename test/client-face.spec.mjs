@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runInNewContext } from 'node:vm'
-import { CLIENT_ID, FACES, renderClient, renderHost, renderHostTypes } from '../scripts/build-client.mjs'
+import { CLIENT_ID, FACES, renderClient, renderHost, renderHostTypes, renderTypertHost } from '../scripts/build-client.mjs'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const manifest = JSON.parse(read('package.json'))
@@ -111,6 +111,36 @@ test('lib/index.js is the current host half', () => {
     'lib/index.js is stale: run pnpm build:client')
   assert.equal(read('lib/index.d.ts'), renderHostTypes(),
     'lib/index.d.ts is stale: run pnpm build:client')
+})
+
+test('lib/typert.host.js is the current build of the Remote contract', () => {
+  assert.equal(read('lib/typert.host.js'), renderTypertHost(),
+    'lib/typert.host.js is stale: run pnpm build:client')
+  assert.equal(manifest.exports['./typert'], './lib/typert.host.js',
+    'the typert loader only imports a package artifact the package.json exports as "./typert"')
+})
+
+test('the Typert host artifact carries the facts the loader validates', async () => {
+  const { TYPERT } = await import(new URL('../lib/typert.host.js', import.meta.url))
+  assert.equal(TYPERT.package, manifest.name, 'the loader rejects a manifest owned by another package')
+  assert.equal(TYPERT.face, 'host')
+  assert.ok(Array.isArray(TYPERT.schemas))
+  assert.deepEqual(TYPERT.model.events, [])
+  assert.deepEqual(TYPERT.model.objects, [])
+  assert.equal(TYPERT.model.services.length, 1)
+  const [invocation] = TYPERT.invocations
+  assert.equal(invocation.namespace, 'ecad')
+  assert.equal(invocation.method, 'ping')
+  assert.equal(invocation.service, 'ecad', 'the descriptor service is the Cordis service key, not a package name')
+  assert.equal(invocation.invocation.kind, 'direct')
+  for (const parameter of invocation.parameters) {
+    assert.equal(parameter.source, 'json')
+    assert.equal(parameter.codec.mode, 'strict')
+    assert.equal(typeof parameter.codec.create, 'function')
+    assert.equal(typeof parameter.codec.create().parse, 'function')
+  }
+  assert.equal(invocation.result.mode, 'strict')
+  assert.equal(typeof invocation.result.create, 'function')
 })
 
 test('the artifact registers exactly one bundle, under the package name', () => {

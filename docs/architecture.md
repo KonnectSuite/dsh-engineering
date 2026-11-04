@@ -185,7 +185,7 @@ Two consequences worth stating:
 
 - **One row mounts both previews.** The Shell only scans the client face of packages a mounted row
   resolves to, so the `viewers` row names this package's root, and `lib/index.js` exists to be that
-  mount point. Its `apply` registers nothing.
+  mount point. Its `apply` registers the `ecad` Remote service the package's Typert host face names.
 - **The bundle package root is a plugin entry.** `exports["."]` is `lib/index.js`; the patch is
   reached through `dsh.bundle.patch`, not through the package root.
 
@@ -198,6 +198,26 @@ registration, so a new document preview is a face there, not a row. A preview th
 release becomes its own package whose row names the exact package root — the Shell rejects a subpath —
 never a second row over this bundle.
 
+## Typert Remote face
+
+The bundle is also a Typert contributor. `package.json` exports `"./typert"` (`lib/typert.host.js`);
+while the `viewers` row is mounted the Host's typert loader resolves the row's package root, reads that
+export, validates the `TYPERT` manifest and registers its invocations in `ctx.typert`. The Gateway then
+dispatches an endpoint to the Cordis service the descriptor names, so a client bundle can call a
+method the package itself defines — no `@deepseek-ai` package has to know about it.
+
+`src/remote/ecad-contract.js` is the one source of the wire facts: `scripts/build-client.mjs` renders
+`lib/typert.host.js` from it and also generates the browser contribution from it, so the endpoint,
+parameter wire field and codec modes cannot drift between the two halves. The Host service itself
+lives in `lib/index.js` and declares its Gateway binding with `bindTypertRemote`; the Gateway refuses
+to dispatch to a service without that visible binding. A descriptor's `service` is the Cordis service
+key, not a package name.
+
+The `ecad/ping` method is a diagnostic, not a product feature: it records the received payload in one
+marker file per call under `ECAD_SPIKE_DIR` (default: `%TEMP%\ecad-typert-spike`) and reports the
+descriptor kind that dispatched it (`strict` for the `./typert` artifact, `src` when only the
+decorator marker would have matched). The client face draws a banner with the outcome.
+
 ## Distribution
 
 The bundle is packed as one self-contained tarball; its one dependency is the Optix component from the
@@ -208,6 +228,7 @@ dsh-engineering-<version>.tgz
   ├── cordis.patch.yml        the rows (inserts only)
   ├── lib/client.js           both previews, one registration
   ├── lib/index.js            the host half the `viewers` row mounts
+  ├── lib/typert.host.js      the package-defined Typert Remote artifact
   └── vendor/{l5x,ftview,mwi} the vendored components and their assets
 ```
 

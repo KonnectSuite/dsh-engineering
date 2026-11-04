@@ -25,6 +25,15 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import {
+  ECAD_METHOD,
+  ECAD_NAMESPACE,
+  ECAD_PACKAGE,
+  buildClientContribution,
+  buildHostDescriptor,
+  buildHostManifest,
+  buildHostModel,
+} from '../src/remote/ecad-contract.js'
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const OUT = join(ROOT, 'lib')
@@ -87,6 +96,205 @@ export function factoryBodyOf(face) {
 }
 
 /**
+ * Render the factory body of the Typert probe face.
+ *
+ * The probe is generated from `src/remote/ecad-contract.js` rather than kept as
+ * a committed face file: the browser half and the Host `./typert` artifact must
+ * name the same endpoint, parameter wire field and codec modes, and generating
+ * both from one contract is what keeps them in agreement.
+ * @returns the factory body that mounts the contribution and calls `ecad/ping`.
+ */
+export function renderTypertProbeBody() {
+  const { package: contributionPackage, descriptors } = buildClientContribution()
+  const [descriptor] = descriptors
+  const renderCodec = typeSymbol => `{
+            mode: 'strict',
+            typeSymbol: ${JSON.stringify(typeSymbol)},
+            // Never called on the client: the Host parses the wire value with the
+            // descriptor its own ./typert artifact registered. $mount only requires
+            // a strict codec to exist.
+            create: () => ({ parse: value => value }),
+            jsonSchema: { type: 'object', additionalProperties: true },
+          }`
+  const parameters = descriptor.parameters.map(parameter => `          {
+            name: ${JSON.stringify(parameter.name)},
+            wire: ${JSON.stringify(parameter.wire)},
+            description: ${JSON.stringify(parameter.description ?? '')},
+            source: 'json',
+            codec: ${renderCodec(parameter.codec.typeSymbol)},
+          }`).join(',\n')
+  return `    // The probe: mount the bundle's own Typert Remote contribution, then call it.
+    // Both halves are generated from src/remote/ecad-contract.js.
+    const contribution = {
+      package: ${JSON.stringify(contributionPackage)},
+      descriptors: [{
+        id: ${JSON.stringify(descriptor.id)},
+        service: ${JSON.stringify(descriptor.service)},
+        namespace: ${JSON.stringify(descriptor.namespace)},
+        method: ${JSON.stringify(descriptor.method)},
+        description: ${JSON.stringify(descriptor.description ?? '')},
+        invocation: { kind: 'direct' },
+        parameters: [
+${parameters}
+        ],
+        result: ${renderCodec(descriptor.result.typeSymbol)},
+      }],
+    }
+
+    /**
+     * Show the probe outcome in the page and on the console, so the result is
+     * visible without DevTools and survives a screenshot review.
+     * @param text - the line to display.
+     * @param ok - true for success, false for failure, undefined while running.
+     */
+    function report(text, ok) {
+      const color = ok === true ? '#166534' : ok === false ? '#991b1b' : '#92400e'
+      const background = ok === true ? '#dcfce7' : ok === false ? '#fee2e2' : '#fef3c7'
+      if (typeof document !== 'undefined' && document.body !== null && document.body !== undefined) {
+        let banner = document.getElementById('ecad-typert-spike-banner')
+        if (banner === null) {
+          banner = document.createElement('div')
+          banner.id = 'ecad-typert-spike-banner'
+          banner.style.cssText = 'position:fixed;top:8px;right:8px;z-index:2147483647;max-width:56ch;padding:8px 10px;'
+            + 'border:1px solid rgba(0,0,0,.18);border-radius:6px;font:12px/1.45 ui-monospace,Consolas,monospace;'
+            + 'white-space:pre-wrap;box-shadow:0 2px 8px rgba(0,0,0,.18)'
+          document.body.appendChild(banner)
+        }
+        banner.style.color = color
+        banner.style.background = background
+        banner.textContent = 'ecad Typert spike: ' + text
+      }
+      console.log('[ecad-typert-spike] ' + text)
+    }
+
+    /**
+     * Mount the contribution and call the Host method it names.
+     *
+     * The namespace service only exists after the mount, so the call runs on a
+     * child fiber that injects \`remote.${ECAD_NAMESPACE}\`: reading
+     * \`ctx.remote.${ECAD_NAMESPACE}\` from this face's own fiber would be a
+     * dependency it did not declare, and Cordis refuses that read.
+     * @param ctx - the browser plugin context carrying the Remote carrier.
+     */
+    async function probe(ctx) {
+      if (typeof ctx.remote === 'undefined' || ctx.remote === null) {
+        console.log('[ecad-typert-spike] no Remote carrier in this composition; probe skipped')
+        return
+      }
+      report('mounting ${ECAD_NAMESPACE}/${ECAD_METHOD}…')
+      try {
+        await ctx.remote.$mount(contribution)
+        const call = ctx.inject(['remote.${ECAD_NAMESPACE}'], async (scope) => {
+          try {
+            const result = await scope.remote.${ECAD_NAMESPACE}.${ECAD_METHOD}({ hello: 'spike', at: new Date().toISOString() })
+            window.__ECAD_TYPERT_SPIKE__ = { ok: true, result }
+            const detail = result && result.marker
+              ? result.descriptor + ' descriptor — ' + result.marker
+              : JSON.stringify(result)
+            report('OK (' + detail + ')', true)
+          } catch (error) {
+            const message = error && error.message ? error.message : String(error)
+            window.__ECAD_TYPERT_SPIKE__ = { ok: false, error: message }
+            report('FAILED — ' + message, false)
+          }
+        })
+        await call
+      } catch (error) {
+        const message = error && error.message ? error.message : String(error)
+        window.__ECAD_TYPERT_SPIKE__ = { ok: false, error: message }
+        report('FAILED — ' + message, false)
+      }
+    }
+
+    /**
+     * Start the probe once the browser plugin is applied.
+     * @param ctx - the browser plugin context.
+     */
+    function apply(ctx) {
+      void probe(ctx)
+    }
+
+    return { inject: ['remote'], apply }`
+}
+
+/**
+ * Render the `TYPERT` host-face manifest as a self-contained `lib/typert.host.js`.
+ *
+ * This is the hand-written equivalent of a `@deepseek-ai/dsh-typert-generator`
+ * artifact: a default-free module that exports `TYPERT`, whose invocations carry
+ * strict codecs and whose model names one service. The typert loader imports it
+ * from the package's `"./typert"` export when the `viewers` row mounts the
+ * package root.
+ * @returns the artifact source.
+ */
+export function renderTypertHost() {
+  const descriptor = buildHostDescriptor()
+  const model = buildHostModel()
+  const parameters = descriptor.parameters.map(parameter => `    {
+      name: ${JSON.stringify(parameter.name)},
+      wire: ${JSON.stringify(parameter.wire)},
+      description: ${JSON.stringify(parameter.description ?? '')},
+      source: ${JSON.stringify(parameter.source)},
+      codec: objectCodec(${JSON.stringify(parameter.codec.typeSymbol)}),
+    }`).join(',\n')
+  return `/* Generated by scripts/build-client.mjs from src/remote/ecad-contract.js — do not edit. */
+/**
+ * Host-face Typert artifact of the engineering bundle.
+ *
+ * A package exporting "./typert" has this module imported by the Host's typert
+ * loader while its row is mounted; the loader validates the manifest and
+ * registers every invocation in \`ctx.typert\`, so the Gateway dispatches
+ * \`${ECAD_NAMESPACE}/${ECAD_METHOD}\` to the Cordis service named by
+ * \`service\`. The service itself is registered by this package's host half
+ * (\`lib/index.js\`).
+ */
+
+/**
+ * Build a strict codec over a lossless JSON object.
+ * The Gateway calls \`create().parse(value)\` once over the wire value.
+ * @param typeSymbol - generated-type identity the codec stands for.
+ * @returns the strict codec.
+ */
+function objectCodec(typeSymbol) {
+  return {
+    mode: 'strict',
+    typeSymbol,
+    create: () => ({
+      parse(value) {
+        if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+          throw new TypeError(typeSymbol + ': expected a JSON object')
+        }
+        return value
+      },
+    }),
+    jsonSchema: { type: 'object', additionalProperties: true },
+  }
+}
+
+const INVOCATIONS = [{
+  id: ${JSON.stringify(descriptor.id)},
+  service: ${JSON.stringify(descriptor.service)},
+  namespace: ${JSON.stringify(descriptor.namespace)},
+  method: ${JSON.stringify(descriptor.method)},
+  description: ${JSON.stringify(descriptor.description ?? '')},
+  invocation: { kind: 'direct' },
+  parameters: [
+${parameters}
+  ],
+  result: objectCodec(${JSON.stringify(descriptor.result.typeSymbol)}),
+}]
+
+export const TYPERT = {
+  package: ${JSON.stringify(ECAD_PACKAGE)},
+  face: 'host',
+  schemas: [],
+  get invocations() { return INVOCATIONS },
+  model: ${JSON.stringify(model, null, 2)},
+}
+`
+}
+
+/**
  * Render `lib/client.js`: every face factory under one registration, with the
  * exported plugins merged.
  * @returns the bundle source.
@@ -96,6 +304,7 @@ export function renderClient() {
     const extracted = factoryBodyOf(face)
     return { ...face, ...extracted }
   })
+  faces.push({ name: 'typertProbe', body: renderTypertProbeBody() })
   const declarations = faces
     .map(face => `    const ${face.name} = (() => {\n${face.body}\n    })()`)
     .join('\n')
@@ -144,28 +353,100 @@ ${calls}
 }
 
 /**
- * Render `lib/index.js`: the host half of this package. The row that mounts the
- * bundle exists so the shell can find the client bundle, which it only scans for
- * mounted packages; the host half itself registers nothing.
+ * Render `lib/index.js`: the host half of this package.
+ *
+ * The `viewers` row mounts this package root: that is what makes the shell scan
+ * the package for `./client`, and it is also what makes the typert loader read
+ * the package's `./typert` artifact. The artifact registers the invocation; this
+ * entry registers the Cordis service the invocation dispatches to, so the
+ * client bundle's `ctx.remote.ecad.ping()` reaches `ping()` below and leaves a
+ * marker file on the Host.
  * @returns the host entry source.
  */
 export function renderHost() {
+  const endpoint = `${ECAD_NAMESPACE}/${ECAD_METHOD}`
   return `/**
  * Host half of the engineering bundle.
  *
  * The bundle's work happens in its patch (\`cordis.patch.yml\`: the tool policy
- * and the product rows) and in its client face (\`./client\`). This entry exists
- * because a client bundle is discovered through a *mounted* package row, and a
- * row mounts a package root. It registers nothing of its own.
+ * and the product rows), in its client face (\`./client\`) and in its Typert
+ * host face (\`./typert\`). This entry exists because a client bundle is
+ * discovered through a *mounted* package row, and a row mounts a package root;
+ * it provides the \`${ECAD_NAMESPACE}\` Remote service the package's \`./typert\`
+ * invocation names, and writes one marker file per call so the client-to-Host
+ * path can be verified without a debugger.
  */
-export function apply() {}
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+import { bindTypertRemote } from '@deepseek-ai/dsh-typert-protocol'
+
+/** Cordis service key, and Remote namespace, of the bundle's probe service. */
+export const ECAD_SERVICE = ${JSON.stringify(ECAD_NAMESPACE)}
+/** Remote endpoint the ./typert artifact registers for this service. */
+export const ECAD_ENDPOINT = ${JSON.stringify(endpoint)}
+
+/**
+ * Write the invariant Host-side marker for one probe call.
+ *
+ * \`ECAD_SPIKE_DIR\` lets a test boot pin the location; otherwise the system temp
+ * directory holds a fresh \`pong-<epoch>-<pid>.json\` per call.
+ * @param payload - the client payload, recorded verbatim.
+ * @param descriptors - which descriptor kind dispatched the call.
+ * @returns the marker path and its timestamp.
+ */
+function writeMarker(payload, descriptors) {
+  const directory = process.env.ECAD_SPIKE_DIR ?? join(process.env.TEMP ?? homedir(), 'ecad-typert-spike')
+  mkdirSync(directory, { recursive: true })
+  const at = new Date().toISOString()
+  const marker = join(directory, \`pong-\${Date.now()}-\${process.pid}.json\`)
+  writeFileSync(marker, JSON.stringify({
+    ok: true,
+    service: ECAD_SERVICE,
+    endpoint: ECAD_ENDPOINT,
+    descriptor: descriptors,
+    received: payload,
+    at,
+    pid: process.pid,
+  }, null, 2) + '\\n')
+  return { marker, at }
+}
+
+/**
+ * Register the \`${ECAD_NAMESPACE}\` Cordis service.
+ * @param ctx - Host plugin context.
+ */
+export function apply(ctx) {
+  const service = {
+    /**
+     * Echo the client payload and record the Host-side marker.
+     * @param payload - the JSON object the client sent.
+     * @returns the marker path, the dispatch kind and the echoed payload.
+     */
+    ping(payload) {
+      const strict = ctx.get('typert')?.local.get(ECAD_ENDPOINT) !== undefined
+      const { marker, at } = writeMarker(payload, strict ? 'strict' : 'src')
+      ctx.logger.info(\`[ecad-typert-spike] \${ECAD_ENDPOINT} dispatched via \${strict ? 'strict' : 'src'} descriptor: \${marker}\`)
+      return { ok: true, echo: payload, at, marker, descriptor: strict ? 'strict' : 'src' }
+    },
+  }
+  // Explicit Service-to-Gateway binding: the Gateway refuses to dispatch to a
+  // service without this visible binding, whether the descriptor came from the
+  // ./typert artifact or from its source-mode fallback.
+  service.typertRemote = bindTypertRemote(service, ECAD_SERVICE)
+  ctx.provide(ECAD_SERVICE, service)
+}
 `
 }
 
 /** Render `lib/index.d.ts`. */
 export function renderHostTypes() {
-  return `/** Host half of the engineering bundle: registers nothing; the patch and the client face do the work. */
-export declare function apply(): void
+  return `/** Host half of the engineering bundle: provides the \`${ECAD_NAMESPACE}\` Remote service named by the package's \`./typert\` artifact. */
+export declare const ECAD_SERVICE: '${ECAD_NAMESPACE}'
+/** Remote endpoint the \`./typert\` artifact registers for that service. */
+export declare const ECAD_ENDPOINT: '${ECAD_NAMESPACE}/${ECAD_METHOD}'
+/** Register the Remote service. */
+export declare function apply(ctx: unknown): void
 `
 }
 
@@ -175,6 +456,7 @@ if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.
     ['client.js', renderClient()],
     ['index.js', renderHost()],
     ['index.d.ts', renderHostTypes()],
+    ['typert.host.js', renderTypertHost()],
   ]
   for (const [name, source] of artifacts) writeFileSync(join(OUT, name), source)
   console.log(`built lib/${artifacts.map(([name]) => name).join(', lib/')} for ${CLIENT_ID}`)
