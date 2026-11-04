@@ -65,7 +65,53 @@ will implement.
 - This environment installs with `pnpm install --ignore-scripts --config.node-linker=hoisted`
   (isolated pnpm links and Node 26 ESM do not mix here); CI on the owner's Node line is unaffected.
 
-## Open gate
+## Closed gate: Typert client remote (GO)
 
-- **Typert client remote**: the panel's edit path needs a plugin-defined Remote service. Spiked in a
-  scratch worktree; its result decides M3/M4 and is recorded here when it closes.
+Proven end to end on a composed Dev AryaCode profile: browser client bundle → `ctx.remote.$mount` →
+Gateway dispatch → the plugin-defined `ecad` Cordis service → a marker file on disk, with the
+Gateway's `"descriptor":"strict"`, i.e. dispatched through the bundle's `./typert` artifact and not
+the source fallback. A hand-written artifact is enough (the published generator is optional), the
+target service must expose `typertRemote = bindTypertRemote(service, key)`, the client must reach a
+just-mounted namespace through `ctx.inject(['remote.ecad'], …)`, and loader discovery needs an exact
+package-root row (the existing `viewers` row qualifies). The real service now ships in
+`src/remote/ecad-service.js` with `open`, `apply`, `sheets` and `capabilities`.
+
+## DWG path evaluation (2026-11-04)
+
+The open-source path for DWG was previously described as GPL (LibreDWG) or proprietary (a paid
+parser). The owner pointed at [OpenCADStudio](https://github.com/HakanSeven12/OpenCADStudio); reading
+its stack changes the options.
+
+| Candidate | License | DWG read | DWG write | How it would fit |
+|---|---|---|---|---|
+| **acadrust** (Rust crate, crates.io `0.6.8`, 2026-10-27) | **MPL-2.0** | R12–R2018+ | R12–R2018+ | Embed as a prebuilt WASM module (or a small sidecar) inside the bundle |
+| OpenCADStudio (Rust app, `v2026.44`, 2026-11-01) | GPL-3.0 | yes | yes (versioned save) | Only as a **user-installed external** converter/verifier; never bundled |
+| ODA File Converter (external) | proprietary free tool | yes | yes | User-installed external converter; highest fidelity, EULA-restricted |
+| mlightcad parser (proprietary) | commercial (~$3k) | read | no | Not needed now |
+| LibreDWG | GPL-3.0 | partial | no | Still rejected |
+
+**The find.** OpenCADStudio's own GPL app cannot be embedded in this MIT bundle, but its engine is a
+separate crate: [`acadrust`](https://crates.io/crates/acadrust) (`0.6.8`) — pure Rust, **DXF ASCII +
+binary and native binary DWG read/write, R12 through R2018+**, ACIS SAT/SAB data, 48 entity kinds,
+191k lines of Rust, 85,967 downloads, actively released (37 versions since February 2026), and it
+documents WebAssembly as a supported (sequential) target. Its DWG reader/writer is ported and adapted
+from **ACadSharp (MIT, © 2021 Albert Domenech)**, with the ODA DWG specification as the reference for
+binary layouts; the crate's `THIRD_PARTY_NOTICES.md` carries that MIT notice. MPL-2.0 is file-level
+copyleft: the bundle can stay MIT and ship the codec as a distinct MPL component, provided the MPL
+notices are included and the source of the MPL-covered files stays available (we use the unmodified
+crate at a pinned version plus our own MIT wrapper).
+
+OpenCADStudio itself is still useful as (a) an optional user-installed converter/verifier for users
+who already run it — it has a headless JSON automation API (`--serve`, `--http`) with `open`, `save`,
+`wblock`, `plot`, `audit` and `save_verified` operations, an MCP server, and a Windows x86_64 portable
+executable — and (b) a reference for how a verified save should be gated (audit, reopen, semantic
+manifest, SHA-256). Its published reader/writer gap list is also a review checklist.
+
+**Decision and gate.** v1 stays DXF-only and unchanged: the current MIT in-process path is measured
+on the corpus and does not depend on an external program. DWG becomes a post-v1, opt-in milestone
+with a spike that must prove, on the owner's 33 DWGs: build acadrust to WASM (or a small sidecar),
+convert DWG → DXF, parse with the shipped engine, then take an edited DXF → DWG, reopen it and compare
+the model; only measured, per-drawing results justify a DWG claim. The gate is honest coverage:
+unsupported entities are reported per file, the writer stays version-targeted and off by default,
+and a drawing is never called a faithful DWG round-trip without that evidence. ODA remains the
+documented fallback when a customer requires AutoCAD-native output and already has it installed.
