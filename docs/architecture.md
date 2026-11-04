@@ -180,6 +180,9 @@ carries all three engineering previews in its single `./client` bundle:
   `writes` switch is on, edits it: staged text annotations, single-entity moves and erases are applied
   through `ecad/apply` to a new drawing (the shell's filesystem service is text-only, so drawing bytes
   go through a policy-checked local writer that refuses a read-only session or an outside destination).
+  The same face also claims all sixteen ECAD tool names in the shell's keyed `tool.call.toolview` slot
+  (specialised cards for open/scan/checks/cross-reference/render/draft_apply) and renders a sheet-set
+  status dock in `conversation.input.dock` from the real session's `ecad.sheets`/`ecad.capabilities`.
 
 `scripts/build-client.mjs` produces that bundle from the three face bundles in
 `packages/viewer/lib`, `packages/ftview-viewer/lib` and `packages/ecad/lib`, which

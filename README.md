@@ -168,6 +168,13 @@ Where each surface actually stands, based on what has been exercised.
   AryaCode pass staged a text annotation on a real DWG and applied it to
   `prints/20136-004-ecad-…dwg` (56,387 bytes) with “1 change · verified” and “The DWG round trip matched
   the written drawing”. Failures keep the draft; with writes off every edit control is hidden.
+- ECAD conversation intelligence: every `ecad_*` tool renders as a themed card instead of the generic
+  row — open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
+  and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
+  (verified badge, output path, counters, DWG round-trip split, “Open written drawing”) are specialised,
+  the rest use labelled field cards; errors print code/message/fix and malformed payloads never invent
+  counts. A dock chip above the composer reports the workspace's drawing/DWG count, profile state and
+  writes state, hiding itself when there is nothing to report.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins

@@ -76,6 +76,20 @@
   workspace, `createIfAbsent` is kept) with tests; `assemble` was also fixed to compare the newest
   built file so a face-only rebuild is not refused.
   ([port evidence](docs/port/ecad.md#m4--in-panel-editing))
+- **ECAD work is legible in the conversation.** The drawing face now registers a tool card for all
+  sixteen `ecad_*` tools through the shell's keyed `tool.call.toolview` slot — specialised cards for
+  open (DXF/DWG badge, conversion warnings, entity coverage, title block), scan, checks (severity counts
+  and findings), cross-reference (candidate counts and confidence), render (layout and SVG path) and
+  draft_apply (verified badge, output path, per-kind counters, verification problems, DWG round-trip
+  hard/metadata split, “Open written drawing”) — with error envelopes shown verbatim, malformed
+  payloads never inventing counts, and opening a file through the row's `openFile` route. A quiet
+  sheet-set dock above the composer reads `ecad.sheets`/`ecad.capabilities` for the real session and
+  shows drawing/DWG counts, profile state and writes state, hiding itself when there is no session, no
+  drawing or no readable bridge. 22 card/dock tests, the client-face registration and inventory checks,
+  and a seven-shot harness (cards light/dark, dock light/dark/absent/read-only, narrow column) pass;
+  the render card names its SVG path instead of faking a thumbnail, and cards replace the generic row's
+  Inspect control because the shell tool primitives are not bundled.
+  ([port evidence](docs/port/ecad.md#m5--conversation-intelligence))
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and

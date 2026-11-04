@@ -216,6 +216,47 @@ pinning the write, the read-only refusal, the outside refusal, an additional wri
 create guard. The `npm pack` freshness check was also corrected to compare the newest built file
 instead of `lib/index.js`, so a face-only rebuild is not refused by `assemble`.
 
+## M5 — conversation intelligence
+
+The same face also makes ECAD work legible in the conversation, using the shell's own slots (read from
+the harness source, not guessed):
+
+- **Tool cards.** `tool.call.toolview` is a keyed, session-scoped slot declared by the shell's tool UI as
+  a child of its `conversation.chat.node` tool-call row; a hit replaces the generic row and the key is
+  the exact wire tool name. The face claims **all sixteen** `ecad_*` tools, so no ECAD call falls back to
+  the generic row. Six have specialised cards — `ecad_open` (path, DXF/DWG badge, DWG warning count,
+  entities/layouts/unsupported/approximate, title block, truncated, “Open drawing”), `ecad_scan`
+  (index path, drawings/sets/formats, unsupported, skipped), `ecad_checks` (severity counts, first eight
+  findings with rule/sheet/message, the scope note), `ecad_cross_reference` (duplicate/unresolved/
+  one-sided counts, first eight candidates with confidence), `ecad_render` (layout, SVG path, drawn/
+  total) and `ecad_draft_apply` (verified badge, output path, format, change counters, verification
+  problems, DWG round-trip hard/metadata split and warnings, “Open written drawing”). The other ten use
+  labelled scalar-field cards. Error envelopes print `code`/`message`/`fix` (and candidates); an
+  unparseable or wrongly shape payload prints what was seen instead of inventing counts; a result marked
+  `isError` overrides a success-looking payload; nothing throws. Opening a file uses the owner's
+  `openFile(path)` route, and a composition without an opener shows a path hint instead.
+- **Sheet-set dock.** `conversation.input.dock` supplies a real `SessionSnapshot` (`session.sessionId`),
+  so the dock reads through the same child-fiber Remote bridge: `ecad.sheets(sessionId, 500)` and
+  `ecad.capabilities(sessionId)`, unwrapping the carrier's `{ ok, value }`. The quiet chip above the
+  composer reads e.g. `3 drawings · 2 DWG · profile confirmed · writes on` (or `writes off` / `default
+  profile`) with an aria label. It renders nothing while loading, for a workspace with no drawing, with
+  no session, or when the bridge/read fails; a failed read never blocks or unbalances the composer.
+
+Honest limits: the render card names the SVG path instead of claiming a thumbnail (the shell previews
+`.dxf`/`.dwg`, not `.ecad/renders/*.svg`); the cards replace the generic row's Inspect/trajectory control
+(that needs shell tool primitives this face does not bundle); dock counts come from the service's capped
+drawing listing, not an uncapped filesystem walk; and `ui-tool` is a shell package, so a composition
+without it registers no card and does not throw.
+
+Verification: `packages/ecad/test/client/toolCards.spec.mjs` (22 tests: parsing, every specialised card,
+error envelope, unknown-tool card, malformed-field fallback, a never-throws sweep over all sixteen tools
+and junk payloads, and the dock's report/hidden/degraded cases) and `test/client-face.spec.mjs` (the 16
+keys checked against the generated `tools.json` inventory, dock registration and session-degraded
+reader, a composition without the tool UI, and class pairing for both CSS modules). The headless harness
+(`tmp/ecad-m5-harness`, real committed artifact, owner-shaped props, fake Remote) passed with zero
+console warnings/errors and seven screenshots — cards light/dark (including fallback and running), dock
+light/dark, dock absent, dock read-only, and a narrow card column.
+
 ## Closed gate: Typert client remote (GO)
 
 Proven end to end on a composed Dev AryaCode profile: browser client bundle → `ctx.remote.$mount` →
