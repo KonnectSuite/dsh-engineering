@@ -379,7 +379,9 @@
 }
 
 .inspectorSection {
-  flex: 1;
+  /* The panel is the scroll container; sections keep their own height so an
+     outcome panel cannot squeeze one section over the next. */
+  flex: none;
   min-height: 0;
 }
 

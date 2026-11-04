@@ -247,6 +247,22 @@ async function click(cdp, point, modifiers = 0) {
   await mouse(cdp, 'mouseReleased', point, { buttons: 0, modifiers })
 }
 
+/** Press the right button, drag, and release: a right-drag pan gesture. */
+async function rightDrag(cdp, from, to, options = {}) {
+  await mouse(cdp, 'mouseMoved', from, { buttons: 0 })
+  await mouse(cdp, 'mousePressed', from, { button: 'right', buttons: 2 })
+  const steps = options.steps ?? 8
+  for (let step = 1; step <= steps; step += 1) {
+    const point = {
+      x: from.x + ((to.x - from.x) * step) / steps,
+      y: from.y + ((to.y - from.y) * step) / steps,
+    }
+    await mouse(cdp, 'mouseMoved', point, { button: 'right', buttons: 2 })
+  }
+  if (options.during !== undefined) await options.during()
+  await mouse(cdp, 'mouseReleased', to, { button: 'right', buttons: 0 })
+}
+
 /** Right-click one point, falling back to a synthetic contextmenu event. */
 async function rightClick(cdp, point) {
   await mouse(cdp, 'mouseMoved', point, { buttons: 0 })
@@ -459,6 +475,67 @@ async function capture(cdp, directory) {
   await ctrlKey(cdp, 'z', 'KeyZ')
   await new Promise(resolveWait => setTimeout(resolveWait, 150))
 
+  // Clean slate, then the merged-engine setters: circle radius, arc geometry and
+  // ellipse axes through their grips, each previewed before the release.
+  await evaluate(cdp, '(() => { const button = [...document.querySelectorAll("button")].find(candidate => candidate.textContent.trim() === "Clear all"); button?.click(); return true })()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+  await key(cdp, 'Escape', 'Escape')
+  await evaluate(cdp, 'document.querySelector("[data-ecad-tool=\\"select\\"]")?.click()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 100))
+
+  // Circle: select the ring, drag a quadrant grip; the live preview draws the
+  // new radius and releasing stages setCircle.
+  await click(cdp, await harness(cdp, 'pointOn(250, 180)'))
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+  await drag(cdp, await harness(cdp, 'pointOn(280, 150)'), await harness(cdp, 'pointOn(290, 152)'), {
+    steps: 6,
+    during: async () => {
+      result.shots.push(await shot(cdp, directory, '14-circle-grip-drag.png'))
+    },
+  })
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.circleGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
+  result.shots.push(await shot(cdp, directory, '14b-circle-grip-staged.png'))
+
+  // Arc: select the arc, drag its start endpoint; setArc carries the new angle.
+  await key(cdp, 'Escape', 'Escape')
+  await click(cdp, await harness(cdp, 'pointOn(281.8, 181.8)'))
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+  await drag(cdp, await harness(cdp, 'pointOn(295, 150)'), await harness(cdp, 'pointOn(295, 136)'))
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.arcGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
+  result.shots.push(await shot(cdp, directory, '14c-arc-grip-staged.png'))
+
+  // Ellipse: select the ellipse, drag the major-axis grip; setEllipse stages the
+  // new rx and rotation.
+  await key(cdp, 'Escape', 'Escape')
+  await click(cdp, await harness(cdp, 'pointOn(380, 200)'))
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+  await drag(cdp, await harness(cdp, 'pointOn(380, 200)'), await harness(cdp, 'pointOn(383, 213)'))
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.ellipseGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
+  result.shots.push(await shot(cdp, directory, '14d-ellipse-grip-staged.png'))
+
+  // Colour: shift-click the circle into the ellipse selection and stage one bulk
+  // setColor op for both entities.
+  await click(cdp, await harness(cdp, 'pointOn(250, 180)'), 8)
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+  await setInputValue(cdp, '[data-ecad-property-color]', '5')
+  await evaluate(cdp, 'document.querySelector("[data-ecad-stage-color]")?.click()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 200))
+  await evaluate(cdp, 'document.querySelector("[data-ecad-property-color]")?.scrollIntoView({ block: "center" })')
+  await new Promise(resolveWait => setTimeout(resolveWait, 200))
+  result.measurements.colourDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
+  result.shots.push(await shot(cdp, directory, '15-colour-staged.png'))
+
+  // Apply the whole setter draft through the normal apply/verification path.
+  await evaluate(cdp, 'document.querySelector("[data-ecad-apply]")?.click()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 600))
+  result.measurements.colourApply = await evaluate(cdp, 'document.querySelector("[data-ecad-apply-outcome]")?.textContent ?? ""')
+  result.shots.push(await shot(cdp, directory, '15b-colour-apply.png'))
+  await evaluate(cdp, '(() => { const panel = document.querySelector("[data-ecad-apply-outcome]"); const buttons = panel ? [...panel.querySelectorAll("button")] : []; buttons[buttons.length - 1]?.click(); return true })()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 150))
+
   // A command preview: arm Line and pick its first point, then move.
   await evaluate(cdp, 'document.querySelector("[data-ecad-tool=\\"line\\"]")?.click()')
   await click(cdp, await harness(cdp, 'pointOn(60, 220)'))
@@ -467,6 +544,18 @@ async function capture(cdp, directory) {
   await new Promise(resolveWait => setTimeout(resolveWait, 150))
   result.shots.push(await shot(cdp, directory, '10-line-preview.png'))
   await key(cdp, 'Escape', 'Escape')
+  await new Promise(resolveWait => setTimeout(resolveWait, 120))
+
+  // The line preview step leaves the cursor elsewhere; with the command ended,
+  // hover the intersection of the two crossing wires and read the osnap label.
+  const intersectPoint = await harness(cdp, 'pointOn(260.4, 60.4)')
+  await mouse(cdp, 'mouseMoved', intersectPoint, { buttons: 0 })
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.intersectionSnap = {
+    kind: await evaluate(cdp, 'window.__HARNESS__.snapLabelKind()'),
+    text: await evaluate(cdp, 'window.__HARNESS__.snapLabelText()'),
+  }
+  result.shots.push(await shot(cdp, directory, '10b-intersection-snap.png'))
 
   // Print layout.
   await cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
@@ -480,6 +569,25 @@ async function capture(cdp, directory) {
     layoutTabs: document.querySelectorAll('[role="tab"]').length,
   })`)
 
+  // Right-drag pans without raising the context menu; a right click still does.
+  const panBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  const panFrom = await harness(cdp, 'pointOn(300, 150)')
+  const panTo = { x: panFrom.x + 90, y: panFrom.y + 50 }
+  await rightDrag(cdp, panFrom, panTo, {
+    steps: 8,
+    during: async () => {
+      result.shots.push(await shot(cdp, directory, '02b-right-drag-pan.png'))
+    },
+  })
+  await new Promise(resolveWait => setTimeout(resolveWait, 250))
+  const panAfter = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  const menuAfterDrag = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
+  await rightClick(cdp, await harness(cdp, 'emptyPoint()'))
+  const menuAfterClick = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
+  result.measurements.rightDrag = { panBefore, panAfter, menuAfterDrag, menuAfterClick }
+  await key(cdp, 'Escape', 'Escape')
+  await new Promise(resolveWait => setTimeout(resolveWait, 120))
+
   // Read-only mode.
   await open('?readonly=1')
   result.measurements.readOnly = await evaluate(cdp, `({
@@ -488,6 +596,7 @@ async function capture(cdp, directory) {
     paletteTools: document.querySelectorAll('[data-ecad-tool]').length,
     writeControls: document.querySelectorAll('[data-ecad-tool="line"], [data-ecad-tool="move"], [data-ecad-stage-erase]').length,
     layerMutation: document.querySelectorAll('[data-ecad-layer-create]').length,
+    colourControl: document.querySelectorAll('[data-ecad-property-color], [data-ecad-stage-color]').length,
   })`)
   result.shots.push(await shot(cdp, directory, '12-read-only.png'))
 

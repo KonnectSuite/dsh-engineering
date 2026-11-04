@@ -15,6 +15,7 @@ import type { CadSnapKind } from './cad.ts'
 import type { CadToolGroup, CadToolId, CadToolSpec } from './cadTools.ts'
 import { CAD_TOOLS, toolOf } from './cadTools.ts'
 import { parseNumberField, validLayerName } from './edits.ts'
+import { aciHex } from './palette.ts'
 import { layerInk, type EcadEntityFacts, factsOf } from './scene.ts'
 import { formatPoint } from './scene.ts'
 import css from './EcadBody.module.css'
@@ -440,10 +441,11 @@ export function CadStatusBar({ t, cursor, selectionCount, snapKind, osnap, ortho
     : t('statusCoordinates', { x: Number(cursor[0].toFixed(3)), y: Number(cursor[1].toFixed(3)) })
   const snapLabel = snapKind === undefined ? undefined
     : snapKind === 'endpoint' ? t('snapEndpoint')
-      : snapKind === 'midpoint' ? t('snapMidpoint')
-        : snapKind === 'center' ? t('snapCenter')
-          : snapKind === 'nearest' ? t('snapNearest')
-            : t('snapGrid')
+      : snapKind === 'intersection' ? t('snapIntersection')
+        : snapKind === 'midpoint' ? t('snapMidpoint')
+          : snapKind === 'center' ? t('snapCenter')
+            : snapKind === 'nearest' ? t('snapNearest')
+              : t('snapGrid')
   return createElement(
     'div',
     { className: `${css.statusBar} ${css.noPrint}`, role: 'status', 'aria-label': t('statusBarLabel'), 'data-ecad-status': 'true' },
@@ -496,6 +498,7 @@ export interface PropertiesPanelProps {
   readonly onStageErase: () => void
   readonly onStageText: (entity: EcadEntity, text: string) => void
   readonly onStageLayer: (entities: readonly EcadEntity[], layer: string) => void
+  readonly onStageColor: (entities: readonly EcadEntity[], color: number) => void
   readonly onStageAttribute: (ownerId: string, tag: string, value: string) => void
   readonly onAsk: () => void
   readonly onClear: () => void
@@ -540,12 +543,14 @@ export function PropertiesPanel(props: PropertiesPanelProps): ReactElement {
   const selectedKey = entities.map(entity => entity.id).join('|')
   const [textDraft, setTextDraft] = useState('')
   const [layerDraft, setLayerDraft] = useState('')
+  const [colorDraft, setColorDraft] = useState('')
   const [tagDraft, setTagDraft] = useState('')
   const [valueDraft, setValueDraft] = useState('')
   // A new selection starts its editable drafts from the entity it names.
   useEffect(() => {
     setTextDraft(single !== undefined && (single.k === 'text' || single.k === 'mtext') ? single.t ?? '' : '')
     setLayerDraft(single === undefined ? '' : single.layer)
+    setColorDraft(single !== undefined && single.color > 0 && single.color < 256 ? String(single.color) : '7')
     setTagDraft('')
     setValueDraft(attributeOwner(single) === undefined ? '' : single?.t ?? '')
   }, [selectedKey])
@@ -562,6 +567,11 @@ export function PropertiesPanel(props: PropertiesPanelProps): ReactElement {
   const canStageAttribute = editing && attributeTarget !== undefined && tagDraft.trim() !== '' && valueDraft !== (single?.t ?? '')
   const canStageMove = parseNumberField(moveDx) !== undefined && parseNumberField(moveDy) !== undefined
   const canStageRotate = parseNumberField(rotateAngle) !== undefined
+  const colorNumber = parseNumberField(colorDraft)
+  const colorValid = colorNumber !== undefined && Number.isInteger(colorNumber) && colorNumber >= 1 && colorNumber <= 255
+  const colorInvalid = colorDraft.trim() !== '' && !colorValid
+  const canStageColor = editing && entities.length > 0 && colorValid && (single === undefined || colorNumber !== single.color)
+  const swatch = single !== undefined && single.color > 0 && single.color < 256 ? aciHex(single.color) : 'var(--dsw-alias-interactive-bg-active)'
   return createElement(
     'section',
     { className: `${css.panelSection} ${css.inspectorSection}`, 'data-ecad-properties': 'true' },
@@ -699,6 +709,39 @@ export function PropertiesPanel(props: PropertiesPanelProps): ReactElement {
                     props.onStageLayer(entities, layerDraft)
                   },
                 }, t('propertiesLayerApply')),
+              ),
+              createElement('div', { className: css.propertyHeading }, t('propertiesColor')),
+              createElement('label', { className: css.formRow },
+                createElement('span', { className: css.formLabel }, t('propertiesColor')),
+                createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 } },
+                  createElement('span', { className: css.swatch, style: { background: swatch }, 'aria-hidden': true }),
+                  createElement('input', {
+                    className: css.formInput,
+                    type: 'text',
+                    inputMode: 'numeric',
+                    value: colorDraft,
+                    'aria-label': t('propertiesColor'),
+                    placeholder: t('propertiesColorPlaceholder'),
+                    'aria-invalid': colorInvalid,
+                    onChange: (event: { target: { value: string } }) => {
+                      setColorDraft(event.target.value)
+                    },
+                    'data-ecad-property-color': 'true',
+                  }),
+                ),
+              ),
+              colorInvalid ? createElement('p', { className: css.formError, role: 'alert' }, t('propertiesColorInvalid')) : createElement('p', { className: css.editHint }, t('propertiesColorHint')),
+              createElement('div', { className: css.formActions },
+                createElement('button', {
+                  type: 'button',
+                  className: css.applyButton,
+                  disabled: !canStageColor,
+                  onClick: () => {
+                    if (!colorValid || colorNumber === undefined) return
+                    props.onStageColor(entities, colorNumber)
+                  },
+                  'data-ecad-stage-color': 'true',
+                }, t('propertiesColorApply')),
               ),
               createElement('div', { className: css.propertyHeading }, t('toolMove')),
               createElement('div', { className: css.editActionsBlock },

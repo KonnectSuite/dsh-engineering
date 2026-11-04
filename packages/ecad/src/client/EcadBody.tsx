@@ -105,6 +105,7 @@ import {
   stageRenameLayer,
   stageRotate,
   stageSetAttribute,
+  stageSetColor,
   stageSetLayerColor,
   stageSetLayerMany,
   stageSetText,
@@ -213,7 +214,7 @@ const DOUBLE_CLICK_PX = 5
 
 /** The active pointer gesture, owned outside React state so a move is cheap. */
 type CadGesture =
-  | { readonly kind: 'pan'; readonly startX: number; readonly startY: number; readonly panX: number; readonly panY: number; readonly pointerId: number; moved: boolean }
+  | { readonly kind: 'pan'; readonly button: number; readonly startX: number; readonly startY: number; readonly panX: number; readonly panY: number; readonly pointerId: number; moved: boolean }
   | { readonly kind: 'marquee'; readonly start: { readonly x: number; readonly y: number }; readonly pointerId: number; moved: boolean; readonly additive: boolean; readonly toggle: boolean }
   | { readonly kind: 'zoomWindow'; readonly start: { readonly x: number; readonly y: number }; readonly pointerId: number; moved: boolean }
   | { readonly kind: 'moveDrag'; readonly startWorld: EcadPoint; readonly ids: readonly string[]; readonly pointerId: number; moved: boolean; dx: number; dy: number }
@@ -226,6 +227,7 @@ type CadPreviewElement =
   | { readonly kind: 'rect'; readonly a: EcadPoint; readonly b: EcadPoint }
   | { readonly kind: 'circle'; readonly c: EcadPoint; readonly r: number }
   | { readonly kind: 'arc'; readonly c: EcadPoint; readonly r: number; readonly a0: number; readonly a1: number }
+  | { readonly kind: 'ellipse'; readonly c: EcadPoint; readonly rx: number; readonly ry: number; readonly deg: number }
 
 /** One glyph's geometry, drawn in the theme's label colour. */
 interface IconProps {
@@ -496,6 +498,16 @@ function PreviewView({ elements }: PreviewViewProps): ReactElement | null {
             d: `M ${fmt(start[0]!)} ${fmt(start[1]!)} A ${fmt(Math.abs(element.r))} ${fmt(Math.abs(element.r))} 0 ${large} 1 ${fmt(end[0]!)} ${fmt(end[1]!)}`,
           })
         }
+        case 'ellipse':
+          return createElement('ellipse', {
+            key,
+            className: css.previewShape,
+            cx: element.c[0],
+            cy: element.c[1],
+            rx: Math.abs(element.rx),
+            ry: Math.abs(element.ry),
+            transform: `rotate(${Number(element.deg.toFixed(4))} ${element.c[0]} ${element.c[1]})`,
+          })
         default:
           return null
       }
@@ -503,8 +515,81 @@ function PreviewView({ elements }: PreviewViewProps): ReactElement | null {
   )
 }
 
-/** Props of {@link SceneView}. */
-interface SceneViewProps {
+/** A world point read from an untyped setter payload. */
+function payloadPoint(value: unknown): EcadPoint | undefined {
+  if (!Array.isArray(value) || value.length < 2) return undefined
+  const x = Number(value[0])
+  const y = Number(value[1])
+  return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : undefined
+}
+
+/** The visible geometry of a mover's translated entity, for the grip preview. */
+function movedPreviewOf(entity: EcadEntity, dx: number, dy: number): CadPreviewElement | undefined {
+  const shift = (point: EcadPoint | undefined): EcadPoint | undefined => (point === undefined ? undefined : [point[0] + dx, point[1] + dy])
+  if (entity.k === 'circle') {
+    const center = shift(entity.c)
+    return center === undefined ? undefined : { kind: 'circle', c: center, r: Math.abs(entity.r ?? 0) }
+  }
+  if (entity.k === 'arc') {
+    const center = shift(entity.c)
+    if (center === undefined) return undefined
+    let a1 = entity.a1 ?? 0
+    const a0 = entity.a0 ?? 0
+    if (a1 < a0) a1 += Math.PI * 2
+    return { kind: 'arc', c: center, r: Math.abs(entity.r ?? 0), a0, a1 }
+  }
+  if (entity.k === 'ellipse') {
+    const center = shift(entity.c)
+    return center === undefined
+      ? undefined
+      : { kind: 'ellipse', c: center, rx: Math.abs(entity.rx ?? 0), ry: Math.abs(entity.ry ?? 0), deg: ((entity.rot ?? 0) * 180) / Math.PI }
+  }
+  return undefined
+}
+
+/** The geometry an engine setter would produce, for the grip preview. */
+function setterPreviewOf(op: string, payload: Readonly<Record<string, unknown>>): CadPreviewElement | undefined {
+  if (op === 'setCircle') {
+    const center = payloadPoint(payload.center)
+    const radius = Number(payload.radius)
+    return center === undefined || !Number.isFinite(radius) ? undefined : { kind: 'circle', c: center, r: Math.abs(radius) }
+  }
+  if (op === 'setArc') {
+    const center = payloadPoint(payload.center)
+    const radius = Number(payload.radius)
+    const start = Number(payload.startAngleDeg)
+    const end = Number(payload.endAngleDeg)
+    if (center === undefined || !Number.isFinite(radius) || !Number.isFinite(start) || !Number.isFinite(end)) return undefined
+    const radians = Math.PI / 180
+    let a0 = start * radians
+    let a1 = end * radians
+    if (a1 <= a0) a1 += Math.PI * 2
+    return { kind: 'arc', c: center, r: Math.abs(radius), a0, a1 }
+  }
+  if (op === 'setEllipse') {
+    const center = payloadPoint(payload.center)
+    const rx = Number(payload.rx)
+    const ry = Number(payload.ry)
+    const rotDeg = Number(payload.rotDeg)
+    return center === undefined || !Number.isFinite(rx) || !Number.isFinite(ry) || !Number.isFinite(rotDeg)
+      ? undefined
+      : { kind: 'ellipse', c: center, rx: Math.abs(rx), ry: Math.abs(ry), deg: rotDeg }
+  }
+  if (op === 'setLine') {
+    const a = payloadPoint(payload.a)
+    const b = payloadPoint(payload.b)
+    return a === undefined || b === undefined ? undefined : { kind: 'line', a, b }
+  }
+  if (op === 'setPolyline') {
+    const points = Array.isArray(payload.pts)
+      ? (payload.pts as unknown[]).map(payloadPoint).filter((point): point is EcadPoint => point !== undefined)
+      : []
+    return points.length >= 2 ? { kind: 'polyline', points } : undefined
+  }
+  return undefined
+}
+
+/** Props of {@link SceneView}. */interface SceneViewProps {
   readonly scene: EcadScene
   readonly fit: EcadFit
   readonly view: ViewState
@@ -583,7 +668,7 @@ function SceneView({ scene, fit, view, label, width, height, selectedIds, fadedI
       ),
     createElement(
       'g',
-      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})` },
+      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})`, 'data-ecad-view': 'true' },
       createElement(
         'g',
         { transform: `translate(${fit.translateX} ${fit.translateY}) scale(${fit.scale} ${-fit.scale})` },
@@ -974,6 +1059,8 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   const applyAbortRef = useRef<AbortController | undefined>(undefined)
   const gestureRef = useRef<CadGesture | undefined>(undefined)
   const indexRef = useRef<{ readonly key: string; readonly index: CadIndex } | undefined>(undefined)
+  /** True after a right-drag, so the native contextmenu that follows is swallowed. */
+  const suppressContextMenuRef = useRef(false)
   const lastClickRef = useRef<{ readonly time: number; readonly x: number; readonly y: number } | undefined>(undefined)
   const spaceHeldRef = useRef(false)
   // The sheet element is state, not a ref, because the first render is the
@@ -1418,6 +1505,24 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (editable.length < entities.length) setNotice({ kind: 'info', text: t('editFlattened') })
   }, [activeLayout, editing, nextDraftKey, stageOps, t])
 
+  const stageColorChange = useCallback((entities: readonly EcadEntity[], color: number) => {
+    if (!editing || activeLayout === undefined) return
+    const editable = entities.filter(entity => editableEntityId(entity.id))
+    if (editable.length === 0) {
+      setNotice({ kind: 'warn', text: t('editFlattened') })
+      return
+    }
+    // Prepared against the parallel engine change: until `setColor` is in the
+    // engine's list the pane names the pending operation instead of staging a
+    // draft the host would reject at apply time.
+    if (!engineOpAvailable('setColor')) {
+      reportPending('setColor')
+      return
+    }
+    stageOps([stageSetColor(nextDraftKey(), activeLayout.id, editable.map(entity => entity.id), color)], undefined)
+    if (editable.length < entities.length) setNotice({ kind: 'info', text: t('editFlattened') })
+  }, [activeLayout, editing, nextDraftKey, reportPending, stageOps, t])
+
   const stageAttributeChange = useCallback((ownerId: string, tag: string, value: string) => {
     if (!editing || activeLayout === undefined) return
     stageOps([stageSetAttribute(nextDraftKey(), activeLayout.id, ownerId, tag, value)], undefined)
@@ -1546,6 +1651,10 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
         result = snapNear(ensureIndex(), raw, snapRadius, {
           ...(aids.grid && grid !== undefined ? { includeGrid: true, grid: grid.step } : {}),
           locked: lockedLayers,
+          // Screen-space projection turns on the intersection candidate and lets
+          // its neighbourhood prefilter skip a sheet-wide pairwise search.
+          project: candidate => toScreen(candidate, fit, view),
+          screenRadius: SNAP_RADIUS_PX,
         })
       } catch {
         result = undefined
@@ -1556,11 +1665,19 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     return { point, snap: result }
   }, [aids.grid, aids.osnap, aids.ortho, ensureIndex, fit, grid, lockedLayers, snapRadius, view])
 
-  const beginPan = useCallback((screen: { x: number; y: number }, pointerId: number): void => {
-    gestureRef.current = { kind: 'pan', startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false }
+  const beginPan = useCallback((screen: { x: number; y: number }, pointerId: number, button: number): void => {
+    gestureRef.current = { kind: 'pan', button, startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false }
     canvasElement?.setPointerCapture?.(pointerId)
     setPanning(true)
   }, [canvasElement, view.panX, view.panY])
+
+  /** Open the context menu at one canvas point, clamped inside the sheet. */
+  const openContextMenuAt = useCallback((screen: { x: number; y: number }) => {
+    const maxX = Math.max(8, size.width - 220)
+    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300))
+    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) })
+    setCommandError(undefined)
+  }, [selected.length, size.height, size.width])
 
   const pointForSnapPreview = useCallback((point: EcadPoint, result: CadSnapResult | undefined): void => {
     setCursorWorld(point)
@@ -1572,9 +1689,13 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (element === null) return
     element.focus({ preventScroll: true })
     const screen = localPoint(event.clientX, event.clientY)
-    if (event.button === 1 || (event.button === 0 && (spaceHeldRef.current || tool === 'pan'))) {
+    // A menu opened by a previous right click gives way to the next press.
+    suppressContextMenuRef.current = false
+    // Middle-drag, right-drag and Space+left-drag all pan; a plain left-drag
+    // is always a marquee (or a command pick, or a selection move in Edit mode).
+    if (event.button === 1 || event.button === 2 || (event.button === 0 && (spaceHeldRef.current || tool === 'pan'))) {
       event.preventDefault()
-      beginPan(screen, event.pointerId)
+      beginPan(screen, event.pointerId, event.button)
       return
     }
     if (event.button !== 0) return
@@ -1764,7 +1885,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     void original
   }, [activeLayout, nextDraftKey, stageOps, t])
 
-  const onPointerUp = useCallback((event: { pointerId: number; clientX: number; clientY: number }) => {
+  const onPointerUp = useCallback((event: { pointerId: number; clientX: number; clientY: number; button: number }) => {
     const element = canvasElement
     const screen = localPoint(event.clientX, event.clientY)
     const gesture = gestureRef.current
@@ -1779,6 +1900,15 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (gesture === undefined) return
     if (gesture.kind === 'pan') {
       setPanning(false)
+      if (gesture.button === 2) {
+        if (gesture.moved) {
+          // A right-drag pans; the context menu it would otherwise raise is
+          // swallowed by the handler below.
+          suppressContextMenuRef.current = true
+        } else {
+          openContextMenuAt(screen)
+        }
+      }
       return
     }
     if (gesture.kind === 'marquee') {
@@ -1821,17 +1951,19 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       if (gesture.moved) dispatchGrip(gesture.entityId, gesture.grip, gesture.original, gesture.point)
       return
     }
-  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, size.height, size.width, stageOps, view])
+  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, openContextMenuAt, size.height, size.width, stageOps, view])
 
   const onContextMenu = useCallback((event: { clientX: number; clientY: number; preventDefault: () => void; stopPropagation: () => void }) => {
+    // The browser menu never appears on the canvas; the pane's own menu is
+    // opened by the right press/release, not by a right-drag.
     event.preventDefault()
     event.stopPropagation()
-    const screen = localPoint(event.clientX, event.clientY)
-    const maxX = Math.max(8, size.width - 220)
-    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300))
-    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) })
-    setCommandError(undefined)
-  }, [localPoint, selected.length, size.height, size.width])
+    if (suppressContextMenuRef.current) {
+      suppressContextMenuRef.current = false
+      return
+    }
+    openContextMenuAt(localPoint(event.clientX, event.clientY))
+  }, [localPoint, openContextMenuAt])
 
   const askSelection = useCallback(() => {
     if (selectedEntities.length === 0) return
@@ -2221,7 +2353,19 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   // -- preview geometry -----------------------------------------------------
   const previewElements = useMemo((): readonly CadPreviewElement[] => {
     if (gripDrag !== undefined) {
-      return [{ kind: 'line', a: gripDrag.original, b: gripDrag.point }]
+      const elements: CadPreviewElement[] = [{ kind: 'line', a: gripDrag.original, b: gripDrag.point }]
+      const entity = activeLayout?.entities.find(candidate => candidate.id === gripDrag.entityId)
+      if (entity !== undefined) {
+        const request = gripRequestFor(entity, gripDrag.grip, gripDrag.point)
+        // A grip previews the geometry the staged setter will produce, not just
+        // the pointer line: a radius, angle or axis change is visible before the
+        // reader releases.
+        const shape = request.kind === 'move'
+          ? movedPreviewOf(entity, request.dx, request.dy)
+          : setterPreviewOf(request.op, request.payload)
+        if (shape !== undefined) elements.push(shape)
+      }
+      return elements
     }
     if (command === undefined || command.points.length === 0) return []
     const cursor = command.cursor
@@ -2263,7 +2407,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
       default:
         return []
     }
-  }, [command, gripDrag])
+  }, [activeLayout, command, gripDrag])
 
   const grips = useMemo((): readonly CadGrip[] => {
     if (!editing) return []
@@ -2279,10 +2423,11 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
 
   const snapLabel = snap === undefined ? undefined
     : snap.kind === 'endpoint' ? t('snapEndpoint')
-      : snap.kind === 'midpoint' ? t('snapMidpoint')
-        : snap.kind === 'center' ? t('snapCenter')
-          : snap.kind === 'nearest' ? t('snapNearest')
-            : t('snapGrid')
+      : snap.kind === 'intersection' ? t('snapIntersection')
+        : snap.kind === 'midpoint' ? t('snapMidpoint')
+          : snap.kind === 'center' ? t('snapCenter')
+            : snap.kind === 'nearest' ? t('snapNearest')
+              : t('snapGrid')
 
   const layouts = displayModel?.layouts ?? []
   const layoutTabs = layouts.length > 1
@@ -2518,6 +2663,7 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
           onStageErase: stageEraseSelection,
           onStageText: stageTextChange,
           onStageLayer: stageLayerChange,
+          onStageColor: stageColorChange,
           onStageAttribute: stageAttributeChange,
           onAsk: () => {
             if (selectedOne !== undefined) askEntity(selectedOne)

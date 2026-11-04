@@ -28,11 +28,13 @@ import {
   pointAtDistance,
   screenBoxContains,
   screenBoxIntersects,
+  segmentIntersectionPoint,
   segmentIntersectsBox,
   selectId,
   selectIds,
   snapNear,
   snapPriority,
+  straightSegmentsOf,
   toScreen,
   toWorld,
   viewForBox,
@@ -200,10 +202,79 @@ test('snaps prefer an endpoint over a midpoint over a centre over nearest over g
   assert.equal(snapNear(index, [20, 0], 0), undefined)
   assert.equal(snapNear(index, [20, 0], 2, { locked: new Set(['0']) }), undefined)
   // Priority is a total order the pane documents.
-  assert.ok(snapPriority('endpoint') < snapPriority('midpoint'))
+  assert.ok(snapPriority('endpoint') < snapPriority('intersection'))
+  assert.ok(snapPriority('intersection') < snapPriority('midpoint'))
   assert.ok(snapPriority('midpoint') < snapPriority('center'))
   assert.ok(snapPriority('center') < snapPriority('nearest'))
   assert.ok(snapPriority('nearest') < snapPriority('grid'))
+})
+
+test('segment intersection maths covers crossing, parallel and touching segments', () => {
+  // A proper crossing.
+  assert.deepEqual(segmentIntersectionPoint([0, 0], [10, 10], [0, 10], [10, 0]), [5, 5])
+  // No crossing: the segments miss each other.
+  assert.equal(segmentIntersectionPoint([0, 0], [4, 0], [0, 1], [4, 1]), undefined)
+  // Parallel segments have no single intersection point.
+  assert.equal(segmentIntersectionPoint([0, 0], [10, 0], [0, 5], [10, 5]), undefined)
+  // Collinear overlap is not an intersection snap.
+  assert.equal(segmentIntersectionPoint([0, 0], [10, 0], [4, 0], [14, 0]), undefined)
+  // Endpoint touching counts; the endpoint snap wins the priority tie, but the
+  // intersection helper reports the shared point.
+  assert.deepEqual(segmentIntersectionPoint([0, 0], [10, 0], [10, 0], [10, 10]), [10, 0])
+  // Degenerate segments report nothing.
+  assert.equal(segmentIntersectionPoint([5, 5], [5, 5], [0, 0], [10, 10]), undefined)
+})
+
+test('straight segments are the LINE and polyline edges a crossing can use', () => {
+  assert.deepEqual(straightSegmentsOf(entity({ k: 'line', pts: [[0, 0], [10, 0]] })), [[[0, 0], [10, 0]]])
+  assert.deepEqual(straightSegmentsOf(entity({ k: 'polyline', pts: [[0, 0], [4, 0], [4, 4]] })), [
+    [[0, 0], [4, 0]],
+    [[4, 0], [4, 4]],
+  ])
+  // A closed polyline/rectangle gets its closing edge too.
+  assert.equal(straightSegmentsOf(entity({ k: 'polyline', pts: [[0, 0], [4, 0], [4, 4]], closed: true })).length, 3)
+  // Curves, hatches and blocks are not intersection operands.
+  assert.deepEqual(straightSegmentsOf(entity({ k: 'circle', c: [0, 0], r: 5 })), [])
+  assert.deepEqual(straightSegmentsOf(entity({ k: 'hatch', pts: [[0, 0], [1, 0], [1, 1]] })), [])
+})
+
+test('intersection snapping finds crossings near the cursor and dedupes them', () => {
+  const crossing = [
+    entity({ id: 'a', k: 'line', pts: [[40, 40], [60, 60]] }),
+    entity({ id: 'b', k: 'line', pts: [[40, 60], [60, 40]] }),
+  ]
+  const index = buildIndex(crossing)
+  const project = point => toScreen(point, FIT, VIEW)
+  const snap = snapNear(index, [50.4, 50.3], 4, { project, screenRadius: 12 })
+  assert.equal(snap?.kind, 'intersection')
+  assert.ok(snap !== undefined && Math.abs(snap.point[0] - 50) < 1e-6 && Math.abs(snap.point[1] - 50) < 1e-6)
+  // A cursor far from the crossing never sees the intersection candidate.
+  assert.notEqual(snapNear(index, [5, 5], 4, { project, screenRadius: 12 })?.kind, 'intersection')
+  // Without a projection the intersection candidate is not computed at all; the
+  // ordinary nearest-on-line snap may still answer.
+  assert.notEqual(snapNear(index, [50.4, 50.3], 4)?.kind, 'intersection')
+  // Many segments crossing at one point produce a single candidate.
+  const shared = [
+    entity({ id: 'c', k: 'line', pts: [[45, 50], [55, 50]] }),
+    entity({ id: 'd', k: 'line', pts: [[50, 45], [50, 55]] }),
+    entity({ id: 'e', k: 'line', pts: [[46, 46], [54, 54]] }),
+  ]
+  // 3 intersecting lines through (50,50): three pairs, one deduped point.
+  const sharedSnap = snapNear(buildIndex(shared), [50.2, 50.2], 4, { project, screenRadius: 12 })
+  assert.equal(sharedSnap?.kind, 'intersection')
+  assert.ok(sharedSnap !== undefined && Math.hypot(sharedSnap.point[0] - 50, sharedSnap.point[1] - 50) < 1e-6)
+  // A shared endpoint reports as an endpoint: the higher-priority class wins.
+  const touching = [
+    entity({ id: 'f', k: 'line', pts: [[50, 50], [70, 50]] }),
+    entity({ id: 'g', k: 'line', pts: [[50, 50], [50, 70]] }),
+  ]
+  assert.equal(snapNear(buildIndex(touching), [50.2, 50.2], 4, { project, screenRadius: 12 })?.kind, 'endpoint')
+  // Parallel geometry has no intersection snap (it may still offer nearest).
+  const parallel = [
+    entity({ id: 'h', k: 'line', pts: [[40, 45], [60, 45]] }),
+    entity({ id: 'i', k: 'line', pts: [[40, 55], [60, 55]] }),
+  ]
+  assert.notEqual(snapNear(buildIndex(parallel), [50, 50], 6, { project, screenRadius: 12 })?.kind, 'intersection')
 })
 
 test('ortho, typed distance and angle helpers follow CAD conventions', () => {
@@ -264,7 +335,31 @@ test('a grip dispatches a supported move for insertion points and an engine op f
   const polyRequest = gripRequestFor(poly, gripsOf(poly)[1], [5, 2])
   assert.equal(polyRequest.op, 'setPolyline')
   const circle = entity({ id: 'c', k: 'circle', c: [0, 0], r: 5 })
-  assert.equal(gripRequestFor(circle, gripsOf(circle)[1], [6, 0]).op, 'setCircle')
+  const circleRequest = gripRequestFor(circle, gripsOf(circle)[1], [6, 0])
+  assert.equal(circleRequest.op, 'setCircle')
+  // The prepared setter shape the engine change carries: centre + radius.
+  assert.deepEqual(circleRequest.payload, { id: 'c', center: [0, 0], radius: 6 })
   // A circle's centre grip translates the circle, which `move` supports.
   assert.deepEqual(gripRequestFor(circle, gripsOf(circle)[0], [2, 3]), { kind: 'move', dx: 2, dy: 3 })
+  // Arc endpoint grips stage setArc with the angle the grip now points at.
+  const arc = entity({ id: 'a', k: 'arc', c: [0, 0], r: 10, a0: 0, a1: Math.PI / 2 })
+  const arcGrips = gripsOf(arc)
+  const arcStart = gripRequestFor(arc, arcGrips[1], [0, -10])
+  assert.equal(arcStart.op, 'setArc')
+  assert.deepEqual(arcStart.payload, { id: 'a', center: [0, 0], radius: 10, startAngleDeg: -90, endAngleDeg: 90 })
+  const arcEnd = gripRequestFor(arc, arcGrips[2], [-10, 0])
+  assert.equal(arcEnd.payload.endAngleDeg, 180)
+  // An arc centre grip translates the whole arc through the same setter.
+  const arcCenter = gripRequestFor(arc, arcGrips[0], [2, 3])
+  assert.equal(arcCenter.op, 'setArc')
+  assert.deepEqual(arcCenter.payload.center, [2, 3])
+  // Ellipse quadrant grips stage setEllipse: the major grip sets rx + rotation,
+  // the minor grip sets ry and keeps the rotation.
+  const ellipse = entity({ id: 'e', k: 'ellipse', c: [0, 0], rx: 10, ry: 4, rot: 0, a0: 0, a1: Math.PI * 2, closed: true })
+  const ellipseGrips = gripsOf(ellipse)
+  const major = gripRequestFor(ellipse, ellipseGrips[1], [0, 12])
+  assert.equal(major.op, 'setEllipse')
+  assert.deepEqual(major.payload, { id: 'e', center: [0, 0], rx: 12, ry: 4, rotDeg: 90 })
+  const minor = gripRequestFor(ellipse, ellipseGrips[2], [3, 0])
+  assert.deepEqual(minor.payload, { id: 'e', center: [0, 0], rx: 10, ry: 3, rotDeg: 0 })
 })

@@ -701,7 +701,7 @@ export function segmentIntersectsBox(a: readonly [number, number], b: readonly [
  * ------------------------------------------------------------------ */
 
 /** The snap classes the pane offers, in priority order. */
-export type CadSnapKind = 'endpoint' | 'midpoint' | 'center' | 'nearest' | 'grid'
+export type CadSnapKind = 'endpoint' | 'intersection' | 'midpoint' | 'center' | 'nearest' | 'grid'
 
 /** One snap candidate. */
 export interface CadSnapResult {
@@ -722,18 +722,143 @@ export interface CadSnapOptions {
   readonly includeGrid?: boolean
   /** Locked layers are still geometry; keep them out when the pane locks them. */
   readonly locked?: ReadonlySet<string>
+  /**
+   * World → screen projection. Supplying it (with {@link screenRadius}) turns on
+   * the intersection candidate, whose neighbourhood prefilter runs in screen
+   * space so a distant 10k-primitive sheet is never searched pairwise.
+   */
+  readonly project?: (point: CadPointLike) => readonly [number, number]
+  /** Screen-space snap radius in CSS pixels; required for intersections. */
+  readonly screenRadius?: number
 }
+
+/** The most straight segments one intersection query considers. */
+const MAX_INTERSECTION_SEGMENTS = 128
+/** The most intersection candidates one query returns before dedupe. */
+const MAX_INTERSECTION_POINTS = 64
+/** Two intersection points closer than this on screen are the same point. */
+const INTERSECTION_DEDUPE_PX = 2
 
 /** Priority of each snap class: a lower number wins a tie. */
 export function snapPriority(kind: CadSnapKind): number {
   switch (kind) {
     case 'endpoint': return 0
-    case 'midpoint': return 1
-    case 'center': return 2
-    case 'nearest': return 3
-    case 'grid': return 4
+    case 'intersection': return 1
+    case 'midpoint': return 2
+    case 'center': return 3
+    case 'nearest': return 4
+    case 'grid': return 5
   }
 }
+
+/**
+ * The straight segments of one entity, for intersection snapping.
+ *
+ * Only the geometry the requirement names is included: a LINE is one segment, a
+ * polyline (including a rectangle's closed outline) is one segment per edge.
+ * Curves, hatches and block content are not intersection operands.
+ * @param entity - the entity.
+ * @returns the segments in drawing units.
+ */
+export function straightSegmentsOf(entity: EcadEntity): readonly (readonly [CadPointLike, CadPointLike])[] {
+  if (entity.k !== 'line' && entity.k !== 'polyline') return []
+  const points = (entity.pts ?? []) as readonly CadPointLike[]
+  const segments: (readonly [CadPointLike, CadPointLike])[] = []
+  for (let index = 1; index < points.length; index += 1) {
+    segments.push([points[index - 1] as CadPointLike, points[index] as CadPointLike])
+  }
+  if (entity.closed === true && points.length > 2) segments.push([points[points.length - 1] as CadPointLike, points[0] as CadPointLike])
+  return segments
+}
+
+/**
+ * The intersection of two 2D segments.
+ *
+ * A crossing or an endpoint touch counts; parallel and collinear segments do
+ * not (they have no single intersection point to snap to).
+ * @param a - first segment start.
+ * @param b - first segment end.
+ * @param c - second segment start.
+ * @param d - second segment end.
+ * @returns the intersection point, or undefined.
+ */
+export function segmentIntersectionPoint(a: CadPointLike, b: CadPointLike, c: CadPointLike, d: CadPointLike): CadPointLike | undefined {
+  const rx = b[0] - a[0]
+  const ry = b[1] - a[1]
+  const sx = d[0] - c[0]
+  const sy = d[1] - c[1]
+  const denominator = rx * sy - ry * sx
+  if (!Number.isFinite(denominator) || Math.abs(denominator) < 1e-12) return undefined
+  const qpx = c[0] - a[0]
+  const qpy = c[1] - a[1]
+  const t = (qpx * sy - qpy * sx) / denominator
+  const u = (qpx * ry - qpy * rx) / denominator
+  const epsilon = 1e-9
+  if (t < -epsilon || t > 1 + epsilon || u < -epsilon || u > 1 + epsilon) return undefined
+  return [a[0] + t * rx, a[1] + t * ry]
+}
+
+/**
+ * Intersection snap candidates near the cursor.
+ *
+ * The prefilter is screen-space: each straight segment whose projected bounds
+ * (grown by the snap radius) contain the cursor is a candidate, then pairs are
+ * intersected in screen space. Two candidates within a couple of pixels are the
+ * same intersection and are reported once. This keeps a cursor in one corner of
+ * a 10k-primitive sheet from doing a sheet-wide pairwise pass.
+ * @param entries - index entries near the cursor (already filtered by lock).
+ * @param cursorScreen - the cursor in canvas CSS pixels.
+ * @param project - world → screen projection.
+ * @param screenRadius - snap radius in CSS pixels.
+ * @returns the world-space intersection points, deduped.
+ */
+export function intersectionSnapPoints(
+  entries: readonly CadIndexEntry[],
+  cursorScreen: readonly [number, number],
+  project: (point: CadPointLike) => readonly [number, number],
+  screenRadius: number,
+): readonly CadPointLike[] {
+  if (!Number.isFinite(screenRadius) || screenRadius <= 0) return []
+  const candidates: { readonly screen: readonly [number, number]; readonly world: CadPointLike }[] = []
+  // One flat list of near segments with their projected ends.
+  const segments: { readonly a: CadPointLike; readonly b: CadPointLike; readonly sa: readonly [number, number]; readonly sb: readonly [number, number] }[] = []
+  for (const entry of entries) {
+    for (const segment of straightSegmentsOf(entry.entity)) {
+      if (segments.length >= MAX_INTERSECTION_SEGMENTS) break
+      const sa = project(segment[0])
+      const sb = project(segment[1])
+      // Screen-space neighbourhood filter: reject a segment that cannot pass
+      // within the snap radius of the cursor.
+      const near = cursorScreen[0] >= Math.min(sa[0], sb[0]) - screenRadius
+        && cursorScreen[0] <= Math.max(sa[0], sb[0]) + screenRadius
+        && cursorScreen[1] >= Math.min(sa[1], sb[1]) - screenRadius
+        && cursorScreen[1] <= Math.max(sa[1], sb[1]) + screenRadius
+      if (!near) continue
+      segments.push({ a: segment[0], b: segment[1], sa, sb })
+    }
+    if (segments.length >= MAX_INTERSECTION_SEGMENTS) break
+  }
+  for (let first = 0; first < segments.length; first += 1) {
+    for (let second = first + 1; second < segments.length; second += 1) {
+      if (candidates.length >= MAX_INTERSECTION_POINTS) break
+      const left = segments[first] as typeof segments[number]
+      const right = segments[second] as typeof segments[number]
+      const screen = segmentIntersectionPoint(left.sa, left.sb, right.sa, right.sb)
+      if (screen === undefined) continue
+      const distance = Math.hypot(screen[0] - cursorScreen[0], screen[1] - cursorScreen[1])
+      if (distance > screenRadius) continue
+      // The world point is the intersection of the same pair in world space; the
+      // view transform is a uniform scale plus translation, so the pair that
+      // crosses on screen crosses at the corresponding world point.
+      const world = segmentIntersectionPoint(left.a, left.b, right.a, right.b)
+      if (world === undefined) continue
+      if (candidates.some(candidate => Math.hypot(candidate.screen[0] - screen[0], candidate.screen[1] - screen[1]) <= INTERSECTION_DEDUPE_PX)) continue
+      candidates.push({ screen: [screen[0], screen[1]], world: [roundValue(world[0]), roundValue(world[1])] })
+    }
+  }
+  return candidates.map(candidate => candidate.world)
+}
+
 
 /**
  * The best object snap near one world point.
@@ -765,7 +890,8 @@ export function snapNear(index: CadIndex, point: CadPointLike, radius: number, o
     }
   }
   const box: EcadBox = { min: [point[0] - radius, point[1] - radius], max: [point[0] + radius, point[1] + radius] }
-  for (const entry of queryIndex(index, box, 2048)) {
+  const nearby = queryIndex(index, box, 2048)
+  for (const entry of nearby) {
     if (options.locked?.has(entry.layer) === true) continue
     const entity = entry.entity
     const samples = entry.samples
@@ -812,6 +938,17 @@ export function snapNear(index: CadIndex, point: CadPointLike, radius: number, o
         const projection = nearestOnSegment(point, previous, at)
         if (projection !== undefined) consider(projection, 'nearest', entry.id)
       }
+    }
+  }
+  // Intersection snapping only runs when the caller supplies the screen
+  // projection: the candidate prefilter is screen-space, so a cursor far from
+  // any crossing never pays for a sheet-wide pairwise pass.
+  if (options.project !== undefined && options.screenRadius !== undefined) {
+    const visible = options.locked === undefined
+      ? nearby
+      : nearby.filter(entry => options.locked?.has(entry.layer) !== true)
+    for (const intersection of intersectionSnapPoints(visible, options.project(point), options.project, options.screenRadius)) {
+      consider(intersection, 'intersection')
     }
   }
   if (options.includeGrid === true && options.grid !== undefined && Number.isFinite(options.grid) && options.grid > 0) {
@@ -1117,10 +1254,53 @@ export function gripRequestFor(entity: EcadEntity, grip: CadGrip, to: EcadPoint)
       // move a grip is allowed to make, and `move` is the supported operation.
       return { kind: 'move', dx: roundValue(to[0] - entity.c[0]), dy: roundValue(to[1] - entity.c[1]) }
     }
-    return { kind: 'engine', op: 'setCircle', payload: { id: entity.id, c: entity.c, r: entity.r } }
+    const center = entity.c ?? [0, 0]
+    return {
+      kind: 'engine',
+      op: 'setCircle',
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        radius: roundValue(Math.hypot(to[0] - center[0], to[1] - center[1])),
+      },
+    }
   }
   if (entity.k === 'arc') {
-    return { kind: 'engine', op: 'setArc', payload: { id: entity.id, c: entity.c, r: entity.r, a0: entity.a0, a1: entity.a1 } }
+    const center = entity.c ?? [0, 0]
+    const radius = Math.abs(entity.r ?? 0)
+    const degrees = 180 / Math.PI
+    const start = (entity.a0 ?? 0) * degrees
+    const end = (entity.a1 ?? 0) * degrees
+    if (grip.kind === 'center') {
+      // A centre grip translates the arc; setArc carries the whole geometry.
+      return { kind: 'engine', op: 'setArc', payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], radius: roundValue(radius), startAngleDeg: roundValue(start), endAngleDeg: roundValue(end) } }
+    }
+    const movedAngle = angleDegrees(center, [to[0], to[1]])
+    const startAngleDeg = grip.index === 1 ? movedAngle : roundValue(start)
+    const endAngleDeg = grip.index === 2 ? movedAngle : roundValue(end)
+    return { kind: 'engine', op: 'setArc', payload: { id: entity.id, center: [roundValue(center[0]), roundValue(center[1])], radius: roundValue(radius), startAngleDeg, endAngleDeg } }
+  }
+  if (entity.k === 'ellipse') {
+    const center = entity.c ?? [0, 0]
+    const rx = Math.abs(entity.rx ?? 0)
+    const ry = Math.abs(entity.ry ?? 0)
+    const rotationDeg = ((entity.rot ?? 0) * 180) / Math.PI
+    if (grip.kind === 'center') {
+      return { kind: 'engine', op: 'setEllipse', payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], rx: roundValue(rx), ry: roundValue(ry), rotDeg: roundValue(rotationDeg) } }
+    }
+    const distance = Math.hypot(to[0] - center[0], to[1] - center[1])
+    const rotDeg = grip.index === 1 ? angleDegrees(center, [to[0], to[1]]) : roundValue(rotationDeg)
+    return {
+      kind: 'engine',
+      op: 'setEllipse',
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        rx: grip.index === 2 ? roundValue(rx) : roundValue(distance),
+        ry: grip.index === 2 ? roundValue(distance) : roundValue(ry),
+        rotDeg,
+      },
+    }
   }
   return { kind: 'engine', op: 'setGeometry', payload: { id: entity.id, point: [roundValue(to[0]), roundValue(to[1])] } }
 }

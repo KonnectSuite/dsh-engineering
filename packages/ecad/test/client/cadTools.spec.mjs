@@ -32,6 +32,7 @@ import {
   EMPTY_DRAFT_STATE,
   ENGINE_OPS_SUPPORTED,
   PENDING_ENGINE_OPS,
+  PREPARED_ENGINE_OPS,
   engineOpAvailable,
   stageAddArc,
   stageAddBlock,
@@ -52,6 +53,10 @@ import {
   stageRotate,
   stageScale,
   stageSetAttribute,
+  stageSetArc,
+  stageSetCircle,
+  stageSetColor,
+  stageSetEllipse,
   stageSetLayer,
   stageSetLayerColor,
   stageSetLayerMany,
@@ -114,14 +119,19 @@ test('every tool operation is supported by the merged engine', () => {
   for (const op of [
     'addText', 'addLine', 'addPolyline', 'addRectangle', 'addRevisionCloud', 'addLeader', 'addBlock',
     'addCircle', 'addArc', 'setText', 'setAttribute', 'setLayer', 'move', 'rotate', 'copy', 'scale',
-    'mirror', 'offset', 'trim', 'extend', 'setLine', 'setPolyline', 'erase', 'addLayer', 'setLayerColor', 'renameLayer',
+    'mirror', 'offset', 'trim', 'extend', 'setLine', 'setPolyline', 'setCircle', 'setArc', 'setEllipse',
+    'setColor', 'erase', 'addLayer', 'setLayerColor', 'renameLayer',
   ]) {
     assert.equal(engineOpAvailable(op), true, `${op} should be supported by the merged engine`)
   }
-  // The only operations the face still wires without an engine form are the
-  // circle/arc/other geometry grip setters.
-  for (const op of ['setCircle', 'setArc', 'setGeometry', 'setDimension']) {
+  // The setters graduated from preparation into the merged engine; only the
+  // generic geometry fallbacks remain pending.
+  for (const op of ['setGeometry', 'setDimension']) {
     assert.equal(engineOpAvailable(op), false, `${op} should still be pending`)
+  }
+  for (const op of PREPARED_ENGINE_OPS) {
+    assert.ok(ENGINE_OPS_SUPPORTED.has(op), `${op} was prepared and now must be supported`)
+    assert.ok(!PENDING_ENGINE_OPS.includes(op), `${op} is supported, not pending`)
   }
   assert.equal(PENDING_ENGINE_OPS.length, new Set(PENDING_ENGINE_OPS).size)
   assert.equal(asEcadOp({ op: 'copy', layout: 'Model', ids: ['a'], dx: 1, dy: 2 }).op, 'copy')
@@ -314,6 +324,11 @@ test('the operation builders emit the exact wire shapes the merged engine valida
   assert.deepEqual(stageExtend('k19', 'Model', 'target', 'boundary').op, { op: 'extend', layout: 'Model', id: 'target', boundaryId: 'boundary' })
   assert.deepEqual(stageSetLine('k20', 'Model', 'l', [0, 0], [1, 1]).op, { op: 'setLine', layout: 'Model', id: 'l', a: [0, 0], b: [1, 1] })
   assert.deepEqual(stageSetPolyline('k21', 'Model', 'p', [[0, 0], [1, 1]], true).op, { op: 'setPolyline', layout: 'Model', id: 'p', pts: [[0, 0], [1, 1]], closed: true })
+  // The prepared engine setters: circle/arc/ellipse geometry and entity colour.
+  assert.deepEqual(stageSetCircle('k23', 'Model', 'c', [1, 2], 3).op, { op: 'setCircle', layout: 'Model', id: 'c', center: [1, 2], radius: 3 })
+  assert.deepEqual(stageSetArc('k24', 'Model', 'a', [0, 0], 5, -20, 70).op, { op: 'setArc', layout: 'Model', id: 'a', center: [0, 0], radius: 5, startAngleDeg: -20, endAngleDeg: 70 })
+  assert.deepEqual(stageSetEllipse('k25', 'Model', 'e', [0, 0], 8, 3, 15).op, { op: 'setEllipse', layout: 'Model', id: 'e', center: [0, 0], rx: 8, ry: 3, rotDeg: 15 })
+  assert.deepEqual(stageSetColor('k26', 'Model', ['a', 'b'], 3).op, { op: 'setColor', layout: 'Model', ids: ['a', 'b'], color: 3 })
   assert.deepEqual(stageEraseMany('k22', 'Model', ['a', 'b']).op, { op: 'erase', layout: 'Model', ids: ['a', 'b'] })
 })
 

@@ -1129,19 +1129,81 @@ function segmentIntersectsBox(a, b, box) {
   }
   return t0 <= t1;
 }
+var MAX_INTERSECTION_SEGMENTS = 128;
+var MAX_INTERSECTION_POINTS = 64;
+var INTERSECTION_DEDUPE_PX = 2;
 function snapPriority(kind) {
   switch (kind) {
     case "endpoint":
       return 0;
-    case "midpoint":
+    case "intersection":
       return 1;
-    case "center":
+    case "midpoint":
       return 2;
-    case "nearest":
+    case "center":
       return 3;
-    case "grid":
+    case "nearest":
       return 4;
+    case "grid":
+      return 5;
   }
+}
+function straightSegmentsOf(entity) {
+  if (entity.k !== "line" && entity.k !== "polyline") return [];
+  const points = entity.pts ?? [];
+  const segments = [];
+  for (let index = 1; index < points.length; index += 1) {
+    segments.push([points[index - 1], points[index]]);
+  }
+  if (entity.closed === true && points.length > 2) segments.push([points[points.length - 1], points[0]]);
+  return segments;
+}
+function segmentIntersectionPoint(a, b, c, d) {
+  const rx = b[0] - a[0];
+  const ry = b[1] - a[1];
+  const sx = d[0] - c[0];
+  const sy = d[1] - c[1];
+  const denominator = rx * sy - ry * sx;
+  if (!Number.isFinite(denominator) || Math.abs(denominator) < 1e-12) return void 0;
+  const qpx = c[0] - a[0];
+  const qpy = c[1] - a[1];
+  const t = (qpx * sy - qpy * sx) / denominator;
+  const u = (qpx * ry - qpy * rx) / denominator;
+  const epsilon = 1e-9;
+  if (t < -epsilon || t > 1 + epsilon || u < -epsilon || u > 1 + epsilon) return void 0;
+  return [a[0] + t * rx, a[1] + t * ry];
+}
+function intersectionSnapPoints(entries, cursorScreen, project, screenRadius) {
+  if (!Number.isFinite(screenRadius) || screenRadius <= 0) return [];
+  const candidates = [];
+  const segments = [];
+  for (const entry of entries) {
+    for (const segment of straightSegmentsOf(entry.entity)) {
+      if (segments.length >= MAX_INTERSECTION_SEGMENTS) break;
+      const sa = project(segment[0]);
+      const sb = project(segment[1]);
+      const near = cursorScreen[0] >= Math.min(sa[0], sb[0]) - screenRadius && cursorScreen[0] <= Math.max(sa[0], sb[0]) + screenRadius && cursorScreen[1] >= Math.min(sa[1], sb[1]) - screenRadius && cursorScreen[1] <= Math.max(sa[1], sb[1]) + screenRadius;
+      if (!near) continue;
+      segments.push({ a: segment[0], b: segment[1], sa, sb });
+    }
+    if (segments.length >= MAX_INTERSECTION_SEGMENTS) break;
+  }
+  for (let first = 0; first < segments.length; first += 1) {
+    for (let second = first + 1; second < segments.length; second += 1) {
+      if (candidates.length >= MAX_INTERSECTION_POINTS) break;
+      const left = segments[first];
+      const right = segments[second];
+      const screen = segmentIntersectionPoint(left.sa, left.sb, right.sa, right.sb);
+      if (screen === void 0) continue;
+      const distance = Math.hypot(screen[0] - cursorScreen[0], screen[1] - cursorScreen[1]);
+      if (distance > screenRadius) continue;
+      const world = segmentIntersectionPoint(left.a, left.b, right.a, right.b);
+      if (world === void 0) continue;
+      if (candidates.some((candidate) => Math.hypot(candidate.screen[0] - screen[0], candidate.screen[1] - screen[1]) <= INTERSECTION_DEDUPE_PX)) continue;
+      candidates.push({ screen: [screen[0], screen[1]], world: [roundValue(world[0]), roundValue(world[1])] });
+    }
+  }
+  return candidates.map((candidate) => candidate.world);
 }
 function snapNear(index, point, radius, options = {}) {
   if (!Number.isFinite(point[0]) || !Number.isFinite(point[1]) || !Number.isFinite(radius) || radius <= 0) return void 0;
@@ -1162,7 +1224,8 @@ function snapNear(index, point, radius, options = {}) {
     }
   };
   const box = { min: [point[0] - radius, point[1] - radius], max: [point[0] + radius, point[1] + radius] };
-  for (const entry of queryIndex(index, box, 2048)) {
+  const nearby = queryIndex(index, box, 2048);
+  for (const entry of nearby) {
     if (options.locked?.has(entry.layer) === true) continue;
     const entity = entry.entity;
     const samples = entry.samples;
@@ -1206,6 +1269,12 @@ function snapNear(index, point, radius, options = {}) {
         const projection = nearestOnSegment(point, previous, at);
         if (projection !== void 0) consider(projection, "nearest", entry.id);
       }
+    }
+  }
+  if (options.project !== void 0 && options.screenRadius !== void 0) {
+    const visible = options.locked === void 0 ? nearby : nearby.filter((entry) => options.locked?.has(entry.layer) !== true);
+    for (const intersection of intersectionSnapPoints(visible, options.project(point), options.project, options.screenRadius)) {
+      consider(intersection, "intersection");
     }
   }
   if (options.includeGrid === true && options.grid !== void 0 && Number.isFinite(options.grid) && options.grid > 0) {
@@ -1397,10 +1466,52 @@ function gripRequestFor(entity, grip, to) {
     if (entity.c !== void 0 && grip.kind === "center") {
       return { kind: "move", dx: roundValue(to[0] - entity.c[0]), dy: roundValue(to[1] - entity.c[1]) };
     }
-    return { kind: "engine", op: "setCircle", payload: { id: entity.id, c: entity.c, r: entity.r } };
+    const center = entity.c ?? [0, 0];
+    return {
+      kind: "engine",
+      op: "setCircle",
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        radius: roundValue(Math.hypot(to[0] - center[0], to[1] - center[1]))
+      }
+    };
   }
   if (entity.k === "arc") {
-    return { kind: "engine", op: "setArc", payload: { id: entity.id, c: entity.c, r: entity.r, a0: entity.a0, a1: entity.a1 } };
+    const center = entity.c ?? [0, 0];
+    const radius = Math.abs(entity.r ?? 0);
+    const degrees = 180 / Math.PI;
+    const start = (entity.a0 ?? 0) * degrees;
+    const end = (entity.a1 ?? 0) * degrees;
+    if (grip.kind === "center") {
+      return { kind: "engine", op: "setArc", payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], radius: roundValue(radius), startAngleDeg: roundValue(start), endAngleDeg: roundValue(end) } };
+    }
+    const movedAngle = angleDegrees(center, [to[0], to[1]]);
+    const startAngleDeg = grip.index === 1 ? movedAngle : roundValue(start);
+    const endAngleDeg = grip.index === 2 ? movedAngle : roundValue(end);
+    return { kind: "engine", op: "setArc", payload: { id: entity.id, center: [roundValue(center[0]), roundValue(center[1])], radius: roundValue(radius), startAngleDeg, endAngleDeg } };
+  }
+  if (entity.k === "ellipse") {
+    const center = entity.c ?? [0, 0];
+    const rx = Math.abs(entity.rx ?? 0);
+    const ry = Math.abs(entity.ry ?? 0);
+    const rotationDeg = (entity.rot ?? 0) * 180 / Math.PI;
+    if (grip.kind === "center") {
+      return { kind: "engine", op: "setEllipse", payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], rx: roundValue(rx), ry: roundValue(ry), rotDeg: roundValue(rotationDeg) } };
+    }
+    const distance = Math.hypot(to[0] - center[0], to[1] - center[1]);
+    const rotDeg = grip.index === 1 ? angleDegrees(center, [to[0], to[1]]) : roundValue(rotationDeg);
+    return {
+      kind: "engine",
+      op: "setEllipse",
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        rx: grip.index === 2 ? roundValue(rx) : roundValue(distance),
+        ry: grip.index === 2 ? roundValue(distance) : roundValue(ry),
+        rotDeg
+      }
+    };
   }
   return { kind: "engine", op: "setGeometry", payload: { id: entity.id, point: [roundValue(to[0]), roundValue(to[1])] } };
 }
@@ -1464,6 +1575,10 @@ var ENGINE_OPS_SUPPORTED = /* @__PURE__ */ new Set([
   "extend",
   "setLine",
   "setPolyline",
+  "setCircle",
+  "setArc",
+  "setEllipse",
+  "setColor",
   "erase",
   "addLayer",
   "setLayerColor",
@@ -1524,6 +1639,9 @@ function stageTrim(key, layout, id, boundaryId, pick) {
 }
 function stageExtend(key, layout, id, boundaryId) {
   return staged(key, layout, { op: "extend", layout, id, boundaryId });
+}
+function stageSetColor(key, layout, ids, color) {
+  return staged(key, layout, { op: "setColor", layout, ids: [...ids], color: Math.trunc(color) });
 }
 function stageAddLayer(key, name, color) {
   return stagedLayer(key, { op: "addLayer", name, ...color === void 0 ? {} : { color: Math.trunc(color) } });
@@ -1798,7 +1916,7 @@ function draftReset() {
 // packages/ecad/src/client/EcadDraft.tsx
 var import_react = require("react");
 
-var css = "/* The ECAD drawing pane.\n *\n * Tokens only: every surface, label, border and accent comes from the theme's\n * --dsw-alias-* set, so the pane follows light and dark without a second palette.\n * The drawing sheet is a local surface pair because a CAD sheet is its own\n * ground: its ink and paper follow the theme, and a layer colour is tinted\n * toward the theme ink by the renderer (see palette.ts) so linework stays\n * readable on either ground.\n */\n\n._0qoF0J_root {\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font-family: var(--dsw-font-family, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif);\n  font-size: 12px;\n  line-height: 1.45;\n  container-type: inline-size;\n  /* The drawing's ground and ink. The sheet surface is a theme layer, never a\n     literal paper colour: dark mode gets a dark sheet, not a white flash. */\n  --ecad-paper: var(--dsw-alias-bg-layer-1);\n  --ecad-ink: var(--dsw-alias-label-primary);\n  --ecad-ink-tint: 55%;\n  --ecad-accent: var(--dsw-alias-state-business-primary);\n}\n\n/* Toolbar: one quiet row of view controls, the drawing's own status, and the\n   one action that leaves the pane. No product chrome \u2014 the document preview\n   header above already owns the path, reload and renderer controls. */\n._0qoF0J_toolbar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 40px;\n  box-sizing: border-box;\n  padding: 5px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow: hidden;\n}\n\n._0qoF0J_toolbarGroup {\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n}\n\n._0qoF0J_coverage {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_toolbarSpacer {\n  flex: 1;\n  min-width: 0;\n}\n\n/* Badges carry a text label as well as the accent colour, so state never rides\n   on colour alone and the label can be localized. */\n._0qoF0J_badge {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n  height: 18px;\n  padding: 0 6px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 600;\n  letter-spacing: 0.02em;\n  white-space: nowrap;\n}\n\n._0qoF0J_badgeWarn {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label);\n}\n\n._0qoF0J_badgeDot {\n  width: 6px;\n  height: 6px;\n  border-radius: 50%;\n  background: currentColor;\n  corner-shape: round;\n}\n\n._0qoF0J_button {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  box-sizing: border-box;\n  min-width: 24px;\n  min-height: 24px;\n  padding: 0 8px;\n  border: 0;\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n._0qoF0J_button:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_button[aria-pressed='true'] {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_iconButton {\n  width: 24px;\n  padding: 0;\n}\n\n._0qoF0J_primaryButton {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_button:focus-visible,\n._0qoF0J_primaryButton:focus-visible,\n._0qoF0J_layoutTab:focus-visible,\n._0qoF0J_layerToggle:focus-visible,\n._0qoF0J_layerMiniButton:focus-visible,\n._0qoF0J_paletteButton:focus-visible,\n._0qoF0J_statusChip:focus-visible,\n._0qoF0J_contextMenuItem:focus-visible,\n._0qoF0J_canvasWrap:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._0qoF0J_icon {\n  display: block;\n  width: 14px;\n  height: 14px;\n  flex: none;\n}\n\n/* Layout tabs: only for a multi-layout drawing, printed the way a drawing\n   application prints them, above the sheet. */\n._0qoF0J_layoutTabs {\n  display: flex;\n  align-items: stretch;\n  gap: 2px;\n  flex: none;\n  min-height: 28px;\n  padding: 0 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow-x: auto;\n  overflow-y: hidden;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_layoutTab {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 9px;\n  min-height: 27px;\n  border: 0;\n  border-bottom: 2px solid transparent;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n  white-space: nowrap;\n}\n\n._0qoF0J_layoutTabActive {\n  border-bottom-color: var(--ecad-accent);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_tabCount {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n/* The stage holds the sheet and the panels. The sheet keeps every spare pixel;\n   the panels give way first on a narrow preview tab. */\n._0qoF0J_stage {\n  display: flex;\n  flex: 1;\n  min-height: 0;\n  min-width: 0;\n  position: relative;\n}\n\n._0qoF0J_canvasWrap {\n  position: relative;\n  flex: 1;\n  min-width: 0;\n  min-height: 0;\n  overflow: hidden;\n  background: var(--ecad-paper);\n  cursor: grab;\n  touch-action: none;\n}\n\n._0qoF0J_canvasWrap:focus-visible {\n  outline-offset: -2px;\n}\n\n._0qoF0J_panning {\n  cursor: grabbing;\n}\n\n._0qoF0J_canvas {\n  display: block;\n  width: 100%;\n  height: 100%;\n}\n\n._0qoF0J_primitive {\n  pointer-events: none;\n}\n\n/* A selection is drawn as a paper-coloured halo under an accent stroke, so it\n   reads as a highlight state on top of any layer colour and never as a colour\n   the drawing itself uses. */\n._0qoF0J_selectionHalo {\n  fill: none;\n  stroke: var(--ecad-paper);\n  stroke-width: 5;\n  stroke-linejoin: round;\n  stroke-linecap: round;\n}\n\n._0qoF0J_selection {\n  fill: none;\n  stroke: var(--ecad-accent);\n  stroke-width: 2.5;\n  stroke-linejoin: round;\n  stroke-linecap: round;\n}\n\n/* Quiet state surfaces: the same centered rhythm the document previewers use\n   for loading, empty and failure states. */\n._0qoF0J_state {\n  display: flex;\n  flex: 1;\n  min-height: 0;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 8px;\n  padding: 24px;\n  text-align: center;\n}\n\n._0qoF0J_stateTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_stateBody {\n  margin: 0;\n  max-width: 54ch;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 1.5;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_stateCode {\n  margin: 0;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n}\n\n._0qoF0J_stateActions {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n._0qoF0J_spinner {\n  width: 18px;\n  height: 18px;\n  box-sizing: border-box;\n  border: 2px solid var(--dsw-alias-border-l2);\n  border-top-color: var(--dsw-alias-state-business-primary);\n  border-radius: 50%;\n  corner-shape: round;\n  animation: spin 900ms linear infinite;\n}\n\n@keyframes spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* Floating notice over the sheet: truncation and approximation are warnings the\n   reader must see, so they sit on the sheet's top edge, on an elevated surface. */\n._0qoF0J_notice {\n  position: absolute;\n  top: 8px;\n  left: 8px;\n  right: 8px;\n  z-index: 2;\n  display: flex;\n  align-items: flex-start;\n  gap: 8px;\n  padding: 6px 9px;\n  border: 0.5px solid var(--dsw-alias-state-warn-primary);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-state-warn-tertiary);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  line-height: 1.4;\n  box-shadow: var(--dsw-elevation-panel);\n  pointer-events: none;\n}\n\n._0qoF0J_noticeText {\n  overflow-wrap: anywhere;\n}\n\n/* Side panel: layers, the selected primitive, and the title block. Quiet\n   neutral surface, hairline divider, long lists scroll inside themselves. */\n._0qoF0J_sidePanel {\n  display: flex;\n  flex-direction: column;\n  flex: none;\n  width: 228px;\n  min-height: 0;\n  border-left: 0.5px solid var(--dsw-alias-border-l2);\n  overflow-x: hidden;\n  overflow-y: auto;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_sidePanelHidden {\n  display: none;\n}\n\n._0qoF0J_panelSection {\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n}\n\n._0qoF0J_layersSection {\n  flex: none;\n  max-height: 46%;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_inspectorSection {\n  flex: 1;\n  min-height: 0;\n}\n\n._0qoF0J_panelHeading {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n  padding: 8px 10px 4px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 700;\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n}\n\n._0qoF0J_panelHeadingSpacer {\n  flex: 1;\n}\n\n/* The column layout is dismissed from the toolbar; only the overlay needs its\n   own close control. */\n._0qoF0J_panelClose {\n  display: none;\n}\n\n._0qoF0J_panelHeadingButton {\n  min-height: 20px;\n  height: 20px;\n  padding: 0 4px;\n  font-size: 10px;\n  letter-spacing: 0;\n  text-transform: none;\n  font-weight: 400;\n}\n\n._0qoF0J_layerList {\n  min-height: 0;\n  overflow: auto;\n  padding: 0 4px 8px;\n}\n\n._0qoF0J_layerToggle {\n  display: grid;\n  grid-template-columns: 20px 12px minmax(0, 1fr) auto;\n  align-items: center;\n  gap: 5px;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 24px;\n  padding: 0 4px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n._0qoF0J_layerToggle[aria-pressed='false'] {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._0qoF0J_layerToggle[aria-pressed='false'] ._0qoF0J_layerName {\n  text-decoration: line-through;\n}\n\n._0qoF0J_layerEye {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  color: inherit;\n}\n\n._0qoF0J_swatch {\n  width: 10px;\n  height: 10px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: 2px;\n}\n\n._0qoF0J_layerName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 11px;\n}\n\n._0qoF0J_layerCount {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n/* Inspector: key/value rows with the label quiet and the value readable. */\n._0qoF0J_inspector {\n  min-height: 0;\n  overflow: auto;\n  padding: 2px 10px 12px;\n}\n\n._0qoF0J_inspectorHint {\n  margin: 4px 0 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_propertyRow {\n  display: grid;\n  grid-template-columns: 74px minmax(0, 1fr);\n  gap: 8px;\n  align-items: baseline;\n  padding: 3px 0;\n  font-size: 11px;\n}\n\n._0qoF0J_propertyLabel {\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_propertyValue {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_mono {\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n}\n\n._0qoF0J_approxNote {\n  margin: 8px 0 0;\n  padding: 6px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warn-primary);\n  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 55%, transparent);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_inspectorActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  margin-top: 10px;\n}\n\n._0qoF0J_inspectorActions ._0qoF0J_button {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n}\n\n/* The title block summary is read, not operated: rows only, no controls. */\n._0qoF0J_sheetSection {\n  flex: none;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_sheetRows {\n  padding: 0 10px 8px;\n}\n\n._0qoF0J_sheetValue {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n/* The coverage sentence is read, not scanned: wrap it instead of clipping it. */\n._0qoF0J_sheetValueWrap {\n  white-space: normal;\n  overflow-wrap: anywhere;\n  line-height: 1.4;\n}\n\n/* Hover and press feedback belongs to pointers that have hover. */\n@media (hover: hover) {\n  ._0qoF0J_button:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_primaryButton:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n\n  ._0qoF0J_layoutTab:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_layerToggle:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n._0qoF0J_button:active:not(:disabled),\n._0qoF0J_layerToggle:active,\n._0qoF0J_layoutTab:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n/* The sheet outranks the coverage text first. */\n@container (max-width: 720px) {\n  ._0qoF0J_coverage {\n    display: none;\n  }\n}\n\n/* Only a genuinely narrow preview pane gives the panel the overlay treatment:\n   above this width the panel keeps its own column and never covers the sheet. */\n@container (max-width: 520px) {\n  ._0qoF0J_sidePanel {\n    position: absolute;\n    top: 0;\n    right: 0;\n    bottom: 0;\n    z-index: 3;\n    width: min(260px, 82%);\n    background: var(--dsw-alias-bg-document-preview);\n    border-left: 0.5px solid var(--dsw-alias-border-l2);\n    box-shadow: var(--dsw-elevation-panel);\n  }\n\n  ._0qoF0J_toolbarLabel {\n    display: none;\n  }\n\n  ._0qoF0J_panelClose {\n    display: inline-flex;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_spinner {\n    animation: none;\n    border-top-color: var(--dsw-alias-border-l2);\n    border-left-color: var(--dsw-alias-state-business-primary);\n  }\n}\n\n/* The ECAD drawing pane \u2014 editing additions.\n *\n * Appended as one block so the review can read the M4 surface on its own: the\n * view/edit switch, the edit action row, the staged-change panel and the\n * written-drawing banner. Tokens only, like the reading pane above.\n */\n\n/* View/edit switch: a two-state segmented control, quiet until it is needed. */\n._0qoF0J_modeSwitch {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n  gap: 2px;\n  padding: 2px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n}\n\n._0qoF0J_modeButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 40px;\n  min-height: 22px;\n  padding: 0 7px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n._0qoF0J_modeButtonActive {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_editBar {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  flex: none;\n  min-height: 36px;\n  box-sizing: border-box;\n  padding: 4px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-interactive-bg-hover);\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_editBarGroup {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n}\n\n._0qoF0J_editBarMeta {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_applyLabelLong {\n  display: inline;\n}\n\n/* Narrow panes keep the primary action readable: the short label wins. */\n._0qoF0J_applyLabelShort {\n  display: none;\n}\n\n/* The armed tool keeps a filled state; the label says what it does. */\n._0qoF0J_toolArmed {\n  border-color: var(--dsw-alias-state-business-primary) !important;\n  background: var(--dsw-alias-interactive-bg-hover) !important;\n  color: var(--dsw-alias-label-primary) !important;\n}\n\n._0qoF0J_applyButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  box-sizing: border-box;\n  min-height: 26px;\n  padding: 0 12px;\n  border: 0.5px solid var(--dsw-alias-button-primary-fill);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-button-primary-fill);\n  color: var(--dsw-alias-label-primary-foreground);\n  font: inherit;\n  font-size: 11px;\n  font-weight: 600;\n  cursor: pointer;\n}\n\n._0qoF0J_applyButton:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_modeButton:focus-visible,\n._0qoF0J_applyButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n/* The staged-change section keeps its list scrolling inside the panel. */\n._0qoF0J_draftSection {\n  flex: none;\n  max-height: 46%;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow: auto;\n}\n\n/* While a draft is open the layer list keeps its own share of the panel. */\n._0qoF0J_draftSection ~ ._0qoF0J_layersSection {\n  max-height: 30%;\n}\n\n._0qoF0J_draftList {\n  min-height: 0;\n  max-height: 132px;\n  overflow: auto;\n  padding: 0 6px 4px;\n}\n\n._0qoF0J_draftItem {\n  display: grid;\n  grid-template-columns: minmax(52px, auto) minmax(0, 1fr) 22px;\n  align-items: center;\n  gap: 6px;\n  min-height: 24px;\n  padding: 0 2px;\n  border-radius: var(--dsw-radius-xs);\n  font-size: 11px;\n}\n\n._0qoF0J_draftKind {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  text-transform: lowercase;\n}\n\n._0qoF0J_draftSummary {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._0qoF0J_draftHint {\n  margin: 2px 10px 6px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_draftCounts {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  padding: 0 10px 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n._0qoF0J_draftActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 2px 10px 8px;\n}\n\n/* The annotation form: three labelled fields, then stage/cancel. */\n._0qoF0J_placementForm {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding-bottom: 6px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  margin-bottom: 6px;\n}\n\n._0qoF0J_formRow {\n  display: grid;\n  grid-template-columns: 62px minmax(0, 1fr);\n  align-items: center;\n  gap: 6px;\n  padding: 0 10px;\n  font-size: 11px;\n}\n\n._0qoF0J_formLabel {\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_formInput {\n  box-sizing: border-box;\n  width: 100%;\n  min-height: 24px;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n}\n\n._0qoF0J_formInput:focus-visible,\n._0qoF0J_formActions button:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._0qoF0J_formError {\n  margin: 0 10px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 10px;\n}\n\n._0qoF0J_formActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 2px 10px 0;\n}\n\n/* The apply outcome: written path, counters, verification and DWG round trip. */\n._0qoF0J_applyOutcome {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  margin: 0 6px 8px;\n  padding: 6px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  font-size: 11px;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_applyOk {\n  border-color: var(--dsw-alias-state-success-primary);\n}\n\n._0qoF0J_applyWarn {\n  border-color: var(--dsw-alias-state-warn-primary);\n}\n\n._0qoF0J_applyFailed {\n  border-color: var(--dsw-alias-state-error-primary);\n}\n\n._0qoF0J_outputPath {\n  margin: 0;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_outputPath code {\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_applySummary {\n  margin: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.4;\n}\n\n._0qoF0J_counterGroup {\n  display: flex;\n  flex-direction: column;\n  gap: 3px;\n  padding: 4px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n}\n\n._0qoF0J_counterRow {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 8px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_counterValue {\n  display: inline-flex;\n  align-items: center;\n  gap: 3px;\n  color: var(--dsw-alias-label-primary);\n  font-variant-numeric: tabular-nums;\n}\n\n._0qoF0J_okText {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n._0qoF0J_warnText {\n  color: var(--dsw-alias-state-warn-label);\n}\n\n._0qoF0J_warnBlock {\n  padding: 4px 6px;\n  border-left: 2px solid var(--dsw-alias-state-warn-primary);\n  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 45%, transparent);\n  border-radius: 0 var(--dsw-radius-xs) var(--dsw-radius-xs) 0;\n}\n\n._0qoF0J_warnTitle {\n  display: block;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 600;\n}\n\n._0qoF0J_warnList {\n  margin: 3px 0 0;\n  padding-left: 14px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.4;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_noteBlock {\n  padding: 4px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n}\n\n/* The written drawing's banner sits over the sheet's top edge like the\n   truncation notice, and offers the way back. */\n._0qoF0J_writtenBanner {\n  position: absolute;\n  top: 8px;\n  left: 8px;\n  right: 8px;\n  z-index: 3;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 5px 9px;\n  border: 0.5px solid var(--dsw-alias-state-success-primary);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  box-shadow: var(--dsw-elevation-panel);\n  overflow-wrap: anywhere;\n}\n\n/* Draft ghosts and the erase fade: the staged state is visible on the sheet\n   without ever claiming the source changed. */\n._0qoF0J_ghostGroup {\n  pointer-events: none;\n}\n\n._0qoF0J_ghostText {\n  fill: var(--ecad-accent);\n  opacity: 0.9;\n}\n\n._0qoF0J_placementMarker {\n  stroke: var(--ecad-accent);\n  stroke-width: 1;\n  fill: none;\n  opacity: 0.9;\n}\n\n/* A truncation notice under the written-drawing banner keeps both readable. */\n._0qoF0J_noticeBelowBanner {\n  top: 46px;\n}\n\n._0qoF0J_faded {\n  opacity: 0.3;\n}\n\n/* The inspector's edit block: delta fields above the stage actions. */\n._0qoF0J_editActionsBlock {\n  display: flex;\n  flex-direction: column;\n}\n\n/* Editing copy: a hint under the inspector actions, quiet like the rest. */\n._0qoF0J_editHint {\n  margin: 8px 0 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_moveFields {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);\n  gap: 6px;\n  margin-top: 8px;\n}\n\n._0qoF0J_moveField {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_moveField input {\n  box-sizing: border-box;\n  width: 100%;\n  min-height: 24px;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n}\n\n._0qoF0J_moveField input:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n@media (hover: hover) {\n  ._0qoF0J_modeButton:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_applyButton:hover:not(:disabled) {\n    background: var(--dsw-alias-button-primary-hover);\n    border-color: var(--dsw-alias-button-primary-hover);\n  }\n\n  ._0qoF0J_draftItem:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_writtenBanner {\n    box-shadow: none;\n  }\n}\n\n@container (max-width: 520px) {\n  ._0qoF0J_editBarMeta {\n    display: none;\n  }\n\n  ._0qoF0J_editBar {\n    gap: 6px;\n    padding: 4px 8px;\n  }\n\n  /* These rules follow the base declaration, so the cascade keeps them. */\n  ._0qoF0J_applyLabelLong {\n    display: none;\n  }\n\n  ._0qoF0J_applyLabelShort {\n    display: inline;\n  }\n}\n\n/* The CAD workspace \u2014 selection, navigation, drawing aids, the tool palette and\n * the command surfaces. Appended as one block, tokens only, like the panes above.\n */\n\n/* The sheet column: the canvas keeps every spare pixel and the status line is a\n   single quiet footer under it. */\n._0qoF0J_canvasColumn {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n  min-height: 0;\n  position: relative;\n}\n\n/* The tool rail: a compact vertical palette inside the stage's left edge. A\n   grouping label sits above each run of buttons; every button is a 24 px target. */\n._0qoF0J_toolRail {\n  display: flex;\n  flex-direction: column;\n  flex: none;\n  width: 38px;\n  min-height: 0;\n  padding: 4px 2px;\n  box-sizing: border-box;\n  overflow-y: auto;\n  overflow-x: hidden;\n  border-right: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-document-preview);\n  scrollbar-width: thin;\n}\n\n._0qoF0J_paletteGroup {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  padding: 2px 0 4px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_paletteGroup:last-child {\n  border-bottom: 0;\n}\n\n._0qoF0J_paletteGroupLabel {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 8px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n\n._0qoF0J_paletteTools {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 1px;\n}\n\n._0qoF0J_paletteButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 26px;\n  height: 26px;\n  padding: 0;\n  border: 0.5px solid transparent;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n._0qoF0J_paletteButton:disabled {\n  opacity: 0.35;\n  cursor: default;\n}\n\n/* The command bar under the toolbar: the armed tool's instruction, the numeric\n   entry a command accepts, and the cancel action. */\n._0qoF0J_commandBar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 32px;\n  box-sizing: border-box;\n  padding: 3px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-interactive-bg-hover);\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_commandText {\n  display: inline-flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_commandTool {\n  flex: none;\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_commandMeta {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n}\n\n._0qoF0J_commandField {\n  display: inline-flex;\n  align-items: center;\n  gap: 5px;\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n._0qoF0J_commandField ._0qoF0J_formInput {\n  width: 84px;\n}\n\n._0qoF0J_commandActions {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n}\n\n/* Context menu: an elevated list at the pointer, closed by Escape or a click on\n   the backdrop. */\n._0qoF0J_contextBackdrop {\n  position: absolute;\n  inset: 0;\n  z-index: 20;\n  background: transparent;\n}\n\n._0qoF0J_contextMenu {\n  position: absolute;\n  z-index: 21;\n  display: flex;\n  flex-direction: column;\n  min-width: 176px;\n  max-width: 260px;\n  padding: 4px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  box-shadow: var(--dsw-elevation-panel);\n}\n\n._0qoF0J_contextMenuItem {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-height: 24px;\n  padding: 2px 8px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  font-size: 11px;\n  text-align: left;\n  cursor: pointer;\n}\n\n._0qoF0J_contextMenuItem:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_contextMenuLabel {\n  flex: 1;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._0qoF0J_contextMenuShortcut {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n._0qoF0J_contextMenuSeparator {\n  height: 0.5px;\n  margin: 3px 4px;\n  background: var(--dsw-alias-border-l2);\n}\n\n/* Status footer: coordinates, sheet size and the drawing-aid state. State is a\n   labelled chip with aria-pressed, never colour alone. */\n._0qoF0J_statusBar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 24px;\n  box-sizing: border-box;\n  padding: 2px 8px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: none;\n}\n\n._0qoF0J_statusItem {\n  flex: none;\n}\n\n._0qoF0J_statusGrow {\n  flex: 1;\n  min-width: 8px;\n}\n\n._0qoF0J_statusChip {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n  min-height: 20px;\n  padding: 0 5px;\n  border: 0.5px solid transparent;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  font: inherit;\n  font-size: 9px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  cursor: pointer;\n}\n\n._0qoF0J_statusChip[aria-pressed='true'] {\n  border-color: var(--dsw-alias-border-l3);\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n/* Canvas overlays: the selection outline, the marquee rectangle, the snap marker\n   and the grip handles all live in screen space on top of the transformed scene. */\n._0qoF0J_selectionOverlay {\n  pointer-events: none;\n}\n\n._0qoF0J_marqueeWindow {\n  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);\n  stroke: var(--dsw-alias-state-business-primary);\n  stroke-width: 1;\n  stroke-dasharray: 4 3;\n}\n\n._0qoF0J_marqueeCrossing {\n  fill: color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent);\n  stroke: var(--dsw-alias-state-success-primary);\n  stroke-width: 1;\n  stroke-dasharray: 4 3;\n}\n\n._0qoF0J_gridLine {\n  stroke: var(--dsw-alias-border-l2);\n  stroke-width: 0.5;\n  opacity: 0.6;\n}\n\n._0qoF0J_snapMarker {\n  fill: none;\n  stroke: var(--dsw-alias-state-warn-primary);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_snapLabel {\n  fill: var(--dsw-alias-state-warn-label);\n  font-size: 10px;\n  font-weight: 600;\n  paint-order: stroke;\n  stroke: var(--ecad-paper);\n  stroke-width: 3;\n  pointer-events: none;\n}\n\n._0qoF0J_gripHandle {\n  fill: var(--ecad-paper);\n  stroke: var(--ecad-accent);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_gripHandleActive {\n  fill: var(--ecad-accent);\n  stroke: var(--ecad-accent);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_gripLine {\n  stroke: var(--ecad-accent);\n  stroke-width: 1;\n  stroke-dasharray: 3 2;\n  fill: none;\n  pointer-events: none;\n}\n\n._0qoF0J_previewLine {\n  stroke: var(--ecad-accent);\n  stroke-width: 1.25;\n  stroke-dasharray: 5 3;\n  fill: none;\n  pointer-events: none;\n}\n\n._0qoF0J_previewShape {\n  stroke: var(--ecad-accent);\n  stroke-width: 1.25;\n  stroke-dasharray: 4 3;\n  fill: none;\n  opacity: 0.8;\n  pointer-events: none;\n}\n\n/* Properties panel: edit sub-blocks reuse the inspector's key/value rows. */\n._0qoF0J_propertyHeading {\n  margin: 10px 0 2px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n\n/* Layers: the current-layer line, per-row action buttons, and the create/edit\n   forms. The layer row keeps the existing toggle's grid and adds its actions. */\n._0qoF0J_layerCurrent {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  padding: 0 6px 6px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_layerCurrent ._0qoF0J_formInput {\n  flex: 1;\n  min-width: 0;\n}\n\n._0qoF0J_layerRow {\n  display: flex;\n  align-items: center;\n  gap: 1px;\n}\n\n._0qoF0J_layerRow ._0qoF0J_layerToggle {\n  flex: 1;\n  min-width: 0;\n}\n\n._0qoF0J_layerMiniButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 22px;\n  height: 24px;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n._0qoF0J_layerMiniButton[aria-pressed='true'] {\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_layerForm {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  padding: 4px 6px 6px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_layerFormRow {\n  display: grid;\n  grid-template-columns: 62px minmax(0, 1fr);\n  align-items: center;\n  gap: 6px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_layerFormRow ._0qoF0J_formInput {\n  min-height: 22px;\n}\n\n/* An actionable notice (engine operation pending, export failure) must accept a\n   pointer so it can be dismissed; the warning notice over the sheet stays inert. */\n._0qoF0J_noticeActionable {\n  pointer-events: auto;\n}\n\n._0qoF0J_noticeInfo {\n  border-color: var(--dsw-alias-state-business-primary);\n  background: var(--dsw-alias-bg-document-preview);\n}\n\n._0qoF0J_noticeError {\n  border-color: var(--dsw-alias-state-error-primary);\n}\n\n/* Print: only the drawing page goes to the printer. The sheet column fills the\n   page, the header names what is printed, and every control is hidden. */\n@media print {\n  ._0qoF0J_noPrint {\n    display: none !important;\n  }\n\n  ._0qoF0J_printOnly {\n    display: block !important;\n  }\n\n  /* The sheet is the printed page: selection, snaps, grips, ghosts, the command\n     bar and the written-drawing banner are screen chrome, not drawing content. */\n  ._0qoF0J_selectionOverlay,\n  ._0qoF0J_snapMarker,\n  ._0qoF0J_snapLabel,\n  ._0qoF0J_gripHandle,\n  ._0qoF0J_gripHandleActive,\n  ._0qoF0J_gripLine,\n  ._0qoF0J_previewLine,\n  ._0qoF0J_previewShape,\n  ._0qoF0J_placementMarker,\n  ._0qoF0J_marqueeWindow,\n  ._0qoF0J_marqueeCrossing,\n  ._0qoF0J_gridLine,\n  ._0qoF0J_ghostGroup,\n  ._0qoF0J_ghostText,\n  ._0qoF0J_commandBar,\n  ._0qoF0J_writtenBanner,\n  ._0qoF0J_notice {\n    display: none !important;\n  }\n\n  ._0qoF0J_root {\n    height: auto;\n    min-height: 0;\n    background: #ffffff;\n  }\n\n  ._0qoF0J_stage {\n    display: block;\n  }\n\n  ._0qoF0J_canvasColumn {\n    display: block;\n  }\n\n  ._0qoF0J_canvasWrap {\n    height: 84vh;\n    border: 0;\n    outline: none;\n    background: #ffffff;\n  }\n\n  /* The focused canvas keeps no focus ring on paper. */\n  ._0qoF0J_canvasWrap:focus-visible {\n    outline: none;\n  }\n\n  ._0qoF0J_statusBar {\n    display: none;\n  }\n}\n\n._0qoF0J_printOnly {\n  display: none;\n}\n\n._0qoF0J_printHeader {\n  padding: 6px 0 4px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n}\n\n._0qoF0J_printTitle {\n  font-weight: 600;\n}\n\n._0qoF0J_printMeta {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n/* The tool rail yields its width to the sheet on a genuinely narrow pane. */\n@container (max-width: 420px) {\n  ._0qoF0J_toolRail {\n    width: 32px;\n  }\n\n  ._0qoF0J_paletteButton {\n    width: 24px;\n    height: 24px;\n  }\n\n  ._0qoF0J_paletteGroupLabel {\n    display: none;\n  }\n}\n\n@media (hover: hover) {\n  ._0qoF0J_paletteButton:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_contextMenuItem:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n\n  ._0qoF0J_statusChip:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_layerMiniButton:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n}\n\n._0qoF0J_paletteButton:active:not(:disabled),\n._0qoF0J_statusChip:active,\n._0qoF0J_layerMiniButton:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_contextMenu {\n    scroll-behavior: auto;\n  }\n}\n";
+var css = "/* The ECAD drawing pane.\n *\n * Tokens only: every surface, label, border and accent comes from the theme's\n * --dsw-alias-* set, so the pane follows light and dark without a second palette.\n * The drawing sheet is a local surface pair because a CAD sheet is its own\n * ground: its ink and paper follow the theme, and a layer colour is tinted\n * toward the theme ink by the renderer (see palette.ts) so linework stays\n * readable on either ground.\n */\n\n._0qoF0J_root {\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n  height: 100%;\n  min-width: 0;\n  min-height: 0;\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font-family: var(--dsw-font-family, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif);\n  font-size: 12px;\n  line-height: 1.45;\n  container-type: inline-size;\n  /* The drawing's ground and ink. The sheet surface is a theme layer, never a\n     literal paper colour: dark mode gets a dark sheet, not a white flash. */\n  --ecad-paper: var(--dsw-alias-bg-layer-1);\n  --ecad-ink: var(--dsw-alias-label-primary);\n  --ecad-ink-tint: 55%;\n  --ecad-accent: var(--dsw-alias-state-business-primary);\n}\n\n/* Toolbar: one quiet row of view controls, the drawing's own status, and the\n   one action that leaves the pane. No product chrome \u2014 the document preview\n   header above already owns the path, reload and renderer controls. */\n._0qoF0J_toolbar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 40px;\n  box-sizing: border-box;\n  padding: 5px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow: hidden;\n}\n\n._0qoF0J_toolbarGroup {\n  display: flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n}\n\n._0qoF0J_coverage {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_toolbarSpacer {\n  flex: 1;\n  min-width: 0;\n}\n\n/* Badges carry a text label as well as the accent colour, so state never rides\n   on colour alone and the label can be localized. */\n._0qoF0J_badge {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n  height: 18px;\n  padding: 0 6px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 600;\n  letter-spacing: 0.02em;\n  white-space: nowrap;\n}\n\n._0qoF0J_badgeWarn {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label);\n}\n\n._0qoF0J_badgeDot {\n  width: 6px;\n  height: 6px;\n  border-radius: 50%;\n  background: currentColor;\n  corner-shape: round;\n}\n\n._0qoF0J_button {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  box-sizing: border-box;\n  min-width: 24px;\n  min-height: 24px;\n  padding: 0 8px;\n  border: 0;\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n._0qoF0J_button:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_button[aria-pressed='true'] {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_iconButton {\n  width: 24px;\n  padding: 0;\n}\n\n._0qoF0J_primaryButton {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_button:focus-visible,\n._0qoF0J_primaryButton:focus-visible,\n._0qoF0J_layoutTab:focus-visible,\n._0qoF0J_layerToggle:focus-visible,\n._0qoF0J_layerMiniButton:focus-visible,\n._0qoF0J_paletteButton:focus-visible,\n._0qoF0J_statusChip:focus-visible,\n._0qoF0J_contextMenuItem:focus-visible,\n._0qoF0J_canvasWrap:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._0qoF0J_icon {\n  display: block;\n  width: 14px;\n  height: 14px;\n  flex: none;\n}\n\n/* Layout tabs: only for a multi-layout drawing, printed the way a drawing\n   application prints them, above the sheet. */\n._0qoF0J_layoutTabs {\n  display: flex;\n  align-items: stretch;\n  gap: 2px;\n  flex: none;\n  min-height: 28px;\n  padding: 0 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow-x: auto;\n  overflow-y: hidden;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_layoutTab {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 9px;\n  min-height: 27px;\n  border: 0;\n  border-bottom: 2px solid transparent;\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n  white-space: nowrap;\n}\n\n._0qoF0J_layoutTabActive {\n  border-bottom-color: var(--ecad-accent);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_tabCount {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n/* The stage holds the sheet and the panels. The sheet keeps every spare pixel;\n   the panels give way first on a narrow preview tab. */\n._0qoF0J_stage {\n  display: flex;\n  flex: 1;\n  min-height: 0;\n  min-width: 0;\n  position: relative;\n}\n\n._0qoF0J_canvasWrap {\n  position: relative;\n  flex: 1;\n  min-width: 0;\n  min-height: 0;\n  overflow: hidden;\n  background: var(--ecad-paper);\n  cursor: grab;\n  touch-action: none;\n}\n\n._0qoF0J_canvasWrap:focus-visible {\n  outline-offset: -2px;\n}\n\n._0qoF0J_panning {\n  cursor: grabbing;\n}\n\n._0qoF0J_canvas {\n  display: block;\n  width: 100%;\n  height: 100%;\n}\n\n._0qoF0J_primitive {\n  pointer-events: none;\n}\n\n/* A selection is drawn as a paper-coloured halo under an accent stroke, so it\n   reads as a highlight state on top of any layer colour and never as a colour\n   the drawing itself uses. */\n._0qoF0J_selectionHalo {\n  fill: none;\n  stroke: var(--ecad-paper);\n  stroke-width: 5;\n  stroke-linejoin: round;\n  stroke-linecap: round;\n}\n\n._0qoF0J_selection {\n  fill: none;\n  stroke: var(--ecad-accent);\n  stroke-width: 2.5;\n  stroke-linejoin: round;\n  stroke-linecap: round;\n}\n\n/* Quiet state surfaces: the same centered rhythm the document previewers use\n   for loading, empty and failure states. */\n._0qoF0J_state {\n  display: flex;\n  flex: 1;\n  min-height: 0;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 8px;\n  padding: 24px;\n  text-align: center;\n}\n\n._0qoF0J_stateTitle {\n  margin: 0;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_stateBody {\n  margin: 0;\n  max-width: 54ch;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 1.5;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_stateCode {\n  margin: 0;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n}\n\n._0qoF0J_stateActions {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  margin-top: 2px;\n}\n\n._0qoF0J_spinner {\n  width: 18px;\n  height: 18px;\n  box-sizing: border-box;\n  border: 2px solid var(--dsw-alias-border-l2);\n  border-top-color: var(--dsw-alias-state-business-primary);\n  border-radius: 50%;\n  corner-shape: round;\n  animation: spin 900ms linear infinite;\n}\n\n@keyframes spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n\n/* Floating notice over the sheet: truncation and approximation are warnings the\n   reader must see, so they sit on the sheet's top edge, on an elevated surface. */\n._0qoF0J_notice {\n  position: absolute;\n  top: 8px;\n  left: 8px;\n  right: 8px;\n  z-index: 2;\n  display: flex;\n  align-items: flex-start;\n  gap: 8px;\n  padding: 6px 9px;\n  border: 0.5px solid var(--dsw-alias-state-warn-primary);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-state-warn-tertiary);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  line-height: 1.4;\n  box-shadow: var(--dsw-elevation-panel);\n  pointer-events: none;\n}\n\n._0qoF0J_noticeText {\n  overflow-wrap: anywhere;\n}\n\n/* Side panel: layers, the selected primitive, and the title block. Quiet\n   neutral surface, hairline divider, long lists scroll inside themselves. */\n._0qoF0J_sidePanel {\n  display: flex;\n  flex-direction: column;\n  flex: none;\n  width: 228px;\n  min-height: 0;\n  border-left: 0.5px solid var(--dsw-alias-border-l2);\n  overflow-x: hidden;\n  overflow-y: auto;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_sidePanelHidden {\n  display: none;\n}\n\n._0qoF0J_panelSection {\n  display: flex;\n  flex-direction: column;\n  min-height: 0;\n}\n\n._0qoF0J_layersSection {\n  flex: none;\n  max-height: 46%;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_inspectorSection {\n  /* The panel is the scroll container; sections keep their own height so an\n     outcome panel cannot squeeze one section over the next. */\n  flex: none;\n  min-height: 0;\n}\n\n._0qoF0J_panelHeading {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n  padding: 8px 10px 4px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 700;\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n}\n\n._0qoF0J_panelHeadingSpacer {\n  flex: 1;\n}\n\n/* The column layout is dismissed from the toolbar; only the overlay needs its\n   own close control. */\n._0qoF0J_panelClose {\n  display: none;\n}\n\n._0qoF0J_panelHeadingButton {\n  min-height: 20px;\n  height: 20px;\n  padding: 0 4px;\n  font-size: 10px;\n  letter-spacing: 0;\n  text-transform: none;\n  font-weight: 400;\n}\n\n._0qoF0J_layerList {\n  min-height: 0;\n  overflow: auto;\n  padding: 0 4px 8px;\n}\n\n._0qoF0J_layerToggle {\n  display: grid;\n  grid-template-columns: 20px 12px minmax(0, 1fr) auto;\n  align-items: center;\n  gap: 5px;\n  width: 100%;\n  box-sizing: border-box;\n  min-height: 24px;\n  padding: 0 4px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  text-align: left;\n  cursor: pointer;\n}\n\n._0qoF0J_layerToggle[aria-pressed='false'] {\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._0qoF0J_layerToggle[aria-pressed='false'] ._0qoF0J_layerName {\n  text-decoration: line-through;\n}\n\n._0qoF0J_layerEye {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  color: inherit;\n}\n\n._0qoF0J_swatch {\n  width: 10px;\n  height: 10px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: 2px;\n}\n\n._0qoF0J_layerName {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 11px;\n}\n\n._0qoF0J_layerCount {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n/* Inspector: key/value rows with the label quiet and the value readable. */\n._0qoF0J_inspector {\n  min-height: 0;\n  overflow: auto;\n  padding: 2px 10px 12px;\n}\n\n._0qoF0J_inspectorHint {\n  margin: 4px 0 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_propertyRow {\n  display: grid;\n  grid-template-columns: 74px minmax(0, 1fr);\n  gap: 8px;\n  align-items: baseline;\n  padding: 3px 0;\n  font-size: 11px;\n}\n\n._0qoF0J_propertyLabel {\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_propertyValue {\n  min-width: 0;\n  overflow-wrap: anywhere;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_mono {\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n}\n\n._0qoF0J_approxNote {\n  margin: 8px 0 0;\n  padding: 6px 8px;\n  border-left: 2px solid var(--dsw-alias-state-warn-primary);\n  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 55%, transparent);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_inspectorActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  margin-top: 10px;\n}\n\n._0qoF0J_inspectorActions ._0qoF0J_button {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n}\n\n/* The title block summary is read, not operated: rows only, no controls. */\n._0qoF0J_sheetSection {\n  flex: none;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_sheetRows {\n  padding: 0 10px 8px;\n}\n\n._0qoF0J_sheetValue {\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n/* The coverage sentence is read, not scanned: wrap it instead of clipping it. */\n._0qoF0J_sheetValueWrap {\n  white-space: normal;\n  overflow-wrap: anywhere;\n  line-height: 1.4;\n}\n\n/* Hover and press feedback belongs to pointers that have hover. */\n@media (hover: hover) {\n  ._0qoF0J_button:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_primaryButton:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n\n  ._0qoF0J_layoutTab:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_layerToggle:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n._0qoF0J_button:active:not(:disabled),\n._0qoF0J_layerToggle:active,\n._0qoF0J_layoutTab:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n/* The sheet outranks the coverage text first. */\n@container (max-width: 720px) {\n  ._0qoF0J_coverage {\n    display: none;\n  }\n}\n\n/* Only a genuinely narrow preview pane gives the panel the overlay treatment:\n   above this width the panel keeps its own column and never covers the sheet. */\n@container (max-width: 520px) {\n  ._0qoF0J_sidePanel {\n    position: absolute;\n    top: 0;\n    right: 0;\n    bottom: 0;\n    z-index: 3;\n    width: min(260px, 82%);\n    background: var(--dsw-alias-bg-document-preview);\n    border-left: 0.5px solid var(--dsw-alias-border-l2);\n    box-shadow: var(--dsw-elevation-panel);\n  }\n\n  ._0qoF0J_toolbarLabel {\n    display: none;\n  }\n\n  ._0qoF0J_panelClose {\n    display: inline-flex;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_spinner {\n    animation: none;\n    border-top-color: var(--dsw-alias-border-l2);\n    border-left-color: var(--dsw-alias-state-business-primary);\n  }\n}\n\n/* The ECAD drawing pane \u2014 editing additions.\n *\n * Appended as one block so the review can read the M4 surface on its own: the\n * view/edit switch, the edit action row, the staged-change panel and the\n * written-drawing banner. Tokens only, like the reading pane above.\n */\n\n/* View/edit switch: a two-state segmented control, quiet until it is needed. */\n._0qoF0J_modeSwitch {\n  display: inline-flex;\n  align-items: center;\n  flex: none;\n  gap: 2px;\n  padding: 2px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: transparent;\n}\n\n._0qoF0J_modeButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  min-width: 40px;\n  min-height: 22px;\n  padding: 0 7px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  font: inherit;\n  font-size: 11px;\n  cursor: pointer;\n}\n\n._0qoF0J_modeButtonActive {\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_editBar {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  flex: none;\n  min-height: 36px;\n  box-sizing: border-box;\n  padding: 4px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-interactive-bg-hover);\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_editBarGroup {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  flex: none;\n}\n\n._0qoF0J_editBarMeta {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_applyLabelLong {\n  display: inline;\n}\n\n/* Narrow panes keep the primary action readable: the short label wins. */\n._0qoF0J_applyLabelShort {\n  display: none;\n}\n\n/* The armed tool keeps a filled state; the label says what it does. */\n._0qoF0J_toolArmed {\n  border-color: var(--dsw-alias-state-business-primary) !important;\n  background: var(--dsw-alias-interactive-bg-hover) !important;\n  color: var(--dsw-alias-label-primary) !important;\n}\n\n._0qoF0J_applyButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  gap: 5px;\n  box-sizing: border-box;\n  min-height: 26px;\n  padding: 0 12px;\n  border: 0.5px solid var(--dsw-alias-button-primary-fill);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-button-primary-fill);\n  color: var(--dsw-alias-label-primary-foreground);\n  font: inherit;\n  font-size: 11px;\n  font-weight: 600;\n  cursor: pointer;\n}\n\n._0qoF0J_applyButton:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_modeButton:focus-visible,\n._0qoF0J_applyButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n/* The staged-change section keeps its list scrolling inside the panel. */\n._0qoF0J_draftSection {\n  flex: none;\n  max-height: 46%;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  overflow: auto;\n}\n\n/* While a draft is open the layer list keeps its own share of the panel. */\n._0qoF0J_draftSection ~ ._0qoF0J_layersSection {\n  max-height: 30%;\n}\n\n._0qoF0J_draftList {\n  min-height: 0;\n  max-height: 132px;\n  overflow: auto;\n  padding: 0 6px 4px;\n}\n\n._0qoF0J_draftItem {\n  display: grid;\n  grid-template-columns: minmax(52px, auto) minmax(0, 1fr) 22px;\n  align-items: center;\n  gap: 6px;\n  min-height: 24px;\n  padding: 0 2px;\n  border-radius: var(--dsw-radius-xs);\n  font-size: 11px;\n}\n\n._0qoF0J_draftKind {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  text-transform: lowercase;\n}\n\n._0qoF0J_draftSummary {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._0qoF0J_draftHint {\n  margin: 2px 10px 6px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_draftCounts {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 8px;\n  padding: 0 10px 8px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n._0qoF0J_draftActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 2px 10px 8px;\n}\n\n/* The annotation form: three labelled fields, then stage/cancel. */\n._0qoF0J_placementForm {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  padding-bottom: 6px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  margin-bottom: 6px;\n}\n\n._0qoF0J_formRow {\n  display: grid;\n  grid-template-columns: 62px minmax(0, 1fr);\n  align-items: center;\n  gap: 6px;\n  padding: 0 10px;\n  font-size: 11px;\n}\n\n._0qoF0J_formLabel {\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_formInput {\n  box-sizing: border-box;\n  width: 100%;\n  min-height: 24px;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n}\n\n._0qoF0J_formInput:focus-visible,\n._0qoF0J_formActions button:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._0qoF0J_formError {\n  margin: 0 10px;\n  color: var(--dsw-alias-state-error-primary);\n  font-size: 10px;\n}\n\n._0qoF0J_formActions {\n  display: flex;\n  flex-wrap: wrap;\n  gap: 6px;\n  padding: 2px 10px 0;\n}\n\n/* The apply outcome: written path, counters, verification and DWG round trip. */\n._0qoF0J_applyOutcome {\n  display: flex;\n  flex-direction: column;\n  gap: 5px;\n  margin: 0 6px 8px;\n  padding: 6px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  font-size: 11px;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_applyOk {\n  border-color: var(--dsw-alias-state-success-primary);\n}\n\n._0qoF0J_applyWarn {\n  border-color: var(--dsw-alias-state-warn-primary);\n}\n\n._0qoF0J_applyFailed {\n  border-color: var(--dsw-alias-state-error-primary);\n}\n\n._0qoF0J_outputPath {\n  margin: 0;\n  color: var(--dsw-alias-label-secondary);\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_outputPath code {\n  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);\n  font-size: 10px;\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_applySummary {\n  margin: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.4;\n}\n\n._0qoF0J_counterGroup {\n  display: flex;\n  flex-direction: column;\n  gap: 3px;\n  padding: 4px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n}\n\n._0qoF0J_counterRow {\n  display: flex;\n  align-items: baseline;\n  justify-content: space-between;\n  gap: 8px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_counterValue {\n  display: inline-flex;\n  align-items: center;\n  gap: 3px;\n  color: var(--dsw-alias-label-primary);\n  font-variant-numeric: tabular-nums;\n}\n\n._0qoF0J_okText {\n  color: var(--dsw-alias-state-success-primary);\n}\n\n._0qoF0J_warnText {\n  color: var(--dsw-alias-state-warn-label);\n}\n\n._0qoF0J_warnBlock {\n  padding: 4px 6px;\n  border-left: 2px solid var(--dsw-alias-state-warn-primary);\n  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 45%, transparent);\n  border-radius: 0 var(--dsw-radius-xs) var(--dsw-radius-xs) 0;\n}\n\n._0qoF0J_warnTitle {\n  display: block;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 600;\n}\n\n._0qoF0J_warnList {\n  margin: 3px 0 0;\n  padding-left: 14px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.4;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_noteBlock {\n  padding: 4px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n}\n\n/* The written drawing's banner sits over the sheet's top edge like the\n   truncation notice, and offers the way back. */\n._0qoF0J_writtenBanner {\n  position: absolute;\n  top: 8px;\n  left: 8px;\n  right: 8px;\n  z-index: 3;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  padding: 5px 9px;\n  border: 0.5px solid var(--dsw-alias-state-success-primary);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  box-shadow: var(--dsw-elevation-panel);\n  overflow-wrap: anywhere;\n}\n\n/* Draft ghosts and the erase fade: the staged state is visible on the sheet\n   without ever claiming the source changed. */\n._0qoF0J_ghostGroup {\n  pointer-events: none;\n}\n\n._0qoF0J_ghostText {\n  fill: var(--ecad-accent);\n  opacity: 0.9;\n}\n\n._0qoF0J_placementMarker {\n  stroke: var(--ecad-accent);\n  stroke-width: 1;\n  fill: none;\n  opacity: 0.9;\n}\n\n/* A truncation notice under the written-drawing banner keeps both readable. */\n._0qoF0J_noticeBelowBanner {\n  top: 46px;\n}\n\n._0qoF0J_faded {\n  opacity: 0.3;\n}\n\n/* The inspector's edit block: delta fields above the stage actions. */\n._0qoF0J_editActionsBlock {\n  display: flex;\n  flex-direction: column;\n}\n\n/* Editing copy: a hint under the inspector actions, quiet like the rest. */\n._0qoF0J_editHint {\n  margin: 8px 0 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 1.45;\n  overflow-wrap: anywhere;\n}\n\n._0qoF0J_moveFields {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);\n  gap: 6px;\n  margin-top: 8px;\n}\n\n._0qoF0J_moveField {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_moveField input {\n  box-sizing: border-box;\n  width: 100%;\n  min-height: 24px;\n  padding: 2px 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n}\n\n._0qoF0J_moveField input:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n@media (hover: hover) {\n  ._0qoF0J_modeButton:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_applyButton:hover:not(:disabled) {\n    background: var(--dsw-alias-button-primary-hover);\n    border-color: var(--dsw-alias-button-primary-hover);\n  }\n\n  ._0qoF0J_draftItem:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_writtenBanner {\n    box-shadow: none;\n  }\n}\n\n@container (max-width: 520px) {\n  ._0qoF0J_editBarMeta {\n    display: none;\n  }\n\n  ._0qoF0J_editBar {\n    gap: 6px;\n    padding: 4px 8px;\n  }\n\n  /* These rules follow the base declaration, so the cascade keeps them. */\n  ._0qoF0J_applyLabelLong {\n    display: none;\n  }\n\n  ._0qoF0J_applyLabelShort {\n    display: inline;\n  }\n}\n\n/* The CAD workspace \u2014 selection, navigation, drawing aids, the tool palette and\n * the command surfaces. Appended as one block, tokens only, like the panes above.\n */\n\n/* The sheet column: the canvas keeps every spare pixel and the status line is a\n   single quiet footer under it. */\n._0qoF0J_canvasColumn {\n  display: flex;\n  flex-direction: column;\n  flex: 1;\n  min-width: 0;\n  min-height: 0;\n  position: relative;\n}\n\n/* The tool rail: a compact vertical palette inside the stage's left edge. A\n   grouping label sits above each run of buttons; every button is a 24 px target. */\n._0qoF0J_toolRail {\n  display: flex;\n  flex-direction: column;\n  flex: none;\n  width: 38px;\n  min-height: 0;\n  padding: 4px 2px;\n  box-sizing: border-box;\n  overflow-y: auto;\n  overflow-x: hidden;\n  border-right: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-document-preview);\n  scrollbar-width: thin;\n}\n\n._0qoF0J_paletteGroup {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 2px;\n  padding: 2px 0 4px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_paletteGroup:last-child {\n  border-bottom: 0;\n}\n\n._0qoF0J_paletteGroupLabel {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 8px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n\n._0qoF0J_paletteTools {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  gap: 1px;\n}\n\n._0qoF0J_paletteButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  width: 26px;\n  height: 26px;\n  padding: 0;\n  border: 0.5px solid transparent;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-secondary);\n  cursor: pointer;\n}\n\n._0qoF0J_paletteButton:disabled {\n  opacity: 0.35;\n  cursor: default;\n}\n\n/* The command bar under the toolbar: the armed tool's instruction, the numeric\n   entry a command accepts, and the cancel action. */\n._0qoF0J_commandBar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 32px;\n  box-sizing: border-box;\n  padding: 3px 10px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-interactive-bg-hover);\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: thin;\n}\n\n._0qoF0J_commandText {\n  display: inline-flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n}\n\n._0qoF0J_commandTool {\n  flex: none;\n  color: var(--dsw-alias-label-primary);\n  font-weight: 600;\n}\n\n._0qoF0J_commandMeta {\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n}\n\n._0qoF0J_commandField {\n  display: inline-flex;\n  align-items: center;\n  gap: 5px;\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n._0qoF0J_commandField ._0qoF0J_formInput {\n  width: 84px;\n}\n\n._0qoF0J_commandActions {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n}\n\n/* Context menu: an elevated list at the pointer, closed by Escape or a click on\n   the backdrop. */\n._0qoF0J_contextBackdrop {\n  position: absolute;\n  inset: 0;\n  z-index: 20;\n  background: transparent;\n}\n\n._0qoF0J_contextMenu {\n  position: absolute;\n  z-index: 21;\n  display: flex;\n  flex-direction: column;\n  min-width: 176px;\n  max-width: 260px;\n  padding: 4px;\n  box-sizing: border-box;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-primary);\n  box-shadow: var(--dsw-elevation-panel);\n}\n\n._0qoF0J_contextMenuItem {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-height: 24px;\n  padding: 2px 8px;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: inherit;\n  font: inherit;\n  font-size: 11px;\n  text-align: left;\n  cursor: pointer;\n}\n\n._0qoF0J_contextMenuItem:disabled {\n  opacity: 0.4;\n  cursor: default;\n}\n\n._0qoF0J_contextMenuLabel {\n  flex: 1;\n  min-width: 0;\n  overflow: hidden;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._0qoF0J_contextMenuShortcut {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n}\n\n._0qoF0J_contextMenuSeparator {\n  height: 0.5px;\n  margin: 3px 4px;\n  background: var(--dsw-alias-border-l2);\n}\n\n/* Status footer: coordinates, sheet size and the drawing-aid state. State is a\n   labelled chip with aria-pressed, never colour alone. */\n._0qoF0J_statusBar {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  flex: none;\n  min-height: 24px;\n  box-sizing: border-box;\n  padding: 2px 8px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n  background: var(--dsw-alias-bg-document-preview);\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n  overflow-x: auto;\n  overflow-y: hidden;\n  white-space: nowrap;\n  scrollbar-width: none;\n}\n\n._0qoF0J_statusItem {\n  flex: none;\n}\n\n._0qoF0J_statusGrow {\n  flex: 1;\n  min-width: 8px;\n}\n\n._0qoF0J_statusChip {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  flex: none;\n  min-height: 20px;\n  padding: 0 5px;\n  border: 0.5px solid transparent;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  font: inherit;\n  font-size: 9px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  cursor: pointer;\n}\n\n._0qoF0J_statusChip[aria-pressed='true'] {\n  border-color: var(--dsw-alias-border-l3);\n  background: var(--dsw-alias-interactive-bg-hover);\n  color: var(--dsw-alias-label-primary);\n}\n\n/* Canvas overlays: the selection outline, the marquee rectangle, the snap marker\n   and the grip handles all live in screen space on top of the transformed scene. */\n._0qoF0J_selectionOverlay {\n  pointer-events: none;\n}\n\n._0qoF0J_marqueeWindow {\n  fill: color-mix(in srgb, var(--dsw-alias-state-business-primary) 10%, transparent);\n  stroke: var(--dsw-alias-state-business-primary);\n  stroke-width: 1;\n  stroke-dasharray: 4 3;\n}\n\n._0qoF0J_marqueeCrossing {\n  fill: color-mix(in srgb, var(--dsw-alias-state-success-primary) 10%, transparent);\n  stroke: var(--dsw-alias-state-success-primary);\n  stroke-width: 1;\n  stroke-dasharray: 4 3;\n}\n\n._0qoF0J_gridLine {\n  stroke: var(--dsw-alias-border-l2);\n  stroke-width: 0.5;\n  opacity: 0.6;\n}\n\n._0qoF0J_snapMarker {\n  fill: none;\n  stroke: var(--dsw-alias-state-warn-primary);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_snapLabel {\n  fill: var(--dsw-alias-state-warn-label);\n  font-size: 10px;\n  font-weight: 600;\n  paint-order: stroke;\n  stroke: var(--ecad-paper);\n  stroke-width: 3;\n  pointer-events: none;\n}\n\n._0qoF0J_gripHandle {\n  fill: var(--ecad-paper);\n  stroke: var(--ecad-accent);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_gripHandleActive {\n  fill: var(--ecad-accent);\n  stroke: var(--ecad-accent);\n  stroke-width: 1.5;\n  pointer-events: none;\n}\n\n._0qoF0J_gripLine {\n  stroke: var(--ecad-accent);\n  stroke-width: 1;\n  stroke-dasharray: 3 2;\n  fill: none;\n  pointer-events: none;\n}\n\n._0qoF0J_previewLine {\n  stroke: var(--ecad-accent);\n  stroke-width: 1.25;\n  stroke-dasharray: 5 3;\n  fill: none;\n  pointer-events: none;\n}\n\n._0qoF0J_previewShape {\n  stroke: var(--ecad-accent);\n  stroke-width: 1.25;\n  stroke-dasharray: 4 3;\n  fill: none;\n  opacity: 0.8;\n  pointer-events: none;\n}\n\n/* Properties panel: edit sub-blocks reuse the inspector's key/value rows. */\n._0qoF0J_propertyHeading {\n  margin: 10px 0 2px;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-weight: 700;\n  letter-spacing: 0.04em;\n  text-transform: uppercase;\n}\n\n/* Layers: the current-layer line, per-row action buttons, and the create/edit\n   forms. The layer row keeps the existing toggle's grid and adds its actions. */\n._0qoF0J_layerCurrent {\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  padding: 0 6px 6px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_layerCurrent ._0qoF0J_formInput {\n  flex: 1;\n  min-width: 0;\n}\n\n._0qoF0J_layerRow {\n  display: flex;\n  align-items: center;\n  gap: 1px;\n}\n\n._0qoF0J_layerRow ._0qoF0J_layerToggle {\n  flex: 1;\n  min-width: 0;\n}\n\n._0qoF0J_layerMiniButton {\n  display: inline-flex;\n  align-items: center;\n  justify-content: center;\n  flex: none;\n  width: 22px;\n  height: 24px;\n  padding: 0;\n  border: 0;\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-tertiary);\n  cursor: pointer;\n}\n\n._0qoF0J_layerMiniButton[aria-pressed='true'] {\n  color: var(--dsw-alias-label-primary);\n}\n\n._0qoF0J_layerForm {\n  display: flex;\n  flex-direction: column;\n  gap: 4px;\n  padding: 4px 6px 6px;\n  border-top: 0.5px solid var(--dsw-alias-border-l2);\n}\n\n._0qoF0J_layerFormRow {\n  display: grid;\n  grid-template-columns: 62px minmax(0, 1fr);\n  align-items: center;\n  gap: 6px;\n  font-size: 10px;\n  color: var(--dsw-alias-label-secondary);\n}\n\n._0qoF0J_layerFormRow ._0qoF0J_formInput {\n  min-height: 22px;\n}\n\n/* An actionable notice (engine operation pending, export failure) must accept a\n   pointer so it can be dismissed; the warning notice over the sheet stays inert. */\n._0qoF0J_noticeActionable {\n  pointer-events: auto;\n}\n\n._0qoF0J_noticeInfo {\n  border-color: var(--dsw-alias-state-business-primary);\n  background: var(--dsw-alias-bg-document-preview);\n}\n\n._0qoF0J_noticeError {\n  border-color: var(--dsw-alias-state-error-primary);\n}\n\n/* Print: only the drawing page goes to the printer. The sheet column fills the\n   page, the header names what is printed, and every control is hidden. */\n@media print {\n  ._0qoF0J_noPrint {\n    display: none !important;\n  }\n\n  ._0qoF0J_printOnly {\n    display: block !important;\n  }\n\n  /* The sheet is the printed page: selection, snaps, grips, ghosts, the command\n     bar and the written-drawing banner are screen chrome, not drawing content. */\n  ._0qoF0J_selectionOverlay,\n  ._0qoF0J_snapMarker,\n  ._0qoF0J_snapLabel,\n  ._0qoF0J_gripHandle,\n  ._0qoF0J_gripHandleActive,\n  ._0qoF0J_gripLine,\n  ._0qoF0J_previewLine,\n  ._0qoF0J_previewShape,\n  ._0qoF0J_placementMarker,\n  ._0qoF0J_marqueeWindow,\n  ._0qoF0J_marqueeCrossing,\n  ._0qoF0J_gridLine,\n  ._0qoF0J_ghostGroup,\n  ._0qoF0J_ghostText,\n  ._0qoF0J_commandBar,\n  ._0qoF0J_writtenBanner,\n  ._0qoF0J_notice {\n    display: none !important;\n  }\n\n  ._0qoF0J_root {\n    height: auto;\n    min-height: 0;\n    background: #ffffff;\n  }\n\n  ._0qoF0J_stage {\n    display: block;\n  }\n\n  ._0qoF0J_canvasColumn {\n    display: block;\n  }\n\n  ._0qoF0J_canvasWrap {\n    height: 84vh;\n    border: 0;\n    outline: none;\n    background: #ffffff;\n  }\n\n  /* The focused canvas keeps no focus ring on paper. */\n  ._0qoF0J_canvasWrap:focus-visible {\n    outline: none;\n  }\n\n  ._0qoF0J_statusBar {\n    display: none;\n  }\n}\n\n._0qoF0J_printOnly {\n  display: none;\n}\n\n._0qoF0J_printHeader {\n  padding: 6px 0 4px;\n  border-bottom: 0.5px solid var(--dsw-alias-border-l2);\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n}\n\n._0qoF0J_printTitle {\n  font-weight: 600;\n}\n\n._0qoF0J_printMeta {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n}\n\n/* The tool rail yields its width to the sheet on a genuinely narrow pane. */\n@container (max-width: 420px) {\n  ._0qoF0J_toolRail {\n    width: 32px;\n  }\n\n  ._0qoF0J_paletteButton {\n    width: 24px;\n    height: 24px;\n  }\n\n  ._0qoF0J_paletteGroupLabel {\n    display: none;\n  }\n}\n\n@media (hover: hover) {\n  ._0qoF0J_paletteButton:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_contextMenuItem:hover:not(:disabled) {\n    background: var(--dsw-alias-interactive-bg-hover);\n  }\n\n  ._0qoF0J_statusChip:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n\n  ._0qoF0J_layerMiniButton:hover {\n    background: var(--dsw-alias-interactive-bg-hover);\n    color: var(--dsw-alias-label-primary);\n  }\n}\n\n._0qoF0J_paletteButton:active:not(:disabled),\n._0qoF0J_statusChip:active,\n._0qoF0J_layerMiniButton:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._0qoF0J_contextMenu {\n    scroll-behavior: auto;\n  }\n}\n";
 var tagId = "@aryacode/dsh-engineering-ecad/EcadBody.module.css";
 if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
   const tag = document.createElement("style");
@@ -2303,6 +2421,8 @@ function DraftPanel({ t, staged: staged2, counts, hint, placement, layers, inval
     if (op.op === "scale" || op.op === "mirror") return t("stageModifySummary", { op: op.op, count: op.ids.length });
     if (op.op === "offset") return t("stageOffsetSummary", { id: op.id, distance: op.distance });
     if (op.op === "trim" || op.op === "extend" || op.op === "setLine" || op.op === "setPolyline") return t("stageGripSummary", { op: op.op, id: op.id });
+    if (op.op === "setCircle" || op.op === "setArc" || op.op === "setEllipse") return t("stageSetterSummary", { op: op.op, id: op.id });
+    if (op.op === "setColor") return t("stageColorSummary", { color: op.color, count: op.ids.length });
     if (op.op === "addLayer" || op.op === "renameLayer" || op.op === "setLayerColor") return t("stageLayerSummary", { op: op.op, name: "name" in op ? op.name : op.from });
     if (op.op === "setText" || op.op === "setAttribute" || op.op === "setLayer") return t("stagePropertySummary", { op: op.op, id: op.id });
     if (op.op === "addLine" || op.op === "addPolyline" || op.op === "addRectangle" || op.op === "addRevisionCloud" || op.op === "addLeader") {
@@ -2317,9 +2437,9 @@ function DraftPanel({ t, staged: staged2, counts, hint, placement, layers, inval
     if (kind === "move") return t("opMove");
     if (kind === "erase") return t("opErase");
     if (kind === "rotate") return t("opRotate");
-    if (kind === "copy" || kind === "scale" || kind === "mirror" || kind === "offset" || kind === "trim" || kind === "extend" || kind === "setLine" || kind === "setPolyline") return t("opModify");
+    if (kind === "copy" || kind === "scale" || kind === "mirror" || kind === "offset" || kind === "trim" || kind === "extend" || kind === "setLine" || kind === "setPolyline" || kind === "setCircle" || kind === "setArc" || kind === "setEllipse") return t("opModify");
     if (kind === "addLayer" || kind === "renameLayer" || kind === "setLayerColor") return t("opLayer");
-    if (kind === "setText" || kind === "setAttribute" || kind === "setLayer") return t("opProperty");
+    if (kind === "setText" || kind === "setAttribute" || kind === "setLayer" || kind === "setColor") return t("opProperty");
     return t("opDraw");
   };
   return (0, import_react.createElement)(
@@ -2705,7 +2825,7 @@ function ContextMenu({ t, x, y, items, onClose }) {
 }
 function CadStatusBar({ t, cursor, selectionCount, snapKind, osnap, ortho, grid, sheet, onToggleOsnap, onToggleOrtho, onToggleGrid }) {
   const coordinates = cursor === void 0 ? t("statusNoCoordinates") : t("statusCoordinates", { x: Number(cursor[0].toFixed(3)), y: Number(cursor[1].toFixed(3)) });
-  const snapLabel = snapKind === void 0 ? void 0 : snapKind === "endpoint" ? t("snapEndpoint") : snapKind === "midpoint" ? t("snapMidpoint") : snapKind === "center" ? t("snapCenter") : snapKind === "nearest" ? t("snapNearest") : t("snapGrid");
+  const snapLabel = snapKind === void 0 ? void 0 : snapKind === "endpoint" ? t("snapEndpoint") : snapKind === "intersection" ? t("snapIntersection") : snapKind === "midpoint" ? t("snapMidpoint") : snapKind === "center" ? t("snapCenter") : snapKind === "nearest" ? t("snapNearest") : t("snapGrid");
   return (0, import_react2.createElement)(
     "div",
     { className: `${EcadBody_default.statusBar} ${EcadBody_default.noPrint}`, role: "status", "aria-label": t("statusBarLabel"), "data-ecad-status": "true" },
@@ -2763,11 +2883,13 @@ function PropertiesPanel(props) {
   const selectedKey = entities.map((entity) => entity.id).join("|");
   const [textDraft, setTextDraft] = (0, import_react2.useState)("");
   const [layerDraft, setLayerDraft] = (0, import_react2.useState)("");
+  const [colorDraft, setColorDraft] = (0, import_react2.useState)("");
   const [tagDraft, setTagDraft] = (0, import_react2.useState)("");
   const [valueDraft, setValueDraft] = (0, import_react2.useState)("");
   (0, import_react2.useEffect)(() => {
     setTextDraft(single !== void 0 && (single.k === "text" || single.k === "mtext") ? single.t ?? "" : "");
     setLayerDraft(single === void 0 ? "" : single.layer);
+    setColorDraft(single !== void 0 && single.color > 0 && single.color < 256 ? String(single.color) : "7");
     setTagDraft("");
     setValueDraft(attributeOwner(single) === void 0 ? "" : single?.t ?? "");
   }, [selectedKey]);
@@ -2784,6 +2906,11 @@ function PropertiesPanel(props) {
   const canStageAttribute = editing && attributeTarget !== void 0 && tagDraft.trim() !== "" && valueDraft !== (single?.t ?? "");
   const canStageMove = parseNumberField(moveDx) !== void 0 && parseNumberField(moveDy) !== void 0;
   const canStageRotate = parseNumberField(rotateAngle) !== void 0;
+  const colorNumber = parseNumberField(colorDraft);
+  const colorValid = colorNumber !== void 0 && Number.isInteger(colorNumber) && colorNumber >= 1 && colorNumber <= 255;
+  const colorInvalid = colorDraft.trim() !== "" && !colorValid;
+  const canStageColor = editing && entities.length > 0 && colorValid && (single === void 0 || colorNumber !== single.color);
+  const swatch = single !== void 0 && single.color > 0 && single.color < 256 ? aciHex(single.color) : "var(--dsw-alias-interactive-bg-active)";
   return (0, import_react2.createElement)(
     "section",
     { className: `${EcadBody_default.panelSection} ${EcadBody_default.inspectorSection}`, "data-ecad-properties": "true" },
@@ -2928,6 +3055,45 @@ function PropertiesPanel(props) {
                 props.onStageLayer(entities, layerDraft);
               }
             }, t("propertiesLayerApply"))
+          ),
+          (0, import_react2.createElement)("div", { className: EcadBody_default.propertyHeading }, t("propertiesColor")),
+          (0, import_react2.createElement)(
+            "label",
+            { className: EcadBody_default.formRow },
+            (0, import_react2.createElement)("span", { className: EcadBody_default.formLabel }, t("propertiesColor")),
+            (0, import_react2.createElement)(
+              "div",
+              { style: { display: "flex", alignItems: "center", gap: "6px", minWidth: 0 } },
+              (0, import_react2.createElement)("span", { className: EcadBody_default.swatch, style: { background: swatch }, "aria-hidden": true }),
+              (0, import_react2.createElement)("input", {
+                className: EcadBody_default.formInput,
+                type: "text",
+                inputMode: "numeric",
+                value: colorDraft,
+                "aria-label": t("propertiesColor"),
+                placeholder: t("propertiesColorPlaceholder"),
+                "aria-invalid": colorInvalid,
+                onChange: (event) => {
+                  setColorDraft(event.target.value);
+                },
+                "data-ecad-property-color": "true"
+              })
+            )
+          ),
+          colorInvalid ? (0, import_react2.createElement)("p", { className: EcadBody_default.formError, role: "alert" }, t("propertiesColorInvalid")) : (0, import_react2.createElement)("p", { className: EcadBody_default.editHint }, t("propertiesColorHint")),
+          (0, import_react2.createElement)(
+            "div",
+            { className: EcadBody_default.formActions },
+            (0, import_react2.createElement)("button", {
+              type: "button",
+              className: EcadBody_default.applyButton,
+              disabled: !canStageColor,
+              onClick: () => {
+                if (!colorValid || colorNumber === void 0) return;
+                props.onStageColor(entities, colorNumber);
+              },
+              "data-ecad-stage-color": "true"
+            }, t("propertiesColorApply"))
           ),
           (0, import_react2.createElement)("div", { className: EcadBody_default.propertyHeading }, t("toolMove")),
           (0, import_react2.createElement)(
@@ -3635,11 +3801,83 @@ function PreviewView({ elements }) {
             d: `M ${fmt(start[0])} ${fmt(start[1])} A ${fmt(Math.abs(element.r))} ${fmt(Math.abs(element.r))} 0 ${large} 1 ${fmt(end[0])} ${fmt(end[1])}`
           });
         }
+        case "ellipse":
+          return (0, import_react3.createElement)("ellipse", {
+            key,
+            className: EcadBody_default.previewShape,
+            cx: element.c[0],
+            cy: element.c[1],
+            rx: Math.abs(element.rx),
+            ry: Math.abs(element.ry),
+            transform: `rotate(${Number(element.deg.toFixed(4))} ${element.c[0]} ${element.c[1]})`
+          });
         default:
           return null;
       }
     })
   );
+}
+function payloadPoint(value) {
+  if (!Array.isArray(value) || value.length < 2) return void 0;
+  const x = Number(value[0]);
+  const y = Number(value[1]);
+  return Number.isFinite(x) && Number.isFinite(y) ? [x, y] : void 0;
+}
+function movedPreviewOf(entity, dx, dy) {
+  const shift = (point) => point === void 0 ? void 0 : [point[0] + dx, point[1] + dy];
+  if (entity.k === "circle") {
+    const center = shift(entity.c);
+    return center === void 0 ? void 0 : { kind: "circle", c: center, r: Math.abs(entity.r ?? 0) };
+  }
+  if (entity.k === "arc") {
+    const center = shift(entity.c);
+    if (center === void 0) return void 0;
+    let a1 = entity.a1 ?? 0;
+    const a0 = entity.a0 ?? 0;
+    if (a1 < a0) a1 += Math.PI * 2;
+    return { kind: "arc", c: center, r: Math.abs(entity.r ?? 0), a0, a1 };
+  }
+  if (entity.k === "ellipse") {
+    const center = shift(entity.c);
+    return center === void 0 ? void 0 : { kind: "ellipse", c: center, rx: Math.abs(entity.rx ?? 0), ry: Math.abs(entity.ry ?? 0), deg: (entity.rot ?? 0) * 180 / Math.PI };
+  }
+  return void 0;
+}
+function setterPreviewOf(op, payload) {
+  if (op === "setCircle") {
+    const center = payloadPoint(payload.center);
+    const radius = Number(payload.radius);
+    return center === void 0 || !Number.isFinite(radius) ? void 0 : { kind: "circle", c: center, r: Math.abs(radius) };
+  }
+  if (op === "setArc") {
+    const center = payloadPoint(payload.center);
+    const radius = Number(payload.radius);
+    const start = Number(payload.startAngleDeg);
+    const end = Number(payload.endAngleDeg);
+    if (center === void 0 || !Number.isFinite(radius) || !Number.isFinite(start) || !Number.isFinite(end)) return void 0;
+    const radians = Math.PI / 180;
+    let a0 = start * radians;
+    let a1 = end * radians;
+    if (a1 <= a0) a1 += Math.PI * 2;
+    return { kind: "arc", c: center, r: Math.abs(radius), a0, a1 };
+  }
+  if (op === "setEllipse") {
+    const center = payloadPoint(payload.center);
+    const rx = Number(payload.rx);
+    const ry = Number(payload.ry);
+    const rotDeg = Number(payload.rotDeg);
+    return center === void 0 || !Number.isFinite(rx) || !Number.isFinite(ry) || !Number.isFinite(rotDeg) ? void 0 : { kind: "ellipse", c: center, rx: Math.abs(rx), ry: Math.abs(ry), deg: rotDeg };
+  }
+  if (op === "setLine") {
+    const a = payloadPoint(payload.a);
+    const b = payloadPoint(payload.b);
+    return a === void 0 || b === void 0 ? void 0 : { kind: "line", a, b };
+  }
+  if (op === "setPolyline") {
+    const points = Array.isArray(payload.pts) ? payload.pts.map(payloadPoint).filter((point) => point !== void 0) : [];
+    return points.length >= 2 ? { kind: "polyline", points } : void 0;
+  }
+  return void 0;
 }
 function SceneView({ scene, fit, view, label, width, height, selectedIds, fadedIds, ghostMoves, ghostTexts, pendingPoint, marquee, zoomBox, grid, grips, activeGripKey, gripPreview, snap, preview }) {
   const base = (0, import_react3.useMemo)(() => scene.primitives.map((primitive) => (0, import_react3.createElement)(MemoPrimitive, { key: primitive.id, primitive })), [scene]);
@@ -3672,7 +3910,7 @@ function SceneView({ scene, fit, view, label, width, height, selectedIds, fadedI
     ),
     (0, import_react3.createElement)(
       "g",
-      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})` },
+      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})`, "data-ecad-view": "true" },
       (0, import_react3.createElement)(
         "g",
         { transform: `translate(${fit.translateX} ${fit.translateY}) scale(${fit.scale} ${-fit.scale})` },
@@ -3974,6 +4212,7 @@ function EcadBody(props) {
   const applyAbortRef = (0, import_react3.useRef)(void 0);
   const gestureRef = (0, import_react3.useRef)(void 0);
   const indexRef = (0, import_react3.useRef)(void 0);
+  const suppressContextMenuRef = (0, import_react3.useRef)(false);
   const lastClickRef = (0, import_react3.useRef)(void 0);
   const spaceHeldRef = (0, import_react3.useRef)(false);
   const [canvasElement, setCanvasElement] = (0, import_react3.useState)(null);
@@ -4356,6 +4595,20 @@ function EcadBody(props) {
     stageOps(stageSetLayerMany(nextDraftKey(), activeLayout.id, editable2.map((entity) => entity.id), layer), void 0);
     if (editable2.length < entities.length) setNotice({ kind: "info", text: t("editFlattened") });
   }, [activeLayout, editing, nextDraftKey, stageOps, t]);
+  const stageColorChange = (0, import_react3.useCallback)((entities, color) => {
+    if (!editing || activeLayout === void 0) return;
+    const editable2 = entities.filter((entity) => editableEntityId(entity.id));
+    if (editable2.length === 0) {
+      setNotice({ kind: "warn", text: t("editFlattened") });
+      return;
+    }
+    if (!engineOpAvailable("setColor")) {
+      reportPending("setColor");
+      return;
+    }
+    stageOps([stageSetColor(nextDraftKey(), activeLayout.id, editable2.map((entity) => entity.id), color)], void 0);
+    if (editable2.length < entities.length) setNotice({ kind: "info", text: t("editFlattened") });
+  }, [activeLayout, editing, nextDraftKey, reportPending, stageOps, t]);
   const stageAttributeChange = (0, import_react3.useCallback)((ownerId, tag, value) => {
     if (!editing || activeLayout === void 0) return;
     stageOps([stageSetAttribute(nextDraftKey(), activeLayout.id, ownerId, tag, value)], void 0);
@@ -4477,7 +4730,11 @@ function EcadBody(props) {
       try {
         result = snapNear(ensureIndex(), raw, snapRadius, {
           ...aids.grid && grid !== void 0 ? { includeGrid: true, grid: grid.step } : {},
-          locked: lockedLayers
+          locked: lockedLayers,
+          // Screen-space projection turns on the intersection candidate and lets
+          // its neighbourhood prefilter skip a sheet-wide pairwise search.
+          project: (candidate) => toScreen(candidate, fit, view),
+          screenRadius: SNAP_RADIUS_PX
         });
       } catch {
         result = void 0;
@@ -4487,11 +4744,17 @@ function EcadBody(props) {
     if (aids.ortho && base !== void 0) point = orthoPoint(base, point);
     return { point, snap: result };
   }, [aids.grid, aids.osnap, aids.ortho, ensureIndex, fit, grid, lockedLayers, snapRadius, view]);
-  const beginPan = (0, import_react3.useCallback)((screen, pointerId) => {
-    gestureRef.current = { kind: "pan", startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false };
+  const beginPan = (0, import_react3.useCallback)((screen, pointerId, button) => {
+    gestureRef.current = { kind: "pan", button, startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false };
     canvasElement?.setPointerCapture?.(pointerId);
     setPanning(true);
   }, [canvasElement, view.panX, view.panY]);
+  const openContextMenuAt = (0, import_react3.useCallback)((screen) => {
+    const maxX = Math.max(8, size.width - 220);
+    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300));
+    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) });
+    setCommandError(void 0);
+  }, [selected.length, size.height, size.width]);
   const pointForSnapPreview = (0, import_react3.useCallback)((point, result) => {
     setCursorWorld(point);
     setSnap(result);
@@ -4501,9 +4764,10 @@ function EcadBody(props) {
     if (element === null) return;
     element.focus({ preventScroll: true });
     const screen = localPoint(event.clientX, event.clientY);
-    if (event.button === 1 || event.button === 0 && (spaceHeldRef.current || tool === "pan")) {
+    suppressContextMenuRef.current = false;
+    if (event.button === 1 || event.button === 2 || event.button === 0 && (spaceHeldRef.current || tool === "pan")) {
       event.preventDefault();
-      beginPan(screen, event.pointerId);
+      beginPan(screen, event.pointerId, event.button);
       return;
     }
     if (event.button !== 0) return;
@@ -4694,6 +4958,13 @@ function EcadBody(props) {
     if (gesture === void 0) return;
     if (gesture.kind === "pan") {
       setPanning(false);
+      if (gesture.button === 2) {
+        if (gesture.moved) {
+          suppressContextMenuRef.current = true;
+        } else {
+          openContextMenuAt(screen);
+        }
+      }
       return;
     }
     if (gesture.kind === "marquee") {
@@ -4736,16 +5007,16 @@ function EcadBody(props) {
       if (gesture.moved) dispatchGrip(gesture.entityId, gesture.grip, gesture.original, gesture.point);
       return;
     }
-  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, size.height, size.width, stageOps, view]);
+  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, openContextMenuAt, size.height, size.width, stageOps, view]);
   const onContextMenu = (0, import_react3.useCallback)((event) => {
     event.preventDefault();
     event.stopPropagation();
-    const screen = localPoint(event.clientX, event.clientY);
-    const maxX = Math.max(8, size.width - 220);
-    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300));
-    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) });
-    setCommandError(void 0);
-  }, [localPoint, selected.length, size.height, size.width]);
+    if (suppressContextMenuRef.current) {
+      suppressContextMenuRef.current = false;
+      return;
+    }
+    openContextMenuAt(localPoint(event.clientX, event.clientY));
+  }, [localPoint, openContextMenuAt]);
   const askSelection = (0, import_react3.useCallback)(() => {
     if (selectedEntities.length === 0) return;
     const kinds = [...new Set(selectedEntities.map((entity) => entity.k))].join(", ");
@@ -5122,7 +5393,14 @@ function EcadBody(props) {
   }, [applyView, blockPlacement, cancelCommand, chooseTool, command, contextMenu, defaultAnnotationHeight, defaultAnnotationLayer, editing, finishCommand, fit, gripDrag, placement, redoDraft, selectAll, selected.length, size.height, size.width, stageEraseSelection, t, tool, undoDraft, view, zoomBy]);
   const previewElements = (0, import_react3.useMemo)(() => {
     if (gripDrag !== void 0) {
-      return [{ kind: "line", a: gripDrag.original, b: gripDrag.point }];
+      const elements = [{ kind: "line", a: gripDrag.original, b: gripDrag.point }];
+      const entity = activeLayout?.entities.find((candidate) => candidate.id === gripDrag.entityId);
+      if (entity !== void 0) {
+        const request2 = gripRequestFor(entity, gripDrag.grip, gripDrag.point);
+        const shape = request2.kind === "move" ? movedPreviewOf(entity, request2.dx, request2.dy) : setterPreviewOf(request2.op, request2.payload);
+        if (shape !== void 0) elements.push(shape);
+      }
+      return elements;
     }
     if (command === void 0 || command.points.length === 0) return [];
     const cursor = command.cursor;
@@ -5164,7 +5442,7 @@ function EcadBody(props) {
       default:
         return [];
     }
-  }, [command, gripDrag]);
+  }, [activeLayout, command, gripDrag]);
   const grips = (0, import_react3.useMemo)(() => {
     if (!editing) return [];
     const result = [];
@@ -5176,7 +5454,7 @@ function EcadBody(props) {
     }
     return result;
   }, [editing, selectedEntities]);
-  const snapLabel = snap === void 0 ? void 0 : snap.kind === "endpoint" ? t("snapEndpoint") : snap.kind === "midpoint" ? t("snapMidpoint") : snap.kind === "center" ? t("snapCenter") : snap.kind === "nearest" ? t("snapNearest") : t("snapGrid");
+  const snapLabel = snap === void 0 ? void 0 : snap.kind === "endpoint" ? t("snapEndpoint") : snap.kind === "intersection" ? t("snapIntersection") : snap.kind === "midpoint" ? t("snapMidpoint") : snap.kind === "center" ? t("snapCenter") : snap.kind === "nearest" ? t("snapNearest") : t("snapGrid");
   const layouts = displayModel?.layouts ?? [];
   const layoutTabs = layouts.length > 1 ? (0, import_react3.createElement)(
     "div",
@@ -5424,6 +5702,7 @@ function EcadBody(props) {
           onStageErase: stageEraseSelection,
           onStageText: stageTextChange,
           onStageLayer: stageLayerChange,
+          onStageColor: stageColorChange,
           onStageAttribute: stageAttributeChange,
           onAsk: () => {
             if (selectedOne !== void 0) askEntity(selectedOne);
@@ -6497,6 +6776,8 @@ var en = {
   stageModifySummary: "{op} \xB7 {count} entities",
   stageOffsetSummary: "Offset {id} by {distance}",
   stageGripSummary: "{op} \xB7 {id}",
+  stageSetterSummary: "{op} \xB7 {id}",
+  stageColorSummary: "Set colour {color} on {count} entities",
   stageLayerSummary: "{op} \xB7 {name}",
   stagePropertySummary: "{op} \xB7 {id}",
   stageBlockSummary: "Block {block} at {point}",
@@ -6712,6 +6993,7 @@ var en = {
   statusOrtho: "ORTHO",
   statusGrid: "GRID",
   snapEndpoint: "Endpoint",
+  snapIntersection: "Intersection",
   snapMidpoint: "Midpoint",
   snapCenter: "Center",
   snapNearest: "Nearest",
@@ -6738,6 +7020,11 @@ var en = {
   propertiesMixedLayer: "Mixed layers",
   propertiesTextApply: "Stage text",
   propertiesLayerApply: "Stage layer",
+  propertiesColor: "Entity colour",
+  propertiesColorApply: "Stage colour",
+  propertiesColorPlaceholder: "ACI 1\u2013255",
+  propertiesColorHint: "An ACI colour index from 1 to 255. ByBlock (0) and ByLayer (256) are not settable values.",
+  propertiesColorInvalid: "Enter a whole ACI colour from 1 to 255.",
   propertiesMoveApply: "Stage move",
   propertiesRotateApply: "Stage rotate",
   propertiesDelete: "Stage erase",
@@ -6899,6 +7186,8 @@ var zh = {
   stageModifySummary: "{op} \xB7 {count} \u4E2A\u56FE\u5143",
   stageOffsetSummary: "\u504F\u79FB {id}\uFF0C\u8DDD\u79BB {distance}",
   stageGripSummary: "{op} \xB7 {id}",
+  stageSetterSummary: "{op} \xB7 {id}",
+  stageColorSummary: "\u5C06 {count} \u4E2A\u56FE\u5143\u7684\u989C\u8272\u8BBE\u4E3A {color}",
   stageLayerSummary: "{op} \xB7 {name}",
   stagePropertySummary: "{op} \xB7 {id}",
   stageBlockSummary: "\u5757 {block} \u4F4D\u4E8E {point}",
@@ -7114,6 +7403,7 @@ var zh = {
   statusOrtho: "\u6B63\u4EA4",
   statusGrid: "\u6805\u683C",
   snapEndpoint: "\u7AEF\u70B9",
+  snapIntersection: "\u4EA4\u70B9",
   snapMidpoint: "\u4E2D\u70B9",
   snapCenter: "\u5706\u5FC3",
   snapNearest: "\u6700\u8FD1\u70B9",
@@ -7140,6 +7430,11 @@ var zh = {
   propertiesMixedLayer: "\u591A\u4E2A\u56FE\u5C42",
   propertiesTextApply: "\u6682\u5B58\u6587\u5B57",
   propertiesLayerApply: "\u6682\u5B58\u56FE\u5C42",
+  propertiesColor: "\u56FE\u5143\u989C\u8272",
+  propertiesColorApply: "\u6682\u5B58\u989C\u8272",
+  propertiesColorPlaceholder: "ACI 1\u2013255",
+  propertiesColorHint: "\u989C\u8272\u7D22\u5F15\u4E3A 1 \u5230 255 \u7684 ACI \u503C\u3002\u968F\u5757\uFF080\uFF09\u548C\u968F\u5C42\uFF08256\uFF09\u4E0D\u80FD\u4F5C\u4E3A\u8BBE\u7F6E\u503C\u3002",
+  propertiesColorInvalid: "\u8BF7\u8F93\u5165 1 \u5230 255 \u7684\u6574\u6570 ACI \u989C\u8272\u3002",
   propertiesMoveApply: "\u6682\u5B58\u79FB\u52A8",
   propertiesRotateApply: "\u6682\u5B58\u65CB\u8F6C",
   propertiesDelete: "\u6682\u5B58\u5220\u9664",
