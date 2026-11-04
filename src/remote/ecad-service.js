@@ -14,7 +14,7 @@
  * @module dsh-engineering-remote-service
  */
 
-import { mkdirSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { bindTypertRemote } from '@deepseek-ai/dsh-typert-protocol'
@@ -30,13 +30,33 @@ export const DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 const PREVIEW_DIR = '.ecad/previews'
 /** Where the workspace index lives, relative to the session workspace. */
 const INDEX_FILE = '.ecad/index.json'
+/** Where the confirmed workspace profile lives, relative to the session workspace. */
+const PROFILE_FILE = '.ecad/profile.json'
 
-/** Engine module, imported once per host process on first use. */
-const ENGINE_URL = new URL('../../vendor/ecad/lib/engine/index.js', import.meta.url)
+/**
+ * Engine module URLs, imported once per host process on first use.
+ *
+ * The assembled package vendors the engine under `vendor/ecad/`; the second
+ * candidate is the repository's own compiled package before `pnpm assemble`,
+ * so a developer checkout can exercise this service without packing first.
+ */
+const ENGINE_URLS = [
+  new URL('../../vendor/ecad/lib/engine/index.js', import.meta.url),
+  new URL('../../packages/ecad/lib/engine/index.js', import.meta.url),
+]
 let enginePromise
 /** @returns the engine module. */
 function engine() {
-  enginePromise ??= import(ENGINE_URL.href)
+  enginePromise ??= (async () => {
+    for (const url of ENGINE_URLS) {
+      if (existsSync(url)) return import(url.href)
+    }
+    throw new EcadRemoteError(
+      'ECAD_ENGINE_MISSING',
+      'the ECAD engine is not installed beside this service',
+      'Reinstall the engineering bundle, or in a repository checkout run `pnpm assemble` (or `tsc -p packages/ecad/tsconfig.json`) and retry.',
+    )
+  })()
   return enginePromise
 }
 
@@ -150,7 +170,15 @@ async function readWorkspaceFile(ctx, cwd, path, signal) {
   if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Enable the ECAD row in a full AryaCode profile; the drawing cannot be read here.')
   const { absolute, relative: rel } = workspacePathOf(cwd, path)
   const target = await fs.resolve(absolute, { cwd })
-  const info = await fs.stat(target)
+  let info
+  try {
+    info = await fs.stat(target)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') {
+      throw new EcadRemoteError('ECAD_NOT_A_FILE', `"${rel}" does not exist in this workspace`, 'Check the path with the document tab or the file browser, then retry.')
+    }
+    throw error
+  }
   if (info === undefined || info.type !== 'file') {
     throw new EcadRemoteError('ECAD_NOT_A_FILE', `"${rel}" is not a readable file`, 'Check the path with the file browser, then retry.')
   }
@@ -221,6 +249,20 @@ async function writePreview(ctx, session, cwd, relPath, version, model) {
 }
 
 /**
+ * Read one workspace text file through the byte API.
+ *
+ * The Host filesystem contract has no text reader; profiles and index files are
+ * this service's own UTF-8 JSON artifacts, so decoding them here is lossless.
+ * @param fs - Host filesystem service.
+ * @param target - resolved target (or path) the service returned.
+ * @returns the file text.
+ */
+async function readTextTarget(fs, target) {
+  const bytes = await fs.readBytes(target, undefined, 8 * 1024 * 1024)
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes)
+}
+
+/**
  * Resolve the cached workspace index written by `ecad_scan`, when it exists.
  * @param ctx - Host context.
  * @param session - live session.
@@ -234,7 +276,7 @@ async function cachedSheetSummaries(ctx, session, cwd) {
     const target = await fs.resolve(join(cwd, INDEX_FILE), { cwd })
     const info = await fs.stat(target)
     if (info === undefined) return new Map()
-    const text = await fs.readText(target)
+    const text = await readTextTarget(fs, target)
     const parsed = JSON.parse(text)
     const sheets = Array.isArray(parsed?.sheets) ? parsed.sheets : []
     return new Map(sheets.filter(sheet => typeof sheet?.path === 'string').map(sheet => [sheet.path, sheet]))
@@ -244,12 +286,43 @@ async function cachedSheetSummaries(ctx, session, cwd) {
 }
 
 /**
+ * Read the confirmed workspace profile, falling back to the defaults.
+ *
+ * `ecad_profile` writes `.ecad/profile.json` when a person confirms the inferred
+ * conventions; until then the panel and the service use the engine defaults and
+ * report `profileSource: 'default'`.
+ * @param ctx - Host context.
+ * @param cwd - workspace root.
+ * @param engineModule - the loaded engine module.
+ * @returns the profile and where it came from.
+ */
+async function loadWorkspaceProfile(ctx, cwd, engineModule) {
+  const fs = ctx.get?.('fs')
+  if (fs === undefined) return { profile: engineModule.defaultProfile(), source: 'default' }
+  try {
+    const target = await fs.resolve(join(cwd, PROFILE_FILE), { cwd })
+    const info = await fs.stat(target)
+    if (info === undefined) return { profile: engineModule.defaultProfile(), source: 'default' }
+    const text = await readTextTarget(fs, target)
+    return { profile: engineModule.loadProfile(text), source: 'workspace' }
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'ENOENT') {
+      return { profile: engineModule.defaultProfile(), source: 'default' }
+    }
+    throw new EcadRemoteError(
+      'ECAD_PROFILE_INVALID',
+      `the workspace profile could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      'Re-run the profile step (ecad_profile) to write .ecad/profile.json again, or delete that file to fall back to the defaults.',
+    )
+  }
+}
+
+/**
  * Walk the workspace for DXF drawings, bounded in depth and count.
  * @param cwd - workspace root.
  * @param limit - most drawings to collect.
  * @returns drawing rows with their sizes.
- */
-async function listDrawings(cwd, limit) {
+ */async function listDrawings(cwd, limit) {
   const found = []
   let truncated = false
   /**
@@ -358,16 +431,12 @@ export function createEcadService(ctx) {
       return envelope(async () => {
         const { session, cwd } = sessionWorkspace(ctx, sessionId)
         const engineModule = await engine()
+        const { profile, source: profileSource } = await loadWorkspaceProfile(ctx, cwd, engineModule)
         const file = await readWorkspaceFile(ctx, cwd, path)
         const opened = await engineModule.openSheet({ path: file.relative, bytes: file.bytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
         const version = engineModule.sha256(file.bytes)
         const model = engineModule.buildSheetModel(opened)
-        let titleBlock
-        try {
-          titleBlock = engineModule.detectTitleBlock(opened, engineModule.defaultProfile())
-        } catch {
-          titleBlock = undefined
-        }
+        const titleBlock = engineModule.detectTitleBlock(opened, profile)
         const modelPath = await writePreview(ctx, session, cwd, file.relative, version, model)
         const unsupported = Object.values(model.stats.unsupported).reduce((total, count) => total + count, 0)
         return {
@@ -383,6 +452,7 @@ export function createEcadService(ctx) {
           truncated: model.stats.truncated,
           titleBlock,
           modelPath,
+          profileSource,
           writes: writesEnabled,
         }
       })
@@ -473,14 +543,17 @@ export function createEcadService(ctx) {
     async capabilities(sessionId) {
       return envelope(async () => {
         const { cwd } = sessionWorkspace(ctx, sessionId)
+        const engineModule = await engine()
+        const { source: profileSource } = await loadWorkspaceProfile(ctx, cwd, engineModule)
         return {
           contractVersion: ECAD_CONTRACT_VERSION,
           engine: 'dxf',
-          // DWG needs a GPL or licensed converter; this component reads and writes DXF only.
+          // DWG is a post-v1, opt-in milestone; this build reads and writes DXF only.
           dwg: false,
           writes: writesEnabled,
           maxFileBytes: DEFAULT_MAX_FILE_BYTES,
           methods: ECAD_METHODS.map(method => method.method),
+          profileSource,
           workspace: cwd,
         }
       })

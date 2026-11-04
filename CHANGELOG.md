@@ -8,6 +8,17 @@
   only. `docs/port/ecad.md` records the measurements and what the corpus is (AutoCAD Electrical IEC
   drawings, exploded symbols, `TITLE_BLOCK` text, an index sheet). The component itself, its tools and
   the panel are not in this change yet.
+- **The ECAD engine and its Host service are real and measured on the owner's print set.** The engine
+  (`packages/ecad/src/engine`, over MIT `@mlightcad/data-model`) parses the 34-sheet corpus into 83,936
+  primitives with **0 unsupported** and 0 truncated layouts, reads sheet numbers and titles on all 34
+  sheets, the 80-row index sheet, a 0.95-confidence profile from the ACADE `WD_M` attributes, 74
+  cross-reference candidates and 97 review findings. All 34 sheets write → re-read → rebuild with
+  **zero** model differences and `verifyWritten.ok`, and drafts validate → apply → write → verify on
+  three sheets. The panel's Remote service is wired to it: `open`, `apply`, `sheets` and `capabilities`
+  were exercised against a fake Host context over two real sheets (render-model artifact, new-file
+  apply with verification, stale-document and writes-disabled refusals). Known writer limits (ATTRIB
+  vertical justification, filled hatch islands, planar geometry assumption) are reported per write.
+  ([port evidence](docs/port/ecad.md))
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and

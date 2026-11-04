@@ -60,10 +60,46 @@ will implement.
 ## Toolchain notes
 
 - `@mlightcad/data-model@1.15.21` pulls MIT `@mlightcad/{common,geometry-engine,graphic-interface,emf-converter}`.
-- The package is currently a repository devDependency for the engine work; it becomes a bundle
-  dependency (and a declared component dependency) when the component lands.
+- The package is now a **bundle dependency** and a declared component dependency: the vendored engine
+  imports it at runtime, so the root `package.json` keeps the exact `1.15.21` pin the engine was measured
+  against.
 - This environment installs with `pnpm install --ignore-scripts --config.node-linker=hoisted`
   (isolated pnpm links and Node 26 ESM do not mix here); CI on the owner's Node line is unaffected.
+
+## M1 — engine library, measured on the corpus
+
+The engine lives in `packages/ecad/src/engine`: plain Node over `@mlightcad/data-model`, with no Host
+services in it, exporting parse, render model, title block, index sheet, profile inference,
+cross-reference, checks, diff, SVG render, ops, DXF write and write verification. Its own specs are
+**112 tests, all passing**; the synthetic fixtures regenerate byte-identically.
+
+| Measurement (34 sheets, 26.4 MB, read-only) | Result |
+|---|---|
+| Parse + render model | 34/34, **83,936 primitives**, 1,756 approximated, **0 unsupported**, 0 truncated |
+| Title blocks | sheet number 34/34 and title 34/34 (text pairing, confidence 0.93–0.95) |
+| Index sheet | sheet 001, heading `SHEET INDEX`, 80 entries read by column |
+| Profile inference | confidence 0.95: `TITLE_BLOCK` layer, WIRES/TAGS/XREF/LOC from `WD_M`, tag format from `TAGFMT`, 33 standard layers |
+| Cross-reference | 74 candidate rows (33 device tags, 4 sheet references, 37 wire labels); 1,132 pattern-only noise rows withheld |
+| Checks | 97 findings; **0** TB-MISSING / SHEET-MISMATCH / LAYER-UNKNOWN / SHEET-REF-UNRESOLVED |
+| Render | 34 model layouts → 19.2 MB SVG in 143 ms |
+| Round-trip | 34/34 `dxfOut` → re-read → rebuild → **0 added/removed/changed**, `verifyWritten.ok` on every sheet (3.2 s) |
+| Draft ops | validate → apply → write → verify passes on sheets 001/031/051 |
+
+Known limits, reported per write and never hidden: the pinned writer emits group 74 as the lock flag,
+so ATTRIB vertical justification is not carried (horizontal mode is); hatch islands are filled because
+the contract carries one points loop per loop (stable ids `<handle>#n`, loops sorted so a write/re-read
+does not diff); planar drawing assumption (OCS/extrusion normal, thickness and non-uniform insert
+scaling are not applied, non-uniform/mirrored block arcs are marked `approx`); ASCII DXF without the
+`0/EOF` terminator is refused because the pinned parser would otherwise accept a truncated file.
+Contract additions accepted for v1: `ECAD-SCOPE` as an `info` rule appended to every checks result,
+`ECAD-TB-BLANK` as `info`, and the module-local result types re-exported from `engine/index.ts` (move
+them into `types.ts` only if the panel needs them).
+
+**Service probe.** With the engine built in-repo, `src/remote/ecad-service.js` ran against a fake Host
+context over two real sheets: `capabilities`, `open` (render-model artifact under `.ecad/previews/`,
+title-block sheet number, 0 unsupported), `sheets`, and `apply` (a NEW file, `verification.ok`, source
+bytes unchanged, SHA-256 echo) all passed; a stale `baseVersion` and a writes-disabled service were
+refused with `ECAD_STALE_DOCUMENT` and `ECAD_WRITES_DISABLED`.
 
 ## Closed gate: Typert client remote (GO)
 
