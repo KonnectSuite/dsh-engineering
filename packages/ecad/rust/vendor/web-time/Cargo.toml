@@ -1,0 +1,11 @@
+[package]
+name = "web-time"
+version = "1.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
+description = "In-repo stand-in for the web-time crate: std::time on native targets, one host clock import on wasm32."
+
+[lib]
+name = "web_time"
+path = "src/lib.rs"
