@@ -39,8 +39,9 @@ prove — and never describe a written file as a faithful round-trip you did not
 ## Drafting a change
 
 1. Stage the edit with `ecad_draft_ops` against the open sheet: annotations first (text, leader,
-   revision cloud, rectangle), then attribute/title-block values, layer changes, move, rotate,
-   erase, and a library block insert only when the block exists in the drawing.
+   revision cloud, rectangle, circle, arc), then attribute/title-block values, layer changes,
+   copy, move, rotate, scale, mirror, offset, trim, extend, erase, and a library block insert only
+   when the block exists in the drawing.
 2. Read the validation result. A rejected operation is not applied; fix it, do not force it.
 3. Apply with `ecad_draft_apply` to a **new** file. The source is never overwritten. The result
    carries the written path and a verification: expected versus applied changes, geometry the writer

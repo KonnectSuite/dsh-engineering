@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+- **The drawing engine now has the CAD modify operations the panel needs.** `EcadOp` gained
+  `addCircle`, `addArc`, `copy`, `scale`, `mirror` (keeps a mirrored copy by default, `eraseSource`
+  removes the source), `offset`, `trim`, `extend`, `setLine`/`setPolyline` for grip edits, and
+  drawing-level `addLayer`/`setLayerColor`/`renameLayer`. Validation/application live in
+  `packages/ecad/src/engine/ops.ts` with pure 2-D geometry in `ops-geom.ts`; support is explicit and
+  refusals name the kind and a fix: scale/mirror cover the common primitives but refuse
+  hatch/spline/dimension/viewport (mirror also refuses inserts — mirror the block geometry instead),
+  offset covers line/circle/arc, trim/extend are line against line, only top-level entities can be
+  edited, and mirror keeps text readable (MIRRTEXT=0). The written-file verification learns the new
+  kinds (added primitives for circle/arc/copy/mirror/offset, changed-geometry rows for
+  scale/trim/extend/setLine/setPolyline, layer add/rename/color comparisons). 15 new tests cover
+  geometry, refusals and a synthetic DXF write→re-read round trip; the ECAD package suite is
+  234/234 and typecheck is clean. The `ecad_draft_ops` description and skill now name the operations.
+  The panel commands that dispatch them are the next commit; nothing is released.
 - **The ECAD row now has a working Configure page in Plugins.** The bundle's settings face registered
   `plugins.row.config` for `l5x`, `ftview`, `mwi` and `optix` but not `ecad`, so the row had no
   Configure control; and the row's own `Config` fields were declared without `.volatile()`, so even

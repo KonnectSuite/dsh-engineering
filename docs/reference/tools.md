@@ -4,7 +4,7 @@
 
 The engineering bundle registers **149 tools** for L5X and Migration and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 149 definitions total **130377 characters** of model-visible JSON — name, description and
+Those 149 definitions total **130745 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -901,7 +901,7 @@ Stage print edits and prove them: `draft_ops` validates and stages, `draft_apply
 
 #### `ecad_draft_ops`
 
-Validate a list of edit operations against the current drawing and, when every operation is valid, stage them in .ecad/drafts/<draft_id>.json against the source version. Operations edit text, attributes, layers and geometry, or add text, lines, polylines, rectangles, revision clouds, leaders and existing library blocks; ids are the ids the sheet model carries. Invalid operations are refused with a fix, and nothing is applied — draft_apply writes a new file.
+Validate a list of edit operations against the current drawing and, when every operation is valid, stage them in .ecad/drafts/<draft_id>.json against the source version. Operations edit text, attributes, layers and geometry: add text, lines, polylines, rectangles, circles, arcs, revision clouds, leaders and existing library blocks; copy, move, rotate, scale, mirror, offset, trim, extend or erase entities; set text, an attribute value, an entity layer, or a line/polyline geometry; add, rename or recolor a layer. Ids are the ids the sheet model carries. Limits are explicit in the refusal: 2D XY only, top-level entities only, offset supports LINE/CIRCLE/ARC, trim/extend are LINE against LINE, and mirror keeps text readable. Invalid operations are refused with a fix, and nothing is applied — draft_apply writes a new file.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
