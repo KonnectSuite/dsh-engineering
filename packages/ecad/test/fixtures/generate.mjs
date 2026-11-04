@@ -347,7 +347,7 @@ function wdM(db) {
   // parsing is required to exclude it.
   text(model, 'TITLE', 40, 6.75, 0.08, 'TITLE_BLOCK')
   text(model, 'SHEET NUMBER:', 40, 6.5, 0.08, 'TITLE_BLOCK')
-  text(model, 'FC1000495-001', 41, 6.25, 0.15, 'TITLE_BLOCK')
+  text(model, 'SYNTH-001', 41, 6.25, 0.15, 'TITLE_BLOCK')
 
   write('index', db)
 }

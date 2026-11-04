@@ -1,3 +1,12 @@
+## [Unreleased]
+
+- **The synthetic ECAD index fixture no longer carries a customer drawing number.** Its title-block
+  filename cell read `FC1000495-001`; it now reads `SYNTH-001`. The committed DXFs are generated
+  synthetic drawings and were always described as such, but a generated fixture should not quote a real
+  print's number. The 0.86.0 tarball ships no test fixtures, so no published bytes change; this is
+  repository hygiene under the "customer prints stay out of the repo" rule. The real-corpus filenames
+  quoted in `docs/port/ecad.md` remain as the measured-evidence record.
+
 ## [0.86.0] - 2026-11-04
 
 - **ECAD (DXF) groundwork — feasibility measured on the owner's real print set.** The 34-sheet DXF
