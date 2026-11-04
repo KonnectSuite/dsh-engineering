@@ -60,7 +60,8 @@ prove — and never describe a written file as a faithful round-trip you did not
   writer is a new drawing, not the customer's file.
 - **Confirm the profile.** Guessed conventions that drive checks or cross-reference are the fastest
   way to a confident wrong answer.
-- **DWG is not supported in this component.** If the user needs it, say so and offer DXF conversion
-  (export the sheet as DXF in the CAD application) instead of pretending to read it.
+- **DWG support is landing in this batch.** This build reads DXF today; a `.dwg` path is refused with
+  `ECAD_DWG_UNSUPPORTED` rather than guessed at. When the converter lands, the same tools take the
+  file; until then, export the sheet as DXF in the CAD application and read that.
 - **Coverage is stated.** Every render, cross-reference row and check result names what it cannot
   establish. Review findings are evidence for a person, not a release certificate.
