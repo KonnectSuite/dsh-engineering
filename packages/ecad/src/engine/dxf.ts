@@ -121,6 +121,7 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
   let textChanges = 0
   let attributeChanges = 0
   let layerChanges = 0
+  let colorChanges = 0
   let geometryChanges = 0
   for (const change of diff.changed) {
     const reason = change.reason
@@ -129,6 +130,7 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
       else textChanges += 1
     }
     if (reason.includes('layer changed')) layerChanges += 1
+    if (reason.includes('colour changed')) colorChanges += 1
     if (reason.includes('position changed') || reason.includes('geometry changed') || reason.includes('angle changed') || reason.includes('size changed') || reason.includes('scale changed') || reason.includes('closed flag changed')) geometryChanges += 1
   }
   applied.setText = textChanges
@@ -143,6 +145,13 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
   applied.extend = geometryChanges
   applied.setLine = geometryChanges
   applied.setPolyline = geometryChanges
+  applied.setCircle = geometryChanges
+  applied.setArc = geometryChanges
+  applied.setEllipse = geometryChanges
+  // A colour edit is a changed row whose reason names the colour; rows are also
+  // produced when a setLayerColor recolours by-layer entities, so the counter is
+  // only compared when the draft asked for setColor.
+  applied.setColor = colorChanges
 
   // Layer-table operations are not primitives, so they are read from the layer
   // table itself: a new name is addLayer, a vanished name is the old half of a

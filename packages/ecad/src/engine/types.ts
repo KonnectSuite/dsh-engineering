@@ -337,6 +337,10 @@ export type EcadOp =
   | { readonly op: 'extend'; readonly layout: string; readonly id: string; readonly boundaryId: string }
   | { readonly op: 'setLine'; readonly layout: string; readonly id: string; readonly a: EcadPoint; readonly b: EcadPoint }
   | { readonly op: 'setPolyline'; readonly layout: string; readonly id: string; readonly pts: readonly EcadPoint[]; readonly closed?: boolean }
+  | { readonly op: 'setCircle'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly radius: number }
+  | { readonly op: 'setArc'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly radius: number; readonly startAngleDeg: number; readonly endAngleDeg: number }
+  | { readonly op: 'setEllipse'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly rx: number; readonly ry: number; readonly rotDeg: number }
+  | { readonly op: 'setColor'; readonly layout: string; readonly ids: readonly string[]; readonly color: number }
   | { readonly op: 'addLayer'; readonly name: string; readonly color?: number }
   | { readonly op: 'setLayerColor'; readonly name: string; readonly color: number }
   | { readonly op: 'renameLayer'; readonly from: string; readonly to: string }
