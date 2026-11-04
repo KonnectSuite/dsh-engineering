@@ -44,7 +44,9 @@ const result = await esbuild.build({
   external: ['react'],
   logLevel: 'silent',
 })
-const body = result.outputFiles[0].text
+// esbuild annotates a virtual module with its absolute path; keep the checkout
+// path out of the committed artifact.
+const body = result.outputFiles[0].text.replace(/^\/\/ css-module:[^\r\n]*\r?\n/gmu, '')
 const wrapped = `window.__ModuleLoader__.load({
   id: '${ID}',
   factory: (require) => {

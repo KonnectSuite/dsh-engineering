@@ -28,6 +28,16 @@
   ships off the default-on tool budget is unchanged; the generated reference, component manifest and README
   record the new surface. DWG and the right-panel viewer land in the same batch.
   ([port evidence](docs/port/ecad.md))
+- **The ECAD drawing panel lands as the bundle's third client face.** Opening a `.dxf` (or `.dwg`) in
+  the right panel draws the sheet: fit, pan, zoom, layer visibility, layout tabs, click selection with an
+  inspector, coverage badges, the converter provenance for DWG, the loading/empty/truncated/read-only/
+  failure states and an “Ask Arya” review action. It mounts the bundle's Typert contribution, reads the
+  render-model artifact the `ecad` Remote service caches (chunked workspace read), and passes any
+  `ECAD_DWG_*` failure through one failure panel unchanged. The face uses the host's `--dsw-*` tokens
+  only — light and dark, focus rings, 24 px targets, reduced motion — with ACI linework mixed toward the
+  theme ink (measured 3.19:1 light / 3.25:1 dark). The committed artifact was rendered in headless
+  Chrome against a real sheet (15 screenshots, zero console errors) and the registration is locked by
+  the client-face spec; the in-app mount is part of the Dev pass.
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and

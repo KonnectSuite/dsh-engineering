@@ -144,7 +144,9 @@ export async function buildViewerFace() {
     // bundle a second copy of either: one React per page, one primitive set.
     external: ['react', 'react/jsx-runtime', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives'],
   })
-  const body = result.outputFiles[0].text
+  // esbuild annotates a virtual module with its absolute path; that would bake
+  // the build machine's checkout path into a committed artifact, so drop it.
+  const body = result.outputFiles[0].text.replace(/^\/\/ css-module:[^\r\n]*\r?\n/gmu, '')
   return `window.__ModuleLoader__.load({
   id: ${JSON.stringify(ID)},
   factory: (require) => {

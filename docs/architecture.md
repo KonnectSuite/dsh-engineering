@@ -9,19 +9,21 @@ The [README](../README.md) owns the product overview; this page owns the interna
 package.json              bundle manifest: dsh.bundle.patch, dsh.client, dependencies, peer range
 cordis.patch.yml          the loader layer: the inserted rows (inserts only)
 lib/index.js              host half: an entry that registers nothing (see "Client faces")
-lib/client.js             the bundle's one browser half: ladder + ME display previews (generated)
-scripts/build-client.mjs  builds lib/client.js from the two committed face bundles
+lib/client.js             the bundle's one browser half: ladder, ME display and ECAD drawing previews (generated)
+scripts/build-client.mjs  builds lib/client.js from the three committed face bundles
+scripts/build-ecad-face.mjs  builds the ECAD drawing face from packages/ecad/src/client
 packages/l5x              host tools (read, references, checks, drafts, studio, controller, live),
                           the rockwell-l5x skill, the PLC trend client face
 packages/viewer           ladder viewer: the committed face bundle lib/client.js
 packages/ftview           host tools (read, edit, studio), the factorytalk-view skill
 packages/ftview-viewer    ME display preview: the committed face bundle lib/client.js
+packages/ecad             ECAD engine, tools and skill; its right-panel drawing face builds to lib/client.js
 scripts/gen-tool-reference.ts   generated tool reference and inventory
 test/                     patch, docs, tool-reference, manifest and client-face tests
 ```
 
-The three host components are vendored into `vendor/`, so the published package is self-contained:
-its only dependency is the Optix component. The two face packages are build inputs, not
+The host components are vendored into `vendor/`, so the published package is self-contained:
+its only `@aryacode/*` dependency is the Optix component. The three face packages are build inputs, not
 dependencies — their built bundles are folded into `lib/client.js`.
 
 ## Row model
@@ -169,28 +171,33 @@ escape hatch and `TagGroup` writes are unused by design: a raw CIP write would b
 A package registers exactly **one** client bundle, keyed by the package name the Shell resolves from
 the mounted row. A second registration under another id is never asked for, and the failure presents
 as a plugin that loaded and drew nothing rather than as an error — so `@aryacode/dsh-engineering`
-carries both engineering previews in its single `./client` bundle:
+carries all three engineering previews in its single `./client` bundle:
 
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
-- the ME display preview draws an exported display instead of its XML.
+- the ME display preview draws an exported display instead of its XML;
+- the ECAD drawing preview draws a DXF (or converted DWG) sheet from the render-model artifact the
+  `ecad` Remote service caches, with layers, pan/zoom, selection and an inspector.
 
-`scripts/build-client.mjs` produces that bundle from the two face bundles in `packages/viewer/lib`
-and `packages/ftview-viewer/lib`, which `scripts/build-viewer-face.mjs` and
-`scripts/build-ftview-face.mjs` build from this repository's own sources first (`npm run build:client`
-runs all three in that order). Each face body is copied verbatim into its own closure inside the one
-registration — both declare their own `React` binding, document-preview id, stylesheet text and
-helpers — and the merged plugin exports the union of the two faces' `inject` lists and an `apply`
-that runs both. Nothing is re-authored, retransformed or re-hashed.
+`scripts/build-client.mjs` produces that bundle from the three face bundles in
+`packages/viewer/lib`, `packages/ftview-viewer/lib` and `packages/ecad/lib`, which
+`scripts/build-viewer-face.mjs`, `scripts/build-ftview-face.mjs` and `scripts/build-ecad-face.mjs`
+build from this repository's own sources first (`pnpm build:client` runs all four in that order). Each
+face body is copied verbatim into its own closure inside the one registration — each declares its own
+`React` binding, document-preview id, stylesheet text and helpers — and the merged plugin exports the
+union of the faces' `inject` lists and an `apply` that runs each. Nothing is re-authored, retransformed
+or re-hashed.
 
-The face builds carry the two transforms AryaCode's client toolchain used to supply: a CSS-module
-transform (a scoped class map plus a one-shot `<style data-plugin-css=…>`) and the workspace-address
-helpers, vendored at `packages/viewer/src/client/vendor/workspace-path.ts` because the harness package
-that provided them is not published. React, react-dom and the client primitives stay external, as the
-Shell provides them.
+The face builds carry the transforms AryaCode's client toolchain supplies: a CSS-module transform (a
+scoped class map plus a one-shot `<style data-plugin-css=…>`) and the workspace-address helpers,
+vendored per face (`packages/viewer/src/client/vendor/workspace-path.ts`, the same file copied beside
+the ECAD face) because the harness package that provided them is not published. React, react-dom and
+the client primitives stay external, as the Shell provides them. The ECAD face styles itself from the
+host's `--dsw-*` tokens only — no new palette, light and dark both, with the sheet's ACI linework mixed
+toward the theme ink — so it reads as part of the same app.
 
 Two consequences worth stating:
 
-- **One row mounts both previews.** The Shell only scans the client face of packages a mounted row
+- **One row mounts all three previews.** The Shell only scans the client face of packages a mounted row
   resolves to, so the `viewers` row names this package's root, and `lib/index.js` exists to be that
   mount point. Its `apply` registers the `ecad` Remote service the package's Typert host face names.
 - **The bundle package root is a plugin entry.** `exports["."]` is `lib/index.js`; the patch is
@@ -242,7 +249,7 @@ registry (`@aryacode/dsh-tool-ft-optix`, a plain version range):
 ```
 dsh-engineering-<version>.tgz
   ├── cordis.patch.yml        the rows (inserts only)
-  ├── lib/client.js           both previews, one registration
+  ├── lib/client.js           all three previews, one registration
   ├── lib/index.js            the host half the `viewers` row mounts
   ├── lib/typert.host.js      the package-defined Typert Remote artifact
   ├── src/remote/             the wire contract and the ECAD Remote service

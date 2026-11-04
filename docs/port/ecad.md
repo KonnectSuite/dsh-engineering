@@ -126,6 +126,39 @@ document and backup answer with paths and counts. Typecheck and `tsc -p` are cle
 4,282 characters (budget 8,000) and its copy says DWG is landing in this batch, with one marked
 sentence per surface to flip when the converter merges.
 
+## M3 — the right-panel drawing preview
+
+The third client face (`packages/ecad/src/client`, folded by `scripts/build-client.mjs` into the
+bundle's one registration) registers the document preview for **`.dxf` and `.dwg`**
+(`binaryExtensions: ['dwg']`, loading `renderer`) and the Better Sidebar file viewer, mounts the
+bundle's Typert contribution and reads the sheet from the Remote service: `capabilities`,
+`open` → the render-model artifact under `.ecad/previews/`, then a chunked read of that artifact
+through `workspaceFiles.readBytes` (1 MiB chunks, 64 MiB cap) and a JSON parse. The body renders the
+layout as SVG (fit, pan, zoom, layers on/off, click selection with an inspector, layout tabs, coverage
+badges), carries the converter provenance for DWG (`converter`, source version, warnings) as a quiet
+badge and panel rows, and maps any envelope failure — including `ECAD_DWG_*` — through one failure
+panel. “Ask Arya” appends a review prompt with the drawing's format and path to the conversation draft.
+The actions slot is not used: its owner prop is only an absolute path and the conversation bridge needs a
+Session, so the action lives in the body's quiet view toolbar as the ladder face does.
+
+Theme compliance is part of the face, not a later pass: only `--dsw-*` tokens (document surface, layers,
+labels, borders, hover/active, business state, warn state, selection, radii, elevation, focus ring,
+fonts), light and dark, 24 px targets, `aria-pressed`/`aria-selected`, hover only under
+`@media (hover: hover)`, `prefers-reduced-motion` honoured, and the sheet's ACI linework mixed toward the
+theme ink (`--ecad-ink-tint: 55%`) with a measured worst case of **3.19:1 light / 3.25:1 dark**; ACI
+7/0/256 draw in full theme ink. The en and zh dictionaries have identical keys and every literal
+`t('key')` resolves.
+
+Verification: the committed artifact was rendered in real headless Chrome against a real corpus sheet
+with the host's `ui-theme` stylesheets — 15 screenshots covering fit, pan, zoom, selection, layer hide,
+narrow panes, zh, error/empty/truncated/unavailable and the DWG badge/rows/warnings — asserting the
+transform changes, Escape clears, layer hide removes primitives, Ask Arya writes the path, fit is
+centred, and there are **zero console errors or warnings**. `test/client-face.spec.mjs` locks the
+registration (extension list, renderer loading, `binaryExtensions`, locale namespace, slot) and the face
+artifact's freshness; `packages/ecad/test/client/{scene,artifacts}.spec.mjs` cover the geometry and
+artifact helpers (286 tests total in the suite). The remaining check is the in-app Shell mount on the Dev
+AryaCode profile in the end-to-end pass.
+
 ## Closed gate: Typert client remote (GO)
 
 Proven end to end on a composed Dev AryaCode profile: browser client bundle → `ctx.remote.$mount` →

@@ -112,7 +112,7 @@ which Studio itself only demonstrates at run time.
 
 ## Evidence per surface
 
-Four products, four different levels of evidence — stated plainly, because a figure borrowed from another surface is
+Each product has its own level of evidence — stated plainly, because a figure borrowed from another surface is
 worse than no figure.
 
 | Surface | Captured here | Drawn here | Where to read |
@@ -121,6 +121,7 @@ worse than no figure.
 | FactoryTalk View ME | a display authored with the draft tools and rendered by this bundle's own renderer | `docs/diagrams/ftview.svg` | [Any application](reference/ftview-any-app.md), [Cross-reference](reference/ftview-cross.md) |
 | MotionWorks IEC | **none.** This host has no MotionWorks IEC install with a reachable IDE bridge, so there is no capture to show and none is faked | `docs/diagrams/mwi.svg` | [Tool reference](reference/tools.md), [MWI port](port/mwi.md) |
 | FactoryTalk Optix | **none.** The Studio bridge answers `Bridge unavailable` on this host | `docs/diagrams/optix.svg` | [NetLogic](optix-netlogic.md), [Tool reference](reference/tools.md) |
+| ECAD electrical prints | a real corpus sheet rendered by this bundle's committed drawing face (light and dark, from the harness run), and the engine's measured write → re-read round trip on all 34 sheets; the in-app capture follows the Dev pass | — (no diagram yet) | [ECAD port](port/ecad.md), [Tool reference](reference/tools.md) |
 
 The two empty rows are the honest state of this repository, not a judgement about the tools: both surfaces have tests
 against fixtures and a documented tool set, and neither has been photographed doing the work. When either is captured,

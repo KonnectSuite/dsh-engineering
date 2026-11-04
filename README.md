@@ -7,7 +7,7 @@ surface. A row is the switch: disable it and that plugin unloads, so its tool sc
 `@aryacode/dsh-engineering` · 158 tools · 9 rows · 5 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
-product follows, and the first prompt to paste for each of the four.
+product follows, and the first prompt to paste per product.
 
 ## Harness compatibility
 
@@ -53,9 +53,9 @@ of model-visible schema a fresh install may mount, and a component that would ex
 ships switched off until the ceiling is raised with its measurement. The
 [component contract](docs/reference/components.md#context-budget) owns the budget.
 
-The previews are independent of the tools — switching a product off does not remove the ladder viewer.
-Both previews mount from **one** row (`viewers`), because a package registers exactly one browser
-bundle.
+The previews are independent of the tools — switching a product off does not remove any of the three
+viewers (ladder, ME display, ECAD drawing). All three mount from **one** row (`viewers`), because a
+package registers exactly one browser bundle.
 
 ## What it supports
 
@@ -99,7 +99,7 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `ecad` | ECAD drawing reads, review, cross-reference, checks, render/compare, staged drafts and the review/backup deliverables, with the `ecad-drafting` skill; the row ships off, and writes are a second switch | `writes` (off), `maxFiles` (2000), `maxFileBytes` (64 MiB), `maxEntities` (200000) |
-| `viewers` | ladder + ME display previews | — |
+| `viewers` | ladder, ME display and ECAD drawing previews | — |
 | `engineering-preset` | none — the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
 | `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
@@ -150,6 +150,10 @@ Where each surface actually stands, based on what has been exercised.
   write → re-read → rebuild with zero model difference, and the sixteen tools are exercised through a fake
   Host composition (sandbox-policy writes, source untouched, explicit failure envelopes). The right-panel
   viewer and the DWG converter land in the same batch.
+- ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
+  sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
+  empty, truncated and DWG states — with zero console errors; the in-app shell mount is verified with the
+  Dev AryaCode pass below.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins
@@ -232,7 +236,7 @@ flowchart TB
   Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
   Bundle -->|insert| MWI["mwi (on) — session, read, verify, edit"]
   Bundle -->|insert| ECAD["ecad (off) — DXF/DWG reads, review, drafts"]
-  Bundle -->|insert| Viewers["viewers (on) — ladder + ME display previews"]
+  Bundle -->|insert| Viewers["viewers (on) — ladder, ME display and ECAD drawing previews"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
 
@@ -245,7 +249,7 @@ even when the implementation behind a row is replaced.
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` on |
 | `ecad` | `@aryacode/dsh-engineering/ecad` (sixteen drawing tools + the `ecad-drafting` skill) | `writes` off · `maxFiles` 2000 · `maxFileBytes` 64 MiB · `maxEntities` 200000 |
-| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder, ME display and ECAD drawing previews) | — |
 | `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on · `netlogic` on |
 
 ## Safety

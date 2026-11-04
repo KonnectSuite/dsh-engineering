@@ -135,7 +135,9 @@ export async function buildEcadFace() {
     // than the shell's component primitives, so nothing else is external.
     external: ['react', 'react/jsx-runtime'],
   })
-  const body = result.outputFiles[0].text
+  // esbuild annotates a virtual module with its absolute path; keep the checkout
+  // path out of the committed artifact.
+  const body = result.outputFiles[0].text.replace(/^\/\/ css-module:[^\r\n]*\r?\n/gmu, '')
   return `window.__ModuleLoader__.load({
   id: ${JSON.stringify(ID)},
   factory: (require) => {
