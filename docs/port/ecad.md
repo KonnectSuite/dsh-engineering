@@ -272,3 +272,33 @@ round-trip diffs). A DWG write renumbers anonymous blocks. Proxy/custom objects,
 absent from this corpus and therefore **unmeasured** — reader diagnostics are the only report, and
 support is not claimed either way. Conversion runs CPU-synchronously on the calling thread (5–145 ms
 per sheet), so the service caches the model artifact per open.
+
+## Dev AryaCode pass (2026-11-04)
+
+The packaged bundle was installed and booted on the development home
+(`%LOCALAPPDATA%\AryaCode-dev\home`), never on the installed product.
+
+- **Pack.** `npm pack --ignore-scripts` produced a 3.7 MB tarball (13.3 MB unpacked, 731 files) that
+  carries every ECAD runtime piece: `vendor/ecad/lib` (engine, DWG converter, session, tools), the
+  6,408,006-byte `vendor/ecad/assets/acadrust.wasm`, the Rust wrapper sources and `build.ps1`, the
+  MPL/ACadSharp notices, `entries/ecad.js` and `src/remote/` (contract plus panel service).
+- **Profile.** A fresh `ecad-dev` profile composes `@deepseek-ai/dsh-base`, `@deepseek-ai/dsh-web-app`
+  and the tarball, and adds a profile patch enabling the `ecad` row with `writes: true`;
+  `dsh --profile ecad-dev --dump-config` shows the nine rows with those values. The profile must be
+  installed with peer auto-install disabled (`--config.auto-install-peers=false`): pnpm otherwise pulls
+  the latest `0.2.2-alpha.3` host plugins into the profile, which the `0.2.2-alpha.2` runtime correctly
+  refuses to activate. The shipped installer supplies matching peers, so this is a hand-built-profile
+  caveat, not a bundle defect; it is recorded here for the next commissioning run.
+- **Boot.** `dsh web --host 127.0.0.1 --port 0` served the UI (title *AryaCode Local Build*). The
+  Plugins page reported `@aryacode/dsh-engineering v0.85.3` installed with **Components: 9 total · 9
+  running**, including `@aryacode/dsh-engineering/ecad` **Running**, the `viewers` client row, and the
+  ECAD row table with `writes off · maxFiles 2000 · maxFileBytes 64 MiB · maxEntities 200000`. The only
+  console error was the offline account read (`[deepseek-account] account read failed`); no plugin,
+  client-face or composition error appeared. Screenshots from this pass are in
+  `tmp/ecad-dev-shots/` (`09-ecad-row-visible.png`, `10-ecad-config.png`); they are evidence, not
+  committed assets.
+- **Still to drive interactively.** Opening a DXF/DWG from an app workspace was not exercised in this
+  pass because the dev home has no workspace holding the print set; the panel path is covered by the
+  headless face harness (15 screenshots against a real sheet) and by the real-DWG service probe above.
+  The next commissioning pass mounts the print set in a dev workspace and drives the preview from the
+  file tree.
