@@ -176,11 +176,13 @@ carries all three engineering previews in its single `./client` bundle:
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
 - the ME display preview draws an exported display instead of its XML;
 - the ECAD drawing pane is a CAD workspace on a DXF (or converted DWG) sheet: multi-select with
-  window/crossing marquee, pan/zoom, right-click menu, grips, object snaps, ortho/grid, undo/redo,
-  a draw/modify tool palette, editable properties and layers, print/export, and — when the row's
-  `writes` switch is on — staged edits applied through `ecad/apply` to a new verified drawing
-  (the shell's filesystem service is text-only, so drawing bytes go through a policy-checked local
-  writer that refuses a read-only session or an outside destination). The same face also claims all
+  window/crossing marquee, middle/right/Space pan, wheel zoom, right-click menu, grips (line,
+  polyline, circle, arc, ellipse and insertion setters), object snaps including intersection,
+  ortho/grid, undo/redo, a draw/modify tool palette, editable text/attribute/layer/colour
+  properties and layers, print/export, and — when the row's `writes` switch is on — staged edits
+  applied through `ecad/apply` to a new verified drawing (the shell's filesystem service is
+  text-only, so drawing bytes go through a policy-checked local writer that refuses a read-only
+  session or an outside destination). The same face also claims all
   sixteen ECAD tool names in the shell's keyed `tool.call.toolview` slot (specialised cards for
   open/scan/checks/cross-reference/render/draft_apply) and renders a sheet-set status dock in
   `conversation.input.dock` from the real session's `ecad.sheets`/`ecad.capabilities`.

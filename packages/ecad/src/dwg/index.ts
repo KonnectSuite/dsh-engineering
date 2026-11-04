@@ -182,6 +182,32 @@ function inputsOf(bytes: unknown, maxBytes: number | undefined): { input: Uint8A
 }
 
 /**
+ * Whether a failure is the embedded converter's transient wasm-allocator trap.
+ *
+ * `acadrust` occasionally aborts a conversion with `memory access out of bounds`
+ * under host memory pressure; a fresh instance retries cleanly. A malformed
+ * drawing fails deterministically with a different code/message and is never
+ * retried.
+ */
+function isTransientTrap(error: unknown): boolean {
+  return error instanceof DwgError && /memory access out of bounds/i.test(error.message)
+}
+
+/**
+ * Run one conversion with a single clean retry for the transient trap.
+ *
+ * @param convert - the conversion call; it must be safe to run again.
+ */
+async function convertWithRetry<T>(convert: () => Promise<T>): Promise<T> {
+  try {
+    return await convert()
+  } catch (error) {
+    if (!isTransientTrap(error)) throw error
+    return await convert()
+  }
+}
+
+/**
  * Report which converter is installed without converting anything.
  *
  * Loads the wasm module when the asset is present (it answers from the module's
@@ -219,7 +245,7 @@ export async function dwgToDxf(
     )
   }
   const loaded = await requireBackend()
-  const converted = await loaded.convertDwgToDxf(input, limit)
+  const converted = await convertWithRetry(() => loaded.convertDwgToDxf(input, limit))
   return { dxf: converted.data, version: converted.version, warnings: converted.warnings }
 }
 
@@ -252,6 +278,6 @@ export async function dxfToDwg(
     }
     targetVersion = requested
   }
-  const converted = await loaded.convertDxfToDwg(input, targetVersion, limit)
+  const converted = await convertWithRetry(() => loaded.convertDxfToDwg(input, targetVersion, limit))
   return { dwg: converted.data, version: converted.version, warnings: converted.warnings }
 }

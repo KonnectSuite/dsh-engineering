@@ -323,7 +323,7 @@
         "ecad_draft_discard",
         "ecad_verify"
       ],
-      "contextChars": 3897
+      "contextChars": 3995
     },
     {
       "product": "ECAD",
@@ -456,12 +456,12 @@
     }
   ],
   "context": {
-    "characters": 130745,
+    "characters": 130843,
     "byProduct": {
       "L5X": 48660,
       "Migration": 8607,
       "Engineering resources": 1454,
-      "ECAD": 15629,
+      "ECAD": 15727,
       "FactoryTalk View": 38409,
       "MotionWorks IEC": 17986
     }

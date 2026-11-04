@@ -12,15 +12,16 @@
  *
  * ## State
  *
- * One compiled module is kept for the process; one instance serves all calls.
- * The instance carries the result of the most recent conversion in a single
- * slot, so the bytes must be copied out before the next call. That is safe here
- * because `convert` copies out synchronously, with no `await` between the call
- * and the reads.
+ * One compiled module is kept for the process. One instance serves a small
+ * bounded batch of conversions, then a fresh instance replaces it: the Rust
+ * allocator inside `acadrust` retains memory across calls, and a long-lived
+ * instance eventually aborted with `memory access out of bounds`. Four
+ * conversions per instance keeps that growth bounded without creating an
+ * instance per call (which made sustained conversion work allocate many wasm
+ * memories faster than the JavaScript heap collected them).
  *
- * A trap (acadrust aborts a malformed input rather than unwinding) leaves the
- * instance untrustworthy, so it is dropped and the next call instantiates a
- * fresh one from the cached module.
+ * A trap (acadrust aborts a malformed input rather than unwinding) drops the
+ * instance, so the next call starts clean.
  *
  * @module dsh-engineering-ecad/dwg/wasm
  */
@@ -36,6 +37,16 @@ export const WASM_ASSET_URL = new URL('../../assets/acadrust.wasm', import.meta.
 
 /** ABI version this loader understands. */
 const SUPPORTED_ABI = 1
+
+/**
+ * Conversions one wasm instance serves before it is replaced.
+ *
+ * Four is a compromise measured on the corpus: small enough that the Rust
+ * allocator's retained memory cannot grow into the trap seen after a long
+ * session, large enough that a normal open/write does not pay instance setup
+ * more than once in a while.
+ */
+const USES_PER_INSTANCE = 4
 
 /** The exported functions, typed once. */
 interface DwgExports {
@@ -152,19 +163,18 @@ function freeQuietly(exports: DwgExports, ptr: number, len: number): void {
   }
 }
 
-/** One instantiated module. */
+/** One instantiated module; recycled after a bounded number of conversions. */
 class WasmBackend implements DwgBackend {
   readonly kind = 'wasm' as const
   readonly version: string
   readonly versions: readonly string[]
-  private instance: WebAssembly.Instance | null
+  private instance: WebAssembly.Instance | null = null
+  private uses = 0
 
   constructor(
     private readonly module: WebAssembly.Module,
-    instance: WebAssembly.Instance | null,
     metadata: { version: string; versions: readonly string[] }
   ) {
-    this.instance = instance
     this.version = metadata.version
     this.versions = metadata.versions
   }
@@ -173,17 +183,26 @@ class WasmBackend implements DwgBackend {
     return { version: this.version, versions: this.versions }
   }
 
-  /** The current instance, instantiating one when there is none. */
+  /**
+   * The current instance, recycled after {@link USES_PER_INSTANCE} conversions.
+   *
+   * The allocator is not reset between conversions, so a long-lived instance
+   * eventually grows into a trap; recycling bounds that growth while keeping
+   * instance creation off the hot path for ordinary single-drawing use.
+   */
   private exports(): DwgExports {
-    if (this.instance === null) {
+    if (this.instance === null || this.uses >= USES_PER_INSTANCE) {
       this.instance = newInstance(this.module)
+      this.uses = 0
     }
+    this.uses += 1
     return this.instance.exports as unknown as DwgExports
   }
 
   /** Drop a trapped instance so the next call starts clean. */
   private poison(): void {
     this.instance = null
+    this.uses = 0
   }
 
   /**
@@ -321,5 +340,5 @@ export async function loadWasmBackend(): Promise<DwgBackend | null> {
   if (version.length === 0 || versions.length === 0) {
     throw new Error('the committed DWG converter wasm reports no version metadata')
   }
-  return new WasmBackend(module, instance, { version, versions })
+  return new WasmBackend(module, { version, versions })
 }

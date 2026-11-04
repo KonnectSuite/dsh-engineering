@@ -165,21 +165,23 @@ Where each surface actually stands, based on what has been exercised.
 - ECAD CAD workspace: with the row's `writes` switch on, the drawing pane is a CAD-style editor.
   Selection is a set with Shift-add and Ctrl-toggle; left-drag on empty sheet draws an AutoCAD
   marquee — left→right is a blue **window** (fully enclosed), right→left a green **crossing**
-  (anything touched); middle-drag and Space+left-drag pan, the wheel zooms at the cursor, and a
-  right-click menu carries Select all, Zoom extents/window, Pan, Move, Copy, Erase, Properties, Ask,
-  Print and Export SVG. Selection shows grips (line endpoints, polyline vertices, circle centres,
-  insertions), object snaps (endpoint, midpoint, centre, nearest, grid) with F3/F7/F8 for osnap,
-  grid and ortho, undo/redo over staged edits, Delete, Ctrl+A, Escape and a status line with world
-  coordinates and selection count. The tool palette stages real engine operations with live
-  previews and numeric entry: line, polyline, rectangle, circle, arc, revision cloud, leader, text
-  and block insert; move, copy, rotate, scale, mirror, offset, trim, extend and erase. Properties
-  edit text, block attribute values and layer (bulk layer for multi-selection); layers support
+  (anything touched); middle-drag, right-drag and Space+left-drag pan, the wheel zooms at the cursor,
+  and a right-click menu carries Select all, Zoom extents/window, Pan, Move, Copy, Erase, Properties,
+  Ask, Print and Export SVG. Selection shows grips (line endpoints, polyline vertices, circle radii,
+  arc sweeps, ellipse axes, insertions) with live setter previews; object snaps cover endpoint,
+  midpoint, centre, nearest, **intersection** and grid with F3/F7/F8 for osnap, grid and ortho;
+  undo/redo over staged edits, Delete, Ctrl+A, Escape and a status line with world coordinates and
+  selection count. The tool palette stages real engine operations with live previews and numeric
+  entry: line, polyline, rectangle, circle, arc, revision cloud, leader, text and block insert; move,
+  copy, rotate, scale, mirror, offset, trim, extend and erase. Properties edit text, block attribute
+  values, layer and entity ACI colour (bulk layer/colour for a multi-selection); layers support
   visibility, current layer, lock and staged create/rename/color. Sheet actions keep apply as a
   **new verified file** (never overwrite), plus written-view toggle, print, SVG/PNG export, layout
   tabs and zoom extents. With writes off the same selection/navigation and print/export stay; every
-  write control disappears. Verified by 30 new client tests and a 15-shot headless interaction
-  harness (marquee, multi-select, context menu, grips, snaps, layer staging, apply, print,
-  read-only, 10k-primitive sheet), inside a 385-test bundle suite.
+  write control disappears. Verified by 38 new client tests and a 23-shot headless interaction
+  harness (right-drag pan, marquee, multi-select, context menu, grips/setter previews, intersection
+  snap, layer/colour staging, apply with verification 4/4, print, read-only, 10k-primitive sheet),
+  inside a 394-test bundle suite.
 - ECAD conversation intelligence: every `ecad_*` tool renders as a themed card instead of the generic
   row — open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
   and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
@@ -206,7 +208,7 @@ the lean profile is the one that turns them off.
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
 - The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
-- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: circle-radius, arc-geometry, ellipse and dimension grips are preview-only until those engine operations exist; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: line/polyline/circle/arc/ellipse grips stage their setters, while generic geometry and dimension grips still wait on engine setters; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; intersection snap covers straight segments only; entity colour is ACI 1–255 (ByLayer/ByBlock stay on the layer); mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
 electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.

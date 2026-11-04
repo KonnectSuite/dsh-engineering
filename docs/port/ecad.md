@@ -233,49 +233,67 @@ commands need.
 
 **Engine operations.** `EcadOp` now also carries `addCircle`, `addArc`, `copy`, `scale`, `mirror`
 (keeps a mirrored copy by default, `eraseSource` removes the source), `offset`, `trim`, `extend`,
-`setLine`, `setPolyline` (grip editing), and drawing-level `addLayer`/`setLayerColor`/`renameLayer`.
-Validation and application stay in `ops.ts`, with pure 2-D geometry in `ops-geom.ts`. Support is
-explicit and refusals name the kind and a fix: scale/mirror cover the common primitives and refuse
+`setLine`, `setPolyline` (grip editing), the grip setters `setCircle`/`setArc`/`setEllipse`, entity
+`setColor` (ACI 1–255), and drawing-level `addLayer`/`setLayerColor`/`renameLayer`. Validation and
+application stay in `ops.ts`, with pure 2-D geometry in `ops-geom.ts`. Support is explicit and refusals
+name the kind and a fix: scale/mirror cover the common primitives and refuse
 hatch/spline/dimension/viewport (mirror also refuses inserts — mirror the block geometry instead);
-offset covers line/circle/arc; trim/extend are line against line; only top-level entities edit in
-place; mirror keeps text readable (MIRRTEXT=0). Written-file verification learned the new kinds —
-added primitives for circle/arc/copy/mirror/offset, changed-geometry rows for
-scale/trim/extend/setLine/setPolyline, and layer-list comparisons for add/rename/color, with the same
-lower-bound semantics as the existing operations. 15 tests cover geometry, every refusal path and a
-synthetic DXF write→re-read round trip. A Lead smoke on a copy of the real sheet `FC1000495-007`
-applied every operation, wrote 222,697 bytes, re-read the file with the new circle/arc/copied line and
-the renamed layer at its new colour, and left the source byte-identical.
+offset covers line/circle/arc; trim/extend are line against line; setters require their own entity
+kind, normalise arc angles modulo 360°, refuse a full 360° arc in favour of `setCircle`, treat a
+same-geometry set as a no-op, and apply `setEllipse` rotation as a rigid transform; `setColor` refuses
+0/256/BYLAYER/BYBLOCK and only counts entities whose resolved ACI changes; only top-level entities
+edit in place; mirror keeps text readable (MIRRTEXT=0). Written-file verification learned the new
+kinds — added primitives for circle/arc/copy/mirror/offset, changed-geometry rows for
+scale/trim/extend/setLine/setPolyline/setCircle/setArc/setEllipse, `colour changed` for `setColor`,
+and layer-list comparisons for add/rename/color, all with lower-bound semantics. 20 tests in
+`ops-cad.spec.mjs` cover geometry, every refusal path and synthetic DXF write→re-read round trips.
+Two Lead smokes on copies of real sheets: `FC1000495-007` applied the modify set (222,697-byte write,
+new circle/arc/copied line, renamed layer at its colour, source byte-identical), and `FC1000495-002`
+applied `setCircle`/`setArc`/`setEllipse`/`setColor` (261,812-byte write, four changed primitives with
+colour/position/size/angle reasons, source byte-identical).
 
 **The pane.** Multi-select (Shift adds, Ctrl toggles), left→right blue window and right→left green
-crossing marquee in screen space, middle-drag and Space+left-drag pan, wheel zoom-at-cursor, zoom
-extents/window, right-click context menu, and grips on line endpoints, polyline vertices, circle
-centres and insertions (line and polyline grips stage `setLine`/`setPolyline`; other grips stage
-moves). Object snaps: endpoint, midpoint, centre, nearest-on-line and grid, toggled with F3/F7/F8,
-with marker, label and a status line carrying world coordinates, selection count and snap state.
-Undo/redo covers the staged operation list, including removals and clear; Delete stages an erase,
-Ctrl+A selects all, Escape cancels. The palette stages real operations with live previews and numeric
-entry: line, polyline, rectangle, circle, arc, revision cloud, leader, text, block insert; move, copy,
-rotate, scale, mirror, offset, trim, extend, erase. Properties edit text, block attribute values and
-layer (bulk layer for a multi-selection); the layer panel carries visibility, current layer, lock and
-staged create/rename/color, with layer-table changes shown after apply/reopen. Sheet actions keep
-apply as a **new verified file** (DXF or DWG, never overwrite), plus written-view toggle, print to a
-clean drawing page, SVG/PNG export, layout tabs and zoom extents. With writes off, selection,
-navigation, print/export remain and every write control is absent.
+crossing marquee in screen space; middle-drag, right-drag and Space+left-drag pan (a right-drag pans
+and suppresses the menu; a right click opens it); wheel zoom-at-cursor, zoom extents/window,
+right-click context menu. Grips cover line endpoints, polyline vertices, circle radii, arc sweeps,
+ellipse axes and insertions, with the exact setter geometry previewed during the drag and staged as
+`setLine`/`setPolyline`/`setCircle`/`setArc`/`setEllipse` (or a move for insertions); the generic
+geometry/dimension fallback still says which engine setter is missing instead of faking a stage.
+Object snaps: endpoint, midpoint, centre, nearest-on-line, **intersection** (straight segments, deduped
+within 2 px, screen-space prefilter) and grid, toggled with F3/F7/F8, with marker, label and a status
+line carrying world coordinates, selection count and snap state. Undo/redo covers the staged operation
+list, including removals and clear; Delete stages an erase, Ctrl+A selects all, Escape cancels. The
+palette stages real operations with live previews and numeric entry: line, polyline, rectangle, circle,
+arc, revision cloud, leader, text, block insert; move, copy, rotate, scale, mirror, offset, trim,
+extend, erase. Properties edit text, block attribute values, layer and entity ACI colour (one staged
+`setColor` for a bulk selection, with a swatch); the layer panel carries visibility, current layer,
+lock and staged create/rename/color, with layer-table changes shown after apply/reopen. Sheet actions
+keep apply as a **new verified file** (DXF or DWG, never overwrite), plus written-view toggle, print to
+a clean drawing page, SVG/PNG export, layout tabs and zoom extents. With writes off, selection,
+navigation, print/export remain and every write control (including the colour control) is absent.
 
-Verification: 385 bundle tests (30 new client tests for the CAD helpers, command state machine,
+Verification: 394 bundle tests (38 new client tests for the CAD helpers, command state machine, snaps,
 export and face registrations), typecheck clean, and a committed headless interaction harness
 (`packages/ecad/test/client/screenshot-harness.mjs`) driving real Chrome input against the committed
-face bundle and a fake bridge: 15 screenshots (light/dark, crossing marquee, multi-selection, context
-menu, grips and staged grip, apply outcome, properties/layers and staged layer rename+colour with
-undo/redo, line preview, print layout, read-only, 10k-primitive sheet) with **zero page errors**;
-measurements: 37 primitives ~42 ms, 10,037 primitives ~123 ms; read-only exposes zero write controls.
+face bundle and a fake bridge: 23 screenshots (light/dark, right-drag pan with menu suppression,
+crossing marquee, multi-selection, context menu, selection grips, grip staging, apply outcome,
+properties/layers, staged layer rename+colour with undo/redo, line preview, intersection snap,
+circle/arc/ellipse grip staging with preview, colour staging and a setter+colour apply verified 4/4,
+print layout, read-only, 10k-primitive sheet) with **zero page errors**; measurements: 40 primitives
+~42 ms, 10,040 primitives ~122 ms; read-only exposes zero write controls and no colour control.
 
-Deliberate limits: circle-radius, arc-geometry, ellipse and dimension grips are preview-only until
-those engine operations exist (the pane says so instead of faking a stage); trim/extend need the
-boundary selected first and are line↔line; offset is one entity per operation; block attribute edit
-requires typing the tag because the sheet model does not carry tag names; staged layer changes appear
-in the panel after apply/reopen; print uses the current view through the browser print dialog (no
-paper-space plot scale); PNG export rasterises the SVG through a browser canvas.
+Deliberate limits: generic geometry and dimension grips remain preview-plus-notice until
+`setGeometry`/`setDimension` exist; trim/extend need the boundary selected first and are line↔line;
+offset is one entity per operation; intersection snapping is limited to LINE/polyline/rectangle
+segments (no arc/circle/hatch intersections, capped at 128 near segments and 64 candidates);
+`setColor` cannot express ByBlock/ByLayer and INSERT colouring affects the insert marker; block
+attribute edit requires typing the tag because the sheet model does not carry tag names; staged layer
+changes appear in the panel after apply/reopen; print uses the current view through the browser print
+dialog (no paper-space plot scale); PNG export rasterises the SVG through a browser canvas. The
+embedded converter now uses a bounded wasm instance with a single retry for its transient
+`memory access out of bounds` trap, and the test command runs one spec file per child process with a
+single retry when a file exits without reporting a failing test, because a reused allocator and the
+Node/wasm interaction could abort a file after a long session (three consecutive full runs green).
 
 ## M5 — conversation intelligence
 

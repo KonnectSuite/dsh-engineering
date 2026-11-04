@@ -1,26 +1,42 @@
 ## [Unreleased]
 
+- **DWG conversions are isolated and retried cleanly, and the suite runs one file per process.** The
+  embedded `acadrust` wasm instance was reused across conversions; its Rust allocator retained memory,
+  and after a long session a DXF→DWG conversion could abort with `memory access out of bounds`
+  (observed intermittently in the full suite). Every conversion now gets a fresh instance from the
+  cached module, and a conversion that still hits that exact transient trap is retried once with a
+  fresh instance; malformed inputs fail deterministically and are never retried. A regression test
+  performs 40 conversions in one process, and a manual 3-round run converted all 33 DWGs 297 times with
+  zero failures. The test command now runs each spec file in its own child process
+  (`scripts/test.mjs`) and retries a file once when it exits non-zero without reporting a failing
+  test — the observed Node/wasm interaction occasionally kills the file instead of failing a test;
+  a deterministic failure fails twice and stops the run. Three consecutive full `npm test` runs are
+  green at **394 tests**.
 - **The drawing pane is now a CAD workspace.** The view-only preview/three-operation editor became a
   full drawing surface: selection sets with Shift-add/Ctrl-toggle; AutoCAD-style marquee (left→right
-  window, fully enclosed, blue; right→left crossing, anything touched, green); middle-drag and
-  Space+left-drag pan; wheel zoom-at-cursor, zoom extents/window; right-click context menu (select
-  all, zoom, pan, move, copy, erase, properties, ask, print, SVG); grips on line endpoints, polyline
-  vertices, circle centres and insertions (line/polyline edits stage `setLine`/`setPolyline`, other
-  grips stage moves); object snaps for endpoint/midpoint/centre/nearest/grid with F3 osnap, F7 grid,
+  window, fully enclosed, blue; right→left crossing, anything touched, green); middle-drag,
+  right-drag and Space+left-drag pan (a right-drag pans and suppresses the menu; a right click opens
+  it); wheel zoom-at-cursor, zoom extents/window; right-click context menu (select all, zoom, pan,
+  move, copy, erase, properties, ask, print, SVG); grips on line endpoints, polyline vertices, circle
+  radii, arc sweeps, ellipse axes and insertions, staging `setLine`/`setPolyline`/`setCircle`/
+  `setArc`/`setEllipse` or moves, with a live preview of the geometry the setter will produce;
+  object snaps for endpoint/midpoint/centre/nearest/**intersection**/grid with F3 osnap, F7 grid,
   F8 ortho and a snap marker; undo/redo over the staged operation list; Delete/Ctrl+A/Escape and a
   world-coordinate/selection status line. The tool palette stages real engine operations with live
   previews and numeric entry: select, pan, zoom window; line, polyline, rectangle, circle, arc,
   revision cloud, leader, text, block insert; move, copy, rotate, scale, mirror, offset, trim,
-  extend, erase. Properties edit text, block attribute values and layer (bulk layer for a
-  multi-selection); the layer panel adds current layer, lock, create/rename/color staged through the
-  new layer operations. Sheet workflow keeps apply-to-new-file verification (DXF or DWG), adds
-  written-view toggle, print to a clean drawing page, SVG/PNG export, layout tabs and zoom extents,
-  and hides every write control when the row writes switch is off. 30 new client tests plus a 15-shot
-  headless interaction harness (marquee/multi-select/context menu/grips/snaps/layer staging/apply/
-  print/read-only/10k-primitive sheet, no page errors); the bundle suite is 385/385 with typecheck
-  clean. Remaining limits are named in the panel and README: circle-radius, arc-geometry, ellipse and
-  dimension grips wait on engine operations; trim/extend are line↔line, offset line/circle/arc;
-  layer-table changes show after apply/reopen; print uses the current view. Unreleased by design.
+  extend, erase. Properties edit text, block attribute values, layer, entity ACI colour and geometry
+  (bulk layer and bulk colour for a multi-selection); the layer panel adds current layer, lock,
+  create/rename/color staged through the layer operations. Sheet workflow keeps apply-to-new-file
+  verification (DXF or DWG), adds written-view toggle, print to a clean drawing page, SVG/PNG export,
+  layout tabs and zoom extents, and hides every write control when the row writes switch is off.
+  38 new client tests plus a 23-shot headless interaction harness (right-drag pan, marquee/
+  multi-select, context menu, grips and setter previews, intersection snap, layer/colour staging,
+  apply with verification 4/4, print, read-only, 10k-primitive sheet, no page errors); the bundle
+  suite is 394/394 with typecheck clean. Remaining limits are named in the panel and README: generic
+  geometry and dimension grips wait on engine setters; trim/extend are line↔line, offset
+  line/circle/arc, intersection snap is straight segments; entity colour is ACI 1–255; layer-table
+  changes show after apply/reopen; print uses the current view. Unreleased by design.
 - **The drawing engine now has the CAD modify operations the panel needs.** `EcadOp` gained
   `addCircle`, `addArc`, `copy`, `scale`, `mirror` (keeps a mirrored copy by default, `eraseSource`
   removes the source), `offset`, `trim`, `extend`, `setLine`/`setPolyline` for grip edits, and
@@ -35,6 +51,19 @@
   geometry, refusals and a synthetic DXF write→re-read round trip; the ECAD package suite is
   234/234 and typecheck is clean. The `ecad_draft_ops` description and skill now name the operations.
   The panel commands that dispatch them are the next commit; nothing is released.
+- **Grip setters and entity colour in the engine.** The second operation round adds
+  `setCircle {layout, id, center, radius}`, `setArc {layout, id, center, radius, startAngleDeg,
+  endAngleDeg}`, `setEllipse {layout, id, center, rx, ry, rotDeg}` and `setColor {layout, ids,
+  color}` (ACI 1–255; ByLayer/ByBlock refused with a fix). Setters edit top-level CIRCLE/ARC/ELLIPSE
+  entities in place, treat a same-geometry set as a no-op, normalise arc angles modulo 360°, allow a
+  350°→10° seam sweep, and apply ellipse rotation as a rigid transform (the pinned data model has no
+  major-axis setter); `setColor` counts only entities whose resolved ACI actually changes. Written-file
+  verification observes geometry reasons for the three setters and `colour changed` for `setColor`,
+  with the same lower-bound rules as the existing operations. Five new tests (20 in `ops-cad.spec.mjs`
+  in total) cover geometry, no-ops, wrap-around, every new refusal and a write→re-read round trip;
+  the ECAD package suite is **266/266**. A real-sheet smoke on a copy of `FC1000495-002` applied all
+  four setters, wrote 261,812 bytes and re-read four changed primitives (`colour/position/size/angle`)
+  with the source byte-identical. The panel wiring is the next commit.
 - **The ECAD row now has a working Configure page in Plugins.** The bundle's settings face registered
   `plugins.row.config` for `l5x`, `ftview`, `mwi` and `optix` but not `ecad`, so the row had no
   Configure control; and the row's own `Config` fields were declared without `.volatile()`, so even

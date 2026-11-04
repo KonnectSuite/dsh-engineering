@@ -224,6 +224,21 @@ test('the real DWGs convert and keep their model through a full round trip', { s
   }
 })
 
+test('many conversions in one process stay healthy', async () => {
+  // Regression: the converter used to reuse one wasm instance, whose Rust
+  // allocator retained memory across conversions and eventually aborted with
+  // "memory access out of bounds". Each conversion now starts from a fresh
+  // instance; forty repeated conversions on a committed fixture pin that
+  // lifecycle without depending on the read-only corpus.
+  const bytes = fixture('titleblock.dxf')
+  for (let index = 0; index < 40; index += 1) {
+    const written = await dxfToDwg(bytes)
+    ok(written.dwg.byteLength > 0, `conversion ${index} produced no DWG`)
+    const back = await dwgToDxf(written.dwg)
+    ok(back.dxf.byteLength > 0, `conversion ${index} produced no DXF`)
+  }
+})
+
 test('the write path keeps a shipped DXF drawing intact', { skip: skipCorpus }, async () => {
   // The smallest and the largest shipped sheet: 134 KB and 6.5 MB.
   for (const name of ['FC1000495-004.dxf', 'FC1000495-035.dxf']) {
