@@ -276,6 +276,48 @@ function wdM(db) {
 }
 
 // ---------------------------------------------------------------------------
+// review.dxf — a set-shaped sheet for the tool specs: a readable title block,
+// device tags and wire labels (one duplicate, one one-sided), a sheet reference
+// no file in the fixture set resolves, and text below a typical minimum height.
+// ---------------------------------------------------------------------------
+{
+  const db = new AcDbDatabase()
+  db.createDefaultData()
+  layer(db, 'TITLE_BLOCK', 7)
+  layer(db, 'TAGS', 2)
+  layer(db, 'WIRES', 5)
+  const model = db.tables.blockTable.modelSpace
+
+  // Title block, label/value pairing on the TITLE_BLOCK layer.
+  text(model, 'TITLE', 8, 4, 0.08, 'TITLE_BLOCK')
+  text(model, 'PUMP STATION', 8.1, 3.4, 0.15, 'TITLE_BLOCK')
+  text(model, 'SHEET NUMBER:', 12, 1.4, 0.08, 'TITLE_BLOCK')
+  text(model, 'ACME-007', 12.6, 1.0, 0.15, 'TITLE_BLOCK')
+  text(model, 'REVISION LEVEL:', 8, 1.4, 0.08, 'TITLE_BLOCK')
+  text(model, 'A', 8.4, 1.0, 0.15, 'TITLE_BLOCK')
+  text(model, 'RELEASE DATE:', 12, 0.9, 0.08, 'TITLE_BLOCK')
+  text(model, '2026-02-03', 12.4, 0.5, 0.15, 'TITLE_BLOCK')
+  text(model, 'SCALE:', 8, 0.9, 0.08, 'TITLE_BLOCK')
+  text(model, '1:1', 8.4, 0.5, 0.15, 'TITLE_BLOCK')
+
+  // Cross-reference candidates.
+  text(model, 'M1', 2, 2, 0.125, 'TAGS')
+  text(model, 'M1', 4, 2, 0.125, 'TAGS')
+  text(model, 'CR2', 2, 4, 0.125, 'TAGS')
+  text(model, '12', 2, 6, 0.125, 'WIRES')
+  text(model, '12', 5, 6, 0.125, 'WIRES')
+  text(model, '13', 2, 8, 0.125, 'WIRES')
+  text(model, 'SEE SHEET 2', 2, 10, 0.125, '0')
+
+  // Below the profile minimum text height, for the checks rule.
+  text(model, 'tiny', 2, 12, 0.01, '0')
+
+  wdM(db)
+
+  write('review', db)
+}
+
+// ---------------------------------------------------------------------------
 // index.dxf — a SHEET INDEX heading and table rows, with the title block text
 // deliberately far away so a parser that ignores columns is caught.
 // ---------------------------------------------------------------------------
