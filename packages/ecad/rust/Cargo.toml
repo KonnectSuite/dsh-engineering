@@ -1,0 +1,36 @@
+[package]
+name = "dsh_ecad_dwg"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+description = "Byte-in/byte-out DWG<->DXF converter for @aryacode/dsh-engineering-ecad, built on acadrust."
+
+[lib]
+name = "dsh_ecad_dwg"
+crate-type = ["cdylib", "rlib"]
+path = "src/lib.rs"
+
+[[bin]]
+name = "dsh-ecad-dwg"
+path = "src/bin/sidecar.rs"
+
+[dependencies]
+# MPL-2.0. `default-features = false` drops Rayon: the wasm build has no
+# threads, and the native build runs one conversion on the caller's thread.
+acadrust = { version = "=0.6.8", default-features = false }
+
+# The only acadrust dependency that does not compile for wasm32-unknown-unknown
+# without a JS runtime: upstream `web-time` pulls `wasm-bindgen`/`js-sys` to read
+# a clock. acadrust uses it only for elapsed-time diagnostics and one GUID seed,
+# so this in-repo stand-in keeps `std::time` on native targets and reads the host
+# clock through one plain `env` import on wasm. See vendor/web-time/src/lib.rs.
+[patch.crates-io]
+web-time = { path = "vendor/web-time" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

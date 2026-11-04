@@ -1,0 +1,4 @@
+# Cargo build output: never committed. The shipping artefact is
+# packages/ecad/assets/acadrust.wasm; the native fallback binary is built on
+# demand with `build.ps1 -Sidecar` and is not committed either.
+/target/
