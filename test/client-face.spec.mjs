@@ -13,14 +13,17 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runInNewContext } from 'node:vm'
 import { CLIENT_ID, FACES, renderClient, renderHost, renderHostTypes, renderTypertHost } from '../scripts/build-client.mjs'
+import { buildEcadFace } from '../scripts/build-ecad-face.mjs'
+import { en, zh } from '../packages/ecad/src/client/locales.ts'
 import { ECAD_METHODS, ECAD_NAMESPACE, ECAD_PACKAGE } from '../src/remote/ecad-contract.js'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const manifest = JSON.parse(read('package.json'))
 
-/** The ladder viewer's document-preview id and the FTView face's. */
+/** The ladder viewer's document-preview id, the FTView face's and the ECAD face's. */
 const LADDER_PREVIEW_ID = '@deepseek-ai/dsh-client-ui-logix-project-viewer'
 const FTVIEW_PREVIEW_ID = 'dsh-engineering-ftview-viewer/display'
+const ECAD_PREVIEW_ID = 'dsh-engineering-ecad/drawing'
 
 /**
  * A require stub for the registering factory.
@@ -89,7 +92,12 @@ function fakeContext() {
       bind: namespace => key => `${namespace}.${key}`,
     },
     documentPreviews: {
-      register: (descriptor) => { registrations.push(`preview:${descriptor.id}`); return () => {} },
+      register: (descriptor) => {
+        registrations.push(`preview:${descriptor.id}`)
+        registrations.push(`preview-mode:${descriptor.id}:${(descriptor.extensions ?? []).join('|')}:${descriptor.loading}`)
+        registrations.push(`preview-binary:${descriptor.id}:${(descriptor.binaryExtensions ?? []).join('|')}`)
+        return () => {}
+      },
     },
     slots: {
       inject: (_name, register) => register(),
@@ -175,7 +183,7 @@ test('the factory materializes every face and merges their declared services', (
   assert.equal(new Set(plugin.inject).size, plugin.inject.length, 'inject repeats a service name')
 })
 
-test('apply mounts the ladder preview, the ME display preview and the row settings pages', () => {
+test('apply mounts the ladder preview, the ME display preview, the ECAD drawing preview and the row settings pages', () => {
   const [registration] = loadBundle().registrations
   const plugin = registration.factory(stubModule)
   const { ctx, registrations } = fakeContext()
@@ -183,10 +191,15 @@ test('apply mounts the ladder preview, the ME display preview and the row settin
   for (const expected of [
     `preview:${LADDER_PREVIEW_ID}`,
     `preview:${FTVIEW_PREVIEW_ID}`,
+    `preview:${ECAD_PREVIEW_ID}`,
+    `preview-mode:${ECAD_PREVIEW_ID}:dxf|dwg:renderer`,
+    `preview-binary:${ECAD_PREVIEW_ID}:dwg`,
     'locale:sidebarL5x',
     'locale:factorytalkView',
+    'locale:sidebarEcad',
     'slot:sidebar.right.tab.document#' + LADDER_PREVIEW_ID,
     `slot:sidebar.right.tab.document#${FTVIEW_PREVIEW_ID}`,
+    `slot:sidebar.right.tab.document#${ECAD_PREVIEW_ID}`,
     'slot:plugins.row.config#@aryacode/dsh-engineering#l5x',
     'slot:plugins.row.config#@aryacode/dsh-engineering#ftview',
     'slot:plugins.row.config#@aryacode/dsh-engineering#mwi',
@@ -217,4 +230,74 @@ test('the declared client-face inject list is the union of the retired viewers',
   }
   assert.deepEqual(declared, union,
     'dsh.client.inject must preload every client package either face needs, and nothing more')
+})
+
+/** Load one committed face bundle the way the page does, into a stub loader. */
+function loadFace(file) {
+  const registrations = []
+  const document = fakeDocument()
+  runInNewContext(read(file), {
+    window: { __ModuleLoader__: { load: registration => registrations.push(registration) } },
+    document,
+  })
+  return registrations
+}
+
+test('the ECAD face artifact is the current build of its sources', async () => {
+  assert.equal(read('packages/ecad/lib/client.js'), await buildEcadFace(),
+    'packages/ecad/lib/client.js is stale: run node scripts/build-ecad-face.mjs')
+})
+
+test('the ECAD face mounts its drawing preview without a Remote carrier or Better Sidebar', () => {
+  const registrations = loadFace('packages/ecad/lib/client.js')
+  assert.equal(registrations.length, 1, 'a face bundle carries exactly one registration')
+  const [registration] = registrations
+  assert.equal(registration.id, '@aryacode/dsh-engineering-ecad')
+  const plugin = registration.factory(stubModule)
+  assert.deepEqual([...plugin.inject].sort(), ['documentPreviews', 'locale', 'remote', 'remote.workspaceFiles', 'slots'])
+  // The same bare context the other faces are judged in: no remote carrier, no
+  // sessions, no conversation and no Better Sidebar. A face that throws here
+  // would take the whole merged bundle down at boot.
+  const { ctx, registrations: mounted } = fakeContext()
+  plugin.apply(ctx)
+  for (const expected of [
+    'locale:sidebarEcad',
+    `preview:${ECAD_PREVIEW_ID}`,
+    `preview-mode:${ECAD_PREVIEW_ID}:dxf|dwg:renderer`,
+    `slot:sidebar.right.tab.document#${ECAD_PREVIEW_ID}`,
+  ]) {
+    assert.ok(mounted.includes(expected), `the ECAD face did not register ${expected} (got ${mounted.join(', ')})`)
+  }
+})
+
+test('the ECAD dictionaries agree on keys, and the body only asks for keys they define', () => {
+  assert.deepEqual(Object.keys(zh).sort(), Object.keys(en).sort(), 'en and zh disagree on the ECAD preview keys')
+  for (const [key, value] of Object.entries(en)) {
+    assert.ok(value.length > 0, `en.${key} is empty`)
+    assert.ok(zh[key].length > 0, `zh.${key} is empty`)
+  }
+  // Every literal key the body asks the locale service for must exist.
+  for (const file of ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/index.tsx']) {
+    const source = read(file)
+    for (const match of source.matchAll(/\bt\('([A-Za-z][\w.]*)'/gu)) {
+      assert.ok(Object.hasOwn(en, match[1]), `${file} asks for the missing locale key ${match[1]}`)
+    }
+  }
+  for (const key of ['sheetNumber', 'revision', 'date', 'sheetTitle', 'scale', 'project', 'customer', 'drawnBy', 'checkedBy']) {
+    assert.ok(Object.hasOwn(en, key), `the title-block row key ${key} is missing from the dictionary`)
+  }
+})
+
+test('the ECAD stylesheet defines exactly the classes its body reads', () => {
+  // Comments are removed first: prose such as "palette.ts" is not a selector.
+  const css = read('packages/ecad/src/client/EcadBody.module.css').replaceAll(/\/\*[\s\S]*?\*\//gu, '')
+  const source = read('packages/ecad/src/client/EcadBody.tsx')
+  const defined = new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/gu)].map(match => match[1]))
+  const used = new Set([...source.matchAll(/\bcss\.([A-Za-z][A-Za-z0-9_]*)/gu)].map(match => match[1]))
+  assert.deepEqual([...used].filter(name => !defined.has(name)).sort(), [],
+    'every css.<name> the body reads must exist in the stylesheet')
+  assert.deepEqual([...defined].filter(name => !used.has(name)).sort(), [],
+    'a class the body never reads is dead; delete it or use it')
+  assert.deepEqual([...source.matchAll(/\bcss\s*\[/gu)].map(match => match[0]), [],
+    'a computed css[...] access hides the class name from this check')
 })
