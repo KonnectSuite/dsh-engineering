@@ -8,7 +8,7 @@
  * root. A mistake in any of them presents as a plugin that loaded and drew
  * nothing, with no error anywhere - which is why every one of them is a test.
  */
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runInNewContext } from 'node:vm'
@@ -24,6 +24,13 @@ const manifest = JSON.parse(read('package.json'))
 const LADDER_PREVIEW_ID = '@deepseek-ai/dsh-client-ui-logix-project-viewer'
 const FTVIEW_PREVIEW_ID = 'dsh-engineering-ftview-viewer/display'
 const ECAD_PREVIEW_ID = 'dsh-engineering-ecad/drawing'
+/** The wire tool names the face claims in the keyed tool-view slot. */
+const ECAD_CARD_KEYS = [
+  'ecad_capabilities', 'ecad_profile', 'ecad_scan', 'ecad_open', 'ecad_overview',
+  'ecad_find', 'ecad_cross_reference', 'ecad_checks', 'ecad_render', 'ecad_compare',
+  'ecad_draft_ops', 'ecad_draft_apply', 'ecad_draft_discard', 'ecad_verify',
+  'ecad_document', 'ecad_backup',
+]
 
 /**
  * A require stub for the registering factory.
@@ -82,8 +89,10 @@ function loadBundle() {
 /** A client context that records what the faces register. */
 function fakeContext() {
   const registrations = []
-  /** The injected props of the last body registration that declares some. */
-  let slotInject
+  /** Every slot registration options object, so a test can read its shape. */
+  const entries = []
+  /** The injected props of the drawing body registration. */
+  let bodyInject
   const ctx = {
     effect: run => run(),
     // Optional services (sessions, conversation, betterSidebar) are absent in a
@@ -104,13 +113,14 @@ function fakeContext() {
     slots: {
       inject: (_name, register) => register(),
       register: (options) => {
-        registrations.push(`slot:${options.name}#${options.key ?? ''}`)
-        if (typeof options.inject === 'function') slotInject = options.inject()
+        registrations.push(`slot:${options.name}#${options.key ?? options.id ?? ''}`)
+        entries.push(options)
+        if (options.name === 'sidebar.right.tab.document' && typeof options.inject === 'function') bodyInject = options.inject()
         return () => {}
       },
     },
   }
-  return { ctx, registrations, injected: () => slotInject }
+  return { ctx, registrations, entries: () => entries, injected: () => bodyInject }
 }
 
 test('lib/client.js is the current build of every committed face', () => {
@@ -281,6 +291,60 @@ test('the ECAD face mounts its drawing preview without a Remote carrier or Bette
   }
 })
 
+test('the ECAD conversation surfaces register on the host slots they were built for', async () => {
+  const registrations = loadFace('packages/ecad/lib/client.js')
+  const plugin = registrations[0].factory(stubModule)
+  const { ctx, entries } = fakeContext()
+  plugin.apply(ctx)
+  const slots = entries()
+  // One keyed card per ECAD wire tool name: the keyed dispatch has no wildcard,
+  // so a tool without its own key silently falls back to the generic row.
+  const cards = slots.filter(entry => entry.name === 'tool.call.toolview')
+  assert.deepEqual(cards.map(entry => entry.key).sort(), [...ECAD_CARD_KEYS].sort(),
+    'the ECAD face claims every one of its wire tool names in tool.call.toolview')
+  for (const card of cards) {
+    assert.equal(card.locale, 'sidebarEcad', `the ${card.key} card is registered without the face dictionary`)
+    assert.equal(card.children, undefined, `the ${card.key} card declares children it does not render`)
+  }
+  // The dock is a list entry whose injected reader is session-addressed; the slot
+  // owner props carry the Session, so this is a real read, not a faked session.
+  const dock = slots.find(entry => entry.name === 'conversation.input.dock')
+  assert.ok(dock !== undefined, 'the face registers no composer dock entry')
+  assert.equal(dock.id, 'ecad-sheet-set')
+  assert.equal(dock.locale, 'sidebarEcad')
+  assert.equal(typeof dock.inject, 'function')
+  // Degraded path: the same bare context has no Remote carrier, so the reader
+  // must answer undefined and leave the composer untouched rather than throw.
+  const reader = dock.inject().readSheetSet
+  assert.equal(typeof reader, 'function')
+  assert.equal(await reader('session-without-remote'), undefined)
+})
+
+test('the ECAD card keys cover the generated tool inventory', () => {
+  // docs/reference/tools.json is generated from the registered tools; a tool
+  // added without a card key would fall back to the generic row silently.
+  const inventory = JSON.parse(read('docs/reference/tools.json'))
+  const ecadTools = inventory.tools.filter(name => name.startsWith('ecad_')).sort()
+  assert.deepEqual([...ECAD_CARD_KEYS].sort(), ecadTools,
+    'every generated ECAD tool must have a keyed card registration')
+})
+
+test('a composition without the tool UI registers no card and still mounts', () => {
+  const registrations = loadFace('packages/ecad/lib/client.js')
+  const plugin = registrations[0].factory(stubModule)
+  const { ctx, entries } = fakeContext()
+  // The shell's tool UI owns tool.call.toolview; a composition without it never
+  // declares the slot, so slots.inject never runs that callback. The face must
+  // mount, keep the dock, and claim no card.
+  const inject = ctx.slots.inject
+  ctx.slots.inject = (name, run) => (name === 'tool.call.toolview' ? () => {} : inject(name, run))
+  plugin.apply(ctx)
+  const slots = entries()
+  assert.equal(slots.filter(entry => entry.name === 'tool.call.toolview').length, 0)
+  assert.equal(slots.filter(entry => entry.name === 'conversation.input.dock').length, 1,
+    'the composer dock does not depend on the tool UI')
+})
+
 test('the ECAD editing copy is part of the same dictionary', () => {
   // The mode switch, the staged list and the apply action all read from the
   // dictionary; a missing key would print a raw key in the panel.
@@ -297,7 +361,12 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
     assert.ok(zh[key].length > 0, `zh.${key} is empty`)
   }
   // Every literal key the UI asks the locale service for must exist.
-  for (const file of ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx', 'packages/ecad/src/client/index.tsx']) {
+  for (const file of [
+    'packages/ecad/src/client/EcadBody.tsx',
+    'packages/ecad/src/client/EcadDraft.tsx',
+    'packages/ecad/src/client/EcadCards.tsx',
+    'packages/ecad/src/client/index.tsx',
+  ]) {
     const source = read(file)
     for (const match of source.matchAll(/\bt\('([A-Za-z][\w.]*)'/gu)) {
       assert.ok(Object.hasOwn(en, match[1]), `${file} asks for the missing locale key ${match[1]}`)
@@ -308,16 +377,29 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   }
 })
 
-test('the ECAD stylesheet defines exactly the classes its bodies read', () => {
+test('every ECAD stylesheet defines exactly the classes its bodies read', () => {
   // Comments are removed first: prose such as "palette.ts" is not a selector.
-  const css = read('packages/ecad/src/client/EcadBody.module.css').replaceAll(/\/\*[\s\S]*?\*\//gu, '')
-  const sources = ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx'].map(read)
-  const defined = new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/gu)].map(match => match[1]))
-  const used = new Set(sources.flatMap(source => [...source.matchAll(/\bcss\.([A-Za-z][A-Za-z0-9_]*)/gu)].map(match => match[1])))
-  assert.deepEqual([...used].filter(name => !defined.has(name)).sort(), [],
-    'every css.<name> the bodies read must exist in the stylesheet')
-  assert.deepEqual([...defined].filter(name => !used.has(name)).sort(), [],
-    'a class the bodies never read is dead; delete it or use it')
-  assert.deepEqual(sources.flatMap(source => [...source.matchAll(/\bcss\s*\[/gu)].map(match => match[0])), [],
-    'a computed css[...] access hides the class name from this check')
+  const pairs = [
+    { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx'] },
+    { css: 'packages/ecad/src/client/EcadCards.module.css', sources: ['packages/ecad/src/client/EcadCards.tsx'] },
+  ]
+  for (const pair of pairs) {
+    const css = read(pair.css).replaceAll(/\/\*[\s\S]*?\*\//gu, '')
+    const sources = pair.sources.map(read)
+    const defined = new Set([...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/gu)].map(match => match[1]))
+    const used = new Set(sources.flatMap(source => [...source.matchAll(/\bcss\.([A-Za-z][A-Za-z0-9_]*)/gu)].map(match => match[1])))
+    assert.deepEqual([...used].filter(name => !defined.has(name)).sort(), [],
+      `every css.<name> ${pair.sources.join(', ')} reads must exist in ${pair.css}`)
+    assert.deepEqual([...defined].filter(name => !used.has(name)).sort(), [],
+      `a class in ${pair.css} that ${pair.sources.join(', ')} never reads is dead; delete it or use it`)
+    assert.deepEqual(sources.flatMap(source => [...source.matchAll(/\bcss\s*\[/gu)].map(match => match[0])), [],
+      'a computed css[...] access hides the class name from this check')
+  }
+  // A stylesheet no pair names would never be checked, so the pair list is the
+  // complete set of ECAD stylesheets.
+  const modules = readdirSync(new URL('../packages/ecad/src/client', import.meta.url))
+    .filter(name => name.endsWith('.module.css'))
+    .map(name => `packages/ecad/src/client/${name}`)
+  assert.deepEqual(modules.sort(), pairs.map(pair => pair.css).sort(),
+    'every ECAD stylesheet must be paired with the sources that read it')
 })
