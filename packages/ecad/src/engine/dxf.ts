@@ -93,7 +93,14 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
   }
 
   // Observed counters, derived from what the re-read model actually contains.
+  // Added primitives are counted by kind; the kinds that add one primitive per
+  // op are observed directly, while copy/mirror/offset add a primitive per
+  // source id (and a block reference copy adds its flattened content too), so
+  // they are observed as the total number of added primitives — a lower bound
+  // the expectation cannot exceed.
+  const addedByKind: Record<string, number> = {}
   for (const change of diff.added) {
+    addedByKind[change.entityKind] = (addedByKind[change.entityKind] ?? 0) + 1
     if (change.entityKind === 'text') {
       const owner = change.after?.g
       const key = owner ? 'addTextInBlock' : 'addText'
@@ -105,6 +112,11 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
     else if (change.entityKind === 'hatch') applied.addHatch = (applied.addHatch ?? 0) + 1
     else applied.addOther = (applied.addOther ?? 0) + 1
   }
+  applied.addCircle = addedByKind.circle ?? 0
+  applied.addArc = addedByKind.arc ?? 0
+  applied.copy = diff.added.length
+  applied.mirror = diff.added.length
+  applied.offset = diff.added.length
   applied.erase = diff.removed.length
   let textChanges = 0
   let attributeChanges = 0
@@ -117,13 +129,43 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
       else textChanges += 1
     }
     if (reason.includes('layer changed')) layerChanges += 1
-    if (reason.includes('position changed') || reason.includes('geometry changed') || reason.includes('angle changed') || reason.includes('size changed')) geometryChanges += 1
+    if (reason.includes('position changed') || reason.includes('geometry changed') || reason.includes('angle changed') || reason.includes('size changed') || reason.includes('scale changed') || reason.includes('closed flag changed')) geometryChanges += 1
   }
   applied.setText = textChanges
   applied.setAttribute = attributeChanges
   applied.setLayer = layerChanges
   applied.move = geometryChanges
   applied.rotate = 0
+  // Modify operations that rewrite a primitive's geometry in place are observed
+  // by the same changed row; counting the rows once per kind is a lower bound.
+  applied.scale = geometryChanges
+  applied.trim = geometryChanges
+  applied.extend = geometryChanges
+  applied.setLine = geometryChanges
+  applied.setPolyline = geometryChanges
+
+  // Layer-table operations are not primitives, so they are read from the layer
+  // table itself: a new name is addLayer, a vanished name is the old half of a
+  // rename, and a same-name colour change is setLayerColor.
+  const baseLayers = new Map(expected.baseModel.layers.map(layer => [layer.name.toUpperCase(), layer]))
+  const writtenLayers = new Map(written.layers.map(layer => [layer.name.toUpperCase(), layer]))
+  let addedLayers = 0
+  let removedLayers = 0
+  let recoloredLayers = 0
+  for (const [name, layer] of writtenLayers) {
+    const before = baseLayers.get(name)
+    if (!before) {
+      addedLayers += 1
+      continue
+    }
+    if (before.color !== layer.color || !sameRgb(before.rgb, layer.rgb)) recoloredLayers += 1
+  }
+  for (const name of baseLayers.keys()) {
+    if (!writtenLayers.has(name)) removedLayers += 1
+  }
+  applied.addLayer = addedLayers
+  applied.renameLayer = removedLayers
+  applied.setLayerColor = recoloredLayers
 
   // Compare only where the observation is a lower bound the expectation cannot
   // exceed for a different reason: a `move` on several ids also shows up as
@@ -135,6 +177,11 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
     addRectangle: ['addRectangle', 'addPolyline'],
     addRevisionCloud: ['addRevisionCloud', 'addPolyline'],
     addLeader: ['addLeader', 'addPolyline'],
+    addCircle: ['addCircle', 'addOther'],
+    addArc: ['addArc', 'addOther'],
+    // A layer created in the same draft carries its final colour into the file,
+    // so its creation is also evidence that a following setLayerColor was written.
+    setLayerColor: ['setLayerColor', 'addLayer'],
     move: ['move', 'rotate', 'setText'],
     rotate: ['rotate', 'move'],
     setText: ['setText', 'addText']
@@ -172,6 +219,17 @@ export async function verifyWritten(opened: OpenedSheet, bytes: Uint8Array, expe
     problems,
     notes
   }
+}
+
+/**
+ * Compare two optional resolved RGB triples, as the model reports them.
+ *
+ * @param a - first triple.
+ * @param b - second triple.
+ */
+function sameRgb(a: readonly [number, number, number] | undefined, b: readonly [number, number, number] | undefined): boolean {
+  if (!a || !b) return a === b
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
 }
 
 /**
