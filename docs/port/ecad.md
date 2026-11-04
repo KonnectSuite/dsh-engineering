@@ -426,3 +426,32 @@ The packaged bundle was installed and booted on the development home
   wrapper, a direct envelope and a failure wrapper; the packaged bundle was rebuilt and the same click
   then rendered the drawing. This was invisible to the headless harness because its fake call returned
   the envelope directly, which is exactly why the interactive dev pass exists.
+
+## Final commissioning pass (2026-11-04)
+
+The finished batch was packed again (3.8 MB, 731 files), installed into the `ecad-dev` Dev profile and
+booted on the development home; the installed product was never written.
+
+- **Rows.** The Plugins page reports `@aryacode/dsh-engineering v0.85.3` with **Components: 9 total ·
+  9 running**, including `@aryacode/dsh-engineering/ecad` Running (`tmp/ecad-dev-final/01-plugins-rows.png`).
+- **Sheet-set dock.** A fresh session in the Default workspace rendered the M5 dock chip above the
+  composer: **`3 drawings · 2 DWG · default profile · writes on`**, with the aria label
+  `Workspace drawings: 3, 2 DWG` — the conversation surface mounts in the real composer and reads the
+  live session's drawing set through `ecad.sheets`/`ecad.capabilities`
+  (`tmp/ecad-dev-final/02-dock-chip.png`).
+- **Panel.** Opening the original `20136-004.dwg` again showed the DWG badge, `Converted via wasm`, 213
+  entities, the View/Edit switch and the `AC1027` provenance rows
+  (`tmp/ecad-dev-final/05-final-panel.png`). Earlier in the same pack, a staged text annotation was
+  applied to a new 56,387-byte AC1027 DWG with “1 change · verified” and “The DWG round trip matched
+  the written drawing” (`tmp/ecad-dev-shots/36-applied.png`).
+- **Only console error** in the whole pass was the offline `[deepseek-account] account read failed`;
+  no plugin, client-face, card or dock error appeared.
+- **Tool cards — the honest remaining gap.** The dev home has no model API key, so no live agent turn
+  could invoke an ECAD tool and render its card in the transcript. The cards are harness-verified with
+  owner-shaped props and a fake Remote (seven screenshots, zero console errors), and the dock proves the
+  face's conversation registrations mount in the real composer; a card in a real tool call needs a
+  configured model in a Dev session. This is recorded rather than claimed.
+
+This completes the end-to-end verification on a Development instance. Release remains gated on the
+owner's explicit **ship**: version bump, `[Unreleased]` → version heading, tag, publish and catalog
+entry; nothing in this batch is published.
