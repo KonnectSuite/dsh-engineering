@@ -1,10 +1,10 @@
 # AryaCode Engineering
 
 **One bundle for automation-engineering work in AryaCode.** Studio 5000 L5X, FactoryTalk View ME,
-MotionWorks IEC and FactoryTalk Optix sit behind a single install, one row per surface. A row is the
-switch: disable it and that plugin unloads, so its tool schemas leave the request.
+MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
+surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 142 tools · 7 rows · 4 products · MIT
+`@aryacode/dsh-engineering` · 158 tools · 9 rows · 5 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste for each of the four.
@@ -33,8 +33,9 @@ surfaces — reading a 3 MB L5X, comparing two projects, staging ladder edits, t
 but only one or two of them at a time.
 
 This bundle splits those surfaces into one row per product. The expensive surfaces are switches inside
-the row. They ship on by default so a fresh install can use every tool; switch off what a
-read-only or low-context profile does not need:
+the row. Every product except ECAD ships on by default so a fresh install can use it; ECAD is a new,
+large surface and ships listed but off. Switch off what a read-only or low-context profile does not
+need:
 
 | Product row | Config option | Default | What turning it on adds |
 |---|---|---|---|
@@ -45,6 +46,7 @@ read-only or low-context profile does not need:
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
 | `mwi` | `edit` | on | the seven MotionWorks edit schemas |
 | `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `ocrExecutable` | on | Studio authoring, destructive ops, method invocation, emulator preview and OCR when Tesseract is set |
+| `ecad` | `writes` | off | staged drawing drafts that write a new DXF/DWG beside the source (the row itself also ships off) |
 
 The default-on surface is a budgeted quantity: `components.json` records the tools and the characters
 of model-visible schema a fresh install may mount, and a component that would exceed either ceiling
@@ -63,6 +65,7 @@ bundle.
 | **FactoryTalk View ME** | 47 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **ECAD electrical prints** | 16 | off | none; reads DXF prints (DWG through the embedded converter, no external app); writes stay off until enabled |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
 
@@ -77,6 +80,11 @@ Tool groups, by product:
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
+- **ECAD** — 10 read (`ecad_capabilities` … `ecad_compare`), 4 staged drafts (`ecad_draft_*`, `ecad_verify`) and 2 deliverables
+  (`ecad_document`, `ecad_backup`), plus the `ecad-drafting` skill: the engine parses DXF (and DWG through the embedded
+  converter), infers the print set's profile from the title blocks and ACADE `WD_M`, reads title blocks, an index sheet,
+  cross-reference candidates and checks, renders layouts as SVG, and writes an edited drawing as a NEW file whose
+  write is verified against the staged change
 
 ## Switches
 
@@ -90,6 +98,7 @@ down:
 | `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (on), `studio` (on), `live` (on), `allowWrites` (on) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
+| `ecad` | ECAD drawing reads, review, cross-reference, checks, render/compare, staged drafts and the review/backup deliverables, with the `ecad-drafting` skill; the row ships off, and writes are a second switch | `writes` (off), `maxFiles` (2000), `maxFileBytes` (64 MiB), `maxEntities` (200000) |
 | `viewers` | ladder + ME display previews | — |
 | `engineering-preset` | none — the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
@@ -97,11 +106,11 @@ down:
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 A row can also be inserted `disabled` when a component ships off by default: the row is still listed,
-and one switch enables it. Every row in this release ships on.
+and one switch enables it. ECAD is the one row in this release that ships off; every other row ships on.
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
-switches"*), so a group switch is a shell feature, not a bundle one. Four product rows and three support rows with config is
+switches"*), so a group switch is a shell feature, not a bundle one. Five product rows and three support rows with config is
 what a bundle can do on its own — no harness change to carry across DSH upgrades.
 
 **No capability policy.** Earlier releases also carried a per-skill tool filter (`policyOnly` /
@@ -135,9 +144,16 @@ Where each surface actually stands, based on what has been exercised.
   worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU
   create/delete, block insertion and a POU package export/delete/import round trip
 - Ladder viewer and FactoryTalk View display preview
+- ECAD electrical prints: the engine parses all 34 sheets of a real print set into 83,936 primitives with
+  zero unsupported and zero truncated layouts, reads title blocks, the 80-row index sheet, a 0.95-confidence
+  profile from the ACADE `WD_M` attributes, 74 cross-reference candidates and 97 findings; all 34 sheets
+  write → re-read → rebuild with zero model difference, and the sixteen tools are exercised through a fake
+  Host composition (sandbox-policy writes, source untouched, explicit failure envelopes). The right-panel
+  viewer and the DWG converter land in the same batch.
 
-**On by default** — every tool surface mounts on a fresh install. Switch one off from the row's
-Configure page in Plugins (`l5x` editing/Studio/live/allowWrites, `mwi` edit, `optix` authoring/preview)
+**On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
+until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins
+(`l5x` editing/Studio/live/allowWrites, `mwi` edit, `optix` authoring/preview, `ecad` writes)
 when the profile is read-only or the request budget is tight. Tool schemas are sent on every request, so
 the lean profile is the one that turns them off.
 
@@ -152,9 +168,11 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 133 tools built from this repository; the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README, and the context budget's character ceiling covers the 133 generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG rides on an embedded converter and is only claimed for a drawing once its round-trip is measured; no drawing is called a faithful round-trip without that evidence
 
-**Not in this repository** — CAD mounts as an independent plugin.
+**Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
+electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.
 
 ## Milestones
 
@@ -213,6 +231,7 @@ flowchart TB
   Bundle -->|insert| L5X["l5x (on) — read + guidance + drafts / SDK / live"]
   Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
   Bundle -->|insert| MWI["mwi (on) — session, read, verify, edit"]
+  Bundle -->|insert| ECAD["ecad (off) — DXF/DWG reads, review, drafts"]
   Bundle -->|insert| Viewers["viewers (on) — ladder + ME display previews"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
@@ -225,6 +244,7 @@ even when the implementation behind a row is replaced.
 | `l5x` | `dsh-engineering-l5x` | `editing` on · `studio` on · `live` on · `allowWrites` on |
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` on |
+| `ecad` | `@aryacode/dsh-engineering/ecad` (sixteen drawing tools + the `ecad-drafting` skill) | `writes` off · `maxFiles` 2000 · `maxFileBytes` 64 MiB · `maxEntities` 200000 |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder + ME display previews) | — |
 | `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on · `netlogic` on |
 
@@ -235,6 +255,8 @@ even when the implementation behind a row is replaced.
   overwrite; `ftview_apply` writes a new export folder and leaves the source untouched. MotionWorks
   edits write the real workspace project, after one complete backup under
   `<workspace>/backups/motionworks/`, and verify unrelated saved and native state.
+- **Drawing edits write new files.** `ecad_draft_apply` writes one new DXF (or DWG) beside the source
+  and refuses to overwrite; the row's `writes` switch must be on first, and review never writes.
 - **One backup tree.** Every product backs up into
   `<workspace>/backups/<product>/<subject>/<UTC stamp>/` with a `backup-manifest.json` naming each
   copied file and its SHA-256, so "back up this project" means the same place in every skill.
@@ -264,6 +286,7 @@ even when the implementation behind a row is replaced.
 | FactoryTalk View export | FactoryTalk View ME Studio installed on the host (the export server runs without an open window) |
 | FactoryTalk View Studio | FactoryTalk View Studio ME for discovery and the manual import |
 | MotionWorks IEC | MotionWorks IEC 3 Pro; the 32-bit COM bridge and the Python saved-model engine |
+| ECAD read, review, drafts | Node only; DXF drawings (DWG through the embedded converter, no external app); the row and its `writes` switch must be enabled before drafting |
 | Optix | FactoryTalk Optix Studio |
 
 ## Documentation
@@ -286,6 +309,7 @@ even when the implementation behind a row is replaced.
 | [Standards checks](docs/reference/standards-checks.md) | Every PLC and HMI rule a review reports, its severity, the corpus rule behind it and what a clean result does not prove |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |
+| [ECAD port](docs/port/ecad.md) | ECAD engine measurements, the DWG converter decision and the Typert panel service |
 | [FTView port](docs/port/ftview.md) | FactoryTalk View port decisions |
 | [MotionWorks IEC port](docs/port/mwi.md) | MWI migration design, phases and inventory |
 | [Packaging](docs/port/packaging.md) | How the bundle is packed and pinned |

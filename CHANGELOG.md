@@ -19,6 +19,15 @@
   apply with verification, stale-document and writes-disabled refusals). Known writer limits (ATTRIB
   vertical justification, filled hatch islands, planar geometry assumption) are reported per write.
   ([port evidence](docs/port/ecad.md))
+- **ECAD drawing tools land behind a row that ships off.** Sixteen `ecad_*` tools — probe, profile, scan,
+  open, overview, find, cross-reference, checks, render, compare, staged drafts with `ecad_verify`, and
+  the document/backup deliverables — plus the `ecad-drafting` skill, mounted by a new `ecad` row inserted
+  `disabled` with its writes switch off. The tool layer adds a bounded per-chat session, one drawing-format
+  module for reads, extension rules and publication (the DWG seam), sandbox-stamped writes that only ever
+  create a new file beside the source, and 31 tool specs through a fake Cordis composition. Because the row
+  ships off the default-on tool budget is unchanged; the generated reference, component manifest and README
+  record the new surface. DWG and the right-panel viewer land in the same batch.
+  ([port evidence](docs/port/ecad.md))
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and

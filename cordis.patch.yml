@@ -1,6 +1,6 @@
 # AryaCode engineering bundle.
 #
-# Four product rows and three support rows, one switch each. A row mounts a product's whole surface —
+# Five product rows and three support rows, one switch each. A row mounts a product's whole surface —
 # its read tools, its guidance and its optional parts — so the Plugins page
 # shows a product per row instead of a surface per row.
 #
@@ -10,9 +10,11 @@
 #   ftview → edit, studio                          (both on by default)
 #   mwi    → edit                                  (on by default)
 #   optix  → authoring, destructive, invoke, preview, netlogic (all on by default)
+#   ecad   → writes                                (off; the row itself ships off)
 #
-# Every surface ships on so a fresh install can use the full plugin. Turn one
-# off from the row's Configure page when the profile is read-only or the request
+# Every product except ECAD ships on so a fresh install can use it. ECAD is a new,
+# large surface, so it ships listed and disabled until a person enables it. Turn
+# any row off from its Configure page when the profile is read-only or the request
 # budget is tight; the schemas are sent on every request.
 #
 # The patch only ever inserts. It must never target a row another bundle owns:
@@ -32,6 +34,14 @@
     # MotionWorks IEC: session, reads, verify and guidance on; edits opt-in.
     - id: mwi
       name: '@aryacode/dsh-engineering/mwi'
+    # ECAD electrical prints: read, review, cross-reference and redline DXF
+    # drawings through the sixteen ecad_* tools and the ecad-drafting skill. The
+    # row ships OFF (a new, large surface) and its writes switch starts off: a
+    # mounted row reads and reviews, and a written drawing is always a NEW file
+    # beside the source. Enable the row, then its writes switch, before drafting.
+    - id: ecad
+      name: '@aryacode/dsh-engineering/ecad'
+      disabled: true
     # Both previews (the L5X ladder viewer and the FactoryTalk View ME display
     # preview) are this bundle's own client face. A package registers exactly one
     # browser bundle, so one row mounts both; a client face adds no model

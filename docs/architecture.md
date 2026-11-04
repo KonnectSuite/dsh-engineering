@@ -26,7 +26,7 @@ dependencies — their built bundles are folded into `lib/client.js`.
 
 ## Row model
 
-The patch inserts six rows with stable ids (four product rows and two support rows). Ids are the contract: a profile, a patch or the Plugins
+The patch inserts nine rows with stable ids (five product rows, three support rows and the client-face row). Ids are the contract: a profile, a patch or the Plugins
 page addresses a row by id, so the implementation behind a row can be rebuilt without resetting the
 user's enabled state.
 
@@ -35,13 +35,15 @@ user's enabled state.
 | `l5x` | `entries/l5x.js` | read, `rockwell-l5x` guidance, drafts, SDK, live | `editing` on, `studio` on, `live` on, `allowWrites` on |
 | `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
 | `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `edit` on |
+| `ecad` | `entries/ecad.js` | drawing reads, review, cross-reference, checks, render/compare, staged drafts, review and backup deliverables, `ecad-drafting` guidance; the row ships off | `writes` off, `maxFiles` 2000, `maxFileBytes` 64 MiB, `maxEntities` 200000 |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
 | `optix` | `entries/optix.js` | Optix Studio reads, authoring, preview and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on, `netlogic` on |
 
 A product row is an `entries/*.js` composite: it mounts the vendored parts (`ctx.plugin(part)`) so the
 Plugins page shows one switch per product, and exposes the optional parts as its `Config` schema, which
-the page renders as the row's config form. Every optional surface defaults on; the config form turns
-off what a profile does not need.
+the page renders as the row's config form. Every optional surface except ECAD's `writes` defaults on;
+the config form turns off what a profile does not need. ECAD is the exception by design: a new, large
+surface is inserted `disabled` and its writes start off, so a fresh install pays nothing for it.
 
 **Why not `cordis:group`.** The patch format supports group rows (`name: cordis:group`, `group: true`,
 children in `config`), but the Plugins page does not render them: it skips them outright
@@ -52,7 +54,8 @@ Group switches are therefore a shell feature; collapsing rows is the bundle-side
 Rows are still split by cost: the L5X read surface is eager, while drafts, SDK builds and live reads
 are opt-in because each adds schemas a read-only profile never uses. FactoryTalk View is small enough
 that its edits and Studio handoff default on. MotionWorks IEC keeps session, read and verify eager and
-its seven edit tools opt-in, because those schemas are the largest in the bundle.
+its seven edit tools opt-in, because those schemas are the largest in the bundle. ECAD adds 16 tools and
+a new engine, so its row ships off and its writes are a second switch.
 
 Each plugin defines `inject`, so a row that needs a service the profile does not provide fails to
 mount instead of running degraded:
@@ -62,6 +65,9 @@ mount instead of running degraded:
 | `entries/l5x` (row `l5x`) | `tools`, `fs` |
 | `entries/ftview` (row `ftview`) | `tools`, `fs` |
 | `entries/mwi` (row `mwi`) | `tools` |
+| `entries/ecad` (row `ecad`) | `tools`, `fs` |
+| `dsh-engineering-ecad` (vendored, the row's part) | `tools`, `fs` |
+| `dsh-engineering-ecad/skill` | `skills` |
 | `dsh-engineering-l5x` | `tools`, `fs` |
 | `dsh-engineering-l5x/editing` | `tools`, `l5xProjects` (provided by the read entry) |
 | `dsh-engineering-l5x/studio` | `tools`, `l5xProjects` |
@@ -90,7 +96,8 @@ is the whole switch mechanism in this product line. The optional surfaces ship o
 row's config form can turn them off, so a read-only or low-context profile does not pay for them.
 
 A row is inserted with `disabled: true` when a component ships off by default: the row is still listed,
-and enabling it writes the profile overlay, so an unloaded plugin is the whole switch either way.
+and enabling it writes the profile overlay, so an unloaded plugin is the whole switch either way. ECAD is
+the current example: it ships listed and disabled, with its `writes` config still off after enabling.
 `components.json` records a context budget for the default-on surface; a component that would exceed it
 ships off until the ceiling is raised with its measurement. Both checks are in
 [components](reference/components.md).
@@ -239,10 +246,13 @@ dsh-engineering-<version>.tgz
   ├── lib/index.js            the host half the `viewers` row mounts
   ├── lib/typert.host.js      the package-defined Typert Remote artifact
   ├── src/remote/             the wire contract and the ECAD Remote service
+  ├── vendor/ecad/            the ECAD engine, its DWG converter (WASM or a sidecar), rust source and MPL/MIT notices
   └── vendor/{l5x,ftview,mwi} the vendored components and their assets
 ```
 
-No `@aryacode/*` package is a dependency, so a profile installs one thing and toggles rows inside it.
+No `@aryacode/*` component is a dependency, so a profile installs one thing and toggles rows inside it.
+The only `@aryacode/*` dependency is the Optix component the `optix` row wraps; the bundle also carries
+its own runtime libraries (the DXF data model, schemastery, the XML validators and EtherNet/IP client).
 The release procedure is in [packaging](port/packaging.md).
 
 ## Backups
@@ -260,6 +270,7 @@ Every product backs up into one workspace tree, so a backup means the same place
 | MotionWorks IEC | `motionworks` | project name | on `mw_project_open`, once per project, and before an edit that finds none |
 | Studio 5000 | `l5x` | project name | on request; drafts and SDK builds already write new files |
 | FactoryTalk View | `ftview` | export folder name | on request; `ftview_apply` already writes a new folder |
+| ECAD | `ecad` | drawing set | on request; `ecad_draft_apply` already writes a new drawing |
 | FactoryTalk Optix | `optix` | project name | on request, as a manual Studio export into that folder |
 
 The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, … ] }`, the same shape

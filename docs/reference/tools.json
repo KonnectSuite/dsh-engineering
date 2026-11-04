@@ -62,6 +62,22 @@
     "migration_plan",
     "engineering_reference",
     "engineering_profile",
+    "ecad_capabilities",
+    "ecad_profile",
+    "ecad_scan",
+    "ecad_open",
+    "ecad_overview",
+    "ecad_find",
+    "ecad_cross_reference",
+    "ecad_checks",
+    "ecad_render",
+    "ecad_compare",
+    "ecad_draft_ops",
+    "ecad_draft_apply",
+    "ecad_draft_discard",
+    "ecad_verify",
+    "ecad_document",
+    "ecad_backup",
     "ftview_open",
     "ftview_reload",
     "ftview_list",
@@ -282,6 +298,43 @@
       "contextChars": 1454
     },
     {
+      "product": "ECAD",
+      "group": "ECAD read",
+      "tools": [
+        "ecad_capabilities",
+        "ecad_profile",
+        "ecad_scan",
+        "ecad_open",
+        "ecad_overview",
+        "ecad_find",
+        "ecad_cross_reference",
+        "ecad_checks",
+        "ecad_render",
+        "ecad_compare"
+      ],
+      "contextChars": 9507
+    },
+    {
+      "product": "ECAD",
+      "group": "ECAD drafts",
+      "tools": [
+        "ecad_draft_ops",
+        "ecad_draft_apply",
+        "ecad_draft_discard",
+        "ecad_verify"
+      ],
+      "contextChars": 3502
+    },
+    {
+      "product": "ECAD",
+      "group": "ECAD deliverables",
+      "tools": [
+        "ecad_document",
+        "ecad_backup"
+      ],
+      "contextChars": 2190
+    },
+    {
       "product": "FactoryTalk View",
       "group": "FTView read",
       "tools": [
@@ -403,11 +456,12 @@
     }
   ],
   "context": {
-    "characters": 115116,
+    "characters": 130315,
     "byProduct": {
       "L5X": 48660,
       "Migration": 8607,
       "Engineering resources": 1454,
+      "ECAD": 15199,
       "FactoryTalk View": 38409,
       "MotionWorks IEC": 17986
     }

@@ -14,6 +14,9 @@ importers:
       '@deepseek-ai/dsh-tool-skill':
         specifier: ^0.2.0-rc.2
         version: 0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-llm@0.2.2-alpha.2(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-skill@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-llm@0.2.2-alpha.2(@deepseek-ai/cordis@4.0.5))(@deepseek-ai/dsh-scope@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5)(@deepseek-ai/dsh-invariants@0.2.0-rc.2(@deepseek-ai/cordis@4.0.5))))(@deepseek-ai/dsh-tools@0.2.0-rc.2(ea58459fd11b736bf3439aa9ea5dc91f))
+      '@deepseek-ai/schemastery':
+        specifier: 3.18.5
+        version: 3.18.5
       '@mlightcad/data-model':
         specifier: 1.15.21
         version: 1.15.21
@@ -42,9 +45,6 @@ importers:
       '@deepseek-ai/dsh-util-values':
         specifier: 0.2.2-alpha.2
         version: 0.2.2-alpha.2(@deepseek-ai/cordis@4.0.5)
-      '@deepseek-ai/schemastery':
-        specifier: 3.18.5
-        version: 3.18.5
       js-yaml:
         specifier: ^4.1.0
         version: 4.3.2
@@ -57,6 +57,9 @@ importers:
 
   packages/ecad:
     dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: 3.18.5
+        version: 3.18.5
       '@mlightcad/data-model':
         specifier: 1.15.21
         version: 1.15.21

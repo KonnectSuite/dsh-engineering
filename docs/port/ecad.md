@@ -101,6 +101,31 @@ title-block sheet number, 0 unsupported), `sheets`, and `apply` (a NEW file, `ve
 bytes unchanged, SHA-256 echo) all passed; a stale `baseVersion` and a writes-disabled service were
 refused with `ECAD_STALE_DOCUMENT` and `ECAD_WRITES_DISABLED`.
 
+## M2 — the sixteen tools and the row
+
+The tool layer (`packages/ecad/src/{core,drawings,session}.ts` and `tools/**`) registers sixteen
+`ecad_*` tools in three groups — **read 10** (`capabilities`, `profile`, `scan`, `open`, `overview`,
+`find`, `cross_reference`, `checks`, `render`, `compare`), **drafts 4** (`draft_ops`, `draft_apply`,
+`draft_discard`, `verify`) and **deliverables 2** (`document`, `backup`) — totalling 15,199 characters of
+model-visible definitions. The row is inserted `disabled` and its `writes` config starts off, so the
+default-on context budget is unchanged; `ecad_apply` writes one new drawing beside the source only when
+the row and its write switch are both on.
+
+Two seams are deliberate. `drawings.ts` is the only place that reads a drawing, decides the format from
+`SUPPORTED_EXTENSIONS`/`RECOGNISED_EXTENSIONS` and publishes a new one (`readDrawing`/`writeDrawing`);
+the DWG branch is a marked one-liner there, so the converter is a single-module change. `session.ts`
+keeps a bounded per-chat cache plus the profile, index, drafts and applied records under `.ecad/`, and
+stamps every write with the session's sandbox policy. Internal `.ecad/` state works with writes off
+(review stays possible); every output outside `.ecad/` — the new drawing, a custom documentation folder,
+the backup tree — requires the switch.
+
+Verification: **143 package tests** pass (112 engine + 31 tool specs through a fake Cordis composition
+that mirrors `FsTarget` resolution, write intents, sandbox policy and effect disposal), every failure
+returns `{ ok:false, error:{ code, message, fix } }`, and no tool returns file contents: render,
+document and backup answer with paths and counts. Typecheck and `tsc -p` are clean. The skill body is
+4,282 characters (budget 8,000) and its copy says DWG is landing in this batch, with one marked
+sentence per surface to flip when the converter merges.
+
 ## Closed gate: Typert client remote (GO)
 
 Proven end to end on a composed Dev AryaCode profile: browser client bundle → `ctx.remote.$mount` →
