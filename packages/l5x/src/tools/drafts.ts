@@ -270,7 +270,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'compose_rung',
-      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven.',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven. This tool needs an open project; for chat-only composition with no L5X/ACD and no file, use l5x_compose_logic instead and put its paste_text in a fenced code block.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
         spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}. An add-on instruction call passes its instance tag first, then only the parameters marked Required in the AOI definition.'),

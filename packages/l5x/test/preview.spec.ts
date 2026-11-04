@@ -170,6 +170,51 @@ describe('ladder diagram layout', () => {
     expect(Number(comment?.[1])).toBeLessThan(Math.min(...boxes))
   })
 })
+describe('l5x_compose_logic', () => {
+  it('composes a start/stop seal-in without a project or a written file', async () => {
+    const l5x = preview()
+    const result = await l5x.call('l5x_compose_logic', {
+      pattern: 'start_stop_latch',
+      arguments_json: '{"start":"Start","stop":"Stop","run":"Run"}',
+    })
+    expect(result.error).toBeUndefined()
+    expect(result.data?.paste_text).toBe('[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);')
+    expect(result.data?.rungs).toBe(1)
+    expect(result.data?.tag_hint).toContain('Start (BOOL)')
+    expect(result.data?.pattern).toBe('start_stop_latch')
+    expect(l5x.written.size).toBe(0)
+    expect(result.coverage?.complete).toBe(false)
+  })
+
+  it('accepts raw NeutralText with an explicit parallel branch', async () => {
+    const l5x = preview()
+    const result = await l5x.call('l5x_compose_logic', {
+      rungs: '[XIC(A),XIC(B)]XIO(C)OTE(Run);',
+      comments: 'two ways to seal in',
+    })
+    expect(result.error).toBeUndefined()
+    expect(result.data?.paste_text).toBe('[XIC(A),XIC(B)]XIO(C)OTE(Run);')
+    expect(result.data?.rung_list[0].comment).toBe('two ways to seal in')
+    expect(l5x.written.size).toBe(0)
+  })
+
+  it('refuses an instruction the catalog does not know', async () => {
+    const l5x = preview()
+    const result = await l5x.call('l5x_compose_logic', { rungs: 'XIC(A)ORXIC(B)OTE(C);' })
+    expect(result.error?.code).toBe('INVALID_RUNG')
+    expect(result.error?.message).toContain('ORXIC')
+  })
+
+  it('requires exactly one of pattern and rungs, and rejects a bad pattern argument', async () => {
+    const l5x = preview()
+    expect((await l5x.call('l5x_compose_logic', {})).error?.code).toBe('INVALID_ARGUMENT')
+    expect((await l5x.call('l5x_compose_logic', { pattern: 'start_stop_latch', rungs: 'XIC(A)OTE(B);' })).error?.code).toBe('INVALID_ARGUMENT')
+    const bad = await l5x.call('l5x_compose_logic', { pattern: 'start_stop_latch', arguments_json: '{"start":"Start"}' })
+    expect(bad.error?.code).toBe('INVALID_ARGUMENT')
+    expect(bad.error?.message).toContain('stop')
+  })
+})
+
 describe('l5x_routine_diagram', () => {
   /** A harness whose project is the open fixture. */
   async function opened() {

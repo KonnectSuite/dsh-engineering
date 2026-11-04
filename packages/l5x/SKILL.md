@@ -11,6 +11,23 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into
 Studio, or touches a controller. Live reads are read-only; controller writes need per-call human approval.
 
+## Compose in chat without a project
+
+- When the person asks for ladder logic — a start/stop circuit, a seal-in, a timer, an interlock,
+  a scale, a totalizer, an hour meter — **compose it in the answer**. Do not ask for an L5X/ACD, do
+  not call `open_project`, and do not make a file the deliverable.
+- Use `l5x_compose_logic`: pass a named pattern with `arguments_json`, or pass the NeutralText
+  `rungs` directly. It needs no project and writes nothing. It returns `paste_text` and the tag
+  declarations the rung expects.
+- **Put `paste_text` in a fenced code block** in the answer so the reader can copy it straight into
+  a Studio 5000 ladder routine. List the tags to declare and one sentence on how the rung works.
+- NeutralText grammar: one rung per line ending in `;`; instructions are `MNEMONIC(operands)`;
+  **parallel branches are `[path1,path2]`**, for example
+  `[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);`. `l5x_compose_logic` validates syntax and catalogued
+  instruction names; it cannot check tag existence/types without a project, and it says so.
+- Only when the person also wants the change applied to an export should you open that project and
+  use the `draft_*`/`compose_rung` path. A pasted rung is a complete answer on its own.
+
 ## Backups
 
 `<workspace>/backups/<product>/<subject>/<UTC stamp>/` holds `backup-manifest.json` (relative path + SHA-256 per
@@ -86,6 +103,8 @@ truth. Never write to `<workspace>/_backups`.
 
 - `list_instructions` lists slots and kinds; read it first. Its flags are enforced: array_tag, no_array,
   minimum/maximum, types (MESSAGE, alarms, PID, CONTROL).
+- For a chat-only answer, `l5x_compose_logic` is the no-project/no-file path: a named pattern or raw
+  NeutralText, with `paste_text` ready to paste. Parallel branches are `[path1,path2]`.
 - `compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
   `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
   `ton_delay` enable/timer/preset_ms; `interlock` conditions (array) and output;

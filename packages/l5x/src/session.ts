@@ -371,7 +371,7 @@ export class ProjectSession {
       throw new L5xError(
         'NO_PROJECT',
         'No project is open in this chat.',
-        'Call open_project with the L5X path, then retry.',
+        'Open an export with open_project when the task is about an existing project; for chat-only ladder composition with no file, call l5x_compose_logic and paste its paste_text.',
       )
     }
     if (ids.length > 1) {

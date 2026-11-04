@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+- **Ladder logic can be composed in the chat with no project and no file.** A request such as
+  "compose a start/stop circuit for Studio 5000" no longer needs an L5X/ACD export: the new
+  `l5x_compose_logic` tool takes a named pattern (start/stop seal-in, fault latch, TON delay,
+  interlock, analog scale, totalizer, run-hour meter) or raw NeutralText and returns `paste_text`
+  ready to paste into a Studio 5000 ladder routine, plus the tag declarations the rung expects. It
+  writes nothing, opens nothing, and validates the ladder syntax and catalogued instruction names;
+  its `coverage` states that tag existence/types and Studio compilation are not checked without a
+  project. Raw rungs use one instruction series per line and **parallel branches written
+  `[path1,path2]`**. The `rockwell-l5x` skill now instructs the assistant to compose in chat and put
+  `paste_text` in a fenced code block instead of asking for workspace files, and the no-project
+  failure points at this tool. `l5x_rung_preview` now refuses an unknown mnemonic (for example a
+  greedy `ORXIC`) instead of accepting it. The tool reference is regenerated (150 tools; the L5X row
+  is 54).
 - **The drawing pane can expand to a full-window CAD surface.** The right sidebar is a narrow place
   to edit a drawing, so the toolbar now has an *Expand drawing* control: it lifts the same pane (tool
   palette, canvas, layers, properties, sheet facts) to a fixed whole-window surface with the

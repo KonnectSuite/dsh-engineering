@@ -16,7 +16,9 @@ import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { previewDocument, previewSlug } from '../engine/preview-document.ts'
-import { parseLadder } from '../engine/logic-syntax.ts'
+import { parseLadder, type LadderNode } from '../engine/logic-syntax.ts'
+import { instructionByName } from '../engine/instructions.ts'
+import { PATTERNS, type PatternName } from '../engine/ladder.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
 import { renderLadderSvg, writeLadderRaster } from '../engine/render-ladder.ts'
 import { dirname, isAbsolute , resolve } from 'node:path'
@@ -47,6 +49,191 @@ function instructionsOf(text: string): string[] {
   const found = new Set<string>()
   for (const match of text.matchAll(/([A-Z][A-Z0-9_]{1,15})\s*\(/gu)) found.add(match[1] as string)
   return [...found]
+}
+
+/** A tag operand the workspace-free composer may write. */
+const TAG_TEXT = /^[A-Za-z_][A-Za-z0-9_:.,[\]]*$/u
+
+/** Reject an instruction mnemonic the catalog does not know. */
+function assertKnownInstructions(nodes: readonly LadderNode[], line: string): void {
+  for (const node of nodes) {
+    if (node.kind === 'branch') {
+      for (const path of node.paths) assertKnownInstructions(path, line)
+      continue
+    }
+    const info = instructionByName(node.name)
+    if (info === undefined) {
+      throw new L5xError(
+        'INVALID_RUNG',
+        `Unknown ladder instruction ${node.name} in "${line}".`,
+        'Use a catalogued mnemonic: call list_instructions for the exact names and slots; parallel branches are written [path1,path2].',
+      )
+    }
+    if (info.notModelled === true) continue
+    const required = info.operands.filter(operand => operand.optional !== true && operand.rest !== true).length
+    const rest = info.operands.find(operand => operand.rest === true)
+    if (node.operands.length < required || (rest === undefined && node.operands.length > info.operands.length)) {
+      throw new L5xError(
+        'INVALID_RUNG',
+        `${info.name} takes ${required}-${info.operands.length} operand(s), but ${node.operands.length} were written in "${line}".`,
+        `Call list_instructions with filter "${info.name}" for the operand order, then fix the rung.`,
+      )
+    }
+  }
+}
+
+/** Read one pattern argument as a safe tag name. */
+function patternTag(pattern: string, args: Readonly<Record<string, unknown>>, name: string): string {
+  const value = args[name]
+  if (typeof value !== 'string' || value.trim() === '' || !TAG_TEXT.test(value.trim())) {
+    throw new L5xError(
+      'INVALID_ARGUMENT',
+      `${pattern} needs ${name} as a tag name, got ${JSON.stringify(value)}.`,
+      `Pass a tag such as {"${name}":"${name === 'timer' ? 'Timer1' : 'Start'}"}; the string may not contain spaces, parentheses or a semicolon.`,
+    )
+  }
+  return value.trim()
+}
+
+/** Read one pattern argument as a finite number. */
+function patternNumber(pattern: string, args: Readonly<Record<string, unknown>>, name: string, fallback?: number): number {
+  const value = args[name] ?? fallback
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new L5xError(
+      'INVALID_ARGUMENT',
+      `${pattern} needs ${name} as a number, got ${JSON.stringify(args[name])}.`,
+      `Pass ${name} as a finite number, for example ${name === 'preset_ms' ? '1500' : '0'}.`,
+    )
+  }
+  return value
+}
+
+/** One generated rung and the tags it expects the reader to declare. */
+interface ComposedLogic {
+  readonly pattern?: PatternName
+  readonly rungs: readonly { readonly text: string; readonly comment?: string }[]
+  readonly tags: readonly { readonly name: string; readonly data_type: string }[]
+  readonly notes: readonly string[]
+}
+
+/** Build the named pattern as NeutralText, without a project or tag lookup. */
+function composePatternText(pattern: PatternName, args: Readonly<Record<string, unknown>>): ComposedLogic {
+  if (pattern === 'start_stop_latch') {
+    const start = patternTag(pattern, args, 'start')
+    const stop = patternTag(pattern, args, 'stop')
+    const run = patternTag(pattern, args, 'run')
+    return {
+      pattern,
+      rungs: [{ text: `[XIC(${start}),XIC(${run})]XIO(${stop})OTE(${run});`, comment: 'Start/stop seal-in: Stop opens the latch.' }],
+      tags: [{ name: start, data_type: 'BOOL' }, { name: stop, data_type: 'BOOL' }, { name: run, data_type: 'BOOL' }],
+      notes: ['Run seals itself in parallel with Start; Stop breaks the rung.', 'Declare Start, Stop and Run as BOOL tags in the target program, or replace the names with tags that already exist.'],
+    }
+  }
+  if (pattern === 'fault_latch') {
+    const fault = patternTag(pattern, args, 'fault')
+    const reset = patternTag(pattern, args, 'reset')
+    const latched = patternTag(pattern, args, 'latched')
+    return {
+      pattern,
+      rungs: [
+        { text: `XIC(${fault})OTL(${latched});`, comment: 'Set the fault latch.' },
+        { text: `XIC(${reset})OTU(${latched});`, comment: 'Reset the fault latch.' },
+      ],
+      tags: [{ name: fault, data_type: 'BOOL' }, { name: reset, data_type: 'BOOL' }, { name: latched, data_type: 'BOOL' }],
+      notes: ['A fault latch needs both the set and the reset rung; keep them together.'],
+    }
+  }
+  if (pattern === 'ton_delay') {
+    const enable = patternTag(pattern, args, 'enable')
+    const timer = patternTag(pattern, args, 'timer')
+    const preset = patternNumber(pattern, args, 'preset_ms', 1000)
+    return {
+      pattern,
+      rungs: [{ text: `XIC(${enable})TON(${timer},${preset},0);`, comment: `Delay ${timer}.DN by ${preset} ms.` }],
+      tags: [{ name: enable, data_type: 'BOOL' }, { name: timer, data_type: 'TIMER' }],
+      notes: ['The timer instruction needs a TIMER tag; its .DN bit is the delayed enable.'],
+    }
+  }
+  if (pattern === 'interlock') {
+    const conditions = args.conditions
+    if (!Array.isArray(conditions) || conditions.length === 0) {
+      throw new L5xError('INVALID_ARGUMENT', 'interlock needs conditions: at least one tag.', 'Pass conditions as an array of BOOL tag names, for example ["GuardClosed","AirOk"].')
+    }
+    const tags = conditions.map((condition, index) => {
+      if (typeof condition !== 'string' || !TAG_TEXT.test(condition.trim())) {
+        throw new L5xError('INVALID_ARGUMENT', `interlock condition ${index + 1} is not a tag name.`, 'Pass conditions as an array of BOOL tag names.')
+      }
+      return { name: condition.trim(), data_type: 'BOOL' }
+    })
+    const output = patternTag(pattern, args, 'output')
+    return {
+      pattern,
+      rungs: [{ text: `${tags.map(tag => `XIC(${tag.name})`).join('')}OTE(${output});`, comment: 'All interlocks must be made to energize the output.' }],
+      tags: [...tags, { name: output, data_type: 'BOOL' }],
+      notes: ['Every condition is in series: any false condition drops the output.'],
+    }
+  }
+  if (pattern === 'analog_scale') {
+    const source = patternTag(pattern, args, 'source')
+    const destination = patternTag(pattern, args, 'destination')
+    const inMin = patternNumber(pattern, args, 'in_min')
+    const inMax = patternNumber(pattern, args, 'in_max')
+    const outMin = patternNumber(pattern, args, 'out_min')
+    const outMax = patternNumber(pattern, args, 'out_max')
+    const literal = (value: number): string => (Number.isInteger(value) ? `${value}.0` : String(value))
+    return {
+      pattern,
+      rungs: [{ text: `CPT(${destination},(${source} - ${literal(inMin)}) / (${literal(inMax)} - ${literal(inMin)}) * (${literal(outMax)} - ${literal(outMin)}) + ${literal(outMin)});`, comment: 'Scale an analog input into engineering units.' }],
+      tags: [{ name: source, data_type: 'REAL' }, { name: destination, data_type: 'REAL' }],
+      notes: ['CPT takes the destination first, then the expression.', 'Declare source and destination as REAL for a fractional result.'],
+    }
+  }
+  if (pattern === 'totalizer') {
+    const enable = patternTag(pattern, args, 'enable')
+    const rate = patternTag(pattern, args, 'rate')
+    const total = patternTag(pattern, args, 'total')
+    return {
+      pattern,
+      rungs: [{ text: `XIC(${enable})ADD(${total},${rate},${total});`, comment: 'Accumulate rate into total while enabled.' }],
+      tags: [{ name: enable, data_type: 'BOOL' }, { name: rate, data_type: 'REAL' }, { name: total, data_type: 'REAL' }],
+      notes: ['ADD adds rate to total in place; a REAL tag keeps fractional rates.'],
+    }
+  }
+  const run = patternTag(pattern, args, 'run')
+  const timer = patternTag(pattern, args, 'timer')
+  const hours = patternTag(pattern, args, 'hours')
+  const preset = patternNumber(pattern, args, 'preset_ms', 3_600_000)
+  if (preset <= 0) throw new L5xError('INVALID_ARGUMENT', 'run_hour_meter needs preset_ms as a positive number.', 'Pass the interval in milliseconds; the default is one hour (3600000).')
+  return {
+    pattern,
+    rungs: [
+      { text: `XIO(${timer}.DN)XIC(${run})TON(${timer},${preset},0);`, comment: 'Run the interval timer only while running.' },
+      { text: `XIC(${timer}.DN)ADD(${hours},1,${hours});`, comment: 'Count one hour per timer interval.' },
+    ],
+    tags: [{ name: run, data_type: 'BOOL' }, { name: timer, data_type: 'TIMER' }, { name: hours, data_type: 'DINT' }],
+    notes: ['The timer .DN bit resets the timer in the same scan that counts the interval.', 'Use DINT for a whole-hour count, or REAL if you change the increment.'],
+  }
+}
+
+/** Validate and normalise the caller's raw NeutralText block. */
+function composeRungsFromText(text: string, comments: string | undefined): ComposedLogic {
+  const lines = rungsOf(text, comments)
+  const commentLines = comments?.split(/\r?\n/u) ?? []
+  const rungs = lines.map((line, index) => {
+    const parsed = parseLadder(line)
+    if (parsed.issues.length > 0) {
+      throw new L5xError(
+        'INVALID_RUNG',
+        `Rung ${index + 1} does not parse: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}.`,
+        'Write one rung per line ending in ";"; parallel branches are [path1,path2], for example [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);.',
+        [`Rung ${index + 1}: ${line}`],
+      )
+    }
+    assertKnownInstructions(parsed.nodes, line)
+    const comment = commentLines[index]?.trim()
+    return comment === undefined || comment === '' ? { text: line } : { text: line, comment }
+  })
+  return { rungs, tags: [], notes: ['Tag existence and data types were not checked because no project is open.'] }
 }
 
 /** Split the caller's block into rungs, dropping blank lines. */
@@ -109,6 +296,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
               [`Rung ${index + 1}: ${line}`],
             )
           }
+          assertKnownInstructions(parsed.nodes, line)
           const comment = commentLines[index]?.trim()
           return {
             number: index,
@@ -163,6 +351,67 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
             ? [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }]
             : [{ tool: 'present', why: 'Attach the PNG so the answer shows the ladder diagram itself.', args: { files: [{ path: png, description: 'Ladder diagram of the proposed rungs' }] } }],
           PREVIEW_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'l5x_compose_logic',
+      description: 'Compose ladder logic in the chat when no project is open and no workspace file is wanted. Returns `paste_text`: NeutralText ready to paste into a Studio 5000 ladder routine, plus the tag declarations it expects. Writes no file and needs no L5X/ACD. Use a named pattern (start_stop_latch, fault_latch, ton_delay, interlock, analog_scale, totalizer, run_hour_meter) or pass the NeutralText yourself: one rung per line ending in ";", and parallel branches written [path1,path2] such as [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);. Syntax and catalogued instruction mnemonics are validated; tag existence/types and Studio compilation are not. In your answer, put paste_text in a fenced code block so the reader can copy it into Studio.',
+      parameters: object({
+        pattern: choice('Named pattern to compose without a project.', PATTERNS),
+        arguments_json: string('Pattern arguments as JSON, for example {"start":"Start","stop":"Stop","run":"Run"}. See the pattern list in the tool description.'),
+        rungs: string('Alternatively, the NeutralText rungs to validate and return, one per line ending in ";". Parallel branches are [path1,path2].'),
+        comments: string('Optional rung comments for rungs, one per line, blank for a rung without a comment.'),
+      }, []),
+      async run(args) {
+        const pattern = optionalString(args, 'pattern')
+        const raw = optionalString(args, 'rungs')
+        if ((pattern === undefined) === (raw === undefined)) {
+          throw new L5xError('INVALID_ARGUMENT', 'Pass exactly one of pattern or rungs.', 'Use a named pattern with arguments_json, or paste the NeutralText rungs directly.')
+        }
+        let composed: ComposedLogic
+        if (pattern !== undefined) {
+          if (!(PATTERNS as readonly string[]).includes(pattern)) {
+            throw new L5xError('INVALID_ARGUMENT', `Unknown pattern ${JSON.stringify(pattern)}.`, `Pass one of: ${PATTERNS.join(', ')}.`)
+          }
+          const json = optionalString(args, 'arguments_json') ?? '{}'
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(json)
+          } catch (error) {
+            throw new L5xError('INVALID_ARGUMENT', `arguments_json is not JSON: ${error instanceof Error ? error.message : String(error)}.`, 'Pass a JSON object such as {"start":"Start","stop":"Stop","run":"Run"}.')
+          }
+          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new L5xError('INVALID_ARGUMENT', 'arguments_json must be a JSON object.', 'Pass tag names and numbers as an object, for example {"start":"Start","stop":"Stop","run":"Run"}.')
+          }
+          composed = composePatternText(pattern as PatternName, parsed as Readonly<Record<string, unknown>>)
+        } else {
+          composed = composeRungsFromText(raw as string, optionalString(args, 'comments'))
+        }
+        const pasteText = composed.rungs.map(rung => rung.text).join('\n')
+        const instructions = [...new Set(composed.rungs.flatMap(rung => rung.text.match(/[A-Z][A-Z0-9_]*(?=\()/gu) ?? []))]
+        const tagList = composed.tags.map(tag => `${tag.name} (${tag.data_type})`).join(', ')
+        return success(
+          `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` with ${composed.pattern}`}; paste_text is ready for a Studio 5000 ladder routine. No project or file was touched.`,
+          {
+            ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }),
+            rungs: composed.rungs.length,
+            paste_text: pasteText,
+            rung_list: composed.rungs.map((rung, index) => ({ number: index, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })),
+            instructions,
+            ...(composed.tags.length === 0 ? {} : { tags: composed.tags }),
+            notes: composed.notes,
+            ...(composed.tags.length === 0 ? {} : { tag_hint: `Declare or confirm these tags in the target program: ${tagList}.` }),
+          },
+          [{ tool: 'list_instructions', why: 'Check an instruction’s operand order before changing the returned rung.' }],
+          {
+            complete: false,
+            unverified: [
+              'tag existence and data types in the target project (no project is open)',
+              'Studio compile acceptance of the composed block',
+              'runtime behavior',
+            ],
+          },
         )
       },
     }),
