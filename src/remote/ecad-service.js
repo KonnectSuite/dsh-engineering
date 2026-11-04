@@ -61,6 +61,70 @@ function engine() {
 }
 
 /**
+ * Converter module URLs, with the same vendor/repository fallback as the engine.
+ *
+ * The DWG converter is a separate module (`packages/ecad/src/dwg`):
+ * `converterInfo`, `isDwg`, `dwgToDxf` and `dxfToDwg`, all byte-in/byte-out.
+ * A build that ships without it keeps working and reports DWG as unavailable.
+ */
+const DWG_URLS = [
+  new URL('../../vendor/ecad/lib/dwg/index.js', import.meta.url),
+  new URL('../../packages/ecad/lib/dwg/index.js', import.meta.url),
+]
+let dwgPromise
+/** @returns the converter module, or undefined when this build ships without it. */
+function dwg() {
+  dwgPromise ??= (async () => {
+    for (const url of DWG_URLS) {
+      if (existsSync(url)) return import(url.href)
+    }
+    return undefined
+  })()
+  return dwgPromise
+}
+
+/**
+ * @param bytes - a drawing's bytes.
+ * @returns true for a DWG container (every DWG version starts `AC10`).
+ */
+function isDwgBytes(bytes) {
+  if (!(bytes instanceof Uint8Array) || bytes.length < 6) return false
+  return bytes[0] === 0x41 && bytes[1] === 0x43 && bytes[2] === 0x31 && bytes[3] === 0x30
+}
+
+/**
+ * Turn one workspace drawing into DXF bytes, converting a DWG first.
+ * @param file - the bytes and workspace path `readWorkspaceFile` returned.
+ * @returns DXF bytes, the source format and the conversion provenance.
+ */
+async function drawingDxfBytes(file) {
+  const looksDwg = isDwgBytes(file.bytes) || file.relative.toLowerCase().endsWith('.dwg')
+  if (!looksDwg) return { dxfBytes: file.bytes, format: 'dxf', converted: undefined }
+  if (!isDwgBytes(file.bytes)) {
+    throw new EcadRemoteError('ECAD_DWG_INVALID', `"${file.relative}" is named .dwg but does not contain a DWG header`, 'Check the file, or convert it to DXF first.')
+  }
+  const converter = await dwg()
+  if (converter === undefined) {
+    throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'DWG support is not installed in this build', 'Reinstall the engineering bundle with the ECAD converter, or convert the drawing to DXF.')
+  }
+  const info = await converter.converterInfo()
+  if (info.kind === 'unavailable') {
+    throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'the DWG converter is present but unavailable', 'Reinstall the engineering bundle, or convert the drawing to DXF.')
+  }
+  const converted = await converter.dwgToDxf(file.bytes, { maxBytes: DEFAULT_MAX_FILE_BYTES })
+  return {
+    dxfBytes: converted.dxf,
+    format: 'dwg',
+    converted: {
+      converter: info.kind,
+      converterVersion: info.version,
+      sourceVersion: converted.version,
+      warnings: converted.warnings ?? [],
+    },
+  }
+}
+
+/**
  * A failure the Remote envelope carries without a stack.
  *
  * The engine's own `EcadError` already has the shape; this class covers the
@@ -318,11 +382,13 @@ async function loadWorkspaceProfile(ctx, cwd, engineModule) {
 }
 
 /**
- * Walk the workspace for DXF drawings, bounded in depth and count.
+ * Walk the workspace for drawings, bounded in depth and count.
  * @param cwd - workspace root.
  * @param limit - most drawings to collect.
+ * @param extensions - lower-case extensions to collect, for example `['.dxf', '.dwg']`.
  * @returns drawing rows with their sizes.
- */async function listDrawings(cwd, limit) {
+ */
+async function listDrawings(cwd, limit, extensions = ['.dxf']) {
   const found = []
   let truncated = false
   /**
@@ -346,7 +412,8 @@ async function loadWorkspaceProfile(ctx, cwd, engineModule) {
         await walk(join(directory, name), depth + 1)
         continue
       }
-      if (!entry.isFile() || !name.toLowerCase().endsWith('.dxf')) continue
+      const lower = name.toLowerCase()
+      if (!entry.isFile() || !extensions.some(extension => lower.endsWith(extension))) continue
       const absolute = join(directory, name)
       let bytes
       try {
@@ -364,13 +431,17 @@ async function loadWorkspaceProfile(ctx, cwd, engineModule) {
   return { rows: found, truncated }
 }
 
-/** @param sourceRelative - source drawing path. @returns a fresh output name in the same folder. */
-function outputNameFor(sourceRelative) {
+/**
+ * @param sourceRelative - source drawing path.
+ * @param extension - output extension, `dxf` or `dwg`.
+ * @returns a fresh output name in the same folder.
+ */
+function outputNameFor(sourceRelative, extension = 'dxf') {
   const directory = posix.dirname(sourceRelative) === '.' ? '' : `${posix.dirname(sourceRelative)}/`
   const base = posix.basename(sourceRelative)
-  const stem = base.toLowerCase().endsWith('.dxf') ? base.slice(0, -4) : base
+  const stem = base.slice(0, base.length - posix.extname(base).length)
   const stamp = new Date().toISOString().replace(/[-:]/gu, '').replace(/\..+$/u, '')
-  return `${directory}${stem}-ecad-${stamp}.dxf`
+  return `${directory}${stem}-ecad-${stamp}.${extension}`
 }
 
 /**
@@ -384,7 +455,7 @@ async function uniqueOutputPath(ctx, cwd, proposed) {
   const fs = ctx.get?.('fs')
   if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Enable the ECAD row in a full AryaCode profile.')
   for (let index = 0; index < 100; index += 1) {
-    const candidate = index === 0 ? proposed : proposed.replace(/\.dxf$/iu, `-${index}.dxf`)
+    const candidate = index === 0 ? proposed : proposed.replace(/(\.[a-z0-9]+)$/iu, `-${index}$1`)
     const { absolute } = workspacePathOf(cwd, candidate)
     let exists = false
     try {
@@ -433,7 +504,8 @@ export function createEcadService(ctx) {
         const engineModule = await engine()
         const { profile, source: profileSource } = await loadWorkspaceProfile(ctx, cwd, engineModule)
         const file = await readWorkspaceFile(ctx, cwd, path)
-        const opened = await engineModule.openSheet({ path: file.relative, bytes: file.bytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
+        const drawing = await drawingDxfBytes(file)
+        const opened = await engineModule.openSheet({ path: file.relative, bytes: drawing.dxfBytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
         const version = engineModule.sha256(file.bytes)
         const model = engineModule.buildSheetModel(opened)
         const titleBlock = engineModule.detectTitleBlock(opened, profile)
@@ -443,6 +515,8 @@ export function createEcadService(ctx) {
           path: file.relative,
           sourceBytes: file.bytes.length,
           version,
+          format: drawing.format,
+          converted: drawing.converted,
           dxfVersion: model.dxfVersion,
           units: model.units,
           layouts: model.layouts.map(layout => ({ id: layout.id, name: layout.name, kind: layout.kind, entities: layout.entities.length })),
@@ -477,25 +551,66 @@ export function createEcadService(ctx) {
         if (typeof baseVersion === 'string' && baseVersion.length > 0 && baseVersion !== sourceVersion) {
           throw new EcadRemoteError('ECAD_STALE_DOCUMENT', `"${file.relative}" changed after the draft was staged`, 'Reload the drawing, re-stage the change and apply again; the source was not touched.')
         }
-        const opened = await engineModule.openSheet({ path: file.relative, bytes: file.bytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
+        const drawing = await drawingDxfBytes(file)
+        const opened = await engineModule.openSheet({ path: file.relative, bytes: drawing.dxfBytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
         const baseModel = engineModule.buildSheetModel(opened)
         const validation = engineModule.validateOps(opened, Array.isArray(ops) ? ops : [])
         if (validation.ok !== true) {
           throw new EcadRemoteError('ECAD_INVALID_DRAFT', `the draft has ${validation.errors.length} invalid operation(s)`, validation.errors.map(item => `#${item.opIndex} ${item.message}`).join('; '))
         }
         const result = engineModule.applyOps(opened, Array.isArray(ops) ? ops : [])
-        const bytes = engineModule.dxfBytes(opened)
-        const proposed = outputNameFor(file.relative)
-        const outputRelative = await uniqueOutputPath(ctx, cwd, proposed)
-        await writeWorkspaceFile(ctx, session, cwd, outputRelative, bytes, 'createIfAbsent')
-        const verification = await engineModule.verifyWritten(opened, bytes, { changes: result.changes, baseModel })
-        const outputVersion = engineModule.sha256(bytes)
-        const reopened = await engineModule.openSheet({ path: outputRelative, bytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
+        const dxf = engineModule.dxfBytes(opened)
+        const verification = await engineModule.verifyWritten(opened, dxf, { changes: result.changes, baseModel })
+        if (drawing.format === 'dwg') {
+          const converter = await dwg()
+          if (converter === undefined) {
+            throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'DWG output is not installed in this build', 'Reinstall the engineering bundle with the ECAD converter, or save the draft as DXF.')
+          }
+          const outputRelative = await uniqueOutputPath(ctx, cwd, outputNameFor(file.relative, 'dwg'))
+          const written = await converter.dxfToDwg(dxf, { targetVersion: drawing.converted?.sourceVersion, maxBytes: DEFAULT_MAX_FILE_BYTES })
+          await writeWorkspaceFile(ctx, session, cwd, outputRelative, written.dwg, 'createIfAbsent')
+          const outputVersion = engineModule.sha256(written.dwg)
+          const back = await converter.dwgToDxf(written.dwg, { maxBytes: DEFAULT_MAX_FILE_BYTES })
+          const reopened = await engineModule.openSheet({ path: outputRelative, bytes: back.dxf, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
+          const model = engineModule.buildSheetModel(reopened)
+          const expected = engineModule.buildSheetModel(opened)
+          const diff = engineModule.diffSheetModels(expected, model)
+          const dwgRoundTrip = {
+            ok: diff.added.length === 0 && diff.removed.length === 0 && diff.changed.length === 0,
+            added: diff.added.length,
+            removed: diff.removed.length,
+            changed: diff.changed.length,
+            truncated: diff.truncated,
+            targetVersion: written.version,
+            backVersion: back.version,
+            warnings: [...(written.warnings ?? []), ...(back.warnings ?? [])],
+          }
+          const modelPath = await writePreview(ctx, session, cwd, outputRelative, outputVersion, model)
+          return {
+            sourcePath: file.relative,
+            sourceVersion,
+            format: 'dwg',
+            converted: drawing.converted,
+            outputPath: outputRelative,
+            outputVersion,
+            modelPath,
+            changes: result.changes,
+            verification: { ...verification, ok: verification.ok && dwgRoundTrip.ok },
+            dwgRoundTrip,
+            notes: validation.notes,
+            writes: true,
+          }
+        }
+        const outputRelative = await uniqueOutputPath(ctx, cwd, outputNameFor(file.relative, 'dxf'))
+        await writeWorkspaceFile(ctx, session, cwd, outputRelative, dxf, 'createIfAbsent')
+        const outputVersion = engineModule.sha256(dxf)
+        const reopened = await engineModule.openSheet({ path: outputRelative, bytes: dxf, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
         const model = engineModule.buildSheetModel(reopened)
         const modelPath = await writePreview(ctx, session, cwd, outputRelative, outputVersion, model)
         return {
           sourcePath: file.relative,
           sourceVersion,
+          format: 'dxf',
           outputPath: outputRelative,
           outputVersion,
           modelPath,
@@ -516,14 +631,29 @@ export function createEcadService(ctx) {
       return envelope(async () => {
         const { session, cwd } = sessionWorkspace(ctx, sessionId)
         const cap = Number.isFinite(limit) && limit > 0 ? Math.min(Math.trunc(limit), 2000) : 500
-        const { rows, truncated } = await listDrawings(cwd, cap)
+        const converter = await dwg()
+        let dwgAvailable = false
+        let converterVersion
+        if (converter !== undefined) {
+          try {
+            const info = await converter.converterInfo()
+            dwgAvailable = info.kind !== 'unavailable'
+            converterVersion = info.version
+          } catch {
+            dwgAvailable = false
+          }
+        }
+        const extensions = dwgAvailable ? ['.dxf', '.dwg'] : ['.dxf']
+        const { rows, truncated } = await listDrawings(cwd, cap, extensions)
         const indexCache = await cachedSheetSummaries(ctx, session, cwd)
         return {
           workspace: cwd,
+          dwg: { available: dwgAvailable, converterVersion },
           sheets: rows.map(row => {
             const cached = indexCache.get(row.path)
             return {
               path: row.path,
+              format: row.path.toLowerCase().endsWith('.dwg') ? 'dwg' : 'dxf',
               bytes: row.bytes,
               sheetNumber: cached?.sheetNumber,
               title: cached?.title,
@@ -545,11 +675,25 @@ export function createEcadService(ctx) {
         const { cwd } = sessionWorkspace(ctx, sessionId)
         const engineModule = await engine()
         const { source: profileSource } = await loadWorkspaceProfile(ctx, cwd, engineModule)
+        const converter = await dwg()
+        let dwgState = { available: false, kind: 'unavailable', version: undefined, versions: [] }
+        if (converter !== undefined) {
+          try {
+            const info = await converter.converterInfo()
+            dwgState = {
+              available: info.kind !== 'unavailable',
+              kind: info.kind,
+              version: info.version,
+              versions: Array.isArray(info.versions) ? [...info.versions] : [],
+            }
+          } catch (error) {
+            dwgState = { available: false, kind: 'unavailable', version: undefined, versions: [], error: error instanceof Error ? error.message : String(error) }
+          }
+        }
         return {
           contractVersion: ECAD_CONTRACT_VERSION,
-          engine: 'dxf',
-          // DWG is a post-v1, opt-in milestone; this build reads and writes DXF only.
-          dwg: false,
+          engine: dwgState.available ? 'dxf+dwg' : 'dxf',
+          dwg: dwgState,
           writes: writesEnabled,
           maxFileBytes: DEFAULT_MAX_FILE_BYTES,
           methods: ECAD_METHODS.map(method => method.method),

@@ -143,11 +143,19 @@ who already run it — it has a headless JSON automation API (`--serve`, `--http
 executable — and (b) a reference for how a verified save should be gated (audit, reopen, semantic
 manifest, SHA-256). Its published reader/writer gap list is also a review checklist.
 
-**Decision and gate.** v1 stays DXF-only and unchanged: the current MIT in-process path is measured
-on the corpus and does not depend on an external program. DWG becomes a post-v1, opt-in milestone
-with a spike that must prove, on the owner's 33 DWGs: build acadrust to WASM (or a small sidecar),
-convert DWG → DXF, parse with the shipped engine, then take an edited DXF → DWG, reopen it and compare
-the model; only measured, per-drawing results justify a DWG claim. The gate is honest coverage:
-unsupported entities are reported per file, the writer stays version-targeted and off by default,
-and a drawing is never called a faithful DWG round-trip without that evidence. ODA remains the
-documented fallback when a customer requires AutoCAD-native output and already has it installed.
+**Decision and gate.** The owner then approved pulling DWG into the same batch (2026-11-04), so the
+converter is an embedded, byte-in/byte-out module rather than an external install: `acadrust 0.6.8`
+(MPL-2.0, unmodified) behind `packages/ecad/src/dwg` (`converterInfo`, `isDwg`, `dwgToDxf`,
+`dxfToDwg`), built to WASM if the crate compiles for `wasm32` (it documents WebAssembly as supported
+and sequential) and otherwise to a small native sidecar; the wrapper and build script live in
+`packages/ecad/rust/`, the artifact in `packages/ecad/assets/` or `packages/ecad/bin/`, and the MPL
+and ACadSharp notices ship with the package. The service already routes `.dwg` through the converter
+when present and reports `dwg.available`/`format`/`converted`; until the converter artifact merges it
+answers `ECAD_DWG_UNAVAILABLE`, and DXF behaviour is unchanged (probe re-run green).
+
+The gate is unchanged: on the owner's 33 DWGs, conversion success and time are measured; where a DWG
+and DXF name the same drawing, `DWG→DXF` against the shipped DXF is compared with the shipped engine;
+three sheets take the full `DXF→DWG→DXF` round trip and three take `DWG→DXF→DWG→DXF`; and a drawing is
+never called a faithful DWG round-trip without that evidence. Unsupported entities are reported per
+file, the writer stays version-targeted (the source DWG's version) and off by default, and ODA remains
+the documented fallback when a customer requires AutoCAD-native output and already has it installed.
