@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
+  (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/ping` invocation
+  while the `viewers` row is mounted, and `lib/index.js` provides the `ecad` Cordis service the
+  descriptor names. A browser contribution generated from the same `src/remote/ecad-contract.js`
+  mounts with `ctx.remote.$mount` and calls it end to end. The method is a diagnostic: it writes one
+  marker file per call under `ECAD_SPIKE_DIR` and the client face draws the outcome as a banner. The
+  mechanism is what a real plugin-defined Remote method will use; `ecad` is not a product surface yet.
+  ([architecture](docs/architecture.md#typert-remote-face))
 - **The default-on surface has a budget, and a new component ships off until it is raised.** `components.json`
   records the tools and the characters of model-visible schema a fresh install may mount
   (`contextBudget`), measured from the generated reference: 142 tools and 115,116 characters of the 133

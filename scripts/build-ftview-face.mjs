@@ -22,9 +22,13 @@ const ID = '@aryacode/dsh-engineering-ftview-viewer'
 
 /** Load the esbuild that pnpm installed. */
 function loadEsbuild() {
+  // A hoisted install (`--config.node-linker=hoisted`) puts esbuild at the top
+  // level instead of node_modules/.pnpm; accept either layout.
+  const hoisted = join(ROOT, 'node_modules', 'esbuild', 'lib', 'main.js')
+  if (existsSync(hoisted)) return createRequire(import.meta.url)(hoisted)
   const store = join(ROOT, 'node_modules', '.pnpm')
   const directory = readdirSync(store).find(name => name.startsWith('esbuild@'))
-  if (directory === undefined) throw new Error('esbuild is not installed in node_modules/.pnpm')
+  if (directory === undefined) throw new Error('esbuild is not installed in node_modules/.pnpm or node_modules/esbuild')
   return createRequire(import.meta.url)(join(store, directory, 'node_modules', 'esbuild', 'lib', 'main.js'))
 }
 

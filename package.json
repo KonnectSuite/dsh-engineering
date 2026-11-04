@@ -104,6 +104,7 @@
       "default": "./lib/index.js"
     },
     "./client": "./lib/client.js",
+    "./typert": "./lib/typert.host.js",
     "./package.json": "./package.json",
     "./l5x": "./entries/l5x.js",
     "./ftview": "./entries/ftview.js",
