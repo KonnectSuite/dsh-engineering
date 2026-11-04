@@ -225,6 +225,58 @@ pinning the write, the read-only refusal, the outside refusal, an additional wri
 create guard. The `npm pack` freshness check was also corrected to compare the newest built file
 instead of `lib/index.js`, so a face-only rebuild is not refused by `assemble`.
 
+## CAD workspace — the drawing pane grows up (unreleased)
+
+The owner asked for a near-full CAD environment, not the three-operation redline surface. The pane was
+rebuilt around a command state machine and a selection set, and the engine gained the operations the
+commands need.
+
+**Engine operations.** `EcadOp` now also carries `addCircle`, `addArc`, `copy`, `scale`, `mirror`
+(keeps a mirrored copy by default, `eraseSource` removes the source), `offset`, `trim`, `extend`,
+`setLine`, `setPolyline` (grip editing), and drawing-level `addLayer`/`setLayerColor`/`renameLayer`.
+Validation and application stay in `ops.ts`, with pure 2-D geometry in `ops-geom.ts`. Support is
+explicit and refusals name the kind and a fix: scale/mirror cover the common primitives and refuse
+hatch/spline/dimension/viewport (mirror also refuses inserts — mirror the block geometry instead);
+offset covers line/circle/arc; trim/extend are line against line; only top-level entities edit in
+place; mirror keeps text readable (MIRRTEXT=0). Written-file verification learned the new kinds —
+added primitives for circle/arc/copy/mirror/offset, changed-geometry rows for
+scale/trim/extend/setLine/setPolyline, and layer-list comparisons for add/rename/color, with the same
+lower-bound semantics as the existing operations. 15 tests cover geometry, every refusal path and a
+synthetic DXF write→re-read round trip. A Lead smoke on a copy of the real sheet `FC1000495-007`
+applied every operation, wrote 222,697 bytes, re-read the file with the new circle/arc/copied line and
+the renamed layer at its new colour, and left the source byte-identical.
+
+**The pane.** Multi-select (Shift adds, Ctrl toggles), left→right blue window and right→left green
+crossing marquee in screen space, middle-drag and Space+left-drag pan, wheel zoom-at-cursor, zoom
+extents/window, right-click context menu, and grips on line endpoints, polyline vertices, circle
+centres and insertions (line and polyline grips stage `setLine`/`setPolyline`; other grips stage
+moves). Object snaps: endpoint, midpoint, centre, nearest-on-line and grid, toggled with F3/F7/F8,
+with marker, label and a status line carrying world coordinates, selection count and snap state.
+Undo/redo covers the staged operation list, including removals and clear; Delete stages an erase,
+Ctrl+A selects all, Escape cancels. The palette stages real operations with live previews and numeric
+entry: line, polyline, rectangle, circle, arc, revision cloud, leader, text, block insert; move, copy,
+rotate, scale, mirror, offset, trim, extend, erase. Properties edit text, block attribute values and
+layer (bulk layer for a multi-selection); the layer panel carries visibility, current layer, lock and
+staged create/rename/color, with layer-table changes shown after apply/reopen. Sheet actions keep
+apply as a **new verified file** (DXF or DWG, never overwrite), plus written-view toggle, print to a
+clean drawing page, SVG/PNG export, layout tabs and zoom extents. With writes off, selection,
+navigation, print/export remain and every write control is absent.
+
+Verification: 385 bundle tests (30 new client tests for the CAD helpers, command state machine,
+export and face registrations), typecheck clean, and a committed headless interaction harness
+(`packages/ecad/test/client/screenshot-harness.mjs`) driving real Chrome input against the committed
+face bundle and a fake bridge: 15 screenshots (light/dark, crossing marquee, multi-selection, context
+menu, grips and staged grip, apply outcome, properties/layers and staged layer rename+colour with
+undo/redo, line preview, print layout, read-only, 10k-primitive sheet) with **zero page errors**;
+measurements: 37 primitives ~42 ms, 10,037 primitives ~123 ms; read-only exposes zero write controls.
+
+Deliberate limits: circle-radius, arc-geometry, ellipse and dimension grips are preview-only until
+those engine operations exist (the pane says so instead of faking a stage); trim/extend need the
+boundary selected first and are line↔line; offset is one entity per operation; block attribute edit
+requires typing the tag because the sheet model does not carry tag names; staged layer changes appear
+in the panel after apply/reopen; print uses the current view through the browser print dialog (no
+paper-space plot scale); PNG export rasterises the SVG through a browser canvas.
+
 ## M5 — conversation intelligence
 
 The same face also makes ECAD work legible in the conversation, using the shell's own slots (read from

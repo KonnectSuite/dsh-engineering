@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+- **The drawing pane is now a CAD workspace.** The view-only preview/three-operation editor became a
+  full drawing surface: selection sets with Shift-add/Ctrl-toggle; AutoCAD-style marquee (left→right
+  window, fully enclosed, blue; right→left crossing, anything touched, green); middle-drag and
+  Space+left-drag pan; wheel zoom-at-cursor, zoom extents/window; right-click context menu (select
+  all, zoom, pan, move, copy, erase, properties, ask, print, SVG); grips on line endpoints, polyline
+  vertices, circle centres and insertions (line/polyline edits stage `setLine`/`setPolyline`, other
+  grips stage moves); object snaps for endpoint/midpoint/centre/nearest/grid with F3 osnap, F7 grid,
+  F8 ortho and a snap marker; undo/redo over the staged operation list; Delete/Ctrl+A/Escape and a
+  world-coordinate/selection status line. The tool palette stages real engine operations with live
+  previews and numeric entry: select, pan, zoom window; line, polyline, rectangle, circle, arc,
+  revision cloud, leader, text, block insert; move, copy, rotate, scale, mirror, offset, trim,
+  extend, erase. Properties edit text, block attribute values and layer (bulk layer for a
+  multi-selection); the layer panel adds current layer, lock, create/rename/color staged through the
+  new layer operations. Sheet workflow keeps apply-to-new-file verification (DXF or DWG), adds
+  written-view toggle, print to a clean drawing page, SVG/PNG export, layout tabs and zoom extents,
+  and hides every write control when the row writes switch is off. 30 new client tests plus a 15-shot
+  headless interaction harness (marquee/multi-select/context menu/grips/snaps/layer staging/apply/
+  print/read-only/10k-primitive sheet, no page errors); the bundle suite is 385/385 with typecheck
+  clean. Remaining limits are named in the panel and README: circle-radius, arc-geometry, ellipse and
+  dimension grips wait on engine operations; trim/extend are line↔line, offset line/circle/arc;
+  layer-table changes show after apply/reopen; print uses the current view. Unreleased by design.
 - **The drawing engine now has the CAD modify operations the panel needs.** `EcadOp` gained
   `addCircle`, `addArc`, `copy`, `scale`, `mirror` (keeps a mirrored copy by default, `eraseSource`
   removes the source), `offset`, `trim`, `extend`, `setLine`/`setPolyline` for grip edits, and
