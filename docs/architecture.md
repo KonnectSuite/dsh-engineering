@@ -207,16 +207,25 @@ dispatches an endpoint to the Cordis service the descriptor names, so a client b
 method the package itself defines — no `@deepseek-ai` package has to know about it.
 
 `src/remote/ecad-contract.js` is the one source of the wire facts: `scripts/build-client.mjs` renders
-`lib/typert.host.js` from it and also generates the browser contribution from it, so the endpoint,
-parameter wire field and codec modes cannot drift between the two halves. The Host service itself
-lives in `lib/index.js` and declares its Gateway binding with `bindTypertRemote`; the Gateway refuses
-to dispatch to a service without that visible binding. A descriptor's `service` is the Cordis service
-key, not a package name.
+`lib/typert.host.js` from it and the client face imports the same module for its mounted contribution,
+so the endpoints, parameter order, wire names and codec modes cannot drift between the two halves. The
+service itself lives in `src/remote/ecad-service.js`, imported by `lib/index.js`; it binds its Gateway
+link with `bindTypertRemote` (the Gateway refuses a service without that visible binding) and the
+`.dsh-engineering` `.dsh.client` face supplies the browser `remote` service. A descriptor's `service`
+is the Cordis service key, not a package name.
 
-The `ecad/ping` method is a diagnostic, not a product feature: it records the received payload in one
-marker file per call under `ECAD_SPIKE_DIR` (default: `%TEMP%\ecad-typert-spike`) and reports the
-descriptor kind that dispatched it (`strict` for the `./typert` artifact, `src` when only the
-decorator marker would have matched). The client face draws a banner with the outcome.
+The four endpoints serve the ECAD panel and are not model-facing tools:
+
+| Endpoint | What it does |
+|---|---|
+| `ecad/open` | Reads one workspace DXF, builds its render model and writes `.ecad/previews/<hash>.json`; returns the model path, source hash and a summary. |
+| `ecad/apply` | Applies the panel's staged operations to a NEW DXF (never overwriting), re-reads it and returns the verification. Writes require the ECAD row to enable them. |
+| `ecad/sheets` | Lists the DXF drawings in the session workspace, enriched from `.ecad/index.json` when an agent has scanned the set. |
+| `ecad/capabilities` | Reports contract version, write state, engine limits and that DWG is not supported. |
+
+The engine stays lazy: a profile that never opens a drawing does not load `@mlightcad/data-model`.
+The service reads files through the Host `fs` service and writes with the session's sandbox policy;
+its own `.ecad/` cache directories are created under the session workspace.
 
 ## Distribution
 
@@ -229,6 +238,7 @@ dsh-engineering-<version>.tgz
   ├── lib/client.js           both previews, one registration
   ├── lib/index.js            the host half the `viewers` row mounts
   ├── lib/typert.host.js      the package-defined Typert Remote artifact
+  ├── src/remote/             the wire contract and the ECAD Remote service
   └── vendor/{l5x,ftview,mwi} the vendored components and their assets
 ```
 

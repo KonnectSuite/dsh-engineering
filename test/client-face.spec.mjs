@@ -13,6 +13,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { runInNewContext } from 'node:vm'
 import { CLIENT_ID, FACES, renderClient, renderHost, renderHostTypes, renderTypertHost } from '../scripts/build-client.mjs'
+import { ECAD_METHODS, ECAD_NAMESPACE, ECAD_PACKAGE } from '../src/remote/ecad-contract.js'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const manifest = JSON.parse(read('package.json'))
@@ -128,19 +129,28 @@ test('the Typert host artifact carries the facts the loader validates', async ()
   assert.deepEqual(TYPERT.model.events, [])
   assert.deepEqual(TYPERT.model.objects, [])
   assert.equal(TYPERT.model.services.length, 1)
-  const [invocation] = TYPERT.invocations
-  assert.equal(invocation.namespace, 'ecad')
-  assert.equal(invocation.method, 'ping')
-  assert.equal(invocation.service, 'ecad', 'the descriptor service is the Cordis service key, not a package name')
-  assert.equal(invocation.invocation.kind, 'direct')
-  for (const parameter of invocation.parameters) {
-    assert.equal(parameter.source, 'json')
-    assert.equal(parameter.codec.mode, 'strict')
-    assert.equal(typeof parameter.codec.create, 'function')
-    assert.equal(typeof parameter.codec.create().parse, 'function')
+  assert.equal(TYPERT.model.services[0].key, ECAD_NAMESPACE)
+  assert.equal(TYPERT.invocations.length, ECAD_METHODS.length,
+    'the artifact registers one invocation per ECAD Remote method')
+  for (const invocation of TYPERT.invocations) {
+    const spec = ECAD_METHODS.find(method => method.method === invocation.method)
+    assert.ok(spec !== undefined, `unexpected ECAD method ${invocation.method}`)
+    assert.equal(invocation.namespace, ECAD_NAMESPACE)
+    assert.equal(invocation.service, ECAD_NAMESPACE,
+      'the descriptor service is the Cordis service key, not a package name')
+    assert.equal(invocation.method, spec.method)
+    assert.equal(invocation.invocation.kind, 'direct')
+    assert.equal(invocation.parameters.length, spec.parameters.length)
+    for (const parameter of invocation.parameters) {
+      assert.equal(parameter.source, 'json')
+      assert.equal(parameter.codec.mode, 'strict')
+      assert.equal(typeof parameter.codec.create, 'function')
+      assert.equal(typeof parameter.codec.create().parse, 'function')
+    }
+    assert.equal(invocation.result.mode, 'strict')
+    assert.equal(typeof invocation.result.create, 'function')
   }
-  assert.equal(invocation.result.mode, 'strict')
-  assert.equal(typeof invocation.result.create, 'function')
+  assert.equal(ECAD_PACKAGE, manifest.name)
 })
 
 test('the artifact registers exactly one bundle, under the package name', () => {

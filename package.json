@@ -32,6 +32,7 @@
     "cordis.patch.yml",
     "entries/**/*",
     "lib/**/*",
+    "src/remote/**/*",
     "locale/*.json",
     "vendor/**/*",
     "README.md",
@@ -86,6 +87,7 @@
     "@deepseek-ai/dsh-compaction-basic": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
     "@deepseek-ai/dsh-llm": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
     "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
     "@deepseek-ai/dsh-util-values": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
     "@deepseek-ai/schemastery": "^0.2.1-rc.3 || ^0.2.2-alpha.2"
   },

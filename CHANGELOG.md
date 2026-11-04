@@ -9,12 +9,13 @@
   drawings, exploded symbols, `TITLE_BLOCK` text, an index sheet). The component itself, its tools and
   the panel are not in this change yet.
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
-  (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/ping` invocation
-  while the `viewers` row is mounted, and `lib/index.js` provides the `ecad` Cordis service the
-  descriptor names. A browser contribution generated from the same `src/remote/ecad-contract.js`
-  mounts with `ctx.remote.$mount` and calls it end to end. The method is a diagnostic: it writes one
-  marker file per call under `ECAD_SPIKE_DIR` and the client face draws the outcome as a banner. The
-  mechanism is what a real plugin-defined Remote method will use; `ecad` is not a product surface yet.
+  (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
+  `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and
+  `lib/index.js` provides the `ecad` Cordis service they dispatch to. `src/remote/ecad-contract.js` is
+  the one source of the wire facts — rendered into the artifact and imported by the panel contribution —
+  so endpoints and codecs cannot drift. The service imports the ECAD engine lazily, reads through the
+  Host filesystem service, and writes under the session's sandbox policy; the model-facing ECAD tools
+  and the panel that uses this service land in the same batch.
   ([architecture](docs/architecture.md#typert-remote-face))
 - **The default-on surface has a budget, and a new component ships off until it is raised.** `components.json`
   records the tools and the characters of model-visible schema a fresh install may mount
