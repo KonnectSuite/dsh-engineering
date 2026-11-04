@@ -181,6 +181,11 @@ export function inferProfile(sheets: readonly InferProfileSheet[], options: Infe
 /**
  * Measure which layers carry title-block labels and which variants appear.
  *
+ * A layer is only taken as a title-block layer when it carries a substantial
+ * share of the recognised fields: a tubing-tag table with `REV.` and `DATE`
+ * column headers matches two label variants and would otherwise be adopted as a
+ * second title-block layer.
+ *
  * @param sheets - sheets to measure.
  * @param base - profile whose label variants seed the search.
  */
@@ -194,9 +199,10 @@ function measureTitleBlockLabels(
       variants.set(normalizeLabel(label), field)
     }
   }
-  const labelsByField = new Map<EcadTitleBlockField, string[]>()
-  const layerScore = new Map<string, number>()
-  const labelHeights: number[] = []
+  /** Layer → field → observed labels. */
+  const byLayer = new Map<string, Map<EcadTitleBlockField, string[]>>()
+  /** Layer → label text heights. */
+  const heightsByLayer = new Map<string, number[]>()
   for (const sheet of sheets) {
     for (const layout of sheet.model.layouts) {
       for (const entity of layout.entities) {
@@ -205,16 +211,39 @@ function measureTitleBlockLabels(
         if (text.length === 0) continue
         const field = variants.get(normalizeLabel(text))
         if (field === undefined) continue
-        const list = labelsByField.get(field) ?? []
+        const fieldMap = byLayer.get(entity.layer) ?? new Map<EcadTitleBlockField, string[]>()
         const clean = text.replace(/[\s:]+$/, '').trim()
+        const list = fieldMap.get(field) ?? []
         if (!list.includes(clean)) list.push(clean)
-        labelsByField.set(field, list)
-        layerScore.set(entity.layer, (layerScore.get(entity.layer) ?? 0) + 1)
-        if (typeof entity.h === 'number' && Number.isFinite(entity.h) && entity.h > 0) labelHeights.push(entity.h)
+        fieldMap.set(field, list)
+        byLayer.set(entity.layer, fieldMap)
+        if (typeof entity.h === 'number' && Number.isFinite(entity.h) && entity.h > 0) {
+          const heights = heightsByLayer.get(entity.layer) ?? []
+          heights.push(entity.h)
+          heightsByLayer.set(entity.layer, heights)
+        }
       }
     }
   }
-  const labelLayers = [...layerScore.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)
+
+  const scored = [...byLayer.entries()].map(([layer, fieldMap]) => ({ layer, fields: fieldMap.size })).sort((a, b) => b.fields - a.fields)
+  const best = scored[0]?.fields ?? 0
+  // Keep the layers that explain at least half of the best layer's fields, with
+  // a floor of two: one field label alone is not a title block.
+  const threshold = Math.max(2, Math.ceil(best / 2))
+  const kept = best >= 2 ? scored.filter(entry => entry.fields >= threshold) : []
+  const labelsByField = new Map<EcadTitleBlockField, string[]>()
+  const labelHeights: number[] = []
+  for (const entry of kept) {
+    const fieldMap = byLayer.get(entry.layer)!
+    for (const [field, labels] of fieldMap) {
+      const list = labelsByField.get(field) ?? []
+      for (const label of labels) if (!list.includes(label)) list.push(label)
+      labelsByField.set(field, list)
+    }
+    for (const height of heightsByLayer.get(entry.layer) ?? []) labelHeights.push(height)
+  }
+  const labelLayers = kept.map(entry => entry.layer)
   return { labelsByField, labelLayers, labelHeights }
 }
 

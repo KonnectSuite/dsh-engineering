@@ -141,7 +141,7 @@ test('the inferred profile is the ACADE default confirmed by the set', { skip },
   const sheets = await sheetsPromise
   const inference = inferProfile(sheets.map(sheet => ({ model: sheet.model, titleBlock: sheet.titleBlock, inserts: sheet.inserts })))
   assert.equal(inference.confidence, 0.95)
-  assert.deepEqual(inference.profile.titleBlockLayers, ['TITLE_BLOCK', 'TUBING_TAGS'])
+  assert.deepEqual(inference.profile.titleBlockLayers, ['TITLE_BLOCK'])
   assert.deepEqual(inference.profile.wireLayers, ['WIRES'])
   assert.deepEqual(inference.profile.tagLayers, ['TAGS'])
   assert.deepEqual(inference.profile.xrefLayers, ['XREF'])
@@ -169,8 +169,8 @@ test('cross-reference reports candidates with a note and a low confidence where 
   assert.deepEqual([...kinds].sort(), ['device-tag', 'sheet-reference', 'wire-label'])
   // Every sheet reference in this set resolves: the set is internally consistent.
   const references = rows.filter(row => row.kind === 'sheet-reference')
-  assert.equal(references.length, 3)
-  assert.deepEqual(references.map(row => row.status), ['ok', 'ok', 'ok'])
+  assert.equal(references.length, 4)
+  assert.deepEqual(references.map(row => row.status), ['ok', 'ok', 'ok', 'ok'])
   // Device tags: the known duplicate candidates in this set are L1 and MPE206.
   const duplicates = rows.filter(row => row.kind === 'device-tag' && row.status === 'duplicate').map(row => row.value)
   assert.deepEqual(duplicates.sort(), ['L1', 'MPE206'])
@@ -194,7 +194,7 @@ test('checks against the real set name exactly the measured findings', { skip },
   for (const finding of findings) counts[finding.rule] = (counts[finding.rule] ?? 0) + 1
   assert.equal(counts['ECAD-TB-MISSING'] ?? 0, 0)
   assert.equal(counts['ECAD-SHEET-MISMATCH'] ?? 0, 0)
-  assert.equal(counts['ECAD-TB-BLANK'], 69)
+  assert.equal(counts['ECAD-TB-BLANK'], 68)
   assert.equal(counts['ECAD-INDEX-MISMATCH'], 3)
   assert.equal(counts['ECAD-DEVICE-DUPLICATE'], 2)
   assert.equal(counts['ECAD-WIRE-DUPLICATE'], 20)
