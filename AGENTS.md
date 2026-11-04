@@ -77,6 +77,17 @@ pnpm docs:check    # fail when the generated reference is stale
 
 This repository owns the engineering bundle, its rows, and the engineering product packages. AryaCode owns the product catalog, the installer payload, and the profile migrations that make this bundle built-in.
 
+## Client UI (binding)
+
+A client face is part of the app, and the owner judges it that way. Every face — new or edited — follows the host's visual and interaction standards:
+
+- **Use the host theme.** Read the harness `docs/web-styling.md` and its `--dsw-*` tokens before choosing a colour, radius, depth or type scale; use the tokens (with fallbacks), never a new palette, literal brand colours, a component library, Tailwind or emoji icons.
+- **Both themes.** Light and dark come from tokens: no hardcoded backgrounds, text or borders, and state never depends on colour alone.
+- **Match the neighbours.** The existing engineering faces (ladder viewer, FactoryTalk View display preview) set the type, spacing, divider, badge and empty-state conventions; a new face must look like the same product.
+- **Use the host's chrome.** Document tabs, toolbar actions, loading and error states go through the document-preview slots and the shell's own document chrome, not a custom header bar inside the body.
+- **Interaction quality.** Accessible focus rings, keyboard paths, hover/active/disabled states, 24 px minimum targets, no layout shift while loading, and long lists scroll in their own container.
+- **Localized copy.** Every user-visible string lives in the locale dictionary, English and Chinese together; no hardcoded UI copy.
+
 ## Change policy (binding)
 
 - **Never change the installed AryaCode.** `%LOCALAPPDATA%\Programs\AryaCode` (payload, `app.asar`, runtime) and `~/.aryacode` (profiles, `node_modules`, `userData`) are the user's live product. Read them; do not write to them, patch them, or edit a profile's `package.json` to work around a bug. Do not stop, uninstall, or launch a second instance against that profile.
