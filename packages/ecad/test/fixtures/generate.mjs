@@ -321,6 +321,85 @@ function wdM(db) {
 }
 
 // ---------------------------------------------------------------------------
+// cadops.dxf — the geometry the modify-operation specs need: lines that cross,
+// a line that stops short of a boundary, a circle, an arc, an LWPOLYLINE with a
+// bulge, text, a hatch the modify operations must refuse, and a block whose
+// contents sit on a layer a rename has to move.
+// ---------------------------------------------------------------------------
+{
+  const db = new AcDbDatabase()
+  db.createDefaultData()
+  layer(db, 'GEOM', 3)
+  layer(db, 'AUX', 4)
+  layer(db, 'TEXT', 2)
+  const model = db.tables.blockTable.modelSpace
+
+  const line = (x0, y0, x1, y1, layerName) => {
+    const entity = new AcDbLine(new AcGePoint3d(x0, y0, 0), new AcGePoint3d(x1, y1, 0))
+    entity.layer = layerName
+    model.appendEntity(entity)
+    return entity
+  }
+
+  // LINE_A crosses LINE_V; trim cuts LINE_A at the crossing.
+  line(0, 0, 10, 0, 'GEOM')
+  line(5, -5, 5, 5, 'AUX')
+  // LINE_S stops short of LINE_E on the x axis; extend reaches LINE_E.
+  line(0, 2, 8, 2, 'GEOM')
+  line(10, 0, 10, 4, 'AUX')
+  // LINE_F is out of reach of LINE_S's extension, so extend must refuse it.
+  line(12, 0, 12, 1, 'AUX')
+
+  const circle = new AcDbCircle()
+  circle.center = new AcGePoint3d(20, 5, 0)
+  circle.radius = 2
+  circle.layer = 'GEOM'
+  model.appendEntity(circle)
+
+  const arc = new AcDbArc()
+  arc.center = new AcGePoint3d(30, 5, 0)
+  arc.radius = 3
+  arc.startAngle = 0
+  arc.endAngle = Math.PI / 2
+  arc.layer = 'GEOM'
+  model.appendEntity(arc)
+
+  const polyline = new AcDbPolyline()
+  polyline.addVertexAt(0, new AcGePoint2d(40, 0), 0)
+  polyline.addVertexAt(1, new AcGePoint2d(44, 0), 0.3)
+  polyline.addVertexAt(2, new AcGePoint2d(44, 3), 0)
+  polyline.closed = false
+  polyline.layer = 'GEOM'
+  model.appendEntity(polyline)
+
+  text(model, 'NOTE', 50, 5, 0.5, 'TEXT', 0.3)
+
+  // A hatch is approximated geometry: scale/mirror/offset must refuse it.
+  const hatch = new AcDbHatch()
+  hatch.isSolidFill = true
+  hatch.add(new AcGePolyline2d([new AcGePoint2d(80, 0), new AcGePoint2d(82, 0), new AcGePoint2d(82, 2), new AcGePoint2d(80, 2)], true))
+  hatch.layer = 'GEOM'
+  model.appendEntity(hatch)
+
+  // A block whose entities sit on AUX: renaming that layer must move them too.
+  const mark = block(db, 'MARK')
+  const markCircle = new AcDbCircle()
+  markCircle.center = new AcGePoint3d(0, 0, 0)
+  markCircle.radius = 0.5
+  markCircle.layer = 'AUX'
+  mark.appendEntity(markCircle)
+  const markLine = new AcDbLine(new AcGePoint3d(0, 0, 0), new AcGePoint3d(1, 0, 0))
+  markLine.layer = 'AUX'
+  mark.appendEntity(markLine)
+  const insert = new AcDbBlockReference('MARK')
+  insert.position = new AcGePoint3d(60, 5, 0)
+  insert.layer = 'GEOM'
+  model.appendEntity(insert)
+
+  write('cadops', db)
+}
+
+// ---------------------------------------------------------------------------
 // index.dxf — a SHEET INDEX heading and table rows, with the title block text
 // deliberately far away so a parser that ignores columns is caught.
 // ---------------------------------------------------------------------------
