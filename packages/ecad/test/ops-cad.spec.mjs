@@ -55,6 +55,8 @@ function idsOf(model) {
   ok(circle, 'expected the circle at 20,5')
   const arc = entities.find(entity => entity.k === 'arc' && nearPoint(entity.c, [30, 5]))
   ok(arc, 'expected the arc at 30,5')
+  const ellipse = entities.find(entity => entity.k === 'ellipse')
+  ok(ellipse, 'expected the ellipse')
   const polyline = entities.find(entity => entity.k === 'polyline')
   ok(polyline, 'expected the polyline')
   const text = entities.find(entity => entity.k === 'text' && entity.t === 'NOTE')
@@ -71,6 +73,7 @@ function idsOf(model) {
     lineF: line([12, 0], [12, 1]),
     circle: circle.id,
     arc: arc.id,
+    ellipse: ellipse.id,
     poly: polyline.id,
     text: text.id,
     hatch: hatch.id,
@@ -102,6 +105,10 @@ test('validateOps accepts a draft using every new operation', async () => {
     { op: 'extend', layout: 'Model', id: ids.lineS, boundaryId: ids.lineE },
     { op: 'setLine', layout: 'Model', id: ids.lineF, a: [12, 0], b: [12, 2] },
     { op: 'setPolyline', layout: 'Model', id: ids.poly, pts: [[40, 0], [46, 0], [46, 4]], closed: true },
+    { op: 'setCircle', layout: 'Model', id: ids.circle, center: [21, 6], radius: 2.5 },
+    { op: 'setArc', layout: 'Model', id: ids.arc, center: [31, 6], radius: 4, startAngleDeg: 30, endAngleDeg: 150 },
+    { op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [46, 6], rx: 4, ry: 2, rotDeg: 30 },
+    { op: 'setColor', layout: 'Model', ids: [ids.circle, ids.text], color: 5 },
     { op: 'setLayerColor', name: 'GEOM', color: 6 },
     { op: 'renameLayer', from: 'TEXT', to: 'ANNOTATION' }
   ]
@@ -150,6 +157,27 @@ test('validateOps rejects every class of bad modify operation with an actionable
     [{ op: 'setLine', layout: 'Model', id: ids.lineA, a: [2, 2], b: [2, 2] }, /same point/],
     [{ op: 'setPolyline', layout: 'Model', id: ids.lineA, pts: [[0, 0], [1, 0]] }, /setPolyline cannot edit a LINE/],
     [{ op: 'setPolyline', layout: 'Model', id: ids.poly, pts: [[0, 0]] }, /at least 2 point/],
+    [{ op: 'setCircle', layout: 'Model', id: ids.lineA, center: [0, 0], radius: 1 }, /setCircle cannot edit a LINE/],
+    [{ op: 'setCircle', layout: 'Model', id: ids.arc, center: [0, 0], radius: 1 }, /setCircle cannot edit a ARC/],
+    [{ op: 'setCircle', layout: 'Model', id: ids.circle, center: [0, 0], radius: 0 }, /radius must be greater than 0/],
+    [{ op: 'setCircle', layout: 'Model', id: ids.circle, center: [Number.NaN, 0], radius: 1 }, /finite/],
+    [{ op: 'setArc', layout: 'Model', id: ids.circle, center: [0, 0], radius: 1, startAngleDeg: 0, endAngleDeg: 90 }, /setArc cannot edit a CIRCLE/],
+    [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [0, 0], radius: -1, startAngleDeg: 0, endAngleDeg: 90 }, /radius must be greater than 0/],
+    [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [0, 0], radius: 1, startAngleDeg: 0, endAngleDeg: 360 }, /no sweep/],
+    [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [0, 0], radius: 1, startAngleDeg: 45, endAngleDeg: 45 }, /no sweep/],
+    [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [0, 0], radius: 1, startAngleDeg: 0 }, /must be present and finite/],
+    [{ op: 'setEllipse', layout: 'Model', id: ids.circle, center: [0, 0], rx: 1, ry: 1, rotDeg: 0 }, /setEllipse cannot edit a CIRCLE/],
+    [{ op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [0, 0], rx: 0, ry: 1, rotDeg: 0 }, /radii must be greater than 0/],
+    [{ op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [0, 0], rx: 1, ry: -1, rotDeg: 0 }, /radii must be greater than 0/],
+    [{ op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [0, 0], rx: 1, ry: 1, rotDeg: Number.NaN }, /must be present and finite/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 0 }, /ByBlock/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 256 }, /ByLayer/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 'BYLAYER' }, /ByLayer/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 'BYBLOCK' }, /ByBlock/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 1.5 }, /not an ACI index/],
+    [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 300 }, /not an ACI index/],
+    [{ op: 'setColor', layout: 'Model', ids: [], color: 5 }, /at least one entity id/],
+    [{ op: 'setColor', layout: 'Model', ids: ['FFFF'], color: 5 }, /does not exist/],
     [{ op: 'addLayer', name: 'GEOM' }, /already exists/],
     [{ op: 'addLayer', name: '' }, /layer name is empty/],
     [{ op: 'addLayer', name: 'bad/name' }, /not a legal DXF layer name/],
@@ -507,4 +535,124 @@ test('the same draft applied twice produces the same drawing', async () => {
   const second = await applyAndReread(ops)
   assert.deepEqual(first.result.changes, second.result.changes)
   assert.deepEqual(describe(first.after), describe(second.after))
+})
+
+test('setCircle moves and resizes a circle in place and counts a no-op as nothing', async () => {
+  const opened = await openCad()
+  const ids = idsOf(buildSheetModel(opened))
+  const result = applyOps(opened, [{ op: 'setCircle', layout: 'Model', id: ids.circle, center: [22, 6], radius: 2.5 }])
+  assert.equal(result.changes.setCircle, 1)
+  const after = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(opened) }))
+  const circle = topEntities(after).find(entity => entity.id === ids.circle)
+  ok(circle, 'the circle keeps its id')
+  assert.ok(nearPoint(circle.c, [22, 6]) && near(circle.r, 2.5), `circle moved and resized: ${JSON.stringify([circle.c, circle.r])}`)
+  assert.equal(circle.layer, 'GEOM')
+  // Same centre and radius again: nothing changed, nothing counted.
+  const noop = applyOps(opened, [{ op: 'setCircle', layout: 'Model', id: ids.circle, center: [22, 6], radius: 2.5 }])
+  assert.equal(noop.changes.setCircle, undefined)
+})
+
+test('setArc replaces centre, radius and sweep and keeps the wrap-around direction', async () => {
+  const opened = await openCad()
+  const ids = idsOf(buildSheetModel(opened))
+  const result = applyOps(opened, [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [31, 6], radius: 4, startAngleDeg: 30, endAngleDeg: 150 }])
+  assert.equal(result.changes.setArc, 1)
+  const after = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(opened) }))
+  const arc = topEntities(after).find(entity => entity.id === ids.arc)
+  ok(arc, 'the arc keeps its id')
+  assert.ok(nearPoint(arc.c, [31, 6]) && near(arc.r, 4))
+  assert.ok(near(arc.a0, Math.PI / 6) && near(arc.a1, (5 * Math.PI) / 6), `arc angles replaced: ${JSON.stringify([arc.a0, arc.a1])}`)
+  assert.equal(arc.layer, 'GEOM')
+  const noop = applyOps(opened, [{ op: 'setArc', layout: 'Model', id: ids.arc, center: [31, 6], radius: 4, startAngleDeg: 30, endAngleDeg: 150 }])
+  assert.equal(noop.changes.setArc, undefined)
+
+  // A sweep across the 0� seam (350� ? 10�) is legal and stays a 20� arc.
+  const wrapOpen = await openCad()
+  const wrapIds = idsOf(buildSheetModel(wrapOpen))
+  applyOps(wrapOpen, [{ op: 'setArc', layout: 'Model', id: wrapIds.arc, center: [30, 5], radius: 3, startAngleDeg: 350, endAngleDeg: 10 }])
+  const wrapped = topEntities(buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(wrapOpen) }))).find(entity => entity.id === wrapIds.arc)
+  const sweep = (((wrapped.a1 - wrapped.a0) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+  assert.ok(near(sweep, Math.PI / 9), `the wrapped sweep stays 20 degrees: ${sweep}`)
+})
+
+test('setEllipse moves, resizes and turns the major axis in place', async () => {
+  const opened = await openCad()
+  const ids = idsOf(buildSheetModel(opened))
+  const result = applyOps(opened, [{ op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [46, 6], rx: 4, ry: 2, rotDeg: 30 }])
+  assert.equal(result.changes.setEllipse, 1)
+  const after = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(opened) }))
+  const ellipse = topEntities(after).find(entity => entity.id === ids.ellipse)
+  ok(ellipse, 'the ellipse keeps its id')
+  assert.ok(nearPoint(ellipse.c, [46, 6]))
+  assert.ok(near(ellipse.rx, 4) && near(ellipse.ry, 2), `radii replaced: ${JSON.stringify([ellipse.rx, ellipse.ry])}`)
+  assert.ok(near(ellipse.rot, Math.PI / 6), `major axis turned: ${ellipse.rot}`)
+  assert.equal(ellipse.closed, true)
+  assert.equal(ellipse.layer, 'GEOM')
+  // The fixture ellipse starts turned by 0.4 rad; asking for that back is a no-op.
+  const noopOpen = await openCad()
+  const noopIds = idsOf(buildSheetModel(noopOpen))
+  const noop = applyOps(noopOpen, [{ op: 'setEllipse', layout: 'Model', id: noopIds.ellipse, center: [45, 5], rx: 3, ry: 1.5, rotDeg: (0.4 * 180) / Math.PI }])
+  assert.equal(noop.changes.setEllipse, undefined)
+})
+
+test('setColor recolours several top-level entities and counts per-entity changes', async () => {
+  const opened = await openCad()
+  const ids = idsOf(buildSheetModel(opened))
+  const result = applyOps(opened, [{ op: 'setColor', layout: 'Model', ids: [ids.lineA, ids.text], color: 5 }])
+  assert.equal(result.changes.setColor, 2)
+  const after = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(opened) }))
+  const entities = topEntities(after)
+  assert.equal(entities.find(entity => entity.id === ids.lineA).color, 5)
+  assert.equal(entities.find(entity => entity.id === ids.text).color, 5)
+  // An entity colour edit leaves the layer and the layer colour alone.
+  assert.equal(entities.find(entity => entity.id === ids.lineA).layer, 'GEOM')
+  assert.equal(after.layers.find(layer => layer.name === 'GEOM').color, 3)
+  // Same explicit colour again: no change counted.
+  const same = applyOps(opened, [{ op: 'setColor', layout: 'Model', ids: [ids.lineA], color: 5 }])
+  assert.equal(same.changes.setColor, undefined)
+  // The circle is ByLayer on GEOM (colour 3), so asking for 3 is invisible in
+  // the model and counts as a no-op.
+  const resolved = applyOps(opened, [{ op: 'setColor', layout: 'Model', ids: [ids.circle], color: 3 }])
+  assert.equal(resolved.changes.setColor, undefined)
+  // Mixed ids apply per entity: only the circle still changes.
+  const mixed = applyOps(opened, [{ op: 'setColor', layout: 'Model', ids: [ids.lineA, ids.circle], color: 5 }])
+  assert.equal(mixed.changes.setColor, 1)
+  const mixedAfter = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes: dxfBytes(opened) }))
+  const mixedEntities = topEntities(mixedAfter)
+  assert.equal(mixedEntities.find(entity => entity.id === ids.lineA).color, 5)
+  assert.equal(mixedEntities.find(entity => entity.id === ids.circle).color, 5)
+})
+
+test('a write and re-read round trip carries the grip setters and setColor', async () => {
+  const opened = await openCad()
+  const baseModel = buildSheetModel(opened)
+  const ids = idsOf(baseModel)
+  const ops = [
+    { op: 'setCircle', layout: 'Model', id: ids.circle, center: [22, 6], radius: 2.5 },
+    { op: 'setArc', layout: 'Model', id: ids.arc, center: [31, 6], radius: 4, startAngleDeg: 30, endAngleDeg: 150 },
+    { op: 'setEllipse', layout: 'Model', id: ids.ellipse, center: [46, 6], rx: 4, ry: 2, rotDeg: 30 },
+    { op: 'setColor', layout: 'Model', ids: [ids.lineA, ids.text], color: 5 }
+  ]
+  assert.equal(validateOps(opened, ops).ok, true)
+  const result = applyOps(opened, ops)
+  assert.deepEqual(result.changes, { setCircle: 1, setArc: 1, setEllipse: 1, setColor: 2 })
+  const bytes = dxfBytes(opened)
+  const verification = await verifyWritten(opened, bytes, { changes: result.changes, baseModel })
+  assert.equal(verification.ok, true, JSON.stringify(verification.problems))
+  assert.deepEqual(verification.problems, [])
+  assert.ok(verification.applied.setCircle >= 1)
+  assert.ok(verification.applied.setArc >= 1)
+  assert.ok(verification.applied.setEllipse >= 1)
+  assert.equal(verification.applied.setColor, 2)
+
+  const after = buildSheetModel(await openSheet({ path: CAD_FIXTURE, bytes }))
+  const entities = topEntities(after)
+  const circle = entities.find(entity => entity.id === ids.circle)
+  assert.ok(nearPoint(circle.c, [22, 6]) && near(circle.r, 2.5), 'the circle survives the write')
+  const arc = entities.find(entity => entity.id === ids.arc)
+  assert.ok(nearPoint(arc.c, [31, 6]) && near(arc.r, 4) && near(arc.a0, Math.PI / 6) && near(arc.a1, (5 * Math.PI) / 6), 'the arc survives the write')
+  const ellipse = entities.find(entity => entity.id === ids.ellipse)
+  assert.ok(nearPoint(ellipse.c, [46, 6]) && near(ellipse.rx, 4) && near(ellipse.ry, 2) && near(ellipse.rot, Math.PI / 6), 'the ellipse survives the write')
+  assert.equal(entities.find(entity => entity.id === ids.lineA).color, 5)
+  assert.equal(entities.find(entity => entity.id === ids.text).color, 5)
 })

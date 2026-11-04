@@ -32,7 +32,8 @@ import {
   AcDbText,
   AcGePolyline2d,
   AcGePoint2d,
-  AcGePoint3d
+  AcGePoint3d,
+  AcGeVector3d
 } from '@mlightcad/data-model'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -363,6 +364,20 @@ function wdM(db) {
   arc.endAngle = Math.PI / 2
   arc.layer = 'GEOM'
   model.appendEntity(arc)
+
+  // A closed ellipse with a rotated major axis: setEllipse must move its
+  // centre/radii and turn that axis.
+  const ellipse = new AcDbEllipse(
+    new AcGePoint3d(45, 5, 0),
+    new AcGeVector3d(0, 0, 1),
+    new AcGeVector3d(Math.cos(0.4), Math.sin(0.4), 0),
+    3,
+    1.5,
+    0,
+    Math.PI * 2
+  )
+  ellipse.layer = 'GEOM'
+  model.appendEntity(ellipse)
 
   const polyline = new AcDbPolyline()
   polyline.addVertexAt(0, new AcGePoint2d(40, 0), 0)
