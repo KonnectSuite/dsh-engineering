@@ -6,17 +6,18 @@
  * a path's extension decides the format, the format decides what the engine
  * parses, and a write publishes bytes back in the drawing's own format.
  *
- * **DWG is landing in this batch.** This build recognises `.dwg` paths and
- * refuses them with the typed `ECAD_DWG_UNSUPPORTED` error; when the embedded
- * byte-in/byte-out converter is imported, only the marked branches in
- * {@link readDrawing} and {@link writeDrawing} change, and `SUPPORTED_EXTENSIONS`
- * gains its second entry. Nothing outside this module needs to move for that.
+ * **DWG is converted here, not parsed.** A DWG read is converted to DXF bytes by
+ * the embedded converter (`./dwg`, acadrust 0.6.8 as WASM) and then parsed by the
+ * same MIT engine; a DWG write converts the engine's DXF bytes back to DWG and
+ * only then publishes them, still create-only. The conversion detail (converter,
+ * source version, warnings) travels with the read/write so a result can quote it.
  *
  * @module dsh-engineering-ecad/drawings
  */
 
 import { EngineeringError } from './core.ts'
 import type { FsService, FsTarget, FsWriteIntent, SandboxPolicy } from './core.ts'
+import { converterInfo, dwgToDxf, dxfToDwg, isDwg, isDwgError } from './dwg/index.ts'
 
 /** The drawing formats this build can name. */
 export type DrawingFormat = 'dxf' | 'dwg'
@@ -24,16 +25,15 @@ export type DrawingFormat = 'dxf' | 'dwg'
 /**
  * Formats that are read and written end to end.
  *
- * The DWG converter adds `'.dwg'` here when it lands; this is the single list a
- * discovery filter or an output-extension check reads.
+ * This is the single list a discovery filter or an output-extension check reads.
  */
-export const SUPPORTED_EXTENSIONS: readonly string[] = ['.dxf']
+export const SUPPORTED_EXTENSIONS: readonly string[] = ['.dxf', '.dwg']
 
 /**
  * Formats the tools recognise by name.
  *
- * A `.dwg` file is recognised so `ecad_scan` reports it as skipped with the
- * reason DWG is not convertible yet, instead of silently ignoring it.
+ * Kept separate from {@link SUPPORTED_EXTENSIONS} so a build can report a format
+ * it recognises but cannot convert instead of silently ignoring the file.
  */
 export const RECOGNISED_EXTENSIONS: readonly string[] = ['.dxf', '.dwg']
 
@@ -110,16 +110,43 @@ export function isRecognisedDrawingPath(path: string): boolean {
 export function unsupportedDrawingFormat(path: string, format: DrawingFormat): EngineeringError {
   if (format === 'dwg') {
     return new EngineeringError(
-      'ECAD_DWG_UNSUPPORTED',
-      `${path} is a DWG drawing and the DWG converter is not part of this build yet.`,
-      'Export the drawing as DXF from the CAD application and read that, or use a build whose ECAD row includes the DWG converter. Nothing was read or written.'
+      'ECAD_DWG_UNAVAILABLE',
+      `${path} is a DWG drawing and the embedded converter is not available in this build.`,
+      'Reinstall the engineering bundle so the ECAD converter asset ships with it, or export the drawing as DXF and read that. Nothing was read or written.'
     )
   }
   return new EngineeringError(
     'ECAD_UNSUPPORTED_FORMAT',
     `${path} is not a drawing format this build reads.`,
-    `Supported formats: ${SUPPORTED_EXTENSIONS.join(', ') || 'none yet'}. Export the drawing as DXF and retry.`
+    `Supported formats: ${SUPPORTED_EXTENSIONS.join(', ')}. Export the drawing as DXF or DWG and retry.`
   )
+}
+
+/**
+ * Turn a converter failure into the tool envelope's typed error.
+ * @param path - drawing the conversion was for.
+ * @param error - anything the converter threw.
+ */
+function conversionFailure(path: string, error: unknown): EngineeringError {
+  if (isDwgError(error)) {
+    const code = `ECAD_${error.code}`
+    return new EngineeringError(code, error.message, error.fix)
+  }
+  return new EngineeringError(
+    'ECAD_DWG_CONVERT_FAILED',
+    `${path} could not be converted: ${error instanceof Error ? error.message : String(error)}`,
+    'Open the drawing in a CAD application to check it, then retry; report the file if it opens there. Nothing was written.'
+  )
+}
+
+/** @returns the converter identity a result should quote. */
+async function converterLabel(): Promise<string> {
+  try {
+    const info = await converterInfo()
+    return info.kind === 'unavailable' ? 'acadrust' : `acadrust/${info.version}`
+  } catch {
+    return 'acadrust'
+  }
 }
 
 /** Options of {@link readDrawing}. */
@@ -133,9 +160,9 @@ export interface ReadDrawingOptions {
 /**
  * Read one drawing and return the bytes the engine parses.
  *
- * A DXF file is returned unchanged. A DWG file is refused with
- * `ECAD_DWG_UNSUPPORTED` in this build; the converter branch is the only place
- * that changes when it lands.
+ * A DXF file is returned unchanged. A DWG file is converted to DXF bytes by the
+ * embedded converter first; {@link ReadDrawing.conversion} carries the converter
+ * identity, the source version and any reader warnings.
  *
  * @param fs - filesystem provider.
  * @param target - resolved file target.
@@ -156,10 +183,30 @@ export async function readDrawing(fs: FsService, target: FsTarget, displayPath: 
     )
   }
   if (format === 'dxf') return { displayPath, bytes, dxfBytes: bytes, format: 'dxf', sourceBytes: bytes.byteLength }
-  // DWG lands here: `const converted = await dwgToDxf({ bytes, fileName: displayPath, signal })`
-  // then return { bytes, dxfBytes: converted.dxfBytes, format: 'dwg', sourceBytes: bytes.byteLength,
-  // conversion: { converter, sourceVersion: converted.version, warnings: converted.warnings ?? [] } }.
-  throw unsupportedDrawingFormat(displayPath, 'dwg')
+  if (!isDwg(bytes)) {
+    throw new EngineeringError(
+      'ECAD_DWG_INVALID',
+      `${displayPath} is named .dwg but does not start with a DWG version marker.`,
+      'Pass the DWG file itself, or export the drawing from the CAD application again. Nothing was read or written.'
+    )
+  }
+  try {
+    const converted = await dwgToDxf(bytes, { maxBytes: options.maxFileBytes })
+    return {
+      displayPath,
+      bytes,
+      dxfBytes: converted.dxf,
+      format: 'dwg',
+      sourceBytes: bytes.byteLength,
+      conversion: {
+        converter: await converterLabel(),
+        sourceVersion: converted.version,
+        warnings: converted.warnings
+      }
+    }
+  } catch (error) {
+    throw conversionFailure(displayPath, error)
+  }
 }
 
 /** The bytes and format one write publishes. */
@@ -195,9 +242,9 @@ export interface WrittenDrawing {
  * Publish one drawing to a target, in the format its path names.
  *
  * The destination is guarded with `createIfAbsent`: this function never
- * overwrites a customer drawing. A DWG destination is refused with
- * `ECAD_DWG_UNSUPPORTED` in this build; the converter branch is the only place
- * that changes when it lands.
+ * overwrites a customer drawing. A DWG destination converts the engine's DXF
+ * bytes to DWG first and publishes those bytes through the same create-only
+ * guard; the conversion note quotes the version and warnings.
  *
  * @param fs - filesystem provider.
  * @param target - resolved destination target.
@@ -221,9 +268,26 @@ export async function writeDrawing(fs: FsService, target: FsTarget, output: Draw
     })
     return { displayPath: target.displayPath, bytes: output.bytes, format: 'dxf' }
   }
-  // DWG destination lands here: `const converted = await dxfToDwg({ bytes: output.bytes, targetVersion: output.targetVersion })`,
-  // then writeBytes(target, converted.dwgBytes, { kind: 'createIfAbsent' }, ...) and return the conversion note.
-  throw unsupportedDrawingFormat(target.displayPath, output.format)
+  let converted
+  try {
+    converted = await dxfToDwg(output.bytes, output.targetVersion === undefined ? {} : { targetVersion: output.targetVersion })
+  } catch (error) {
+    throw conversionFailure(target.displayPath, error)
+  }
+  const expected: FsWriteIntent = { kind: 'createIfAbsent' }
+  await fs.writeBytes(target, converted.dwg, expected, options.signal, options.sandboxPolicy).catch((error: unknown) => {
+    throw refusedWrite(target.displayPath, error)
+  })
+  return {
+    displayPath: target.displayPath,
+    bytes: converted.dwg,
+    format: 'dwg',
+    conversion: {
+      converter: await converterLabel(),
+      sourceVersion: converted.version,
+      warnings: converted.warnings
+    }
+  }
 }
 
 /**

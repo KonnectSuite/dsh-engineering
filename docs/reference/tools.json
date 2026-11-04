@@ -312,7 +312,7 @@
         "ecad_render",
         "ecad_compare"
       ],
-      "contextChars": 9507
+      "contextChars": 9542
     },
     {
       "product": "ECAD",
@@ -323,7 +323,7 @@
         "ecad_draft_discard",
         "ecad_verify"
       ],
-      "contextChars": 3502
+      "contextChars": 3529
     },
     {
       "product": "ECAD",
@@ -456,12 +456,12 @@
     }
   ],
   "context": {
-    "characters": 130315,
+    "characters": 130377,
     "byProduct": {
       "L5X": 48660,
       "Migration": 8607,
       "Engineering resources": 1454,
-      "ECAD": 15199,
+      "ECAD": 15261,
       "FactoryTalk View": 38409,
       "MotionWorks IEC": 17986
     }

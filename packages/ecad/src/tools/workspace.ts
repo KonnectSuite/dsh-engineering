@@ -14,6 +14,7 @@ import { EngineeringError, boolean, choice, integer, list, object, string, succe
 import type { NextStep, ToolDefinition } from '../core.ts'
 import { EcadSession, INDEX_FILE, PROFILE_FILE, engine, sha256 } from '../session.ts'
 import { RECOGNISED_EXTENSIONS, SUPPORTED_EXTENSIONS, formatOfPath, isRecognisedDrawingPath } from '../drawings.ts'
+import { converterInfo } from '../dwg/index.ts'
 import {
   APPROXIMATE_KINDS,
   ECAD_RULES,
@@ -76,7 +77,7 @@ function capabilities(session: EcadSession): ToolDefinition {
   return tool({
     name: 'ecad_capabilities',
     description:
-      'Report the ECAD surface before anything else: the drawing engine and its pinned version, which formats are supported (DXF today; DWG support is landing in this batch), the workspace root, whether a saved profile and a workspace index exist, whether writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.',
+      'Report the ECAD surface before anything else: the drawing engine and its pinned version, the DWG converter and whether it is available, which formats are supported (DXF, and DWG through the embedded converter), the workspace root, whether a saved profile and a workspace index exist, whether writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.',
     parameters: object({}),
     async run(_args, exec) {
       const workspace = session.workspace(exec)
@@ -91,11 +92,13 @@ function capabilities(session: EcadSession): ToolDefinition {
       const next: NextStep[] = []
       if (profileState.present !== true) next.push({ tool: 'ecad_profile', args: { action: 'infer' }, why: 'The set’s own title-block, layer and tag conventions have not been confirmed; infer them, then confirm with the user.' })
       next.push({ tool: 'ecad_scan', why: 'Index the workspace drawings so the set tools know which sheets exist.' })
+      const converter = await converterInfo()
+      const dwgReady = converter.kind !== 'unavailable'
       return success(
-        `DXF engine ${ENGINE_VERSION} ready; writes are ${session.writes ? 'on' : 'off'}; DWG support is landing in this batch.`,
+        `DXF engine ${ENGINE_VERSION}${dwgReady ? ` with the DWG converter (acadrust ${converter.version})` : ' without a DWG converter'} ready; writes are ${session.writes ? 'on' : 'off'}.`,
         {
-          engine: { id: 'dxf', version: ENGINE_VERSION, reader: '@mlightcad/data-model', writes: true },
-          formats: { supported: SUPPORTED_EXTENSIONS, recognised: RECOGNISED_EXTENSIONS, dwg: false },
+          engine: { id: 'dxf', version: ENGINE_VERSION, reader: '@mlightcad/data-model', dwg: { kind: converter.kind, version: converter.version }, writes: true },
+          formats: { supported: SUPPORTED_EXTENSIONS, recognised: RECOGNISED_EXTENSIONS, dwg: dwgReady },
           contract: { namespace: 'ecad', version: 1, methods: REMOTE_METHODS },
           workspace: {
             root: workspace,
@@ -210,7 +213,7 @@ function scan(session: EcadSession): ToolDefinition {
   return tool({
     name: 'ecad_scan',
     description:
-      'Walk the workspace for drawing files (DXF today; DWG support is landing in this batch), bounded in depth and count and skipping hidden folders, node_modules, backups and .ecad, read each one, and write .ecad/index.json with a summary per sheet: title block, layers, entity and unsupported counts, the set it belongs to, the sheet index when one drawing carries it, and anything skipped (including drawings whose format this build cannot convert yet). Returns a bounded summary, not the whole index.',
+      'Walk the workspace for drawing files (DXF, and DWG through the embedded converter), bounded in depth and count and skipping hidden folders, node_modules, backups and .ecad, read each one, and write .ecad/index.json with a summary per sheet: title block, layers, entity and unsupported counts, the set it belongs to, the sheet index when one drawing carries it, and anything skipped (including drawings whose format this build cannot convert). Returns a bounded summary, not the whole index.',
     parameters: object({
       root: string('Folder to scan, relative to the workspace or absolute. Defaults to the workspace root.'),
       limit: integer('Most drawings to index.', { minimum: 1, maximum: 2000 }),

@@ -14,6 +14,7 @@ import assert from 'node:assert/strict'
 import { ecadTools } from '../src/tools/index.ts'
 import { ECAD_TOOL_NAMES } from '../src/tools/workspace.ts'
 import { ECAD_RULES } from '../src/tools/shared.ts'
+import { dxfToDwg } from '../src/dwg/index.ts'
 import { fixtureBytes, harness, WS } from './harness.mjs'
 import { ok } from './helpers.mjs'
 
@@ -102,15 +103,17 @@ test('capabilities reports formats, limits, writes and what the build cannot do,
   const envelope = succeed(await instance.call('ecad_capabilities'), 'capabilities')
   const data = envelope.data
   assert.equal(data.writes, false)
-  assert.deepEqual(data.formats.supported, ['.dxf'])
+  assert.deepEqual(data.formats.supported, ['.dxf', '.dwg'])
   assert.deepEqual(data.formats.recognised, ['.dxf', '.dwg'])
-  assert.equal(data.formats.dwg, false)
+  assert.equal(data.formats.dwg, true)
+  assert.equal(data.engine.dwg.kind, 'wasm')
+  assert.equal(data.engine.dwg.version, '0.6.8')
   assert.equal(data.limits.maxFileBytes, 64 * 1024 * 1024)
   assert.equal(data.tools.length, 16)
   assert.deepEqual(data.rules, [...ECAD_RULES])
   assert.equal(data.workspace.index.present, false)
   assert.equal(data.workspace.profile.source, 'default')
-  ok(data.limitations.some(line => line.includes('DWG support is landing in this batch')), 'the DWG state is stated')
+  ok(data.limitations.some(line => line.includes('DWG is converted by the embedded acadrust converter')), 'the DWG state is stated')
   ok(envelope.next.some(step => step.tool === 'ecad_scan'))
 })
 
@@ -191,13 +194,13 @@ test('scan indexes the workspace, detects the index sheet and reports formats', 
   ok(index.sheets.some(sheet => sheet.sheetNumber === 'ACME-007' && sheet.title === 'PUMP STATION'))
 })
 
-test('scan reports a DWG as skipped with the typed reason and a bad root as a failure', async () => {
+test('scan reports an invalid DWG as skipped with the typed reason and a bad root as a failure', async () => {
   const withDwg = harness(fixtureSet(new Map([['/ws/Prints/legacy.dwg', new Uint8Array([1, 2, 3, 4])]])))
   const envelope = succeed(await withDwg.call('ecad_scan'), 'scan with dwg')
   assert.equal(envelope.data.sheets, 4)
   assert.equal(envelope.data.skipped.length, 1)
   assert.equal(envelope.data.skipped[0].path, 'Prints/legacy.dwg')
-  assert.ok(envelope.data.skipped[0].reason.includes('DWG'))
+  assert.ok(envelope.data.skipped[0].reason.includes('.dwg'), 'the skipped reason names the file format')
   assert.equal(envelope.coverage.complete, false)
   fail(await withDwg.call('ecad_scan', { root: 'no-such-folder' }), 'ECAD_INVALID_ROOT', 'scan bad root')
 })
@@ -229,7 +232,7 @@ test('open reads a drawing, writes its preview and caches per chat', async () =>
   assert.notEqual(reloaded.data.version, data.version)
 })
 
-test('every drawing read goes through the format module, so DWG is a typed refusal', async () => {
+test('every drawing read goes through the format module, so an invalid DWG is a typed failure', async () => {
   const instance = harness(fixtureSet(new Map([['/ws/Prints/legacy.dwg', new Uint8Array([1, 2, 3, 4])]])))
   const calls = [
     ['ecad_open', { path: 'Prints/legacy.dwg' }],
@@ -242,7 +245,19 @@ test('every drawing read goes through the format module, so DWG is a typed refus
     ['ecad_checks', { path: 'Prints/legacy.dwg' }],
     ['ecad_cross_reference', { path: 'Prints/legacy.dwg' }]
   ]
-  for (const [tool, args] of calls) fail(await instance.call(tool, args), 'ECAD_DWG_UNSUPPORTED', `${tool} on dwg`)
+  for (const [tool, args] of calls) fail(await instance.call(tool, args), 'ECAD_DWG_INVALID', `${tool} on dwg`)
+})
+
+test('a real DWG converts and opens with its provenance', async () => {
+  const converted = await dxfToDwg(fixtureBytes('tiny.dxf'))
+  ok(converted.dwg.byteLength > 0, 'the converter produced DWG bytes')
+  assert.ok(converted.version.startsWith('AC10'), 'the written DWG names its version')
+  const instance = harness(fixtureSet(new Map([['/ws/Prints/tiny.dwg', converted.dwg]])))
+  const envelope = succeed(await instance.call('ecad_open', { path: 'Prints/tiny.dwg' }), 'open converted dwg')
+  assert.equal(envelope.data.format, 'dwg')
+  assert.ok(envelope.data.converted.converter.startsWith('acadrust/'), 'the conversion names the converter')
+  assert.equal(envelope.data.converted.sourceVersion, converted.version)
+  assert.ok(envelope.data.entities > 0, 'the converted DWG produced a render model')
 })
 
 test('overview summarises explicit drawings and falls back to the index', async () => {

@@ -113,7 +113,7 @@ function draftApply(session: EcadSession): ToolDefinition {
   return tool({
     name: 'ecad_draft_apply',
     description:
-      'Apply a staged draft to a NEW drawing file beside the source (never overwriting it), re-read the written bytes, rebuild the model and verify the write against the staged operations and the base model. Requires the row writes switch. The pipeline is open → validate/apply ops → serialise → write new file → re-read and verify → preview; a DWG destination will use the same path once the converter lands. Returns the new path, its version and format, per-operation counters, the verification and any problem that keeps the write unproven — quote those problems instead of calling the output equivalent to the source.',
+      'Apply a staged draft to a NEW drawing file beside the source (never overwriting it), re-read the written bytes, rebuild the model and verify the write against the staged operations and the base model. Requires the row writes switch. The pipeline is open → validate/apply ops → serialise → write new file → re-read and verify → preview; a .dwg source is written back as DWG through the embedded converter and a .dxf source as DXF. Returns the new path, its version and format, per-operation counters, the verification and any problem that keeps the write unproven — quote those problems instead of calling the output equivalent to the source.',
     parameters: object(
       {
         draft_id: string('Draft id returned by ecad_draft_ops.'),
@@ -345,7 +345,7 @@ async function uniqueOutputPath(session: EcadSession, sourcePath: string, reques
     throw new EngineeringError(
       'ECAD_OUTPUT_EXTENSION',
       `The output path ${JSON.stringify(proposed)} does not name a drawing format this build writes.`,
-      'Pass output_path ending in .dxf (DWG destination support is landing in this batch), or omit it to use the default new name.'
+      'Pass output_path ending in .dxf or .dwg, or omit it to use the default new name beside the source.'
     )
   }
   for (let index = 0; index < 100; index += 1) {

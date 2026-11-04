@@ -1,10 +1,10 @@
 ---
 name: ecad-drafting
-description: Read, review, cross-reference and redline electrical drawings in DXF, with every written file verified against the staged edit and the source never overwritten.
-whenToUse: When the user works with electrical prints (DXF drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, annotated, edited or turned into a review bundle.
+description: Read, review, cross-reference and redline electrical drawings in DXF and DWG, with every written file verified against the staged edit and the source never overwritten.
+whenToUse: When the user works with electrical prints (DXF and DWG drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, annotated, edited or turned into a review bundle.
 ---
 
-# ECAD drawings (DXF)
+# ECAD drawings (DXF and DWG)
 
 An electrical print is evidence: the drawing says what it says, and a change is only accepted once
 the written file reads back as the change that was staged. Work in four steps — probe, profile, read,
@@ -60,8 +60,9 @@ prove — and never describe a written file as a faithful round-trip you did not
   writer is a new drawing, not the customer's file.
 - **Confirm the profile.** Guessed conventions that drive checks or cross-reference are the fastest
   way to a confident wrong answer.
-- **DWG support is landing in this batch.** This build reads DXF today; a `.dwg` path is refused with
-  `ECAD_DWG_UNSUPPORTED` rather than guessed at. When the converter lands, the same tools take the
-  file; until then, export the sheet as DXF in the CAD application and read that.
+- **DWG goes through the embedded converter.** A `.dwg` is converted (acadrust, WASM) before the same
+  engine reads it and converted back on apply; quote the conversion provenance and any warnings. A DWG
+  write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; proxy
+  objects, ACIS bodies and xrefs in a DWG are unmeasured and must be reported as such.
 - **Coverage is stated.** Every render, cross-reference row and check result names what it cannot
   establish. Review findings are evidence for a person, not a release certificate.

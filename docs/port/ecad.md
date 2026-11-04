@@ -204,16 +204,71 @@ manifest, SHA-256). Its published reader/writer gap list is also a review checkl
 **Decision and gate.** The owner then approved pulling DWG into the same batch (2026-11-04), so the
 converter is an embedded, byte-in/byte-out module rather than an external install: `acadrust 0.6.8`
 (MPL-2.0, unmodified) behind `packages/ecad/src/dwg` (`converterInfo`, `isDwg`, `dwgToDxf`,
-`dxfToDwg`), built to WASM if the crate compiles for `wasm32` (it documents WebAssembly as supported
-and sequential) and otherwise to a small native sidecar; the wrapper and build script live in
-`packages/ecad/rust/`, the artifact in `packages/ecad/assets/` or `packages/ecad/bin/`, and the MPL
-and ACadSharp notices ship with the package. The service already routes `.dwg` through the converter
-when present and reports `dwg.available`/`format`/`converted`; until the converter artifact merges it
-answers `ECAD_DWG_UNAVAILABLE`, and DXF behaviour is unchanged (probe re-run green).
+`dxfToDwg`), built to **WASM** (the crate compiles for `wasm32`; one host clock import, no
+wasm-bindgen) with a native sidecar as the documented fallback; the wrapper and build script live in
+`packages/ecad/rust/`, the artifact in `packages/ecad/assets/`, and the MPL and ACadSharp notices ship
+with the package. The service routes `.dwg` through the converter and reports
+`dwg.available`/`format`/`converted`; the converter landed in M4 below and every DXF path is unchanged.
 
-The gate is unchanged: on the owner's 33 DWGs, conversion success and time are measured; where a DWG
-and DXF name the same drawing, `DWG→DXF` against the shipped DXF is compared with the shipped engine;
-three sheets take the full `DXF→DWG→DXF` round trip and three take `DWG→DXF→DWG→DXF`; and a drawing is
-never called a faithful DWG round-trip without that evidence. Unsupported entities are reported per
-file, the writer stays version-targeted (the source DWG's version) and off by default, and ODA remains
-the documented fallback when a customer requires AutoCAD-native output and already has it installed.
+The gate: on the owner's 33 DWGs, conversion success and time are measured (M4); where a DWG and DXF
+name the same drawing they are not the same title-block issue, so the comparison is reported as measured
+rather than as equality; three sheets take the full `DXF→DWG→DXF` round trip and three take
+`DWG→DXF→DWG→DXF`; and a drawing is never called a faithful DWG round-trip without that evidence.
+Unsupported entities and conversion warnings are reported per file, the writer stays version-targeted
+(the source drawing's version) and off by default, and ODA remains the documented fallback when a
+customer requires AutoCAD-native output and already has it installed.
+
+## M4 — the DWG converter, measured
+
+**Artifact and build.** WASM won the timebox: `packages/ecad/assets/acadrust.wasm`, **6,408,006 bytes**,
+sha256 `5229f9ae7bff0d47aa4acb5c51927b020cd112d1920e9ee113099460ea9a798d`, built with rustc/cargo
+1.99.1 for `wasm32-unknown-unknown` in **107.5 s** first build (3.3 s rebuild) by
+`packages/ecad/rust/build.ps1`. The module has no wasm-bindgen glue and one host import
+(`ecad_host_now_millis`); acadrust's `memmap2` and `rayon` are `cfg`-gated off for wasm. A native
+sidecar was built to prove the fallback (6,846,976 bytes, 172.8 s via MSVC) but is deliberately not
+committed; its source, build flag and measured size stay in `rust/`, and `src/dwg/sidecar.ts` picks it
+up only when the wasm asset is absent. `cargo test --release` passes 5 tests; the package's
+`test/dwg.spec.mjs` passes 11.
+
+**Conversion on the corpus.** 33/33 DWGs converted with **0 reader warnings**,
+15,556,754 → 80,640,792 DXF bytes in **1,168.6 ms** total (4.7–138.7 ms/sheet; the one-time module
+compile is about 90 ms). Versions present: **16 AC1027, 17 AC1032**; both directions preserve the
+version (`dwgToDxf` reports it, DXF `$ACADVER` carries it back, `dxfToDwg` defaults to it).
+
+**Equivalence, reported honestly.** The DWG set and the shipped DXF set are **different title-block
+issues** of the same drawings (company and date differ on every pair), so entity equality cannot be
+clean: **0/33 pairs entity-identical**, mean geometry shared **89.8 %** (92.2 % excluding
+`TITLE_BLOCK`), differences concentrated in title-block logo hatches/arcs, company/date text,
+paper-space `Layout1` viewport arrangement, and title-block text written on layer `0` in one issue and
+`TITLE_BLOCK` in the other. Sheet 045 shares 6.7 % — a genuine content difference; its conversion and
+round-trip are clean like the rest. DWG support is therefore claimed as conversion plus re-read
+verification, **never** as “the DWG matches the DXF”.
+
+**Write path and round trips.** Shipped DXF → DWG → DXF: **0/0/0** on sheets 004 (smallest) and 035
+(largest), **0/0/3** on 007 where the only change is an anonymous block rename (`*X26`→`*X7`; entity
+count and geometry identical). Real DWG → DXF → DWG → DXF: **0/0/0** on 004, 001 and 035. A DWG write is
+gated on the re-read model, not on byte or handle equality.
+
+**The panel service, on a real DWG.** Probe over `20136-004.dwg` and `FC1000495-001.dxf`:
+`capabilities` reports `engine: dxf+dwg`, wasm 0.6.8, AC1009–AC1032; `open` returns `format: dwg`,
+`converted: {converter: wasm, version: 0.6.8, sourceVersion: AC1027}`, 213 entities, title-block sheet
+`004`, and caches the render artifact; `apply` staged one `addText` and wrote a **new** 56,483-byte
+AC1027 DWG with `verification.ok`, `dwgRoundTrip 0/0/0` and the attribute-attachment warning quoted,
+the source hash unchanged; `sheets` lists both formats; the DXF still opens; a stale `baseVersion` is
+refused with `ECAD_STALE_DOCUMENT`.
+
+**Wrapper work disclosed.** acadrust 0.6.8's DXF reader leaves `ATTRIB` entities loose while its DWG
+writer only writes `Insert::attributes`, so a plain DXF→DWG silently dropped every block-reference
+attribute value; the wrapper re-attaches them positionally per the DXF spec and reports
+“attached N block-reference attribute entity list(s)” as a warning (visible in the service probe).
+`web-time` is patched to an in-repo MIT shim (native `std::time`, one host clock import on wasm);
+acadrust itself is unmodified. `packages/ecad/THIRD_PARTY_NOTICES.md` carries the acadrust MPL-2.0
+statement and full text, the ACadSharp MIT notice, the shim note, and where the MPL source is available
+(crates.io tarball plus the `rust/` wrapper sources).
+
+**Limits.** DWG→DXF output is about 5× the shipped DXF (the shipped DXF is an exploded, block-purged
+export) and includes unreferenced block definitions; visible geometry is unaffected (proven by the
+round-trip diffs). A DWG write renumbers anonymous blocks. Proxy/custom objects, ACIS and xrefs are
+absent from this corpus and therefore **unmeasured** — reader diagnostics are the only report, and
+support is not claimed either way. Conversion runs CPU-synchronously on the calling thread (5–145 ms
+per sheet), so the service caches the model artifact per open.

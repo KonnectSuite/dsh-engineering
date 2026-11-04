@@ -4,7 +4,7 @@
 
 The engineering bundle registers **149 tools** for L5X and Migration and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 149 definitions total **130315 characters** of model-visible JSON — name, description and
+Those 149 definitions total **130377 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -790,7 +790,7 @@ Probe the drawing engine, confirm the set profile, index the sheets, then open, 
 
 #### `ecad_capabilities`
 
-Report the ECAD surface before anything else: the drawing engine and its pinned version, which formats are supported (DXF today; DWG support is landing in this batch), the workspace root, whether a saved profile and a workspace index exist, whether writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.
+Report the ECAD surface before anything else: the drawing engine and its pinned version, the DWG converter and whether it is available, which formats are supported (DXF, and DWG through the embedded converter), the workspace root, whether a saved profile and a workspace index exist, whether writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.
 
 No parameters.
 
@@ -808,7 +808,7 @@ Read or infer the convention profile of the drawing set: title-block layer and l
 
 #### `ecad_scan`
 
-Walk the workspace for drawing files (DXF today; DWG support is landing in this batch), bounded in depth and count and skipping hidden folders, node_modules, backups and .ecad, read each one, and write .ecad/index.json with a summary per sheet: title block, layers, entity and unsupported counts, the set it belongs to, the sheet index when one drawing carries it, and anything skipped (including drawings whose format this build cannot convert yet). Returns a bounded summary, not the whole index.
+Walk the workspace for drawing files (DXF, and DWG through the embedded converter), bounded in depth and count and skipping hidden folders, node_modules, backups and .ecad, read each one, and write .ecad/index.json with a summary per sheet: title block, layers, entity and unsupported counts, the set it belongs to, the sheet index when one drawing carries it, and anything skipped (including drawings whose format this build cannot convert). Returns a bounded summary, not the whole index.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -912,7 +912,7 @@ Validate a list of edit operations against the current drawing and, when every o
 
 #### `ecad_draft_apply`
 
-Apply a staged draft to a NEW drawing file beside the source (never overwriting it), re-read the written bytes, rebuild the model and verify the write against the staged operations and the base model. Requires the row writes switch. The pipeline is open → validate/apply ops → serialise → write new file → re-read and verify → preview; a DWG destination will use the same path once the converter lands. Returns the new path, its version and format, per-operation counters, the verification and any problem that keeps the write unproven — quote those problems instead of calling the output equivalent to the source.
+Apply a staged draft to a NEW drawing file beside the source (never overwriting it), re-read the written bytes, rebuild the model and verify the write against the staged operations and the base model. Requires the row writes switch. The pipeline is open → validate/apply ops → serialise → write new file → re-read and verify → preview; a .dwg source is written back as DWG through the embedded converter and a .dxf source as DXF. Returns the new path, its version and format, per-operation counters, the verification and any problem that keeps the write unproven — quote those problems instead of calling the output equivalent to the source.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

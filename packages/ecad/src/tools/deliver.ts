@@ -205,7 +205,7 @@ function backupTool(session: EcadSession): ToolDefinition {
       const resolved = await resolveSheets(session, args, exec, { limit })
       const paths = resolved.paths.filter(path => isRecognisedDrawingPath(path))
       if (paths.length === 0) {
-        throw new EngineeringError('ECAD_NO_SHEETS', 'None of the selected paths names a drawing file this build recognises.', `Recognised formats: .dxf today (DWG support is landing in this batch).`)
+        throw new EngineeringError('ECAD_NO_SHEETS', 'None of the selected paths names a drawing file this build recognises.', 'Recognised formats: .dxf and .dwg.')
       }
       const set = sanitizeSegment(optionalString(args, 'set') ?? setOfPath(paths[0]!))
       const stamp = new Date().toISOString().replace(/[-:]/gu, '').replace(/\.\d+Z$/u, 'Z')

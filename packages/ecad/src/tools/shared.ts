@@ -52,11 +52,12 @@ export const UNSUPPORTED_TYPES: readonly string[] = [
 
 /** What this build cannot do, reported by `ecad_capabilities`. */
 export const LIMITATIONS: readonly string[] = [
-  'DWG support is landing in this batch: this build reads and writes DXF only, and refuses a .dwg file with ECAD_DWG_UNSUPPORTED.',
-  'Proxy/custom objects, ACIS solids, OLE, raster images and wipeouts are counted but not drawn.',
+  'DWG is converted by the embedded acadrust converter (WASM), not parsed: the same tools read and write .dwg, conversion warnings are quoted, and a DWG write is verified by re-reading the written file.',
+  'Proxy/custom objects, ACIS solids, OLE, raster images and wipeouts are counted but not drawn; in a converted DWG they are unmeasured, and the reader diagnostics are the only report.',
+  'A DWG write renumbers anonymous blocks (for example *X26 → *X7): geometry and text are compared, handles and byte identity are not.',
   'Planar drawings only: entity OCS/extrusion, thickness and non-planar blocks are not transformed.',
   'Splines, hatches, dimensions, leaders and viewports are drawn as approximations, and the count is reported.',
-  'A written file is a new drawing through the MIT DXF writer: ATTRIB vertical justification is not preserved, so the round-trip is verified by model comparison rather than byte equality.',
+  'A written DXF is a new drawing through the MIT DXF writer: ATTRIB vertical justification is not preserved, so the round-trip is verified by model comparison rather than byte equality.',
   'Cross-reference rows are text-pattern candidates: exploded symbols mean a tag is not a device record, and no connectivity is proved.',
   'Rendering is static SVG (geometry and colour only): linetypes, hatch patterns and exact font metrics are not reproduced.',
   'No shell-out and no vendor CAD application; SVG is the only rendered output.',
@@ -223,22 +224,22 @@ export async function buildSheets(
 
 /**
  * Refuse a set-level call that read nothing, keeping the typed reason of the
- * first failure. A single DWG path therefore surfaces the format refusal instead
- * of an empty summary, while a set that merely has one unreadable sheet keeps it
- * in the skipped list and answers about the rest.
+ * first failure. A single unreadable drawing therefore surfaces its conversion
+ * reason instead of an empty summary, while a set that merely has one unreadable
+ * sheet keeps it in the skipped list and answers about the rest.
  *
  * @param built - built sheets and skipped inputs.
  * @param requested - most inputs the caller named.
- * @throws EngineeringError ECAD_DWG_UNSUPPORTED for a single DWG input, or ECAD_NO_READABLE_SHEETS.
+ * @throws EngineeringError the first `ECAD_DWG_*`/format reason for a single input, or ECAD_NO_READABLE_SHEETS.
  */
 export function assertReadable(built: BuiltSheets, requested: number): void {
   if (built.views.length > 0) return
-  const dwg = built.skipped.find(sheet => sheet.code === 'ECAD_DWG_UNSUPPORTED')
-  if (dwg !== undefined && requested <= 1) {
+  const typed = built.skipped.find(sheet => sheet.code !== undefined && (sheet.code.startsWith('ECAD_DWG_') || sheet.code === 'ECAD_UNSUPPORTED_FORMAT'))
+  if (typed !== undefined && requested <= 1) {
     throw new EngineeringError(
-      'ECAD_DWG_UNSUPPORTED',
-      dwg.reason,
-      'Export the drawing as DXF from the CAD application and read that, or use a build whose ECAD row includes the DWG converter. Nothing was read or written.'
+      typed.code ?? 'ECAD_NO_READABLE_SHEETS',
+      typed.reason,
+      'Check the drawing in a CAD application, or pass a DXF/DWG this build can convert; nothing was read or written.'
     )
   }
   const first = built.skipped[0]

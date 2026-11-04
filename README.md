@@ -149,7 +149,14 @@ Where each surface actually stands, based on what has been exercised.
   profile from the ACADE `WD_M` attributes, 74 cross-reference candidates and 97 findings; all 34 sheets
   write → re-read → rebuild with zero model difference, and the sixteen tools are exercised through a fake
   Host composition (sandbox-policy writes, source untouched, explicit failure envelopes). The right-panel
-  viewer and the DWG converter land in the same batch.
+  viewer and the DWG converter landed in the same batch.
+- ECAD DWG: the embedded acadrust 0.6.8 converter (WASM, 6.4 MB) converted **33/33** real DWGs in
+  **1.17 s** total with zero reader warnings, preserving each drawing's version (16 AC1027, 17 AC1032);
+  DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips were **0/0/0** on the measured sheets (one sheet showed
+  only an anonymous-block rename), and the panel service opened a real DWG (title block `004`), applied a
+  redline to a **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source
+  untouched. The DWG and DXF sets are different title-block issues, so equivalence is reported as measured
+  (~90 % shared geometry) rather than as equality.
 - ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
   sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
   empty, truncated and DWG states — with zero console errors; the in-app shell mount is verified with the
@@ -173,7 +180,7 @@ the lean profile is the one that turns them off.
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
 - The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
-- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG rides on an embedded converter and is only claimed for a drawing once its round-trip is measured; no drawing is called a faithful round-trip without that evidence
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set only — proxy objects, ACIS bodies and xrefs are unmeasured and reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
 electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.

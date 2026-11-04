@@ -61,7 +61,7 @@ function parameter(name, description, accept, jsonSchema) {
 var ECAD_METHODS = [
   {
     method: "open",
-    description: "Open a DXF drawing from the session workspace, cache its render model under .ecad/previews, and return the model path the panel reads.",
+    description: "Open a drawing (DXF, or DWG through the embedded converter) from the session workspace, cache its render model under .ecad/previews, and return the model path the panel reads.",
     signature: "async open(sessionId: string, path: string): Promise<EcadOpenResult>",
     parameters: [
       parameter("sessionId", "the session whose workspace holds the drawing", nonEmptyString, { type: "string" }),
@@ -71,7 +71,7 @@ var ECAD_METHODS = [
   },
   {
     method: "apply",
-    description: "Apply a staged draft to a NEW DXF beside the source (never overwriting it), re-read the written file and return the verification.",
+    description: "Apply a staged draft to a NEW drawing beside the source (same format, never overwriting it), re-read the written file and return the verification.",
     signature: "async apply(sessionId: string, path: string, baseVersion: string, ops: readonly EcadOp[]): Promise<EcadApplyResult>",
     parameters: [
       parameter("sessionId", "the session whose workspace holds the drawing", nonEmptyString, { type: "string" }),
@@ -83,7 +83,7 @@ var ECAD_METHODS = [
   },
   {
     method: "sheets",
-    description: "List the DXF drawings in the session workspace, optionally enriched from the cached .ecad index.",
+    description: "List the drawings (DXF, and DWG when the converter is available) in the session workspace, optionally enriched from the cached .ecad index.",
     signature: "async sheets(sessionId: string, limit?: number): Promise<EcadSheetsResult>",
     parameters: [
       parameter("sessionId", "the session whose workspace is scanned", nonEmptyString, { type: "string" }),
@@ -93,7 +93,7 @@ var ECAD_METHODS = [
   },
   {
     method: "capabilities",
-    description: "Report the ECAD surface: contract version, whether writes are enabled, engine limits and DWG support.",
+    description: "Report the ECAD surface: contract version, whether writes are enabled, engine limits and the DWG converter state.",
     signature: "async capabilities(sessionId: string): Promise<EcadCapabilitiesResult>",
     parameters: [
       parameter("sessionId", "the session to report the workspace for", nonEmptyString, { type: "string" })

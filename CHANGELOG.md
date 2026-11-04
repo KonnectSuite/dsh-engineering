@@ -26,8 +26,23 @@
   module for reads, extension rules and publication (the DWG seam), sandbox-stamped writes that only ever
   create a new file beside the source, and 31 tool specs through a fake Cordis composition. Because the row
   ships off the default-on tool budget is unchanged; the generated reference, component manifest and README
-  record the new surface. DWG and the right-panel viewer land in the same batch.
+  record the new surface. DWG and the right-panel viewer landed in this batch.
   ([port evidence](docs/port/ecad.md))
+- **DWG drawings work in the same ECAD tools through an embedded converter, measured on the owner's 33
+  DWGs.** `acadrust 0.6.8` (MPL-2.0, DWG code ported from MIT ACadSharp) is built to a single 6.4 MB
+  WASM module (rustc 1.99.1, 107.5 s first build, one host clock import, no wasm-bindgen) and shipped
+  with the bundle; `packages/ecad/src/dwg` exposes `converterInfo`, `isDwg`, `dwgToDxf` and `dxfToDwg`,
+  and the format module converts a `.dwg` to DXF for the same MIT engine and converts the engine's DXF
+  back on a DWG apply. Measured: **33/33** DWGs converted in **1.17 s** total with zero reader warnings,
+  each drawing's version preserved (16 AC1027 / 17 AC1032); DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips
+  were 0/0/0 on the measured sheets (one showed only an anonymous-block rename). A real DWG opened in
+  the panel service (format `dwg`, converter provenance, title block `004`) and a staged redline wrote a
+  **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source untouched. The
+  DWG and DXF sets are different title-block issues, so equivalence is reported as measured (~90 % shared
+  geometry), never as equality; a DWG write renumbers anonymous blocks, and proxy/ACIS/xref coverage is
+  unmeasured. The wrapper's ATTRIB reattachment (an acadrust 0.6.8 gap), the `web-time` shim, the MPL and
+  ACadSharp notices and the source-availability note ship with the package.
+  ([port evidence](docs/port/ecad.md#m4--the-dwg-converter-measured))
 - **The ECAD drawing panel lands as the bundle's third client face.** Opening a `.dxf` (or `.dwg`) in
   the right panel draws the sheet: fit, pan, zoom, layer visibility, layout tabs, click selection with an
   inspector, coverage badges, the converter provenance for DWG, the loading/empty/truncated/read-only/
