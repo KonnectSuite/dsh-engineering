@@ -277,6 +277,10 @@ export function ApplyOutcomePanel({ t, outcome, onDismiss, onOpenWritten, onBack
     { className: `${css.applyOutcome} ${verification?.ok === true ? css.applyOk : css.applyWarn}`, 'data-ecad-apply-outcome': 'applied' },
     createElement('div', { className: css.panelHeading }, t('appliedTitle')),
     createElement('p', { className: css.outputPath, title: result.outputPath }, t('outputPath'), ': ', createElement('code', {}, result.outputPath)),
+    createElement('p', { className: css.applySummary }, `${t('format')}: ${(result.format ?? 'dxf').toUpperCase()}`),
+    Object.keys(result.changes ?? {}).length === 0
+      ? null
+      : createElement('p', { className: css.applySummary }, `${t('changes')}: ${Object.entries(result.changes).map(([kind, count]) => `${kind} ${count}`).join(', ')}`),
     createElement('p', { className: css.applySummary }, t('applyNetSummary', {
       changes: t(changeTotal === 1 ? 'changeOne' : 'changeMany', { count: changeTotal }),
       verified: verification?.ok === true ? t('verified') : t('notVerified'),

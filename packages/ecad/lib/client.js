@@ -1141,6 +1141,8 @@ function ApplyOutcomePanel({ t, outcome, onDismiss, onOpenWritten, onBackToSourc
     { className: `${EcadBody_default.applyOutcome} ${verification?.ok === true ? EcadBody_default.applyOk : EcadBody_default.applyWarn}`, "data-ecad-apply-outcome": "applied" },
     (0, import_react.createElement)("div", { className: EcadBody_default.panelHeading }, t("appliedTitle")),
     (0, import_react.createElement)("p", { className: EcadBody_default.outputPath, title: result.outputPath }, t("outputPath"), ": ", (0, import_react.createElement)("code", {}, result.outputPath)),
+    (0, import_react.createElement)("p", { className: EcadBody_default.applySummary }, `${t("format")}: ${(result.format ?? "dxf").toUpperCase()}`),
+    Object.keys(result.changes ?? {}).length === 0 ? null : (0, import_react.createElement)("p", { className: EcadBody_default.applySummary }, `${t("changes")}: ${Object.entries(result.changes).map(([kind, count]) => `${kind} ${count}`).join(", ")}`),
     (0, import_react.createElement)("p", { className: EcadBody_default.applySummary }, t("applyNetSummary", {
       changes: t(changeTotal === 1 ? "changeOne" : "changeMany", { count: changeTotal }),
       verified: verification?.ok === true ? t("verified") : t("notVerified")
@@ -2771,6 +2773,7 @@ var en = {
   applyInvalid: "the Host did not report the written drawing",
   writtenUnreadable: "The drawing was written, but its preview could not be read here; reload it to view it.",
   applyNetSummary: "{changes} \xB7 {verified}",
+  changes: "Changes",
   changeOne: "{count} change",
   changeMany: "{count} changes",
   verified: "verified",
@@ -2924,6 +2927,7 @@ var zh = {
   applyInvalid: "\u4E3B\u673A\u672A\u62A5\u544A\u5199\u5165\u540E\u7684\u56FE\u7EB8",
   writtenUnreadable: "\u56FE\u7EB8\u5DF2\u5199\u5165\uFF0C\u4F46\u6B64\u9762\u677F\u65E0\u6CD5\u8BFB\u53D6\u5176\u9884\u89C8\uFF1B\u8BF7\u91CD\u65B0\u52A0\u8F7D\u4EE5\u67E5\u770B\u3002",
   applyNetSummary: "{changes} \xB7 {verified}",
+  changes: "\u66F4\u6539",
   changeOne: "{count} \u9879\u66F4\u6539",
   changeMany: "{count} \u9879\u66F4\u6539",
   verified: "\u5DF2\u9A8C\u8BC1",
