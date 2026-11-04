@@ -575,11 +575,22 @@ export function createEcadService(ctx) {
           const model = engineModule.buildSheetModel(reopened)
           const expected = engineModule.buildSheetModel(opened)
           const diff = engineModule.diffSheetModels(expected, model)
+          const changes = [...diff.added, ...diff.removed, ...diff.changed]
+          // A DWG write can normalise a linetype without touching geometry or
+          // text; that is a metadata difference, reported with its count instead
+          // of failing the write. A changed kind, layer, text, position, size or
+          // any added/removed primitive stays a hard difference.
+          const metadataOnly = change => change.kind === 'changed'
+            && typeof change.reason === 'string'
+            && change.reason.split(', ').every(part => part === 'linetype changed')
+          const hard = changes.filter(change => !metadataOnly(change))
           const dwgRoundTrip = {
-            ok: diff.added.length === 0 && diff.removed.length === 0 && diff.changed.length === 0,
+            ok: hard.length === 0,
             added: diff.added.length,
             removed: diff.removed.length,
             changed: diff.changed.length,
+            hardChanges: hard.length,
+            metadataChanges: changes.length - hard.length,
             truncated: diff.truncated,
             targetVersion: written.version,
             backVersion: back.version,

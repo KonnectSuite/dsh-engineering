@@ -35,13 +35,18 @@
   and the format module converts a `.dwg` to DXF for the same MIT engine and converts the engine's DXF
   back on a DWG apply. Measured: **33/33** DWGs converted in **1.17 s** total with zero reader warnings,
   each drawing's version preserved (16 AC1027 / 17 AC1032); DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips
-  were 0/0/0 on the measured sheets (one showed only an anonymous-block rename). A real DWG opened in
-  the panel service (format `dwg`, converter provenance, title block `004`) and a staged redline wrote a
-  **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source untouched. The
-  DWG and DXF sets are different title-block issues, so equivalence is reported as measured (~90 % shared
-  geometry), never as equality; a DWG write renumbers anonymous blocks, and proxy/ACIS/xref coverage is
-  unmeasured. The wrapper's ATTRIB reattachment (an acadrust 0.6.8 gap), the `web-time` shim, the MPL and
-  ACadSharp notices and the source-availability note ship with the package.
+  were 0/0/0 on the measured sheets (one showed only an anonymous-block rename). Every one of the **33
+  DWGs** then passed the full write gate — open, stage a redline, apply to a NEW DWG, re-open the written
+  DWG and diff the model — with the source bytes unchanged; four sheets report linetype-metadata
+  normalisation only (quoted with its count) and none has a hard geometry or text difference. That gate
+  also found and fixed two false-change defects in the model diff (a tolerance half-step rounding
+  boundary and a full turn compared as `2π−ε`), with a regression test using the measured values. A real
+  DWG opened in the panel service (format `dwg`, converter provenance, title block `004`) and a staged
+  redline wrote a **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source
+  untouched. The DWG and DXF sets are different title-block issues, so equivalence is reported as measured
+  (~90 % shared geometry), never as equality; a DWG write renumbers anonymous blocks, and proxy/ACIS/xref
+  coverage is unmeasured. The wrapper's ATTRIB reattachment (an acadrust 0.6.8 gap), the `web-time` shim,
+  the MPL and ACadSharp notices and the source-availability note ship with the package.
   ([port evidence](docs/port/ecad.md#m4--the-dwg-converter-measured))
 - **The ECAD drawing panel lands as the bundle's third client face.** Opening a `.dxf` (or `.dwg`) in
   the right panel draws the sheet: fit, pan, zoom, layer visibility, layout tabs, click selection with an

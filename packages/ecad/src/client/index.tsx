@@ -22,6 +22,7 @@ import { EcadBody, type EcadBodyProps, type EcadBodyInjected, type Translate } f
 import {
   EcadArtifactError,
   readPreviewArtifact,
+  unwrapRemoteValue,
   type EcadApply,
   type EcadApplyEnvelope,
   type EcadApplyResult,
@@ -248,7 +249,9 @@ export function apply(ctx: ClientContext): void {
   const readCapabilities = async (call: EcadInvoke, sessionId: string, signal: AbortSignal): Promise<EcadCapabilities | undefined> => {
     try {
       signal.throwIfAborted()
-      const payload = await call('capabilities', sessionId)
+      // The Remote layer resolves a successful call to `{ ok, value }`; the ECAD
+      // report is the value. A failure wrapper passes through and is ignored here.
+      const payload = unwrapRemoteValue(await call('capabilities', sessionId))
       const envelope = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : undefined
       if (envelope?.ok !== true) return undefined
       const dwgRecord = envelope.dwg !== null && typeof envelope.dwg === 'object' ? envelope.dwg as Record<string, unknown> : undefined
@@ -296,7 +299,9 @@ export function apply(ctx: ClientContext): void {
     signal.throwIfAborted()
     let payload: unknown
     try {
-      payload = await call('apply', file.sessionId, file.path, baseVersion, ops)
+      // Same carrier rule as open: a successful call is `{ ok, value }`, where
+      // the value is the service's apply envelope (or its failure envelope).
+      payload = unwrapRemoteValue(await call('apply', file.sessionId, file.path, baseVersion, ops))
     } catch (error) {
       return { ok: false, error: failureOf(error, { code: 'ECAD_DISABLED', fix: t('applyFailureFix') }) }
     }
@@ -349,7 +354,11 @@ export function apply(ctx: ClientContext): void {
     signal.throwIfAborted()
     let payload: unknown
     try {
-      payload = await call('open', file.sessionId, file.path)
+      const raw = await call('open', file.sessionId, file.path)
+      // The Remote layer returns `{ ok, value }` for a successful call; the ECAD
+      // envelope itself is the value. Unwrap it, or every field below reads as
+      // missing and the pane reports a bogus unreadable preview.
+      payload = unwrapRemoteValue(raw)
     } catch (error) {
       return { ok: false, error: failureOf(error, { code: 'ECAD_DISABLED', fix: t('unavailableFix') }) }
     }

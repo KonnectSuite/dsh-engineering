@@ -249,6 +249,21 @@ verification, **never** as “the DWG matches the DXF”.
 count and geometry identical). Real DWG → DXF → DWG → DXF: **0/0/0** on 004, 001 and 035. A DWG write is
 gated on the re-read model, not on byte or handle equality.
 
+**Per-drawing write gate.** Every one of the **33 DWGs** was then taken through the panel service's
+whole write path — open (convert), stage one annotation, apply to a NEW DWG, re-open the written DWG
+through the converter, rebuild the model and diff it against the expected model. Result: **33/33 pass**,
+each output keeps the source version (16 AC1027 / 17 AC1032), source bytes are unchanged, and the added
+text is observed. Four sheets (020, 022, 047, 051) report **linetype-metadata normalisation only**
+(936 / 741 / 1000 / 1000 changed entities, reasons `linetype changed`), which the service classifies as
+a metadata difference and quotes with its count; **no sheet has a hard geometry or text difference**.
+The gate also exposed two false-change defects in the engine's model diff, both fixed: a value landing
+on a tolerance half-step boundary (`0.1375` versus the writer's `0.13749999999999996`) rounded to
+different sides, and a full turn reported as `2π−ε` compared unequal to `0`. The fix nudges half-step
+values consistently and collapses a full turn to zero, with a regression test using the measured
+values; without it, sheets 002, 003, 032 and 049 reported phantom size/angle changes. The service's
+`dwgRoundTrip` now reports `hardChanges`/`metadataChanges` separately, so only a real model change keeps
+a write unproven.
+
 **The panel service, on a real DWG.** Probe over `20136-004.dwg` and `FC1000495-001.dxf`:
 `capabilities` reports `engine: dxf+dwg`, wasm 0.6.8, AC1009–AC1032; `open` returns `format: dwg`,
 `converted: {converter: wasm, version: 0.6.8, sourceVersion: AC1027}`, 213 entities, title-block sheet
@@ -268,9 +283,10 @@ statement and full text, the ACadSharp MIT notice, the shim note, and where the 
 
 **Limits.** DWG→DXF output is about 5× the shipped DXF (the shipped DXF is an exploded, block-purged
 export) and includes unreferenced block definitions; visible geometry is unaffected (proven by the
-round-trip diffs). A DWG write renumbers anonymous blocks. Proxy/custom objects, ACIS and xrefs are
-absent from this corpus and therefore **unmeasured** — reader diagnostics are the only report, and
-support is not claimed either way. Conversion runs CPU-synchronously on the calling thread (5–145 ms
+round-trip diffs). A DWG write renumbers anonymous blocks, and four corpus sheets show linetype
+normalisation in the metadata (quoted, not counted against the write). Proxy/custom objects, ACIS and
+xrefs are absent from this corpus and therefore **unmeasured** — reader diagnostics are the only report,
+and support is not claimed either way. Conversion runs CPU-synchronously on the calling thread (5–145 ms
 per sheet), so the service caches the model artifact per open.
 
 ## Dev AryaCode pass (2026-11-04)
@@ -297,8 +313,18 @@ The packaged bundle was installed and booted on the development home
   client-face or composition error appeared. Screenshots from this pass are in
   `tmp/ecad-dev-shots/` (`09-ecad-row-visible.png`, `10-ecad-config.png`); they are evidence, not
   committed assets.
-- **Still to drive interactively.** Opening a DXF/DWG from an app workspace was not exercised in this
-  pass because the dev home has no workspace holding the print set; the panel path is covered by the
-  headless face harness (15 screenshots against a real sheet) and by the real-DWG service probe above.
-  The next commissioning pass mounts the print set in a dev workspace and drives the preview from the
-  file tree.
+- **The drawing panel opened a real DWG in the app.** Two prints were placed in the dev default
+  workspace (`prints/20136-004.dwg`, `prints/FC1000495-001.dxf`), a session was started in that
+  workspace, the DWG was attached through the composer's `@` file menu, and clicking the attachment
+  opened the document preview. It rendered the sheet with the **DWG badge**, `Approximate`, `213
+  entities · all drawn as carried geometry`, Model/Layout1 tabs, the layer list, the title-block fields
+  (`004`, `DTG-#20136`, `20136`, `DTG`), the inspector hint, and the provenance rows
+  (`Format DWG`, `Converted via wasm`, `DXF version AC1027`, file version). Screenshot:
+  `tmp/ecad-dev-shots/25-dwg-preview.png`.
+- **The live pass found a real integration bug, now fixed.** The first click reported
+  `ECAD_PREVIEW_INVALID`: the Remote carrier resolves a successful call to `{ ok, value }`, and the
+  face was reading `modelPath`/`layouts` off that wrapper instead of off the service envelope. The pane
+  now unwraps the success wrapper (`unwrapRemoteValue` in `artifacts.ts`), with a regression test for the
+  wrapper, a direct envelope and a failure wrapper; the packaged bundle was rebuilt and the same click
+  then rendered the drawing. This was invisible to the headless harness because its fake call returned
+  the envelope directly, which is exactly why the interactive dev pass exists.

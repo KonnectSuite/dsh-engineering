@@ -159,8 +159,9 @@ Where each surface actually stands, based on what has been exercised.
   (~90 % shared geometry) rather than as equality.
 - ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
   sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
-  empty, truncated and DWG states — with zero console errors; the in-app shell mount is verified with the
-  Dev AryaCode pass below.
+  empty, truncated and DWG states — with zero console errors. The Dev AryaCode pass then opened a real
+  DWG in the app's right panel: DWG badge, 213 entities, layer list, title-block fields and conversion
+  provenance, with no client error.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins
@@ -180,7 +181,7 @@ the lean profile is the one that turns them off.
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
 - The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
-- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set only — proxy objects, ACIS bodies and xrefs are unmeasured and reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
 electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.

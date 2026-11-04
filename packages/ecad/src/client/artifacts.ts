@@ -111,6 +111,13 @@ export interface EcadDwgRoundTrip {
   readonly added: number
   readonly removed: number
   readonly changed: number
+  /**
+   * Changes that keep the write unproven: values or geometry the converter
+   * really altered. The service separates these from metadata-only changes.
+   */
+  readonly hardChanges?: number
+  /** Changes the service classified as conversion normalisation, not a real edit. */
+  readonly metadataChanges?: number
   readonly truncated: boolean
   readonly targetVersion?: string
   readonly backVersion?: string
@@ -315,6 +322,27 @@ export async function readWorkspaceText(
   for (const part of chunks) text += decoder.decode(part, { stream: true })
   text += decoder.decode()
   return { text, version }
+}
+
+/**
+ * Unwrap the Remote carrier's successful-result wrapper.
+ *
+ * A `ctx.remote.ecad.*` call resolves to `{ ok: true, value }` on success, where
+ * `value` is the service's own envelope; a failed call resolves to
+ * `{ ok: false, error }`. The pane works with the service envelope, so it must
+ * unwrap the success wrapper — reading `modelPath` off the wrapper instead made
+ * every live preview report an unreadable artifact. Failures and plain values
+ * pass through unchanged, so a test double that returns the envelope directly
+ * keeps working.
+ * @param result - what the Remote method resolved to.
+ * @returns the service envelope, or the input when it is not a success wrapper.
+ */
+export function unwrapRemoteValue(result: unknown): unknown {
+  if (result !== null && typeof result === 'object') {
+    const wrapper = result as { readonly ok?: unknown; readonly value?: unknown }
+    if (wrapper.ok === true && 'value' in wrapper) return wrapper.value
+  }
+  return result
 }
 
 /**

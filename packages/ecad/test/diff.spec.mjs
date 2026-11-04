@@ -94,3 +94,22 @@ test('layout ids are compared across both models', () => {
   assert.equal(diff.added.length, 1)
   assert.equal(diff.added[0].layout, 'Layout1')
 })
+
+test('float noise at a tolerance half-step and a full-turn angle are not changes', () => {
+  // Values measured from a real DWG→DXF→DWG→DXF round trip: the writer reports
+  // 0.1375 as 0.13749999999999996 and a full turn as 2π−ε. Neither is a change.
+  const before = modelWith([
+    entity('1', 'circle', { c: [0, 0], r: 0.1375 }),
+    entity('2', 'ellipse', { c: [0, 0], rx: 0.5659615711335886, ry: 0.062499999999999986, rot: -1.5707963267948966 }),
+    entity('3', 'arc', { c: [0, 0], r: 0.0147637499999997, a0: 0, a1: 1.5707963267948966 }),
+  ])
+  const after = modelWith([
+    entity('1', 'circle', { c: [0, 0], r: 0.13749999999999996 }),
+    entity('2', 'ellipse', { c: [0, 0], rx: 0.5659615711335886, ry: 0.0625, rot: -1.5707963267948968 }),
+    entity('3', 'arc', { c: [0, 0], r: 0.014763749999999742, a0: 6.283185307179579, a1: 1.5707963267948966 }),
+  ])
+  assert.deepEqual(diffSheetModels(before, after).changed, [])
+  // A real size change still reports.
+  const bigger = modelWith([entity('1', 'circle', { c: [0, 0], r: 0.14 })])
+  assert.equal(diffSheetModels(modelWith([entity('1', 'circle', { c: [0, 0], r: 0.1375 })]), bigger).changed.length, 1)
+})

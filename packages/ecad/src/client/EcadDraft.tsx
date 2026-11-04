@@ -309,6 +309,12 @@ export function ApplyOutcomePanel({ t, outcome, onDismiss, onOpenWritten, onBack
         createElement('span', { className: `${css.counterValue} ${roundTrip.ok ? css.okText : css.warnText}` }, roundTrip.ok ? createElement(CheckIcon, {}) : t('notVerified')),
       ),
       createElement('p', { className: css.applySummary }, roundTrip.ok ? t('roundTripOk') : t('roundTripDiff', { added: roundTrip.added, removed: roundTrip.removed, changed: roundTrip.changed })),
+      roundTrip.hardChanges !== undefined && roundTrip.hardChanges > 0
+        ? createElement('p', { className: css.applySummary }, t('roundTripHardChanges', { count: roundTrip.hardChanges }))
+        : null,
+      roundTrip.metadataChanges !== undefined && roundTrip.metadataChanges > 0
+        ? createElement('p', { className: css.applySummary }, t('roundTripMetadataChanges', { count: roundTrip.metadataChanges }))
+        : null,
       roundTrip.truncated ? createElement('p', { className: css.applySummary }, t('roundTripTruncated')) : null,
       roundTrip.warnings.length === 0 ? null : createElement(
         'details',
