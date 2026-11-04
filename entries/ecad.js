@@ -75,6 +75,38 @@ export function apply(ctx, config = {}) {
     },
   }
   ctx.provide?.(POLICY_SERVICE, policy)
+
+  // Belt and braces for compositions where the sibling rows do not share the
+  // service lookup: push the same policy into the panel service when it is there,
+  // and retry briefly when this row is applied before the service row.
+  const configureService = () => {
+    const service = ctx.get?.('ecad')
+    if (service === undefined || typeof service.configure !== 'function') return false
+    try {
+      service.configure({ writes: policy.writes, maxFileBytes: policy.maxFileBytes })
+    } catch (error) {
+      ctx.logger?.warn?.(`engineering-ecad: the panel service did not accept the row policy: ${error instanceof Error ? error.message : String(error)}`)
+    }
+    return true
+  }
+  if (configureService()) {
+    ctx.effect?.(() => () => {
+      try {
+        ctx.get?.('ecad')?.configure?.({ writes: false })
+      } catch {
+        // The service is going away with the composition; nothing to reset.
+      }
+    }, 'engineering-ecad: reset the panel writes switch')
+  } else {
+    let attempts = 0
+    const timer = setInterval(() => {
+      attempts += 1
+      if (configureService() || attempts >= 100) clearInterval(timer)
+    }, 50)
+    timer.unref?.()
+    ctx.effect?.(() => () => clearInterval(timer), 'engineering-ecad: stop waiting for the panel service')
+  }
+
   ctx.plugin(ecad, config)
   ctx.plugin(skill)
 }

@@ -24,7 +24,7 @@ test/                     patch, docs, tool-reference, manifest and client-face 
 
 The host components are vendored into `vendor/`, so the published package is self-contained:
 its only `@aryacode/*` dependency is the Optix component. The three face packages are build inputs, not
-dependencies — their built bundles are folded into `lib/client.js`.
+dependencies â€” their built bundles are folded into `lib/client.js`.
 
 ## Row model
 
@@ -38,7 +38,7 @@ user's enabled state.
 | `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
 | `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `edit` on |
 | `ecad` | `entries/ecad.js` | drawing reads, review, cross-reference, checks, render/compare, staged drafts, review and backup deliverables, `ecad-drafting` guidance; the row ships off | `writes` off, `maxFiles` 2000, `maxFileBytes` 64 MiB, `maxEntities` 200000 |
-| `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | â€” |
 | `optix` | `entries/optix.js` | Optix Studio reads, authoring, preview and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on, `netlogic` on |
 
 A product row is an `entries/*.js` composite: it mounts the vendored parts (`ctx.plugin(part)`) so the
@@ -114,7 +114,7 @@ ships off until the ceiling is raised with its measurement. Both checks are in
 [components](reference/components.md).
 
 The patch **only inserts**. An entry that targets another bundle's row (`- id: something-else`) is a
-hard failure when that row is absent — `dsh: [...] patch: entry "..." not found` — and the bundle then
+hard failure when that row is absent â€” `dsh: [...] patch: entry "..." not found` â€” and the bundle then
 refuses to apply. 0.4.0 and 0.4.1 shipped exactly that and were uninstallable; `test/patch.spec.mjs`
 now rejects any non-insert entry.
 
@@ -136,7 +136,7 @@ Every host entry accepts a validated config from the profile or a patch:
 | `l5x-read` | `maxFileBytes` | 64 MiB |
 | `l5x-editing` | `maxFileBytes`, `maxDraftOperations` | 64 MiB, 200 |
 | `l5x-studio` | `maxFileBytes` | 64 MiB |
-| `l5x` → live | `live`, `allowWrites`, `allowedAddresses`; then the live entry's `enabled`, intervals, `maxTags`, `maxSamples`, `maxBatchTags` | false, false, empty; true, 50 ms, 200 ms, 16, 1200, 64 |
+| `l5x` â†’ live | `live`, `allowWrites`, `allowedAddresses`; then the live entry's `enabled`, intervals, `maxTags`, `maxSamples`, `maxBatchTags` | false, false, empty; true, 50 ms, 200 ms, 16, 1200, 64 |
 | `ftview-read` | `maxFiles` | 2000 |
 | `ftview-edit` | `maxDraftOperations` | 100 |
 | `ftview-studio` | `searchRoots` | the two Rockwell Programs folders |
@@ -158,7 +158,7 @@ The L5X row's `live` option mounts one entry (`vendor/l5x/lib/live.js`) that own
 path. Two workers keep a controller problem off the host:
 
 - `poll-worker.mjs` streams sweeps for `poll_live_tags` and the trend job.
-- `cip-worker.mjs` runs one transaction per worker — batch read, clock, write, clock write, discovery —
+- `cip-worker.mjs` runs one transaction per worker â€” batch read, clock, write, clock write, discovery â€”
   and emits exactly one reply. `lib/engine/cip-transaction.ts` owns the deadline, the concurrency bound
   and strict decoding of every reply, so a hung socket is terminated and a malformed reply cannot be
   read as a value.
@@ -179,7 +179,7 @@ escape hatch and `TagGroup` writes are unused by design: a raw CIP write would b
 
 A package registers exactly **one** client bundle, keyed by the package name the Shell resolves from
 the mounted row. A second registration under another id is never asked for, and the failure presents
-as a plugin that loaded and drew nothing rather than as an error — so `@aryacode/dsh-engineering`
+as a plugin that loaded and drew nothing rather than as an error â€” so `@aryacode/dsh-engineering`
 carries all three engineering previews in its single `./client` bundle:
 
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
@@ -188,7 +188,7 @@ carries all three engineering previews in its single `./client` bundle:
   window/crossing marquee, middle/right/Space pan, wheel zoom, right-click menu, grips (line,
   polyline, circle, arc, ellipse and insertion setters), object snaps including intersection,
   ortho/grid, undo/redo, a draw/modify tool palette, editable text/attribute/layer/colour
-  properties and layers, print/export, and — when the row's `writes` switch is on — staged edits
+  properties and layers, print/export, and â€” when the row's `writes` switch is on â€” staged edits
   applied through `ecad/apply` to a new verified drawing (the shell's filesystem service is
   text-only, so drawing bytes go through a policy-checked local writer that refuses a read-only
   session or an outside destination). The same face also claims all
@@ -200,18 +200,18 @@ carries all three engineering previews in its single `./client` bundle:
 `packages/viewer/lib`, `packages/ftview-viewer/lib` and `packages/ecad/lib`, which
 `scripts/build-viewer-face.mjs`, `scripts/build-ftview-face.mjs` and `scripts/build-ecad-face.mjs`
 build from this repository's own sources first (`pnpm build:client` runs all four in that order). Each
-face body is copied verbatim into its own closure inside the one registration — each declares its own
-`React` binding, document-preview id, stylesheet text and helpers — and the merged plugin exports the
+face body is copied verbatim into its own closure inside the one registration â€” each declares its own
+`React` binding, document-preview id, stylesheet text and helpers â€” and the merged plugin exports the
 union of the faces' `inject` lists and an `apply` that runs each. Nothing is re-authored, retransformed
 or re-hashed.
 
 The face builds carry the transforms AryaCode's client toolchain supplies: a CSS-module transform (a
-scoped class map plus a one-shot `<style data-plugin-css=…>`) and the workspace-address helpers,
+scoped class map plus a one-shot `<style data-plugin-css=â€¦>`) and the workspace-address helpers,
 vendored per face (`packages/viewer/src/client/vendor/workspace-path.ts`, the same file copied beside
 the ECAD face) because the harness package that provided them is not published. React, react-dom and
 the client primitives stay external, as the Shell provides them. The ECAD face styles itself from the
-host's `--dsw-*` tokens only — no new palette, light and dark both, with the sheet's ACI linework mixed
-toward the theme ink — so it reads as part of the same app.
+host's `--dsw-*` tokens only â€” no new palette, light and dark both, with the sheet's ACI linework mixed
+toward the theme ink â€” so it reads as part of the same app.
 
 Two consequences worth stating:
 
@@ -227,7 +227,7 @@ mounted.
 
 **Adding a preview is adding a face.** `scripts/build-client.mjs` folds each face into the one
 registration, so a new document preview is a face there, not a row. A preview that needs its own
-release becomes its own package whose row names the exact package root — the Shell rejects a subpath —
+release becomes its own package whose row names the exact package root â€” the Shell rejects a subpath â€”
 never a second row over this bundle.
 
 ## Typert Remote face
@@ -236,7 +236,7 @@ The bundle is also a Typert contributor. `package.json` exports `"./typert"` (`l
 while the `viewers` row is mounted the Host's typert loader resolves the row's package root, reads that
 export, validates the `TYPERT` manifest and registers its invocations in `ctx.typert`. The Gateway then
 dispatches an endpoint to the Cordis service the descriptor names, so a client bundle can call a
-method the package itself defines — no `@deepseek-ai` package has to know about it.
+method the package itself defines â€” no `@deepseek-ai` package has to know about it.
 
 `src/remote/ecad-contract.js` is the one source of the wire facts: `scripts/build-client.mjs` renders
 `lib/typert.host.js` from it and the client face imports the same module for its mounted contribution,
@@ -266,13 +266,13 @@ registry (`@aryacode/dsh-tool-ft-optix`, a plain version range):
 
 ```
 dsh-engineering-<version>.tgz
-  ├── cordis.patch.yml        the rows (inserts only)
-  ├── lib/client.js           all three previews, one registration
-  ├── lib/index.js            the host half the `viewers` row mounts
-  ├── lib/typert.host.js      the package-defined Typert Remote artifact
-  ├── src/remote/             the wire contract and the ECAD Remote service
-  ├── vendor/ecad/            the ECAD engine, its DWG converter (WASM or a sidecar), rust source and MPL/MIT notices
-  └── vendor/{l5x,ftview,mwi} the vendored components and their assets
+  â”œâ”€â”€ cordis.patch.yml        the rows (inserts only)
+  â”œâ”€â”€ lib/client.js           all three previews, one registration
+  â”œâ”€â”€ lib/index.js            the host half the `viewers` row mounts
+  â”œâ”€â”€ lib/typert.host.js      the package-defined Typert Remote artifact
+  â”œâ”€â”€ src/remote/             the wire contract and the ECAD Remote service
+  â”œâ”€â”€ vendor/ecad/            the ECAD engine, its DWG converter (WASM or a sidecar), rust source and MPL/MIT notices
+  â””â”€â”€ vendor/{l5x,ftview,mwi} the vendored components and their assets
 ```
 
 No `@aryacode/*` component is a dependency, so a profile installs one thing and toggles rows inside it.
@@ -298,7 +298,7 @@ Every product backs up into one workspace tree, so a backup means the same place
 | ECAD | `ecad` | drawing set | on request; `ecad_draft_apply` already writes a new drawing |
 | FactoryTalk Optix | `optix` | project name | on request, as a manual Studio export into that folder |
 
-The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, … ] }`, the same shape
+The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, â€¦ ] }`, the same shape
 MotionWorks writes; a restore re-hashes each file before using the copy.
 
 MotionWorks is the one product whose backup is a *contract*: its identity record under
@@ -307,13 +307,13 @@ MotionWorks is the one product whose backup is a *contract*: its identity record
 it. Both guards accept a record written before 0.4.21 that points at the old
 `.motionworks/attached/backups` root, so existing workspaces keep working without a migration.
 
-Optix has no skill and no file tooling in this bundle — its tree is the prebuilt component — so its row
+Optix has no skill and no file tooling in this bundle â€” its tree is the prebuilt component â€” so its row
 has the location but not an automated action; a backup there is a Studio project export copied into the
 same tree.
 
 Never write `<workspace>/_backups` or the pre-0.4.21 `<workspace>/backups/<project>/<stamp>/` layout.
 They are read-only history: `_backups` predates this bundle, and the `<project>` layout was MotionWorks
-0.4.13–0.4.20.
+0.4.13â€“0.4.20.
 
 ## Compatibility
 
@@ -342,14 +342,14 @@ either preview.
 
 `packages/viewer/test/render/suite.mjs` is the ladder face's end-to-end evidence: it mounts the built
 `packages/viewer/lib/client.js` in headless Chrome, opens a routine the way a reader does and measures
-the rendered document — no clipped text, one label per instruction, no label escaping its cell, no
+the rendered document â€” no clipped text, one label per instruction, no label escaping its cell, no
 overlapping labels, no instruction comment overprinting its neighbour, no index used as a pin name, and
 every recorded exported value on screen. It needs Chrome or Edge installed and is kept out of
 `pnpm test` for that reason.
 
 Two companion runs cover what a case table cannot. `packages/viewer/test/render/routines.mjs` opens
-every routine the organiser lists in one export — 256 routines across the CT9, CT10, CT8, Slitter,
-PLC-5-migrated and Century fixtures at the time of writing — so a shape that only occurs in one
+every routine the organiser lists in one export â€” 256 routines across the CT9, CT10, CT8, Slitter,
+PLC-5-migrated and Century fixtures at the time of writing â€” so a shape that only occurs in one
 unscheduled program or one migrated routine is judged too. `packages/viewer/test/render/interactions.mjs`
 drives the pane instead of only reading it: a click focuses an instruction, arrow keys walk the rung, a
 rung number selects its rung, the source view shows the exported NeutralText, the organiser filter

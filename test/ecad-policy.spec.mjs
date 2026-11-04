@@ -15,12 +15,13 @@ import { apply as applyToolsRow, POLICY_SERVICE } from '../entries/ecad.js'
 import { createEcadService } from '../src/remote/ecad-service.js'
 
 /** A tiny Cordis context that records what a row provides and mounts. */
-function fakeContext() {
+function fakeContext(loader) {
   const provided = new Map()
   const mounted = []
   return {
     provided,
     mounted,
+    ...(loader === undefined ? {} : { loader }),
     get(name) {
       return provided.get(name)
     },
@@ -73,4 +74,19 @@ test('configure still controls the service when no row policy is mounted', () =>
   assert.equal(service.writes, true)
   service.configure({ writes: false })
   assert.equal(service.writes, false)
+})
+
+test('the effective Loader row config is read directly, without a run-order handshake', () => {
+  const row = { options: { id: 'ecad', config: { writes: true } } }
+  const loader = { entries: () => [row] }
+  const ctx = fakeContext(loader)
+  const service = createEcadService(ctx)
+
+  assert.equal(service.writes, true, 'the service reads writes from the loaded ecad row')
+  row.options.config = { writes: false }
+  assert.equal(service.writes, false, 'a reloaded row config is read live')
+
+  // A volatile field arrives as a getter reference; it is unwrapped too.
+  row.options.config = { writes: { get: () => true } }
+  assert.equal(service.writes, true)
 })

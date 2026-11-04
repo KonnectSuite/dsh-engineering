@@ -537,7 +537,25 @@ export function createEcadService(ctx) {
       return undefined
     }
   }
+  /** The effective `ecad` row config, read from the Loader that booted the app. */
+  const rowConfigOf = () => {
+    try {
+      const loader = ctx.loader ?? ctx.get?.('loader')
+      if (loader === undefined || typeof loader.entries !== 'function') return undefined
+      for (const entry of loader.entries()) {
+        if (entry?.options?.id !== 'ecad') continue
+        const config = entry.options.config
+        return config !== null && typeof config === 'object' ? config : undefined
+      }
+    } catch {
+      // The Loader is a host service; a test double or a future host may not have it.
+    }
+    return undefined
+  }
   const writesNow = () => {
+    const row = rowConfigOf()?.writes
+    const live = row !== null && typeof row === 'object' && typeof row.get === 'function' ? row.get() : row
+    if (typeof live === 'boolean') return live
     const policy = policyOf()
     return policy !== undefined && typeof policy.writes === 'boolean' ? policy.writes : writesEnabled
   }

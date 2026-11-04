@@ -4,26 +4,26 @@
   *Allow ECAD writes* saved `writes: true` in the profile, but the panel still opened `Read-only` and
   the dock said `writes off`: the `ecad` row configured the package-root Remote service only if that
   service already existed at the moment the row applied, so the panel service kept its read-only
-  default when the two sibling rows mounted in the other order. The row now publishes a live
-  `ecadPolicy` service from its volatile `writes`/`maxFileBytes` config and the Remote service reads
-  that policy on every `open`, `capabilities` and `apply` call; the one-time `configure` remains as a
-  fallback for compositions without the row. A regression spec mounts the service first, applies the
-  row with `writes: true`, then flips the live switch, and asserts the panel sees both changes.
+  default when the two sibling rows mounted in the other order. The Remote service now reads the
+  effective `ecad` row config from the booting Loader on every `open`, `capabilities` and `apply` call,
+  then falls back to the row's live `ecadPolicy` service and the one-time `configure`; the row also
+  publishes that policy and retries the direct push briefly, so either row order agrees on writes. A
+  regression spec covers the Loader read, a live row-config change and the service-first case.
 - **DWG conversions are isolated and retried cleanly, and the suite runs one file per process.** The
   embedded `acadrust` wasm instance was reused across conversions; its Rust allocator retained memory,
-  and after a long session a DXF→DWG conversion could abort with `memory access out of bounds`
+  and after a long session a DXFâ†’DWG conversion could abort with `memory access out of bounds`
   (observed intermittently in the full suite). Every conversion now gets a fresh instance from the
   cached module, and a conversion that still hits that exact transient trap is retried once with a
   fresh instance; malformed inputs fail deterministically and are never retried. A regression test
   performs 40 conversions in one process, and a manual 3-round run converted all 33 DWGs 297 times with
   zero failures. The test command now runs each spec file in its own child process
   (`scripts/test.mjs`) and retries a file once when it exits non-zero without reporting a failing
-  test — the observed Node/wasm interaction occasionally kills the file instead of failing a test;
+  test â€” the observed Node/wasm interaction occasionally kills the file instead of failing a test;
   a deterministic failure fails twice and stops the run. Three consecutive full `npm test` runs are
   green at **394 tests**.
 - **The drawing pane is now a CAD workspace.** The view-only preview/three-operation editor became a
-  full drawing surface: selection sets with Shift-add/Ctrl-toggle; AutoCAD-style marquee (left→right
-  window, fully enclosed, blue; right→left crossing, anything touched, green); middle-drag,
+  full drawing surface: selection sets with Shift-add/Ctrl-toggle; AutoCAD-style marquee (leftâ†’right
+  window, fully enclosed, blue; rightâ†’left crossing, anything touched, green); middle-drag,
   right-drag and Space+left-drag pan (a right-drag pans and suppresses the menu; a right click opens
   it); wheel zoom-at-cursor, zoom extents/window; right-click context menu (select all, zoom, pan,
   move, copy, erase, properties, ask, print, SVG); grips on line endpoints, polyline vertices, circle
@@ -43,8 +43,8 @@
   multi-select, context menu, grips and setter previews, intersection snap, layer/colour staging,
   apply with verification 4/4, print, read-only, 10k-primitive sheet, no page errors); the bundle
   suite is 394/394 with typecheck clean. Remaining limits are named in the panel and README: generic
-  geometry and dimension grips wait on engine setters; trim/extend are line↔line, offset
-  line/circle/arc, intersection snap is straight segments; entity colour is ACI 1–255; layer-table
+  geometry and dimension grips wait on engine setters; trim/extend are lineâ†”line, offset
+  line/circle/arc, intersection snap is straight segments; entity colour is ACI 1â€“255; layer-table
   changes show after apply/reopen; print uses the current view. Unreleased by design.
 - **The drawing engine now has the CAD modify operations the panel needs.** `EcadOp` gained
   `addCircle`, `addArc`, `copy`, `scale`, `mirror` (keeps a mirrored copy by default, `eraseSource`
@@ -52,24 +52,24 @@
   drawing-level `addLayer`/`setLayerColor`/`renameLayer`. Validation/application live in
   `packages/ecad/src/engine/ops.ts` with pure 2-D geometry in `ops-geom.ts`; support is explicit and
   refusals name the kind and a fix: scale/mirror cover the common primitives but refuse
-  hatch/spline/dimension/viewport (mirror also refuses inserts — mirror the block geometry instead),
+  hatch/spline/dimension/viewport (mirror also refuses inserts â€” mirror the block geometry instead),
   offset covers line/circle/arc, trim/extend are line against line, only top-level entities can be
   edited, and mirror keeps text readable (MIRRTEXT=0). The written-file verification learns the new
   kinds (added primitives for circle/arc/copy/mirror/offset, changed-geometry rows for
   scale/trim/extend/setLine/setPolyline, layer add/rename/color comparisons). 15 new tests cover
-  geometry, refusals and a synthetic DXF write→re-read round trip; the ECAD package suite is
+  geometry, refusals and a synthetic DXF writeâ†’re-read round trip; the ECAD package suite is
   234/234 and typecheck is clean. The `ecad_draft_ops` description and skill now name the operations.
   The panel commands that dispatch them are the next commit; nothing is released.
 - **Grip setters and entity colour in the engine.** The second operation round adds
   `setCircle {layout, id, center, radius}`, `setArc {layout, id, center, radius, startAngleDeg,
   endAngleDeg}`, `setEllipse {layout, id, center, rx, ry, rotDeg}` and `setColor {layout, ids,
-  color}` (ACI 1–255; ByLayer/ByBlock refused with a fix). Setters edit top-level CIRCLE/ARC/ELLIPSE
-  entities in place, treat a same-geometry set as a no-op, normalise arc angles modulo 360°, allow a
-  350°→10° seam sweep, and apply ellipse rotation as a rigid transform (the pinned data model has no
+  color}` (ACI 1â€“255; ByLayer/ByBlock refused with a fix). Setters edit top-level CIRCLE/ARC/ELLIPSE
+  entities in place, treat a same-geometry set as a no-op, normalise arc angles modulo 360Â°, allow a
+  350Â°â†’10Â° seam sweep, and apply ellipse rotation as a rigid transform (the pinned data model has no
   major-axis setter); `setColor` counts only entities whose resolved ACI actually changes. Written-file
   verification observes geometry reasons for the three setters and `colour changed` for `setColor`,
   with the same lower-bound rules as the existing operations. Five new tests (20 in `ops-cad.spec.mjs`
-  in total) cover geometry, no-ops, wrap-around, every new refusal and a write→re-read round trip;
+  in total) cover geometry, no-ops, wrap-around, every new refusal and a writeâ†’re-read round trip;
   the ECAD package suite is **266/266**. A real-sheet smoke on a copy of `FC1000495-002` applied all
   four setters, wrote 261,812 bytes and re-read four changed primitives (`colour/position/size/angle`)
   with the source byte-identical. The panel wiring is the next commit.
@@ -77,7 +77,7 @@
   `plugins.row.config` for `l5x`, `ftview`, `mwi` and `optix` but not `ecad`, so the row had no
   Configure control; and the row's own `Config` fields were declared without `.volatile()`, so even
   after adding the page the Host settings document exposed no `ecad` namespace and the page reported
-  *“This row has no configuration to change.”* Both are fixed: the five row pages are registered, and
+  *â€œThis row has no configuration to change.â€* Both are fixed: the five row pages are registered, and
   `writes`/`maxFiles`/`maxFileBytes`/`maxEntities` are volatile (the numeric limits read their live
   getter like the write switch). A clean dev profile now lists an `ecad` settings namespace with
   `{ writes: false, maxFiles: 2000, maxFileBytes: 67108864, maxEntities: 200000 }`, so the page shows
@@ -86,8 +86,8 @@
 - **Flattened block linework now lands where the insert puts it.** The block flattener applied the insert
   transform to every primitive except `LINE`, so block line segments were written at block-local
   coordinates. On the real print set that piled stray geometry into the bottom-left corner of nearly
-  every sheet — the panel showed short electrical fragments at the origin while circles, arcs and text
-  were in place. `LINE` now goes through the same `applyPoint(xf, …)` path as the other primitives, a
+  every sheet â€” the panel showed short electrical fragments at the origin while circles, arcs and text
+  were in place. `LINE` now goes through the same `applyPoint(xf, â€¦)` path as the other primitives, a
   synthetic fixture block carries a line and asserts its world coordinates, and sheet
   `FC1000495-025` re-renders with its contacts, coils and terminal bars complete and no corner cluster.
   This is unreleased: 0.86.0 is unchanged on the registry and the fix needs a 0.86.1 batch.
@@ -100,7 +100,7 @@
 
 ## [0.86.0] - 2026-11-04
 
-- **ECAD (DXF) groundwork — feasibility measured on the owner's real print set.** The 34-sheet DXF
+- **ECAD (DXF) groundwork â€” feasibility measured on the owner's real print set.** The 34-sheet DXF
   corpus parses with `@mlightcad/data-model@1.15.21` (MIT) and round-trips with **no** model
   difference on any sheet (entities, types, text/layer values, block names, layers and block-attribute
   values), at 693 ms to parse and 554 ms to write the whole set; rename, move, new text on a new layer,
@@ -112,16 +112,16 @@
   (`packages/ecad/src/engine`, over MIT `@mlightcad/data-model`) parses the 34-sheet corpus into 83,936
   primitives with **0 unsupported** and 0 truncated layouts, reads sheet numbers and titles on all 34
   sheets, the 80-row index sheet, a 0.95-confidence profile from the ACADE `WD_M` attributes, 74
-  cross-reference candidates and 97 review findings. All 34 sheets write → re-read → rebuild with
-  **zero** model differences and `verifyWritten.ok`, and drafts validate → apply → write → verify on
+  cross-reference candidates and 97 review findings. All 34 sheets write â†’ re-read â†’ rebuild with
+  **zero** model differences and `verifyWritten.ok`, and drafts validate â†’ apply â†’ write â†’ verify on
   three sheets. The panel's Remote service is wired to it: `open`, `apply`, `sheets` and `capabilities`
   were exercised against a fake Host context over two real sheets (render-model artifact, new-file
   apply with verification, stale-document and writes-disabled refusals). Known writer limits (ATTRIB
   vertical justification, filled hatch islands, planar geometry assumption) are reported per write.
   ([port evidence](docs/port/ecad.md))
-- **ECAD drawing tools land behind a row that ships off.** Sixteen `ecad_*` tools — probe, profile, scan,
+- **ECAD drawing tools land behind a row that ships off.** Sixteen `ecad_*` tools â€” probe, profile, scan,
   open, overview, find, cross-reference, checks, render, compare, staged drafts with `ecad_verify`, and
-  the document/backup deliverables — plus the `ecad-drafting` skill, mounted by a new `ecad` row inserted
+  the document/backup deliverables â€” plus the `ecad-drafting` skill, mounted by a new `ecad` row inserted
   `disabled` with its writes switch off. The tool layer adds a bounded per-chat session, one drawing-format
   module for reads, extension rules and publication (the DWG seam), sandbox-stamped writes that only ever
   create a new file beside the source, and 31 tool specs through a fake Cordis composition. Because the row
@@ -134,13 +134,13 @@
   with the bundle; `packages/ecad/src/dwg` exposes `converterInfo`, `isDwg`, `dwgToDxf` and `dxfToDwg`,
   and the format module converts a `.dwg` to DXF for the same MIT engine and converts the engine's DXF
   back on a DWG apply. Measured: **33/33** DWGs converted in **1.17 s** total with zero reader warnings,
-  each drawing's version preserved (16 AC1027 / 17 AC1032); DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips
+  each drawing's version preserved (16 AC1027 / 17 AC1032); DXFâ†’DWGâ†’DXF and DWGâ†’DXFâ†’DWGâ†’DXF round trips
   were 0/0/0 on the measured sheets (one showed only an anonymous-block rename). Every one of the **33
-  DWGs** then passed the full write gate — open, stage a redline, apply to a NEW DWG, re-open the written
-  DWG and diff the model — with the source bytes unchanged; four sheets report linetype-metadata
+  DWGs** then passed the full write gate â€” open, stage a redline, apply to a NEW DWG, re-open the written
+  DWG and diff the model â€” with the source bytes unchanged; four sheets report linetype-metadata
   normalisation only (quoted with its count) and none has a hard geometry or text difference. That gate
   also found and fixed two false-change defects in the model diff (a tolerance half-step rounding
-  boundary and a full turn compared as `2π−ε`), with a regression test using the measured values. A real
+  boundary and a full turn compared as `2Ï€âˆ’Îµ`), with a regression test using the measured values. A real
   DWG opened in the panel service (format `dwg`, converter provenance, title block `004`) and a staged
   redline wrote a **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source
   untouched. The DWG and DXF sets are different title-block issues, so equivalence is reported as measured
@@ -151,37 +151,37 @@
 - **The ECAD drawing panel lands as the bundle's third client face.** Opening a `.dxf` (or `.dwg`) in
   the right panel draws the sheet: fit, pan, zoom, layer visibility, layout tabs, click selection with an
   inspector, coverage badges, the converter provenance for DWG, the loading/empty/truncated/read-only/
-  failure states and an “Ask Arya” review action. It mounts the bundle's Typert contribution, reads the
+  failure states and an â€œAsk Aryaâ€ review action. It mounts the bundle's Typert contribution, reads the
   render-model artifact the `ecad` Remote service caches (chunked workspace read), and passes any
   `ECAD_DWG_*` failure through one failure panel unchanged. The face uses the host's `--dsw-*` tokens
-  only — light and dark, focus rings, 24 px targets, reduced motion — with ACI linework mixed toward the
+  only â€” light and dark, focus rings, 24 px targets, reduced motion â€” with ACI linework mixed toward the
   theme ink (measured 3.19:1 light / 3.25:1 dark). The committed artifact was rendered in headless
   Chrome against a real sheet (15 screenshots, zero console errors) and the registration is locked by
   the client-face spec; the in-app mount and a real DWG in the panel were verified in the Dev pass.
 - **The drawing panel edits prints when the row's writes switch is on.** A View/Edit switch opens an
   edit bar that stages a text annotation (click placement, default height = the sheet's median text
-  height, default layer `0`), a single-entity move (drag with a ghost offset or ΔX/ΔY fields) and a
+  height, default layer `0`), a single-entity move (drag with a ghost offset or Î”X/Î”Y fields) and a
   single-entity erase, with a staged list, per-op remove and clear-all. Apply calls `ecad/apply`
   through the panel service and writes a NEW drawing beside the source (DXF, or DWG through the
-  converter), then reports output path, format, per-kind counters, verification and host notes — the
+  converter), then reports output path, format, per-kind counters, verification and host notes â€” the
   source view stays put and opening the written drawing is explicit. Failures quote code/message/fix
   and keep the draft; with writes off no edit control is rendered, only the read-only badge. The
   headless harness uses the live `{ ok, value }` carrier and covers read-only, staged, applied, written,
   move/erase, stale-keeps-draft, DWG round trip and a narrow pane (14 screenshots), and the new edit
   helpers have 12 tests. In the Dev app a text annotation was staged on a real DWG and applied to
-  `prints/20136-004-ecad-…dwg` (56,387 bytes) with “1 change · verified” and “The DWG round trip
-  matched the written drawing”. That pass found a real host gap: the shipped filesystem service writes
+  `prints/20136-004-ecad-â€¦dwg` (56,387 bytes) with â€œ1 change Â· verifiedâ€ and â€œThe DWG round trip
+  matched the written drawingâ€. That pass found a real host gap: the shipped filesystem service writes
   text only, so both the tools adapter and the Remote service now publish drawing bytes through a
   policy-checked local writer (read-only sessions refuse, destinations must stay in the writable
   workspace, `createIfAbsent` is kept) with tests; `assemble` was also fixed to compare the newest
   built file so a face-only rebuild is not refused.
   ([port evidence](docs/port/ecad.md#m4--in-panel-editing))
 - **ECAD work is legible in the conversation.** The drawing face now registers a tool card for all
-  sixteen `ecad_*` tools through the shell's keyed `tool.call.toolview` slot — specialised cards for
+  sixteen `ecad_*` tools through the shell's keyed `tool.call.toolview` slot â€” specialised cards for
   open (DXF/DWG badge, conversion warnings, entity coverage, title block), scan, checks (severity counts
   and findings), cross-reference (candidate counts and confidence), render (layout and SVG path) and
   draft_apply (verified badge, output path, per-kind counters, verification problems, DWG round-trip
-  hard/metadata split, “Open written drawing”) — with error envelopes shown verbatim, malformed
+  hard/metadata split, â€œOpen written drawingâ€) â€” with error envelopes shown verbatim, malformed
   payloads never inventing counts, and opening a file through the row's `openFile` route. A quiet
   sheet-set dock above the composer reads `ecad.sheets`/`ecad.capabilities` for the real session and
   shows drawing/DWG counts, profile state and writes state, hiding itself when there is no session, no
@@ -194,7 +194,7 @@
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and
   `lib/index.js` provides the `ecad` Cordis service they dispatch to. `src/remote/ecad-contract.js` is
-  the one source of the wire facts — rendered into the artifact and imported by the panel contribution —
+  the one source of the wire facts â€” rendered into the artifact and imported by the panel contribution â€”
   so endpoints and codecs cannot drift. The service imports the ECAD engine lazily, reads through the
   Host filesystem service, and writes under the session's sandbox policy; the model-facing ECAD tools
   and the panel that uses this service land in the same batch.
@@ -210,12 +210,12 @@
 - **Tool names are namespaced.** Every component that registers tools declares the `namespace` prefixes
   it owns (`ftview_`, `mw_`, `optix_`, `engineering_`, `migration_`/`l5k_`/`slc_`); the suite fails on a
   name outside its namespace, a shared or ambiguous prefix, or a second component claiming L5X's legacy
-  exemption. L5X is the one grandfathered component — its unprefixed names (`open_project`,
-  `draft_apply`, …) need a planned prefixed rename before another product can use those words.
+  exemption. L5X is the one grandfathered component â€” its unprefixed names (`open_project`,
+  `draft_apply`, â€¦) need a planned prefixed rename before another product can use those words.
 - **Growth policy is written down.** [`docs/reference/components.md`](docs/reference/components.md) now owns
   when a component splits out of the bundle (licence/IP, a different host line, a heavy optional payload,
   an independent cadence) and the add-on-bundle path for CAD-class payloads. The release rule that keeps
-  that model cheaper than separate plugins — one version per batch, never one per change — is now in
+  that model cheaper than separate plugins â€” one version per batch, never one per change â€” is now in
   [`AGENTS.md`](AGENTS.md).
 - **The tarball carries runtime files only.** `docs/**` and `CHANGELOG.md` no longer ship in the npm
   package; the README is still the market detail document. This removes about 2.6 MB from every install.
@@ -234,7 +234,7 @@
 
 - **A block draws what it writes on the right and what it reads on the left.** Instruction blocks listed every operand
   down the middle, so `ADD(Count,1,Count)` read as three values in a column with no indication which one the instruction
-  writes — the destination looked like a third input. The catalog already marks the written slot (`ADD`'s
+  writes â€” the destination looked like a third input. The catalog already marks the written slot (`ADD`'s
   `Destination` is `numW`, `RES`'s `Structure` is `writable`), so the drawing now places those pins on the right in
   bold and the rest on the left: `ADD` shows `Count`, `1` then **`Count`**, while `GE` (a compare, which writes
   nothing) keeps both operands on the left and `TON` keeps `Timer`/`Preset`/`Accum` there, because none of them is a
@@ -246,7 +246,7 @@
   *below* the glyph and the element was 15px wide, so `Timer.DN` printed over the next block, `Stop` and `Run` ran into
   each other on the wire, and a branch's lower path put its tag inside the row beneath. Each element now reserves
   `max(symbol, label)` pixels and prints its tag above the symbol, and the flow and branch rows are tall enough to hold
-  it — the drawing no longer needs the reader to work out which tag belongs to which glyph.
+  it â€” the drawing no longer needs the reader to work out which tag belongs to which glyph.
 - **A wrapped line in the Changes section belongs to its block.** The renderer treated every source line as a paragraph,
   so a bullet written across two lines came out as a bullet plus a stray paragraph. Blocks now continue until a blank
   line, a heading, a fence or a new marker.
@@ -261,7 +261,7 @@
 
 - **A report you asked for can carry your own narrative, with the ladder still drawn.** `document_project` takes
   `report_notes`: a path to a Markdown file. Its content becomes the report's first section, **Changes**, ahead of
-  *At a glance* — so a change report is prose you wrote plus the ladder the generator draws from the export, in one
+  *At a glance* â€” so a change report is prose you wrote plus the ladder the generator draws from the export, in one
   branded document, rather than a hand-built HTML page that can only show NeutralText.
 - **Markdown, rendered not echoed:** headings, paragraphs, ordered and unordered lists, fenced code, `code` and
   **bold**. The section is listed in the contents and numbered, so the rest of the report renumbers around it; with no
@@ -273,19 +273,19 @@
 
 - **A multidimensional array element with a member now composes.** `Alarm_Timer[0,8].DN` was refused with
   `INVALID_OPERAND: "Alarm_Timer[0,8].DN" is not a tag or a number.`, which read as though the tag did not exist. It did:
-  the address resolver splits comma-separated indices and resolves the member correctly — the gate in front of it is a
+  the address resolver splits comma-separated indices and resolves the member correctly â€” the gate in front of it is a
   character class for what an address may contain, and it omitted the comma. So every two-dimensional timer, `Tmr[1,0].DN`,
   was unreachable from `compose_rung` and `draft_rung` while the one-subscript form worked, which is what made the
   refusal look like a missing declaration.
 - **The gate admits the comma; the resolver still decides.** `TAG_TEXT` keeps rejecting spaces, quotes and anything else
-  an address cannot contain, and a wrong rank or an unparsable address still fails — with the rank or the shape named,
+  an address cannot contain, and a wrong rank or an unparsable address still fails â€” with the rank or the shape named,
   not with "not a tag or a number". Three tests pin the three cases: two subscripts plus a member, one subscript plus a
   member, and a wrong rank that must not read as a missing tag.
 
 ## [0.83.0] - 2026-11-02
 
 - **FTView and the migration surface now write with the session's sandbox policy too.** 0.82.0 fixed this in the L5X
-  store; the same omission existed in the other two components — six writes in `ftview`'s edit tools and two in
+  store; the same omission existed in the other two components â€” six writes in `ftview`'s edit tools and two in
   `migration`'s, all calling the provider with four arguments. A confining provider fills the missing fifth with
   `ctx.sandboxPolicy.resolve()` (no session), which is the deployment default `workspace-write`, so `ftview_apply` and
   `migration_report` were refused in a session switched to `danger-full-access`. Both now resolve the policy for the
@@ -303,7 +303,7 @@
 
 - **A draft writes with the session's sandbox policy, not the deployment default.** `draft_apply`, `document_project` and
   every other writer in this package called `fs.writeText(target, text, options, signal)` and stopped there. A confining
-  provider fills the missing fifth argument with `ctx.sandboxPolicy.resolve()` — no session — which is the *deployment
+  provider fills the missing fifth argument with `ctx.sandboxPolicy.resolve()` â€” no session â€” which is the *deployment
   default*, `workspace-write`. So a session switched to `danger-full-access` could stage a draft, validate it, and then be
   refused the write with `file access denied under workspace-write mode`, naming a mode the user had already left. The
   host's own `write`/`edit` tools resolve `sandboxPolicy.resolve({ session })` per call and pass it; this package now does
@@ -319,8 +319,8 @@
 ## [0.81.0] - 2026-11-02
 
 - **The report is branded.** A generated document now carries the production brand kit: the monochrome mark and the
-  `Arya`/`Code` wordmark with the tagline, the violet→blue→cyan rule above the cover and again above the footer, numbers
-  per section (`01`…`04`) in the table of contents and beside each heading, and a footer line naming the product and the
+  `Arya`/`Code` wordmark with the tagline, the violetâ†’blueâ†’cyan rule above the cover and again above the footer, numbers
+  per section (`01`â€¦`04`) in the table of contents and beside each heading, and a footer line naming the product and the
   package version it came from. Sora sets the text and JetBrains Mono the code, rung labels and rung numbers.
 - **The typefaces travel inside the document.** `packages/l5x/assets/brand/` carries the mark, both variable fonts and
   their OFL licences; the generator embeds them as `@font-face` data URIs, so a report prints the same on a machine that
@@ -331,11 +331,11 @@
 ## [0.80.0] - 2026-11-02
 
 - **The report draws ladder in the pane's language, not as coloured boxes.** A generated document used `renderLadderSvg`, the blocky box-and-label drawing the preview tools use, so a report showed a symbol-free picture of logic the app itself draws as contacts and coils. The report now emits the pane's own markup: `.ldr-contact` is two green bars with a negation slash for `XIO`, `.ldr-coil` is an oval, instruction blocks are `.ldr-block` cards with the mnemonic as a header and one row per operand, rails are two thick rules at the ends of the rung, a branch is a bordered column of parallel paths, and every symbol carries its tag underneath. The styles live in `report-styles.ts` beside the rest of the print CSS, so a document and a printed page agree on them.
-- **The document carries no ladder SVG at all.** A test asserts it: no `<svg>`, no pane-dark fill, and the `ldr-*` classes present. The preview tools keep `renderLadderSvg` — they run in Node with no browser and no stylesheet, which is the reason the report used it in the first place.
+- **The document carries no ladder SVG at all.** A test asserts it: no `<svg>`, no pane-dark fill, and the `ldr-*` classes present. The preview tools keep `renderLadderSvg` â€” they run in Node with no browser and no stylesheet, which is the reason the report used it in the first place.
 
 ## [0.79.0] - 2026-11-02
 
-- **One print path: the handbook and a report are now the same kind of document.** The report's stylesheet moved to `packages/l5x/src/engine/report-styles.ts`; `pnpm docs:print-css` writes `docs/print.css` from that one definition and `docs:check` fails when the file drifts. `scripts/gen-handbook.py` emits the same cover, table of contents, section and table markup a report uses, links that stylesheet, and prints its PDF through `scripts/print-pdf.mts` — the same Chrome invocation as `report_format: "pdf"` — so reportlab and its parallel typography are gone. The regenerated handbook is 8 pages, produced by Skia/PDF, where it used to be built by a second engine. The DOCX path is untouched: it is the editable copy and has no printing to share.
+- **One print path: the handbook and a report are now the same kind of document.** The report's stylesheet moved to `packages/l5x/src/engine/report-styles.ts`; `pnpm docs:print-css` writes `docs/print.css` from that one definition and `docs:check` fails when the file drifts. `scripts/gen-handbook.py` emits the same cover, table of contents, section and table markup a report uses, links that stylesheet, and prints its PDF through `scripts/print-pdf.mts` â€” the same Chrome invocation as `report_format: "pdf"` â€” so reportlab and its parallel typography are gone. The regenerated handbook is 8 pages, produced by Skia/PDF, where it used to be built by a second engine. The DOCX path is untouched: it is the editable copy and has no printing to share.
 - **`docs/print.css` ships with the package** like the rest of the documentation, so an installed copy and this repository print identically.
 
 ## [0.78.1] - 2026-11-02
@@ -347,9 +347,9 @@
 ## [0.78.0] - 2026-11-02
 
 - **The report is a tool, not scaffolding.** `document_project` takes a new `report` part: one self-contained HTML document with a cover, a table of contents, at-a-glance counts, the ladder drawn inside each routine, rung tables, tag and I/O tables, and a footer that states what a generated document cannot prove. `report_format` is `html` (default), `pdf`, or `both`; a PDF is the same page printed by the local Chrome or Edge, and when neither is installed the answer says so instead of writing nothing. The module the previous release shipped unused (`engine/report.ts`) is now called by the bundle and by the tool, so the document and the handover bundle cannot disagree about what the export contains.
-- **The documentation ships with the package.** `docs/**` is in `files`: the ten guide pages, the reference, the decision records, the worked examples and the 32 generated figures now travel in the npm tarball. Before this, `README.md` linked `docs/getting-started.md` and eight other pages that did not exist in an installed copy — 692 files in the tarball, 62 of them docs.
+- **The documentation ships with the package.** `docs/**` is in `files`: the ten guide pages, the reference, the decision records, the worked examples and the 32 generated figures now travel in the npm tarball. Before this, `README.md` linked `docs/getting-started.md` and eight other pages that did not exist in an installed copy â€” 692 files in the tarball, 62 of them docs.
 - **The ladder draws on paper, in the same renderer.** `renderLadderSvg` takes a palette; the pane keeps its dark one and the document gets `PAPER_PALETTE`. The first generated report put near-black panels inside a white sheet because the document reused the pane's colours; the geometry, the parser and the drawing code are unchanged, so a report's ladder is the pane's drawing on paper rather than a second picture of the same logic.
-- **Structured Text is highlighted, though not by Prism.** `highlightSt` colours comments, string literals, keywords and numbers in the report's ST bodies. It is a scanner in this repository with no dependency, and a test asserts that stripping the markup returns the body byte for byte — highlighting cannot rewrite the logic it colours.
+- **Structured Text is highlighted, though not by Prism.** `highlightSt` colours comments, string literals, keywords and numbers in the report's ST bodies. It is a scanner in this repository with no dependency, and a test asserts that stripping the markup returns the body byte for byte â€” highlighting cannot rewrite the logic it colours.
 - **A report cannot silently lose a section.** `REPORT_SECTIONS` declares `glance`, `logic`, `tags` and `io`; the generator validates every one before assembling the page and returns the list it wrote, and the table of contents links to the same anchors. A future edit that drops a section fails a test instead of shipping a document that is quietly missing its tag list.
 
 ## [0.77.0] - 2026-11-01
@@ -361,21 +361,21 @@
 - **The docs now say what evidence exists per surface, including where none does.** `docs/capabilities.md` carries a table of all four products: Studio 5000 and FactoryTalk View ME have captures, MotionWorks IEC and FactoryTalk Optix say **none** and why (no reachable IDE bridge on this host) instead of borrowing a figure from another surface. The two empty rows are the honest state of the repository, not a judgement about the tools.
 - **The composer chain has its worked example.** `docs/examples/composer-to-studio.md` follows one rung from `compose_rung` to a 0/0 build: the call and the answer it returns (the emitted `TON(Timer,2000,0)`, the `preview_path`, the `present` step), the viewer drawing it, the copy affordance, the **In Neutral Text** step that makes the paste work, and the captured build. It says which parts are captures and which are the shape the tests assert, and closes with what the chain does not prove - that the rung is sensible, that the preset suits the process, or anything about runtime.`n- **The paste path is proved, and the step that was missing is documented.** A composed rung reaches Studio as text, but the rung editor has a format selector and it opens in **In ASCII Text**: text typed there is rejected as `Invalid or unrecognized instruction` and replaced with an `Unknown Instruction` placeholder even when it is correct. Switching the editor to **In Neutral Text** and pasting `XIC(Run)TON(Timer,2000,0);` into rung 4 of `E2E_Standard` built **0 errors, 0 warnings, 0 messages** on a 5069-L320ER at 37.11, captured as `docs/figures/studio-neutral-text-paste.png` and written up in `docs/capabilities.md` with the four steps. The accumulator operand from the previous release is confirmed by that build.
 - **The composer now writes the timer operand Studio actually requires.** Pasting a composed rung into Logix Designer's ASCII Text editor answered `Warning: XIC(Run)TON(Timer,2000);, Invalid or unrecognized instruction` - Studio's NeutralText carries the accumulator, so the rung is `TON(Timer,2000,0)`. The catalogue already modelled three operands, but the composer demanded that the caller know it. `compose_rung` now writes the trailing `0` when the accumulator was left off, still honours an explicit value, and does not double it. Proved by hand in Studio 5000 37.11: the corrected text is accepted and builds 0 errors.
-- **A documentation map, and the mojibake removed from the pages it maps.** `docs/index.md` is the page that was missing: every guide, reference and decision record, by task and by surface, with the ladder figure inline and the rule that a figure is regenerated rather than drawn. Repairing the pages it points at exposed real damage - `docs/handoff-one-package.md`, `docs/port/mwi.md`, `docs/reference/ftview-any-app.md` and four FTView tool descriptions carried text that had been UTF-8 read as Windows-1252, so an em dash reached the reader as `â€` and one table row as `ÃƒÆ'Ã†â€™...`. `scripts/repair-encoding.mjs` undoes that layer by layer using the cp1252 byte map (a plain `latin1` roundtrip cannot: the punctuation sits above the byte range and is truncated), refuses a pass that changes nothing or produces U+FFFD, and the generated tool reference was rebuilt from the repaired descriptions.`n- **The Arya Automation Engineer preset now ships with this bundle.** It lived in `@aryacode/dsh-aryacode-polish` beside the Arya Standard and Arya Qwen presets. Everything it tells an agent to do is a statement about this bundle's tools - read before writing, act in a copy, verify with the vendor engine, hand off what is human - so it moves here and the polish bundle drops it. `presets/arya-automation` and the base kit it derives from (`presets/arya-standard`) travel in `files`; `entries/preset.js` is the `engineering-preset` row, exported as `@aryacode/dsh-engineering/preset`; its engine rows mount this package's own `./arya-standard` and `./arya-standard-policy` subpaths. The preset's own test moved with it, and the host packages its rows reference are dev dependencies so that test runs here.`n- **The documentation's viewer figures are generated from the shipped pane.** `pnpm docs:figures` renders four screenshots of `packages/viewer/lib/client.js` in headless Chrome through the document-preview contract - ladder, Structured Text, a function block sheet and a chart - and writes them to `docs/figures`, where `docs/capabilities.md` uses them with the same what-it-proves/what-it-does-not captions as the rest. A hand-drawn figure drifts silently; a regenerated one shows up as a diff.
+- **A documentation map, and the mojibake removed from the pages it maps.** `docs/index.md` is the page that was missing: every guide, reference and decision record, by task and by surface, with the ladder figure inline and the rule that a figure is regenerated rather than drawn. Repairing the pages it points at exposed real damage - `docs/handoff-one-package.md`, `docs/port/mwi.md`, `docs/reference/ftview-any-app.md` and four FTView tool descriptions carried text that had been UTF-8 read as Windows-1252, so an em dash reached the reader as `Ã¢â‚¬` and one table row as `ÃƒÆ’Ã†'Ãƒâ€ Ã¢â‚¬â„¢...`. `scripts/repair-encoding.mjs` undoes that layer by layer using the cp1252 byte map (a plain `latin1` roundtrip cannot: the punctuation sits above the byte range and is truncated), refuses a pass that changes nothing or produces U+FFFD, and the generated tool reference was rebuilt from the repaired descriptions.`n- **The Arya Automation Engineer preset now ships with this bundle.** It lived in `@aryacode/dsh-aryacode-polish` beside the Arya Standard and Arya Qwen presets. Everything it tells an agent to do is a statement about this bundle's tools - read before writing, act in a copy, verify with the vendor engine, hand off what is human - so it moves here and the polish bundle drops it. `presets/arya-automation` and the base kit it derives from (`presets/arya-standard`) travel in `files`; `entries/preset.js` is the `engineering-preset` row, exported as `@aryacode/dsh-engineering/preset`; its engine rows mount this package's own `./arya-standard` and `./arya-standard-policy` subpaths. The preset's own test moved with it, and the host packages its rows reference are dev dependencies so that test runs here.`n- **The documentation's viewer figures are generated from the shipped pane.** `pnpm docs:figures` renders four screenshots of `packages/viewer/lib/client.js` in headless Chrome through the document-preview contract - ladder, Structured Text, a function block sheet and a chart - and writes them to `docs/figures`, where `docs/capabilities.md` uses them with the same what-it-proves/what-it-does-not captions as the rest. A hand-drawn figure drifts silently; a regenerated one shows up as a diff.
 - **Applying a draft now shows the export it wrote.** `draft_apply` is the moment a staged draft stops being text: the
   file it writes is a real export, so the viewer draws the ladder, the Structured Text, the function block sheet or the
   chart from it, in every language. It now offers `present` beside `open_project`.
 - **Every composed language now writes the document the chat draws.** `draft_st`, `draft_fbd` and `draft_sfc` used to
-  leave the pane blank until `draft_apply` — only the rung composer produced a preview. Each now writes
+  leave the pane blank until `draft_apply` â€” only the rung composer produced a preview. Each now writes
   `.l5x-preview/<program>-<routine>.L5X` in the language it staged (`STContent`, `FBDContent` or `SFCContent`), built
   by the same `fbdSheetXml`/`sfcChartXml` functions the apply path uses, so the preview is the sheet or chart that will
   be written rather than an approximation of it. Each returns `preview_path` and points the answer at `present`.
-  Staging stays more permissive than applying: a body the builders refuse — a wire naming no node, a pin the block does
-  not show, a sheet that both writes and reads one tag — leaves the append successful without a preview, and the refusal
+  Staging stays more permissive than applying: a body the builders refuse â€” a wire naming no node, a pin the block does
+  not show, a sheet that both writes and reads one tag â€” leaves the append successful without a preview, and the refusal
   still belongs to `draft_validate` and `draft_apply`, which is exactly what the existing refusal tests pin.
   The three tool descriptions say so, and the generated reference was regenerated.
 - **A diagram routine can now be copied, as the XML it actually is.** Rungs copy as NeutralText and Structured Text
-  copies as source, but an FBD sheet and a chart have no text form to paste — Studio's *Paste ASCII / Neutral Text*
+  copies as source, but an FBD sheet and a chart have no text form to paste â€” Studio's *Paste ASCII / Neutral Text*
   does not apply to them. The pane therefore offers **Copy routine L5X** for a diagram routine and puts that routine's
   `<Routine>` element on the clipboard: the element the composer wrote, pasteable into an export and comparable
   against one. The extraction is a pure function (`extractRoutineXml`) with its own tests, including that the empty
@@ -386,27 +386,27 @@
   (`packages/viewer/test/fixtures/diagrams.L5X`) through the document-preview contract, clicks the FBD routine and the
   SFC chart in the organizer, and asserts on the SVG that arrives in the pane: four boxes and three lines for the sheet
   with `add1`/`SourceA`/`SourceB`/`Dest`/`r3` legible, three boxes and two lines for the chart with `Step_1`/`Tran_1`/
-  `Step_2`/`Timer.DN` legible. The harness gained a `diagram` mode for routines that draw no ladder instructions — it
+  `Step_2`/`Timer.DN` legible. The harness gained a `diagram` mode for routines that draw no ladder instructions â€” it
   waits for the project view instead of an instruction node and skips the ladder invariants, which belong to ladder.
 - **Function block diagrams and sequential function charts now draw in the viewer.** Both were rendered as
-  "unsupported (FBD)" — the pane could draw ladder and show Structured Text, and stopped there, so half of what the
+  "unsupported (FBD)" â€” the pane could draw ladder and show Structured Text, and stopped there, so half of what the
   composer writes could not be seen in chat at all. The client parser now reads `FBDContent` and `SFCContent` with the
   position the export records for every block, reference, step and transition, and the viewer draws them as one SVG:
   boxes where Studio puts them, a line per wire or link between the elements it joins, block pins listed on the block,
-  the initial step marked and a transition's condition written under it. Stroking is schematic — structure, not
-  execution — and a routine whose wires name nothing draws nothing rather than an empty frame. Four tests judge the
+  the initial step marked and a transition's condition written under it. Stroking is schematic â€” structure, not
+  execution â€” and a routine whose wires name nothing draws nothing rather than an empty frame. Four tests judge the
   drawing from synthetic geometry: element counts, the pin a wire lands on, the initial-step marker, the condition text,
   and the empty cases.
 - **Composing a rung now produces the ladder the chat draws, and a routine's whole NeutralText block copies in one
   action.** `compose_rung` and `compose_batch` used to end at "validate", so a composed rung reached the reader as text
   unless they asked for a picture separately. Both now write the rungs they composed to
-  `.l5x-preview/<program>-<routine>.L5X` — the document the project viewer draws — return its `preview_path`, and point
+  `.l5x-preview/<program>-<routine>.L5X` â€” the document the project viewer draws â€” return its `preview_path`, and point
   the answer at `present` so the ladder is in the conversation rather than an image file beside it. The preview writer is
   shared with `l5x_rung_preview`, so both tools produce the identical document. It is scratch output: the project file
   still waits for `draft_apply`, and a read-only workspace drops the render instead of failing the composition. The
   project viewer gained **Copy all rungs as NeutralText** beside the existing per-rung, per-instruction and per-operand
   copies, so a whole routine leaves the pane in the shape Studio's *Paste ASCII / Neutral Text* accepts. The
-  `rockwell-l5x` guidance says to present the preview and its budget moves 8000 → 8300 for that sentence; English and
+  `rockwell-l5x` guidance says to present the preview and its budget moves 8000 â†’ 8300 for that sentence; English and
   Chinese strings move together; a test pins the written document, the rung text and the `present` step.
 
 ## [0.75.0] - 2026-11-01
@@ -415,28 +415,28 @@
   defaulted every step to `X=300, Y=100` and every transition to `Y=200`, so a two-step chart was written with both steps
   at the same point; Studio draws one box on top of the other and does not object, because coordinates are presentation
   rather than structure. The SDK build therefore reported 0 warnings / 0 errors, and no gate could see it. The defaults
-  now lay the chart out the way Studio does â€” steps down the sheet at a 200 pitch, each transition between the two steps
-  its links join â€” and an explicit `x`/`y` still wins. Found by opening a composed ACD in Logix Designer and looking at
+  now lay the chart out the way Studio does Ã¢â‚¬â€ steps down the sheet at a 200 pitch, each transition between the two steps
+  its links join Ã¢â‚¬â€ and an explicit `x`/`y` still wins. Found by opening a composed ACD in Logix Designer and looking at
   it, which is the one check the compiler cannot make. Verified both ways: the fixed chart imports and builds 0/0, and
   Logix Designer draws `Step_1`, `Tran_1` and `Step_2` in three places. A test now asserts that a two-step chart with no
   positions emits two distinct Y values with the transition between them.
 - **The `run_checks` description now derives the rule count it states.** It said `41 rules` while the tool carried
-  **42**, and it said it twice â€” `docs/reference/tools.md` copies the description verbatim, so the wrong number shipped
+  **42**, and it said it twice Ã¢â‚¬â€ `docs/reference/tools.md` copies the description verbatim, so the wrong number shipped
   in the generated reference with every gate green. Both places now interpolate `FINDING_RULES.length`, so a rule added
   or removed updates the sentence, and a test pins the description to the exported list and refuses a hard-coded `41`.
   Found by counting the list against the text while writing the parity matrix, not by a failing gate: a number written
   as prose had nothing checking it.
 - **A diagram finding now names the wire or link it is about.** A `<Wire>` and a `<DirectedLink>` carry no `ID` of
-  their own, so every FBD and SFC finding located them as `id ?` â€” true of every wire on a sheet and useless on a real
+  their own, so every FBD and SFC finding located them as `id ?` Ã¢â‚¬â€ true of every wire on a sheet and useless on a real
   one. `FBD_DANGLING_WIRE`, `FBD_WIRE_PIN_NOT_VISIBLE` and `SFC_LINK_TARGET_MISSING` now name the ends
   (`COMBUSTION::Air_Valve_Ramping sheet 1 Wire 1 -> 20: ToID pin "AccelRate" is not a visible pin of block 20
   (In, AccelRate, DecelRate, Out)`) and carry `from_id`/`to_id` in the evidence, so the wire can be found in Studio.
   Verified on the real 10 MB `Seco_Homogenizer` export, which carries the only diagram languages in the corpus (one FBD
   sheet of five `SCRV` blocks and 20 wired pins, two SFC charts): the untouched export reports nothing for all four
-  diagram rules, while copies broken on purpose fire exactly where they should â€” one `ToParam` typo gives 1
+  diagram rules, while copies broken on purpose fire exactly where they should Ã¢â‚¬â€ one `ToParam` typo gives 1
   `FBD_WIRE_PIN_NOT_VISIBLE`, one cleared `InitialStep` gives 1 `SFC_NO_INITIAL_STEP`, and one link retargeted to `999`
   gives 2 `SFC_LINK_TARGET_MISSING` because both charts carry that link. The other four production exports are ladder
-  only, so they exercise no diagram rule at all â€” recorded as a true negative on one export, not as coverage on five.
+  only, so they exercise no diagram rule at all Ã¢â‚¬â€ recorded as a true negative on one export, not as coverage on five.
   Three tests assert the ends and that no diagram finding still says `id ?`.
 - **Eight instructions the composer used to refuse now compose, and Studio proved they build.** `FFL`, `FFU`, `LFL`,
   `LFU`, `DTR`, `ATAN2`, `SQI` and `EVENT` were among the ~100 instructions the catalogue did not carry; their operand
@@ -445,34 +445,34 @@
   128 to **136**. Verification is not a unit test alone: the composer built
   `XIC(a1)FFL(arr1[0],arr2,ctl1,10,0)`, `XIC(a1)DTR(arr1[0],d2,arr2[0])OTE(a2)`,
   `XIC(a1)SQI(arr2,d2,arr1[0],ctl1,10,0)OTE(a2)` and the other five, our writer wrote the export, and the real Logix
-  Designer SDK imported and built it â€” **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
+  Designer SDK imported and built it Ã¢â‚¬â€ **0 import warnings, 0 errors, ACD written, 36 s**. Eight regression tests keep
   the exact accepted text, so a later operand edit cannot silently change what Studio approved.
-- **Function block diagrams can now be composed, and Studio proved the sheet builds.** `draft_fbd` stages an FBD sheet â€”
-  blocks, references and wires â€” and `draft_apply` writes it. The rule that took the longest to find: **a block is an
+- **Function block diagrams can now be composed, and Studio proved the sheet builds.** `draft_fbd` stages an FBD sheet Ã¢â‚¬â€
+  blocks, references and wires Ã¢â‚¬â€ and `draft_apply` writes it. The rule that took the longest to find: **a block is an
   instance**, so its `Operand` must name a tag whose data type is the block's structure (`FBD_MATH` for `ADD`), and wires
   name the pin on the block side (`ToParam` into an input, `FromParam` out of an output). The tool validates that the
   backing tag exists in scope and carries that structure, that every reference resolves, and that each wire names a node
-  and a pin the block shows. Verification: `draft_fbd` â†’ `draft_apply` â†’ `verify_offline_l5x` imported and built the sheet
+  and a pin the block shows. Verification: `draft_fbd` Ã¢â€ â€™ `draft_apply` Ã¢â€ â€™ `verify_offline_l5x` imported and built the sheet
   with **0 warnings, 0 errors and an ACD written**. Six tests cover the accepted XML plus the refusals (wrong routine
   language, undeclared backing tag, wrong structure type, unknown node id, unknown pin). This closes the capability gap
   that mattered most: the competition composes four languages; two are no longer enough.
 - **An FBD routine can now be created, and blocks chain directly.** `draft_routine` accepts `language: "FBD"` and writes
   an empty `FBDContent` (a body is refused, because a diagram is not code); `draft_fbd` then sees a routine staged earlier
   in the same draft, so the two calls work in either order. Two corrections came out of Studio builds: a **block-to-block
-  wire is legal** (`FromParam` on the driving block, `ToParam` on the reading block) and is how blocks are chained â€” my
-  first version refused it â€” while a sheet that **both writes and reads one tag** makes Studio abort the import, so the
+  wire is legal** (`FromParam` on the driving block, `ToParam` on the reading block) and is how blocks are chained Ã¢â‚¬â€ my
+  first version refused it Ã¢â‚¬â€ while a sheet that **both writes and reads one tag** makes Studio abort the import, so the
   engine now refuses it with the fix spelled out (*"wire the blocks to each other directly, or move the read to another
   sheet"*). Verification by build: created routine only, one-block sheet, and a two-block chain through a direct wire all
   passed with **0 warnings and 0 errors**; the same-tag sheet fails as Studio does. Four new tests, 344 total.
-- **An SFC chart creates the tags it needs and Studio builds it â€” with actions and numeric conditions.** `draft_sfc`
+- **An SFC chart creates the tags it needs and Studio builds it Ã¢â‚¬â€ with actions and numeric conditions.** `draft_sfc`
   declares every step as an `SFC_STEP` structure tag, every transition as a BOOL tag and every action as an `SFC_ACTION`
   structure tag when the project does not already have it, using the member set Studio writes (initial step `Status`
   `16#a020_0201`, others `16#0020_0201`; action `Status` `16#0020_0000`, `PauseTimer` 1, `PRE` 100). A missing `<Tags>`
   region is created before `Routines`, where the schema requires it. Verified on a project with no SFC tags at all:
   `draft_routine` + `draft_sfc` + `draft_apply` produced a chart with a step carrying a `NonStored` action and a
   transition conditioned on `c1 > 5`, and Logix Designer imported and built it with **0 warnings, 0 errors and an ACD
-  written**. Two compiler rules were needed to get there: a transition condition must reference a tag or member â€” the
-  literal `TRUE` is read as an undefined tag (`RxSTX_E_TAG_NOT_FOUND`) â€” and an empty `Structure` is rejected with
+  written**. Two compiler rules were needed to get there: a transition condition must reference a tag or member Ã¢â‚¬â€ the
+  literal `TRUE` is read as an undefined tag (`RxSTX_E_TAG_NOT_FOUND`) Ã¢â‚¬â€ and an empty `Structure` is rejected with
   `XMLSrv_E_SYNTAX_ERROR_EXPECT_DATAMEM`. Ten tests cover creation, generated tags, actions, conditions, the XML and the
   refusals.
 
@@ -481,7 +481,7 @@
   rather than a hand-written rung: `compose_rung` built the spec tree, `draft_apply` wrote the export, and Logix Designer
   reported **0 warnings, 0 errors and an ACD written**. A second finding came out of the failures on the way: an import of
   an L5X whose **controller name is already registered** with the Studio SDK fails with
-  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`, and the *same bytes* import cleanly under a new controller name â€” renaming the
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`, and the *same bytes* import cleanly under a new controller name Ã¢â‚¬â€ renaming the
   controller proved it, after the file had been blamed. The bridge now releases the L5X-derived project before it opens
   the ACD that carries the same name, which is the correct lifetime regardless; the stale registration that survives a
   crashed or killed run still needs a fresh name or a service restart, and that is stated here rather than left to be
@@ -489,9 +489,9 @@
   operands, so it stays uncatalogued until a real export shows its operand type.
 
 - **Six serial ASCII instructions compose, and the table that had their operand counts wrong is corrected.** `ABL`,
-  `ACB`, `ARD`, `ARL`, `AWA` and `AWT` are now described with the operand types the installed help publishes â€” `Channel`
+  `ACB`, `ARD`, `ARL`, `AWA` and `AWT` are now described with the operand types the installed help publishes Ã¢â‚¬â€ `Channel`
   DINT, `Serial Port Control` a `SERIAL_PORT_CONTROL` structure, `Serial Port Control Length` and the character counts
-  DINT, `Destination`/`Source` STRING â€” so the catalogue counts **139** instructions. Five of them already existed in the
+  DINT, `Destination`/`Source` STRING Ã¢â‚¬â€ so the catalogue counts **139** instructions. Five of them already existed in the
   compact `instruction-set.ts` table with the wrong arity (`ABL=AL` is two slots; Studio takes three), which is how the
   duplicate-mnemonic test found them; that table is now reduced to the four entries still generic. Verification is a
   Studio build through our own composer: `compose_rung` produced `XIC(a1)ABL(chan,ctl,cnt)OTE(a2)`,
@@ -502,9 +502,9 @@
 
 - **A serial-port instruction on a processor that has none is now reported instead of left for the build.** `run_checks`
   gains `SERIAL_PORT_INSTRUCTION_UNSUPPORTED`: when a ladder routine uses `ABL`, `ACB`, `ACL`, `AHL`, `ARD`, `ARL`, `AWA`
-  or `AWT` and the export's `ProcessorType` is a CompactLogix 5380 (`5069-â€¦`) or a ControlLogix 5580 (`1756-L8â€¦`), the
-  finding says which rung, which mnemonic and why â€” Studio's compiler answers
-  `RxCMP_E_AUDIT_INVALIDOPTYPE` for every operand combination, because the family has no serial port â€” and names a
+  or `AWT` and the export's `ProcessorType` is a CompactLogix 5380 (`5069-Ã¢â‚¬Â¦`) or a ControlLogix 5580 (`1756-L8Ã¢â‚¬Â¦`), the
+  finding says which rung, which mnemonic and why Ã¢â‚¬â€ Studio's compiler answers
+  `RxCMP_E_AUDIT_INVALIDOPTYPE` for every operand combination, because the family has no serial port Ã¢â‚¬â€ and names a
   controller where the same rung does build (`1756-L73`). That rule exists because the previous round spent five failed
   builds changing operand types for an instruction the platform never supported. Severity is `critical`, one finding per
   rung however many such instructions it holds, and a 1756-L73 reports nothing. Six tests cover the rule directly and
@@ -513,8 +513,8 @@
 - **The serial ASCII family is complete in the catalogue: `ACL` and `AHL` join it, both built.** Their slots come from
   the installed help pages, not from guessing: `ACL` is `Channel`, `Clear Serial Port Read` and `Clear Serial Port Write`
   (both BOOL), and `AHL` is `Channel`, `ANDMask`, `ORMask`, `Serial Port Control` and `Channel Status`. The catalogue is
-  now **140** instructions. `AHL` had also been sitting in the compact `instruction-set.ts` table as `AHL=AL` â€” two
-  slots where Studio takes five â€” so it is removed from that table, the second time this round-trip has caught a wrong
+  now **140** instructions. `AHL` had also been sitting in the compact `instruction-set.ts` table as `AHL=AL` Ã¢â‚¬â€ two
+  slots where Studio takes five Ã¢â‚¬â€ so it is removed from that table, the second time this round-trip has caught a wrong
   arity there. Verification is a Studio build on a 1756-L73 through our own composer: `compose_rung` produced
   `XIC(a1)ACL(chan,clrR,clrW)OTE(a2)` and `XIC(a1)AHL(chan,andMask,orMask,ctl,chStatus)OTE(a2)`, `draft_apply` wrote the
   export, and Logix Designer built it with **0 warnings, 0 errors and an ACD written**. The test that pins the ASCII text
@@ -525,8 +525,8 @@
   ones were judged by build. `SRT` takes **five** slots (`Array`, `Dimension to Vary`, `Control`, `Length`, `Position`),
   not three; `SWPB` takes **three** (`Source`, `Order Mode`, `Dest`), not two; `STOR` takes **two** (`Source`,
   `Destination`), not three. All three are now declared explicitly in `instructions.ts` and gone from the compact table,
-  which keeps 41 â†’ 38 rows. A rule worth writing down came out of the same build: `SWPB`'s order mode is a **number**
-  (0 or 1) â€” the help says to enter `HIGHLOW`, but Studio reads that as a tag and fails with
+  which keeps 41 Ã¢â€ â€™ 38 rows. A rule worth writing down came out of the same build: `SWPB`'s order mode is a **number**
+  (0 or 1) Ã¢â‚¬â€ the help says to enter `HIGHLOW`, but Studio reads that as a tag and fails with
   `RxCMP_E_OPERAND_TAGNOTFOUND`, while `SWPB(d1,0,d2)` builds. Verification is a Studio build of the composed rungs
   `XIC(a1)SRT(arr,0,ctl,10,0)OTE(a2)`, `XIC(a1)SWPB(d1,0,d2)OTE(a2)` and `XIC(a1)STOR(text,r1)OTE(a2)`: **0 warnings,
   0 errors and an ACD written**. Two tests pin the audited slot counts and the accepted text so the compact table cannot
@@ -535,11 +535,11 @@
 - **The compact table's second audit batch: three arities fixed, five entries that should never have been there removed.**
   `STD` takes **six** slots (`Array`, `Dimension to Vary`, `Destination`, `Control`, `Length`, `Position`), `SIZE` takes
   **three** (`Source`, `Dimension to Vary`, `Size`), and `JXR` takes **two** (`External routine name`,
-  `External routine control`, with optional parameters and a return tag after them) â€” the first two confirmed by a build,
+  `External routine control`, with optional parameters and a return tag after them) Ã¢â‚¬â€ the first two confirmed by a build,
   the third by a build that parsed both operands and failed only on the undeclared routine
   (`RxCMP_E_AUDIT_ROUTINENOTFOUND`). Five entries are gone: `ACN`, `ASR` and `AEX` have **no page in the installed help
-  and no meaning in Studio** â€” a deliberately bogus `ZZZZ(d1)` fails a build with exactly the same
-  `RxCMP_E_AUDIT_INVALIDOPTYPE` those mnemonics produced â€” and `SCL` and `PIDE` are **Function Block and Structured Text
+  and no meaning in Studio** Ã¢â‚¬â€ a deliberately bogus `ZZZZ(d1)` fails a build with exactly the same
+  `RxCMP_E_AUDIT_INVALIDOPTYPE` those mnemonics produced Ã¢â‚¬â€ and `SCL` and `PIDE` are **Function Block and Structured Text
   only**, so a ladder catalogue must not offer them. The catalogue is **135** instructions, and it is smaller because it
   is now more nearly true. Verification of the fixed ones is a Studio build of
   `XIC(a1)STD(realArr,0,dest,ctl,10,0)OTE(a2)` and `XIC(a1)SIZE(arr,0,size)OTE(a2)` through our own composer: **0
@@ -547,7 +547,7 @@
 
 - **Both alarm instructions take five operands, not one, and the count was settled by build.** `ALMD` is
   `ALMD(tag, ProgAck, ProgReset, ProgDisable, ProgEnable)` and `ALMA` is
-  `ALMA(tag, In, ProgAckAll, ProgDisable, ProgEnable)` â€” the compact table had each at a single slot. Getting there
+  `ALMA(tag, In, ProgAckAll, ProgDisable, ProgEnable)` Ã¢â‚¬â€ the compact table had each at a single slot. Getting there
   took a bisection worth recording: the help's ladder table lists **six** operands for `ALMD`, and six fails with
   `RxCMP_E_AUDIT_INVALIDNOOFOPS`; counts 1 through 4 and 6 all fail the same way, and **5** builds. The sixth
   (`MinDurationPRE`) is a structure member the page presents in the operand table, not a rung operand. `ALM` itself is
@@ -559,32 +559,32 @@
 
 - **An alarm can now be created from nothing: `draft_tag` declares the structures Studio defaults itself.** `CONTROL`,
   `SERIAL_PORT_CONTROL`, `ALARM_ANALOG` and `ALARM_DIGITAL` are accepted as data types, and the tag is written exactly
-  as Studio writes it for those types â€” no `Data` block, because Studio fills the members in. That closes the last
+  as Studio writes it for those types Ã¢â‚¬â€ no `Data` block, because Studio fills the members in. That closes the last
   generation gap in the ladder surface: until now a composed `ALMD` or `ALMA` needed a project that already had an alarm
   structure, and a composed `SRT` or ASCII rung had the same problem with `CONTROL`. Verification is end to end through
   our own tools: `draft_tag` created `almD` as `ALARM_DIGITAL` and `almA` as `ALARM_ANALOG` in a project that had
   neither, `compose_rung` built the two alarm rungs, `draft_apply` wrote the export, and Logix Designer built it with
   **0 warnings, 0 errors and an ACD written**. Two tests cover the accepted types and keep an unknown type refused, with
-  the type check asserted where it actually fires â€” when the draft is applied, not when it is staged.
+  the type check asserted where it actually fires Ã¢â‚¬â€ when the draft is applied, not when it is staged.
 
 - **Fixing code is now a proven flow, not a claim: refuse, name, replace, re-check, build.** An export whose rung reads
-  `XIC(Missing)OTE(Run)` **fails a real build** with `RxCMP_E_OPERAND_TAGNOTFOUND`; `run_checks` names it exactly â€”
+  `XIC(Missing)OTE(Run)` **fails a real build** with `RxCMP_E_OPERAND_TAGNOTFOUND`; `run_checks` names it exactly Ã¢â‚¬â€
   *"Symbol Main::Missing could not be resolved in this export"*; `compose_rung` with `mode: "replace"` stages
   `XIC(Start)OTE(Run)`; `draft_apply` writes it; the re-check on the written file reports **0** unresolved references; and
   that file **builds with 0 warnings and 0 errors**. Both sides of the before/after are Studio verdicts, which is what
   makes the claim worth anything. The flow is pinned in `packages/l5x/test/repair.spec.ts` so it cannot quietly stop
   working: it asserts the finding before, the composed text, that the written export no longer contains the bad symbol,
-  and that the re-opened export has no unresolved reference left. That is the capability the brief asks for â€” compose,
-  and fix â€” shown as one run rather than as separate tools that happen to exist.
+  and that the re-opened export has no unresolved reference left. That is the capability the brief asks for Ã¢â‚¬â€ compose,
+  and fix Ã¢â‚¬â€ shown as one run rather than as separate tools that happen to exist.
 
 - **`PID` takes seven operands, not one, and two rounds of wrong guesses about it were mine to own.** The ladder form is
   `PID(pid, PV, Tieback, CV, master loop, inhold bit, inhold value)`; `PID(tag)` and even `PID(tag, PV, Tieback, CV)` fail
   with `RxCMP_E_AUDIT_INVALIDNOOFOPS`, and the seven-operand form **builds with 0 warnings and 0 errors**. The same round
   cleared a misunderstanding behind three earlier failures: `EXPT`, `ASIN`, `ACOS` and `ATAN` are the **v36+ spellings**
-  of the legacy `XPY`, `ASN`, `ACS`, `ATN` this catalogue has always carried â€” my raw-XML probes wrote the legacy names
+  of the legacy `XPY`, `ASN`, `ACS`, `ATN` this catalogue has always carried Ã¢â‚¬â€ my raw-XML probes wrote the legacy names
   into a 37 project and Studio answered `INVALIDOPTYPE`, which reads like a bad operand but was a bad *spelling*. With the
   modern names, `EXPT(r1,r2,r3)`, `ASIN(r1,r2)`, `ACOS(r1,r2)` and `ATAN(r1,r2)` all build, so those catalogue entries
-  were right all along and are unchanged. `SQC` stays open: `SQC(arr,â€¦)` needs array **elements** (`MUSTBEDISCRETE`), and
+  were right all along and are unchanged. `SQC` stays open: `SQC(arr,Ã¢â‚¬Â¦)` needs array **elements** (`MUSTBEDISCRETE`), and
   the element form still fails on type, so nothing is changed there until a shape builds. Two tests pin PID's seven slots
   and the accepted rung.
 
@@ -649,14 +649,14 @@
   is commutative), so this verifies the **rung shape** and the in-place accumulate, not the operand order.
 
 - **The timer and counter instructions were missing an operand, and `run_hour_meter` is the seventh pattern.** `TON(meter,3600000)`
-  fails with `RxCMP_E_AUDIT_INVALIDNOOFOPS`; **`TON(meter,3600000,0)` builds** â€” the third slot is the accumulator, written
+  fails with `RxCMP_E_AUDIT_INVALIDNOOFOPS`; **`TON(meter,3600000,0)` builds** Ã¢â‚¬â€ the third slot is the accumulator, written
   as an immediate. `CTU(counter,10,0)` builds for the same reason. The catalogue had `TON`, `TOF`, `RTO`, `CTU` and `CTD`
   with two slots, so every timer or counter rung the composer produced was one operand short, and the `ton_delay` pattern
   had never been build-verified. All five are corrected, and `ton_delay` now emits the accumulator too. The new
   **`run_hour_meter`** pattern is the proof: it emits `XIO(meter.DN)XIC(run)TON(meter,3600000,0)` and
   `XIC(meter.DN)ADD(hours,1,hours)`, the timer's own `.DN` bit breaks its rung so it resets in the same scan it counts,
   and Logix Designer **built both rungs with 0 warnings and 0 errors**. This is the second time the audit has found a
-  defect in an instruction used by the fixtures since early in the cycle â€” the first was `CPT`'s operand order â€” and both
+  defect in an instruction used by the fixtures since early in the cycle Ã¢â‚¬â€ the first was `CPT`'s operand order Ã¢â‚¬â€ and both
   were invisible until a build of *that* instruction, not of a neighbour.
 
 - **The composer was writing legacy instruction names into modern projects, and one build caught it.** A family sweep
@@ -818,7 +818,7 @@
   own `Logic` writes its output parameters as often as its algorithm needs, and the rule counted those as multiple drivers.
   It now keys the exclusion on `document.aois[].routines` rather than on a routine name, so an AOI called `Level` is exempt
   while a program routine called `Level` is not. The effect on the two production projects is decisive: `Seco` went from
-  701 to **687** findings with warnings **12 â†’ 8**, and `Carpenter` from 271 to **262** with warnings **9 â†’ 1**;
+  701 to **687** findings with warnings **12 Ã¢â€ â€™ 8**, and `Carpenter` from 271 to **262** with warnings **9 Ã¢â€ â€™ 1**;
   `MULTIPLE_OUTPUT_WRITES` is **zero on both**. What remains is seven `DUPLICATE_OUTPUT` rows on Seco and one on Carpenter -
   an output driven from two rungs in one routine, which is legal but worth a reader's attention - plus one
   `LATCH_WITHOUT_RESET`. A test pins the AOI case with three branches writing one output parameter.
@@ -1102,7 +1102,7 @@
   recorded: `changed_fields` prints diagram nodes as `[object Object]`, so the diff finds the change but not yet describes it.
 
 - **An SFC or FBD change is now described by the element that changed, not `[object Object]`.** Round 94 made the diff see charts; the detail
-  line still printed `nodes [object Object],[object Object]â€¦ to [object Object]â€¦`. A diagram's node list is now compared as a set and only
+  line still printed `nodes [object Object],[object Object]Ã¢â‚¬Â¦ to [object Object]Ã¢â‚¬Â¦`. A diagram's node list is now compared as a set and only
   the difference is shown: the round-94 fixture reports `nodes +["Line A2"] -["Line A1"]` - the transition condition that appeared and the one
   that vanished, each rendered as `kind#id operand text`. Ordinary fields render compactly too, so a nested value no longer degenerates to
   `[object Object]`. The test that pinned the SFC diff now asserts both conditions by name. 410 package tests.
@@ -1217,7 +1217,7 @@
 
 - **The handover bundle now has a Safety section.** A new engineer receiving `PROJECT.md` could not tell which task, programs, I/O or instructions were safety - the
   bundle named the protected routines and the processor, and stopped there. It now carries a table built from the declared facts:
-  `Safety task | SafetyTask`, `Safety program | COMBUSTION_SAFETY, MOTION_SAFETY`, `Safety I/O module | 10: SA_DIG_IN_1, â€¦`,
+  `Safety task | SafetyTask`, `Safety program | COMBUSTION_SAFETY, MOTION_SAFETY`, `Safety I/O module | 10: SA_DIG_IN_1, Ã¢â‚¬Â¦`,
   `Safety AOI | FC_SFTY_BURNER_DIRECT, FC_SFTY_SSOV` - verified on `Seco_Homogenizer`, and a test pins every row. 426 package tests.
 
 - **New rule: a safety instruction called from standard logic.** `run_checks` now reports `SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM` when an AOI declared
@@ -1368,7 +1368,7 @@
   unresolved routine, I/O module changed - gained one. A test asserts the safety finding carries its structured remedy as well as the message text. 444 package tests.
 
 - **Remedy coverage is now enforced by a test, not by a sweep.** Round 152 compared the 22 rules against the remedy map by hand; a new spec reads
-  `src/engine/review.ts`, extracts every `report('RULE' â€¦)` and every remedy key, and fails when a rule has no remedy - so a future rule cannot ship
+  `src/engine/review.ts`, extracts every `report('RULE' Ã¢â‚¬Â¦)` and every remedy key, and fails when a rule has no remedy - so a future rule cannot ship
   without one. This is the third consistency guard of the same kind: capability names (141), next-step names (142), and now rules (153). 445 package tests.
 
 - **The handover bundle now gives the remedy for the most common finding.** `PROJECT.md` reported counts and top rules, so a reviewer holding only the document
@@ -1438,9 +1438,9 @@
   `(SAFETY instruction)`; verified on `Seco_Homogenizer` (`COMBUSTION_SAFETY`, `FC_SFTY_SSOV`) and pinned with a built fixture. This is the last documentation
   surface that lacked the safety marker. 454 package tests.
 
-- **Fourteen mojibake sequences were corrupting source comments and generated documents.** The rung header read `# COMBUSTION_SAFETY Ã¢â‚¬â€ rung documentation` because
-  an earlier edit had written UTF-8 bytes through a decoder that turned them into `Ã¢â‚¬"` (and one double-encoded `ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚`); the same corruption sat in
-  five source files, including the PROJECT.md "Generated from ... sha256 ...Ã¢â‚¬Â¦" line. All now read ASCII (` - ` and `...`), the repository's stated default:
+- **Fourteen mojibake sequences were corrupting source comments and generated documents.** The rung header read `# COMBUSTION_SAFETY ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â rung documentation` because
+  an earlier edit had written UTF-8 bytes through a decoder that turned them into `ÃƒÂ¢Ã¢â€šÂ¬"` (and one double-encoded `ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€š`); the same corruption sat in
+  five source files, including the PROJECT.md "Generated from ... sha256 ...ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦" line. All now read ASCII (` - ` and `...`), the repository's stated default:
   **0 occurrences remain**, and the generated header is `# COMBUSTION_SAFETY - rung documentation (SAFETY program)`. 454 package tests.
 
 - **Double spaces from the mojibake cleanup collapsed.** Replacing the corrupt dash with " - " left padding behind in four files, so the generated header read
@@ -1769,7 +1769,7 @@
 
 - **A program that has no Tags region gets one in the right place, and the new tags compose in the same draft.** The test fixture is raw XML
   (the builder always writes an empty Tags region) with a Program containing only Routines. Two program-scoped tags are declared, a rung reads and writes
-  them, one apply writes the export, and a reopen lists both tags â€” proving the insertion order (Tags before Routines) and staged program-tag resolution.
+  them, one apply writes the export, and a reopen lists both tags Ã¢â‚¬â€ proving the insertion order (Tags before Routines) and staged program-tag resolution.
   509 package tests.
 
 - **One program using every new rule builds 0/0, and the repository reproduces it.** Composed only through the tools (24 tags, 9 rungs: latch, TON,
@@ -1906,16 +1906,16 @@
 ### Added
 
 - **A composed rung matches the instruction spelling its project already reads.** Logix Designer 36 renamed
-  sixteen ladder instructions â€” `EQU` became `EQ`, `SQR` became `SQRT`, `MOV` became `MOVE`, `TRN` became
-  `TRUNC`, and twelve more â€” so one project can legitimately carry either spelling. The new
+  sixteen ladder instructions Ã¢â‚¬â€ `EQU` became `EQ`, `SQR` became `SQRT`, `MOV` became `MOVE`, `TRN` became
+  `TRUNC`, and twelve more Ã¢â‚¬â€ so one project can legitimately carry either spelling. The new
   `packages/l5x/src/engine/mnemonics.ts` holds that table once, resolves either spelling on lookup, and lets
   `compose_rung` write the spelling the export's own rungs use (`spellingForProject`), falling back to the
   catalog name when the project uses neither. `run_checks` gains `MNEMONIC_VERSION_MISMATCH`, a warning that
   names the spelling the project's `MajorRev` publishes instead of leaving the mismatch to the Studio build.
 - **A name Studio will refuse is refused at draft time.** `packages/l5x/src/engine/names.ts` states the identifier
-  rules an export never records â€” first character a letter or underscore, the rest letters, digits and underscore,
-  at most 40 characters â€” and `add_tag`, `add_routine` and `add_udt_member` now run them before staging. Each
-  failure carries the repair and a legal suggestion (`1Pump` â†’ `_1Pump`, `Start PB` â†’ `Start_PB`), so the author
+  rules an export never records Ã¢â‚¬â€ first character a letter or underscore, the rest letters, digits and underscore,
+  at most 40 characters Ã¢â‚¬â€ and `add_tag`, `add_routine` and `add_udt_member` now run them before staging. Each
+  failure carries the repair and a legal suggestion (`1Pump` Ã¢â€ â€™ `_1Pump`, `Start PB` Ã¢â€ â€™ `Start_PB`), so the author
   fixes it in one turn instead of at build time.
 - **A function block diagram is checked as a graph, not just drawn.** An FBD routine is a wire graph the export
   never describes, so a sheet Studio refuses is indistinguishable from one it accepts. The new
@@ -1937,8 +1937,8 @@
   alone rather than guessed at. Covered by `packages/l5x/test/rung-rules.spec.ts`, which also asserts both rules
   stay silent on the committed fixture.
 - **The instruction catalogue names both published spellings.** Every `list_instructions` row for one of the
-  sixteen instructions Logix Designer 36 renamed now carries `also_published_as` (`SQR` â†’ `SQRT`, `EQU` â†’ `EQ`,
-  `MOV` â†’ `MOVE`), so a caller composing a rung sees that both forms are catalogued and does not have to know
+  sixteen instructions Logix Designer 36 renamed now carries `also_published_as` (`SQR` Ã¢â€ â€™ `SQRT`, `EQU` Ã¢â€ â€™ `EQ`,
+  `MOV` Ã¢â€ â€™ `MOVE`), so a caller composing a rung sees that both forms are catalogued and does not have to know
   which one the project happens to read. `compose_rung` accepts either and writes the spelling the export already
   uses. `packages/l5x/test/instructions.spec.ts` asserts the field appears for a renamed instruction and is absent
   for one that was never renamed.
@@ -1947,13 +1947,13 @@
   `LOWER`, `UPPER`, `RTOS`), file fill (`FLL`) and the subroutine label (`SBR`) are now catalogued, taking the catalogue
   from 118 to 128 instructions. Operand order is not guessed: each one was read out of the vendor instruction metadata
   the composer's own generate templates use, so `MID(Source,Qty,Start,Dest)` and `FLL(Source,Dest,Length)` are the order
-  Studio writes. `SBR` carries no operands â€” its parameters are the arguments the calling `JSR` passes â€” which also
+  Studio writes. `SBR` carries no operands Ã¢â‚¬â€ its parameters are the arguments the calling `JSR` passes Ã¢â‚¬â€ which also
   makes `SBR_NOT_FIRST` judge a mnemonic the catalogue previously did not know.
 
 - **A string slot is typed, so a BOOL tag cannot sit where a string belongs.** The string family added in this release
   declared its source and destination slots as `ANY`, which validated nothing: `CONCAT(Start,TextB,TextOut)` composed
-  happily with `Start` a BOOL, and Studio rejected it later. Those slots are now `STRING` â€” `CONCAT`, `MID`, `FIND`,
-  `INSERT`, `DELETE`, `LOWER`, `UPPER`, `RTOS` â€” while the count and start slots stay numeric, so `MID(TextA,Count,Count,TextOut)`
+  happily with `Start` a BOOL, and Studio rejected it later. Those slots are now `STRING` Ã¢â‚¬â€ `CONCAT`, `MID`, `FIND`,
+  `INSERT`, `DELETE`, `LOWER`, `UPPER`, `RTOS` Ã¢â‚¬â€ while the count and start slots stay numeric, so `MID(TextA,Count,Count,TextOut)`
   still composes. A wrong tag and a numeric literal each fail with the type the slot needs. `packages/l5x/test/instructions.spec.ts`
   composes into an export that carries STRING tags, so the check is exercised against a parsed project rather than a stub.
 
@@ -1965,18 +1965,18 @@
   corrupt the rung (an unbalanced bracket, an unterminated string, an embedded terminator); `ROUTINE` resolves
   against the export's routines and its refusals are `ROUTINE_NOT_FOUND` with the routine names as candidates;
   `LABEL` must be an identifier. The composer also emits the **resolved** operand text now, so a JSR keeps the
-  case the export uses rather than the caller's (`mainroutine` â†’ `MainRoutine`).
+  case the export uses rather than the caller's (`mainroutine` Ã¢â€ â€™ `MainRoutine`).
 
 - **Nine instructions had the wrong operand count, and Studio would have rejected every rung using them.** The
   compact table declared `MVM` with 2 operands (it takes Source, Mask, Destination), `GSV` and `SSV` with 3 (they take
   Class, Instance, Attribute, then a destination or source), `SQO` with 3 (it takes six), `SQL` with 3 (five), `FAL`
   with 3 (six), `FSC` with 3 (five), and `BSL`/`BSR` with 3 (four, because the source bit sits before the length).
   The counts now come from the vendor operand fields in written order, including the Length and Position fields a
-  control structure carries â€” exactly the fields a pins-only reading of the metadata misses. `SQO`, `SQL`, `FAL`, `FSC`,
+  control structure carries Ã¢â‚¬â€ exactly the fields a pins-only reading of the metadata misses. `SQO`, `SQL`, `FAL`, `FSC`,
   `MVM`, `GSV` and `SSV` moved out of the compact table into explicit entries, so each has one home.
 - **A system class, instance and attribute is a keyword, not a tag.** `GSV(Program,MainProgram,LastScanTime,Dest)` and
   `SSV(...)` name controller classes, not tag references, so the new `KEYWORD` slot kind validates them as identifiers
-  instead of resolving them against the tag table â€” which refused every GSV and SSV even once the operand count was
+  instead of resolving them against the tag table Ã¢â‚¬â€ which refused every GSV and SSV even once the operand count was
   right.
 
 - **An audit of every shared instruction caught five more wrong operand counts.** Comparing all 100 instructions
@@ -1988,24 +1988,24 @@
   instructions, both of which need their own pass rather than a mechanical fix.
 
 - **The motion family is catalogued from its instruction-box fields, 92 operands across 13 instructions.** Our whole
-  motion row was a placeholder â€” `MAJ`, `MAM`, `MAPC`, `MAS`, `MATC`, `MAH`, `MDF`, `MDW`, `MGS`, `MGSP`, `MRP`, `MSF`
+  motion row was a placeholder Ã¢â‚¬â€ `MAJ`, `MAM`, `MAPC`, `MAS`, `MATC`, `MAH`, `MDF`, `MDW`, `MGS`, `MGSP`, `MRP`, `MSF`
   and `MSO` each carried one or two operands, so every real motion call was refused by the arity check that was
-  supposed to protect it. Each now carries the fields its instruction box shows, in written order â€” `MAJ` has 17,
-  `MAM` 20, `MAPC` 14, `MSO` 2 â€” which took the arity audit from 33 differences to 20. Operand kinds stay `ANY` on
+  supposed to protect it. Each now carries the fields its instruction box shows, in written order Ã¢â‚¬â€ `MAJ` has 17,
+  `MAM` 20, `MAPC` 14, `MSO` 2 Ã¢â‚¬â€ which took the arity audit from 33 differences to 20. Operand kinds stay `ANY` on
   purpose: this catalogue cannot verify `AXIS`, `MOTION_GROUP` or the unit enumerations, so it validates presence and
   order and never claims a type it cannot check.
 
 - **The write path was probed end to end and found sound, so its contract is now tested.** Driving
-  `draft_rung` â†’ `draft_validate` â†’ `draft_apply` â†’ reopen showed renumbering closes correctly (0â€¦7 after an
+  `draft_rung` Ã¢â€ â€™ `draft_validate` Ã¢â€ â€™ `draft_apply` Ã¢â€ â€™ reopen showed renumbering closes correctly (0Ã¢â‚¬Â¦7 after an
   insert at the top), the rung comment survives, an array tag carries `Dimensions="4 2"`, and a two-line
-  Structured Text body becomes exactly two `<Line>` elements with **no newline inside any CDATA** â€” the shape
+  Structured Text body becomes exactly two `<Line>` elements with **no newline inside any CDATA** Ã¢â‚¬â€ the shape
   Studio refuses. None of that was covered by a test (`drafts.spec.ts` covers renumbering, not declaration
   dimensions or ST line splitting), so `packages/l5x/test/write-contract.spec.ts` now holds all four: the
   array attribute, its absence on a scalar, the one-line-per-`<Line>` rule, and that the written file reopens
   with the new routine listed.
 
 - **`FOR` now runs a routine, and a `JSR` may pass as many parameters as it needs.** The compact table gave `FOR`
-  a routine name, a source and an expression â€” neither the right count nor the right meaning. It takes the routine
+  a routine name, a source and an expression Ã¢â‚¬â€ neither the right count nor the right meaning. It takes the routine
   it loops over plus Index, Initial value, Terminal value and Step size, confirmed against two independent sources
   (the vendor operand metadata and the published description "each time the FOR instruction executes the routine,
   it adds the Step size to the Index"). Separately, `JSR` could carry only a routine and **one** parameter, so a
@@ -2013,14 +2013,14 @@
   reports `rest: true` so a reader can see the parameter list is open-ended.
 
 - **A tag that exists in another scope is no longer reported as absent.** `resolve_tag { address: "MainTimer" }`
-  at controller scope answered *"Declaration is absent from the export"* â€” while the tag is declared in
+  at controller scope answered *"Declaration is absent from the export"* Ã¢â‚¬â€ while the tag is declared in
   `MainProgram`. That is the kind of refusal that sends a reader hunting a typo that is not there. The resolution
   now says which scope does declare it and returns the scopes in a `scopes` field, so a caller can retry with
   `scope: "MainProgram"` instead of concluding the tag does not exist. A name no scope declares still answers
   *"absent from the export"*.
 
 - **Alarms, every component kind and both diagram languages are now tested.** The word "alarm" appeared nowhere in
-  the suite, so a project's `TagBasedAlarm` list was advertised and unverified â€” a kind that silently returns nothing
+  the suite, so a project's `TagBasedAlarm` list was advertised and unverified Ã¢â‚¬â€ a kind that silently returns nothing
   looks exactly like a project with no alarms. `packages/l5x/test/surface-contract.spec.ts` holds the positive case:
   the alarm is listed by name, kind and description, it opens, and the overview counts it. The same file walks all
   eight component kinds (list, then open the first row), asserts an absent name is a repairable `COMPONENT_NOT_FOUND`
@@ -2032,9 +2032,9 @@
   `INTERNAL: name.toUpperCase is not a function`. By this codebase's own contract `INTERNAL` means the tool is broken,
   so both told the reader the wrong thing about whose mistake it was. The spec arrives as caller-supplied JSON and is
   now shape-checked: a node must be an object, an instruction node must carry a non-empty mnemonic, and every operand
-  must be a string â€” each refused as `INVALID_LADDER_SPEC` with the shape to use instead.
+  must be a string Ã¢â‚¬â€ each refused as `INVALID_LADDER_SPEC` with the shape to use instead.
 - **A target that is not there is no longer called ambiguous.** `XML_REGIONS`/`acd-edit` threw
-  `AMBIGUOUS_TARGET: Expected one Routine named NoSuchRoutine; found 0` â€” a code that sends a reader looking for
+  `AMBIGUOUS_TARGET: Expected one Routine named NoSuchRoutine; found 0` Ã¢â‚¬â€ a code that sends a reader looking for
   duplicates that were never there. Zero matches now answers `COMPONENT_NOT_FOUND` with the declared names as the next
   call; only more than one match stays `AMBIGUOUS_TARGET`.
 - **The failure surface is now tested.** `packages/l5x/test/failures.spec.ts` throws an empty export, a non-L5X XML
@@ -2042,7 +2042,7 @@
   every answer is a repairable code and **never** `INTERNAL`.
 
 - **Documentation covers the whole program, not just its ladder.** `document_project` skipped every routine whose body was
-  not `RLL`, so a bundle reporting "3 routines" documented one of them â€” and the committed fixture alone has a Structured
+  not `RLL`, so a bundle reporting "3 routines" documented one of them Ã¢â‚¬â€ and the committed fixture alone has a Structured
   Text `FaultHandler` that appeared nowhere. A function block diagram is now written as a per-sheet element table (element,
   reference, from-id, to-id), a sequential function chart the same, Structured Text as its quoted source, and a language
   the reader does not decompose is named with its note. The tool description says what it produces, and
@@ -2051,20 +2051,20 @@
 
 - **`compare_projects` is tested on the languages that are not ladder.** It is the tool a reviewer uses to judge an
   edit, and a comparison that answers "no changes" while a Structured Text body or a diagram changed would be worse
-  than one that fails. Probing confirmed it does see them â€” component `structured_text` for an ST body, `diagram` for a
-  function block operand and for a chart step â€” and nothing held it, so
+  than one that fails. Probing confirmed it does see them Ã¢â‚¬â€ component `structured_text` for an ST body, `diagram` for a
+  function block operand and for a chart step Ã¢â‚¬â€ and nothing held it, so
   `packages/l5x/test/compare-languages.spec.ts` now covers an ST body change, an FBD operand change, an SFC step
   change, a rung change and a whitespace-only edit that must report nothing.
 
 - **`l5x_diagram` no longer refuses a call over a folder it defaulted itself.** On a host that cannot make the
   workspace path absolute, the tool threw `INVALID_ARGUMENT: The workspace path .l5x-diagram/l5x-diagram.svg is not
-  absolute` â€” blaming an `output` argument the caller never passed, and discarding a page that had already rendered.
+  absolute` Ã¢â‚¬â€ blaming an `output` argument the caller never passed, and discarding a page that had already rendered.
   Its sibling `l5x_routine_diagram` already coped: it returns the rung list and says why no image was written. The
-  whole-project diagram now does the same â€” the answer carries the rung count, the page window and an `image_error`,
+  whole-project diagram now does the same Ã¢â‚¬â€ the answer carries the rung count, the page window and an `image_error`,
   and only the image is missing.
 
 - **An I/O change against a baseline says which field changed.** `run_checks { baseline_id }` reported *"I/O module
-  Local changed"* and left the reader to diff the export by hand â€” while the change record it already holds carries
+  Local changed"* and left the reader to diff the export by hand Ã¢â‚¬â€ while the change record it already holds carries
   both sides. The finding now names the fields: *"I/O module Local changed: catalogNumber 1769-L33ER to
   1769-L33ER-X"*, listing up to four fields and counting the rest. `packages/l5x/test/checks.spec.ts` covers it, and
   the matching case that two identical exports report no I/O change at all.
@@ -2078,24 +2078,24 @@
 
 - **An instruction the catalogue cannot model no longer claims to take no operands.** `EOT`, `SFR` and `SFP` came from
   the compact table's empty slot lists, so `compose_rung` answered `SFP takes 0 operand(s); 2 were supplied` and then
-  told the reader to call `list_instructions` â€” which would repeat the same wrong answer. That is worse than absence: a
+  told the reader to call `list_instructions` Ã¢â‚¬â€ which would repeat the same wrong answer. That is worse than absence: a
   confident false arity with no way forward. Those three now carry `notModelled`, `compose_rung` refuses them with
   `INSTRUCTION_NOT_MODELLED`, and `list_instructions` reports `operands_modelled: false` with a note rather than an
   empty slot list.
 - **Every "unknown instruction" refusal now names the path that does not need the catalogue.** About a hundred of the
   vendor's instructions are not modelled here, so a valid name was previously a dead end. The refusal now says to write
-  the rung text with `draft_rung` and run `draft_validate` â€” verified to accept an uncatalogued mnemonic, since the text
+  the rung text with `draft_rung` and run `draft_validate` Ã¢â‚¬â€ verified to accept an uncatalogued mnemonic, since the text
   path validates syntax and tags while Studio remains the arity gate.
 
 - **`run_checks` now says which logic it could not check.** A rung naming an instruction the catalogue does not carry went
   unexamined and unreported, so "no findings" read as "everything was verified". The new
   `UNCATALOGUED_INSTRUCTION` finding is `info` and aggregated: *"1 instruction(s) in this export are not in the catalogue,
   so their operands were not checked: CROUT (1 rung)"*, with the catalogue size and the note that an uncatalogued name
-  may still be valid and Studio remains the arity gate. An AOI the export declares is excluded â€” the committed fixture
+  may still be valid and Studio remains the arity gate. An AOI the export declares is excluded Ã¢â‚¬â€ the committed fixture
   calls `Motor_Control` and stays silent.
 
 - **The skill no longer tells a reader to avoid the text path.** `packages/l5x/SKILL.md` said *"Write ladder through the
-  composer, not by inventing NeutralText"* â€” advice that the unmodelled-operand change made wrong, because for an
+  composer, not by inventing NeutralText"* Ã¢â‚¬â€ advice that the unmodelled-operand change made wrong, because for an
   instruction the catalogue does not model the text path is the only way. It now reads *"Compose through `compose_rung`;
   for an instruction it does not model, use `draft_rung` text."* The body still fits its 8000-character budget (7975
   after the edit, rebalanced by shortening the `list_instructions` bullet).
@@ -2104,9 +2104,9 @@
   went unexamined before it is written.
 
 - **Two control-transfer failures are reported: a `JSR` to a routine its own program does not declare, and a `JMP`
-  with no `LBL` of that name in its routine.** Neither could build, and neither was reported â€” a project that jumps
+  with no `LBL` of that name in its routine.** Neither could build, and neither was reported Ã¢â‚¬â€ a project that jumps
   nowhere read clean. The targets are written in the rung, so no vendor table is needed: `UNRESOLVED_ROUTINE` names the
-  routine and where a same-named routine does live (*"P1::R jumps to Ghost â€¦ a routine of that name exists in P2, and a
+  routine and where a same-named routine does live (*"P1::R jumps to Ghost Ã¢â‚¬Â¦ a routine of that name exists in P2, and a
   JSR can only call a routine in its own program"*), and `LABEL_NOT_FOUND` names the label and rung. A `JSR` to a routine
   in its own program and a `JMP` with a matching `LBL` stay silent, which the tests assert.
 
@@ -2119,17 +2119,17 @@
 - **The SDK verify path checks the file before the SDK, and a missing export is no longer a plugin defect.**
   `verify_offline_l5x` probed the Studio installation first and then read the export from disk, so a file that was moved,
   deleted or (in a harness) never written surfaced as `INTERNAL: ENOENT: no such file or directory`. The local
-  preconditions now run first â€” the export must still be on disk and still match the hash taken at `open_project` â€” and
+  preconditions now run first Ã¢â‚¬â€ the export must still be on disk and still match the hash taken at `open_project` Ã¢â‚¬â€ and
   a missing file answers `FILE_NOT_FOUND` with the reopen it needs. That also makes the refusal deterministic: it no
   longer depends on a Studio installation being present.
 - **`verify_offline_l5x` documents the gate that fires first.** Its description said only "Build needs project revision
-  37+", while the SDK actually refuses when the export's revision has no matching installed Logix Designer â€” observed
-  here as `STUDIO_VERSION_UNAVAILABLE: Studio 5000 v33 is not installed; â€¦ Installed versions: 36, 37`. The description
+  37+", while the SDK actually refuses when the export's revision has no matching installed Logix Designer Ã¢â‚¬â€ observed
+  here as `STUDIO_VERSION_UNAVAILABLE: Studio 5000 v33 is not installed; Ã¢â‚¬Â¦ Installed versions: 36, 37`. The description
   now states that gate, then the 37+ build requirement, then `probe=true`.
 
 - **A failed offline build that reports nothing no longer gives advice that cannot be followed.** The real Studio engine was
   driven end to end for the first time here (183 seconds, bridge built, project opened) and it stopped at `open_source`
-  with `sdk_error: null`, `diagnostics: []` and a single log line â€” while `next_step` still said *"Read diagnostics,
+  with `sdk_error: null`, `diagnostics: []` and a single log line Ã¢â‚¬â€ while `next_step` still said *"Read diagnostics,
   correct the L5X"*. The next step is now the pure `verifyNextStep`, and a silent failure says so, names the two gates
   (a Logix Designer release installed for the export revision, and project revision 37 or later for a build) and points
   at `log` as the evidence instead of an empty list.
@@ -2137,15 +2137,15 @@
 - **A run stopped at its time budget is reported as a timeout, not as a project that failed to open.** Driving the real
   Studio engine end to end showed the shape of the bug: the bridge was killed by its own 180-second timeout (observed
   elapsed 183,546 ms), a killed child closes with `code: null` and no message, and the stage fell through to
-  `open_source` with `sdk_error: null` and no diagnostics â€” so a hang looked like an export Studio refused to open. The
+  `open_source` with `sdk_error: null` and no diagnostics Ã¢â‚¬â€ so a hang looked like an export Studio refused to open. The
   child is now remembered as having been killed, the stage is `timeout`, the result carries `timeout_ms`, and the advice
   says the run was stopped, that nothing was learned about the export, and to retry once the engine is warm or build it
   in Studio 5000. The verify budget is 300 seconds because a cold first open starts the engine and took 183 seconds
   here; re-running against the real engine at 300 seconds confirmed the diagnosis (elapsed 301,936 ms, staged
-  `timeout`), which also shows that a structurally minimal L5X does not open â€” the import waits indefinitely.
+  `timeout`), which also shows that a structurally minimal L5X does not open Ã¢â‚¬â€ the import waits indefinitely.
 
 - **A timed-out verification says how far it got.** The result now carries `reached` (the last line the bridge printed),
-  `export_revision` and `probe_build`, and the timeout advice quotes it: *"The run was stopped at its time budgetâ€¦ It
+  `export_revision` and `probe_build`, and the timeout advice quotes it: *"The run was stopped at its time budgetÃ¢â‚¬Â¦ It
   stopped after: Open project started."* That came from driving the real engine twice: a v36 export, opened under
   `probe`, printed one progress line and then blocked past both a 180-second and a 300-second budget, so a reader can
   now see that the engine never left the open step rather than guessing which part of their logic is wrong.
@@ -2158,13 +2158,13 @@
   and the survivor is a genuine double write). Safety-locked is now read by value: a standard GuardLogix export carries
   `<SafetyInfo SafetyLocked="false">`, which presence-testing would have refused as a locked controller.
 - **The safety refusal is confirmed against real hardware.** The supplied project declares `SafetyProgram1` with
-  `Class="Safety"`, a safety Task and safety network ports, so `verify_offline_l5x` refuses it by design â€” the offline
-  import aborts on safety controllers. Its 7 uncatalogued "instructions" (`MAM_YASKAWA`, `MCFG_YASKAWA`, â€¦) are Yaskawa
+  `Class="Safety"`, a safety Task and safety network ports, so `verify_offline_l5x` refuses it by design Ã¢â‚¬â€ the offline
+  import aborts on safety controllers. Its 7 uncatalogued "instructions" (`MAM_YASKAWA`, `MCFG_YASKAWA`, Ã¢â‚¬Â¦) are Yaskawa
   add-on-profile instructions rather than AOIs, so reporting them as unmodelled is correct.
 
 - **The analysis tools now name the scope that declares a symbol.** On the supplied project, `trace_dependencies` resolved a
   tag that `usage_map` then called "not declared in scope"; and a program-scoped symbol read in controller scope was
-  reported as *"Declaration is absent from the export"* â€” a statement about the export that was false. Both refusals now
+  reported as *"Declaration is absent from the export"* Ã¢â‚¬â€ a statement about the export that was false. Both refusals now
   say where the declaration lives and which `scope` to pass (*"Tag "Prg_CutSpeedUp_Cmd" is not declared in scope
   "MainTask_10ms"; it is declared in controller."*), backed by a new `declaringScopes` helper that answers controller,
   program and AOI scopes.
@@ -2187,21 +2187,21 @@
 ### Added
 
 - **A tag row drills into what is under it.** The tag organizer now expands an array into its elements, a
-  user-defined type into its members, and an add-on instruction instance into its own parameters â€” typed,
+  user-defined type into its members, and an add-on instruction instance into its own parameters Ã¢â‚¬â€ typed,
   indented, searchable, and each child carrying the value the export recorded for it. The add-on instruction
   node in the controller organizer opens onto its parameter list the same way, so a block's pins can be traced
   back to the definition they come from. Covered by `e2e:actions`, which expands a `DINT[5]` and an
   `AOI_Alarm` instance in the real browser and reads the rows that appear.
 - **The whole instruction set renders, not just the ones an export happens to use.** The catalogue the composer
   validates against (`packages/l5x/src/engine/instructions.ts`) grew from 42 instructions to **121 entries / 118
-  distinct names** â€” math, file and array, sequencer, ASCII, string, process, alarm, motion, program control and the
-  migrated PLC-5/SLC set â€” and the ladder now derives its pin labels from that one catalogue, so an instruction that
+  distinct names** Ã¢â‚¬â€ math, file and array, sequencer, ASCII, string, process, alarm, motion, program control and the
+  migrated PLC-5/SLC set Ã¢â‚¬â€ and the ladder now derives its pin labels from that one catalogue, so an instruction that
   exists cannot be drawn without a label. `npm run e2e:instructions` builds an export with **one rung per catalogued
   instruction** and renders it in the real browser: `121/121 instructions rendered, 132 blocks, clipped 0, generic
   labels 0`. `test/instruction-coverage.spec.mjs` holds the same invariant in the fast suite, where the failure mode
   (a block silently reading `Operand 1`) is one missing map entry away.
 - **Contacts look like contacts, and every block names its pins.** XIC is drawn as two short bars on the wire and XIO
-  adds the slash; a coil is two facing arcs with the latch letter between them â€” the shapes Studio 5000 draws, not
+  adds the slash; a coil is two facing arcs with the latch letter between them Ã¢â‚¬â€ the shapes Studio 5000 draws, not
   boxes. Blocks label their operands from a catalogue of the instructions a Logix export carries
   (`packages/viewer/src/client/instructions.ts`), and an **add-on instruction call labels its pins from its own
   definition** in the export, so `AOI_EncoderLinear` reads `RawCounts`, `PPR`, `RollerDiameterIn`, `GearRatio` rather
@@ -2216,8 +2216,8 @@
   at 1680x1200 and 1280x900, including a 95-instruction rung list. `test/render/e2e.mjs` renders one routine,
   `diag.mjs` dumps the measurement and `probe.mjs` one instruction's computed style.
 - **Every routine of an export is judged, not just the sampled ones.** `npm run e2e:routines` opens every routine the
-  organizer lists â€” 256 routines across the CT9, CT10, CT8, Slitter and PLC-5-migrated fixtures plus the Century SLC
-  migration â€” in one browser and applies the same assertions to each, so a ladder shape that only occurs in an
+  organizer lists Ã¢â‚¬â€ 256 routines across the CT9, CT10, CT8, Slitter and PLC-5-migrated fixtures plus the Century SLC
+  migration Ã¢â‚¬â€ in one browser and applies the same assertions to each, so a ladder shape that only occurs in an
   unscheduled program or a migrated routine cannot slip through.
 - **A rung answers for itself.** Right-clicking a rung opens its own menu - ask Arya about that rung, watch every
   tag it touches in one action, show or hide its NeutralText, copy its source, or ask Arya for a new rung comment -
@@ -2237,12 +2237,12 @@
 
 - **The ladder pane draws like Studio 5000.** Each rung reserves the band its longest instruction comment needs, so
   every glyph in a rung sits on one wire; contact and coil glyphs are green boxes with the tag name beneath; function
-  blocks carry a header band and Studio's `label | operand | value` rows with a `â—€` value marker; the parallel output
+  blocks carry a header band and Studio's `label | operand | value` rows with a `Ã¢â€”â‚¬` value marker; the parallel output
   branch sits on the right rail; values are right-aligned; the wire, rung comment and rung number follow Studio's
   layout. Nothing is ellipsized: long tags wrap instead of truncating, which is what made the old pane show
-  `BottomKnife_MPâ€¦` and a number that read as part of the tag name.
+  `BottomKnife_MPÃ¢â‚¬Â¦` and a number that read as part of the tag name.
 - **Timer pins are named and filled from the export.** `TON`/`TOF`/`RTO` render `Timer`, `Preset` and `Accum` (with
-  `EN`/`TT`/`DN` badges) and read the recorded `PRE`/`ACC`, so the `TON(â€¦,?,?)` an export stores no longer reaches the
+  `EN`/`TT`/`DN` badges) and read the recorded `PRE`/`ACC`, so the `TON(Ã¢â‚¬Â¦,?,?)` an export stores no longer reaches the
   screen as two rows labelled `2` and `3`. Migrated instructions gained the same treatment: `FLL`/`FIL`, `OSR`/`OSF`,
   `CTU`/`CTD`, `CLR` and `MSG` name their pins in English and Chinese.
 - **Both client faces build from this repository.** `scripts/build-viewer-face.mjs` and
@@ -2258,7 +2258,7 @@
   on an export that lists the same module under `A1`/`A2` Ethernet; the key now includes the module's seat in the tree.
 - **Three dead rules left the ladder stylesheet,** and a new spec (`test/viewer-face-css.spec.mjs`) keeps the
   stylesheet and the renderer in step: a class the renderer never reads fails the build's tests, and so does a
-  `css.<name>` the stylesheet does not define â€” both used to be invisible, one as dead intent and the other as an
+  `css.<name>` the stylesheet does not define Ã¢â‚¬â€ both used to be invisible, one as dead intent and the other as an
   unstyled element with no error anywhere.
 
 ## [0.72.1] - 2026-10-31
@@ -2267,7 +2267,7 @@
 
 - **A build error gets three probes, not a session.** The `legacy-to-logix-migration` skill and the row's reference
   now say it plainly: one hypothesis per offline build, and when the third does not move the error, the finding is
-  written down â€” what the error survived, the routine and rung the bisect narrowed it to, the operands still suspect â€”
+  written down Ã¢â‚¬â€ what the error survived, the routine and rung the bisect narrowed it to, the operands still suspect Ã¢â‚¬â€
   and handed on. A narrowed finding beats a fourth guess, and Studio 5000's own Errors tab names the rung the SDK
   message withholds. The rule came out of CENTURY CABINETS, where the arity error survived an OSR repair, ASCII
   stubbing, a dropped `JSR` operand and two operand swaps before the bisect left one rung.
@@ -2289,7 +2289,7 @@
   row, bundle entry, package, tool product, skill and body budget, capability probe, evidence gate and owning documents.
   `test/components.spec.mjs` fails when the manifest and `cordis.patch.yml` disagree, when a tool count or README number
   is stale, when a skill cites a tool that no longer exists, or when a component loses one of its files.
-- **`docs/reference/components.md` states the contract** â€” what a component is, what each capability class means for
+- **`docs/reference/components.md` states the contract** Ã¢â‚¬â€ what a component is, what each capability class means for
   verification, the manifest fields, the ten-step checklist for adding one, and what the checks enforce.
 - **The README tool counts are corrected** to the registered surfaces (133 tools: 51 L5X, 47 FactoryTalk View, 24
   MotionWorks IEC, 9 Optix, 2 engineering resources), with a known-gap line for the 9 vendored Optix tools that the
@@ -2333,8 +2333,8 @@
   comparison in full, and the open items that are decisions rather than defects (a placeholder tag standing in for a
   module with no Logix equivalent, a legacy I/O image left as a plain tag array, an array indexed by a tag, sites
   still unanswered, a revision below 37). Name the output `.docx` for a formatted Word document and the row writes
-  the OOXML package itself â€” A4, navy headings, banded tables with a repeating header row, page numbers in the
-  footer, no dependency and no vendor application â€” or `.md` for the same content as plain text. On the Slitter 10
+  the OOXML package itself Ã¢â‚¬â€ A4, navy headings, banded tables with a repeating header row, page numbers in the
+  footer, no dependency and no vendor application Ã¢â‚¬â€ or `.md` for the same content as plain text. On the Slitter 10
   program it reads 15 markers before and 0 after, 55 rungs corrected and 3 open items, and it writes only the
   report.
 
@@ -2342,10 +2342,10 @@
 
 - **Skill budgets live in the manifest.** The 8000-character assertion moved from the three package skill tests to
   `test/components.spec.mjs`, which reads each budget from `components.json`; the package tests keep registration,
-  identity and frontmatter checks only. One fact, one home â€” changing a budget is now a manifest edit, not three.
+  identity and frontmatter checks only. One fact, one home Ã¢â‚¬â€ changing a budget is now a manifest edit, not three.
 - **The migration reference states what the wizard actually asks.** `docs/reference/migration.md` now names the two
   wizard questions (target controller and firmware; keep-existing-I/O versus update-all-I/O, with the placeholder
-  tags the second path avoids), the revision 30â€“32 ceiling that leaves wizard output import-verified until someone
+  tags the second path avoids), the revision 30Ã¢â‚¬â€œ32 ceiling that leaves wizard output import-verified until someone
   retargets it in Studio 5000 revision 37 or later, and the typeless-data-file rule that keeps an unlabelled PLC-5
   data file out of the unmapped list. The compare evidence for the EN049 PLC-5 program is recorded there: 34 matched
   files, 306 of 320 legacy rungs, 90 data files accounted for, 1 real difference (131 indirect expressions) and
@@ -2356,7 +2356,7 @@
 - **A placeholder tag is the right answer, not a failure.** The migration reference now says so: a module with no Logix
   equivalent (a 1747-SDN DeviceNet scanner is the worked example) becomes a placeholder tag by design, the lint rule
   reports it as `PLACEHOLDER_TAG`, and choosing the replacement belongs to the engineer. The same pass states the
-  revision ceiling as what it is â€” the installed wizard cannot emit 37 or newer, so retargeting the imported project
+  revision ceiling as what it is Ã¢â‚¬â€ the installed wizard cannot emit 37 or newer, so retargeting the imported project
   in Studio 5000 is the first step before any build verdict is quoted, not an alternative workflow.
 - **The migration reference records the SLC 500 side.** The resolution section gained the RSLogix 500 evidence, because
   a SLC 500 conversion numbers its markers differently (105, 109, 110, 114, 134, 135, 160 on
@@ -2368,8 +2368,8 @@
 
 ### Added
 
-- **`ftview_document`** writes a handover bundle for an opened export â€” `overview.md`, `displays.csv`,
-  `tags.csv` and `bindings.csv` â€” stating object counts per display, which tags each display reads, and
+- **`ftview_document`** writes a handover bundle for an opened export Ã¢â‚¬â€ `overview.md`, `displays.csv`,
+  `tags.csv` and `bindings.csv` Ã¢â‚¬â€ stating object counts per display, which tags each display reads, and
   which bindings name a tag the export does not declare, so a panel builder can review without Studio.
 - **`ftview_document` lists screen jumps and admits an absent tag table.** `overview.md` gains a
   navigation table (screen, object, target) built from the export, and an export without a tag CSV now says
@@ -2387,12 +2387,12 @@
   findings.
 - **`l5x_rung_preview` leads with the paste-ready text, not the picture.** The tool exists to hand back logic
   that goes into a ladder routine, but it drew a diagram by default and reported the image first, so the answer
-  looked like a screenshot instead of something to paste. It now returns `paste_text` â€” the validated rungs, one
-  per line â€” and draws a diagram only when `diagram: "yes"` is passed. The preview L5X document is still written
+  looked like a screenshot instead of something to paste. It now returns `paste_text` Ã¢â‚¬â€ the validated rungs, one
+  per line Ã¢â‚¬â€ and draws a diagram only when `diagram: "yes"` is passed. The preview L5X document is still written
   for the sidebar viewer.
 - **An inserted rung takes the number it names.** `draft_rung` with `mode: "insert"` refused any rung number the
   routine already used, so a rung could only be appended, never put above an existing one. An insert now places
-  the new rung at the position it is given â€” 0 through the current rung count â€” and renumbers the rungs below it;
+  the new rung at the position it is given Ã¢â‚¬â€ 0 through the current rung count Ã¢â‚¬â€ and renumbers the rungs below it;
   a delete closes the gap the same way, so the routine stays numbered 0..n-1. `before_rung` is accepted only when
   it equals `rung`. Proven on the CarpenterThickness ACD: a rung inserted at position 0 built through the Studio
   SDK with the existing rung renumbered to 1.
@@ -2405,7 +2405,7 @@
   `LoadMEApp` the tool returned the raw PowerShell serialisation (`#< CLIXML ... 0x80040301 ...`), which buries
   the one line a caller needs. `ftview_apps`, `ftview_export` and `ftview_backup` now decode the error strings
   and pass them on as one capped line, release their COM object before the process ends, and retry one export
-  once when the engine reports `0x80040301` â€” the failure a previous export call leaves behind.
+  once when the engine reports `0x80040301` Ã¢â‚¬â€ the failure a previous export call leaves behind.
 - **Controller system flags are not called unresolved.** `S:` and `R:` addresses are defined by the controller and
   absent from an export, so the review's unresolved-reference pass still reported them: a valid rung using
   `S:FS` produced `UNRESOLVED_REFERENCE` and `draft_validate` warned `Symbol MainProgram::S:FS could not be
@@ -2414,14 +2414,14 @@
 - **A rung whose right power rail is not driven is refused before it is staged.** Studio rejects a rung that
   ends in a read-only instruction with `RxCMP_E_AUDIT_OUTPUTS`, and that only surfaced at build time: a rung
   such as `XIC(hmi_AutoManual_Cmd)AFI();` passed `draft_rung`, `draft_validate` and `draft_apply`, then failed
-  the Studio build. `draft_rung`, the change-set path and `compose_rung` now check the parsed rung's last node â€”
-  and every path of a closing branch â€” and refuse `XIC`, `XIO`, `ONS`, `AFI` and the compare instructions at the
+  the Studio build. `draft_rung`, the change-set path and `compose_rung` now check the parsed rung's last node Ã¢â‚¬â€
+  and every path of a closing branch Ã¢â‚¬â€ and refuse `XIC`, `XIO`, `ONS`, `AFI` and the compare instructions at the
   rail with the fix that names an output instruction.
 - **The ME alarm setup file is no longer reported as an unparsed display.** `Alarms/Alarms.xml` has an
   `<alarms>` root, so `ftview_open` listed `Root element alarms is not an ME display.` as a structural diagnostic
   even though `ftview_check` reads the same file for its alarm findings. The scan records it as an alarm setup file
   instead: `ftview_open` returns it in `alarm_files` and says how many there are, and `UNPARSED_FILE` names only
-  files that really failed to parse. The alarm findings are unchanged â€” the CarpenterPilot export still reports
+  files that really failed to parse. The alarm findings are unchanged Ã¢â‚¬â€ the CarpenterPilot export still reports
   its 145 alarm findings, and `ftview_check` there now returns 154 findings instead of 223.
 - **A Studio import manifest is no longer reported as an unparsed display.** `ftview_apply` writes
   `Displays/BatchImport_<application>.xml` so Studio's Graphics Import Export Wizard can import the displays it
@@ -2459,7 +2459,7 @@
   validation instead of at apply. A clean draft still says "schema ran with no error".
 - **Integration coverage for the scaffold and popup paths.** `test/workflow.spec.ts` now also scaffolds an
   existing display and stages (then applies) a popup, so the three authoring entry points that write vendor XML
-  â€” screen, scaffold, popup â€” are each proven against the installed `Gfx-ME17.xsd`, not only against layout unit
+  Ã¢â‚¬â€ screen, scaffold, popup Ã¢â‚¬â€ are each proven against the installed `Gfx-ME17.xsd`, not only against layout unit
   tests. Both pass unchanged; the only failure was the test fixture, which used a `<caption>` child on `<text>`
   where the vendor schema requires the attribute.
 - **Fixed: authored screens and popups were rejected by schema validation.** `ftview_draft_screen` wrote
@@ -2469,20 +2469,20 @@
   every screen from that tool failed at apply. Panels and navigation now use `line`, the numeric display keeps
   the attributes the vendor declares, and navigation buttons carry a light face so the default text stays
   readable.
-- **New: `test/workflow.spec.ts` runs the steps a model actually takes** â€” create a display, author a screen,
-  validate, apply, reopen what was written, run `ftview_check` â€” in one test. It found the three schema defects
+- **New: `test/workflow.spec.ts` runs the steps a model actually takes** Ã¢â‚¬â€ create a display, author a screen,
+  validate, apply, reopen what was written, run `ftview_check` Ã¢â‚¬â€ in one test. It found the three schema defects
   above, which the layout unit tests could not see because they never validate against the vendor XSD.
 - **Test harness: files a tool writes are readable again** (`textOf`, separator normalisation, directory
   listing over both maps), so a test can reopen its own output the way the real filesystem allows.
 - **A full-screen display whose canvas differs from the rest is named.** `ftview_design_check` adds
   `VIEW-LAYOUT-02` (info) for a `replace` display whose pixel size is not the common one, with the common
   size and how many displays share it; popups (`onTop`) are excluded because they are sized on purpose.
-  Measured on the Carpenter pilot export: 14 displays, 0 findings â€” all full screens are 640x480 â€” where the
+  Measured on the Carpenter pilot export: 14 displays, 0 findings Ã¢â‚¬â€ all full screens are 640x480 Ã¢â‚¬â€ where the
   first cut of the rule had reported the three popups as mismatches.
 - **A draft says when a connection names an unknown tag.** Every authoring tool (object add and set, screen,
   popup, restyle) now compares the connection roots it stages against the export tag database and reports
   `unresolved_tags` in the result, with a sentence naming them. A member such as `Motor.Speed` resolves
-  against its root, so only genuinely undeclared tags are named. The draft still stages â€” the point is to
+  against its root, so only genuinely undeclared tags are named. The draft still stages Ã¢â‚¬â€ the point is to
   learn it now rather than after `ftview_apply` and `ftview_check`.
 - **`ftview_check` reads the alarm setup without being asked.** An `Alarms.xml` shipped inside the export
   (`Alarms/Alarms.xml`, the layout the wizard writes) is now read automatically, so one call covers the
@@ -2538,7 +2538,7 @@
   `writeBytes` at the same relative path, so a handed-over folder and a later import package both
   carry the images the displays name.
 - **`ftview_compare` diffs tag rows, not just their names.** `tags.changed` lists each field that
-  moved â€” device address, description, data source, native type, read-only â€” with both values, so a
+  moved Ã¢â‚¬â€ device address, description, data source, native type, read-only Ã¢â‚¬â€ with both values, so a
   re-addressed tag between two application versions is visible instead of hiding behind a changed
   CSV hash.
 - **`VIEW-NAV-02` catches a display an operator cannot leave.** `ftview_design_check` reports a
@@ -2562,7 +2562,7 @@
   that would not change.
 - **Cross-reference counts alarm usage.** `ftview_cross_reference` reads the export alarm
   configuration and reports, per HMI tag, how many alarm triggers watch it (`rows[].alarms`), the
-  trigger count, and `counts.alarmOnly` â€” the tags an alarm watches that no display shows. A tag
+  trigger count, and `counts.alarmOnly` Ã¢â‚¬â€ the tags an alarm watches that no display shows. A tag
   used only by alarms used to look unused.
 - **An import package reports the displays the application already matches.** `ftview_studio_import_prepare`
   compares each packaged display's objects with the `current_export` of the application and returns
@@ -2594,7 +2594,7 @@
 - **`ftview_apply` copies the artwork a display names.** A display that sets `imageName` was
   broken after import because the wizard copies only the XML, so the folder it produced had no
   `Images/` files. Apply now finds each named image in the export (`png`, `jpg`, `jpeg`, `gif`,
-  `bmp`), writes it beside the displays, and returns `images` and `missing_images` â€” a name the
+  `bmp`), writes it beside the displays, and returns `images` and `missing_images` Ã¢â‚¬â€ a name the
   export does not carry is reported instead of failing silently. Filesystem providers gained an
   optional `writeBytes`, so binary files are copied byte-for-byte.
 ## [0.66.0] - 2026-10-29
@@ -2723,7 +2723,7 @@
   line is broken at a separator near the middle and drawn on two lines, so
   `MOVE(BottomKnife_MP200Iec:O.Data[3],BottomKnife_MP200Iec:O.DegreePosition)` stays readable on the
   page. Applies to `l5x_diagram` and `l5x_rung_preview`.
-- **`l5x_diagram` captions the page with the range it covers** â€” `5-16 of 799 rung(s)` â€” and names the
+- **`l5x_diagram` captions the page with the range it covers** Ã¢â‚¬â€ `5-16 of 799 rung(s)` Ã¢â‚¬â€ and names the
   `start_rung` that continues it, so a page image carries its own navigation instead of relying on the
   caller to remember the offset.
 
@@ -2757,7 +2757,7 @@
 
 - **`ftview_draft_ops` and `ftview_draft_drop`.** A staged change can now be listed with its index,
   kind and target, and dropped on its own. Before this, one wrong object move meant discarding every
-  staged edit or hand-editing the display XML â€” the field session wrote 28 one-off PowerShell scripts
+  staged edit or hand-editing the display XML Ã¢â‚¬â€ the field session wrote 28 one-off PowerShell scripts
   that patched XML directly, partly because a draft could not be inspected or trimmed.
 
 ### Changed
@@ -2770,8 +2770,8 @@
 ### Added
 
 - **`ftview_studio_import_prepare` says whether anyone looked at the screens.** Every display this
-  chat drew is remembered, and the package reports the displays that were never rendered â€” with a
-  `ftview_render` step for them â€” instead of letting a human import a layout nobody has seen. In the
+  chat drew is remembered, and the package reports the displays that were never rendered Ã¢â‚¬â€ with a
+  `ftview_render` step for them Ã¢â‚¬â€ instead of letting a human import a layout nobody has seen. In the
   field session 10 packages were built, 0 renders were taken, and the agent's own log says it was
   "`revising layouts`" from text alone.
 
@@ -2789,7 +2789,7 @@
   only for `<SafetyTask>`/`<SafetyProgram>` elements; the real commissioning export marks safety
   with `Class="Safety"` on its task and program, a `SafetyNetwork` port number and a
   `SafetyLocked` controller, so the import ran and the SDK answered
-  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` â€” which reads like an empty draft, not a refusal. The field
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` Ã¢â‚¬â€ which reads like an empty draft, not a refusal. The field
   session retried it four times and then edited the ACD by script instead.
 
 ### Changed
@@ -2804,7 +2804,7 @@
 
 - `l5x_diagram` draws every ladder rung of the open project on one page (routine headings, rung numbers,
   comments and instruction chains), with `program` and `max_rungs` to bound the page. Reviewing an
-  unfamiliar controller no longer takes one `l5x_routine_diagram` call per routine â€” the field session
+  unfamiliar controller no longer takes one `l5x_routine_diagram` call per routine Ã¢â‚¬â€ the field session
   never used the single-routine diagram at all, and this is the call it would have made.
 - Every routine heading names `program/routine`, so repeated rung numbers are explainable, and long
   operands are clipped inside their box instead of running off the page.
@@ -2943,7 +2943,7 @@
 
 ### Added
 
-- **`compose_batch` writes many validated rungs in one call.** Up to 200 rung descriptions â€” composition trees or named patterns â€” are checked against the export and against the tags the same draft stages, then staged at consecutive rung numbers. The field session wrote 29 one-off scripts to add rungs one at a time; a batch that composes 20 rungs is now one call.
+- **`compose_batch` writes many validated rungs in one call.** Up to 200 rung descriptions Ã¢â‚¬â€ composition trees or named patterns Ã¢â‚¬â€ are checked against the export and against the tags the same draft stages, then staged at consecutive rung numbers. The field session wrote 29 one-off scripts to add rungs one at a time; a batch that composes 20 rungs is now one call.
 
 ### Changed
 
@@ -2969,7 +2969,7 @@
 
 ### Added
 
-- **`draft_list` and `draft_remove_op`.** A staged operation can now be inspected by index and dropped on its own. Before this, one wrong rung meant discarding every staged edit or hand-editing the L5X outside the plugin â€” the field session chose the hand edit, with 29 one-off PowerShell scripts as the price.
+- **`draft_list` and `draft_remove_op`.** A staged operation can now be inspected by index and dropped on its own. Before this, one wrong rung meant discarding every staged edit or hand-editing the L5X outside the plugin Ã¢â‚¬â€ the field session chose the hand edit, with 29 one-off PowerShell scripts as the price.
 
 ### Changed
 
@@ -2978,7 +2978,7 @@
 
 ### Added
 
-- **A re-apply no longer needs a new folder name.** `ftview_apply` accepts `overwrite: "yes"` for a folder this chat already wrote, so fixing one attribute and re-writing the export stops littering `Final 2`, `Final 3` folders. An unknown folder is still refused with `OUTPUT_NOT_TRACKED` â€” applying there would merge into somebody else's files â€” and the `OUTPUT_EXISTS` message now names the option that works.
+- **A re-apply no longer needs a new folder name.** `ftview_apply` accepts `overwrite: "yes"` for a folder this chat already wrote, so fixing one attribute and re-writing the export stops littering `Final 2`, `Final 3` folders. An unknown folder is still refused with `OUTPUT_NOT_TRACKED` Ã¢â‚¬â€ applying there would merge into somebody else's files Ã¢â‚¬â€ and the `OUTPUT_EXISTS` message now names the option that works.
 
 ### Changed
 
@@ -3079,7 +3079,7 @@
 
 ### Added
 
-- **`ftview_tag_snapshot`: the tag CSV without Studio or the wizard.** The tool copies `TAG/<application>.MDF` to a temp folder, attaches the copy to the local SQL Server Express instance (`MSSQLSERVER`, `SQLEXPRESS`, ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦), reads `dbo.AllTagsView` and renders the rows with the vendor wizard's exact quoting, ordering, CRLF endings and UTF-8 BOM. The application database is only read; the attach is dropped and the copy removed. Verified byte-identical against the wizard snapshots for `AryaFTV_CarpenterPilot_20261007` (101 tags), `CC019_Main` (121 tags) and `Carpenter_EPS_Laminator001` (378 tags).
+- **`ftview_tag_snapshot`: the tag CSV without Studio or the wizard.** The tool copies `TAG/<application>.MDF` to a temp folder, attaches the copy to the local SQL Server Express instance (`MSSQLSERVER`, `SQLEXPRESS`, ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦), reads `dbo.AllTagsView` and renders the rows with the vendor wizard's exact quoting, ordering, CRLF endings and UTF-8 BOM. The application database is only read; the attach is dropped and the copy removed. Verified byte-identical against the wizard snapshots for `AryaFTV_CarpenterPilot_20261007` (101 tags), `CC019_Main` (121 tags) and `Carpenter_EPS_Laminator001` (378 tags).
 - **A SQL-aware capability status.** `ftview_capabilities` reports `tags: "available"` when local SQL tools exist even without `DatabaseConverter.exe`, and its notes say which path is in use.
 
 ### Changed
@@ -3110,7 +3110,7 @@
 ### Added
 
 - **`ftview_capabilities`** reports what the host can actually do: Studio and tag-wizard paths, installed `Gfx-ME*` schema versions, application count, and status for tags (`available`), alarms and import (`requires-studio`), backup and live (`unverified`), with one line per fact an agent must not guess.
-- **Objects can be added to a display created in the same draft.** `ftview_draft_object_add`, `_set`, `_delete` and `_order` resolve a display that the draft's `display_create` or `display_add` just made, instead of failing with ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“No display is named ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â. Display settings on a draft-added display are accepted too.
+- **Objects can be added to a display created in the same draft.** `ftview_draft_object_add`, `_set`, `_delete` and `_order` resolve a display that the draft's `display_create` or `display_add` just made, instead of failing with ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNo display is named ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â. Display settings on a draft-added display are accepted too.
 
 ### Documented
 
@@ -3119,12 +3119,12 @@
 
 ### Fixed
 
-- **The alarm-export steps named the wrong menu.** `ftview_studio_export_prepare { kind: "alarms" }` said `Tools > Alarm Import Export Wizard`. The wizard opens from **right-click `Alarms > Alarm Setup` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ `Import and ExportÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦`**, and it runs inside `VStudio.exe`, so Studio must be open with the application loaded. The steps now say that, including the case where Studio is closed.
+- **The alarm-export steps named the wrong menu.** `ftview_studio_export_prepare { kind: "alarms" }` said `Tools > Alarm Import Export Wizard`. The wizard opens from **right-click `Alarms > Alarm Setup` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ `Import and ExportÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦`**, and it runs inside `VStudio.exe`, so Studio must be open with the application loaded. The steps now say that, including the case where Studio is closed.
 
 ### Verified on CC019_Main
 
 - Tag export through `DatabaseConverter.exe`: `CC019_Main-Tags.CSV`, 104 tags, 110 lines.
-- Alarm export through `Alarm Setup ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
+- Alarm export through `Alarm Setup ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
 ## [0.19.1] - 2026-10-28
 
 ### Fixed
@@ -3133,7 +3133,7 @@
 
 ### Verified
 
-- Second application exported and drafted against: `CC019_Main` (70 displays, 1280ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
+- Second application exported and drafted against: `CC019_Main` (70 displays, 1280ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
 ## [0.19.0] - 2026-10-28
 
 ### Fixed
@@ -3143,12 +3143,12 @@
 
 ### Added
 
-- **`docs/reference/ftview-any-app.md`** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ draft ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ validate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ apply ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ import ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ verify loop.
+- **`docs/reference/ftview-any-app.md`** ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ draft ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ validate ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ apply ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ import ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ verify loop.
 ## [0.18.4] - 2026-10-28
 
 ### Added
 
-- **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
+- **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
 ## [0.18.3] - 2026-10-28
 
 ### Fixed
@@ -3164,18 +3164,18 @@
 
 ### Fixed
 
-- **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
+- **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file 'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
 ## [0.18.0] - 2026-10-28
 
 ### Added
 
-- **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦/></state>ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
-- **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦/></animations>`.
+- **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦/></state>ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
+- **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦/></animations>`.
 - **`gotoButton` captions are now a `<caption>` child**, which is the shape its schema expects; a `states` face would be invalid.
 
 ### Verified
 
-- `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
+- `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
 - Rendered to `artifacts/ftview-arya/Arya Control.png`.
 - Not yet imported into a live Studio application: Studio started in Demo Mode and the application did not finish loading during this run, so the schema is the acceptance evidence here.
 ## [0.17.2] - 2026-10-28
@@ -3198,7 +3198,7 @@
 
 ### Fixed
 
-- **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦">` shape and leaves `<gfx>` untouched; the file name is the display name.
+- **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦">` shape and leaves `<gfx>` untouched; the file name is the display name.
 ## [0.16.0] - 2026-10-28
 
 ### Changed
@@ -3221,8 +3221,8 @@
 ### Added
 
 - **`ftview_studio_export_prepare`** resolves an application's `.med`, verifies Rockwell's Tag Import and Export Wizard is installed, and returns the exact steps and destination file. It does not click anything.
-- **`ftview_studio_export_accept`** validates what the wizard produced ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â tag CSV header and row count, or an `<alarms>` XML ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
-- The FTView skill documents the prepare ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ wizard (computer use) ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ accept workflow for fresh tags and alarms.
+- **`ftview_studio_export_accept`** validates what the wizard produced ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â tag CSV header and row count, or an `<alarms>` XML ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
+- The FTView skill documents the prepare ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ wizard (computer use) ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ accept workflow for fresh tags and alarms.
 
 ### Notes
 
@@ -3243,7 +3243,7 @@
 - **The object contract is now teachable.** `TYPE_GUIDE` documents all 34 drawable types with required attributes,
   allowed children and a construction note; `ftview_object_types all="true"` returns it alongside what the export uses.
 - `multistateIndicator` and `polyline` are part of both the drafting contract and the renderer. The missing
-  `multistateIndicator` was why the yellow **MANUAL** bar never drew ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â it was dropped before rendering, and no
+  `multistateIndicator` was why the yellow **MANUAL** bar never drew ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â it was dropped before rendering, and no
   attribute change could fix it.
 - The FTView skill now documents the contract workflow (read `all`, read the used type, draft, validate, apply), the
   image-name and reference-object rules, and the preview's fidelity limits.
@@ -3308,7 +3308,7 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
   empty placements. This was the largest visual regression against Studio.
 - **Images render in the preview.** A new `/engineering/ftview/image` route serves `Images/<name>` with a file-name
   whitelist, and the face resolves every image through it.
-- **Shape fidelity.** Buttons and indicators honour StudioÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s `shape` attribute: `ellipse` draws a circle (status lamps
+- **Shape fidelity.** Buttons and indicators honour StudioÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s `shape` attribute: `ellipse` draws a circle (status lamps
   were rectangles), rounded shapes get a corner radius.
 - **Drafting accepts every drawable element type.** `ftview_draft_object_add` validates the type against the 34-type
   contract (`panel`, `group`, shapes, all button kinds, numeric/string fields, bar graph, gauge, trend, list selector,
@@ -3332,7 +3332,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
-- **Compare view.** The previewÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s **Compare** action loads the same display from a second export folder through the
+- **Compare view.** The previewÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s **Compare** action loads the same display from a second export folder through the
   display route and shows both renders side by side with their labels, so an edit can be judged before it is applied.
   The second folder is asked for by name, nothing is written, and the button toggles the pane off.
 
@@ -3344,9 +3344,9 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Added
 
 - **Interactive preview.** Every rendered object now carries its type and name, so a click opens an inspector with the
-  objectÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
+  objectÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
 - **Navigation.** Double-clicking a `gotoButton` (or using the inspector) loads its target display through the new
-  `GET /engineering/ftview/display?root=&name=` route, with a **ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Ãƒâ€šÃ‚Â Back** history. The route accepts display file names
+  `GET /engineering/ftview/display?root=&name=` route, with a **ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â Back** history. The route accepts display file names
   only and refuses traversal.
 - **PNG export** of the current view from the toolbar.
 
@@ -3359,14 +3359,14 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **`ftview_object_types`.** Catalogs the object types the open export actually uses: how many of each, every attribute
   seen with its usage count and up to three example values, and example names. Ask for one `type` to get its attribute
-  table ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
+  table ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
 - **`ftview_design_check`.** Rule-based findings from the `view` corpus: touch targets under 44 px (`VIEW-HPM-02`),
   controls with no base caption (`VIEW-HPM-01`), text contrast below 4.5:1 (`VIEW-COLOR-01`) and displays no
   `gotoButton` reaches (`VIEW-NAV-01`). Every finding names its rule and its evidence.
 
 ### Changed
 
-- FactoryTalk View read surface: 7 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 9 tools; bundle total 100 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 102.
+- FactoryTalk View read surface: 7 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 9 tools; bundle total 100 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 102.
 ## [0.10.5] - 2026-10-27
 
 ### Added
@@ -3438,7 +3438,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
-- **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â which is why the old preview showed blank navigation buttons.
+- **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â which is why the old preview showed blank navigation buttons.
 - The renderer is not wired into the client face yet; the artifact still serves the panel. Known gap, stated rather than implied.
 ## [0.10.0] - 2026-10-27
 
@@ -3454,7 +3454,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Changed
 
-- FactoryTalk View read surface: 6 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 7 tools; bundle total 99 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 100.
+- FactoryTalk View read surface: 6 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 7 tools; bundle total 99 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 100.
 
 ### Known gaps
 
@@ -3468,7 +3468,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   zero displays even when it wrote thirteen. The count now matches the paths the tool actually returns.
 - **The tags and alarms warning now says what it means.** The copied `Alarms/Alarms.xml` and
   `Tags/<application>.csv` are snapshots Studio last wrote when those components were exported from their
-  editors ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â not fresh data. The warning states that, and that the application export in Studio is what
+  editors ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â not fresh data. The warning states that, and that the application export in Studio is what
   refreshes them. There is no supported headless export for either component; this is the honest boundary.
 ## [0.9.2] - 2026-10-27
 
@@ -3476,7 +3476,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **The `engineering-standards` skill was missing from the catalog.** 0.9.1 mounted it by calling the skills
   service from inside the resources row's `apply()`, which only works if that service already exists at that
-  row's turn ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â it mounts before the Optix row, so the skill was silently skipped (the tools still loaded).
+  row's turn ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â it mounts before the Optix row, so the skill was silently skipped (the tools still loaded).
   The skill is now its own plugin with `inject: ['skills']`, the same pattern the product skills use, so the
   host activates it when the service is up regardless of row order. A test asserts the injection list and
   registration.
@@ -3500,21 +3500,21 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **Model-agnostic engineering resources: a local standards corpus.** 34 authored pages across six domains
   (IEC 61131-3, Rockwell, Yaskawa, FactoryTalk View/HMI, Optix, craft) with front-matter provenance and 100+
-  rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦). `engineering_reference` lists the contents, ranks pages for a
+  rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦). `engineering_reference` lists the contents, ranks pages for a
   query and returns one page with its rules; search is deterministic and needs no network, embedding model or
   tokenizer. `scripts/gen-resources.mjs` validates every page (fields, domains, id/file agreement, rule
   uniqueness, size and word budgets) and generates `index.json`/`SOURCE.json`; `pnpm resources:check` fails on
   a stale index.
-- **House-style profiles.** `engineering_profile` reads the conventions of the open project ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â L5X tag prefixes
+- **House-style profiles.** `engineering_profile` reads the conventions of the open project ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â L5X tag prefixes
   and case, seal-in and latch forms, comment density; FactoryTalk View palette, fonts, button geometry,
-  navigation and popups ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â with counts, evidence and a `low`/`medium`/`high` confidence. A profile is evidence,
+  navigation and popups ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â with counts, evidence and a `low`/`medium`/`high` confidence. A profile is evidence,
   not authority, and the tool says which project and SHA-256 it came from.
 - **Generation follows the profile.** `ftview_draft_display_create` applies the profile's background colour and
   `ftview_draft_object_add` its button geometry and font when the caller omits them, reporting
   `profile_applied`.
 - **New `resources` row and the `engineering-standards` skill.** The row mounts the two tools and the skill
-  that tells a model to read the relevant page and the project profile before authoring. Tools 97 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 99, rows
-  5 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 6.
+  that tells a model to read the relevant page and the project profile before authoring. Tools 97 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 99, rows
+  5 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 6.
 - `docs/resources.md` documents the corpus, its provenance, the index commands and the profile schema.
 
 ### Known limits
@@ -3543,7 +3543,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **A workflow handbook, generated from one source.** `docs/handbook/Engineering-Handbook.pdf` (7 pages),
   an editable `.docx` and a printable `.html` cover the four products: what each row needs, the shared
-  read ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ act ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ verify ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ hand-off loop, what the agent does, what stays human, and a "what proves what"
+  read ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ act ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ verify ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ hand-off loop, what the agent does, what stays human, and a "what proves what"
   table.
 - **Six workflow diagrams** in `docs/diagrams/` (SVG masters and PNG): the shared loop and one per
   product, with agent steps, human steps and proof steps visually distinguished. They are embedded in
@@ -3557,14 +3557,14 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - **A getting-started guide for a new install.** `docs/getting-started.md` answers the first questions a
   fresh AryaCode user has: what each of the four rows needs installed, how to install from the market,
-  the loop every product follows (read ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ act in a copy ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ verify ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ hand off), a paste-ready first prompt
+  the loop every product follows (read ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ act in a copy ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ verify ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ hand off), a paste-ready first prompt
   per product, and the boundaries the bundle will not pretend away (Studio import/runtime, the missing
   tag CSV in a vendor export, MWI's IDE, Optix's bridge).
 - README: a "New here?" pointer, a market-first Install section, corrected Status and Requirements
   (FTView authoring/export/schema, eleven L5X drafts) and the Getting started entry in the documentation
   table.
-- Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ author ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
-  schema-validate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ apply with the `BatchImport` manifest ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ verify the import), and a new section 9
+- Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ author ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢
+  schema-validate ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ apply with the `BatchImport` manifest ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ verify the import), and a new section 9
   covers reading and authoring a FactoryTalk Optix project.
 ## [0.8.1] - 2026-10-27
 
@@ -3573,7 +3573,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - **FactoryTalk View ME authoring.** The surface no longer only edits an export someone handed over:
   - `ftview_apps` lists the ME applications installed on the host through the vendor export server
     (74 applications were listed on the commissioning host).
-  - `ftview_export` exports one application to a NEW folder through `MEExportSvr` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â no Studio window,
+  - `ftview_export` exports one application to a NEW folder through `MEExportSvr` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â no Studio window,
     no project change. Proven end to end: 19 files and 13 displays for `Carpenter_EPS_Laminator001`.
   - `ftview_draft_display_create`, `ftview_draft_object_add`, `ftview_draft_object_set`,
     `ftview_draft_object_delete` and `ftview_draft_object_order` author displays and objects against a
@@ -3588,7 +3588,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Documentation
 
-- `packages/ftview/SKILL.md`: an Authoring section (apps ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ export ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ author ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ validate) and an Import
+- `packages/ftview/SKILL.md`: an Authoring section (apps ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ export ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ author ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ validate) and an Import
   and verify section that states plainly which steps remain Studio and ME Transfer Utility.
 - README: 97 tools, FactoryTalk View ME 22, and the 0.8.0 milestone.
 ## [0.7.0] - 2026-10-27
@@ -3596,10 +3596,10 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Added
 
 - **Ladder generation that cannot emit invalid NeutralText.** Three pieces:
-  - `list_instructions` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the instruction catalog the composer validates: mnemonic, category, summary
-    and operand slots with their kinds (BOOL, NUMBER, TIMER, ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦), filterable. 41 instructions, covering
+  - `list_instructions` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â the instruction catalog the composer validates: mnemonic, category, summary
+    and operand slots with their kinds (BOOL, NUMBER, TIMER, ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦), filterable. 41 instructions, covering
     every mnemonic the Laminator project uses (45 distinct across 860 rungs).
-  - `compose_rung` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â builds one rung from a structure tree (`spec_json`) or a named pattern
+  - `compose_rung` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â builds one rung from a structure tree (`spec_json`) or a named pattern
     (`start_stop_latch`, `fault_latch`, `ton_delay`, `interlock`), resolves every operand against the
     export (including unqualified program tags and aliases), type-checks each slot, emits the export's
     own bracket style, and re-parses its output with the same parser `draft_rung` uses. Unknown
@@ -3619,7 +3619,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Documentation
 
-- `packages/l5x/SKILL.md`: a Generate section (catalog ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ compose ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ validate ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ apply) and a
+- `packages/l5x/SKILL.md`: a Generate section (catalog ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ compose ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ validate ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ apply) and a
   Documentation section (bundle contents, the comment round trip, what the bundle cannot prove).
 - README: 89 tools, L5X 44, and the 0.7.0 milestone.
 
@@ -3648,7 +3648,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 Commissioned against the Laminator fixtures: a real Studio 5000 ACD exported to a 5.4 MB L5X, a
 real FactoryTalk View ME export, and two MotionWorks projects.
 
-### Fixed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â FactoryTalk View could not read a real Studio export
+### Fixed ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â FactoryTalk View could not read a real Studio export
 
 `ftview_open` reported **0 displays and 0 tags** for a genuine ME export. Five independent causes:
 
@@ -3671,10 +3671,10 @@ Verified on `Laminator/HMI/Main`: **18 displays, 361 tags, 0 parse errors** (was
 `<gfx>` export is supported; the staged edit tools were built for the `<display>` shape and are not
 verified to rewrite `<gfx>` objects.
 
-### Fixed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Studio 5000 checks drowned real findings in false positives
+### Fixed ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Studio 5000 checks drowned real findings in false positives
 
 `run_checks` on the Laminator export produced 562 findings, 315 of them "unresolved reference", on a
-project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresent` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢
+project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresent` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢
 `FanFold_StraightCut_AENTR:2:I.7`): aliases carry no `DataType`, their targets are not declared
 `<Tag>`s, and the fast resolver stopped instead of falling back to the canonical one.
 
@@ -3683,9 +3683,9 @@ project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresen
 - A member of a module-defined or opaque type (`Drive_MCFG.CommFLT`, `Axis_MAH.PC`) and `S:`/`R:`
   system flags are reported as coverage limits, not unresolved references.
 
-**562 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 264 findings; unresolved 315 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ 16**, with the unused-tag and multiple-write findings intact.
+**562 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 264 findings; unresolved 315 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ 16**, with the unused-tag and multiple-write findings intact.
 
-### Fixed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â Studio 5000 edits
+### Fixed ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â Studio 5000 edits
 
 - **`add_tag` required a value for a scalar tag.** Studio defaults scalars to zero, so declaring a
   plain REAL was impossible without inventing a value; `value` is now optional and still validated
@@ -3695,13 +3695,13 @@ project that compiles. Every one was an alias to module I/O (`In_FF_ModulePresen
   take an alias's type from the canonical resolver; writes still refuse an alias and name the tag to
   write instead.
 - **`export_acd_to_l5x` failed when Studio had the ACD open.** The SDK opens the file itself, so the
-  normal case ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the project the user is working on ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â failed with "being used by another process". The
+  normal case ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â the project the user is working on ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â failed with "being used by another process". The
   export now copies the ACD and opens the copy, with the source hash re-checked before and after.
 
 Verified end to end on the Laminator export: `draft_tag` (REAL, no value) plus a rung replacement
 validated and applied to a 5,391,840-byte L5X.
 
-### Fixed ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â MotionWorks IEC
+### Fixed ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â MotionWorks IEC
 
 - **`mw_get kind="block"` crashed with `KeyError: 'native_libraries'`.** The block interface is decoded
   against the installed libraries as well as the saved project; the read service now supplies the live
@@ -3717,7 +3717,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Documentation
 
-- `docs/optix-netlogic.md`: how the FactoryTalk Optix NetLogic cheat sheet should be carried ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a
+- `docs/optix-netlogic.md`: how the FactoryTalk Optix NetLogic cheat sheet should be carried ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â a
   pinned snapshot, a generated index, and one `optix_netlogic` retrieval tool, with the risk flags and
   disclaimers the repository itself requires.
 
@@ -3727,8 +3727,8 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 - **No Python bytecode in the tarball, again.** 0.4.21 shipped three `__pycache__/*.pyc` files
   because a `py_compile` guard check ran in the checkout before packing, and `assemble.mjs` copied
-  `code/` wholesale. They were inert ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the interpreter ignores a `.pyc` whose source no longer matches
-  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â but a stale `staging.cpython-312.pyc` beside a changed guard is exactly the ambiguity this
+  `code/` wholesale. They were inert ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â the interpreter ignores a `.pyc` whose source no longer matches
+  ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â but a stale `staging.cpython-312.pyc` beside a changed guard is exactly the ambiguity this
   release line must not carry. `assemble.mjs` now excludes `__pycache__` and `*.pyc` at copy time, so
   the outcome no longer depends on someone remembering to delete them.
 
@@ -3796,8 +3796,8 @@ Verified on both Laminator projects through the shipped engine: attach into
   writing the identity, and refuses to replace an identity that no longer verifies.
 - **A project already open in the IDE could not be edited.** Edits, compile and verify required a
   proven backup and failed with `NOT_ATTACHED` for a workspace project the IDE already had open.
-  `mw_project_open` now attaches that project ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â writes the verified backup and reports
-  `already_open` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â instead of calling `OpenProject`, because a reload over unsaved editor changes is
+  `mw_project_open` now attaches that project ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â writes the verified backup and reports
+  `already_open` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â instead of calling `OpenProject`, because a reload over unsaved editor changes is
   data loss the backup cannot undo. An edit, compile or verify that finds an unattached workspace
   project takes the backup before it refuses.
 - **`mw_edit_code` could not be given the hash it demands.** Its precondition is the SHA-256 of the
@@ -3902,7 +3902,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Fixed
 
-- **The row settings page sat on "Loading configurationÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦".** The Plugins page snapshots a row's
+- **The row settings page sat on "Loading configurationÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦".** The Plugins page snapshots a row's
   configuration form once when it opens and does not subscribe to it, so a form that was still
   loading at that moment never produced the switches. The page now reads the live form from the
   client `configForms` service, whose `get` starts the one describe fetch, and subscribes to it;
@@ -3949,7 +3949,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   EtherNet/IP tools, and the L5X count is 40 (84 with Optix).
 - `docs/examples.md`: a live section covering batch reads, discovery, the controller clock, the trend,
   and a supervised write with the exact fields the reader must see and the refusals they may hit.
-- `docs/architecture.md`: a new EtherNet/IP section ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â the two workers, the transaction engine's deadline
+- `docs/architecture.md`: a new EtherNet/IP section ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â the two workers, the transaction engine's deadline
   and decoding, and the four gates that stand between a write request and a controller.
 - `docs/port/l5x.md`: the live surface is recorded as seven tools with the driver call each one uses, and
   the unused capability (CIP subscriptions, UDT `Structure` reads) is named.
@@ -3962,15 +3962,15 @@ Verified on both Laminator projects through the shipped engine: attach into
 The EtherNet/IP surface now uses the driver rather than one corner of it. Five new tools, all under the
 L5X product row's `live` switch:
 
-- `read_live_tags` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â up to 64 declared scalars in **one** request (CIP tag group) instead of one
+- `read_live_tags` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â up to 64 declared scalars in **one** request (CIP tag group) instead of one
   connection-and-read per tag.
-- `read_controller_clock` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â controller identity plus the wall clock beside the workstation clock and the
+- `read_controller_clock` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â controller identity plus the wall clock beside the workstation clock and the
   offset between them; reports "unsupported" on non-L8x models instead of guessing.
-- `discover_controllers` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â bounded UDP broadcast discovery: address, product, revision, serial, status.
+- `discover_controllers` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â bounded UDP broadcast discovery: address, product, revision, serial, status.
   Needs no address and no export.
-- `write_live_tag` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â one declared scalar, **approval-gated**, then read back over CIP so the result is
+- `write_live_tag` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â one declared scalar, **approval-gated**, then read back over CIP so the result is
   the controller's own value.
-- `write_controller_clock` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â set the wall clock (L8x), approval-gated, read back.
+- `write_controller_clock` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â set the wall clock (L8x), approval-gated, read back.
 
 ### Safety
 
@@ -3984,7 +3984,7 @@ L5X product row's `live` switch:
 - A write whose readback differs from the requested value fails with `WRITE_NOT_VERIFIED` rather than
   reporting success.
 - `test/live.spec.ts` covers the gating: switch off, policy `never`, declined prompt, wrong value type,
-  and a UDT tag refused as non-scalar ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â 70 tests in the package.
+  and a UDT tag refused as non-scalar ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â 70 tests in the package.
 
 ## [0.4.5] - 2026-10-25
 
@@ -4004,22 +4004,22 @@ One plugin now covers all four products: 5 rows, 79 tools, both previews, no com
 
 ### Changed
 
-- **One row per product instead of one per surface.** The Plugins page now lists five rows ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â `l5x`,
-  `ftview`, `mwi`, `viewers`, `optix` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â instead of sixteen. Each product row mounts its whole surface,
+- **One row per product instead of one per surface.** The Plugins page now lists five rows ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â `l5x`,
+  `ftview`, `mwi`, `viewers`, `optix` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â instead of sixteen. Each product row mounts its whole surface,
   so one switch turns a product off instead of four.
 - **The optional surfaces are the row's config.** `entries/l5x.js` mounts read + guidance and takes
   `editing`, `studio` and `live` (all off by default); `entries/ftview.js` takes `edit` and `studio`
-  (both on); `entries/mwi.js` takes `edit` (off). The defaults are unchanged ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â a read-only profile
-  still pays only for the read surfaces ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â but the toggle now lives with the product it belongs to.
+  (both on); `entries/mwi.js` takes `edit` (off). The defaults are unchanged ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â a read-only profile
+  still pays only for the read surfaces ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â but the toggle now lives with the product it belongs to.
 - Row ids change from `l5x-read` / `ftview-edit` / `mwi-verify` to `l5x` / `ftview` / `mwi`, so a
   profile's per-row enable state resets once on upgrade. The product-level defaults are identical.
-- Legacy subpath exports are kept (`./l5x/read`, `./ftview/edit`, `./mwi/verify`, ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦) so a profile
+- Legacy subpath exports are kept (`./l5x/read`, `./ftview/edit`, `./mwi/verify`, ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦) so a profile
   patch that still names one of them keeps working.
 
 ### Note
 
 The grouping is plugin-side by choice: `cordis:group` exists in the patch format, but the Plugins
-page skips group rows (`plugin-manager/src/index.ts`: "Group rows are containers ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ their children
+page skips group rows (`plugin-manager/src/index.ts`: "Group rows are containers ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ their children
 carry the switches"), so a group switch is a shell feature rather than a bundle one. Collapsing the
 row list is what a bundle can do on its own, without a harness change to maintain across DSH
 upgrades.
@@ -4030,7 +4030,7 @@ upgrades.
 
 - **The vendored rows could not import their own libraries.** The trees under `vendor/` are the
   components' own code, and that code imports `fast-xml-parser`, `fast-xml-validator` and
-  `st-ethernet-ip` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â but vendoring drops the component manifests, and the bundle declared none of them.
+  `st-ethernet-ip` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â but vendoring drops the component manifests, and the bundle declared none of them.
   At mount the loader reported `ERR_MODULE_NOT_FOUND` and every L5X and FactoryTalk View row failed to
   import, taking its tools with them. The bundle now declares all three at the versions the components
   pin, and `test/docs.spec.mjs` fails when a component dependency is not declared here.
@@ -4043,13 +4043,13 @@ upgrades.
   failed one step later, when the profile tried to apply the bundle: the patch's first entry targeted
   the `tool-capability-policy` row, and no such row exists in an AryaCode profile, so composition threw
   `dsh: [@aryacode/dsh-engineering] patch: entry "tool-capability-policy" not found` and the plugin
-  manager rolled the install back ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â which is what the market card reported as *Cannot install*.
+  manager rolled the install back ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â which is what the market card reported as *Cannot install*.
 
 ### Removed
 
 - **The per-skill tool filter.** `policyOnly` / `toolPolicy` / `capabilities` are an AryaAI harness
   feature: AryaAI's fork of `@deepseek-ai/dsh-tool-skill` implements them, and the AryaCode line's copy
-  of the same package does not. In this product the layer never filtered anything ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â an older harness
+  of the same package does not. In this product the layer never filtered anything ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â an older harness
   skipped the missing row with a warning, the current one treats it as fatal. Rows are the switch:
   disabling `l5x-editing`, `l5x-studio`, `l5x-live` or `mwi-edit` unmounts that plugin and removes its
   tool schemas from the request, which is the same context saving by a mechanism this harness has.
@@ -4131,10 +4131,10 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 
 
 
-- Add the FTView Studio entry `ftview-studio`: `ftview_studio_status`, `ftview_studio_preflight`, `ftview_studio_handoff` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â discovery of installs, schemas, help and the Add Component utility, changed-file preflight with Studio name restrictions, and the ordered manual import plan. No vendor utility is executed.
+- Add the FTView Studio entry `ftview-studio`: `ftview_studio_status`, `ftview_studio_preflight`, `ftview_studio_handoff` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â discovery of installs, schemas, help and the Add Component utility, changed-file preflight with Studio name restrictions, and the ordered manual import plan. No vendor utility is executed.
 - Add 6 Studio tests: registration, discovery with a simulated install, absent install, changed-file preflight, unsafe-name blocker and the handoff plan. FTView suite is 26 tests.
 
-- Add the FTView editing entry `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â one operation per call, text-preserving transforms, re-parsed validation, and apply to a new folder that never touches the source. Row disabled until the old plugin retires.
+- Add the FTView editing entry `ftview-edit`: `ftview_draft_display_set`, `ftview_draft_display_add`, `ftview_draft_tag_upsert`, `ftview_validate`, `ftview_apply` ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â one operation per call, text-preserving transforms, re-parsed validation, and apply to a new folder that never touches the source. Row disabled until the old plugin retires.
 - Add 8 editing tests: display attribute edit end to end, tag row update, display copy, draft clearing, unknown display, duplicate name, and existing-output refusal. FTView suite is 20 tests.
 
 - Fold the FactoryTalk View display preview into the bundle as `dsh-engineering-ftview-viewer`, mounted by the `ftview-viewer` row (disabled until the old plugin retires, because both claim `.xml` previews).
@@ -4150,7 +4150,7 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Verified live after the retirement: the session listed the eleven read tools and the new `rockwell-l5x` description, with no `l5x_*` tool and no old skill text.
 
 - Port the client face: the PLC trend card (`lib/client.js`, 17.2 KB closure-factory bundle) registered for `start_plc_trend`, with its locales, styles and trend model. The card mounts independently of every tool row.
-- Record that the old plugin's `face.ts` and `Studio5000.tsx` were dead code ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â never imported by its client entry ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â so the two-rung ladder rail is not a ported feature. A ladder viewer for L5X documents would be new work.
+- Record that the old plugin's `face.ts` and `Studio5000.tsx` were dead code ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â never imported by its client entry ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â so the two-rung ladder rail is not a ported feature. A ladder viewer for L5X documents would be new work.
 - Add `dsh.client` metadata, a `tsdown.client.config.ts` bundle with the package name as its registration id, and the host build now emits both halves.
 
 - Add the `l5x-live` entry: `poll_live_tags` and `start_plc_trend`, 2,971 schema characters, inserted disabled. Reads use the package's polling worker and its own EtherNet/IP connection, so no Studio, FactoryLinx or SDK is required.
