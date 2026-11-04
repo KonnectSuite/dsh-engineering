@@ -404,7 +404,8 @@ The packaged bundle was installed and booted on the development home
   refuses to activate. The shipped installer supplies matching peers, so this is a hand-built-profile
   caveat, not a bundle defect; it is recorded here for the next commissioning run.
 - **Boot.** `dsh web --host 127.0.0.1 --port 0` served the UI (title *AryaCode Local Build*). The
-  Plugins page reported `@aryacode/dsh-engineering v0.85.3` installed with **Components: 9 total · 9
+  Plugins page reported `@aryacode/dsh-engineering` (the pass ran on the 0.85.3 pack; this batch ships
+  as 0.86.0 without a code change) installed with **Components: 9 total · 9
   running**, including `@aryacode/dsh-engineering/ecad` **Running**, the `viewers` client row, and the
   ECAD row table with `writes off · maxFiles 2000 · maxFileBytes 64 MiB · maxEntities 200000`. The only
   console error was the offline account read (`[deepseek-account] account read failed`); no plugin,
@@ -432,7 +433,8 @@ The packaged bundle was installed and booted on the development home
 The finished batch was packed again (3.8 MB, 731 files), installed into the `ecad-dev` Dev profile and
 booted on the development home; the installed product was never written.
 
-- **Rows.** The Plugins page reports `@aryacode/dsh-engineering v0.85.3` with **Components: 9 total ·
+- **Rows.** The Plugins page reports `@aryacode/dsh-engineering` (the pass ran on the 0.85.3 pack; this
+  batch ships as 0.86.0 without a code change) with **Components: 9 total ·
   9 running**, including `@aryacode/dsh-engineering/ecad` Running (`tmp/ecad-dev-final/01-plugins-rows.png`).
 - **Sheet-set dock.** A fresh session in the Default workspace rendered the M5 dock chip above the
   composer: **`3 drawings · 2 DWG · default profile · writes on`**, with the aria label

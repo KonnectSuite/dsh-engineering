@@ -25,3 +25,4 @@ __pycache__/
 .l5x-preview/
 .l5x-preview-test/
 .l5x-diagram/
+/tmp/

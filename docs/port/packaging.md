@@ -18,9 +18,10 @@ pnpm install
 pnpm --filter @aryacode/dsh-engineering-l5x build
 pnpm --filter @aryacode/dsh-engineering-ftview build
 pnpm --filter @aryacode/dsh-engineering-mwi build
+node node_modules/typescript/bin/tsc -p packages/ecad/tsconfig.json   # ECAD engine, tools and DWG bridge
 pnpm test                     # patch, docs, tool reference, dependencies, client face
-pnpm build:client             # lib/client.js from both committed face bundles
-pnpm assemble                 # vendor/ from the four component trees
+pnpm build:client             # lib/client.js from the committed face bundles (three faces)
+pnpm assemble                 # vendor/ from the four component trees plus the ECAD wasm asset
 pnpm pack                     # one tarball: cordis.patch.yml, entries/, lib/, vendor/, locale/
 
 pnpm publish --no-git-checks --access public     # npm is the artefact host
@@ -37,8 +38,10 @@ git push origin main --tags
 
 `prepack` runs `build:client` and `assemble`, so a packed tarball cannot carry a stale client bundle
 or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`, `entries/*.js`,
-`vendor/optix/lib/index.js`, `vendor/l5x/cip-worker.mjs`, `vendor/l5x/studio-bridge/*.csproj` and
-`vendor/mwi/code/engine/**` must all be present.
+`vendor/optix/lib/index.js`, `vendor/l5x/cip-worker.mjs`, `vendor/l5x/studio-bridge/*.csproj`,
+`vendor/mwi/code/engine/**` and `vendor/ecad/assets/acadrust.wasm` must all be present. The packaged
+smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
+shim and DWG converter are exercised from the published bytes, not from the repository build.
 
 **One host for every entry.** The catalog points at `registry.npmjs.org` tarballs; the market repo
 holds the catalog JSON and nothing else. A GitHub release asset is not part of this flow — the

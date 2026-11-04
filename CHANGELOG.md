@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.86.0] - 2026-11-04
 
 - **ECAD (DXF) groundwork — feasibility measured on the owner's real print set.** The 34-sheet DXF
   corpus parses with `@mlightcad/data-model@1.15.21` (MIT) and round-trips with **no** model
