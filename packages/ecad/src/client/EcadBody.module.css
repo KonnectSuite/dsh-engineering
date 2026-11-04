@@ -1,0 +1,626 @@
+/* The ECAD drawing pane.
+ *
+ * Tokens only: every surface, label, border and accent comes from the theme's
+ * --dsw-alias-* set, so the pane follows light and dark without a second palette.
+ * The drawing sheet is a local surface pair because a CAD sheet is its own
+ * ground: its ink and paper follow the theme, and a layer colour is tinted
+ * toward the theme ink by the renderer (see palette.ts) so linework stays
+ * readable on either ground.
+ */
+
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-primary);
+  font-family: var(--dsw-font-family, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif);
+  font-size: 12px;
+  line-height: 1.45;
+  container-type: inline-size;
+  /* The drawing's ground and ink. The sheet surface is a theme layer, never a
+     literal paper colour: dark mode gets a dark sheet, not a white flash. */
+  --ecad-paper: var(--dsw-alias-bg-layer-1);
+  --ecad-ink: var(--dsw-alias-label-primary);
+  --ecad-ink-tint: 55%;
+  --ecad-accent: var(--dsw-alias-state-business-primary);
+}
+
+/* Toolbar: one quiet row of view controls, the drawing's own status, and the
+   one action that leaves the pane. No product chrome — the document preview
+   header above already owns the path, reload and renderer controls. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 5px 10px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  overflow: hidden;
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.coverage {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.toolbarSpacer {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Badges carry a text label as well as the accent colour, so state never rides
+   on colour alone and the label can be localized. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-xs);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badgeWarn {
+  border-color: var(--dsw-alias-state-warn-primary);
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.badgeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  corner-shape: round;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.button[aria-pressed='true'] {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.iconButton {
+  width: 24px;
+  padding: 0;
+}
+
+.primaryButton {
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.button:focus-visible,
+.primaryButton:focus-visible,
+.layoutTab:focus-visible,
+.layerToggle:focus-visible,
+.canvasWrap:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+.icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* Layout tabs: only for a multi-layout drawing, printed the way a drawing
+   application prints them, above the sheet. */
+.layoutTabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: none;
+  min-height: 28px;
+  padding: 0 10px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.layoutTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  box-sizing: border-box;
+  padding: 0 9px;
+  min-height: 27px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.layoutTabActive {
+  border-bottom-color: var(--ecad-accent);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.tabCount {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The stage holds the sheet and the panels. The sheet keeps every spare pixel;
+   the panels give way first on a narrow preview tab. */
+.stage {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.canvasWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--ecad-paper);
+  cursor: grab;
+  touch-action: none;
+}
+
+.canvasWrap:focus-visible {
+  outline-offset: -2px;
+}
+
+.panning {
+  cursor: grabbing;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.primitive {
+  pointer-events: visiblePainted;
+}
+
+.hovered {
+  cursor: pointer;
+}
+
+/* A selection is drawn as a paper-coloured halo under an accent stroke, so it
+   reads as a highlight state on top of any layer colour and never as a colour
+   the drawing itself uses. */
+.selectionHalo {
+  fill: none;
+  stroke: var(--ecad-paper);
+  stroke-width: 5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.selection {
+  fill: none;
+  stroke: var(--ecad-accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Quiet state surfaces: the same centered rhythm the document previewers use
+   for loading, empty and failure states. */
+.state {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+}
+
+.stateTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+
+.stateBody {
+  margin: 0;
+  max-width: 54ch;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.stateCode {
+  margin: 0;
+  padding: 2px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xs);
+  color: var(--dsw-alias-label-tertiary);
+  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);
+  font-size: 10px;
+}
+
+.stateActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 2px solid var(--dsw-alias-border-l2);
+  border-top-color: var(--dsw-alias-state-business-primary);
+  border-radius: 50%;
+  corner-shape: round;
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Floating notice over the sheet: truncation and approximation are warnings the
+   reader must see, so they sit on the sheet's top edge, on an elevated surface. */
+.notice {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 0.5px solid var(--dsw-alias-state-warn-primary);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-state-warn-tertiary);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: var(--dsw-elevation-panel);
+  pointer-events: none;
+}
+
+.noticeText {
+  overflow-wrap: anywhere;
+}
+
+/* Side panel: layers, the selected primitive, and the title block. Quiet
+   neutral surface, hairline divider, long lists scroll inside themselves. */
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 228px;
+  min-height: 0;
+  border-left: 0.5px solid var(--dsw-alias-border-l2);
+  overflow: hidden;
+}
+
+.sidePanelHidden {
+  display: none;
+}
+
+.panelSection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.layersSection {
+  flex: none;
+  max-height: 46%;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.inspectorSection {
+  flex: 1;
+  min-height: 0;
+}
+
+.panelHeading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 8px 10px 4px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.panelHeadingSpacer {
+  flex: 1;
+}
+
+/* The column layout is dismissed from the toolbar; only the overlay needs its
+   own close control. */
+.panelClose {
+  display: none;
+}
+
+.panelHeadingButton {
+  min-height: 20px;
+  height: 20px;
+  padding: 0 4px;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+}
+
+.layerList {
+  min-height: 0;
+  overflow: auto;
+  padding: 0 4px 8px;
+}
+
+.layerToggle {
+  display: grid;
+  grid-template-columns: 20px 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.layerToggle[aria-pressed='false'] {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.layerToggle[aria-pressed='false'] .layerName {
+  text-decoration: line-through;
+}
+
+.layerEye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 2px;
+}
+
+.layerName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.layerCount {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Inspector: key/value rows with the label quiet and the value readable. */
+.inspector {
+  min-height: 0;
+  overflow: auto;
+  padding: 2px 10px 12px;
+}
+
+.inspectorHint {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.propertyRow {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 11px;
+}
+
+.propertyLabel {
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
+}
+
+.propertyValue {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--dsw-alias-label-primary);
+}
+
+.mono {
+  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);
+  font-size: 10px;
+}
+
+.approxNote {
+  margin: 8px 0 0;
+  padding: 6px 8px;
+  border-left: 2px solid var(--dsw-alias-state-warn-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 55%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.inspectorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.inspectorActions .button {
+  border: 0.5px solid var(--dsw-alias-border-l3);
+}
+
+/* The title block summary is read, not operated: rows only, no controls. */
+.sheetSection {
+  flex: none;
+  border-top: 0.5px solid var(--dsw-alias-border-l2);
+}
+
+.sheetRows {
+  padding: 0 10px 8px;
+}
+
+.sheetValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The coverage sentence is read, not scanned: wrap it instead of clipping it. */
+.sheetValueWrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.4;
+}
+
+/* Hover and press feedback belongs to pointers that have hover. */
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+
+  .primaryButton:hover:not(:disabled) {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+
+  .layoutTab:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+
+  .layerToggle:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.button:active:not(:disabled),
+.layerToggle:active,
+.layoutTab:active {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+/* The sheet outranks the coverage text first. */
+@container (max-width: 720px) {
+  .coverage {
+    display: none;
+  }
+}
+
+/* Only a genuinely narrow preview pane gives the panel the overlay treatment:
+   above this width the panel keeps its own column and never covers the sheet. */
+@container (max-width: 520px) {
+  .sidePanel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 3;
+    width: min(260px, 82%);
+    background: var(--dsw-alias-bg-document-preview);
+    border-left: 0.5px solid var(--dsw-alias-border-l2);
+    box-shadow: var(--dsw-elevation-panel);
+  }
+
+  .toolbarLabel {
+    display: none;
+  }
+
+  .panelClose {
+    display: inline-flex;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: var(--dsw-alias-border-l2);
+    border-left-color: var(--dsw-alias-state-business-primary);
+  }
+}
