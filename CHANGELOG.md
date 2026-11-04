@@ -1,5 +1,12 @@
 ## [Unreleased]
 
+- **The drawing pane can expand to a full-window CAD surface.** The right sidebar is a narrow place
+  to edit a drawing, so the toolbar now has an *Expand drawing* control: it lifts the same pane (tool
+  palette, canvas, layers, properties, sheet facts) to a fixed whole-window surface with the
+  inspector panels opened, and a *Return drawing to the sidebar* control or Escape brings it back.
+  The headless harness measures the focus surface at the full viewport (`1440×900` in the harness)
+  and captures it as `01b-focus-mode.png`; the sidebar remains the default mount so opening a file is
+  unchanged.
 - **The ECAD writes switch now reaches the drawing panel regardless of row mount order.** Enabling
   *Allow ECAD writes* saved `writes: true` in the profile, but the panel still opened `Read-only` and
   the dock said `writes off`: the `ecad` row configured the package-root Remote service only if that

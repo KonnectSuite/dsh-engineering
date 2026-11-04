@@ -384,6 +384,18 @@ async function capture(cdp, directory) {
   result.measurements.small = await evaluate(cdp, '({ renderMs: window.__HARNESS__.renderMs, primitives: window.__HARNESS__.primitives, modelEntities: window.__HARNESS__.model.stats.entities, editable: window.__HARNESS__.editable() })')
   result.shots.push(await shot(cdp, directory, '01-light-view.png'))
 
+  // Focus mode: the whole-window CAD surface, then back to the sidebar.
+  await evaluate(cdp, 'document.querySelector("[data-ecad-focus]").click()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.focus = await evaluate(cdp, `(() => {
+    const root = document.querySelector('[data-ecad-pane="drawing"]')
+    const rect = root.getBoundingClientRect()
+    return { focused: root.dataset.ecadFocused === 'true', width: Math.round(rect.width), height: Math.round(rect.height), viewport: [innerWidth, innerHeight] }
+  })()`)
+  result.shots.push(await shot(cdp, directory, '01b-focus-mode.png'))
+  await evaluate(cdp, 'document.querySelector("[data-ecad-focus]").click()')
+  await new Promise(resolveWait => setTimeout(resolveWait, 180))
+
   await evaluate(cdp, 'window.__HARNESS__.setTheme("dark")')
   await new Promise(resolveWait => setTimeout(resolveWait, 150))
   result.shots.push(await shot(cdp, directory, '02-dark-view.png'))

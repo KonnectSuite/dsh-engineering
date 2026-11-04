@@ -260,6 +260,18 @@ function LayersIcon({ size = 14 }: IconProps): ReactElement {
     createElement('path', { d: 'M2 8.4l6 3.1 6-3.1M2 11.2l6 3.1 6-3.1' }))
 }
 
+/** Expand the drawing pane to the whole window. */
+function ExpandIcon({ size = 14 }: IconProps): ReactElement {
+  return createElement('svg', { className: css.icon, width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    createElement('path', { d: 'M6 2.5H2.5V6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10' }))
+}
+
+/** Return the expanded drawing pane to the sidebar. */
+function CollapseIcon({ size = 14 }: IconProps): ReactElement {
+  return createElement('svg', { className: css.icon, width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    createElement('path', { d: 'M2.5 6H6V2.5M13.5 6H10V2.5M10 13.5V10h3.5M6 13.5V10H2.5' }))
+}
+
 /** The lock reads as the row-level write posture, never as a warning. */
 function LockIcon({ size = 12 }: IconProps): ReactElement {
   return createElement('svg', { className: css.icon, width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
@@ -824,6 +836,8 @@ interface CadToolbarProps {
   readonly onZoom: (factor: number) => void
   readonly onTogglePanels: () => void
   readonly onAsk: () => void
+  readonly focused: boolean
+  readonly onToggleFocus: () => void
   readonly t: Translate
 }
 
@@ -832,7 +846,7 @@ interface CadToolbarProps {
  * actions, panels and Ask Arya.
  * @param props - coverage, read posture and control callbacks.
  */
-function CadToolbar({ coverage, coverageText, coverageTitle, ready, format, conversion, writes, editable, mode, onModeChange, panelsOpen, chatUnavailable, aids, onToggleAid, canUndo, canRedo, onUndo, onRedo, onPrint, onExportSvg, onExportPng, onFit, onZoom, onTogglePanels, onAsk, t }: CadToolbarProps): ReactElement {
+function CadToolbar({ coverage, coverageText, coverageTitle, ready, format, conversion, writes, editable, mode, onModeChange, panelsOpen, chatUnavailable, aids, onToggleAid, canUndo, canRedo, onUndo, onRedo, onPrint, onExportSvg, onExportPng, onFit, onZoom, onTogglePanels, onAsk, focused, onToggleFocus, t }: CadToolbarProps): ReactElement {
   return createElement(
     'div',
     { className: `${css.toolbar} ${css.noPrint}` },
@@ -883,6 +897,16 @@ function CadToolbar({ coverage, coverageText, coverageTitle, ready, format, conv
         onClick: onTogglePanels,
       }, createElement(LayersIcon, {})),
       createElement(SheetActionButtons, { t, disabled: !ready, onPrint, onExportSvg, onExportPng }),
+      createElement('button', {
+        type: 'button',
+        className: `${css.button} ${css.iconButton}`,
+        title: focused ? t('focusExit') : t('focusEnter'),
+        'aria-label': focused ? t('focusExit') : t('focusEnter'),
+        'aria-pressed': focused,
+        disabled: !ready,
+        onClick: onToggleFocus,
+        'data-ecad-focus': 'true',
+      }, focused ? createElement(CollapseIcon, {}) : createElement(ExpandIcon, {})),
       createElement('button', {
         type: 'button',
         className: `${css.button} ${css.primaryButton}`,
@@ -1027,6 +1051,8 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   const [chatUnavailable, setChatUnavailable] = useState(false)
   const [view, setView] = useState<ViewState>({ zoom: 1, panX: 0, panY: 0 })
   const [panning, setPanning] = useState(false)
+  /** The drawing pane fills the whole window instead of the narrow sidebar. */
+  const [focused, setFocused] = useState(false)
   // -- selection and CAD state --------------------------------------------
   const [selected, setSelected] = useState<readonly string[]>([])
   const [tool, setTool] = useState<CadToolId>('select')
@@ -1077,6 +1103,20 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
     if (paneWidth === 0) return
     if (paneWidth <= 520) setPanelsOpen(false)
   }, [canvasElement, size.width])
+
+  // Focus mode is the full-window CAD surface; opening it shows the inspector
+  // panels and Escape returns to the sidebar.
+  useEffect(() => {
+    if (!focused) return
+    setPanelsOpen(true)
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setFocused(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [focused])
 
   const retry = useCallback(() => {
     if (request !== undefined) request.reload()
@@ -2690,9 +2730,10 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
   return createElement(
     'div',
     {
-      className: css.root,
+      className: `${css.root}${focused ? ` ${css.focused}` : ''}`,
       'data-ecad-pane': 'drawing',
       'data-ecad-state': state.phase,
+      ...(focused ? { 'data-ecad-focused': 'true' } : {}),
       ...(format === undefined ? {} : { 'data-ecad-format': format }),
       ...(editable ? { 'data-ecad-editable': 'true' } : {}),
       ...(editing ? { 'data-ecad-editing': 'true' } : {}),
@@ -2731,6 +2772,8 @@ export function EcadBody(props: EcadBodyProps): ReactNode {
         setPanelsOpen(value => !value)
       },
       onAsk: askReview,
+      focused,
+      onToggleFocus: () => { setFocused(value => !value) },
       t,
     }),
     layoutTabs,
