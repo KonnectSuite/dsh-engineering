@@ -4,9 +4,9 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` Â· 158 tools Â· 9 rows Â· 5 products Â· MIT
+`@aryacode/dsh-engineering` · 158 tools · 9 rows · 5 products · MIT
 
-**New here? Start with [Getting started](docs/getting-started.md)** â€” what each row needs, the loop every
+**New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
 
 ## Harness compatibility
@@ -29,7 +29,7 @@ because the market reads the published manifest.
 ## Why a bundle
 
 A general assistant pays for every tool schema on every request. An automation engineer needs deep
-surfaces â€” reading a 3 MB L5X, comparing two projects, staging ladder edits, talking to a controller â€”
+surfaces — reading a 3 MB L5X, comparing two projects, staging ladder edits, talking to a controller —
 but only one or two of them at a time.
 
 This bundle splits those surfaces into one row per product. The expensive surfaces are switches inside
@@ -53,7 +53,7 @@ of model-visible schema a fresh install may mount, and a component that would ex
 ships switched off until the ceiling is raised with its measurement. The
 [component contract](docs/reference/components.md#context-budget) owns the budget.
 
-The previews are independent of the tools â€” switching a product off does not remove any of the three
+The previews are independent of the tools — switching a product off does not remove any of the three
 viewers (ladder, ME display, ECAD drawing). All three mount from **one** row (`viewers`), because a
 package registers exactly one browser bundle.
 
@@ -71,16 +71,16 @@ package registers exactly one browser bundle.
 
 Tool groups, by product:
 
-- **L5X** â€” 13 read (`open_project` â€¦ `document_project`), 17 staged edits (`draft_*`, `compose_rung`, `compose_batch`), 6 Logix
+- **L5X** — 13 read (`open_project` … `document_project`), 17 staged edits (`draft_*`, `compose_rung`, `compose_batch`), 6 Logix
   Designer SDK, 7 supervised controller, 7 live EtherNet/IP (2 reads, 2 identity/discovery, 1 batch read, 2 approval-gated writes), 2 preview and 1 diagram
-- **FactoryTalk View** â€” 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
-- **MotionWorks IEC** â€” 7 session, 7 saved-project reads, 3 verify, 7 direct edits
-- **Optix** â€” 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
-- **Migration** â€” 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from â€” a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
-- **Engineering resources** â€” 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
+- **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
+- **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
+- **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
+- **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
+- **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
-- **ECAD** â€” 10 read (`ecad_capabilities` â€¦ `ecad_compare`), 4 staged drafts (`ecad_draft_*`, `ecad_verify`) and 2 deliverables
+- **ECAD** — 10 read (`ecad_capabilities` … `ecad_compare`), 4 staged drafts (`ecad_draft_*`, `ecad_verify`) and 2 deliverables
   (`ecad_document`, `ecad_backup`), plus the `ecad-drafting` skill: the engine parses DXF (and DWG through the embedded
   converter), infers the print set's profile from the title blocks and ACADE `WD_M`, reads title blocks, an index sheet,
   cross-reference candidates and checks, renders layouts as SVG, and writes an edited drawing as a NEW file whose
@@ -90,7 +90,7 @@ Tool groups, by product:
 
 A row is a plugin. Disabling it in the profile (or on the Plugins page) unmounts that product and its
 tool schemas stop being sent. Each product's optional surfaces are config on the same row, so the
-cheap decision â€” is this product on at all â€” takes one switch, and the fine decision lives one level
+cheap decision — is this product on at all — takes one switch, and the fine decision lives one level
 down:
 
 | Row | Mounts | Config options (default) |
@@ -99,8 +99,8 @@ down:
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
 | `ecad` | ECAD drawing reads, review, cross-reference, checks, render/compare, staged drafts and the review/backup deliverables, with the `ecad-drafting` skill; the row ships off, and writes are a second switch | `writes` (off), `maxFiles` (2000), `maxFileBytes` (64 MiB), `maxEntities` (200000) |
-| `viewers` | ladder, ME display and ECAD drawing previews | â€” |
-| `engineering-preset` | none â€” the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
+| `viewers` | ladder, ME display and ECAD drawing previews | — |
+| `engineering-preset` | none — the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
 | `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
@@ -109,13 +109,13 @@ A row can also be inserted `disabled` when a component ships off by default: the
 and one switch enables it. ECAD is the one row in this release that ships off; every other row ships on.
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
-containers (`plugin-manager/src/index.ts`: *"Group rows are containers â€¦ their children carry the
+containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
 switches"*), so a group switch is a shell feature, not a bundle one. Five product rows and three support rows with config is
-what a bundle can do on its own â€” no harness change to carry across DSH upgrades.
+what a bundle can do on its own — no harness change to carry across DSH upgrades.
 
 **No capability policy.** Earlier releases also carried a per-skill tool filter (`policyOnly` /
 `toolPolicy`) that gated tools by skill state. That filter is an AryaAI harness feature and is **not
-part of this product line** â€” `@deepseek-ai/dsh-tool-skill` here has no such config. Rows are the
+part of this product line** — `@deepseek-ai/dsh-tool-skill` here has no such config. Rows are the
 switch. Do not re-add a patch entry that targets another bundle's row: composition fails when the row
 is absent, and that is what made 0.4.0 and 0.4.1 uninstallable.
 
@@ -129,9 +129,9 @@ Where each surface actually stands, based on what has been exercised.
 **Working and verified**
 
 - L5X offline reads, references, usage, checks and comparison against revision 19+ projects
-- Staged L5X editing â€” fifteen `draft_*` tools, the instruction catalog, `compose_rung`, validation and one new file on apply
+- Staged L5X editing — fifteen `draft_*` tools, the instruction catalog, `compose_rung`, validation and one new file on apply
 - Logix Designer SDK: a real ACD exported to a 3.0 MB L5X against SDK v37
-- Supervised controller access â€” upload, mode change and download behind per-call approval, with
+- Supervised controller access — upload, mode change and download behind per-call approval, with
   downloads accepting only a verification id produced by a passed build
 - Live EtherNet/IP: polling, one-request batch reads of up to 64 tags, controller identity and clock, LAN discovery, and a bounded trend
 - Supervised live writes: `write_live_tag` and `write_controller_clock` need the row's `allowWrites` switch **and** per-call human approval, and report the value the controller reads back
@@ -139,7 +139,7 @@ Where each surface actually stands, based on what has been exercised.
   object authoring, vendor-schema validation, the vendor export path and object-level import
   verification; commissioned on a real Studio export (18 displays, 361 tags, no parse errors) and a
   real application export (13 displays, 19 files, 74 applications listed)
-- MotionWorks IEC: verified live against 3 Pro 1.19 â€” direct open with a verified pre-edit backup
+- MotionWorks IEC: verified live against 3 Pro 1.19 — direct open with a verified pre-edit backup
   under `.motionworks/attached`, attach-without-reload to a project the IDE already has open, start,
   worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU
   create/delete, block insertion and a POU package export/delete/import round trip
@@ -147,24 +147,24 @@ Where each surface actually stands, based on what has been exercised.
 - ECAD electrical prints: the engine parses all 34 sheets of a real print set into 83,936 primitives with
   zero unsupported and zero truncated layouts, reads title blocks, the 80-row index sheet, a 0.95-confidence
   profile from the ACADE `WD_M` attributes, 74 cross-reference candidates and 97 findings; all 34 sheets
-  write â†’ re-read â†’ rebuild with zero model difference, and the sixteen tools are exercised through a fake
+  write → re-read → rebuild with zero model difference, and the sixteen tools are exercised through a fake
   Host composition (sandbox-policy writes, source untouched, explicit failure envelopes). The right-panel
   viewer and the DWG converter landed in the same batch.
 - ECAD DWG: the embedded acadrust 0.6.8 converter (WASM, 6.4 MB) converted **33/33** real DWGs in
   **1.17 s** total with zero reader warnings, preserving each drawing's version (16 AC1027, 17 AC1032);
-  DXFâ†’DWGâ†’DXF and DWGâ†’DXFâ†’DWGâ†’DXF round trips were **0/0/0** on the measured sheets (one sheet showed
+  DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips were **0/0/0** on the measured sheets (one sheet showed
   only an anonymous-block rename), and the panel service opened a real DWG (title block `004`), applied a
   redline to a **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source
   untouched. The DWG and DXF sets are different title-block issues, so equivalence is reported as measured
   (~90 % shared geometry) rather than as equality.
 - ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
-  sheet â€” fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
-  empty, truncated and DWG states â€” with zero console errors. The Dev AryaCode pass then opened a real
+  sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
+  empty, truncated and DWG states — with zero console errors. The Dev AryaCode pass then opened a real
   DWG in the app's right panel: DWG badge, 213 entities, layer list, title-block fields and conversion
   provenance, with no client error.
 - ECAD CAD workspace: with the row's `writes` switch on, the drawing pane is a CAD-style editor.
   Selection is a set with Shift-add and Ctrl-toggle; left-drag on empty sheet draws an AutoCAD
-  marquee â€” leftâ†’right is a blue **window** (fully enclosed), rightâ†’left a green **crossing**
+  marquee — left→right is a blue **window** (fully enclosed), right→left a green **crossing**
   (anything touched); middle-drag, right-drag and Space+left-drag pan, the wheel zooms at the cursor,
   and a right-click menu carries Select all, Zoom extents/window, Pan, Move, Copy, Erase, Properties,
   Ask, Print and Export SVG. Selection shows grips (line endpoints, polyline vertices, circle radii,
@@ -183,20 +183,20 @@ Where each surface actually stands, based on what has been exercised.
   snap, layer/colour staging, apply with verification 4/4, print, read-only, 10k-primitive sheet),
   inside a 398-test bundle suite.
 - ECAD conversation intelligence: every `ecad_*` tool renders as a themed card instead of the generic
-  row â€” open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
+  row — open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
   and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
-  (verified badge, output path, counters, DWG round-trip split, â€œOpen written drawingâ€) are specialised,
+  (verified badge, output path, counters, DWG round-trip split, “Open written drawing”) are specialised,
   the rest use labelled field cards; errors print code/message/fix and malformed payloads never invent
   counts. A dock chip above the composer reports the workspace's drawing/DWG count, profile state and
   writes state, hiding itself when there is nothing to report.
 
-**On by default** â€” every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
+**On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins
 (`l5x` editing/Studio/live/allowWrites, `mwi` edit, `optix` authoring/preview, `ecad` writes)
 when the profile is read-only or the request budget is tight. Tool schemas are sent on every request, so
 the lean profile is the one that turns them off.
 
-**Known limits** â€” stated in the bundle, not hidden:
+**Known limits** — stated in the bundle, not hidden:
 
 - Live reads, SDK builds and live writes cannot establish that online logic matches the export; every result says
   so in `coverage`
@@ -207,10 +207,10 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only â€” the tool-count ceiling covers every default-on tool including Optix
-- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: line/polyline/circle/arc/ellipse grips stage their setters, while generic geometry and dimension grips still wait on engine setters; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; intersection snap covers straight segments only; entity colour is ACI 1â€“255 (ByLayer/ByBlock stay on the layer); mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWGâ†’DXF output is about 5Ã— the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
+- The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: line/polyline/circle/arc/ellipse grips stage their setters, while generic geometry and dimension grips still wait on engine setters; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; intersection snap covers straight segments only; entity colour is ACI 1–255 (ByLayer/ByBlock stay on the layer); mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
-**Not in this repository** â€” mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
+**Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
 electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.
 
 ## Milestones
@@ -223,15 +223,15 @@ electrical drawings (DXF, and DWG through the embedded converter) are in this bu
 | **0.4.17** | MotionWorks edits the real project again: the pre-edit backup is written where the bridge and engine verify it, an already-open project is attached instead of reloaded, and `mw_get` returns the body hash the edit takes |
 | **0.4.15** | Every tool surface ships on by default; the row Configure pages switch them off |
 | **0.4.4** | One row per product: five rows, optional surfaces moved into each row's config |
-| **0.4.0** | Both previews fold into the bundle's own client face â€” one package, one browser bundle, 16 rows |
+| **0.4.0** | Both previews fold into the bundle's own client face — one package, one browser bundle, 16 rows |
 | **0.4.6** | Full EtherNet/IP surface: batch reads, discovery, controller clock, and approval-gated tag and clock writes; 84 tools |
 | **0.3.0** | FactoryTalk Optix becomes a bundle component; 79 tools total |
-| **0.2.0** | MotionWorks IEC ports into the bundle â€” 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
+| **0.2.0** | MotionWorks IEC ports into the bundle — 24 tools over the COM bridge and saved-model engine, verified live; edit off by default |
 | **0.1.2** | Harness filesystem contract fixed across L5X and FactoryTalk View; every L5X tool linked to its capability by name; generated tool reference, examples and architecture docs |
 
 ## Install
 
-Install **Engineering** from the market (**Plugins â†’ Arya Plugin Market â†’ Engineering** â†’ Install or
+Install **Engineering** from the market (**Plugins → Arya Plugin Market → Engineering** → Install or
 Update), then open a chat. The bundle carries its components (`vendor/`), its own browser face (both
 previews) and the rows; installing a component on its own gives you tools **without** the rows that
 switch them.
@@ -252,7 +252,7 @@ Then, in the application, the **Engineering** card lists each row as a component
 lives in the profile, so disabling a row survives the next update.
 
 First session after install: open the workspace folder that holds your export or project, then ask in
-plain language â€” "open Line.L5X and run the checks", "list the FactoryTalk View ME applications", "find
+plain language — "open Line.L5X and run the checks", "list the FactoryTalk View ME applications", "find
 the MotionWorks projects here". The agent picks the product's skill and tools; [Getting
 started](docs/getting-started.md) has the exact prompts and the boundaries.
 
@@ -267,11 +267,11 @@ another bundle owns.
 ```mermaid
 flowchart TB
   Profile["Profile bundle list"] --> Bundle["@aryacode/dsh-engineering"]
-  Bundle -->|insert| L5X["l5x (on) â€” read + guidance + drafts / SDK / live"]
-  Bundle -->|insert| FTV["ftview (on) â€” read, edits, Studio handoff"]
-  Bundle -->|insert| MWI["mwi (on) â€” session, read, verify, edit"]
-  Bundle -->|insert| ECAD["ecad (off) â€” DXF/DWG reads, review, drafts"]
-  Bundle -->|insert| Viewers["viewers (on) â€” ladder, ME display and ECAD drawing previews"]
+  Bundle -->|insert| L5X["l5x (on) — read + guidance + drafts / SDK / live"]
+  Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
+  Bundle -->|insert| MWI["mwi (on) — session, read, verify, edit"]
+  Bundle -->|insert| ECAD["ecad (off) — DXF/DWG reads, review, drafts"]
+  Bundle -->|insert| Viewers["viewers (on) — ladder, ME display and ECAD drawing previews"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
 
@@ -280,12 +280,12 @@ even when the implementation behind a row is replaced.
 
 | Row id | Package entry | Config options |
 |---|---|---|
-| `l5x` | `dsh-engineering-l5x` | `editing` on Â· `studio` on Â· `live` on Â· `allowWrites` on |
-| `ftview` | `dsh-engineering-ftview` | `edit` on Â· `studio` on |
+| `l5x` | `dsh-engineering-l5x` | `editing` on · `studio` on · `live` on · `allowWrites` on |
+| `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` on |
-| `ecad` | `@aryacode/dsh-engineering/ecad` (sixteen drawing tools + the `ecad-drafting` skill) | `writes` off Â· `maxFiles` 2000 Â· `maxFileBytes` 64 MiB Â· `maxEntities` 200000 |
-| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder, ME display and ECAD drawing previews) | â€” |
-| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on Â· `allowDestructive` on Â· `allowInvoke` on Â· `preview` on Â· `netlogic` on |
+| `ecad` | `@aryacode/dsh-engineering/ecad` (sixteen drawing tools + the `ecad-drafting` skill) | `writes` off · `maxFiles` 2000 · `maxFileBytes` 64 MiB · `maxEntities` 200000 |
+| `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder, ME display and ECAD drawing previews) | — |
+| `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on · `netlogic` on |
 
 ## Safety
 
@@ -303,7 +303,7 @@ even when the implementation behind a row is replaced.
   `<workspace>/backups/<product>/<subject>/<UTC stamp>/` with a `backup-manifest.json` naming each
   copied file and its SHA-256, so "back up this project" means the same place in every skill.
   MotionWorks takes its backup on open; L5X, FactoryTalk View and Optix take one on request and before
-  an in-place change. `<workspace>/_backups` and `<workspace>/backups/<project>/â€¦` are older layouts
+  an in-place change. `<workspace>/_backups` and `<workspace>/backups/<project>/…` are older layouts
   and are never written.
 - **Controller changes need a human.** Upload, mode change and download require per-call approval and
   a session policy that permits asking. The tools refuse before contacting a controller when approval
@@ -379,7 +379,7 @@ The diagrams and the handbook are generated, not hand-drawn: layout lives in
 and one regeneration. Both need Pillow; the handbook also needs python-docx and reportlab.
 
 Tests run through `tsx` so they can read the TypeScript tool factories. A registered tool that no
-skill governs fails the suite â€” the policy is a test, not a convention.
+skill governs fails the suite — the policy is a test, not a convention.
 
 ## Licence
 
