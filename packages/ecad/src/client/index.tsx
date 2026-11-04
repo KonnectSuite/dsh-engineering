@@ -22,6 +22,11 @@ import { EcadBody, type EcadBodyProps, type EcadBodyInjected, type Translate } f
 import {
   EcadArtifactError,
   readPreviewArtifact,
+  type EcadApply,
+  type EcadApplyEnvelope,
+  type EcadApplyResult,
+  type EcadCapabilities,
+  type EcadDwgState,
   type EcadFailure,
   type EcadOpenEnvelope,
   type EcadOpenResult,
@@ -155,7 +160,9 @@ export function apply(ctx: ClientContext): void {
       if (session === undefined) return false
       const input = conversation.input.for(session)
       const existing = input.state.getSnapshot().draft
-      const prompt = `Review this DXF drawing at ${file.path}. ${context}`
+      // The body's prompts already name the drawing and its format; this bridge
+      // only appends, so the draft never guesses DXF for a DWG source.
+      const prompt = context.trim() === '' ? `Review the drawing at ${file.path}.` : context.trim()
       input.setDraft(existing === '' ? prompt : `${existing}\n${prompt}`)
       input.focus()
       return true
@@ -227,6 +234,109 @@ export function apply(ctx: ClientContext): void {
     return carrier.workspaceFiles.readBytes(sessionId, path, options, signal) as ReturnType<EcadReadBytes>
   }
 
+  /**
+   * Read the service's capability report through one call.
+   *
+   * A failure here is not a failure to draw: the `open` envelope's own `writes`
+   * flag stays the fallback, and an edit offered without a capability report is
+   * still gated by that flag and by the host's own refusal.
+   * @param call - the mounted Remote call.
+   * @param sessionId - session the drawing belongs to.
+   * @param signal - cancellation.
+   * @returns the report, or undefined when the service did not answer.
+   */
+  const readCapabilities = async (call: EcadInvoke, sessionId: string, signal: AbortSignal): Promise<EcadCapabilities | undefined> => {
+    try {
+      signal.throwIfAborted()
+      const payload = await call('capabilities', sessionId)
+      const envelope = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : undefined
+      if (envelope?.ok !== true) return undefined
+      const dwgRecord = envelope.dwg !== null && typeof envelope.dwg === 'object' ? envelope.dwg as Record<string, unknown> : undefined
+      const dwg: EcadDwgState | undefined = dwgRecord === undefined
+        ? undefined
+        : {
+          available: dwgRecord.available === true,
+          ...(typeof dwgRecord.kind === 'string' ? { kind: dwgRecord.kind } : {}),
+          ...(typeof dwgRecord.version === 'string' ? { version: dwgRecord.version } : {}),
+          ...(Array.isArray(dwgRecord.versions) ? { versions: dwgRecord.versions.filter((value): value is string => typeof value === 'string') } : {}),
+        }
+      return {
+        writes: envelope.writes === true,
+        ...(typeof envelope.contractVersion === 'number' ? { contractVersion: envelope.contractVersion } : {}),
+        ...(typeof envelope.engine === 'string' ? { engine: envelope.engine } : {}),
+        ...(dwg === undefined ? {} : { dwg }),
+        ...(typeof envelope.profileSource === 'string' ? { profileSource: envelope.profileSource } : {}),
+        ...(typeof envelope.maxFileBytes === 'number' ? { maxFileBytes: envelope.maxFileBytes } : {}),
+        ...(typeof envelope.workspace === 'string' ? { workspace: envelope.workspace } : {}),
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Apply one staged draft. The host writes a NEW drawing; this bridge then
+   * reads the written sheet back so the pane can show it without touching the
+   * source file or the source view.
+   * @param address - the preview body's file address.
+   * @param baseVersion - source version the draft was staged against.
+   * @param ops - staged operations, in order.
+   * @param signal - cancellation.
+   * @returns the envelope, the written model when readable, or the failure.
+   */
+  const applyDraft: EcadApply = async (address, baseVersion, ops, signal): Promise<EcadApplyResult> => {
+    let file: { readonly sessionId: string; readonly path: string }
+    try {
+      file = hostFileOf(address)
+    } catch (error) {
+      return { ok: false, error: failureOf(error, { code: 'ECAD_NO_SESSION', fix: t('unavailableFix') }) }
+    }
+    const call = await ready
+    if (call === undefined) return { ok: false, error: mountFailure ?? unavailable(t('unavailable')) }
+    signal.throwIfAborted()
+    let payload: unknown
+    try {
+      payload = await call('apply', file.sessionId, file.path, baseVersion, ops)
+    } catch (error) {
+      return { ok: false, error: failureOf(error, { code: 'ECAD_DISABLED', fix: t('applyFailureFix') }) }
+    }
+    const envelope = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : undefined
+    if (envelope === undefined || envelope.ok !== true) {
+      return { ok: false, error: failureOf(envelope?.error ?? payload, { code: 'ECAD_INTERNAL', fix: t('applyFailureFix') }) }
+    }
+    const summary = envelope as unknown as EcadApplyEnvelope & { contractVersion?: number }
+    if (summary.contractVersion !== undefined && summary.contractVersion !== ECAD_CONTRACT_VERSION) {
+      return {
+        ok: false,
+        error: {
+          code: 'ECAD_CONTRACT_MISMATCH',
+          message: `the Host speaks ECAD contract ${summary.contractVersion}; this face speaks ${ECAD_CONTRACT_VERSION}`,
+          fix: 'Update the engineering bundle so both halves are the same release.',
+        },
+      }
+    }
+    if (typeof summary.outputPath !== 'string' || typeof summary.outputVersion !== 'string') {
+      return {
+        ok: false,
+        error: { code: 'ECAD_APPLY_INVALID', message: t('applyInvalid'), fix: t('applyFailureFix') },
+      }
+    }
+    let written
+    let writtenError: EcadFailure | undefined
+    if (typeof summary.modelPath === 'string' && summary.modelPath !== '') {
+      try {
+        const artifact = await readPreviewArtifact(readBytes, file.sessionId, summary.modelPath, signal)
+        written = { model: artifact.model, version: summary.outputVersion }
+      } catch (error) {
+        if (signal.aborted) throw error
+        writtenError = failureOf(error, { code: 'ECAD_PREVIEW_READ', fix: t('writtenUnreadable') })
+      }
+    } else {
+      writtenError = { code: 'ECAD_PREVIEW_READ', message: t('writtenUnreadable'), fix: t('writtenUnreadable') }
+    }
+    return { ok: true, result: summary, ...(written === undefined ? {} : { written }), ...(writtenError === undefined ? {} : { writtenError }) }
+  }
+
   const open = async (address: string, signal: AbortSignal): Promise<EcadOpenResult> => {
     let file: { readonly sessionId: string; readonly path: string }
     try {
@@ -266,7 +376,8 @@ export function apply(ctx: ClientContext): void {
     }
     try {
       const artifact = await readPreviewArtifact(readBytes, file.sessionId, summary.modelPath, signal)
-      return { ok: true, summary, model: artifact.model }
+      const capabilities = await readCapabilities(call, file.sessionId, signal)
+      return { ok: true, summary, model: artifact.model, ...(capabilities === undefined ? {} : { capabilities }) }
     } catch (error) {
       if (signal.aborted) throw error
       return { ok: false, error: failureOf(error, { code: 'ECAD_PREVIEW_READ', fix: 'Reload the drawing; the preview artifact could not be read.' }) }
@@ -275,6 +386,7 @@ export function apply(ctx: ClientContext): void {
 
   const injected: EcadBodyInjected = {
     open,
+    apply: applyDraft,
     ask: (address, context) => draft(address, context),
   }
 

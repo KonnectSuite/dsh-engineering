@@ -624,3 +624,496 @@
     border-left-color: var(--dsw-alias-state-business-primary);
   }
 }
+
+/* The ECAD drawing pane — editing additions.
+ *
+ * Appended as one block so the review can read the M4 surface on its own: the
+ * view/edit switch, the edit action row, the staged-change panel and the
+ * written-drawing banner. Tokens only, like the reading pane above.
+ */
+
+/* View/edit switch: a two-state segmented control, quiet until it is needed. */
+.modeSwitch {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-sm);
+  background: transparent;
+}
+
+.modeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 22px;
+  padding: 0 7px;
+  border: 0;
+  border-radius: var(--dsw-radius-xs);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.modeButtonActive {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.editBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 4px 10px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-interactive-bg-hover);
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+
+.editBarGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.editBarMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.applyLabelLong {
+  display: inline;
+}
+
+/* Narrow panes keep the primary action readable: the short label wins. */
+.applyLabelShort {
+  display: none;
+}
+
+/* The armed tool keeps a filled state; the label says what it does. */
+.toolArmed {
+  border-color: var(--dsw-alias-state-business-primary) !important;
+  background: var(--dsw-alias-interactive-bg-hover) !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+
+.applyButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-height: 26px;
+  padding: 0 12px;
+  border: 0.5px solid var(--dsw-alias-button-primary-fill);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-button-primary-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.applyButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.modeButton:focus-visible,
+.applyButton:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+/* The staged-change section keeps its list scrolling inside the panel. */
+.draftSection {
+  flex: none;
+  max-height: 46%;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  overflow: auto;
+}
+
+/* While a draft is open the layer list keeps its own share of the panel. */
+.draftSection ~ .layersSection {
+  max-height: 30%;
+}
+
+.draftList {
+  min-height: 0;
+  max-height: 132px;
+  overflow: auto;
+  padding: 0 6px 4px;
+}
+
+.draftItem {
+  display: grid;
+  grid-template-columns: minmax(52px, auto) minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 2px;
+  border-radius: var(--dsw-radius-xs);
+  font-size: 11px;
+}
+
+.draftKind {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  text-transform: lowercase;
+}
+
+.draftSummary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.draftHint {
+  margin: 2px 10px 6px;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.draftCounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 10px 8px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+}
+
+.draftActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 10px 8px;
+}
+
+/* The annotation form: three labelled fields, then stage/cancel. */
+.placementForm {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-bottom: 6px;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  margin-bottom: 6px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.formLabel {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.formInput {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-xs);
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+}
+
+.formInput:focus-visible,
+.formActions button:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+.formError {
+  margin: 0 10px;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 10px;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 10px 0;
+}
+
+/* The apply outcome: written path, counters, verification and DWG round trip. */
+.applyOutcome {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0 6px 8px;
+  padding: 6px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-document-preview);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.applyOk {
+  border-color: var(--dsw-alias-state-success-primary);
+}
+
+.applyWarn {
+  border-color: var(--dsw-alias-state-warn-primary);
+}
+
+.applyFailed {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.outputPath {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  overflow-wrap: anywhere;
+}
+
+.outputPath code {
+  font-family: var(--dsh-font-family-code, ui-monospace, 'SF Mono', Consolas, monospace);
+  font-size: 10px;
+  color: var(--dsw-alias-label-primary);
+}
+
+.applySummary {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.counterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xs);
+}
+
+.counterRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.counterValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--dsw-alias-label-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.okText {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.warnText {
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.warnBlock {
+  padding: 4px 6px;
+  border-left: 2px solid var(--dsw-alias-state-warn-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-tertiary) 45%, transparent);
+  border-radius: 0 var(--dsw-radius-xs) var(--dsw-radius-xs) 0;
+}
+
+.warnTitle {
+  display: block;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.warnList {
+  margin: 3px 0 0;
+  padding-left: 14px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.noteBlock {
+  padding: 4px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xs);
+}
+
+/* The written drawing's banner sits over the sheet's top edge like the
+   truncation notice, and offers the way back. */
+.writtenBanner {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 9px;
+  border: 0.5px solid var(--dsw-alias-state-success-primary);
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  box-shadow: var(--dsw-elevation-panel);
+  overflow-wrap: anywhere;
+}
+
+/* Draft ghosts and the erase fade: the staged state is visible on the sheet
+   without ever claiming the source changed. */
+.ghostGroup {
+  pointer-events: none;
+}
+
+.ghostText {
+  fill: var(--ecad-accent);
+  opacity: 0.9;
+}
+
+.placementMarker {
+  stroke: var(--ecad-accent);
+  stroke-width: 1;
+  fill: none;
+  opacity: 0.9;
+}
+
+/* The annotation tool changes the sheet's cursor and nothing else. */
+.placingText {
+  cursor: crosshair;
+}
+
+/* A truncation notice under the written-drawing banner keeps both readable. */
+.noticeBelowBanner {
+  top: 46px;
+}
+
+.faded {
+  opacity: 0.3;
+}
+
+/* The inspector's edit block: delta fields above the stage actions. */
+.editActionsBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Editing copy: a hint under the inspector actions, quiet like the rest. */
+.editHint {
+  margin: 8px 0 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.moveFields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.moveField {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.moveField input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-xs);
+  background: var(--dsw-alias-bg-document-preview);
+  color: var(--dsw-alias-label-primary);
+  font: inherit;
+  font-size: 11px;
+}
+
+.moveField input:focus-visible {
+  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 1px;
+}
+
+@media (hover: hover) {
+  .modeButton:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+    color: var(--dsw-alias-label-primary);
+  }
+
+  .applyButton:hover:not(:disabled) {
+    background: var(--dsw-alias-button-primary-hover);
+    border-color: var(--dsw-alias-button-primary-hover);
+  }
+
+  .draftItem:hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writtenBanner {
+    box-shadow: none;
+  }
+}
+
+@container (max-width: 520px) {
+  .editBarMeta {
+    display: none;
+  }
+
+  .editBar {
+    gap: 6px;
+    padding: 4px 8px;
+  }
+
+  /* These rules follow the base declaration, so the cascade keeps them. */
+  .applyLabelLong {
+    display: none;
+  }
+
+  .applyLabelShort {
+    display: inline;
+  }
+}
