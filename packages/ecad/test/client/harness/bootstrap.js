@@ -57,6 +57,9 @@ function buildModel() {
   // Revision cloud-ish polyline and a few more notes.
   add({ id: 'cloud-1', k: 'polyline', layer: 'REVISIONS', color: 6, pts: [[210, 70], [240, 66], [250, 90], [220, 96]], closed: true, approx: true, src: 'LWPOLYLINE' })
   add({ id: 'note-2', k: 'text', layer: 'REVISIONS', color: 2, p: [214, 78], t: 'REV C', h: 3 })
+  // Two wires crossing in free space: the intersection object snap's fixture.
+  add({ id: 'cross-a', k: 'line', layer: 'WIRES', color: 1, pts: [[240, 40], [280, 80]] })
+  add({ id: 'cross-b', k: 'line', layer: 'WIRES', color: 1, pts: [[240, 80], [280, 40]] })
   if (LARGE) {
     for (let index = 0; index < 10000; index += 1) {
       const x = 20 + (index % 100) * 3.6
@@ -293,15 +296,33 @@ const ready = (async () => {
   }
   const wrap = document.querySelector('[data-ecad-canvas]').parentElement
   const rect = () => wrap.getBoundingClientRect()
+  /** The current user pan/zoom, read from the rendered transform group. */
+  const viewOf = () => {
+    const transform = document.querySelector('[data-ecad-view]')?.getAttribute('transform') ?? ''
+    const translate = /translate\(([-\d.]+) ([-\d.]+)\)/u.exec(transform)
+    const scale = /scale\(([-\d.]+)\)/u.exec(transform)
+    return {
+      panX: translate === null ? 0 : Number(translate[1]),
+      panY: translate === null ? 0 : Number(translate[2]),
+      zoom: scale === null ? 1 : Number(scale[1]),
+    }
+  }
   const worldToClient = (x, y) => {
     const box = rect()
     const fit = fitOf()
-    return { x: box.left + fit.translateX + fit.scale * x, y: box.top + fit.translateY - fit.scale * y }
+    const view = viewOf()
+    const fittedX = fit.translateX + fit.scale * x
+    const fittedY = fit.translateY - fit.scale * y
+    return { x: box.left + view.panX + fittedX * view.zoom, y: box.top + view.panY + fittedY * view.zoom }
   }
   const clientToWorld = (x, y) => {
     const box = rect()
     const fit = fitOf()
-    return { x: (x - box.left - fit.translateX) / fit.scale, y: (box.top + fit.translateY - y) / fit.scale }
+    const view = viewOf()
+    return {
+      x: ((x - box.left - view.panX) / view.zoom - fit.translateX) / fit.scale,
+      y: (fit.translateY - (y - box.top - view.panY) / view.zoom) / fit.scale,
+    }
   }
   window.__HARNESS__ = {
     model: MODEL,
@@ -333,6 +354,12 @@ const ready = (async () => {
     editable: () => document.querySelector('[data-ecad-pane]')?.getAttribute('data-ecad-editable') === 'true',
     selectedCount: () => document.querySelectorAll('[data-ecad-selected]').length,
     statusText: () => document.querySelector('[data-ecad-status]')?.textContent ?? '',
+    /** The outer pan/zoom group's transform, so a right-drag pan can be measured. */
+    viewTransform: () => document.querySelector('[data-ecad-view]')?.getAttribute('transform') ?? '',
+    contextMenuOpen: () => Boolean(document.querySelector('[data-ecad-context-menu]')),
+    /** The snap class the status/sheet marker is currently showing. */
+    snapLabelKind: () => document.querySelector('[data-ecad-snap-label]')?.getAttribute('data-ecad-snap-label') ?? '',
+    snapLabelText: () => document.querySelector('[data-ecad-snap-label]')?.textContent ?? '',
     setTheme: (theme) => {
       document.documentElement.setAttribute('data-theme', theme)
     },

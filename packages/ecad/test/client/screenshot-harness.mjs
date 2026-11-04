@@ -247,6 +247,22 @@ async function click(cdp, point, modifiers = 0) {
   await mouse(cdp, 'mouseReleased', point, { buttons: 0, modifiers })
 }
 
+/** Press the right button, drag, and release: a right-drag pan gesture. */
+async function rightDrag(cdp, from, to, options = {}) {
+  await mouse(cdp, 'mouseMoved', from, { buttons: 0 })
+  await mouse(cdp, 'mousePressed', from, { button: 'right', buttons: 2 })
+  const steps = options.steps ?? 8
+  for (let step = 1; step <= steps; step += 1) {
+    const point = {
+      x: from.x + ((to.x - from.x) * step) / steps,
+      y: from.y + ((to.y - from.y) * step) / steps,
+    }
+    await mouse(cdp, 'mouseMoved', point, { button: 'right', buttons: 2 })
+  }
+  if (options.during !== undefined) await options.during()
+  await mouse(cdp, 'mouseReleased', to, { button: 'right', buttons: 0 })
+}
+
 /** Right-click one point, falling back to a synthetic contextmenu event. */
 async function rightClick(cdp, point) {
   await mouse(cdp, 'mouseMoved', point, { buttons: 0 })
@@ -467,6 +483,18 @@ async function capture(cdp, directory) {
   await new Promise(resolveWait => setTimeout(resolveWait, 150))
   result.shots.push(await shot(cdp, directory, '10-line-preview.png'))
   await key(cdp, 'Escape', 'Escape')
+  await new Promise(resolveWait => setTimeout(resolveWait, 120))
+
+  // The line preview step leaves the cursor elsewhere; with the command ended,
+  // hover the intersection of the two crossing wires and read the osnap label.
+  const intersectPoint = await harness(cdp, 'pointOn(260.4, 60.4)')
+  await mouse(cdp, 'mouseMoved', intersectPoint, { buttons: 0 })
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.intersectionSnap = {
+    kind: await evaluate(cdp, 'window.__HARNESS__.snapLabelKind()'),
+    text: await evaluate(cdp, 'window.__HARNESS__.snapLabelText()'),
+  }
+  result.shots.push(await shot(cdp, directory, '10b-intersection-snap.png'))
 
   // Print layout.
   await cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
@@ -479,6 +507,25 @@ async function capture(cdp, directory) {
     png: Boolean(document.querySelector('[data-ecad-export-png]:not([disabled])')),
     layoutTabs: document.querySelectorAll('[role="tab"]').length,
   })`)
+
+  // Right-drag pans without raising the context menu; a right click still does.
+  const panBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  const panFrom = await harness(cdp, 'pointOn(300, 150)')
+  const panTo = { x: panFrom.x + 90, y: panFrom.y + 50 }
+  await rightDrag(cdp, panFrom, panTo, {
+    steps: 8,
+    during: async () => {
+      result.shots.push(await shot(cdp, directory, '02b-right-drag-pan.png'))
+    },
+  })
+  await new Promise(resolveWait => setTimeout(resolveWait, 250))
+  const panAfter = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  const menuAfterDrag = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
+  await rightClick(cdp, await harness(cdp, 'emptyPoint()'))
+  const menuAfterClick = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
+  result.measurements.rightDrag = { panBefore, panAfter, menuAfterDrag, menuAfterClick }
+  await key(cdp, 'Escape', 'Escape')
+  await new Promise(resolveWait => setTimeout(resolveWait, 120))
 
   // Read-only mode.
   await open('?readonly=1')

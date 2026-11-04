@@ -409,6 +409,8 @@ test('the CAD workspace controls are in the committed face', () => {
     'data-ecad-marquee',
     'data-ecad-grip',
     'data-ecad-property-text',
+    'data-ecad-property-color',
+    'data-ecad-stage-color',
     'data-ecad-attribute-editor',
     'data-ecad-current-layer',
     'data-ecad-layer-create',
@@ -432,7 +434,8 @@ test('the CAD workspace locale strings exist in both languages', () => {
     'toolRevisionCloud', 'toolLeader', 'toolText', 'toolBlock', 'toolMove', 'toolCopy', 'toolRotate',
     'toolScale', 'toolMirror', 'toolOffset', 'toolTrim', 'toolExtend', 'toolErase',
     'engineOpPending', 'commandBarLabel', 'contextMenuLabel', 'properties', 'layersCurrent',
-    'statusBarLabel', 'snapEndpoint', 'snapMidpoint', 'snapCenter', 'snapNearest', 'snapGrid',
+    'statusBarLabel', 'snapEndpoint', 'snapIntersection', 'snapMidpoint', 'snapCenter', 'snapNearest', 'snapGrid',
+    'propertiesColor', 'propertiesColorApply', 'propertiesColorHint', 'propertiesColorInvalid',
     'marqueeWindowLabel', 'marqueeCrossingLabel', 'gripOpPending', 'undo', 'redo', 'print',
     'exportSvg', 'exportPng', 'layerOpPending',
   ]) {

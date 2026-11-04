@@ -161,15 +161,25 @@ export const ENGINE_OPS_SUPPORTED: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Grip edits the pinned engine still has no operation for: a circle/arc radius
- * or sweep cannot be set, so those grips preview but refuse to stage.
+ * Grip and property edits the pinned engine still has no operation for.
+ *
+ * `setCircle`, `setArc`, `setEllipse` and `setColor` are fully built here against
+ * the shapes the parallel engine change adds; until that lands they stay in this
+ * list so the pane previews the edit and names the pending operation instead of
+ * faking a stage. Moving one of these into {@link ENGINE_OPS_SUPPORTED} is the
+ * whole switch.
  */
 export const PENDING_ENGINE_OPS: readonly string[] = [
   'setCircle',
   'setArc',
+  'setEllipse',
+  'setColor',
   'setGeometry',
   'setDimension',
 ]
+
+/** The operations the face builds against an engine branch not yet merged. */
+export const PREPARED_ENGINE_OPS: readonly string[] = ['setCircle', 'setArc', 'setEllipse', 'setColor']
 
 /** Whether one engine operation can be staged against the pinned engine. */
 export function engineOpAvailable(op: string): boolean {
@@ -387,6 +397,48 @@ export function stageSetPolyline(key: string, layout: string, id: string, points
     pts: points.map(point => [roundCoord(point[0]), roundCoord(point[1])]),
     ...(closed ? { closed: true } : {}),
   })
+}
+
+/** Build a `setCircle` staged op, for a circle radius grip. */
+export function stageSetCircle(key: string, layout: string, id: string, center: EcadPoint, radius: number): EcadStagedOp {
+  return staged(key, layout, {
+    op: 'setCircle',
+    layout,
+    id,
+    center: [roundCoord(center[0]), roundCoord(center[1])],
+    radius: roundCoord(Math.abs(radius)),
+  })
+}
+
+/** Build a `setArc` staged op, for an arc geometry grip. */
+export function stageSetArc(key: string, layout: string, id: string, center: EcadPoint, radius: number, startAngleDeg: number, endAngleDeg: number): EcadStagedOp {
+  return staged(key, layout, {
+    op: 'setArc',
+    layout,
+    id,
+    center: [roundCoord(center[0]), roundCoord(center[1])],
+    radius: roundCoord(Math.abs(radius)),
+    startAngleDeg: roundCoord(startAngleDeg),
+    endAngleDeg: roundCoord(endAngleDeg),
+  })
+}
+
+/** Build a `setEllipse` staged op, for an ellipse quadrant grip. */
+export function stageSetEllipse(key: string, layout: string, id: string, center: EcadPoint, rx: number, ry: number, rotDeg: number): EcadStagedOp {
+  return staged(key, layout, {
+    op: 'setEllipse',
+    layout,
+    id,
+    center: [roundCoord(center[0]), roundCoord(center[1])],
+    rx: roundCoord(Math.abs(rx)),
+    ry: roundCoord(Math.abs(ry)),
+    rotDeg: roundCoord(rotDeg),
+  })
+}
+
+/** Build one `setColor` staged op for a whole selection; the engine takes an ACI 1–255. */
+export function stageSetColor(key: string, layout: string, ids: readonly string[], color: number): EcadStagedOp {
+  return staged(key, layout, { op: 'setColor', layout, ids: [...ids], color: Math.trunc(color) })
 }
 
 /** Build an `addLayer` staged op (no layout: the layer table is drawing-wide). */

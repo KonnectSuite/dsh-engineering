@@ -1129,19 +1129,81 @@ function segmentIntersectsBox(a, b, box) {
   }
   return t0 <= t1;
 }
+var MAX_INTERSECTION_SEGMENTS = 128;
+var MAX_INTERSECTION_POINTS = 64;
+var INTERSECTION_DEDUPE_PX = 2;
 function snapPriority(kind) {
   switch (kind) {
     case "endpoint":
       return 0;
-    case "midpoint":
+    case "intersection":
       return 1;
-    case "center":
+    case "midpoint":
       return 2;
-    case "nearest":
+    case "center":
       return 3;
-    case "grid":
+    case "nearest":
       return 4;
+    case "grid":
+      return 5;
   }
+}
+function straightSegmentsOf(entity) {
+  if (entity.k !== "line" && entity.k !== "polyline") return [];
+  const points = entity.pts ?? [];
+  const segments = [];
+  for (let index = 1; index < points.length; index += 1) {
+    segments.push([points[index - 1], points[index]]);
+  }
+  if (entity.closed === true && points.length > 2) segments.push([points[points.length - 1], points[0]]);
+  return segments;
+}
+function segmentIntersectionPoint(a, b, c, d) {
+  const rx = b[0] - a[0];
+  const ry = b[1] - a[1];
+  const sx = d[0] - c[0];
+  const sy = d[1] - c[1];
+  const denominator = rx * sy - ry * sx;
+  if (!Number.isFinite(denominator) || Math.abs(denominator) < 1e-12) return void 0;
+  const qpx = c[0] - a[0];
+  const qpy = c[1] - a[1];
+  const t = (qpx * sy - qpy * sx) / denominator;
+  const u = (qpx * ry - qpy * rx) / denominator;
+  const epsilon = 1e-9;
+  if (t < -epsilon || t > 1 + epsilon || u < -epsilon || u > 1 + epsilon) return void 0;
+  return [a[0] + t * rx, a[1] + t * ry];
+}
+function intersectionSnapPoints(entries, cursorScreen, project, screenRadius) {
+  if (!Number.isFinite(screenRadius) || screenRadius <= 0) return [];
+  const candidates = [];
+  const segments = [];
+  for (const entry of entries) {
+    for (const segment of straightSegmentsOf(entry.entity)) {
+      if (segments.length >= MAX_INTERSECTION_SEGMENTS) break;
+      const sa = project(segment[0]);
+      const sb = project(segment[1]);
+      const near = cursorScreen[0] >= Math.min(sa[0], sb[0]) - screenRadius && cursorScreen[0] <= Math.max(sa[0], sb[0]) + screenRadius && cursorScreen[1] >= Math.min(sa[1], sb[1]) - screenRadius && cursorScreen[1] <= Math.max(sa[1], sb[1]) + screenRadius;
+      if (!near) continue;
+      segments.push({ a: segment[0], b: segment[1], sa, sb });
+    }
+    if (segments.length >= MAX_INTERSECTION_SEGMENTS) break;
+  }
+  for (let first = 0; first < segments.length; first += 1) {
+    for (let second = first + 1; second < segments.length; second += 1) {
+      if (candidates.length >= MAX_INTERSECTION_POINTS) break;
+      const left = segments[first];
+      const right = segments[second];
+      const screen = segmentIntersectionPoint(left.sa, left.sb, right.sa, right.sb);
+      if (screen === void 0) continue;
+      const distance = Math.hypot(screen[0] - cursorScreen[0], screen[1] - cursorScreen[1]);
+      if (distance > screenRadius) continue;
+      const world = segmentIntersectionPoint(left.a, left.b, right.a, right.b);
+      if (world === void 0) continue;
+      if (candidates.some((candidate) => Math.hypot(candidate.screen[0] - screen[0], candidate.screen[1] - screen[1]) <= INTERSECTION_DEDUPE_PX)) continue;
+      candidates.push({ screen: [screen[0], screen[1]], world: [roundValue(world[0]), roundValue(world[1])] });
+    }
+  }
+  return candidates.map((candidate) => candidate.world);
 }
 function snapNear(index, point, radius, options = {}) {
   if (!Number.isFinite(point[0]) || !Number.isFinite(point[1]) || !Number.isFinite(radius) || radius <= 0) return void 0;
@@ -1162,7 +1224,8 @@ function snapNear(index, point, radius, options = {}) {
     }
   };
   const box = { min: [point[0] - radius, point[1] - radius], max: [point[0] + radius, point[1] + radius] };
-  for (const entry of queryIndex(index, box, 2048)) {
+  const nearby = queryIndex(index, box, 2048);
+  for (const entry of nearby) {
     if (options.locked?.has(entry.layer) === true) continue;
     const entity = entry.entity;
     const samples = entry.samples;
@@ -1206,6 +1269,12 @@ function snapNear(index, point, radius, options = {}) {
         const projection = nearestOnSegment(point, previous, at);
         if (projection !== void 0) consider(projection, "nearest", entry.id);
       }
+    }
+  }
+  if (options.project !== void 0 && options.screenRadius !== void 0) {
+    const visible = options.locked === void 0 ? nearby : nearby.filter((entry) => options.locked?.has(entry.layer) !== true);
+    for (const intersection of intersectionSnapPoints(visible, options.project(point), options.project, options.screenRadius)) {
+      consider(intersection, "intersection");
     }
   }
   if (options.includeGrid === true && options.grid !== void 0 && Number.isFinite(options.grid) && options.grid > 0) {
@@ -1397,10 +1466,52 @@ function gripRequestFor(entity, grip, to) {
     if (entity.c !== void 0 && grip.kind === "center") {
       return { kind: "move", dx: roundValue(to[0] - entity.c[0]), dy: roundValue(to[1] - entity.c[1]) };
     }
-    return { kind: "engine", op: "setCircle", payload: { id: entity.id, c: entity.c, r: entity.r } };
+    const center = entity.c ?? [0, 0];
+    return {
+      kind: "engine",
+      op: "setCircle",
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        radius: roundValue(Math.hypot(to[0] - center[0], to[1] - center[1]))
+      }
+    };
   }
   if (entity.k === "arc") {
-    return { kind: "engine", op: "setArc", payload: { id: entity.id, c: entity.c, r: entity.r, a0: entity.a0, a1: entity.a1 } };
+    const center = entity.c ?? [0, 0];
+    const radius = Math.abs(entity.r ?? 0);
+    const degrees = 180 / Math.PI;
+    const start = (entity.a0 ?? 0) * degrees;
+    const end = (entity.a1 ?? 0) * degrees;
+    if (grip.kind === "center") {
+      return { kind: "engine", op: "setArc", payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], radius: roundValue(radius), startAngleDeg: roundValue(start), endAngleDeg: roundValue(end) } };
+    }
+    const movedAngle = angleDegrees(center, [to[0], to[1]]);
+    const startAngleDeg = grip.index === 1 ? movedAngle : roundValue(start);
+    const endAngleDeg = grip.index === 2 ? movedAngle : roundValue(end);
+    return { kind: "engine", op: "setArc", payload: { id: entity.id, center: [roundValue(center[0]), roundValue(center[1])], radius: roundValue(radius), startAngleDeg, endAngleDeg } };
+  }
+  if (entity.k === "ellipse") {
+    const center = entity.c ?? [0, 0];
+    const rx = Math.abs(entity.rx ?? 0);
+    const ry = Math.abs(entity.ry ?? 0);
+    const rotationDeg = (entity.rot ?? 0) * 180 / Math.PI;
+    if (grip.kind === "center") {
+      return { kind: "engine", op: "setEllipse", payload: { id: entity.id, center: [roundValue(to[0]), roundValue(to[1])], rx: roundValue(rx), ry: roundValue(ry), rotDeg: roundValue(rotationDeg) } };
+    }
+    const distance = Math.hypot(to[0] - center[0], to[1] - center[1]);
+    const rotDeg = grip.index === 1 ? angleDegrees(center, [to[0], to[1]]) : roundValue(rotationDeg);
+    return {
+      kind: "engine",
+      op: "setEllipse",
+      payload: {
+        id: entity.id,
+        center: [roundValue(center[0]), roundValue(center[1])],
+        rx: grip.index === 2 ? roundValue(rx) : roundValue(distance),
+        ry: grip.index === 2 ? roundValue(distance) : roundValue(ry),
+        rotDeg
+      }
+    };
   }
   return { kind: "engine", op: "setGeometry", payload: { id: entity.id, point: [roundValue(to[0]), roundValue(to[1])] } };
 }
@@ -1524,6 +1635,9 @@ function stageTrim(key, layout, id, boundaryId, pick) {
 }
 function stageExtend(key, layout, id, boundaryId) {
   return staged(key, layout, { op: "extend", layout, id, boundaryId });
+}
+function stageSetColor(key, layout, ids, color) {
+  return staged(key, layout, { op: "setColor", layout, ids: [...ids], color: Math.trunc(color) });
 }
 function stageAddLayer(key, name, color) {
   return stagedLayer(key, { op: "addLayer", name, ...color === void 0 ? {} : { color: Math.trunc(color) } });
@@ -2705,7 +2819,7 @@ function ContextMenu({ t, x, y, items, onClose }) {
 }
 function CadStatusBar({ t, cursor, selectionCount, snapKind, osnap, ortho, grid, sheet, onToggleOsnap, onToggleOrtho, onToggleGrid }) {
   const coordinates = cursor === void 0 ? t("statusNoCoordinates") : t("statusCoordinates", { x: Number(cursor[0].toFixed(3)), y: Number(cursor[1].toFixed(3)) });
-  const snapLabel = snapKind === void 0 ? void 0 : snapKind === "endpoint" ? t("snapEndpoint") : snapKind === "midpoint" ? t("snapMidpoint") : snapKind === "center" ? t("snapCenter") : snapKind === "nearest" ? t("snapNearest") : t("snapGrid");
+  const snapLabel = snapKind === void 0 ? void 0 : snapKind === "endpoint" ? t("snapEndpoint") : snapKind === "intersection" ? t("snapIntersection") : snapKind === "midpoint" ? t("snapMidpoint") : snapKind === "center" ? t("snapCenter") : snapKind === "nearest" ? t("snapNearest") : t("snapGrid");
   return (0, import_react2.createElement)(
     "div",
     { className: `${EcadBody_default.statusBar} ${EcadBody_default.noPrint}`, role: "status", "aria-label": t("statusBarLabel"), "data-ecad-status": "true" },
@@ -2763,11 +2877,13 @@ function PropertiesPanel(props) {
   const selectedKey = entities.map((entity) => entity.id).join("|");
   const [textDraft, setTextDraft] = (0, import_react2.useState)("");
   const [layerDraft, setLayerDraft] = (0, import_react2.useState)("");
+  const [colorDraft, setColorDraft] = (0, import_react2.useState)("");
   const [tagDraft, setTagDraft] = (0, import_react2.useState)("");
   const [valueDraft, setValueDraft] = (0, import_react2.useState)("");
   (0, import_react2.useEffect)(() => {
     setTextDraft(single !== void 0 && (single.k === "text" || single.k === "mtext") ? single.t ?? "" : "");
     setLayerDraft(single === void 0 ? "" : single.layer);
+    setColorDraft(single !== void 0 && single.color > 0 && single.color < 256 ? String(single.color) : "7");
     setTagDraft("");
     setValueDraft(attributeOwner(single) === void 0 ? "" : single?.t ?? "");
   }, [selectedKey]);
@@ -2784,6 +2900,11 @@ function PropertiesPanel(props) {
   const canStageAttribute = editing && attributeTarget !== void 0 && tagDraft.trim() !== "" && valueDraft !== (single?.t ?? "");
   const canStageMove = parseNumberField(moveDx) !== void 0 && parseNumberField(moveDy) !== void 0;
   const canStageRotate = parseNumberField(rotateAngle) !== void 0;
+  const colorNumber = parseNumberField(colorDraft);
+  const colorValid = colorNumber !== void 0 && Number.isInteger(colorNumber) && colorNumber >= 1 && colorNumber <= 255;
+  const colorInvalid = colorDraft.trim() !== "" && !colorValid;
+  const canStageColor = editing && entities.length > 0 && colorValid && (single === void 0 || colorNumber !== single.color);
+  const swatch = single !== void 0 && single.color > 0 && single.color < 256 ? aciHex(single.color) : "var(--dsw-alias-interactive-bg-active)";
   return (0, import_react2.createElement)(
     "section",
     { className: `${EcadBody_default.panelSection} ${EcadBody_default.inspectorSection}`, "data-ecad-properties": "true" },
@@ -2928,6 +3049,45 @@ function PropertiesPanel(props) {
                 props.onStageLayer(entities, layerDraft);
               }
             }, t("propertiesLayerApply"))
+          ),
+          (0, import_react2.createElement)("div", { className: EcadBody_default.propertyHeading }, t("propertiesColor")),
+          (0, import_react2.createElement)(
+            "label",
+            { className: EcadBody_default.formRow },
+            (0, import_react2.createElement)("span", { className: EcadBody_default.formLabel }, t("propertiesColor")),
+            (0, import_react2.createElement)(
+              "div",
+              { style: { display: "flex", alignItems: "center", gap: "6px", minWidth: 0 } },
+              (0, import_react2.createElement)("span", { className: EcadBody_default.swatch, style: { background: swatch }, "aria-hidden": true }),
+              (0, import_react2.createElement)("input", {
+                className: EcadBody_default.formInput,
+                type: "text",
+                inputMode: "numeric",
+                value: colorDraft,
+                "aria-label": t("propertiesColor"),
+                placeholder: t("propertiesColorPlaceholder"),
+                "aria-invalid": colorInvalid,
+                onChange: (event) => {
+                  setColorDraft(event.target.value);
+                },
+                "data-ecad-property-color": "true"
+              })
+            )
+          ),
+          colorInvalid ? (0, import_react2.createElement)("p", { className: EcadBody_default.formError, role: "alert" }, t("propertiesColorInvalid")) : (0, import_react2.createElement)("p", { className: EcadBody_default.editHint }, t("propertiesColorHint")),
+          (0, import_react2.createElement)(
+            "div",
+            { className: EcadBody_default.formActions },
+            (0, import_react2.createElement)("button", {
+              type: "button",
+              className: EcadBody_default.applyButton,
+              disabled: !canStageColor,
+              onClick: () => {
+                if (!colorValid || colorNumber === void 0) return;
+                props.onStageColor(entities, colorNumber);
+              },
+              "data-ecad-stage-color": "true"
+            }, t("propertiesColorApply"))
           ),
           (0, import_react2.createElement)("div", { className: EcadBody_default.propertyHeading }, t("toolMove")),
           (0, import_react2.createElement)(
@@ -3672,7 +3832,7 @@ function SceneView({ scene, fit, view, label, width, height, selectedIds, fadedI
     ),
     (0, import_react3.createElement)(
       "g",
-      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})` },
+      { transform: `translate(${view.panX} ${view.panY}) scale(${view.zoom})`, "data-ecad-view": "true" },
       (0, import_react3.createElement)(
         "g",
         { transform: `translate(${fit.translateX} ${fit.translateY}) scale(${fit.scale} ${-fit.scale})` },
@@ -3974,6 +4134,7 @@ function EcadBody(props) {
   const applyAbortRef = (0, import_react3.useRef)(void 0);
   const gestureRef = (0, import_react3.useRef)(void 0);
   const indexRef = (0, import_react3.useRef)(void 0);
+  const suppressContextMenuRef = (0, import_react3.useRef)(false);
   const lastClickRef = (0, import_react3.useRef)(void 0);
   const spaceHeldRef = (0, import_react3.useRef)(false);
   const [canvasElement, setCanvasElement] = (0, import_react3.useState)(null);
@@ -4356,6 +4517,20 @@ function EcadBody(props) {
     stageOps(stageSetLayerMany(nextDraftKey(), activeLayout.id, editable2.map((entity) => entity.id), layer), void 0);
     if (editable2.length < entities.length) setNotice({ kind: "info", text: t("editFlattened") });
   }, [activeLayout, editing, nextDraftKey, stageOps, t]);
+  const stageColorChange = (0, import_react3.useCallback)((entities, color) => {
+    if (!editing || activeLayout === void 0) return;
+    const editable2 = entities.filter((entity) => editableEntityId(entity.id));
+    if (editable2.length === 0) {
+      setNotice({ kind: "warn", text: t("editFlattened") });
+      return;
+    }
+    if (!engineOpAvailable("setColor")) {
+      reportPending("setColor");
+      return;
+    }
+    stageOps([stageSetColor(nextDraftKey(), activeLayout.id, editable2.map((entity) => entity.id), color)], void 0);
+    if (editable2.length < entities.length) setNotice({ kind: "info", text: t("editFlattened") });
+  }, [activeLayout, editing, nextDraftKey, reportPending, stageOps, t]);
   const stageAttributeChange = (0, import_react3.useCallback)((ownerId, tag, value) => {
     if (!editing || activeLayout === void 0) return;
     stageOps([stageSetAttribute(nextDraftKey(), activeLayout.id, ownerId, tag, value)], void 0);
@@ -4477,7 +4652,11 @@ function EcadBody(props) {
       try {
         result = snapNear(ensureIndex(), raw, snapRadius, {
           ...aids.grid && grid !== void 0 ? { includeGrid: true, grid: grid.step } : {},
-          locked: lockedLayers
+          locked: lockedLayers,
+          // Screen-space projection turns on the intersection candidate and lets
+          // its neighbourhood prefilter skip a sheet-wide pairwise search.
+          project: (candidate) => toScreen(candidate, fit, view),
+          screenRadius: SNAP_RADIUS_PX
         });
       } catch {
         result = void 0;
@@ -4487,11 +4666,17 @@ function EcadBody(props) {
     if (aids.ortho && base !== void 0) point = orthoPoint(base, point);
     return { point, snap: result };
   }, [aids.grid, aids.osnap, aids.ortho, ensureIndex, fit, grid, lockedLayers, snapRadius, view]);
-  const beginPan = (0, import_react3.useCallback)((screen, pointerId) => {
-    gestureRef.current = { kind: "pan", startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false };
+  const beginPan = (0, import_react3.useCallback)((screen, pointerId, button) => {
+    gestureRef.current = { kind: "pan", button, startX: screen.x, startY: screen.y, panX: view.panX, panY: view.panY, pointerId, moved: false };
     canvasElement?.setPointerCapture?.(pointerId);
     setPanning(true);
   }, [canvasElement, view.panX, view.panY]);
+  const openContextMenuAt = (0, import_react3.useCallback)((screen) => {
+    const maxX = Math.max(8, size.width - 220);
+    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300));
+    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) });
+    setCommandError(void 0);
+  }, [selected.length, size.height, size.width]);
   const pointForSnapPreview = (0, import_react3.useCallback)((point, result) => {
     setCursorWorld(point);
     setSnap(result);
@@ -4501,9 +4686,10 @@ function EcadBody(props) {
     if (element === null) return;
     element.focus({ preventScroll: true });
     const screen = localPoint(event.clientX, event.clientY);
-    if (event.button === 1 || event.button === 0 && (spaceHeldRef.current || tool === "pan")) {
+    suppressContextMenuRef.current = false;
+    if (event.button === 1 || event.button === 2 || event.button === 0 && (spaceHeldRef.current || tool === "pan")) {
       event.preventDefault();
-      beginPan(screen, event.pointerId);
+      beginPan(screen, event.pointerId, event.button);
       return;
     }
     if (event.button !== 0) return;
@@ -4694,6 +4880,13 @@ function EcadBody(props) {
     if (gesture === void 0) return;
     if (gesture.kind === "pan") {
       setPanning(false);
+      if (gesture.button === 2) {
+        if (gesture.moved) {
+          suppressContextMenuRef.current = true;
+        } else {
+          openContextMenuAt(screen);
+        }
+      }
       return;
     }
     if (gesture.kind === "marquee") {
@@ -4736,16 +4929,16 @@ function EcadBody(props) {
       if (gesture.moved) dispatchGrip(gesture.entityId, gesture.grip, gesture.original, gesture.point);
       return;
     }
-  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, size.height, size.width, stageOps, view]);
+  }, [activeLayout, canvasElement, dispatchGrip, ensureIndex, fit, localPoint, lockedLayers, nextDraftKey, openContextMenuAt, size.height, size.width, stageOps, view]);
   const onContextMenu = (0, import_react3.useCallback)((event) => {
     event.preventDefault();
     event.stopPropagation();
-    const screen = localPoint(event.clientX, event.clientY);
-    const maxX = Math.max(8, size.width - 220);
-    const maxY = Math.max(8, size.height - (selected.length > 0 ? 340 : 300));
-    setContextMenu({ x: Math.min(screen.x, maxX), y: Math.min(screen.y, maxY) });
-    setCommandError(void 0);
-  }, [localPoint, selected.length, size.height, size.width]);
+    if (suppressContextMenuRef.current) {
+      suppressContextMenuRef.current = false;
+      return;
+    }
+    openContextMenuAt(localPoint(event.clientX, event.clientY));
+  }, [localPoint, openContextMenuAt]);
   const askSelection = (0, import_react3.useCallback)(() => {
     if (selectedEntities.length === 0) return;
     const kinds = [...new Set(selectedEntities.map((entity) => entity.k))].join(", ");
@@ -5176,7 +5369,7 @@ function EcadBody(props) {
     }
     return result;
   }, [editing, selectedEntities]);
-  const snapLabel = snap === void 0 ? void 0 : snap.kind === "endpoint" ? t("snapEndpoint") : snap.kind === "midpoint" ? t("snapMidpoint") : snap.kind === "center" ? t("snapCenter") : snap.kind === "nearest" ? t("snapNearest") : t("snapGrid");
+  const snapLabel = snap === void 0 ? void 0 : snap.kind === "endpoint" ? t("snapEndpoint") : snap.kind === "intersection" ? t("snapIntersection") : snap.kind === "midpoint" ? t("snapMidpoint") : snap.kind === "center" ? t("snapCenter") : snap.kind === "nearest" ? t("snapNearest") : t("snapGrid");
   const layouts = displayModel?.layouts ?? [];
   const layoutTabs = layouts.length > 1 ? (0, import_react3.createElement)(
     "div",
@@ -5424,6 +5617,7 @@ function EcadBody(props) {
           onStageErase: stageEraseSelection,
           onStageText: stageTextChange,
           onStageLayer: stageLayerChange,
+          onStageColor: stageColorChange,
           onStageAttribute: stageAttributeChange,
           onAsk: () => {
             if (selectedOne !== void 0) askEntity(selectedOne);
@@ -6712,6 +6906,7 @@ var en = {
   statusOrtho: "ORTHO",
   statusGrid: "GRID",
   snapEndpoint: "Endpoint",
+  snapIntersection: "Intersection",
   snapMidpoint: "Midpoint",
   snapCenter: "Center",
   snapNearest: "Nearest",
@@ -6738,6 +6933,11 @@ var en = {
   propertiesMixedLayer: "Mixed layers",
   propertiesTextApply: "Stage text",
   propertiesLayerApply: "Stage layer",
+  propertiesColor: "Entity colour",
+  propertiesColorApply: "Stage colour",
+  propertiesColorPlaceholder: "ACI 1\u2013255",
+  propertiesColorHint: "An ACI colour index from 1 to 255. ByBlock (0) and ByLayer (256) are not settable values.",
+  propertiesColorInvalid: "Enter a whole ACI colour from 1 to 255.",
   propertiesMoveApply: "Stage move",
   propertiesRotateApply: "Stage rotate",
   propertiesDelete: "Stage erase",
@@ -7114,6 +7314,7 @@ var zh = {
   statusOrtho: "\u6B63\u4EA4",
   statusGrid: "\u6805\u683C",
   snapEndpoint: "\u7AEF\u70B9",
+  snapIntersection: "\u4EA4\u70B9",
   snapMidpoint: "\u4E2D\u70B9",
   snapCenter: "\u5706\u5FC3",
   snapNearest: "\u6700\u8FD1\u70B9",
@@ -7140,6 +7341,11 @@ var zh = {
   propertiesMixedLayer: "\u591A\u4E2A\u56FE\u5C42",
   propertiesTextApply: "\u6682\u5B58\u6587\u5B57",
   propertiesLayerApply: "\u6682\u5B58\u56FE\u5C42",
+  propertiesColor: "\u56FE\u5143\u989C\u8272",
+  propertiesColorApply: "\u6682\u5B58\u989C\u8272",
+  propertiesColorPlaceholder: "ACI 1\u2013255",
+  propertiesColorHint: "\u989C\u8272\u7D22\u5F15\u4E3A 1 \u5230 255 \u7684 ACI \u503C\u3002\u968F\u5757\uFF080\uFF09\u548C\u968F\u5C42\uFF08256\uFF09\u4E0D\u80FD\u4F5C\u4E3A\u8BBE\u7F6E\u503C\u3002",
+  propertiesColorInvalid: "\u8BF7\u8F93\u5165 1 \u5230 255 \u7684\u6574\u6570 ACI \u989C\u8272\u3002",
   propertiesMoveApply: "\u6682\u5B58\u79FB\u52A8",
   propertiesRotateApply: "\u6682\u5B58\u65CB\u8F6C",
   propertiesDelete: "\u6682\u5B58\u5220\u9664",
