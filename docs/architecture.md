@@ -47,6 +47,15 @@ the page renders as the row's config form. Every optional surface except ECAD's 
 the config form turns off what a profile does not need. ECAD is the exception by design: a new, large
 surface is inserted `disabled` and its writes start off, so a fresh install pays nothing for it.
 
+**Row switches that cross rows.** ECAD's `writes` switch has to reach two consumers: the tools (which
+build their session in the `ecad` row's `apply`) and the package-root Remote service that feeds the
+right-panel drawing pane. Sibling rows can be applied in either order, so the row does not rely on the
+service existing during its `apply`: it publishes a live `ecadPolicy` service (getters over its
+volatile config) and `src/remote/ecad-service.js` reads that policy on every `open`, `capabilities`
+and `apply` call. The one-time service `configure` remains only as the fallback for a composition
+whose row provides no policy. `test/ecad-policy.spec.mjs` mounts the service first, applies the row,
+then flips the live switch.
+
 **Why not `cordis:group`.** The patch format supports group rows (`name: cordis:group`, `group: true`,
 children in `config`), but the Plugins page does not render them: it skips them outright
 (`plugin-manager/src/index.ts`, *"Group rows are containers without a plugin inventory entry; their

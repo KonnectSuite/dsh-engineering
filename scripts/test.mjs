@@ -27,6 +27,7 @@ const BUNDLE = [
   'test/manifests.spec.mjs',
   'test/client-face.spec.mjs',
   'test/config.spec.mjs',
+  'test/ecad-policy.spec.mjs',
   'test/netlogic.spec.mjs',
   'test/resources.spec.mjs',
   'test/viewer-face-css.spec.mjs',

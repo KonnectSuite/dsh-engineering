@@ -26,6 +26,16 @@ export const ECAD_SERVICE_KEY = ECAD_NAMESPACE
 /** Largest drawing this service will read, matching the engine default. */
 export const DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 
+/**
+ * Service key the ECAD row provides with its live write policy.
+ *
+ * The package-root row mounts this Remote service and the `ecad` row mounts the
+ * tools; sibling rows may be applied in either order. Reading the policy on
+ * every call, instead of relying on a one-time `configure` from the row's
+ * `apply`, keeps the panel and the tools agreeing whichever mounted first.
+ */
+const POLICY_SERVICE = 'ecadPolicy'
+
 /** Where cached render models live, relative to the session workspace. */
 const PREVIEW_DIR = '.ecad/previews'
 /** Where the workspace index lives, relative to the session workspace. */
@@ -518,11 +528,24 @@ async function uniqueOutputPath(ctx, cwd, proposed) {
 export function createEcadService(ctx) {
   /** Writes stay off until the mounted ECAD row switches them on. */
   let writesEnabled = false
+  /** The row's live policy, when the ECAD row is mounted beside this service. */
+  const policyOf = () => {
+    try {
+      const policy = ctx.get?.(POLICY_SERVICE)
+      return policy !== null && typeof policy === 'object' ? policy : undefined
+    } catch {
+      return undefined
+    }
+  }
+  const writesNow = () => {
+    const policy = policyOf()
+    return policy !== undefined && typeof policy.writes === 'boolean' ? policy.writes : writesEnabled
+  }
   const service = {
     /** The Cordis service key the descriptors name, exposed for tests. */
     serviceKey: ECAD_SERVICE_KEY,
-    /** Whether `apply` may write. Configured by the ECAD row. */
-    get writes() { return writesEnabled },
+    /** Whether `apply` may write. Read live from the ECAD row's policy. */
+    get writes() { return writesNow() },
     /**
      * Apply the ECAD row's policy.
      * @param config - `{ writes?: boolean, maxFileBytes?: number }`.
@@ -567,7 +590,7 @@ export function createEcadService(ctx) {
           titleBlock,
           modelPath,
           profileSource,
-          writes: writesEnabled,
+          writes: writesNow(),
         }
       })
     },
@@ -582,7 +605,7 @@ export function createEcadService(ctx) {
     async apply(sessionId, path, baseVersion, ops) {
       return envelope(async () => {
         const { session, cwd } = sessionWorkspace(ctx, sessionId)
-        if (writesEnabled !== true) {
+        if (writesNow() !== true) {
           throw new EcadRemoteError('ECAD_WRITES_DISABLED', 'ECAD writes are switched off for this row', 'Open Plugins → Engineering → ECAD, enable writes, then apply again.')
         }
         const engineModule = await engine()
@@ -745,7 +768,7 @@ export function createEcadService(ctx) {
           contractVersion: ECAD_CONTRACT_VERSION,
           engine: dwgState.available ? 'dxf+dwg' : 'dxf',
           dwg: dwgState,
-          writes: writesEnabled,
+          writes: writesNow(),
           maxFileBytes: DEFAULT_MAX_FILE_BYTES,
           methods: ECAD_METHODS.map(method => method.method),
           profileSource,

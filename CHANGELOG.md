@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+- **The ECAD writes switch now reaches the drawing panel regardless of row mount order.** Enabling
+  *Allow ECAD writes* saved `writes: true` in the profile, but the panel still opened `Read-only` and
+  the dock said `writes off`: the `ecad` row configured the package-root Remote service only if that
+  service already existed at the moment the row applied, so the panel service kept its read-only
+  default when the two sibling rows mounted in the other order. The row now publishes a live
+  `ecadPolicy` service from its volatile `writes`/`maxFileBytes` config and the Remote service reads
+  that policy on every `open`, `capabilities` and `apply` call; the one-time `configure` remains as a
+  fallback for compositions without the row. A regression spec mounts the service first, applies the
+  row with `writes: true`, then flips the live switch, and asserts the panel sees both changes.
 - **DWG conversions are isolated and retried cleanly, and the suite runs one file per process.** The
   embedded `acadrust` wasm instance was reused across conversions; its Rust allocator retained memory,
   and after a long session a DXF→DWG conversion could abort with `memory access out of bounds`
