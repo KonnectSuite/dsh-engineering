@@ -51,8 +51,13 @@ async function vendor(name) {
   // older than the sources it is vendored from. That is not theoretical: the
   // 0.4.20 market tarball shipped the 0.4.16 MotionWorks build under a 0.4.20
   // version because assemble copied a stale lib/. Refuse instead of shipping.
+  //
+  // The comparison uses the newest built file, not lib/index.js: an ECAD face
+  // change rebuilds only `lib/client.js`, and comparing against index.js would
+  // refuse a correctly rebuilt tree.
   const source = await newest(join(from, 'src'))
-  if (source !== undefined && source.time > built.mtimeMs) {
+  const newestBuilt = await newest(join(from, 'lib'))
+  if (source !== undefined && newestBuilt !== undefined && source.time > newestBuilt.time) {
     throw new Error(
       `${name}: lib/ is older than ${source.path.replace(ROOT, '.')}; rebuild before packing ` +
       `(pnpm --filter @aryacode/dsh-engineering-${name} build)`,

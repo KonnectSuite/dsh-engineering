@@ -156,8 +156,65 @@ transform changes, Escape clears, layer hide removes primitives, Ask Arya writes
 centred, and there are **zero console errors or warnings**. `test/client-face.spec.mjs` locks the
 registration (extension list, renderer loading, `binaryExtensions`, locale namespace, slot) and the face
 artifact's freshness; `packages/ecad/test/client/{scene,artifacts}.spec.mjs` cover the geometry and
-artifact helpers (286 tests total in the suite). The remaining check is the in-app Shell mount on the Dev
-AryaCode profile in the end-to-end pass.
+artifact helpers. The in-app Shell mount and a real DWG in the panel were then verified in the Dev
+AryaCode pass below.
+
+## M4 — in-panel editing
+
+The drawing body edits when the row's `writes` switch is on, and is honestly read-only when it is not:
+the read-only badge's tooltip says where to enable writes, and no edit control is rendered. A
+segmented **View / Edit** switch opens an edit bar with three staged operations, built from the sheet
+model's own layout and entity ids:
+
+- **Add text annotation** — arm it, click the sheet, and a compact form (text, height, layer) appears;
+  the default height is the sheet's **median text height** and the default layer is the drawing's `0`
+  layer. Enter places at the view centre, Escape cancels.
+- **Move** — drag the selected primitive (an accent ghost previews the offset) or type ΔX/ΔY; one
+  `move` op per entity.
+- **Erase** — one `erase` op for the selected entity, faded on the sheet until applied.
+
+The staged list shows each op's kind, layout and summary with per-op remove and clear-all. The canvas
+shows ghost text/moves and faded erases. Apply calls `ecad/apply(sessionId, path, sourceVersion, ops)`
+through the same child-fiber injection as open, unwrapping the carrier's `{ ok, value }`. Success prints
+the new path, **format**, per-kind counters, verification totals and host notes; the written drawing's
+model is read from the returned `modelPath` but the source view is not swapped — “Open written drawing”
+is an explicit action, and the written sheet carries “Back to source”. A failure
+(`ECAD_WRITES_DISABLED`, `ECAD_STALE_DOCUMENT`, `ECAD_INVALID_DRAFT`, `ECAD_DWG_*`) prints code, message
+and fix inline and **keeps the draft**. Reloading retires a draft staged against a replaced version;
+switching to View keeps it.
+
+The face does not surface every engine operation: `addLine`, `addPolyline`, `addRectangle`,
+`addRevisionCloud`, `addLeader`, `addBlock`, `setText`, `setAttribute`, `setLayer` and `rotate` are
+accepted by the engine but deliberately not in the M4 UI. Flattened block members (ids containing `/`)
+are refused with an explicit note. DWG sources are handled entirely by the service: the face keeps the
+DWG badge and conversion provenance and displays the service's `dwgRoundTrip` split into hard changes
+and metadata-only changes plus converter warnings.
+
+Verification: `packages/ecad/test/client/edits.spec.mjs` (12 tests: screen→drawing inverse through
+fit/pan/zoom and Y flip, drag deltas, op builders and rounding, flattened-id refusal, defaults, field
+parsing) and the client-face spec's injected `open`/`apply`/`ask` surface, editing dictionary and
+stylesheet pairing; the headless harness now wraps Remote results as `{ ok, value }` like the live app
+and covers read-only (light/dark), staged (light/dark), applied, written view, move+erase, a stale
+failure that keeps the draft, DWG applied with round trip and warnings, and a narrow pane — **14
+screenshots** in `tmp/ecad-edit-harness/shots/`, zero console errors or warnings. The full suite is
+**315 tests, all passing**.
+
+**Dev AryaCode, end to end.** In the app: opened `20136-004.dwg` in the panel, switched to **Edit**,
+placed a text annotation, staged it (“1 STAGED”), and applied. The host wrote
+`prints/20136-004-ecad-20261104T075612.dwg` (56,387 bytes), and the panel reported *Output*, *Format:
+DWG*, *Changes: addText 1*, **“1 change · verified”**, the host notes, and **“The DWG round trip matched
+the written drawing”** with one converter warning; the source view stayed and the staged list cleared.
+Screenshot: `tmp/ecad-dev-shots/36-applied.png`.
+
+**Host gap found and closed.** The first apply in the app failed with `ECAD_NO_FS_WRITE`: the shipped
+host filesystem service writes UTF-8 text only and exposes no byte writer, so a drawing (DXF or DWG)
+could not be published at all. Both the tools adapter (`core.ts`) and the Remote service now fall back
+to a local byte writer that keeps the same promises — a read-only session refuses
+(`ECAD_WRITE_REFUSED`), the destination must sit inside the policy's workspace or additional writable
+root, and `createIfAbsent` still refuses an existing file — with `packages/ecad/test/core.spec.mjs`
+pinning the write, the read-only refusal, the outside refusal, an additional writable root and the
+create guard. The `npm pack` freshness check was also corrected to compare the newest built file
+instead of `lib/index.js`, so a face-only rebuild is not refused by `assemble`.
 
 ## Closed gate: Typert client remote (GO)
 

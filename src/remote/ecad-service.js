@@ -15,7 +15,7 @@
  */
 
 import { existsSync, mkdirSync, statSync } from 'node:fs'
-import { readdir } from 'node:fs/promises'
+import { readdir, writeFile as writeFileNode } from 'node:fs/promises'
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 import { bindTypertRemote } from '@deepseek-ai/dsh-typert-protocol'
 import { ECAD_CONTRACT_VERSION, ECAD_METHODS, ECAD_NAMESPACE } from './ecad-contract.js'
@@ -222,6 +222,38 @@ function sandboxPolicyFor(ctx, session) {
 }
 
 /**
+ * Refuse a binary write the session policy does not allow.
+ *
+ * The shipped host filesystem service writes UTF-8 text only, so a drawing is
+ * published with the local byte writer. That path must keep the same promises:
+ * a read-only session refuses, and the destination has to sit inside the
+ * workspace (or an additional writable root) the policy names.
+ * @param absolute - absolute destination.
+ * @param cwd - session workspace root.
+ * @param policy - sandbox policy, when one is supplied.
+ */
+function assertBinaryWriteAllowed(absolute, cwd, policy) {
+  if (policy === null || typeof policy !== 'object') return
+  if (policy.mode === 'read-only') {
+    throw new EcadRemoteError('ECAD_WRITE_REFUSED', `the session is read-only, so ${absolute} was not written`, 'Switch the session to Workspace Write and retry; nothing was written.')
+  }
+  const roots = []
+  if (typeof policy.workspaceRoot === 'string') roots.push(policy.workspaceRoot)
+  if (Array.isArray(policy.additionalWritableRoots)) {
+    for (const root of policy.additionalWritableRoots) if (typeof root === 'string') roots.push(root)
+  }
+  if (roots.length === 0) roots.push(cwd)
+  const target = resolve(absolute)
+  const inside = roots.some((root) => {
+    const rel = relative(resolve(root), target)
+    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+  })
+  if (!inside) {
+    throw new EcadRemoteError('ECAD_WRITE_REFUSED', `${absolute} is outside the writable workspace, so it was not written`, 'Choose a destination inside the session workspace and retry; nothing was written.')
+  }
+}
+
+/**
  * Read one workspace file through the Host filesystem service.
  * @param ctx - Host context.
  * @param cwd - workspace root.
@@ -278,7 +310,15 @@ async function writeWorkspaceFile(ctx, session, cwd, path, data, kind) {
     await fs.writeBytes(target, data, { kind }, undefined, policy)
     return
   }
-  throw new EcadRemoteError('ECAD_NO_FS_WRITE', 'the filesystem service cannot write bytes', 'Update AryaCode to a build whose filesystem service writes bytes, then retry.')
+  assertBinaryWriteAllowed(absolute, cwd, policy)
+  try {
+    await writeFileNode(absolute, data, kind === 'createIfAbsent' ? { flag: 'wx' } : undefined)
+  } catch (error) {
+    if (error !== null && typeof error === 'object' && error.code === 'EEXIST') {
+      throw new EcadRemoteError('ECAD_EXISTS', `"${path}" already exists`, 'Choose a new output name; this service never overwrites a drawing.')
+    }
+    throw new EcadRemoteError('ECAD_WRITE_REFUSED', `writing "${path}" failed: ${error instanceof Error ? error.message : String(error)}`, 'Check the workspace permissions and retry; nothing was written.')
+  }
 }
 
 /** @param relPath - workspace path. @returns the preview artifact path keyed by the path itself. */

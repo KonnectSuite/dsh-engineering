@@ -57,7 +57,25 @@
   only — light and dark, focus rings, 24 px targets, reduced motion — with ACI linework mixed toward the
   theme ink (measured 3.19:1 light / 3.25:1 dark). The committed artifact was rendered in headless
   Chrome against a real sheet (15 screenshots, zero console errors) and the registration is locked by
-  the client-face spec; the in-app mount is part of the Dev pass.
+  the client-face spec; the in-app mount and a real DWG in the panel were verified in the Dev pass.
+- **The drawing panel edits prints when the row's writes switch is on.** A View/Edit switch opens an
+  edit bar that stages a text annotation (click placement, default height = the sheet's median text
+  height, default layer `0`), a single-entity move (drag with a ghost offset or ΔX/ΔY fields) and a
+  single-entity erase, with a staged list, per-op remove and clear-all. Apply calls `ecad/apply`
+  through the panel service and writes a NEW drawing beside the source (DXF, or DWG through the
+  converter), then reports output path, format, per-kind counters, verification and host notes — the
+  source view stays put and opening the written drawing is explicit. Failures quote code/message/fix
+  and keep the draft; with writes off no edit control is rendered, only the read-only badge. The
+  headless harness uses the live `{ ok, value }` carrier and covers read-only, staged, applied, written,
+  move/erase, stale-keeps-draft, DWG round trip and a narrow pane (14 screenshots), and the new edit
+  helpers have 12 tests. In the Dev app a text annotation was staged on a real DWG and applied to
+  `prints/20136-004-ecad-…dwg` (56,387 bytes) with “1 change · verified” and “The DWG round trip
+  matched the written drawing”. That pass found a real host gap: the shipped filesystem service writes
+  text only, so both the tools adapter and the Remote service now publish drawing bytes through a
+  policy-checked local writer (read-only sessions refuse, destinations must stay in the writable
+  workspace, `createIfAbsent` is kept) with tests; `assemble` was also fixed to compare the newest
+  built file so a face-only rebuild is not refused.
+  ([port evidence](docs/port/ecad.md#m4--in-panel-editing))
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and

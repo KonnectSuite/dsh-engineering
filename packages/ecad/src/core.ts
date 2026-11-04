@@ -10,6 +10,9 @@
  * @module dsh-engineering-ecad/core
  */
 
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, isAbsolute, relative, resolve } from 'node:path'
+
 /** How completely an answer covers the request. */
 export interface Coverage {
   /** False when the answer was capped, truncated or approximated. */
@@ -250,6 +253,47 @@ export interface RawFsService {
 }
 
 /**
+ * Refuse a binary write the host policy does not allow.
+ *
+ * The shipped host filesystem service exposes no byte writer, so a drawing is
+ * published with the local writer. That must not weaken the promises the text
+ * path keeps: a read-only session refuses, and the destination has to sit inside
+ * the writable workspace the policy names.
+ *
+ * @param displayPath - destination the write would use.
+ * @param sandboxPolicy - the session policy, when the host supplies one.
+ */
+function assertBinaryWriteAllowed(displayPath: string, sandboxPolicy: SandboxPolicy): void {
+  if (sandboxPolicy === null || typeof sandboxPolicy !== 'object') return
+  const policy = sandboxPolicy as { readonly mode?: unknown; readonly workspaceRoot?: unknown; readonly additionalWritableRoots?: unknown }
+  if (policy.mode === 'read-only') {
+    throw new EngineeringError(
+      'ECAD_WRITE_REFUSED',
+      `The session is read-only, so ${displayPath} was not written.`,
+      'Switch the session to Workspace Write (or use a row that enables writes) and retry; nothing was written.',
+    )
+  }
+  const roots: string[] = []
+  if (typeof policy.workspaceRoot === 'string') roots.push(policy.workspaceRoot)
+  if (Array.isArray(policy.additionalWritableRoots)) {
+    for (const root of policy.additionalWritableRoots) if (typeof root === 'string') roots.push(root)
+  }
+  if (roots.length === 0) return
+  const target = resolve(displayPath)
+  const inside = roots.some((root) => {
+    const rel = relative(resolve(root), target)
+    return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+  })
+  if (!inside) {
+    throw new EngineeringError(
+      'ECAD_WRITE_REFUSED',
+      `${displayPath} is outside the writable workspace, so it was not written.`,
+      'Choose a destination inside the session workspace, then retry; nothing was written.',
+    )
+  }
+}
+
+/**
  * Normalise a filesystem that may resolve to a string into one that always
  * resolves to a target, so path composition and cache keys are the same shape in
  * a host and in a test.
@@ -282,6 +326,17 @@ export function asFsService(service: RawFsService): FsService {
   }
   if (service.writeBytes !== undefined) {
     fs.writeBytes = async (target, bytes, expected, signal, sandboxPolicy) => await service.writeBytes!(target, bytes, expected, signal, sandboxPolicy)
+  } else {
+    // The shipped host filesystem service writes UTF-8 text only. A drawing is
+    // bytes, so the local writer publishes it after the same promises are kept:
+    // a read-only session refuses, and the destination must sit inside the
+    // session workspace (or an additional writable root the policy names).
+    fs.writeBytes = async (target, bytes, expected, signal, sandboxPolicy) => {
+      signal?.throwIfAborted()
+      assertBinaryWriteAllowed(target.displayPath, sandboxPolicy)
+      await mkdir(dirname(target.displayPath), { recursive: true })
+      await writeFile(target.displayPath, bytes, expected?.kind === 'createIfAbsent' ? { flag: 'wx' } : undefined)
+    }
   }
   if (service.deleteFile !== undefined) {
     fs.deleteFile = async (target, expected, signal, sandboxPolicy) => await service.deleteFile!(target, expected, signal, sandboxPolicy)

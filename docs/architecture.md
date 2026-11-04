@@ -176,7 +176,10 @@ carries all three engineering previews in its single `./client` bundle:
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
 - the ME display preview draws an exported display instead of its XML;
 - the ECAD drawing preview draws a DXF (or converted DWG) sheet from the render-model artifact the
-  `ecad` Remote service caches, with layers, pan/zoom, selection and an inspector.
+  `ecad` Remote service caches, with layers, pan/zoom, selection and an inspector — and, when the row's
+  `writes` switch is on, edits it: staged text annotations, single-entity moves and erases are applied
+  through `ecad/apply` to a new drawing (the shell's filesystem service is text-only, so drawing bytes
+  go through a policy-checked local writer that refuses a read-only session or an outside destination).
 
 `scripts/build-client.mjs` produces that bundle from the three face bundles in
 `packages/viewer/lib`, `packages/ftview-viewer/lib` and `packages/ecad/lib`, which
