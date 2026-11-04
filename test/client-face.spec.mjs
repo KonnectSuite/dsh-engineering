@@ -365,6 +365,7 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   for (const file of [
     'packages/ecad/src/client/EcadBody.tsx',
     'packages/ecad/src/client/EcadDraft.tsx',
+    'packages/ecad/src/client/EcadCad.tsx',
     'packages/ecad/src/client/EcadCards.tsx',
     'packages/ecad/src/client/index.tsx',
   ]) {
@@ -378,10 +379,72 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   }
 })
 
+test('every CAD tool has its label and hint in both dictionaries', async () => {
+  const { CAD_TOOLS, PENDING_ENGINE_OPS, ENGINE_OPS_SUPPORTED } = await import('../packages/ecad/src/client/cadTools.ts')
+  assert.ok(CAD_TOOLS.length >= 21, 'the tool palette lost tools')
+  for (const tool of CAD_TOOLS) {
+    assert.ok(Object.hasOwn(en, tool.labelKey), `the tool palette asks for the missing locale key ${tool.labelKey}`)
+    assert.ok(Object.hasOwn(zh, tool.labelKey), `the tool palette asks for the missing Chinese locale key ${tool.labelKey}`)
+    assert.ok(Object.hasOwn(en, tool.hintKey), `the tool palette asks for the missing locale key ${tool.hintKey}`)
+    assert.ok(Object.hasOwn(zh, tool.hintKey), `the tool palette asks for the missing Chinese locale key ${tool.hintKey}`)
+    if (tool.writes) assert.ok(ENGINE_OPS_SUPPORTED.has(tool.op) || PENDING_ENGINE_OPS.includes(tool.op), `${tool.id} names an unknown engine op`)
+  }
+  // The keyboard map the report documents: one shortcut per letter tool.
+  const shortcuts = CAD_TOOLS.map(tool => tool.shortcut).filter(key => key !== undefined && key !== 'Del')
+  assert.equal(new Set(shortcuts).size, shortcuts.length, 'two CAD tools share a keyboard shortcut')
+})
+
+test('the CAD workspace controls are in the committed face', () => {
+  const source = read('packages/ecad/lib/client.js')
+  for (const marker of [
+    'data-ecad-palette',
+    'data-ecad-command-bar',
+    'data-ecad-status',
+    'data-ecad-context-menu',
+    'data-ecad-properties',
+    'data-ecad-layers',
+    'data-ecad-print',
+    'data-ecad-export-svg',
+    'data-ecad-export-png',
+    'data-ecad-marquee',
+    'data-ecad-grip',
+    'data-ecad-property-text',
+    'data-ecad-attribute-editor',
+    'data-ecad-current-layer',
+    'data-ecad-layer-create',
+    'data-ecad-stage-move',
+    'data-ecad-stage-rotate',
+    'data-ecad-apply',
+    'data-ecad-open-written',
+    'data-ecad-written-banner',
+  ]) {
+    assert.ok(source.includes(marker), `the committed ECAD face does not carry the ${marker} control`)
+  }
+  // The keyboard aids the report documents are part of the face.
+  for (const key of ['F3', 'F7', 'F8']) {
+    assert.ok(source.includes(key), `the committed ECAD face does not handle ${key}`)
+  }
+})
+
+test('the CAD workspace locale strings exist in both languages', () => {
+  for (const key of [
+    'toolPalette', 'toolSelect', 'toolLine', 'toolPolyline', 'toolRectangle', 'toolCircle', 'toolArc',
+    'toolRevisionCloud', 'toolLeader', 'toolText', 'toolBlock', 'toolMove', 'toolCopy', 'toolRotate',
+    'toolScale', 'toolMirror', 'toolOffset', 'toolTrim', 'toolExtend', 'toolErase',
+    'engineOpPending', 'commandBarLabel', 'contextMenuLabel', 'properties', 'layersCurrent',
+    'statusBarLabel', 'snapEndpoint', 'snapMidpoint', 'snapCenter', 'snapNearest', 'snapGrid',
+    'marqueeWindowLabel', 'marqueeCrossingLabel', 'gripOpPending', 'undo', 'redo', 'print',
+    'exportSvg', 'exportPng', 'layerOpPending',
+  ]) {
+    assert.ok(Object.hasOwn(en, key), `the CAD dictionary is missing ${key}`)
+    assert.ok(Object.hasOwn(zh, key), `the CAD dictionary is missing the Chinese ${key}`)
+  }
+})
+
 test('every ECAD stylesheet defines exactly the classes its bodies read', () => {
   // Comments are removed first: prose such as "palette.ts" is not a selector.
   const pairs = [
-    { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx'] },
+    { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx', 'packages/ecad/src/client/EcadCad.tsx'] },
     { css: 'packages/ecad/src/client/EcadCards.module.css', sources: ['packages/ecad/src/client/EcadCards.tsx'] },
   ]
   for (const pair of pairs) {

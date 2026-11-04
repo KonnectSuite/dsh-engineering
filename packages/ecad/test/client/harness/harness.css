@@ -1,0 +1,69 @@
+/* The slim host-theme stand-in for the screenshot harness.
+ *
+ * The real face reads the shell's --dsw-* tokens; this page supplies a light and
+ * a dark set shaped like the AryaCode defaults so the committed stylesheet can be
+ * judged in both themes without booting the shell. Not part of the product.
+ */
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--dsw-alias-bg-document-preview);
+  font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+#root {
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+:root,
+:root[data-theme='light'] {
+  --dsw-alias-bg-document-preview: #f6f7f9;
+  --dsw-alias-bg-layer-1: #ffffff;
+  --dsw-alias-label-primary: #1b1f24;
+  --dsw-alias-label-primary-foreground: #ffffff;
+  --dsw-alias-label-secondary: #59616c;
+  --dsw-alias-label-tertiary: #8a929d;
+  --dsw-alias-border-l2: #e2e5ea;
+  --dsw-alias-border-l3: #cfd4db;
+  --dsw-alias-interactive-bg-hover: #eceff3;
+  --dsw-alias-interactive-bg-active: #e2e7ee;
+  --dsw-alias-button-primary-fill: #2f6fed;
+  --dsw-alias-button-primary-hover: #2a63d4;
+  --dsw-alias-state-business-primary: #2f6fed;
+  --dsw-alias-state-warn-primary: #b7791f;
+  --dsw-alias-state-warn-tertiary: #fdf3d7;
+  --dsw-alias-state-warn-label: #8a5a12;
+  --dsw-alias-state-success-primary: #2f855a;
+  --dsw-alias-state-error-primary: #c53030;
+  --dsw-radius-xs: 3px;
+  --dsw-radius-sm: 6px;
+  --dsw-elevation-panel: 0 10px 30px rgba(23, 30, 40, 0.18);
+  --dsw-focus-ring-width: 2px;
+  --dsw-focus-ring-color: #2f6fed;
+  --dsh-font-family-code: ui-monospace, 'SF Mono', Consolas, monospace;
+}
+
+:root[data-theme='dark'] {
+  --dsw-alias-bg-document-preview: #14181d;
+  --dsw-alias-bg-layer-1: #1b2027;
+  --dsw-alias-label-primary: #e7ebf1;
+  --dsw-alias-label-primary-foreground: #0c1015;
+  --dsw-alias-label-secondary: #a4adba;
+  --dsw-alias-label-tertiary: #75808d;
+  --dsw-alias-border-l2: #2a323b;
+  --dsw-alias-border-l3: #3a4550;
+  --dsw-alias-interactive-bg-hover: #232b34;
+  --dsw-alias-interactive-bg-active: #2c3540;
+  --dsw-alias-button-primary-fill: #4c9aff;
+  --dsw-alias-button-primary-hover: #3d8af0;
+  --dsw-alias-state-business-primary: #4c9aff;
+  --dsw-alias-state-warn-primary: #d69e2e;
+  --dsw-alias-state-warn-tertiary: #3a2e14;
+  --dsw-alias-state-warn-label: #e6b84d;
+  --dsw-alias-state-success-primary: #48bb78;
+  --dsw-alias-state-error-primary: #f56565;
+  --dsw-elevation-panel: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
