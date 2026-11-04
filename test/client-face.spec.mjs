@@ -216,6 +216,7 @@ test('apply mounts the ladder preview, the ME display preview, the ECAD drawing 
     'slot:plugins.row.config#@aryacode/dsh-engineering#l5x',
     'slot:plugins.row.config#@aryacode/dsh-engineering#ftview',
     'slot:plugins.row.config#@aryacode/dsh-engineering#mwi',
+    'slot:plugins.row.config#@aryacode/dsh-engineering#ecad',
   ]) {
     assert.ok(registrations.includes(expected), `apply did not register ${expected} (got ${registrations.join(', ')})`)
   }

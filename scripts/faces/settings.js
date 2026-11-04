@@ -229,6 +229,19 @@ window.__ModuleLoader__.load({
       ],
     }
 
+    const ECAD = {
+      id: 'ecad',
+      summary: 'Drawing reads and review are always on; writes can be enabled here and only ever write a new drawing beside the source.',
+      intro: 'The DXF/DWG read and review surface stays on. Turn on writes to show the drawing panel\'s Edit mode and let ecad_draft_apply write a NEW drawing beside the source; a source drawing is never overwritten.',
+      fields: [
+        {
+          key: 'writes',
+          label: 'Allow ECAD writes (new drawing only)',
+          description: 'Enables the panel\'s Add text / Move / Erase and Stage, and ecad_draft_apply. Every write is a new file beside the source; review and ecad_render work without it.',
+        },
+      ],
+    }
+
     const OPTIX = {
       id: 'optix',
       summary: 'FactoryTalk Optix reads and authoring are on by default; turn off what this machine does not use.',
@@ -312,7 +325,7 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * Register the four row configuration pages.
+     * Register the five row configuration pages.
      * @param ctx - the browser plugin context.
      */
     function apply(ctx) {
@@ -333,6 +346,7 @@ window.__ModuleLoader__.load({
       register('l5x', L5X)
       register('ftview', FTVIEW)
       register('mwi', MWI)
+      register('ecad', ECAD)
       register('optix', OPTIX)
     }
 
