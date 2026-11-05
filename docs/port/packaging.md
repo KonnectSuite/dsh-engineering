@@ -43,6 +43,16 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.87.0 release record (2026-11-04).** Built from `Release 0.87.0` (`51a2baa`), tagged `v0.87.0`.
+Root suite 42 files / 398 tests, eight package typechecks, L5X 562/562, ftview 304 passed / 3 skipped,
+mwi 64/64, migration 60/60, `docs:check` and `resources:check` current. `pnpm -r build` + `assemble`
+were deterministic; the packed tarball is 3.9 MB / 14.2 MB unpacked / 743 files,
+sha256 `ab691ac915b3b5d5ce4f13f604696a2f42dd0e02ba78aaf12c0b152b0f21e9f6`. The packaged-bytes smoke
+extracted the published tarball and called `l5x_compose_logic`, which registered 17 tools and returned
+`[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);` with `Start`/`Stop`/`Run` BOOL declarations, coverage marked
+unverified and **no file written**. The registry serves 0.87.0 as `latest`; the market
+`catalog` branch records the same tarball and sha256.
+
 **One host for every entry.** The catalog points at `registry.npmjs.org` tarballs; the market repo
 holds the catalog JSON and nothing else. A GitHub release asset is not part of this flow — the
 `--tarball` mode of `publish-arya-release.mjs` still exists for packages that cannot be published to

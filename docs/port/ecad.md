@@ -165,8 +165,9 @@ flattener transformed circles, arcs, text, polylines and hatches, but `LINE` was
 block-local start/end points, so every block's line segments piled up at the block origin while the other
 primitives stayed at the insert. The line case now applies the insert transform like the rest; a synthetic
 block fixture carries a line and asserts its world coordinates. Re-rendering the real sheet puts the
-contacts, coils and terminal bars back in place and removes the corner cluster. The fix is in
-`[Unreleased]`; the published 0.86.0 artifact is unchanged until a 0.86.1 batch is approved.
+contacts, coils and terminal bars back in place and removes the corner cluster. The fix shipped in
+**0.87.0**, together with the CAD workspace, the grip-setter engine operations and the panel write-policy
+fix described below.
 
 ## M4 — in-panel editing
 
