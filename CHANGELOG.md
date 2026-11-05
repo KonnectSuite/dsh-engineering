@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.87.0] - 2026-11-04
 
 - **Ladder logic can be composed in the chat with no project and no file.** A request such as
   "compose a start/stop circuit for Studio 5000" no longer needs an L5X/ACD export: the new

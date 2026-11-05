@@ -58,7 +58,7 @@ describe('the instruction map', () => {
   })
 
   it('has a page for every PCE code the row documents', () => {
-    const corpus = join(import.meta.dirname, '..', '..', '..', 'resources', 'corpus', 'migration')
+    const corpus = join(import.meta.dirname, '..', '..', 'resources', 'corpus', 'migration')
     const text = readFileSync(join(corpus, 'migration-pce-markers.md'), 'utf8')
     for (const code of [201, 110, 109, 105, 114, 116, 134, 135, 150, 152, 160]) {
       expect(text).toContain(String(code))

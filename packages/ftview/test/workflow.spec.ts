@@ -40,6 +40,9 @@ function files(): Map<string, string> {
 describe('the authoring workflow end to end', () => {
   it('stops a draft whose XML the vendor schema rejects', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
+    const caps = await l5x.call('ftview_capabilities', {})
+    // The vendor XSD check is only meaningful where FactoryTalk View's schemas are installed.
+    if (((caps.data?.schemas as readonly unknown[] | undefined) ?? []).length === 0) return
     const open = await l5x.call('ftview_open', { root: 'export' })
     const view = open.data?.view_id as string
 
@@ -66,6 +69,9 @@ describe('the authoring workflow end to end', () => {
 
   it('scaffolds an existing display that the schema accepts', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
+    const caps = await l5x.call('ftview_capabilities', {})
+    // The vendor XSD check is only meaningful where FactoryTalk View's schemas are installed.
+    if (((caps.data?.schemas as readonly unknown[] | undefined) ?? []).length === 0) return
     const open = await l5x.call('ftview_open', { root: 'export' })
     const view = open.data?.view_id as string
 
@@ -86,6 +92,9 @@ describe('the authoring workflow end to end', () => {
 
   it('stages a popup that the schema accepts', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
+    const caps = await l5x.call('ftview_capabilities', {})
+    // The vendor XSD check is only meaningful where FactoryTalk View's schemas are installed.
+    if (((caps.data?.schemas as readonly unknown[] | undefined) ?? []).length === 0) return
     const open = await l5x.call('ftview_open', { root: 'export' })
     const view = open.data?.view_id as string
 
