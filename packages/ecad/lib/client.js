@@ -6248,30 +6248,6 @@ function firstLine(text) {
   const line = text.split("\n").find((entry) => entry.trim() !== "");
   return line === void 0 ? "" : bounded(line);
 }
-function sheetSetOf(sheetsValue, capabilitiesValue) {
-  const sheets = recordOf(sheetsValue);
-  const rows = sheets === void 0 ? void 0 : arrayOf(sheets.sheets);
-  if (rows === void 0) return void 0;
-  let dwg = 0;
-  for (const entry of rows) {
-    const row = recordOf(entry);
-    if (row === void 0) continue;
-    const path = textOf2(row.path);
-    if (textOf2(row.format) === "dwg" || path !== void 0 && path.toLowerCase().endsWith(".dwg")) dwg += 1;
-  }
-  const capabilities = recordOf(capabilitiesValue);
-  const profileSource = capabilities === void 0 ? void 0 : textOf2(capabilities.profileSource);
-  return {
-    drawings: rows.length,
-    dwg,
-    truncated: sheets?.truncated === true,
-    ...capabilities === void 0 ? {} : { writes: capabilities.writes === true },
-    ...profileSource === void 0 ? {} : { profileConfirmed: profileSource === "workspace" }
-  };
-}
-function sheetSetVisible(set) {
-  return set !== void 0 && set.drawings > 0;
-}
 
 var css2 = "/* The ECAD conversation surfaces: tool-result cards and the composer dock chip.\n *\n * These sit inside the transcript and the composer, so they follow the host's\n * own card and chip conventions (the schedule card beside them): one bordered\n * surface, 13/20 title, 10/16 tertiary detail, and the alias tokens for every\n * colour, radius, depth and focus ring. Nothing here is a new palette.\n */\n\n._tz6yGZ_card {\n  box-sizing: border-box;\n  display: flex;\n  flex-direction: column;\n  gap: 6px;\n  width: 100%;\n  padding: 8px 10px;\n  overflow: hidden;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-sm);\n  background: var(--dsw-alias-bg-layer-1);\n  color: var(--dsw-alias-label-primary);\n}\n\n._tz6yGZ_cardRunning {\n  gap: 2px;\n}\n\n._tz6yGZ_header {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  min-width: 0;\n}\n\n._tz6yGZ_icon {\n  display: grid;\n  flex: none;\n  place-items: center;\n  width: 20px;\n  height: 20px;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_titleWrap {\n  display: flex;\n  flex: 1 1 auto;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n}\n\n._tz6yGZ_title {\n  overflow: hidden;\n  font-size: 13px;\n  font-weight: 500;\n  line-height: 20px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_summary {\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_badges {\n  display: inline-flex;\n  flex: none;\n  flex-wrap: wrap;\n  gap: 4px;\n  justify-content: flex-end;\n  max-width: 60%;\n}\n\n._tz6yGZ_badge {\n  display: inline-flex;\n  align-items: center;\n  box-sizing: border-box;\n  padding: 0 6px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  font-variant-numeric: tabular-nums;\n  line-height: 16px;\n  white-space: nowrap;\n}\n\n._tz6yGZ_badge_warn {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label, var(--dsw-alias-state-warn-primary));\n}\n\n._tz6yGZ_badge_error {\n  border-color: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_badge_success {\n  border-color: var(--dsw-alias-state-success-primary);\n  color: var(--dsw-alias-state-success-primary);\n}\n\n._tz6yGZ_badge_business {\n  border-color: var(--dsw-alias-state-business-primary);\n  color: var(--dsw-alias-state-business-primary);\n}\n\n._tz6yGZ_body {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 0;\n  padding-left: 28px;\n}\n\n._tz6yGZ_field {\n  display: flex;\n  align-items: baseline;\n  gap: 8px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_fieldWide {\n  flex-direction: column;\n  gap: 0;\n  align-items: stretch;\n}\n\n._tz6yGZ_fieldLabel {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_fieldValue {\n  overflow: hidden;\n  min-width: 0;\n  color: var(--dsw-alias-label-secondary);\n  font-size: 11px;\n  line-height: 18px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_fieldWide ._tz6yGZ_fieldValue {\n  white-space: normal;\n  word-break: break-all;\n}\n\n._tz6yGZ_fieldValueMono {\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10.5px;\n}\n\n/* Findings and candidates keep one list row per volume; the card never grows\n   into the transcript's own scroll region. */\n\n._tz6yGZ_finding {\n  display: flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_severity {\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 4px;\n  border-radius: var(--dsw-radius-xs);\n  font-size: 9.5px;\n  line-height: 15px;\n  text-transform: uppercase;\n}\n\n._tz6yGZ_severity_critical {\n  background: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-bg-layer-1);\n}\n\n._tz6yGZ_severity_warning {\n  background: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-bg-layer-1);\n}\n\n._tz6yGZ_severity_info {\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_findingRule {\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n}\n\n._tz6yGZ_findingText {\n  overflow: hidden;\n  min-width: 0;\n  color: var(--dsw-alias-label-primary);\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_findingSheet {\n  flex: none;\n  overflow: hidden;\n  max-width: 34%;\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 9.5px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_candidate {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_candidateValue {\n  flex: none;\n  color: var(--dsw-alias-label-primary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10.5px;\n}\n\n._tz6yGZ_candidateKind,\n._tz6yGZ_candidateMeta {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n}\n\n._tz6yGZ_candidateStatus {\n  flex: none;\n  box-sizing: border-box;\n  padding: 0 4px;\n  border: 0.5px solid var(--dsw-alias-border-l3);\n  border-radius: var(--dsw-radius-xs);\n  color: var(--dsw-alias-label-secondary);\n  font-size: 9.5px;\n  line-height: 15px;\n}\n\n._tz6yGZ_status_duplicate,\n._tz6yGZ_status_oneSided {\n  border-color: var(--dsw-alias-state-warn-primary);\n  color: var(--dsw-alias-state-warn-label, var(--dsw-alias-state-warn-primary));\n}\n\n._tz6yGZ_status_unresolved {\n  border-color: var(--dsw-alias-state-error-primary);\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_candidateNote {\n  flex-basis: 100%;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n}\n\n._tz6yGZ_more,\n._tz6yGZ_scope,\n._tz6yGZ_problem,\n._tz6yGZ_hint,\n._tz6yGZ_runningLabel {\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_problem {\n  color: var(--dsw-alias-state-error-primary);\n}\n\n._tz6yGZ_scope {\n  border-top: 0.5px solid var(--dsw-alias-border-l3);\n  margin-top: 2px;\n  padding-top: 4px;\n}\n\n/* The error envelope keeps the code, message and fix readable in one block. */\n\n._tz6yGZ_errorBlock {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  padding: 6px 8px;\n  border: 0.5px solid var(--dsw-alias-state-error-primary);\n  border-radius: var(--dsw-radius-xs);\n  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 6%, transparent);\n}\n\n._tz6yGZ_errorHead {\n  display: flex;\n  align-items: baseline;\n  gap: 6px;\n  min-width: 0;\n}\n\n._tz6yGZ_errorCode {\n  flex: none;\n  color: var(--dsw-alias-state-error-primary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n}\n\n._tz6yGZ_errorText {\n  color: var(--dsw-alias-label-primary);\n  font-size: 11px;\n  line-height: 18px;\n}\n\n._tz6yGZ_errorFix {\n  color: var(--dsw-alias-label-secondary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_candidateList {\n  margin: 0;\n  padding-left: 16px;\n  color: var(--dsw-alias-label-secondary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_actionRow {\n  display: flex;\n  align-items: center;\n  min-height: 24px;\n  padding-top: 2px;\n}\n\n._tz6yGZ_openButton {\n  box-sizing: border-box;\n  min-height: 24px;\n  padding: 2px 8px;\n  border: 0.5px solid var(--dsw-alias-border-l2);\n  border-radius: var(--dsw-radius-xs);\n  background: transparent;\n  color: var(--dsw-alias-label-primary);\n  font: inherit;\n  font-size: 11px;\n  line-height: 18px;\n  cursor: pointer;\n}\n\n._tz6yGZ_openButton:hover {\n  background: var(--dsw-alias-interactive-bg-hover);\n}\n\n._tz6yGZ_openButton:active {\n  background: var(--dsw-alias-interactive-bg-active);\n}\n\n._tz6yGZ_openButton:focus-visible {\n  outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));\n  outline-offset: 1px;\n}\n\n._tz6yGZ_fallback {\n  margin: 0;\n  overflow: hidden;\n  color: var(--dsw-alias-label-tertiary);\n  font-family: var(--dsh-font-family-code, ui-monospace, SFMono-Regular, Menlo, monospace);\n  font-size: 10px;\n  line-height: 16px;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n/* The composer dock chip: one quiet status line, never a control. */\n\n._tz6yGZ_dockRow {\n  display: flex;\n  flex-wrap: wrap;\n  align-items: center;\n  gap: 6px;\n  box-sizing: border-box;\n  min-width: 0;\n  padding: 0 2px 4px;\n  color: var(--dsw-alias-label-tertiary);\n  font-size: 10px;\n  line-height: 16px;\n}\n\n._tz6yGZ_dockIcon {\n  display: inline-flex;\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n}\n\n._tz6yGZ_dockChip {\n  flex: none;\n  color: var(--dsw-alias-label-tertiary);\n  white-space: nowrap;\n}\n\n._tz6yGZ_dockChipStrong {\n  flex: none;\n  color: var(--dsw-alias-label-secondary);\n  font-variant-numeric: tabular-nums;\n  white-space: nowrap;\n}\n\n._tz6yGZ_dockSep {\n  color: var(--dsw-alias-label-tertiary);\n  opacity: 0.6;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  ._tz6yGZ_openButton {\n    transition: none;\n  }\n}\n";
 var tagId2 = "@aryacode/dsh-engineering-ecad/EcadCards.module.css";
@@ -6661,46 +6637,6 @@ function titleKeyOf(toolName) {
     default:
       return "cardTitleTool";
   }
-}
-function EcadSheetDock({ t, session, readSheetSet }) {
-  const sessionId = typeof session?.sessionId === "string" && session.sessionId !== "" ? session.sessionId : void 0;
-  const [set, setSet] = (0, import_react4.useState)(void 0);
-  const readerRef = (0, import_react4.useRef)(readSheetSet);
-  readerRef.current = readSheetSet;
-  (0, import_react4.useEffect)(() => {
-    setSet(void 0);
-    if (sessionId === void 0) return;
-    const reader = readerRef.current;
-    if (reader === void 0) return;
-    let live = true;
-    void Promise.resolve().then(() => reader(sessionId)).then((value) => {
-      if (live) setSet(value);
-    }).catch(() => {
-      if (live) setSet(void 0);
-    });
-    return () => {
-      live = false;
-    };
-  }, [sessionId]);
-  if (!sheetSetVisible(set)) return null;
-  const chips = [
-    (0, import_react4.createElement)("span", { key: "drawings", className: EcadCards_default.dockChipStrong }, t("dockDrawings", { count: set.drawings }))
-  ];
-  if (set.dwg > 0) chips.push((0, import_react4.createElement)("span", { key: "dwg", className: EcadCards_default.dockChip }, t("dockDwg", { count: set.dwg })));
-  if (set.profileConfirmed !== void 0) {
-    chips.push((0, import_react4.createElement)("span", { key: "profile", className: EcadCards_default.dockChip }, set.profileConfirmed ? t("dockProfileConfirmed") : t("dockProfileDefault")));
-  }
-  if (set.writes !== void 0) {
-    chips.push((0, import_react4.createElement)("span", { key: "writes", className: EcadCards_default.dockChip }, set.writes ? t("dockWritesOn") : t("dockWritesOff")));
-  }
-  if (set.truncated) chips.push((0, import_react4.createElement)("span", { key: "truncated", className: EcadCards_default.dockChip }, t("cardTruncated")));
-  const label = t("dockLabel", { count: set.drawings, dwg: set.dwg });
-  return (0, import_react4.createElement)(
-    "div",
-    { className: EcadCards_default.dockRow, "data-ecad-dock": "sheet-set", "aria-label": label, title: label },
-    (0, import_react4.createElement)("span", { className: EcadCards_default.dockIcon, "aria-hidden": "true" }, (0, import_react4.createElement)(DrawingIcon, {})),
-    ...chips.flatMap((chip, index) => index === 0 ? [chip] : [(0, import_react4.createElement)("span", { key: `sep-${index}`, className: EcadCards_default.dockSep, "aria-hidden": "true" }, "\xB7"), chip])
-  );
 }
 
 // packages/ecad/src/client/locales.ts
@@ -7668,19 +7604,6 @@ ${prompt}`);
       return void 0;
     }
   };
-  const readSheetSet = async (sessionId) => {
-    const call = await ready;
-    if (call === void 0) return void 0;
-    try {
-      const [sheets, capabilities] = await Promise.all([
-        call("sheets", sessionId, 500),
-        call("capabilities", sessionId).catch(() => void 0)
-      ]);
-      return sheetSetOf(unwrapRemoteValue(sheets), capabilities === void 0 ? void 0 : unwrapRemoteValue(capabilities));
-    } catch {
-      return void 0;
-    }
-  };
   const applyDraft = async (address, baseVersion, ops, signal) => {
     let file;
     try {
@@ -7835,13 +7758,6 @@ ${prompt}`);
     locale: NS,
     inject: () => injected
   }, EcadBody)), "ecad-preview: document body");
-  ctx.effect(() => ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
-    name: "conversation.input.dock",
-    id: "ecad-sheet-set",
-    order: 12,
-    locale: NS,
-    inject: () => ({ readSheetSet })
-  }, EcadSheetDock)), "ecad-preview: sheet-set dock");
   ctx.effect(() => ctx.slots.inject("tool.call.toolview", () => ECAD_TOOL_NAMES.map((name) => ctx.slots.register(
     { name: "tool.call.toolview", key: name, locale: NS },
     EcadToolCardView

@@ -1,3 +1,11 @@
+## [0.87.1] - 2026-11-05
+
+- **Removed the ECAD status bar above the message input.** The composer dock repeated the drawing,
+  DWG, profile, writes and truncation facts on every chat that held a drawing, directly above the
+  input. The drawing pane already reports its sheet, layers and selection, so the dock registration
+  is gone; a new chat no longer gets the extra line, and the panel is unchanged. The face tests now
+  assert the slot is not registered.
+
 ## [0.87.0] - 2026-11-04
 
 - **Ladder logic can be composed in the chat with no project and no file.** A request such as

@@ -19,8 +19,8 @@
 import { createElement, useState, type ReactNode } from 'react'
 import { ECAD_CONTRACT_VERSION, buildClientContribution } from '../../../../src/remote/ecad-contract.js'
 import { EcadBody, type EcadBodyProps, type EcadBodyInjected, type Translate } from './EcadBody.tsx'
-import { EcadSheetDock, EcadToolCardView } from './EcadCards.tsx'
-import { ECAD_TOOL_NAMES, sheetSetOf, type EcadSheetSet } from './toolCards.ts'
+import { EcadToolCardView } from './EcadCards.tsx'
+import { ECAD_TOOL_NAMES } from './toolCards.ts'
 import {
   EcadArtifactError,
   readPreviewArtifact,
@@ -280,28 +280,10 @@ export function apply(ctx: ClientContext): void {
   }
 
   /**
-   * Read the composer dock's sheet-set report: the workspace drawing list and
-   * the capability report through one pair of Remote calls.
-   *
-   * The dock is an ambient status line, so every failure is silent: an
-   * unavailable bridge, a rejection while the session closes or a payload the
-   * service changed all return undefined and leave the composer untouched.
-   * @param sessionId - the composer's session.
-   * @returns the chip model, or undefined when it cannot be read.
+   * Claim every ECAD wire tool name for its own transcript card. The tool UI
+   * owns this slot and is loaded by the shell's own web composition, so a
+   * composition without it simply never declares the slot and no card mounts.
    */
-  const readSheetSet = async (sessionId: string): Promise<EcadSheetSet | undefined> => {
-    const call = await ready
-    if (call === undefined) return undefined
-    try {
-      const [sheets, capabilities] = await Promise.all([
-        call('sheets', sessionId, 500),
-        call('capabilities', sessionId).catch(() => undefined),
-      ])
-      return sheetSetOf(unwrapRemoteValue(sheets), capabilities === undefined ? undefined : unwrapRemoteValue(capabilities))
-    } catch {
-      return undefined
-    }
-  }
 
   /**
    * Apply one staged draft. The host writes a NEW drawing; this bridge then
@@ -481,20 +463,6 @@ export function apply(ctx: ClientContext): void {
   }, EcadBody)), 'ecad-preview: document body')
 
   // -- conversation intelligence -----------------------------------------------
-  // The sheet-set chip in the composer dock. The dock slot's owner props carry
-  // the Session, so this is a real session-addressed read: the drawing list
-  // (which is also what hides the chip when the workspace has no drawing) and
-  // the capability report (the workspace profile and the row's writes switch).
-  // ui-conversation is one of the services this face injects, so the dock
-  // registers in every composition that has a conversation.
-  ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock',
-    id: 'ecad-sheet-set',
-    order: 12,
-    locale: NS,
-    inject: () => ({ readSheetSet }),
-  }, EcadSheetDock)), 'ecad-preview: sheet-set dock')
-
   // One transcript card per ECAD wire tool name. The keyed dispatch hands the
   // card the tool's own result text, which the card parses; a card that cannot
   // read its payload prints the plain summary instead of failing the row. The

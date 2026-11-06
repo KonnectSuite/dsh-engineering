@@ -307,18 +307,10 @@ test('the ECAD conversation surfaces register on the host slots they were built 
     assert.equal(card.locale, 'sidebarEcad', `the ${card.key} card is registered without the face dictionary`)
     assert.equal(card.children, undefined, `the ${card.key} card declares children it does not render`)
   }
-  // The dock is a list entry whose injected reader is session-addressed; the slot
-  // owner props carry the Session, so this is a real read, not a faked session.
-  const dock = slots.find(entry => entry.name === 'conversation.input.dock')
-  assert.ok(dock !== undefined, 'the face registers no composer dock entry')
-  assert.equal(dock.id, 'ecad-sheet-set')
-  assert.equal(dock.locale, 'sidebarEcad')
-  assert.equal(typeof dock.inject, 'function')
-  // Degraded path: the same bare context has no Remote carrier, so the reader
-  // must answer undefined and leave the composer untouched rather than throw.
-  const reader = dock.inject().readSheetSet
-  assert.equal(typeof reader, 'function')
-  assert.equal(await reader('session-without-remote'), undefined)
+  // The composer info bar was removed: it duplicated the panel/status facts and
+  // sat between the transcript and the input in every chat with drawings.
+  assert.equal(slots.some(entry => entry.name === 'conversation.input.dock'), false,
+    'the face still registers a composer dock')
 })
 
 test('the ECAD card keys cover the generated tool inventory', () => {
@@ -336,14 +328,14 @@ test('a composition without the tool UI registers no card and still mounts', () 
   const { ctx, entries } = fakeContext()
   // The shell's tool UI owns tool.call.toolview; a composition without it never
   // declares the slot, so slots.inject never runs that callback. The face must
-  // mount, keep the dock, and claim no card.
+  // mount, register no card and register no composer dock.
   const inject = ctx.slots.inject
   ctx.slots.inject = (name, run) => (name === 'tool.call.toolview' ? () => {} : inject(name, run))
   plugin.apply(ctx)
   const slots = entries()
   assert.equal(slots.filter(entry => entry.name === 'tool.call.toolview').length, 0)
-  assert.equal(slots.filter(entry => entry.name === 'conversation.input.dock').length, 1,
-    'the composer dock does not depend on the tool UI')
+  assert.equal(slots.filter(entry => entry.name === 'conversation.input.dock').length, 0,
+    'the removed composer dock came back')
 })
 
 test('the ECAD editing copy is part of the same dictionary', () => {

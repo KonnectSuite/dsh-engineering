@@ -315,7 +315,9 @@ the harness source, not guessed):
   unparseable or wrongly shape payload prints what was seen instead of inventing counts; a result marked
   `isError` overrides a success-looking payload; nothing throws. Opening a file uses the owner's
   `openFile(path)` route, and a composition without an opener shows a path hint instead.
-- **Sheet-set dock.** `conversation.input.dock` supplies a real `SessionSnapshot` (`session.sessionId`),
+- **Sheet-set dock.** *(Removed in 0.87.1: the pane owns its status, and the chip above the composer
+  duplicated it. The component and its parser remain covered as library code, but the face no longer
+  registers `conversation.input.dock`.)* `conversation.input.dock` supplies a real `SessionSnapshot` (`session.sessionId`),
   so the dock reads through the same child-fiber Remote bridge: `ecad.sheets(sessionId, 500)` and
   `ecad.capabilities(sessionId)`, unwrapping the carrier's `{ ok, value }`. The quiet chip above the
   composer reads e.g. `3 drawings · 2 DWG · profile confirmed · writes on` (or `writes off` / `default

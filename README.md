@@ -193,8 +193,8 @@ Where each surface actually stands, based on what has been exercised.
   and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
   (verified badge, output path, counters, DWG round-trip split, “Open written drawing”) are specialised,
   the rest use labelled field cards; errors print code/message/fix and malformed payloads never invent
-  counts. A dock chip above the composer reports the workspace's drawing/DWG count, profile state and
-  writes state, hiding itself when there is nothing to report.
+  counts. The panel carries its own sheet, layer and selection status; there is no separate composer
+  status bar above the message input.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
 until enabled, and its writes are off even then. Switch one off from the row's Configure page in Plugins
