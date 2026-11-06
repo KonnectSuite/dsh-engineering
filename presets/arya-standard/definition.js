@@ -3,7 +3,7 @@
  *
  * The row list mirrors `@deepseek-ai/dsh-web-app`'s shipped `standard` preset at
  * the DSH version this plugin targets, so an agent running Arya Standard has the
- * same tools and the same composition shape a DSH user already knows. Only four
+ * same tools and the same composition shape a DSH user already knows. Three
  * things differ, and each one is deliberate:
  *
  *   1. `persona` carries Codex's base instructions (adapted by `adapt.js`) instead
@@ -13,11 +13,17 @@
  *      (`arya-standard-compaction`) keeps the base engine's trigger, retention,
  *      locking and transaction work and replaces only the summary, while the
  *      policy row (`arya-standard-policy`) publishes the knobs that engine's own
- *      closed configuration cannot carry.
- *   3. The `delegation` group is absent. Codex has no subagent fan-out, and a
- *      preset that promises Codex behaviour should not quietly ship it.
- *   4. `tool-schedule`, `tool-plugin-manager` and `tool-plugin-market` are absent
- *      for the same reason: they are Host chores, not coding-loop tools.
+ *      closed configuration cannot carry. Both the engine and `command-compact`
+ *      are written `disabled` when `standDownCompaction` is set, because
+ *      billion-context then owns the context lane; the policy and the
+ *      tool-result pruner are not compressors and stay mounted.
+ *   3. A second skill provider row (`arya-review-skills`) scans only this
+ *      package's own skills directory; the project and user roots keep coming
+ *      from the shipped provider above it, so nothing is scanned twice.
+ *
+ * Nothing is dropped. Scheduling, delegation, and the conditional Host
+ * plugin-manager/market rows stay mounted even where the Codex loop would rarely
+ * call them: the preset changes the posture, not the toolbelt.
  *
  * Row ids matter: a later patch layer addresses rows by id, and the Web editor
  * saves overrides the same way, so the ids match the shipped preset wherever the
@@ -36,7 +42,7 @@ export const ARYA_STANDARD_PRESET_ID = 'arya-standard'
 export const ARYA_STANDARD_PRESET_NAME = 'Arya Standard'
 
 /** One line under the name in the picker. */
-export const ARYA_STANDARD_PRESET_DESCRIPTION = 'Codex-style agent loop behaviour: a plan-first prompt, no subagent fan-out, and Codex checkpoint compaction.'
+export const ARYA_STANDARD_PRESET_DESCRIPTION = 'Codex-style agent loop behaviour: a plan-first prompt, the full DSH tool set, and Codex checkpoint compaction.'
 
 /** Sort position beside the shipped presets (`standard` is 1, `minimal` is 3). */
 export const ARYA_STANDARD_PRESET_ORDER = 2
@@ -58,11 +64,23 @@ export const ARYA_STANDARD_POLICY_MODULE = '@aryacode/dsh-engineering/arya-stand
  *
  * @param {{ [key: string]: boolean | number | string }} [settings] validated
  *   settings; defaults are read when omitted.
+ * @param {{ profileContext?: boolean, standDownCompaction?: boolean }} [options]
+ *   host facts available at mount; `profileContext` enables the Host
+ *   plugin-manager tools, and `standDownCompaction` disables this preset's
+ *   summarizer and `/compact` when billion-context owns the context lane
+ *   (`presets/billion-context.js`).
  * @returns {{ id: string, name: string, description: string, order: number, plugins: object[] }}
  *   a definition `agentPresets.register()` accepts.
  */
-export function buildDefinition(settings = readSettings()) {
+export function buildDefinition(settings = readSettings(), options = {}) {
   const windows = process.platform === 'win32'
+  const safeOptions = options !== null && typeof options === 'object' ? options : {}
+  const profileContext = safeOptions.profileContext === true
+  // billion-context compresses the wire; a second summarizer on the same history
+  // produces two incompatible checkpoint shapes. Disable only the summarizer and
+  // the manual command it exists for: the policy row and the tool-result pruner
+  // are not compressors and stay mounted.
+  const stoodDown = safeOptions.standDownCompaction === true ? { disabled: true } : {}
   return {
     id: ARYA_STANDARD_PRESET_ID,
     name: ARYA_STANDARD_PRESET_NAME,
@@ -85,6 +103,7 @@ export function buildDefinition(settings = readSettings()) {
       { id: 'tool-fs', name: '@deepseek-ai/dsh-tool-fs' },
       { id: 'tool-fs-search', name: '@deepseek-ai/dsh-tool-fs-search', config: { sampleOverCapGlobResults: false } },
       { id: 'tool-jobs', name: '@deepseek-ai/dsh-tool-jobs' },
+      { id: 'tool-schedule', name: '@deepseek-ai/dsh-tool-schedule' },
       { id: 'skill-filesystem', name: '@deepseek-ai/dsh-skill-filesystem' },
       { id: 'tool-skill', name: '@deepseek-ai/dsh-tool-skill' },
       {
@@ -122,8 +141,13 @@ export function buildDefinition(settings = readSettings()) {
         isolate: { compaction: true, toolResultPruner: true, aryaStandardPolicy: true },
         config: [
           { id: ARYA_STANDARD_POLICY_ROW_ID, name: ARYA_STANDARD_POLICY_MODULE, config: policyConfig(settings) },
-          { id: ARYA_STANDARD_ENGINE_ROW_ID, name: ARYA_STANDARD_ENGINE_MODULE, config: engineConfig(settings) },
-          { id: 'command-compact', name: '@deepseek-ai/dsh-command-compact' },
+          {
+            id: ARYA_STANDARD_ENGINE_ROW_ID,
+            name: ARYA_STANDARD_ENGINE_MODULE,
+            config: engineConfig(settings),
+            ...stoodDown,
+          },
+          { id: 'command-compact', name: '@deepseek-ai/dsh-command-compact', ...stoodDown },
           {
             id: 'tool-result-pruner',
             name: '@deepseek-ai/dsh-compaction-tool-result-pruner',
@@ -131,10 +155,33 @@ export function buildDefinition(settings = readSettings()) {
           },
         ],
       },
+      {
+        id: 'delegation',
+        name: 'cordis:group',
+        group: true,
+        isolate: { workflowEngine: true },
+        config: [
+          { id: 'tool-subagent-control', name: '@deepseek-ai/dsh-tool-subagent-control' },
+          {
+            id: 'tool-subagent',
+            name: '@deepseek-ai/dsh-tool-subagent',
+            config: { provider: 'spawn', toolName: 'subagent', modelSelection: true, modelDiscovery: true },
+          },
+          {
+            id: 'tool-subagent-fork',
+            name: '@deepseek-ai/dsh-tool-subagent',
+            config: { provider: 'fork', toolName: 'subagent_fork' },
+          },
+          { id: 'workflow-ptc', name: '@deepseek-ai/dsh-workflow-ptc', config: { provider: 'spawn' } },
+          { id: 'tool-workflow', name: '@deepseek-ai/dsh-tool-workflow' },
+        ],
+      },
       { id: 'tool-ask-user', name: '@deepseek-ai/dsh-tool-ask-user' },
       { id: 'tool-todo', name: '@deepseek-ai/dsh-tool-todo', config: { allowParallelInProgress: true } },
       { id: 'tool-web', name: '@deepseek-ai/dsh-tool-web', config: { fetch: true, searchTimeoutMs: 60000 } },
       { id: 'present', name: '@deepseek-ai/dsh-tool-present' },
+      { id: 'tool-plugin-manager', name: '@deepseek-ai/dsh-plugin-manager/tools', disabled: !profileContext },
+      { id: 'tool-plugin-market', name: '@deepseek-ai/dsh-plugin-market/tools', disabled: true },
     ],
   }
 }

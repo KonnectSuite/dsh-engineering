@@ -19,6 +19,7 @@ import {
   buildDefinition,
 } from '../presets/arya-automation/definition.js'
 import { automationPersona } from '../presets/arya-automation/files.js'
+import { mountAryaAutomation } from '../presets/arya-automation/plugin.js'
 import {
   ARYA_AUTOMATION_PROJECTION_KEY,
   applyEngineering,
@@ -27,6 +28,73 @@ import {
 } from '../presets/arya-automation/projection.js'
 import { buildDefinition as buildAryaStandard } from '../presets/arya-standard/definition.js'
 
+/**
+ * The top-level row ids both presets mount, in the shipped order: the DSH
+ * `standard` preset's row list from
+ * `AryaCode/packages/bundle/web-app/presets/standard.patch.yml`, with this
+ * package's own `arya-review-skills` row after `tool-skill`. Copied here at
+ * authoring time on purpose: the baseline YAML lives in the harness repository,
+ * so this spec does not read it at test time.
+ */
+const FULL_DSH_ROW_IDS = [
+  'persona',
+  'agent-instructions',
+  'time-context',
+  'tool-bash',
+  'tool-pwsh',
+  'tool-fs',
+  'tool-fs-search',
+  'tool-jobs',
+  'tool-schedule',
+  'skill-filesystem',
+  'tool-skill',
+  'arya-review-skills',
+  'command-goal',
+  'tool-goal',
+  'planning',
+  'compaction',
+  'delegation',
+  'tool-ask-user',
+  'tool-todo',
+  'tool-web',
+  'present',
+  'tool-plugin-manager',
+  'tool-plugin-market',
+]
+
+/** The delegation group's children, in the shipped order. */
+const DELEGATION_ROW_IDS = [
+  'tool-subagent-control',
+  'tool-subagent',
+  'tool-subagent-fork',
+  'workflow-ptc',
+  'tool-workflow',
+]
+
+/**
+ * One row by id, with a message that names the preset.
+ * @param {{ plugins: object[] }} definition the built definition.
+ * @param {string} id the row id to find.
+ * @returns {object} the row.
+ */
+function rowOf(definition, id) {
+  const row = definition.plugins.find((entry) => entry.id === id)
+  assert.ok(row !== undefined, `${definition.id} has no ${id} row`)
+  return row
+}
+
+/**
+ * One child of the `compaction` group by id.
+ * @param {{ plugins: object[] }} definition the built definition.
+ * @param {string} id the child row id to find.
+ * @returns {object} the row.
+ */
+function compactionRow(definition, id) {
+  const row = rowOf(definition, 'compaction').config.find((entry) => entry.id === id)
+  assert.ok(row !== undefined, `${definition.id} has no ${id} compaction row`)
+  return row
+}
+
 test('the preset carries the identity the picker shows', () => {
   const definition = buildDefinition()
   assert.equal(definition.id, 'arya-automation')
@@ -34,7 +102,10 @@ test('the preset carries the identity the picker shows', () => {
   assert.equal(ARYA_AUTOMATION_PRESET_ID, 'arya-automation')
   assert.equal(ARYA_AUTOMATION_PRESET_NAME, 'Arya Automation Engineer')
   assert.ok(definition.description.length > 40)
-  assert.equal(definition.order, 5)
+  // after Arya Claude (5), so no two presets share a sort position
+  assert.equal(definition.order, 6)
+  // and beside the shipped presets: standard 1, Arya Standard 2, minimal 3
+  assert.equal(buildAryaStandard().order, 2)
 })
 
 test('the row list is Arya Standard\'s except the persona and the compaction knobs', () => {
@@ -58,8 +129,202 @@ test('the row list is Arya Standard\'s except the persona and the compaction kno
   assert.equal(engine.name, ARYA_AUTOMATION_ENGINE_MODULE)
   const pruner = group.config.find((row) => row.id === 'tool-result-pruner')
   assert.deepEqual(pruner.config, { ...ARYA_AUTOMATION_PRUNER })
-  // the manual command stays available
+  // with no stand-down, the manual command stays available
   assert.ok(group.config.some((row) => row.id === 'command-compact'))
+  assert.equal(compactionRow(automation, 'command-compact').disabled, undefined)
+})
+
+test('the stand-down disables the compaction engine and /compact, and nothing else', () => {
+  const cases = [
+    { build: buildAryaStandard, engine: 'arya-standard-compaction', policy: 'arya-standard-policy' },
+    { build: buildDefinition, engine: ARYA_AUTOMATION_ENGINE_ROW_ID, policy: ARYA_AUTOMATION_POLICY_ROW_ID },
+  ]
+  for (const { build, engine, policy } of cases) {
+    const stoodDown = build(undefined, { standDownCompaction: true })
+    const live = build(undefined, {})
+
+    // only the two compressors change state; the row list itself is identical
+    assert.deepEqual(stoodDown.plugins.map((row) => row.id), live.plugins.map((row) => row.id), stoodDown.id)
+    assert.equal(compactionRow(stoodDown, engine).disabled, true, `${stoodDown.id}: the engine stands down`)
+    assert.equal(compactionRow(stoodDown, 'command-compact').disabled, true, `${stoodDown.id}: /compact stands down`)
+    assert.equal(compactionRow(live, engine).disabled, undefined, `${live.id}: the engine runs without bili`)
+    assert.equal(compactionRow(live, 'command-compact').disabled, undefined, `${live.id}: /compact runs without bili`)
+
+    // the policy row and the pruner are not compressors and stay mounted
+    assert.equal(compactionRow(stoodDown, policy).disabled, undefined, `${stoodDown.id}: the policy stays`)
+    assert.equal(compactionRow(stoodDown, 'tool-result-pruner').disabled, undefined, `${stoodDown.id}: the pruner stays`)
+    assert.deepEqual(compactionRow(stoodDown, 'tool-result-pruner'), compactionRow(live, 'tool-result-pruner'))
+    assert.deepEqual(compactionRow(stoodDown, policy), compactionRow(live, policy))
+
+    // and the engine keeps its module, id and config while it stands down
+    const engineRow = compactionRow(stoodDown, engine)
+    assert.equal(engineRow.name, compactionRow(live, engine).name)
+    assert.deepEqual(engineRow.config, compactionRow(live, engine).config)
+  }
+})
+
+test('only the boolean true stands the engine down', () => {
+  for (const build of [buildAryaStandard, buildDefinition]) {
+    for (const value of [false, 0, 1, 'true', 'yes', null, undefined]) {
+      const definition = build(undefined, { standDownCompaction: value })
+      assert.equal(compactionRow(definition, definition.id === 'arya-automation'
+        ? ARYA_AUTOMATION_ENGINE_ROW_ID
+        : 'arya-standard-compaction').disabled, undefined, `${definition.id}: ${String(value)} is not a stand-down`)
+    }
+  }
+})
+
+/**
+ * Remove every billion-context variable for one test, then put them back.
+ * @param {() => Promise<void> | void} run the test body.
+ * @returns {Promise<void>} resolves once the body and the restore finish.
+ */
+async function withoutBiliEnv(run) {
+  const names = ['BILLION_CONTEXT_PROXY', 'BILLION_CONTEXT_ATTACH', 'BILLION_CONTEXT_PLUGIN', 'BILI_NATIVE_DSH',
+    'BILI_PROVIDER_REWRITES']
+  const saved = new Map()
+  for (const name of names) {
+    saved.set(name, process.env[name])
+    delete process.env[name]
+  }
+  try {
+    await run()
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name]
+      else process.env[name] = value
+    }
+  }
+}
+
+/**
+ * A cordis-shaped context for the mount: services by name, one no-op effect, and
+ * a warning sink.
+ * @param {Record<string, unknown>} services the services `ctx.get()` returns.
+ * @param {string[]} warnings receives every `logger.warn` message.
+ * @returns {object} the fake context.
+ */
+function mountContext(services, warnings) {
+  return {
+    get(name) {
+      return services[name]
+    },
+    effect() {},
+    logger: {
+      info() {},
+      warn(message) {
+        warnings.push(message)
+      },
+    },
+  }
+}
+
+test('the mount stands the preset down only when billion-context\'s gate is active', async () => {
+  await withoutBiliEnv(async () => {
+    const verdict = '__BILI_DSH_COMPACTION_VERDICT__'
+    const hadVerdict = Object.prototype.hasOwnProperty.call(globalThis, verdict)
+    const previous = globalThis[verdict]
+    try {
+      // bili is not in the profile: the engine runs and nothing waits
+      const live = []
+      await mountAryaAutomation(mountContext({
+        agentPresets: {
+          register: async (definition) => {
+            live.push(definition)
+            return () => {}
+          },
+        },
+        profileContext: { startedBundles: ['@deepseek-ai/dsh-web-app'] },
+      }, []), {})
+      assert.equal(live.length, 1, 'the preset registered')
+      assert.equal(live[0].id, 'arya-automation')
+      assert.equal(compactionRow(live[0], ARYA_AUTOMATION_ENGINE_ROW_ID).disabled, undefined)
+      assert.equal(compactionRow(live[0], 'command-compact').disabled, undefined)
+
+      // bili owns the lane: the definition arrives with both compressors disabled
+      const stoodDown = []
+      const services = {
+        agentPresets: {
+          register: async (definition) => {
+            stoodDown.push(definition)
+            return () => {}
+          },
+        },
+        profileContext: { startedBundles: ['@deepseek-ai/dsh-web-app', 'billion-context'] },
+        biliBasicCompactionPolicy: {},
+      }
+      globalThis[verdict] = 'active'
+      await mountAryaAutomation(mountContext(services, []), {})
+      assert.equal(stoodDown.length, 1, 'the preset registered')
+      assert.equal(compactionRow(stoodDown[0], ARYA_AUTOMATION_ENGINE_ROW_ID).disabled, true)
+      assert.equal(compactionRow(stoodDown[0], 'command-compact').disabled, true)
+      assert.equal(compactionRow(stoodDown[0], ARYA_AUTOMATION_POLICY_ROW_ID).disabled, undefined)
+      assert.equal(compactionRow(stoodDown[0], 'tool-result-pruner').disabled, undefined)
+    } finally {
+      if (hadVerdict) globalThis[verdict] = previous
+      else delete globalThis[verdict]
+    }
+  })
+})
+
+test('both presets mount the full DSH standard row list, in the shipped order', () => {
+  assert.equal(new Set(FULL_DSH_ROW_IDS).size, FULL_DSH_ROW_IDS.length, 'the baseline list has no duplicate id')
+  for (const definition of [buildAryaStandard(), buildDefinition()]) {
+    assert.deepEqual(definition.plugins.map((row) => row.id), FULL_DSH_ROW_IDS, definition.id)
+    assert.equal(definition.plugins.length, FULL_DSH_ROW_IDS.length, definition.id)
+  }
+})
+
+test('every row is a named plugin or group, and the shell switch picks one', () => {
+  const windows = process.platform === 'win32'
+  for (const definition of [buildAryaStandard(), buildDefinition()]) {
+    assert.equal(new Set(definition.plugins.map((row) => row.id)).size, definition.plugins.length,
+      `${definition.id} repeats a row id`)
+    for (const row of definition.plugins) {
+      assert.equal(typeof row.name, 'string', `${definition.id}/${row.id} has no module name`)
+      assert.ok(row.name.length > 0, `${definition.id}/${row.id} has an empty module name`)
+    }
+    assert.equal(rowOf(definition, 'tool-bash').disabled, windows, `${definition.id}: tool-bash switch`)
+    assert.equal(rowOf(definition, 'tool-pwsh').disabled, !windows, `${definition.id}: tool-pwsh switch`)
+  }
+})
+
+test('the delegation group carries the shipped children and providers', () => {
+  for (const definition of [buildAryaStandard(), buildDefinition()]) {
+    const group = rowOf(definition, 'delegation')
+    assert.equal(group.name, 'cordis:group')
+    assert.equal(group.group, true)
+    assert.deepEqual(group.isolate, { workflowEngine: true })
+    assert.deepEqual(group.config.map((row) => row.id), DELEGATION_ROW_IDS)
+
+    assert.deepEqual(group.config.find((row) => row.id === 'tool-subagent').config,
+      { provider: 'spawn', toolName: 'subagent', modelSelection: true, modelDiscovery: true })
+    assert.deepEqual(group.config.find((row) => row.id === 'tool-subagent-fork').config,
+      { provider: 'fork', toolName: 'subagent_fork' })
+    assert.deepEqual(group.config.find((row) => row.id === 'workflow-ptc').config, { provider: 'spawn' })
+    assert.equal(group.config.find((row) => row.id === 'tool-workflow').name, '@deepseek-ai/dsh-tool-workflow')
+    assert.equal(group.config.find((row) => row.id === 'tool-subagent-control').name,
+      '@deepseek-ai/dsh-tool-subagent-control')
+  }
+})
+
+test('the Host plugin rows follow the profile context', () => {
+  for (const build of [buildAryaStandard, buildDefinition]) {
+    const withoutContext = build(undefined, {})
+    const withContext = build(undefined, { profileContext: true })
+
+    const manager = rowOf(withoutContext, 'tool-plugin-manager')
+    assert.equal(manager.name, '@deepseek-ai/dsh-plugin-manager/tools', withoutContext.id)
+    assert.equal(manager.disabled, true, `${withoutContext.id}: no profile service disables the manager`)
+    assert.equal(rowOf(withContext, 'tool-plugin-manager').disabled, false,
+      `${withContext.id}: a profile service enables the manager`)
+
+    for (const definition of [withoutContext, withContext]) {
+      const market = rowOf(definition, 'tool-plugin-market')
+      assert.equal(market.name, '@deepseek-ai/dsh-plugin-market/tools', definition.id)
+      assert.equal(market.disabled, true, `${definition.id}: the market stays disabled`)
+    }
+  }
 })
 
 test('the persona states the loop, the gates and the honesty rules', () => {

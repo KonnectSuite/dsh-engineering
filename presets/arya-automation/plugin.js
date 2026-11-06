@@ -7,6 +7,7 @@
  * @module dsh-aryacode-polish-arya-automation-plugin
  */
 
+import { resolveStandDown } from '../billion-context.js'
 import { readSettings } from '../arya-standard/settings.js'
 import { buildDefinition } from './definition.js'
 import { createAryaAutomationProjection } from './projection.js'
@@ -36,18 +37,26 @@ export async function mountAryaAutomation(ctx, rawConfig) {
   if (presets === undefined || typeof presets.register !== 'function') {
     ctx.logger?.info?.('arya-automation: this composition has no agent preset registry')
   } else {
+    const profileContext = service(ctx, 'profileContext')
+    // billion-context may publish its compaction gate a few ticks after the
+    // profile starts, so the definition is built only after that is resolved.
+    // When bili is not expected this resolves immediately to false, and any
+    // timeout keeps the engine (fail-open) with one warning.
+    const standDownCompaction = await resolveStandDown(ctx, { profileContext })
     let release
     ctx.effect(() => () => {
       if (typeof release === 'function') release()
     })
-    presets.register(buildDefinition(settings)).then(
-      (disposer) => {
-        release = disposer
-      },
-      (error) => {
-        ctx.logger?.warn?.(`arya-automation: preset not registered: ${describe(error)}`)
-      },
-    )
+    presets
+      .register(buildDefinition(settings, { profileContext: profileContext !== undefined, standDownCompaction }))
+      .then(
+        (disposer) => {
+          release = disposer
+        },
+        (error) => {
+          ctx.logger?.warn?.(`arya-automation: preset not registered: ${describe(error)}`)
+        },
+      )
   }
   // The ledger is registered whether or not the preset is: a session on another
   // preset that happens to use the engineering tools still gets the tab.

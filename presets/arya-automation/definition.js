@@ -33,8 +33,8 @@ export const ARYA_AUTOMATION_PRESET_NAME = 'Arya Automation Engineer'
 /** One line under the name in the picker. */
 export const ARYA_AUTOMATION_PRESET_DESCRIPTION = 'Automation-engineering posture for the Engineering bundle: read before writing, act in a copy, verify with the vendor engine, and name the human steps.'
 
-/** Sort position after Arya Qwen (4). */
-export const ARYA_AUTOMATION_PRESET_ORDER = 5
+/** Sort position after Arya Claude (5), so no two presets share one. */
+export const ARYA_AUTOMATION_PRESET_ORDER = 6
 
 /** The row id of the compaction engine inside the preset. */
 export const ARYA_AUTOMATION_ENGINE_ROW_ID = 'arya-automation-compaction'
@@ -68,11 +68,18 @@ export const ARYA_AUTOMATION_PRUNER = Object.freeze({
  *
  * @param {{ [key: string]: boolean | number | string }} [settings] validated
  *   settings; defaults are read when omitted.
+ * @param {{ profileContext?: boolean, standDownCompaction?: boolean }} [options]
+ *   host facts available at mount; passed through to the shared base row list.
+ *   `standDownCompaction` also lands on this preset's replacement engine row so
+ *   billion-context and the engineering summarizer never both compress one
+ *   history; the policy row and the tool-result pruner stay mounted.
  * @returns {{ id: string, name: string, description: string, order: number, plugins: object[] }}
  *   a definition `agentPresets.register()` accepts.
  */
-export function buildDefinition(settings = readSettings()) {
-  const base = buildAryaStandardDefinition(settings)
+export function buildDefinition(settings = readSettings(), options = {}) {
+  const base = buildAryaStandardDefinition(settings, options)
+  const safeOptions = options !== null && typeof options === 'object' ? options : {}
+  const stoodDown = safeOptions.standDownCompaction === true ? { disabled: true } : {}
   const plugins = base.plugins.map((row) => {
     if (row.id === 'persona') {
       return {
@@ -95,7 +102,15 @@ export function buildDefinition(settings = readSettings()) {
           }
         }
         if (child.id === 'arya-standard-compaction') {
-          return { id: ARYA_AUTOMATION_ENGINE_ROW_ID, name: ARYA_AUTOMATION_ENGINE_MODULE, config: engineConfig(settings) }
+          // The replacement row is a fresh object, so it has to carry the
+          // stand-down flag itself: a spread of the base child would keep it,
+          // a rebuild would silently re-enable the engine.
+          return {
+            id: ARYA_AUTOMATION_ENGINE_ROW_ID,
+            name: ARYA_AUTOMATION_ENGINE_MODULE,
+            config: engineConfig(settings),
+            ...stoodDown,
+          }
         }
         if (child.id === 'tool-result-pruner') {
           return { ...child, config: { ...ARYA_AUTOMATION_PRUNER } }

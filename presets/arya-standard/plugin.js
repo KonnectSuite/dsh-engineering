@@ -80,7 +80,7 @@ function registerPreset(ctx, definition) {
  */
 export async function mountAryaStandard(ctx, rawConfig) {
   const settings = readSettings(rawConfig)
-  registerPreset(ctx, buildDefinition(settings))
+  registerPreset(ctx, buildDefinition(settings, { profileContext: service(ctx, 'profileContext') !== undefined }))
   const projections = service(ctx, 'sessionProjections')
   if (projections === undefined || typeof projections.register !== 'function') {
     ctx.logger?.info?.('arya-standard: this composition has no session projections')

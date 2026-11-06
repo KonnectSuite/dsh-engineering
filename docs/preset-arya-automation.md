@@ -4,8 +4,8 @@ The agent this bundle is for. Installing `@aryacode/dsh-engineering` is what mak
 `@aryacode/dsh-aryacode-polish`, beside the Arya Standard and Arya Qwen presets, and moved here because everything it
 tells the agent to do is a statement about **this** bundle's tools.
 
-Select it from the preset picker — it is listed as *Arya Automation Engineer*, order 5, after Arya Qwen — or pin it in a
-profile with `agentPreset: arya-automation`.
+Select it from the preset picker — it is listed as *Arya Automation Engineer*, order 6, after Arya Claude — or pin it in
+a profile with `agentPreset: arya-automation`.
 
 ## What the persona is
 
@@ -40,7 +40,33 @@ Only three things, and they are engineering-shaped rather than cosmetic:
   so a review has a trail rather than a memory. It is registered whether or not the preset is the active one: a session
   on another preset that happens to use the engineering tools still gets the ledger.
 
-Everything else — the loop behaviour, plan mode, the pruner, the tool rows — is Arya Standard's.
+Everything else — the loop behaviour, plan mode, the pruner, the tool rows — is Arya Standard's. The row list is the
+full DSH standard set: scheduling, delegation, ask-user, todo, web, present, and the conditional Host plugin manager and
+market rows (the market stays disabled, the manager follows whether the composition provides `profileContext`). The
+differences above change the prompt and how the session compacts; nothing is dropped from the toolbelt.
+
+## When billion-context owns compaction
+
+`billion-context` ("bili") is a proxy plus plugin bundle that compresses the outgoing model request and stands DSH's
+own compaction rows down *by package name*. The Arya engine modules match none of those names, so without this the
+preset would run its summarizer while bili compresses the wire — two compressors over one history — and bili has already
+removed `/compact`, leaving the engine firing alone.
+
+The preset therefore resolves `presets/billion-context.js` *before* it builds its definition. When bili owns the context
+lane, the `arya-automation-compaction` engine row and the `command-compact` row are written `disabled: true`; the policy
+row and the tool-result pruner are not compressors and stay mounted, and every other row is untouched. When bili is
+absent or switched off, the definition is exactly what it was before.
+
+Two facts must both hold, because neither is a published contract: the `biliBasicCompactionPolicy` service exists,
+**and** `globalThis.__BILI_DSH_COMPACTION_VERDICT__ === 'active'`. An already-active gate wins even when the profile
+does not list bili as a bundle, so a direct or custom bili row still stands the engine down. Only when bili is expected
+does the resolver wait — 25 ms polls for up to 2 s for the service, then up to 500 ms for the verdict. A timeout, a
+missing service or an inactive verdict all keep the engine and log one warning, because a double compressor is
+recoverable and a silently missing one is not. `BILLION_CONTEXT_PLUGIN=0`, `BILI_NATIVE_DSH=0` or a defined
+`BILI_PROVIDER_REWRITES` return immediately.
+
+The stand-down lives in the definition, not in an `internal/config` overlay: a preset registered through the host's
+`agentPresets.register()` is not an entry, so bili's own overlay cannot reach it.
 
 ## What it does not do
 
@@ -57,6 +83,7 @@ Everything else — the loop behaviour, plan mode, the pruner, the tool rows —
 presets/arya-automation/   persona.md, definition.js, plugin.js, projection.js, files.js
 presets/arya-standard/     the base kit the preset derives from (definition, files, settings, engine, policy,
                            compaction, projection, prompt and the Codex licence)
+presets/billion-context.js how the preset observes bili's compaction gate and when it stands down
 entries/preset.js          the row: mounts the preset through agentPresets and sessionProjections
 ```
 
