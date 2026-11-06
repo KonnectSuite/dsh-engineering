@@ -43,6 +43,15 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.87.1 release record (2026-11-05).** Built from `Release 0.87.1` (`a434f10`), tagged `v0.87.1`.
+Removed the ECAD composer status bar: the face no longer registers `conversation.input.dock`. Root
+suite 42 files / 398 tests green, ECAD typecheck and `docs:check` current, build deterministic. The
+published tarball is 3.9 MB / 14.2 MB unpacked / 743 files,
+sha256 `1bce93497af675a21c62e68f1c4bb497a7ccb88090cf1d0234023e041ea3219b`; the packaged
+`lib/client.js` contains the focus-mode control and no `ecad-sheet-set` registration, and the
+packaged L5X tree still carries `l5x_compose_logic` and the no-project skill guidance. The market
+`catalog` branch records the same tarball and sha256.
+
 **0.87.0 release record (2026-11-04).** Built from `Release 0.87.0` (`51a2baa`), tagged `v0.87.0`.
 Root suite 42 files / 398 tests, eight package typechecks, L5X 562/562, ftview 304 passed / 3 skipped,
 mwi 64/64, migration 60/60, `docs:check` and `resources:check` current. `pnpm -r build` + `assemble`
