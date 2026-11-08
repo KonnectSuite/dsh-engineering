@@ -43,6 +43,19 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.89.0 release record (2026-11-08).** Built from `Release 0.89.0` (`5ba019a`), tagged `v0.89.0`.
+Root suite 43 specs green, ftview vitest 319/319 (new: alarm drafts 10 tests, component package 5
+tests); `pnpm -r build` + `assemble` (seven components) deterministic. The published tarball is
+3.8 MB / 14.3 MB unpacked / 750 files, sha256 `723d8564c0a6b134b12c5f75557e1eb7a2cdb5ff0f04cbe7062115359ab76e2e`;
+the packaged-bytes smoke extracted the published tarball, installed its runtime dependencies, and ran
+the alarm drafting flow end-to-end (`ftview_draft_alarm_add` staged, `ftview_validate` reported
+`Alarms/Alarms.xml` with the `ALARM_PLACEHOLDER_LABEL` finding riding along, `ftview_apply` wrote the
+wizard-numbered T2/M2 rows and the backup-first alarm import steps into `IMPORT.md`) and
+`ftview_component_package` on a real export folder (list file with `<category>/<component>` rows,
+copies, and the `SEAddComponent CC019_Main ME / "…" overwrite` command returned; `Main:2` refused with
+`COMPONENT_PACKAGE_FAILED` and the forbidden-characters fix). The registry serves 0.89.0 as `latest`;
+the market `catalog` branch records the same tarball and sha256.
+
 **0.88.0 release record (2026-11-08).** Built from `Release 0.88.0` (`55a273a`), tagged `v0.88.0`.
 Root suite 43 specs green, migration vitest 67/67 (9 new tests: candidates, wizard-defaults audit,
 `.SLC` accept, bounded payload, `wizard_artifact` open item), l5x vitest 562/562; `pnpm -r build` +
