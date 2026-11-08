@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.89.0] - 2026-11-08
+
 - **Alarm setup is now draftable.** `ftview_draft_alarm_add`, `ftview_draft_alarm_set` and
   `ftview_draft_alarm_delete` stage edits to the export's `Alarms/Alarms.xml` — a trigger with its first
   message, one attribute at a time, or a trigger and its messages — and `ftview_apply` writes them beside
