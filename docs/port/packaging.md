@@ -43,6 +43,18 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.88.0 release record (2026-11-08).** Built from `Release 0.88.0` (`55a273a`), tagged `v0.88.0`.
+Root suite 43 specs green, migration vitest 67/67 (9 new tests: candidates, wizard-defaults audit,
+`.SLC` accept, bounded payload, `wizard_artifact` open item), l5x vitest 562/562; `pnpm -r build` +
+`assemble` (seven components) deterministic. The published tarball is 3.9 MB / 13.6 MB unpacked /
+748 files, sha256 `1300c487d63fa8351189a35f06eabc91a0aed3222e796f8870f256fd070a6380`; the
+packaged-bytes smoke extracted the published tarball and called `migration_report` on a `.SLC`
+legacy side (no error, 3 rungs read, rows capped at 2 of 5 totals, no non-finite numbers in the
+JSON, report written) and `migration_assess` on an imported `.L5X` (wizard-defaults audit fired
+all six rules with one blocking `MODULE_NAME_ILLEGAL`), plus a wrong-extension probe refused with
+the `.RSS, .ACH, .RSP or .SLC` message. The registry serves 0.88.0 as `latest`; the market
+`catalog` branch records the same tarball and sha256.
+
 **0.87.1 release record (2026-11-05).** Built from `Release 0.87.1` (`a434f10`), tagged `v0.87.1`.
 Removed the ECAD composer status bar: the face no longer registers `conversation.input.dock`. Root
 suite 42 files / 398 tests green, ECAD typecheck and `docs:check` current, build deterministic. The
