@@ -445,3 +445,82 @@ export async function readSlcProject(
     truncated: answer.truncated === true,
   }
 }
+
+/**
+ * Read an RSLogix 500 `.SLC` text export (Save As → Text) headlessly.
+ *
+ * The text export lists ladder files as `LADDER n:` sections, each rung as a
+ * `%Rung:` block ending at `NXT`, and data files as `DATA N7:`-style headers.
+ * It carries no symbol table, so symbols are reported as zero and a caller
+ * must present the census as reduced coverage.
+ *
+ * @param path - path the export was read from, for the report header.
+ * @param text - decoded export text.
+ * @returns a project census shaped like the COM reader's, from the sections alone.
+ */
+export function readSlcText(path: string, text: string): SlcProject {
+  const lines = text.split(/\r?\n/)
+  const files: SlcFile[] = []
+  const rungs: SlcRung[] = []
+  const dataFiles: SlcDataFile[] = []
+  let processor: string | undefined
+  let current: { number: number; name: string; type: number; rungs: number; lastRung?: string } | undefined
+  let rungIndex = 0
+  let rungText: string[] | undefined
+
+  const closeRung = () => {
+    if (current === undefined || rungText === undefined) return
+    const rung: SlcRung = { file: current.name, rung: rungIndex, text: rungText.join('\n').trim() }
+    rungs.push(rung)
+    current.lastRung = rung.text
+    rungIndex += 1
+    rungText = undefined
+  }
+
+  for (const line of lines) {
+    const start = line.match(/^START[ \t]+(\S+)/u)
+    if (start?.[1] !== undefined) processor = start[1]
+    const ladder = line.match(/^LADDER[ \t]+(\d+)/u)
+    if (ladder?.[1] !== undefined) {
+      closeRung()
+      current = { number: Number(ladder[1]), name: `Ladder file ${ladder[1]}`, type: 1, rungs: 0 }
+      files.push(current)
+      rungIndex = 0
+      continue
+    }
+    const data = line.match(/^DATA[ \t]+([A-Za-z])(\d+):/u)
+    if (data?.[1] !== undefined && data[2] !== undefined) {
+      dataFiles.push({ number: Number(data[2]), type: data[1].toUpperCase(), name: '', elements: 0 })
+      continue
+    }
+    if (current === undefined) continue
+    if (/^%[ \t]*Rung[ \t]*:/u.test(line)) {
+      closeRung()
+      rungText = []
+      current.rungs += 1
+      continue
+    }
+    if (/^[ \t]*(NXT|END)\b/u.test(line)) {
+      closeRung()
+      continue
+    }
+    if (rungText !== undefined) rungText.push(line)
+  }
+  closeRung()
+
+  return {
+    path,
+    version: processor ?? '',
+    product: 'RSLogix 500 .SLC text export',
+    projectName: (path.replaceAll('\\', '/').split('/').pop() ?? path).replace(/\.[^.]*$/u, ''),
+    revision: undefined,
+    files,
+    totalRungs: files.reduce((sum, file) => sum + file.rungs, 0),
+    rungs,
+    symbolCount: 0,
+    symbols: [],
+    dataFileCount: dataFiles.length,
+    dataFiles,
+    truncated: false,
+  }
+}

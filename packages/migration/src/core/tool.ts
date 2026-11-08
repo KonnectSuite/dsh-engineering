@@ -61,11 +61,19 @@ export interface FsTarget {
   readonly displayPath: string
 }
 
+/** One direct child of a folder, as the filesystem provider reports it. */
+export interface FsEntry {
+  readonly name: string
+  readonly type: string
+}
+
 /** The filesystem service operations this package uses. */
 export interface FsService {
   resolve(path: string, options?: { readonly signal?: AbortSignal; readonly cwd?: string }): Promise<FsTarget>
   stat(target: FsTarget, signal?: AbortSignal): Promise<{ readonly type: string } | undefined>
   readBytes(target: FsTarget, signal: AbortSignal | undefined, maxBytes?: number): Promise<Uint8Array>
+  /** List a folder's direct children; a provider that cannot list omits this. */
+  list?(target: FsTarget, signal?: AbortSignal): Promise<readonly FsEntry[]>
   /** Write one UTF-8 text file; the provider creates missing parents. */
   writeText(target: FsTarget, text: string, options?: { readonly kind?: 'createIfAbsent' | 'overwrite' }, signal?: AbortSignal, sandboxPolicy?: unknown): Promise<void>
 }

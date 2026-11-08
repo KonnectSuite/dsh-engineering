@@ -3,7 +3,7 @@ id: rockwell-aoi-and-udt
 title: AOIs and UDTs: reuse without hidden coupling
 domain: rockwell
 level: specialist
-basis: [Rockwell]
+basis: [Rockwell, 1756-RM018A Sep 2025 instruction semantics; AOI detail is 1756-PM010, not held]
 tags: [aoi, udt, reuse]
 applies_to: [l5x]
 rules: [ROCK-AOI-01, ROCK-AOI-02, ROCK-AOI-03]

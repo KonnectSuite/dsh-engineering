@@ -3,7 +3,7 @@ id: migration-instruction-map
 title: The instruction map: legacy mnemonic to Logix answer
 domain: migration
 level: practitioner
-basis: [SLC 500 Instruction Set Reference 1747-RM001, PLC-5 Instruction Set Reference 1785-6.1, Logix 5000 General Instructions 1756-RM003]
+basis: [SLC 500 Instruction Set Reference 1747-RM001, PLC-5 Instruction Set Reference 1785-6.1, Logix 5000 General Instructions 1756-RM003 (current revision 1756-RM018A Sep 2025), Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I]
 tags: [migration, instructions, mnemonic, mapping]
 applies_to: [migration]
 rules: [MIGRATION-MAP-01, MIGRATION-MAP-02, MIGRATION-MAP-03]

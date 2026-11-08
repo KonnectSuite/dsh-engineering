@@ -288,7 +288,7 @@
         "migration_report",
         "migration_plan"
       ],
-      "contextChars": 8607
+      "contextChars": 9025
     },
     {
       "product": "Engineering resources",
@@ -458,10 +458,10 @@
     }
   ],
   "context": {
-    "characters": 132561,
+    "characters": 132979,
     "byProduct": {
       "L5X": 50378,
-      "Migration": 8607,
+      "Migration": 9025,
       "Engineering resources": 1454,
       "ECAD": 15727,
       "FactoryTalk View": 38409,

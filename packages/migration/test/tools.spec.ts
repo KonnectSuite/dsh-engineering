@@ -3,7 +3,7 @@ import { migrationTools } from '../src/tools.ts'
 import type { FsService } from '../src/core/tool.ts'
 
 /** A filesystem that serves bytes from an in-memory map, and records writes. */
-function fakeFs(files: Readonly<Record<string, string | Uint8Array>>): FsService {
+function fakeFs(files: Readonly<Record<string, string | Uint8Array>>, folders: Readonly<Record<string, readonly { name: string; type: string }[]>> = {}): FsService {
   const store = new Map<string, string | Uint8Array>(Object.entries(files))
   return {
     resolve: async (path: string) => ({ targetKey: path, displayPath: path }),
@@ -13,6 +13,7 @@ function fakeFs(files: Readonly<Record<string, string | Uint8Array>>): FsService
       if (value === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
       return typeof value === 'string' ? new TextEncoder().encode(value) : value
     },
+    list: async (target: { displayPath: string }) => folders[target.displayPath] ?? [],
     writeText: async (target: { displayPath: string }, text: string) => {
       store.set(target.displayPath, text)
     },
@@ -76,6 +77,73 @@ describe('migration_assess', () => {
     expect(answer.error.code).toBe('FILE_MISSING')
     expect(answer.error.fix).toContain('existing')
   })
+
+  it('names the same-stem files the folder does hold', async () => {
+    const listing = migrationTools(fakeFs(
+      { 'C:\\x\\notes.txt': 'hello' },
+      { 'C:/x': [{ name: 'fixed10.l5x', type: 'file' }, { name: 'FIXED10.slc', type: 'file' }, { name: 'notes.txt', type: 'file' }, { name: 'x.l5x', type: 'file' }] },
+    ))
+    const answer = await listing.find(tool => tool.name === 'migration_assess')!.execute({ path: 'C:\\x\\fixed10.l5k' }, exec) as any
+    expect(answer.error.code).toBe('FILE_MISSING')
+    expect(answer.error.message).toContain('the folder holds fixed10.l5x, FIXED10.slc')
+    expect(answer.error.candidates).toEqual(['fixed10.l5x', 'FIXED10.slc'])
+  })
+})
+
+const AUDIT_L5X = `<?xml version="1.0" encoding="UTF-8"?>
+<RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="33.01">
+<Controller Use="Target" Name="MIGRATED" ProcessorType="1756-L85E" MajorRev="33" MinorRev="0">
+<Modules Use="Context">
+<Module Name="Local:1" CatalogNumber="1756-L85E" ParentModule="Local"></Module>
+<Module Name="" CatalogNumber="1746-IV8" ParentModule="Local">
+<Channel Name="Ch0"><Attribute Name="Range" Value="4"/><Attribute Name="LowEngineering" Value="0"/><Attribute Name="HighEngineering" Value="100"/></Channel>
+<Channel Name="Ch1"><Attribute Name="Range" Value="4"/><Attribute Name="LowEngineering" Value="0"/><Attribute Name="HighEngineering" Value="100"/></Channel>
+</Module>
+<Module Name="OK_Module" CatalogNumber="1756-IB16" ParentModule="Local"></Module>
+</Modules>
+<Programs Use="Context"><Program Use="Target" Name="MainProgram">
+<Routines Use="Context"><Routine Use="Target" Name="_5_FAULT" Type="RLL">
+<RLLContent Use="Target">
+<RungInfo Number="0"><Text><![CDATA[XIC(Local:1:I:0.0 + S24)OTE(X);]]></Text></RungInfo>
+<RungInfo Number="1"><Text><![CDATA[PCE(152,PCE001);]]></Text></RungInfo>
+<RungInfo Number="2"><Text><![CDATA[XIC(B3:1/0)OTE(Y);]]></Text></RungInfo>
+</RLLContent>
+</Routine></Routines>
+</Program></Programs>
+</Controller></RSLogix5000Content>`
+
+describe('migration_assess on an imported L5X', () => {
+  const auditFs = migrationTools(fakeFs({ 'C:\\x\\imported.l5x': AUDIT_L5X }))
+  const assess = (path: string) => auditFs.find(tool => tool.name === 'migration_assess')!.execute({ path }, exec) as any
+
+  it('audits the wizard defaults and names every rule that fired', async () => {
+    const answer = await assess('C:\\x\\imported.l5x')
+    expect(answer.summary).toContain('imported L5X audited against wizard defaults')
+    expect(answer.data.facts).toMatchObject({ modules: 3, rungs: 3, analog_channels: 2 })
+    const rules = answer.data.findings.map((finding: any) => finding.rule)
+    expect(rules).toEqual(expect.arrayContaining([
+      'MODULE_NAME_ILLEGAL', 'LEGACY_CHASSIS_DECLARED', 'WIZARD_ANALOG_DEFAULT', 'MODULE_UNNAMED', 'WIZARD_ARTIFACT', 'RESIDUAL_MARKERS',
+    ]))
+    const illegal = answer.data.findings.find((finding: any) => finding.rule === 'MODULE_NAME_ILLEGAL')
+    expect(illegal.severity).toBe('critical')
+    expect(illegal.detail).toContain('Name="Local:1"')
+    expect(answer.summary).toContain('1 blocking')
+  })
+
+  it('passes a clean export with no findings', async () => {
+    const clean = AUDIT_L5X
+      .replace('Name="Local:1"', 'Name="Local_1"')
+      .replace('CatalogNumber="1746-IV8"', 'CatalogNumber="1756-IF8"')
+      .replace('Name=""', 'Name="IO_2"')
+      .replaceAll('Value="4"', 'Value="2"')
+      .replaceAll('Value="100"', 'Value="32767"')
+      .replace(' + S24', '')
+      .replace('PCE(152,PCE001);', 'CLR(S[11]);')
+    const fs = migrationTools(fakeFs({ 'C:\\x\\clean.l5x': clean }))
+    const answer = await fs.find(tool => tool.name === 'migration_assess')!.execute({ path: 'C:\\x\\clean.l5x' }, exec) as any
+    expect(answer.data.findings).toHaveLength(0)
+    expect(answer.summary).toContain('0 finding(s)')
+  })
 })
 
 describe('l5k_lint', () => {
@@ -134,9 +202,19 @@ describe('migration_plan', () => {
       exception_status: 'accepted',
     }, exec) as any
     expect(excepted.data.open_exceptions).toBe(0)
+    const artifact = await tool.execute({
+      action: 'exception',
+      id: 'wizard-artifact-rung-16-4',
+      kind: 'wizard_artifact',
+      description: 'N10[N48_2 + S24] carries the wizard byte-swap token.',
+      rationale: 'Rewrite as N10[N48_2], swap the stored words in the consumer.',
+      exception_status: 'open',
+    }, exec) as any
+    expect(artifact.data.open_exceptions).toBe(1)
     const read = await tool.execute({ action: 'read' }, exec) as any
     expect(read.data.plan.decisions.target_cpu).toBe('5069-L330ER')
-    expect(read.data.plan.exceptions).toHaveLength(1)
+    expect(read.data.plan.exceptions).toHaveLength(2)
+    expect(read.data.plan.exceptions[1]?.kind).toBe('wizard_artifact')
   })
 
   it('refuses to read a plan that was never created', async () => {

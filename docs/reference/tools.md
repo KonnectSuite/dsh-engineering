@@ -4,7 +4,7 @@
 
 The engineering bundle registers **150 tools** for L5X and Migration and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 150 definitions total **132561 characters** of model-visible JSON — name, description and
+Those 150 definitions total **132979 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -144,7 +144,7 @@ Evidence-backed structural checks and export comparison.
 
 #### `run_checks`
 
-Run evidence-backed engineering checks on the open project: 42 rules covering unused and unresolved tags, scheduling and routines, undocumented logic, latches and multiple writers, instruction spelling for this revision, FBD wiring (dangling wires, wires to a pin the block does not show, duplicate destinations, IREF/OREF/ICON/OCON names and wires, feedback cycles), SFC charts (link targets, initial-step markers), rungs Studio refuses, serial-port support on the processor, I/O module changes against a baseline, and safety placement and writes. Each finding carries its rule, severity, site evidence and, when known, a fix saying what to change; the rule filter rejects a name that is not one of the 42. Pass baseline_id to add I/O change checks against an earlier export.
+Run evidence-backed engineering checks on the open project: 43 rules covering unused and unresolved tags, scheduling and routines, undocumented logic, latches and multiple writers, instruction spelling for this revision, FBD wiring (dangling wires, wires to a pin the block does not show, duplicate destinations, IREF/OREF/ICON/OCON names and wires, feedback cycles), SFC charts (link targets, initial-step markers), rungs Studio refuses, serial-port support on the processor, I/O module changes against a baseline, and safety placement and writes. Each finding carries its rule, severity, site evidence and, when known, a fix saying what to change; the rule filter rejects a name that is not one of the 43. Pass baseline_id to add I/O change checks against an earlier export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -681,11 +681,11 @@ Assess a legacy RSLogix 500 export and lint the .L5K a migration wizard writes. 
 
 #### `migration_assess`
 
-Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.
+Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard); for an imported .L5X it audits what the migration wizard left in place — analog channels at the 0-20 wizard default, legacy chassis still declared, unnamed modules, the "+ S24" byte-swap token, and unanswered markers. It never edits the file and never contacts a controller.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `path` | string | yes | Path to the legacy file to assess (.l5k, .slc, .rss, .ach or .rsp). |
+| `path` | string | yes | Path to the file to assess (.l5k, .slc, .rss, .ach, .rsp or .l5x). |
 
 #### `l5k_lint`
 
@@ -728,11 +728,11 @@ Turn every PCE (program conversion error) marker and every unknown "?" operand t
 
 #### `migration_report`
 
-Write the migration report a person reads before signing a conversion off: the two programs side by side, every PCE (program conversion error) marker and unknown "?" operand the wizard left with what it stands for, what a corrected export changed rung by rung, and the open items that need a human decision — a placeholder tag standing in for a module with no Logix equivalent (a 1747-SDN, say), a legacy I/O image kept as a plain tag array, an array indexed by a tag, sites still unanswered, legacy files with no counterpart, and a revision below the 37 an offline build needs. Writes a formatted Word document (.docx) or the same text as Markdown (.md), built from the legacy project, the wizard's .L5X and optionally the corrected .L5X; writes only the report.
+Write the migration report a person reads before signing a conversion off: the two programs side by side, every PCE (program conversion error) marker and unknown "?" operand the wizard left with what it stands for, what a corrected export changed rung by rung, and the open items that need a human decision — a placeholder tag standing in for a module with no Logix equivalent (a 1747-SDN, say), a legacy I/O image kept as a plain tag array, an array indexed by a tag, sites still unanswered, legacy files with no counterpart, and a revision below the 37 an offline build needs. Writes a formatted Word document (.docx) or the same text as Markdown (.md), built from the legacy project, the wizard's .L5X and optionally the corrected .L5X; writes only the report. Accepts the legacy .RSS, .ACH or .RSP project, or the .SLC text export when RSLogix 500 is not on this machine (the .SLC census has no symbol table, and the report says so).
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
-| `source` | string | yes | The legacy .RSS, .ACH or .RSP project the migration started from. |
+| `source` | string | yes | The legacy .RSS, .ACH or .RSP project the migration started from, or its .SLC text export. |
 | `logix` | string | yes | The .L5X Studio exported after importing the wizard's project. |
 | `corrected` | string | no | The .L5X after the markers were answered, when one exists; the report then shows what changed. |
 | `output` | string | yes | Path for the report: ".docx" for the Word document, ".md" for Markdown. Example: "migration-report.docx". |

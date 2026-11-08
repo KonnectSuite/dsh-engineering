@@ -1,3 +1,44 @@
+## [Unreleased]
+
+## [0.88.0] - 2026-11-08
+
+- **The L5X studio tools spend the cheap checks before the build.** `verify_offline_l5x` now refuses a
+  baseline that was not exported from an `.ACD` in this chat, and a project file that is no longer on disk,
+  before importing and building — the same pre-build refusal `build_acd_from_draft` already made, so a
+  doomed verification no longer burns a build cycle and a baseline hunt. `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`
+  advice names all four observed causes (safety controller, signature, missing in-chat baseline, and a module
+  `Name` carrying illegal characters — a colon was observed) instead of pointing at safety alone.
+- **Module Names are checked before the importer sees them.** `run_checks` gained `MODULE_NAME_ILLEGAL`
+  (a `Name` outside `[A-Za-z_][A-Za-z0-9_]*` — the label belongs in the Description), and the studio tools
+  name the offending names at `open_project`, `draft_apply`, `verify_offline_l5x` and `build_acd_from_draft`.
+  On a migrated project `run_checks` marks the wizard-expected `RUNG_NO_OUTPUT` and `DUPLICATE_OUTPUT` sites
+  `migration_expected` and collapses them to one summary line per rule, so the finding list shows engineering
+  work instead of 110 expected sites.
+- **Migration failures name candidates, the report accepts the `.SLC` fallback, and its JSON parses.**
+  A missing migration input now lists same-folder files whose stem closely matches (case-insensitive,
+  extension-flexible) — the empty `candidates: []` field is finally filled. `migration_report` accepts a
+  `.SLC` legacy side, matching the documented fallback. The JSON-named report is bounded: capped findings,
+  comparison totals plus the first rows of each difference class, and non-finite numbers written as text.
+- **The wizard-defaults audit runs headlessly on the import.** `migration_assess` on an imported `.L5X`
+  reports analog channels left at the wizard defaults (Range 4, 0–20 EU, High Engineering 100), legacy
+  chassis modules still declared, unnamed modules, module Names the importer refuses, `+ S24` byte-swap
+  tokens, and residual `?` and PCE counts. `wizard_artifact` is a named plan exception kind for the
+  conversion artifacts (`+ S24` inside an operand address), so they are recorded as decisions.
+- **Two migration corpus pages**: `migration-analog-scaling` (count domains, the 0–20 EU default, scaling
+  for the consumer) and `migration-wizard-defaults-to-audit` (the day-one checklist). Both migration and
+  L5X skills carry the matching rules; the skill budgets moved to the measured bodies.
+- **The migration corpus is grounded on named publications.** Every migration page's basis now names its
+  source: 1756-RM085I Sep 2025 (logic conversion — its p.28 status table, `S:24 → S24`, is the published
+  origin of the `+ S24` wizard artifact), 5069-AP001A Aug 2020 (the SLC Migration Wizard) and 1746-RM003F
+  Jan 2022 (module/chassis replacement). The three PDFs are kept under `packages/resources/evidence/migration/`.
+- **The Logix-side corpus names its manuals too.** The rockwell pages' `[Rockwell]` basis becomes
+  1756-RM018A Sep 2025 (General Instructions — the current revision of the 1756-RM003 the instruction
+  knowledge base cites, per-instruction fault tables), 1756-PM014O Sep 2024 (Major, Minor, and I/O Faults —
+  array out-of-range type 4, watchdog, `major_fault_record` via GSV) and 1756-PM008J Jul 2022 (Ladder
+  Diagram — the output-placement and nesting rules `run_checks` enforces). Four PDFs plus the PM001 hub's
+  acquisition list live under `packages/resources/evidence/rockwell/`; the l5x skill names them beside its
+  rung rules.
+
 ## [0.87.2] - 2026-11-06
 
 - **Both engineering presets mount the full DSH standard tool row set.** Arya Standard and Arya Automation Engineer were

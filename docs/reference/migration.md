@@ -39,16 +39,28 @@ flowchart TD
 | Tool | Reads | Answers |
 |---|---|---|
 | `migration_plan` | `.migration/plan.json` | the interview decisions, the stage evidence and the exceptions, in one resumable file |
-| `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH`, `.RSP` | what the file is, which controller it describes, and what a migration still has to change |
+| `migration_assess` | `.L5K`, `.SLC`, `.RSS`, `.ACH`, `.RSP`, `.L5X` | what the file is, which controller it describes, and what a migration still has to change; on an imported `.L5X` it runs the wizard-defaults audit instead |
 | `l5k_lint` | `.L5K` | will Studio import this file, and what will bite after it does |
 | `slc_read` | `.RSS`, `.ACH`, `.RSP` | program files, rung counts, rung text, symbols and data files read headlessly through the 32-bit RSLogix 500 or RSLogix 5 automation server |
 | `migration_compare` | `.RSS`, `.ACH`, `.RSP` + `.L5X` | which legacy ladder files reached which routines, how many rungs survived, which symbols and data files were carried, and which differences are real |
 | `migration_resolve` | `.RSS`, `.ACH`, `.RSP` + `.L5X` | every `PCE` marker and every `?` operand in the converted ladder, the legacy instruction behind each, and a proposed replacement marked mechanical or review |
-| `migration_report` | `.RSS`, `.ACH`, `.RSP` + `.L5X` (and optionally the corrected `.L5X`) | the report a person signs off from: the two programs side by side, the census before and after, the corrections rung by rung, and the open items that need a decision |
+| `migration_report` | `.RSS`, `.ACH`, `.RSP` (or the `.SLC` fallback) + `.L5X` (and optionally the corrected `.L5X`) | the report a person signs off from: the two programs side by side, the census before and after, the corrections rung by rung, and the open items that need a decision |
 
 `migration_assess` on an `.L5K` returns the lint verdict too. `l5k_lint` exists
 separately because the finding list is the repair worklist: rule, severity and
 1-based line, ordered by line.
+
+`migration_assess` on an imported `.L5X` runs the wizard-defaults audit instead:
+analog channels left at the wizard defaults (Range 4, 0–20 EU, High Engineering
+100), legacy chassis modules still declared, unnamed modules, module Names with
+characters the importer refuses, `+ S24` byte-swap tokens, and residual `?` and
+PCE counts. Each hit is a finding with the decision it needs; the audit is the
+day-one checklist, run before a tag is written against a channel.
+
+When a named file is missing, the failure names candidates: files in the same
+folder whose stem closely matches what was asked for, case-insensitive and
+extension-flexible. A wrong extension is the common case — an `.RSS` asked for
+where the export is an `.SLC`.
 
 `slc_read` is the only tool here that starts another program, and even it opens
 the project hidden, reads it and closes it without saving: no window, no click,
@@ -134,12 +146,22 @@ after, 55 rungs corrected, and 3 open items: the `SLOT12_1747_SDN_Placeholder`
 tag with its 33 logic references, `F[N7_120]` as a mechanical alias substitution,
 and the revision-31 ceiling the wizard left.
 
+The legacy side accepts the `.SLC` text export as the fallback when RSLogix 500
+is not installed — the report reads it with the same reader `migration_assess`
+uses. A JSON-named output carries bounded detail: findings are capped, the
+comparison lists its totals plus the first rows of each difference class, and
+non-finite numbers are written as text, so the JSON parses everywhere.
+
 `migration_plan` writes `.migration/plan.json` (schema 1): the project and source
 hash, five decisions (`target_cpu`, `target_revision`, `io_strategy`,
 `hmi_scope`, `acceptance`), eight stages (`intake`, `assess`, `convert`, `lint`,
 `import`, `compare`, `engineer`, `commission`), and exceptions with a status of
 `open`, `accepted` or `fixed`. A plan refuses to advance until every decision is
-answered, and `next_action` names the one thing to do next.
+answered, and `next_action` names the one thing to do next. Exception kinds are
+`indirect_address`, `unmapped_module`, `hmi_deferred`, `revision_ceiling`,
+`open_marker` and `wizard_artifact` — the last for conversion artifacts like a
+`+ S24` byte-swap token inside an operand address, which is a rewrite decision,
+not a defect.
 
 ## Formats
 
@@ -199,7 +221,11 @@ An `.L5X` is refused with `ALREADY_LOGIX`: it is the Logix side, read with
 5. **Import and compare.** Open the imported `.L5X`, run `migration_compare`,
    then `run_checks`. Triage by migration cause: duplicated rung outputs are
    expected when several legacy files land in one routine; a missing routine, a
-   lost rung or an indirect expression is real work.
+   lost rung or an indirect expression is real work. `run_checks` on a migrated
+   project marks the wizard-expected `RUNG_NO_OUTPUT` and `DUPLICATE_OUTPUT`
+   sites `migration_expected` and collapses them to one summary line per rule,
+   so the finding list shows what needs engineering. Audit the wizard defaults
+   with `migration_assess` on the same `.L5X`.
 6. **Resolve the conversion's markers** with `migration_resolve`, and apply each
    mechanical proposal with `draft_rung` or `compose_rung` — the marker deleted,
    the timer or counter structure filled from the legacy operand list, the whole
@@ -229,16 +255,20 @@ layers, both local:
   names the replacement beside each `LEGACY_INSTRUCTION` it counts (`IIM x1 -> no Logix counterpart`,
   `PID x1 -> PID`), and `migration_resolve` appends the row to the advice of every review site, so
   `PCE(150,PCE028)` arrives with `BTW -> MSG (review): … Basis: PLC-5 Instruction Set Reference 1785-6.1 …`.
-- **The corpus pages** — `packages/resources/corpus/migration/` (seven pages, domain `migration`), read with
+- **The corpus pages** — `packages/resources/corpus/migration/` (nine pages, domain `migration`), read with
   `engineering_reference`: `migration-pce-markers` (the code table and what each code means),
   `migration-wizard-and-revisions` (the 30–31 and 30–32 ceilings, why a retarget precedes any build verdict),
   `migration-placeholder-tags` (what a placeholder tag is, and the `1747-SDN` → `1756-DNB` case),
-  `migration-unknown-operands`, `migration-indirect-addressing`, `migration-instruction-map` and
-  `migration-arrival-points`.
+  `migration-unknown-operands`, `migration-indirect-addressing`, `migration-instruction-map`,
+  `migration-arrival-points`, `migration-analog-scaling` (count domains, the wizard's 0–20 EU default, and
+  scaling for the consumer) and `migration-wizard-defaults-to-audit` (the day-one checklist on the import).
 
 Citations name a manual and its section — *SLC 500 Instruction Set Reference Manual* 1747-RM001, *PLC-5
 Instruction Set Reference* 1785-6.1, *Logix 5000 Controllers General Instructions Reference Manual*
-1756-RM003 — or say `observed` and name the export that showed it. No manual text is reproduced, and a rule ID
+1756-RM003 (current revision 1756-RM018A, Sep 2025), *Converting PLC-5 or SLC 500 Logic to Logix-Based
+Logic* 1756-RM085I, *SLC to CompactLogix Programming Migration* 5069-AP001A, *SLC 500 Hardware Migration*
+1746-RM003F — or say `observed` and name
+the export that showed it. No manual text is reproduced, and a rule ID
 such as `MIGRATION-PCE-02` is this bundle's own, not a clause number.
 
 ## Limits

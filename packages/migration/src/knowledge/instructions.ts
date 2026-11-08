@@ -17,7 +17,8 @@
  *
  * - SLC 500: *SLC 500 Instruction Set Reference Manual*, 1747-RM001.
  * - PLC-5: *PLC-5 Instruction Set Reference*, 1785-6.1.
- * - Logix: *Logix 5000 Controllers General Instructions Reference Manual*, 1756-RM003.
+ * - Logix: *Logix 5000 Controllers General Instructions Reference Manual*,
+ *   1756-RM003; current revision 1756-RM018A (Sep 2025).
  *
  * @module dsh-engineering-migration/knowledge/instructions
  */
@@ -48,7 +49,7 @@ export interface InstructionRow {
 
 const SLC = 'SLC 500 Instruction Set Reference Manual (1747-RM001)'
 const PLC5 = 'PLC-5 Instruction Set Reference (1785-6.1)'
-const LOGIX = 'Logix 5000 Controllers General Instructions Reference Manual (1756-RM003)'
+const LOGIX = 'Logix 5000 Controllers General Instructions Reference Manual (1756-RM003, current revision 1756-RM018A)'
 
 /** Every row, ordered by family then mnemonic. */
 export const INSTRUCTIONS: readonly InstructionRow[] = [

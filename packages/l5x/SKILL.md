@@ -87,6 +87,11 @@ truth. Never write to `<workspace>/_backups`.
 
 - `export_acd_to_l5x` writes a new full L5X from an ACD; no controller contact.
 - `verify_offline_l5x` imports and builds; it needs revision 37+ and the matching Studio release.
+  Its baseline must be exported in this chat: export the `.ACD`, `open_project` that L5X, verify
+  against it. A file from a previous session is refused before any build is spent.
+- A module Name with punctuation — a colon is the observed case — aborts the import as
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`. Names carry letters, digits and underscores; the label
+  belongs in the Description. `run_checks` names the site (`MODULE_NAME_ILLEGAL`) before the build.
 - `build_acd_from_draft` imports one changed routine into a new ACD, builds it and exports.
 - `studio_review_evidence` checks names and verbatim quotes before you report.
 - `controller_approval_status` says whether this session can ask. `go_online`, `read_controller_mode` and
@@ -129,6 +134,8 @@ truth. Never write to `<workspace>/_backups`.
   `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
 - Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or
   Studio answers `AUDIT_OUTPUTS`.
+- These rung rules rest on 1756-PM008J (output placement, nesting, rung-condition semantics); instruction
+  semantics and fault tables on 1756-RM018A and 1756-PM014O.
 - `MSG(tag)` takes one `MESSAGE` tag and ends the rung; real code gates it with `ONS`. `COP` and `FLL` take
   `(source element, destination element, length)` and `(value, destination element, length)`.
 - A build failing with `Server execution failed` is transient: retry once.

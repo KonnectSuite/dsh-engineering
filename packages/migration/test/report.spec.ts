@@ -20,6 +20,8 @@ import {
   renderMarkdown,
   type ReportInput,
 } from '../src/engine/report.ts'
+import type { FsService } from '../src/core/tool.ts'
+import { migrationTools } from '../src/tools.ts'
 
 const PRE = `<?xml version="1.0" encoding="UTF-8"?>
 <RSLogix5000Content SchemaRevision="1.0" SoftwareRevision="31.02">
@@ -185,5 +187,73 @@ describe('the Word document', () => {
 
   it('zips with the store method so the parts stay readable', () => {
     expect(zipStore([{ name: 'a.txt', bytes: new TextEncoder().encode('hello') }])[0]).toBe(0x50)
+  })
+})
+
+/** A filesystem that serves bytes from an in-memory map, and records writes. */
+function fakeFs(files: Readonly<Record<string, string>>): FsService {
+  const store = new Map<string, string>(Object.entries(files))
+  return {
+    resolve: async (path: string) => ({ targetKey: path, displayPath: path }),
+    stat: async (target: { displayPath: string }) => (store.has(target.displayPath) ? { type: 'file' } : undefined),
+    readBytes: async (target: { displayPath: string }) => {
+      const value = store.get(target.displayPath)
+      if (value === undefined) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      return new TextEncoder().encode(value)
+    },
+    writeText: async (target: { displayPath: string }, text: string) => {
+      store.set(target.displayPath, text)
+    },
+  }
+}
+
+const SLC_TEXT = [
+  'START 1747-L542C % 5/04 CPU - 32K Mem. OS401 Series C FRN 3-8 %',
+  '1 1746-A7',
+  'LADDER 2 - Total Rungs in File = 2',
+  '% Rung: 0 %',
+  'SOR XIC S:1/15 EOR',
+  '% Rung: 1 %',
+  'SOR XIC S:1/15 EOR',
+  'LADDER 3 - Total Rungs in File = 1',
+  '% Rung: 0 %',
+  'SOR XIC S:1/15 EOR',
+  'DATA B3:0',
+].join('\r\n')
+
+describe('the report tool', () => {
+  const exec = { cwd: 'C:\\x' }
+  const reportTool = () => migrationTools(fakeFs({
+    'C:\\x\\legacy.slc': SLC_TEXT,
+    'C:\\x\\wizard.l5x': PRE,
+    'C:\\x\\artifact.l5x': PRE.replace('XIO(N10[N48_2].3)OTE(O[2].6);', 'XIO(N10[N48_2 + S24].3)OTE(O[2].6);'),
+    'C:\\x\\fixed.l5x': POST,
+  })).find(tool => tool.name === 'migration_report')!
+
+  it('accepts the .SLC text export on the legacy side', async () => {
+    const answer = await reportTool().execute({ source: 'C:\\x\\legacy.slc', logix: 'C:\\x\\wizard.l5x', output: 'C:\\x\\report.md' }, exec) as any
+    expect(answer.error).toBeUndefined()
+    expect(answer.summary).toContain('Wrote C:\\x\\report.md')
+    expect(answer.data.output.format).toBe('markdown')
+    expect(answer.data.checks.rungs_read).toBe(3)
+  })
+
+  it('refuses a legacy side that is not .RSS, .ACH, .RSP or .SLC', async () => {
+    const answer = await reportTool().execute({ source: 'C:\\x\\wizard.l5x', logix: 'C:\\x\\wizard.l5x', output: 'C:\\x\\report.md' }, exec) as any
+    expect(answer.error.code).toBe('UNSUPPORTED_FORMAT')
+    expect(answer.error.message).toContain('.RSS, .ACH, .RSP or .SLC')
+  })
+
+  it('caps the answer rows and keeps the totals', async () => {
+    const answer = await reportTool().execute({ source: 'C:\\x\\legacy.slc', logix: 'C:\\x\\wizard.l5x', output: 'C:\\x\\report.md', limit: 2 }, exec) as any
+    expect(answer.data.comparison.differences.length).toBeLessThanOrEqual(2)
+    expect(answer.data.comparison.differences_total).toBeGreaterThanOrEqual(answer.data.comparison.differences.length)
+    for (const value of Object.values(answer.data.comparison.rung_totals)) expect(Number.isFinite(value)).toBe(true)
+    expect(JSON.stringify(answer)).not.toContain('Infinity')
+  })
+
+  it('names the "+ S24" sites as wizard_artifact open items', async () => {
+    const answer = await reportTool().execute({ source: 'C:\\x\\legacy.slc', logix: 'C:\\x\\artifact.l5x', output: 'C:\\x\\report.md' }, exec) as any
+    expect(answer.data.open_items.join('\n')).toContain('wizard_artifact')
   })
 })

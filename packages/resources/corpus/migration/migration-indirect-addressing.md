@@ -3,7 +3,7 @@ id: migration-indirect-addressing
 title: Indirect addressing after the conversion
 domain: migration
 level: specialist
-basis: [Logix 5000 instruction set, observed exports]
+basis: [Logix 5000 instruction set, Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I, observed exports]
 tags: [migration, indirect, arrays, aliases]
 applies_to: [migration]
 rules: [MIGRATION-INDEX-01, MIGRATION-INDEX-02, MIGRATION-INDEX-03]

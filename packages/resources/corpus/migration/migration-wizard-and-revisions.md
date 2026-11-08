@@ -3,7 +3,7 @@ id: migration-wizard-and-revisions
 title: The conversion wizard, its two questions and its revision ceiling
 domain: migration
 level: specialist
-basis: [Rockwell conversion guide, observed wizard runs]
+basis: [SLC to CompactLogix Programming Migration 5069-AP001A, observed wizard runs]
 tags: [migration, wizard, revision, io]
 applies_to: [migration]
 rules: [MIGRATION-WIZARD-01, MIGRATION-WIZARD-02, MIGRATION-WIZARD-03, MIGRATION-WIZARD-04]

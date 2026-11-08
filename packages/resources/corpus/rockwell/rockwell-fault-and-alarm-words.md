@@ -3,7 +3,7 @@ id: rockwell-fault-and-alarm-words
 title: Fault and alarm words
 domain: rockwell
 level: practitioner
-basis: [Rockwell]
+basis: [Rockwell, 1756-PM014O Sep 2024 major/minor/IO faults, 1756-RM018A Sep 2025 general-instruction fault tables]
 tags: [alarms, faults, words]
 applies_to: [l5x, ftview]
 rules: [ROCK-ALM-01, ROCK-ALM-02, ROCK-ALM-03]

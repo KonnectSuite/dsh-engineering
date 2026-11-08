@@ -320,13 +320,44 @@
       "sha256": "fcd9c1517662f572bd446213b9b265f603cfa9e5ae5bf9eab708edad4a259c2c"
     },
     {
+      "id": "migration-analog-scaling",
+      "title": "Analog scaling survives a migration as numbers, not as engineering units",
+      "domain": "migration",
+      "level": "specialist",
+      "basis": [
+        "1756-RM085I scaling sections",
+        "1746-RM003F replacement tables",
+        "observed wizard runs",
+        "1746-NI8 count-domain evidence"
+      ],
+      "tags": [
+        "migration",
+        "analog",
+        "scaling",
+        "io",
+        "pid"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-SCALE-01",
+        "MIGRATION-SCALE-02",
+        "MIGRATION-SCALE-03",
+        "MIGRATION-SCALE-04"
+      ],
+      "words": 459,
+      "bytes": 3324,
+      "sha256": "5b51d7ddff90f4b3d983cb776be0160227b83cf6bd4662998bc0982946b2a959"
+    },
+    {
       "id": "migration-arrival-points",
       "title": "What a migration has to answer",
       "domain": "migration",
       "level": "practitioner",
       "basis": [
         "field practice",
-        "Rockwell conversion guide"
+        "Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I"
       ],
       "tags": [
         "migration",
@@ -343,7 +374,7 @@
         "MIGRATION-WORK-03"
       ],
       "words": 236,
-      "bytes": 1841,
+      "bytes": 1879,
       "sha256": "04cf209bf8416bfa31425e347fc0b7a37d458db094e4a97b1df67a0208dc4031"
     },
     {
@@ -353,6 +384,7 @@
       "level": "specialist",
       "basis": [
         "Logix 5000 instruction set",
+        "Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I",
         "observed exports"
       ],
       "tags": [
@@ -370,7 +402,7 @@
         "MIGRATION-INDEX-03"
       ],
       "words": 251,
-      "bytes": 1894,
+      "bytes": 1959,
       "sha256": "fe624688fc8ac6ddb54c761327cac7425f43e59d52bc78d2fdc628f39a41b6ce"
     },
     {
@@ -381,7 +413,8 @@
       "basis": [
         "SLC 500 Instruction Set Reference 1747-RM001",
         "PLC-5 Instruction Set Reference 1785-6.1",
-        "Logix 5000 General Instructions 1756-RM003"
+        "Logix 5000 General Instructions 1756-RM003 (current revision 1756-RM018A Sep 2025)",
+        "Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I"
       ],
       "tags": [
         "migration",
@@ -398,7 +431,7 @@
         "MIGRATION-MAP-03"
       ],
       "words": 423,
-      "bytes": 2971,
+      "bytes": 3076,
       "sha256": "ef8e2532a00f720d06b8b59ac3eb8ae035ab86f3e8b453846b39cde49fe502d7"
     },
     {
@@ -407,7 +440,7 @@
       "domain": "migration",
       "level": "specialist",
       "basis": [
-        "Rockwell conversion guide",
+        "SLC to CompactLogix Programming Migration 5069-AP001A",
         "observed exports"
       ],
       "tags": [
@@ -427,7 +460,7 @@
         "MIGRATION-PCE-05"
       ],
       "words": 525,
-      "bytes": 3395,
+      "bytes": 3423,
       "sha256": "89e2a0e877c8455566ba5da85f2ef86dfa5288e8e15417ae86e83886e1075774"
     },
     {
@@ -436,7 +469,7 @@
       "domain": "migration",
       "level": "practitioner",
       "basis": [
-        "Rockwell conversion guide",
+        "Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I",
         "observed wizard runs"
       ],
       "tags": [
@@ -455,7 +488,7 @@
         "MIGRATION-IO-03"
       ],
       "words": 334,
-      "bytes": 2375,
+      "bytes": 2413,
       "sha256": "8ba9ac1275c522d810ff69dc49c1d2ef903254bdfb045a82a1d47e9fbe947d34"
     },
     {
@@ -464,7 +497,7 @@
       "domain": "migration",
       "level": "specialist",
       "basis": [
-        "Rockwell conversion guide",
+        "Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I",
         "observed exports"
       ],
       "tags": [
@@ -482,7 +515,7 @@
         "MIGRATION-OPERAND-03"
       ],
       "words": 233,
-      "bytes": 1753,
+      "bytes": 1791,
       "sha256": "a67bd0a79fe1f205ac5f73cea6f78d665642ad68071cd6815a63ca51f1c0a576"
     },
     {
@@ -491,7 +524,7 @@
       "domain": "migration",
       "level": "specialist",
       "basis": [
-        "Rockwell conversion guide",
+        "SLC to CompactLogix Programming Migration 5069-AP001A",
         "observed wizard runs"
       ],
       "tags": [
@@ -510,8 +543,42 @@
         "MIGRATION-WIZARD-04"
       ],
       "words": 336,
-      "bytes": 2369,
+      "bytes": 2397,
       "sha256": "e4aa2bb1326911d92525af7ec993fd873e585b6699f477378265663002f7bda7"
+    },
+    {
+      "id": "migration-wizard-defaults-to-audit",
+      "title": "What the migration wizard leaves in place, and what to audit after the import",
+      "domain": "migration",
+      "level": "practitioner",
+      "basis": [
+        "SLC to CompactLogix Programming Migration 5069-AP001A",
+        "1756-RM085I status conversion",
+        "1746-RM003F replacement tables",
+        "observed wizard runs",
+        "observed imports"
+      ],
+      "tags": [
+        "migration",
+        "wizard",
+        "audit",
+        "io",
+        "modules"
+      ],
+      "applies_to": [
+        "migration"
+      ],
+      "rules": [
+        "MIGRATION-AUDIT-01",
+        "MIGRATION-AUDIT-02",
+        "MIGRATION-AUDIT-03",
+        "MIGRATION-AUDIT-04",
+        "MIGRATION-AUDIT-05",
+        "MIGRATION-AUDIT-06"
+      ],
+      "words": 427,
+      "bytes": 3302,
+      "sha256": "955873619b3edf19c03104013a7e6d7b34bcd37cf6f047a56341663b9f0a79ef"
     },
     {
       "id": "optix-alarms-and-trends",
@@ -615,7 +682,9 @@
       "domain": "rockwell",
       "level": "specialist",
       "basis": [
-        "Rockwell"
+        "Rockwell",
+        "1756-RM018A Sep 2025 instruction semantics; AOI detail is 1756-PM010",
+        "not held"
       ],
       "tags": [
         "aoi",
@@ -631,7 +700,7 @@
         "ROCK-AOI-03"
       ],
       "words": 155,
-      "bytes": 1156,
+      "bytes": 1236,
       "sha256": "5362b68c0f81e627fff313634a59b6ebc7c5245f8255c1d00129c002d7c71e0a"
     },
     {
@@ -640,7 +709,9 @@
       "domain": "rockwell",
       "level": "practitioner",
       "basis": [
-        "Rockwell"
+        "Rockwell",
+        "1756-PM014O Sep 2024 major/minor/IO faults",
+        "1756-RM018A Sep 2025 general-instruction fault tables"
       ],
       "tags": [
         "alarms",
@@ -657,7 +728,7 @@
         "ROCK-ALM-03"
       ],
       "words": 133,
-      "bytes": 1023,
+      "bytes": 1122,
       "sha256": "b53b04517a15a83ed0431b7feac2d8aad940da1b8e4c089e89027e1d46b71a8c"
     },
     {
@@ -692,7 +763,8 @@
       "domain": "rockwell",
       "level": "practitioner",
       "basis": [
-        "Rockwell"
+        "Rockwell",
+        "1756-PM008J Jul 2022 ladder diagram programming manual"
       ],
       "tags": [
         "program",
@@ -708,7 +780,7 @@
         "ROCK-STRUCT-03"
       ],
       "words": 155,
-      "bytes": 1169,
+      "bytes": 1225,
       "sha256": "42adfb1ac9f412b8fc8cb6dd029bc34bdaddaed74f18120c8c1a5effc687a0fd"
     },
     {
@@ -740,7 +812,8 @@
       "domain": "rockwell",
       "level": "practitioner",
       "basis": [
-        "Rockwell"
+        "Rockwell",
+        "1756-RM018A Sep 2025 address and tag forms"
       ],
       "tags": [
         "naming",
@@ -756,7 +829,7 @@
         "ROCK-NAME-03"
       ],
       "words": 137,
-      "bytes": 1134,
+      "bytes": 1178,
       "sha256": "1bb7771a4f1446533e388f14d05d9394b05b4b6acbf6856e86553ff9ac27cd63"
     },
     {

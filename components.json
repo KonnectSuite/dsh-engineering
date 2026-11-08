@@ -7,7 +7,7 @@
   },
   "skillPolicy": {
     "defaultBudget": 8000,
-    "note": "A skill body is injected into the request when the skill is invoked, so the budget is a context-cost ceiling. Depth belongs in docs/ and is linked, not embedded. The tested pair cost is the sum of two product bodies: l5x 9636 + ftview 7975 = 17611 characters (about 4k tokens), so a workflow skill must stay near 3k to keep a three-skill load near 6k."
+    "note": "A skill body is injected into the request when the skill is invoked, so the budget is a context-cost ceiling. Depth belongs in docs/ and is linked, not embedded. The tested pair cost is the sum of two product bodies: l5x 10265 + ftview 7975 = 18240 characters (about 4.6k tokens), so a workflow skill must stay near 3k to keep a three-skill load near 6k."
   },
   "components": [
     {
@@ -33,7 +33,7 @@
       "skill": {
         "name": "rockwell-l5x",
         "file": "packages/l5x/SKILL.md",
-        "budget": 9800,
+        "budget": 10265,
         "allow": [
           "project_id",
           "verification_id",
@@ -303,7 +303,7 @@
       "skill": {
         "name": "legacy-to-logix-migration",
         "file": "packages/migration/SKILL.md",
-        "budget": 8000,
+        "budget": 9252,
         "allow": [
           "migration_assess",
           "l5k_lint",

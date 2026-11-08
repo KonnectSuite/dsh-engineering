@@ -11,7 +11,7 @@ import {
 } from '../src/knowledge/instructions.ts'
 
 const rows = INSTRUCTIONS as readonly InstructionRow[]
-const MANUALS = ['1747-RM001', '1785-6.1', '1756-RM003', 'observed']
+const MANUALS = ['1747-RM001', '1785-6.1', '1756-RM003', '1756-RM018A', 'observed']
 
 describe('the instruction map', () => {
   it('states a shape, a class and a citation for every row', () => {

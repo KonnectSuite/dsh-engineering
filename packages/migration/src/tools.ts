@@ -14,10 +14,11 @@
 import { writeFile } from 'node:fs/promises'
 
 import { decodeL5k, lintL5k, type L5kFacts, type L5kFinding } from './engine/l5k.ts'
-import { readSlcProject, SlcError, type SlcProject } from './engine/rslogix500.ts'
+import { readSlcProject, readSlcText, SlcError, type SlcProject } from './engine/rslogix500.ts'
 import { compareSides, readLogix, type LegacySide } from './engine/compare.ts'
 import { resolvePces } from './engine/pce.ts'
 import { buildMigrationReport } from './engine/report.ts'
+import { wizardDefaultsAudit } from './engine/wizard-audit.ts'
 import { lookupInstruction } from './knowledge/instructions.ts'
 import { renderDocx } from './engine/docx.ts'
 import {
@@ -42,6 +43,9 @@ import { jsonText, type FsService, type SandboxPolicyResolver, type ToolDefiniti
 /** The largest file these tools will read. */
 const MAX_BYTES = 64 * 1024 * 1024
 
+/** The UTF-8 BOM Studio leaves at the head of an export. */
+const BOM = '﻿'
+
 /** How a recorded exception stands. */
 type PlanExceptionStatus = 'open' | 'accepted' | 'fixed'
 
@@ -52,18 +56,20 @@ const MAX_FINDINGS = 50
 class MigrationError extends Error {
   readonly code: string
   readonly fix: string
+  readonly candidates: readonly string[]
 
-  constructor(code: string, message: string, fix: string) {
+  constructor(code: string, message: string, fix: string, candidates: readonly string[] = []) {
     super(message)
     this.name = 'MigrationError'
     this.code = code
     this.fix = fix
+    this.candidates = candidates
   }
 }
 
 /** The failure envelope every engineering tool returns. */
 function failure(error: unknown): unknown {
-  const structural = typeof error === 'object' && error !== null ? error as { code?: unknown; fix?: unknown } : {}
+  const structural = typeof error === 'object' && error !== null ? error as { code?: unknown; fix?: unknown; candidates?: unknown } : {}
   const code = typeof structural.code === 'string'
     ? structural.code
     : 'INTERNAL'
@@ -71,7 +77,10 @@ function failure(error: unknown): unknown {
   const fix = typeof structural.fix === 'string'
     ? structural.fix
     : 'Correct the path and retry; these tools read local files only.'
-  return { error: { code, message, fix, candidates: [] } }
+  const candidates = Array.isArray(structural.candidates)
+    ? structural.candidates.filter((entry): entry is string => typeof entry === 'string')
+    : []
+  return { error: { code, message, fix, candidates } }
 }
 
 /** The coverage every answer carries: what a text reader cannot see. */
@@ -105,12 +114,46 @@ function baseName(path: string): string {
   return path.replaceAll('\\', '/').split('/').pop() ?? path
 }
 
+/**
+ * Files in the same folder whose stem matches the missing file's stem.
+ *
+ * Case-insensitive and extension-flexible: a request for `FIXED10.L5K` offered
+ * `fixed10.l5x` is the same project under a different reader. Degrades to an
+ * empty list when the provider cannot list a folder.
+ */
+async function suggestFiles(fs: FsService, path: string, exec: ToolExec): Promise<string[]> {
+  if (fs.list === undefined) return []
+  const normalized = path.replaceAll('\\', '/')
+  const slash = normalized.lastIndexOf('/')
+  if (slash <= 0) return []
+  const stem = (normalized.slice(slash + 1).split('.')[0] ?? '').toLowerCase()
+  if (stem === '') return []
+  try {
+    const folder = await fs.resolve(normalized.slice(0, slash), { cwd: exec.cwd })
+    const entries = await fs.list(folder, exec.signal)
+    return entries
+      .filter(entry => entry.type === 'file')
+      .map(entry => entry.name)
+      .filter(name => (name.split('.')[0] ?? '').toLowerCase() === stem)
+      .slice(0, 3)
+  } catch {
+    return []
+  }
+}
+
+/** A FILE_MISSING failure naming the same-stem files the folder does hold. */
+async function fileMissing(fs: FsService, path: string, exec: ToolExec, fix: string): Promise<MigrationError> {
+  const candidates = await suggestFiles(fs, path, exec)
+  const hint = candidates.length === 0 ? '.' : ` — the folder holds ${candidates.join(', ')}.`
+  return new MigrationError('FILE_MISSING', `No file at ${path}${hint}`, fix, candidates)
+}
+
 /** Read the bytes of one file through the filesystem provider. */
 async function readFile(fs: FsService, path: string, exec: ToolExec): Promise<Uint8Array> {
   const target = await fs.resolve(path, { cwd: exec.cwd })
   const stat = await fs.stat(target, exec.signal)
   if (stat === undefined) {
-    throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .L5K or legacy export path; this tool does not create files.')
+    throw await fileMissing(fs, path, exec, 'Pass an existing .L5K or legacy export path; this tool does not create files.')
   }
   if (stat.type !== 'file') {
     throw new MigrationError('NOT_A_FILE', `${path} is not a file.`, 'Pass the file itself, not the folder that holds it.')
@@ -120,7 +163,7 @@ async function readFile(fs: FsService, path: string, exec: ToolExec): Promise<Ui
   } catch (error) {
     const code = typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string' ? (error as { code: string }).code : ''
     if (code === 'ENOENT') {
-      throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .L5K or legacy export path; this tool does not create files.')
+      throw await fileMissing(fs, path, exec, 'Pass an existing .L5K or legacy export path; this tool does not create files.')
     }
     if (code === 'EACCES' || code === 'EPERM') {
       throw new MigrationError('ACCESS_DENIED', `The filesystem provider refused to read ${path}.`, 'Choose a file this chat can read, or move the export into the workspace.')
@@ -420,11 +463,11 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
   const assessTool: ToolDefinition = {
     name: 'migration_assess',
     description:
-      'Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard). It never edits the file and never contacts a controller.',
+      'Assess one legacy export before a migration: for an .L5K it returns the lint verdict and the controller facts; for an RSLogix 500 .SLC text export it counts ladder files, rungs, racks and data files; for an .RSS, .ACH or .RSP container it states what the binary needs (RSLogix 500 or RSLogix 5, then Save As .SLC or the migration wizard); for an imported .L5X it audits what the migration wizard left in place — analog channels at the 0-20 wizard default, legacy chassis still declared, unnamed modules, the "+ S24" byte-swap token, and unanswered markers. It never edits the file and never contacts a controller.',
     parameters: {
       type: 'object',
       properties: {
-        path: { type: 'string', description: 'Path to the legacy file to assess (.l5k, .slc, .rss, .ach or .rsp).' },
+        path: { type: 'string', description: 'Path to the file to assess (.l5k, .slc, .rss, .ach, .rsp or .l5x).' },
       },
       required: ['path'],
       additionalProperties: false,
@@ -542,7 +585,26 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         }
 
         if (extension === 'l5x') {
-          throw new MigrationError('ALREADY_LOGIX', `${name} is a Logix L5X export, not a legacy file.`, 'Open it with open_project; this row reads the source side and the .L5K the wizard writes.')
+          const bytes = await readFile(fs, path, exec)
+          let l5xText = new TextDecoder('utf-8').decode(bytes)
+          if (l5xText.startsWith(BOM)) l5xText = l5xText.slice(1)
+          const audit = wizardDefaultsAudit(l5xText)
+          const blocking = audit.findings.filter(finding => finding.severity === 'critical')
+          return {
+            summary: `${name}: imported L5X audited against wizard defaults — ${audit.modules} module(s), ${audit.rungs} rung(s); ${audit.findings.length} finding(s), ${blocking.length} blocking.`,
+            data: {
+              file: path,
+              format: 'L5X',
+              facts: { modules: audit.modules, rungs: audit.rungs, analog_channels: audit.analogChannels },
+              findings: audit.findings,
+              checks: { headless: true, read_only: true, wizard_defaults_audit: true },
+            },
+            next: [
+              { tool: 'l5x_run_checks', why: 'Review the same export for ladder defects: module names, outputs, unused tags.' },
+              { tool: 'migration_plan', why: 'Record each wizard-default finding as a plan exception before sign-off.' },
+            ],
+            coverage: COVERAGE,
+          }
         }
 
         throw new MigrationError(
@@ -586,7 +648,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         const target = await fs.resolve(path, { cwd: exec.cwd })
         const stat = await fs.stat(target, exec.signal)
         if (stat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${path}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
+          throw await fileMissing(fs, path, exec, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
         }
         const requested = typeof args.rungs === 'number' ? args.rungs : 0
         const symbolsRequested = typeof args.symbols === 'number' ? args.symbols : 0
@@ -661,7 +723,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
         const sourceStat = await fs.stat(sourceTarget, exec.signal)
         if (sourceStat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
+          throw await fileMissing(fs, source, exec, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
         }
         const logixBytes = await readFile(fs, logixPath, exec)
         let logixText = new TextDecoder('utf-8').decode(logixBytes)
@@ -737,7 +799,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
         const sourceStat = await fs.stat(sourceTarget, exec.signal)
         if (sourceStat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
+          throw await fileMissing(fs, source, exec, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create files.')
         }
         const logixBytes = await readFile(fs, logixPath, exec)
         let logixText = new TextDecoder('utf-8').decode(logixBytes)
@@ -915,11 +977,11 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
   const reportTool: ToolDefinition = {
     name: 'migration_report',
     description:
-      'Write the migration report a person reads before signing a conversion off: the two programs side by side, every PCE (program conversion error) marker and unknown "?" operand the wizard left with what it stands for, what a corrected export changed rung by rung, and the open items that need a human decision — a placeholder tag standing in for a module with no Logix equivalent (a 1747-SDN, say), a legacy I/O image kept as a plain tag array, an array indexed by a tag, sites still unanswered, legacy files with no counterpart, and a revision below the 37 an offline build needs. Writes a formatted Word document (.docx) or the same text as Markdown (.md), built from the legacy project, the wizard\'s .L5X and optionally the corrected .L5X; writes only the report.',
+      'Write the migration report a person reads before signing a conversion off: the two programs side by side, every PCE (program conversion error) marker and unknown "?" operand the wizard left with what it stands for, what a corrected export changed rung by rung, and the open items that need a human decision — a placeholder tag standing in for a module with no Logix equivalent (a 1747-SDN, say), a legacy I/O image kept as a plain tag array, an array indexed by a tag, sites still unanswered, legacy files with no counterpart, and a revision below the 37 an offline build needs. Writes a formatted Word document (.docx) or the same text as Markdown (.md), built from the legacy project, the wizard\'s .L5X and optionally the corrected .L5X; writes only the report. Accepts the legacy .RSS, .ACH or .RSP project, or the .SLC text export when RSLogix 500 is not on this machine (the .SLC census has no symbol table, and the report says so).',
     parameters: {
       type: 'object',
       properties: {
-        source: { type: 'string', description: 'The legacy .RSS, .ACH or .RSP project the migration started from.' },
+        source: { type: 'string', description: 'The legacy .RSS, .ACH or .RSP project the migration started from, or its .SLC text export.' },
         logix: { type: 'string', description: 'The .L5X Studio exported after importing the wizard\'s project.' },
         corrected: { type: 'string', description: 'The .L5X after the markers were answered, when one exists; the report then shows what changed.' },
         output: { type: 'string', description: 'Path for the report: ".docx" for the Word document, ".md" for Markdown. Example: "migration-report.docx".' },
@@ -937,11 +999,11 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         const logixPath = stringArg(args, 'logix')
         const outputPath = stringArg(args, 'output')
         const extension = extensionOf(source)
-        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp') {
+        if (extension !== 'rss' && extension !== 'ach' && extension !== 'rsp' && extension !== 'slc') {
           throw new MigrationError(
             'UNSUPPORTED_FORMAT',
-            `${baseName(source)} is not an .RSS, .ACH or .RSP file.`,
-            'Pass the legacy project itself; the report pairs its rungs with the migrated export.',
+            `${baseName(source)} is not an .RSS, .ACH, .RSP or .SLC file.`,
+            'Pass the legacy project itself, or the .SLC text export from Save As when RSLogix 500 is not on this machine; the report pairs its rungs with the migrated export.',
           )
         }
         for (const path of [logixPath, typeof args.corrected === 'string' ? args.corrected : undefined]) {
@@ -957,7 +1019,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         const sourceTarget = await fs.resolve(source, { cwd: exec.cwd })
         const sourceStat = await fs.stat(sourceTarget, exec.signal)
         if (sourceStat === undefined) {
-          throw new MigrationError('FILE_MISSING', `No file at ${source}.`, 'Pass an existing .RSS, .ACH or .RSP path; this tool does not create the legacy project.')
+          throw await fileMissing(fs, source, exec, 'Pass an existing .RSS, .ACH, .RSP or .SLC path; this tool does not create the legacy project.')
         }
         const target = await fs.resolve(outputPath, { cwd: exec.cwd })
         if (args.overwrite !== true) {
@@ -981,7 +1043,9 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
           if (postText.startsWith('\uFEFF')) postText = postText.slice(1)
           post = { file: correctedPath, bytes: postBytes.length, text: postText }
         }
-        const project = await readSlcProject(sourceTarget.displayPath, { rungs: 100_000, symbols: 0, dataFiles: true })
+        const project = extension === 'slc'
+          ? readSlcText(sourceTarget.displayPath, new TextDecoder('windows-1252').decode(await readFile(fs, source, exec)))
+          : await readSlcProject(sourceTarget.displayPath, { rungs: 100_000, symbols: 0, dataFiles: true })
         const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(args.limit, 500)) : 20
         const report = buildMigrationReport({
           sourceFile: source,
@@ -1035,21 +1099,26 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
         if (facts.markersAfter !== undefined && facts.markersAfter > 0) openItems.push(`${facts.markersAfter} conversion marker(s) in the corrected export are still unanswered`)
         if (comparison.missingInLogix.length > 0) openItems.push(`${comparison.missingInLogix.length} legacy file(s) matched no routine`)
         if (comparison.dataFiles.missing.length > 0) openItems.push(`${comparison.dataFiles.missing.length} data file(s) have no declared tag`)
+        const wizardArtifacts = (preText.match(/\+\s*S24\b/gu) ?? []).length
+        if (wizardArtifacts > 0) openItems.push(`${wizardArtifacts} site(s) carry the wizard's "+ S24" byte-swap token; record each as a plan exception of kind wizard_artifact`)
         if ((report.logix.revision ?? 0) < 37) openItems.push(`The project is at revision ${report.logix.revision ?? 'unknown'}; retarget it to 37 or newer before a build verdict`)
         const markersAfter = facts.markersAfter === undefined ? '' : `, ${facts.markersAfter} after`
         const correctedText = facts.corrections === 0 ? '' : ` ${facts.corrections} rung(s) corrected`
+        const rungTotals: Record<string, number> = {}
+        for (const [key, value] of Object.entries(comparison.rungTotals)) rungTotals[key] = typeof value === 'number' && Number.isFinite(value) ? value : 0
         return {
           summary: `Wrote ${outputPath} (${written} ${writtenUnit}): ${facts.markers} PCE marker(s) before${markersAfter}, ${facts.openItems} open item(s) for a person.${correctedText}`,
           data: {
             output: { file: outputPath, bytes: written, format: outputExtension === 'docx' ? 'docx' : 'markdown' },
             source: { file: source, project: project.projectName, revision: project.revision },
             logix: { file: logixPath, controller: report.logix.controller, revision: report.logix.revision },
-            facts,
+            facts: { ...facts, placeholders: facts.placeholders.slice(0, limit), ioImages: facts.ioImages.slice(0, limit) },
             open_items: openItems,
             comparison: {
               matched: comparison.matched.length,
-              rung_totals: comparison.rungTotals,
-              differences: comparison.differences,
+              rung_totals: rungTotals,
+              differences: comparison.differences.slice(0, limit),
+              differences_total: comparison.differences.length,
             },
             pce: { counts: pce.counts },
             checks: { headless: true, read_only_legacy: true, wrote: 'report only', rungs_read: project.rungs.length, truncated: project.truncated },

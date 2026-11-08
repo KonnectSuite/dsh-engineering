@@ -3,7 +3,7 @@ id: rockwell-program-structure
 title: Logix program structure that scales
 domain: rockwell
 level: practitioner
-basis: [Rockwell]
+basis: [Rockwell, 1756-PM008J Jul 2022 ladder diagram programming manual]
 tags: [program, routine, aoi]
 applies_to: [l5x]
 rules: [ROCK-STRUCT-01, ROCK-STRUCT-02, ROCK-STRUCT-03]

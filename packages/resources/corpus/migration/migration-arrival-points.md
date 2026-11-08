@@ -3,7 +3,7 @@ id: migration-arrival-points
 title: What a migration has to answer
 domain: migration
 level: practitioner
-basis: [field practice, Rockwell conversion guide]
+basis: [field practice, Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I]
 tags: [migration, workflow, evidence, acceptance]
 applies_to: [migration]
 rules: [MIGRATION-WORK-01, MIGRATION-WORK-02, MIGRATION-WORK-03]

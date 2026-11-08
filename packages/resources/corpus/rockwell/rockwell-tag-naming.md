@@ -3,7 +3,7 @@ id: rockwell-tag-naming
 title: Tag names that carry meaning
 domain: rockwell
 level: practitioner
-basis: [Rockwell]
+basis: [Rockwell, 1756-RM018A Sep 2025 address and tag forms]
 tags: [naming, tags]
 applies_to: [l5x, ftview]
 rules: [ROCK-NAME-01, ROCK-NAME-02, ROCK-NAME-03]

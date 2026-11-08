@@ -10,6 +10,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { L5xError } from '../core/errors.ts'
 import { success, type Coverage } from '../core/result.ts'
@@ -128,9 +129,27 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
             'Prove this change by importing the L5X in Studio 5000 and building there; keep the change set small enough to review by eye. Editing only standard-task logic and verifying that logic in a non-safety copy of the project is the other way to get a build verdict.',
           )
         }
+        const nameDefects = moduleNameDefects(project.xml)
+        if (nameDefects.length > 0) {
+          throw new L5xError(
+            'IMPORT_MODULE_NAME_ILLEGAL',
+            `The Studio SDK importer aborts on a module whose Name is not a legal Logix identifier (${nameDefects.join(', ')}): the import returns XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, so a build cannot prove anything.`,
+            'Module Name carries letters, digits and underscores only, starting with a letter or underscore. Put the label with its punctuation in the module <Description>, not in Name.',
+          )
+        }
         const review = reviewDownloadSource(baseline, project)
+        if (!existsSync(project.path)) {
+          throw new L5xError('FILE_NOT_FOUND', `The export ${project.path} is no longer on disk, so there is nothing to verify.`, 'Reopen the export with open_project — a draft applied in this chat has to be reopened — then retry with a new .ACD path.')
+        }
         const captured = state.forL5x(exec, baseline.path)
         const baselineVerified = captured?.l5xSha256 === baseline.sha256
+        if (!baselineVerified) {
+          throw new L5xError(
+            'BASELINE_NOT_EXPORTED_IN_CHAT',
+            'The baseline is not an L5X exported from an ACD in this chat, so the SDK build would spend itself before this blocker was reported.',
+            'Export the source ACD with export_acd_to_l5x, open that exact L5X, and pass it as baseline_id. build_acd_from_draft requires the same provenance.',
+          )
+        }
         const outputPath = await session.resolvePath(requiredString(args, 'output_path'), exec)
         const build = await verifyOfflineL5x(project, outputPath, exec.signal, { probeBuild: args.probe === true }) as {
           readonly offline_build: string
@@ -288,12 +307,32 @@ export function isSafetyProject(xml: string): boolean {
 }
 
 /**
+ * Module Names that the Studio SDK importer refuses. A colon in a module Name
+ * ("Local:1" as a label) aborted an import of a non-safety project with
+ * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, and no run_checks rule saw it, so the
+ * defect is named here before any build is spent.
+ */
+export function moduleNameDefects(xml: string): string[] {
+  const defects: string[] = []
+  const pattern = /<Module\b[^>]*?\bName\s*=\s*"([^"]*)"/gu
+  for (const match of xml.matchAll(pattern)) {
+    const name = match[1]
+    if (name !== undefined && !/^[A-Za-z_][A-Za-z0-9_]*$/u.test(name)) {
+      defects.push(`Name="${name}"`)
+    }
+  }
+  return [...new Set(defects)]
+}
+
+/**
  * Guidance for an import the SDK aborts without producing a change. The public symptom is
- * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES; the cause is a safety controller or a signature the importer
- * will not recompute, and retrying cannot help, so say so instead of leaving the model to retry.
+ * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES; the observed causes are a safety controller, a signature
+ * the importer will not recompute, a baseline that was never exported in-chat, and a module
+ * Name carrying characters the importer rejects (a colon was observed). Retrying cannot help,
+ * so enumerate the causes instead of leaving the model to retry.
  */
 export function importAbortAdvice(text: string): string | null {
   if (!/IMPORT_ABORTED_NO_CHANGES/iu.test(text)) return null
-  return 'The SDK importer aborted without changes (XMLSrv_E_IMPORT_ABORTED_NO_CHANGES). A safety controller, or an L5X whose safety signature must be recomputed, returns this and a retry cannot change it: import the L5X in Studio 5000 and build there, or prove the change with run_checks plus a targeted read.'
+  return 'The SDK importer aborted without changes (XMLSrv_E_IMPORT_ABORTED_NO_CHANGES). Observed causes: a safety controller; an L5X whose safety signature must be recomputed; a baseline that was not exported from an ACD in this chat; a module Name containing characters illegal in a Logix identifier (a colon was observed). A retry cannot change it: check the module Names, export the source ACD with export_acd_to_l5x and open that L5X as the baseline, then import the L5X in Studio 5000 and build there, or prove the change with run_checks plus a targeted read.'
 }
 

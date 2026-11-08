@@ -182,6 +182,7 @@ const REMEDIES: Record<string, string> = {
   SFC_LINK_TARGET_MISSING: 'Add the missing step or transition, or correct the link; a link to an element the chart does not contain cannot be followed.',
   SFC_NO_INITIAL_STEP: 'Mark exactly one step as the initial step in Studio; a chart needs a step to start at.',
   SFC_MULTIPLE_INITIAL_STEPS: 'Keep exactly one initial step and clear InitialStep on the others in Studio.',
+  MODULE_NAME_ILLEGAL: 'Rewrite the module Name with letters, digits and underscores only (letter or underscore first); put the label with its punctuation in the module Description. Studio refuses to import an export carrying this defect.',
 }
 
 /** Every rule the checks can emit; a filter outside this set would silently return nothing. */
@@ -202,6 +203,7 @@ export const FINDING_RULES: readonly string[] = [
   'LATCH_WITHOUT_RESET',
   'MAIN_ROUTINE_MISSING',
   'MNEMONIC_VERSION_MISMATCH',
+  'MODULE_NAME_ILLEGAL',
   'MULTIPLE_OUTPUT_WRITES',
   'MULTIPLE_SCHEDULES',
   'OCON_DUPLICATE_NAME',
@@ -593,6 +595,16 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
       `${module.name} is safety-enabled but declares no safety network number; set its SafetyNetwork in Studio before download.`,
       { module: module.name, catalogNumber: module.catalogNumber }, 'high')
   }
+  // Module Name is an identifier, not a label. A migration export carrying Name="Local:1"
+  // (a colon, from the label the wizard was asked to keep) aborted the Studio import with
+  // XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, and no rule saw it: 318 findings passed, the
+  // importer refused. Studio refuses to import this export, so it is critical.
+  for (const module of doc.modules) {
+    if (module.name === '' || /^[A-Za-z_][A-Za-z0-9_]*$/u.test(module.name)) continue
+    report('MODULE_NAME_ILLEGAL', 'critical',
+      `Module Name "${module.name}" is not a legal Logix identifier; Studio refuses to import an export carrying this defect (the import aborts with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES).`,
+      { module: module.name, catalogNumber: module.catalogNumber }, 'high')
+  }
   // A safety add-on instruction is declared Class="Safety"; calling it from standard logic puts
   // a certified instruction where no safety task scans it. The corpus is clean, so this is not noise.
   const safetyAoiNames = new Set(doc.aois.filter(aoi => aoi.safety === true).map(aoi => aoi.name.toUpperCase()))
@@ -665,6 +677,34 @@ export function runChecks(project: ProjectSnapshot, baseline?: ProjectSnapshot):
     if (routine.body.type === 'FBD') findings.push(...validateDiagram(routine))
     else if (routine.body.type === 'SFC') findings.push(...validateSfcDiagram(routine))
     else if (routine.body.type === 'RLL') findings.push(...rungFindings(routine, { processorType: doc.controller.processorType }))
+  }
+  // Migration triage: a wizard-imported project carries the wizard's own artifacts, and on
+  // one migration they buried the real findings — 110 RUNG_NO_OUTPUT, 7 DUPLICATE_OUTPUT and
+  // 50 UNUSED_TAG against 2 findings that mattered. When a baseline is supplied, the rules
+  // the wizard is known to produce collapse into one summary row per rule, so the findings
+  // a reader must act on stay readable. The collapse is explicit: the count and a sample
+  // of sites remain, and a row is itemized again by dropping the baseline.
+  if (baseline !== undefined) {
+    const wizardRules = new Set(['RUNG_NO_OUTPUT', 'DUPLICATE_OUTPUT', 'UNUSED_TAG'])
+    const grouped = new Map<string, Finding[]>()
+    for (const finding of findings) {
+      if (wizardRules.has(finding.rule)) grouped.set(finding.rule, [...grouped.get(finding.rule) ?? [], finding])
+    }
+    if (grouped.size > 0) {
+      for (let index = findings.length - 1; index >= 0; index -= 1) {
+        if (wizardRules.has(findings[index]!.rule)) findings.splice(index, 1)
+      }
+      for (const [rule, rows] of grouped) {
+        findings.push({
+          rule,
+          severity: 'info',
+          message: `${rows.length} ${rule} finding(s) collapsed as migration-expected against the baseline: ${rows.slice(0, 3).map(finding => finding.message).join('; ')}${rows.length > 3 ? `; and ${rows.length - 3} more` : ''}. The wizard import is known to produce these; read a row only when it names logic you changed.`,
+          evidence: { collapsed_count: rows.length, migration_expected: true, sample: rows.slice(0, 10).map(finding => finding.evidence) },
+          confidence: 'medium',
+          ...(REMEDIES[rule] === undefined ? {} : { fix: REMEDIES[rule] }),
+        })
+      }
+    }
   }
   const byRule: Record<string, number> = {}
   const bySeverity: Record<string, number> = {}

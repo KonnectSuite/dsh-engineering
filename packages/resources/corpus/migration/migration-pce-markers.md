@@ -3,7 +3,7 @@ id: migration-pce-markers
 title: PCE markers and what their codes mean
 domain: migration
 level: specialist
-basis: [Rockwell conversion guide, observed exports]
+basis: [SLC to CompactLogix Programming Migration 5069-AP001A, observed exports]
 tags: [migration, pce, conversion, markers]
 applies_to: [migration]
 rules: [MIGRATION-PCE-01, MIGRATION-PCE-02, MIGRATION-PCE-03, MIGRATION-PCE-04, MIGRATION-PCE-05]

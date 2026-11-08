@@ -12,12 +12,15 @@ is which before anyone commissions the machine.
 This row knows the subject without a network round trip: `migration_assess` names
 the Logix candidate for each legacy instruction it flags, `migration_resolve`
 appends the instruction's row (replacement, operand shape, citation) to the advice
-for every review site, and `engineering_reference` answers with the seven migration
+for every review site, and `engineering_reference` answers with the nine migration
 pages — `migration-pce-markers`, `migration-wizard-and-revisions`,
 `migration-placeholder-tags`, `migration-unknown-operands`,
 `migration-indirect-addressing`, `migration-instruction-map`,
-`migration-arrival-points`. Read the page before reasoning about a marker; cite the
-manual section the page names, never a remembered paragraph.
+`migration-arrival-points`, `migration-analog-scaling`,
+`migration-wizard-defaults-to-audit`. Read the page before reasoning about a marker; cite the
+manual section the page names, never a remembered paragraph. The pages rest on 1756-RM085I (logic
+conversion, including the `S:24 → S24` table), 5069-AP001A (the SLC wizard) and 1746-RM003F
+(hardware replacement); the PDFs live in `packages/resources/evidence/migration/`.
 
 ## 1. Interview and start the plan
 
@@ -52,6 +55,9 @@ Call `migration_assess` on the file the customer gave you.
 - `.SLC` is the text export: count ladder files, rungs, racks and data files, and
   treat it as the read-only truth for the old logic.
 - `.L5K` is what the wizard writes: assess it, then `l5k_lint` it.
+- Text that reads with `Â`/`â`/`Ã` sequences is cp1252 re-encoded as UTF-8. Repair
+  it with the round trip (decode as utf-8-sig, encode cp1252, decode utf-8), keep
+  the original, and write the repaired copy without a BOM.
 
 ## 3. Repair the `.L5K` before the import
 
@@ -67,6 +73,9 @@ Call `migration_assess` on the file the customer gave you.
   These become the exception list, not a warning to ignore.
 - **PLACEHOLDER_TAG** — an unmapped module (typically a 1746-HSCE). Choose its
   replacement before commissioning.
+- **Module Name punctuation** — a Name carrying a colon (`Local:1` used as a
+  label) aborts the Studio import as `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`. Names
+  carry letters, digits and underscores; the label belongs in the Description.
 
 A failed `Failed to export to ACD` is a lint result: read the Studio error line,
 fix the text, import again. Keep the repaired `.L5K` next to the original; never
@@ -75,6 +84,14 @@ edit the customer's `.RSS` or the wizard's first output.
 ## 4. Prove the import
 
 - Open the imported `.L5X`, not only the `.ACD`.
+- Audit the wizard defaults the day it imports: `migration_assess` on the
+  imported `.L5X` reports analog channels left at Range 4 / 0-20 EU / High 100,
+  legacy chassis modules still declared, unnamed modules, `+ S24` byte-swap
+  tokens, and residual `?` and PCE sites. Each one is a plan exception with a
+  decision, not a note.
+- A verification baseline must be exported in this chat: `export_acd_to_l5x` the
+  `.ACD`, `open_project` that `.L5X`, then verify against it. A file handed over
+  from a previous session is not a baseline.
 - Run `migration_compare` with the legacy `.RSS` and the imported `.L5X`. It
   matches ladder file names to routines, counts rungs (a terminal `END` is not
   logic), maps symbols and data files, and classifies each difference as
@@ -143,5 +160,8 @@ vendor's own Errors tab names the rung the SDK message withholds.
 - Write new files; keep the original hash for the record.
 - No live controller writes during a migration review.
 - Three probes per defect, then report the finding and move on.
+- A read that succeeds while writes and deletes are denied, with FullControl ACL
+  and an empty Restart Manager list, is the harness sandbox, not a file lock: ask
+  for the wider sandbox once, do not hunt for processes.
 - If the evidence is missing, stop and ask — a silent default is a commissioning
   risk, not a convenience.

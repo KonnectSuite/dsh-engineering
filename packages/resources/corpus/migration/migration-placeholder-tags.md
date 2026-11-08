@@ -3,7 +3,7 @@ id: migration-placeholder-tags
 title: Placeholder tags are the right answer for an unmodelled module
 domain: migration
 level: practitioner
-basis: [Rockwell conversion guide, observed wizard runs]
+basis: [Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I, observed wizard runs]
 tags: [migration, io, devicenet, placeholder, modules]
 applies_to: [migration]
 rules: [MIGRATION-IO-01, MIGRATION-IO-02, MIGRATION-IO-03]

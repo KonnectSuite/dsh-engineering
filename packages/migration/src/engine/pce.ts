@@ -36,6 +36,7 @@ export type ResolutionKind =
   | 'message-config'
   | 'status-word'
   | 'unknown-operand'
+  | 'wizard_artifact'
   | 'review'
 
 /** What to do about one item, and whether that is engineering judgement. */
@@ -429,6 +430,12 @@ export function resolvePces(
       } else if (code === 116) {
         const loop = logix.find(entry => entry.name === 'FOR')
         resolution = loopResolution(loop ?? { name: 'FOR', args: [], start: 0 })
+      } else if (/\+\s*S24\b/u.test(pair.migrated)) {
+        resolution = {
+          kind: 'wizard_artifact',
+          work: 'review',
+          advice: 'The migrated rung carries the wizard\'s "+ S24" byte-swap token inside an operand address. It is not a tag: the wizard injected it where the legacy instruction addressed a byte-swapped word. Record this site as a plan exception of kind wizard_artifact, rewrite the address from the legacy rung, then remove the marker.',
+        }
       } else if (sequence && !hasUnknown) {
         resolution = {
           kind: 'delete-marker',
@@ -468,7 +475,14 @@ export function resolvePces(
       const name = entry.call.name
       const legacyCall = legacyCallOf(legacy, name)
       let resolution: Resolution
-      if ((TIMERS as readonly string[]).includes(name)) resolution = timerResolution(name, legacyCall, entry.call)
+      if (/\+\s*S24\b/u.test(pair.migrated)) {
+        resolution = {
+          kind: 'wizard_artifact',
+          work: 'review',
+          advice: `${name} addresses an operand through the wizard's "+ S24" byte-swap token, not a tag. Record this site as a plan exception of kind wizard_artifact and rewrite the address from the legacy rung.`,
+        }
+      }
+      else if ((TIMERS as readonly string[]).includes(name)) resolution = timerResolution(name, legacyCall, entry.call)
       else if ((COUNTERS as readonly string[]).includes(name)) resolution = counterResolution(name, legacyCall, entry.call)
       else if (name === 'FAL' || name === 'CPT') {
         resolution = {

@@ -3,7 +3,7 @@ id: migration-unknown-operands
 title: The question mark operands
 domain: migration
 level: specialist
-basis: [Rockwell conversion guide, observed exports]
+basis: [Converting PLC-5/SLC 500 Logic to Logix-Based Logic 1756-RM085I, observed exports]
 tags: [migration, operands, timers, counters]
 applies_to: [migration]
 rules: [MIGRATION-OPERAND-01, MIGRATION-OPERAND-02, MIGRATION-OPERAND-03]
