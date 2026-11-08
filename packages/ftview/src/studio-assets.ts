@@ -252,9 +252,118 @@ export function prepareDisplayImport(
       'Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
       'Choose Multiple displays batch import file -> Next.',
       `Select ${manifest} -> Finish (${decisions.filter(decision => decision.action === 'create').length} create, ${decisions.filter(decision => decision.action === 'update').length} update), then open the display in Studio.`,
+      'The wizard opens an import error log text file when the import ends: read it before verifying — a refused file is named there, not in the display comparison.',
     ],
   }
 }
+/** A prepared component list file for the Add Component Tool. */
+export interface ComponentPackagePlan {
+  /** Folder holding the component XML files and the list file. */
+  readonly folder: string
+  /** Component list file SEAddComponent consumes. */
+  readonly listFile: string
+  /** Install log SEAddComponent writes beside the list file. */
+  readonly logFile: string
+  /** Command line that runs the install. */
+  readonly command: string
+  /** Packaged components with their category and target folder. */
+  readonly components: readonly { readonly file: string; readonly category: string; readonly folder: string }[]
+  /** Steps for the computer-use agent. */
+  readonly steps: readonly string[]
+}
+
+/** Category types the Add Component Tool installs into. */
+export const COMPONENT_CATEGORIES = [
+  'Graphics;Displays',
+  'Graphics;Global Objects',
+  'Graphics;Images',
+  'Graphics;DisplayFolders',
+  'Graphics;GlobalObjectsFolders',
+] as const
+
+/** Characters the Add Component Tool refuses inside a component name. */
+export const COMPONENT_FORBIDDEN = /[."%:?*<>#{}[\]'\\\/;=&+\-]/u
+
+/**
+ * Build a component list file for the Add Component Tool.
+ *
+ * `SEAddComponent <application> ME / "<list file>" [overwrite]` installs XML
+ * components into an application from a list file naming each file, its
+ * category and the folder inside the application it lands in. The tool writes
+ * `$AddComponent.txt` beside the list file as the install log, and exits 0 on
+ * success, 1 on refusal. Each packaged display must be a `<gfx>` document that
+ * parses: a file Studio would refuse is refused here, where the reason is legible.
+ *
+ * @param application - Application name as `ftview_apps` lists it.
+ * @param exportRoot - Applied export folder containing `Displays/`.
+ * @param components - Component (display) names, without `.xml`.
+ * @param outputRoot - New folder for the package.
+ * @param category - Category to install into, one of `COMPONENT_CATEGORIES`.
+ * @param targetFolder - Folder inside the application, defaults to the root.
+ * @param overwrite - Append `overwrite` to the command, replacing existing components.
+ * @returns The package paths, the command and the steps.
+ */
+export function prepareComponentPackage(
+  application: string,
+  exportRoot: string,
+  components: readonly string[],
+  outputRoot: string,
+  category: string = 'Graphics;Displays',
+  targetFolder = '\\',
+  overwrite = false,
+): ComponentPackagePlan {
+  if (components.length === 0) throw new Error('name at least one component to install')
+  if (!(COMPONENT_CATEGORIES as readonly string[]).includes(category)) {
+    throw new Error(`the Add Component Tool installs into ${COMPONENT_CATEGORIES.join(', ')}; ${category} is not one of them`)
+  }
+  if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
+  mkdirSync(outputRoot, { recursive: true })
+  const entries: { file: string; category: string; folder: string }[] = []
+  for (const component of components) {
+    const stem = component.replace(/\.xml$/iu, '')
+    const refused = [...stem].filter(char => COMPONENT_FORBIDDEN.test(char))
+    if (refused.length > 0) throw new Error(`component name ${stem} carries characters the Add Component Tool refuses: ${refused.join(' ')}`)
+    const source = join(exportRoot, 'Displays', `${stem}.xml`)
+    if (!existsSync(source)) throw new Error(`no component file at ${source}`)
+    const text = readFileSync(source, 'utf8')
+    if (!/<gfx[\s>]/iu.test(text)) throw new Error(`${source} is not a <gfx> display document`)
+    const parsed = parseDisplay(`${stem}.xml`, text)
+    if (parsed.parseError !== undefined) throw new Error(`${source} does not parse as a display: ${parsed.parseError}`)
+    copyFileSync(source, join(outputRoot, `${stem}.xml`))
+    entries.push({ file: `${stem}.xml`, category, folder: targetFolder })
+  }
+  const listFile = join(outputRoot, `${application}-Components.xml`)
+  const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<hmi>']
+  const groups = new Map<string, typeof entries>()
+  for (const entry of entries) {
+    const group = groups.get(entry.category) ?? []
+    group.push(entry)
+    groups.set(entry.category, group)
+  }
+  for (const [type, group] of groups) {
+    lines.push(`    <category type="${escapeXmlAttribute(type)}" folder="${escapeXmlAttribute(outputRoot)}">`)
+    for (const entry of group) lines.push(`        <component file="${escapeXmlAttribute(entry.file)}" folder="${escapeXmlAttribute(entry.folder)}"/>`)
+    lines.push('    </category>')
+  }
+  lines.push('</hmi>', '')
+  writeFileSync(listFile, lines.join('\n'))
+  const command = `SEAddComponent ${application} ME / "${listFile}"${overwrite ? ' overwrite' : ''}`
+  return {
+    folder: outputRoot,
+    listFile,
+    logFile: join(outputRoot, '$AddComponent.txt'),
+    command,
+    components: entries,
+    steps: [
+      `Close ${application} in FactoryTalk View Studio; the Add Component Tool writes into the application database.`,
+      `Run: ${command}`,
+      'Add "overwrite" at the end only when replacing components the application already has.',
+      `Read ${join(outputRoot, '$AddComponent.txt')} — the install log SEAddComponent writes beside the list file; exit code 0 means installed, 1 means refused.`,
+      'A component listed with the Hidden attribute installs without appearing in the Explorer list.',
+    ],
+  }
+}
+
 /**
  * Display names an export folder holds.
  *

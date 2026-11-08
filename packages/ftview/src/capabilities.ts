@@ -84,6 +84,7 @@ export function capabilities(probe: CapabilityProbe = {}): Capabilities {
       'Tag CSV: ftview_tag_snapshot reads the application tag database directly through local SQL Server and reproduces the wizard CSV byte for byte; no Studio and no wizard. DatabaseConverter.exe remains the fallback.',
       'Alarm XML: ftview_alarm_snapshot decodes M_Alarms\\MachineAlarms.mal into the wizard-identical XML with no Studio and no wizard; only Alarms-stream version 16 is decoded, so the Alarm Import Export Wizard remains the fallback for older databases.',
       'Display import: the Graphics Import Export Wizard is a Studio context menu; there is no standalone importer.',
+      'Component install: SEAddComponent.exe installs components (displays, global objects, images, folders) from a component list file; ftview_component_package writes that list file and returns the command line, and $AddComponent.txt beside the list file is the install log.',
       'Backup: ApplicationManagerServer is a 32-bit COM server and BackupLocal has failed on this host; treat backup as unverified.',
       'Live values: EtherNet/IP reads are implemented but not hardware-verified here.',
     ],

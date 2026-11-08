@@ -98,6 +98,7 @@
     "ftview_alarm_snapshot",
     "ftview_alarm_report",
     "ftview_studio_import_prepare",
+    "ftview_component_package",
     "ftview_capabilities",
     "ftview_apps",
     "ftview_export",
@@ -119,6 +120,9 @@
     "ftview_draft_object_delete",
     "ftview_bulk_set",
     "ftview_draft_object_order",
+    "ftview_draft_alarm_add",
+    "ftview_draft_alarm_set",
+    "ftview_draft_alarm_delete",
     "ftview_validate",
     "ftview_verify_import",
     "ftview_apply",
@@ -359,11 +363,12 @@
         "ftview_alarm_snapshot",
         "ftview_alarm_report",
         "ftview_studio_import_prepare",
+        "ftview_component_package",
         "ftview_capabilities",
         "ftview_apps",
         "ftview_export"
       ],
-      "contextChars": 15886
+      "contextChars": 17372
     },
     {
       "product": "FactoryTalk View",
@@ -387,12 +392,15 @@
         "ftview_draft_object_delete",
         "ftview_bulk_set",
         "ftview_draft_object_order",
+        "ftview_draft_alarm_add",
+        "ftview_draft_alarm_set",
+        "ftview_draft_alarm_delete",
         "ftview_validate",
         "ftview_verify_import",
         "ftview_apply",
         "ftview_render"
       ],
-      "contextChars": 20831
+      "contextChars": 24009
     },
     {
       "product": "FactoryTalk View",
@@ -458,13 +466,13 @@
     }
   ],
   "context": {
-    "characters": 132979,
+    "characters": 137643,
     "byProduct": {
       "L5X": 50378,
       "Migration": 9025,
       "Engineering resources": 1454,
       "ECAD": 15727,
-      "FactoryTalk View": 38409,
+      "FactoryTalk View": 43073,
       "MotionWorks IEC": 17986
     }
   }

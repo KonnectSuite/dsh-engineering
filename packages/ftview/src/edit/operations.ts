@@ -36,8 +36,40 @@ export interface TagUpsertOperation {
   readonly type?: string
 }
 
+/** Add one alarm trigger, with its first message row, to an Alarms.xml. */
+export interface AlarmAddOperation {
+  readonly kind: 'alarm_add'
+  readonly file: string
+  readonly type: 'bit' | 'value'
+  readonly exp: string
+  readonly label?: string
+  readonly text: string
+  readonly triggerValue?: string
+  readonly ackAll?: boolean
+  readonly audio?: boolean
+  readonly display?: boolean
+  readonly print?: boolean
+}
+
+/** Change one attribute on an alarm trigger or message row. */
+export interface AlarmSetOperation {
+  readonly kind: 'alarm_set'
+  readonly file: string
+  readonly target: 'trigger' | 'message'
+  readonly id: string
+  readonly attribute: string
+  readonly value: string
+}
+
+/** Remove one alarm trigger and every message that points at it. */
+export interface AlarmDeleteOperation {
+  readonly kind: 'alarm_delete'
+  readonly file: string
+  readonly trigger: string
+}
+
 /** One staged edit. */
-export type EditOperation = DisplaySetOperation | DisplayAddOperation | TagUpsertOperation | DisplayCreateOperation | ObjectAddOperation | ObjectSetOperation | ObjectDeleteOperation | ObjectOrderOperation
+export type EditOperation = DisplaySetOperation | DisplayAddOperation | TagUpsertOperation | DisplayCreateOperation | ObjectAddOperation | ObjectSetOperation | ObjectDeleteOperation | ObjectOrderOperation | AlarmAddOperation | AlarmSetOperation | AlarmDeleteOperation
 
 /** Create a new display file from a schema-valid skeleton. */
 export interface DisplayCreateOperation {
@@ -273,7 +305,11 @@ export function upsertTag(csv: string, tag: TagUpsertOperation): string {
 }
 
 /** Elements that are parts of an object, never objects themselves. */
-const RESERVED = new Set(['gfx', 'display', 'displaySettings', 'connections', 'connection', 'states', 'state', 'caption', 'imageSettings', 'animations', 'parameters', 'parameter', 'font', 'color'])
+const RESERVED = new Set([
+  'gfx', 'display', 'displaySettings', 'connections', 'connection', 'states', 'state', 'caption',
+  'imageSettings', 'animations', 'parameters', 'parameter', 'font', 'color',
+  'animateVisibility', 'animateColor', 'confirm', 'group', 'vbaProject', 'vbaItem', 'vbaCode',
+])
 
 /** Depth of one node below the root. */
 function depthOf(root: DisplayNode, target: DisplayNode): number {
@@ -584,4 +620,159 @@ function setCaption(tree: DisplayTree, node: DisplayNode, caption: string): stri
     return tree.xml.slice(0, node.tagEnd) + replaced + tree.xml.slice(node.contentEnd)
   }
   return setNodeAttribute(tree, node, 'caption', caption)
+}
+
+/** Attributes the alarm wizard writes on a `<trigger>` row; the import accepts these. */
+export const TRIGGER_ATTRIBUTES = new Set([
+  'type', 'ack-all-value', 'use-ack-all', 'ack-tag', 'exp', 'message-tag', 'message-handshake-exp',
+  'message-notification-tag', 'remote-ack-exp', 'remote-ack-handshake-tag', 'label', 'handshake-tag',
+])
+
+/** Attributes the alarm wizard writes on a `<message>` row; the import accepts these. */
+export const MESSAGE_ATTRIBUTES = new Set([
+  'trigger-value', 'identifier', 'trigger', 'backcolor', 'forecolor', 'audio', 'display', 'print',
+  'message-to-tag', 'text',
+])
+
+/** One `<trigger>` or `<message>` row found in an Alarms.xml. */
+interface AlarmRow {
+  readonly id: string
+  readonly start: number
+  readonly end: number
+  readonly attributes: string
+}
+
+/** Collect every alarm row of one tag, with its id and byte span. */
+function alarmRows(xml: string, tag: 'trigger' | 'message'): AlarmRow[] {
+  const pattern = new RegExp(`<${tag}\\b((?:[^<>"']|"[^"]*"|'[^']*')*)/>`, 'gu')
+  const rows: AlarmRow[] = []
+  let match: RegExpExecArray | null
+  while ((match = pattern.exec(xml)) !== null) {
+    const attributes = match[1] ?? ''
+    const id = attributeValue(attributes, 'id')
+    if (id === undefined) continue
+    rows.push({ id, start: match.index, end: match.index + match[0].length, attributes })
+  }
+  return rows
+}
+
+/** The next free row id: highest used number plus one. */
+function nextAlarmId(rows: readonly AlarmRow[], prefix: string): string {
+  let highest = 0
+  for (const row of rows) {
+    const digits = Number(row.id.slice(prefix.length))
+    if (Number.isFinite(digits) && digits > highest) highest = digits
+  }
+  return `${prefix}${highest + 1}`
+}
+
+/** Indentation of the last row, so a new row lines up with its siblings. */
+function alarmIndent(xml: string, row: AlarmRow | undefined): string {
+  if (row === undefined) return '            '
+  const lineStart = xml.lastIndexOf('\n', row.start) + 1
+  const prefix = xml.slice(lineStart, row.start)
+  return /^\s*$/u.test(prefix) ? prefix : '            '
+}
+
+/** Insert one row line above the line that closes its block. */
+function insertAlarmRow(xml: string, closing: string, line: string): string {
+  const at = xml.indexOf(closing)
+  if (at < 0) throw new EngineeringError('ALARM_SHAPE', `The alarm document has no ${closing}.`, 'Pass an Alarms.xml exported by the Alarm Import Export Wizard; a hand-written skeleton is not enough.')
+  const lineStart = xml.lastIndexOf('\n', at) + 1
+  return xml.slice(0, lineStart) + line + xml.slice(lineStart)
+}
+
+/**
+ * Add one alarm trigger with its first message row.
+ *
+ * Ids follow the wizard's own numbering (T and M, highest plus one), the new
+ * trigger inherits the defaults the wizard gives a bit trigger, and the message
+ * row is written in the shape the wizard exports, so a re-import round-trips.
+ *
+ * @param xml - Whole Alarms.xml.
+ * @param op - Trigger expression and message text.
+ * @returns The modified alarm document.
+ */
+export function addAlarm(xml: string, op: AlarmAddOperation): string {
+  const exp = op.exp.trim()
+  if (exp === '') {
+    throw new EngineeringError('INVALID_ALARM', 'An alarm trigger needs an expression.', 'Pass an expression such as "{[PLC]PumpPS>5}"; run ftview_alarm_report to see the expressions this setup already uses.')
+  }
+  const eol = xml.includes('\r\n') ? '\r\n' : '\n'
+  const triggers = alarmRows(xml, 'trigger')
+  const messages = alarmRows(xml, 'message')
+  const triggerId = nextAlarmId(triggers, 'T')
+  const messageId = nextAlarmId(messages, 'M')
+  const indent = alarmIndent(xml, triggers[triggers.length - 1] ?? messages[messages.length - 1])
+  const ack = op.ackAll === undefined ? (op.type === 'bit' ? '1' : '0') : op.ackAll ? '1' : '0'
+  const triggerLine = `${indent}<trigger id="${triggerId}" type="${op.type}" ack-all-value="${ack}" use-ack-all="${op.type === 'bit' ? 'true' : 'false'}" ack-tag="" exp="${escapeAttribute(exp)}" message-tag="" message-handshake-exp="" message-notification-tag="" remote-ack-exp="" remote-ack-handshake-tag="" label="${escapeAttribute(op.label ?? `Label${triggerId.slice(1)}`)}" handshake-tag=""/>${eol}`
+  const messageLine = `${indent}<message id="${messageId}" trigger-value="${escapeAttribute(op.triggerValue ?? messageId.slice(1))}" identifier="0" trigger="#${triggerId}" backcolor="#800000" forecolor="#000000" audio="${op.audio ?? true}" display="${op.display ?? true}" print="${op.print ?? false}" message-to-tag="false" text="${escapeAttribute(op.text)}"/>${eol}`
+  const withMessage = insertAlarmRow(xml, '</messages>', messageLine)
+  return insertAlarmRow(withMessage, '</triggers>', triggerLine)
+}
+
+/**
+ * Change one attribute on one alarm trigger or message row.
+ *
+ * @param xml - Whole Alarms.xml.
+ * @param op - Target row, attribute and new value.
+ * @returns The modified alarm document.
+ */
+export function setAlarmAttribute(xml: string, op: AlarmSetOperation): string {
+  if (!/^[A-Za-z_][\w.:-]*$/u.test(op.attribute)) {
+    throw new EngineeringError('INVALID_ATTRIBUTE', `${JSON.stringify(op.attribute)} is not an XML attribute name.`, 'Pass a plain attribute name such as "label" or "exp".')
+  }
+  const allowed = op.target === 'trigger' ? TRIGGER_ATTRIBUTES : MESSAGE_ATTRIBUTES
+  if (!allowed.has(op.attribute)) {
+    throw new EngineeringError('ALARM_ATTRIBUTE', `An alarm ${op.target} row has no ${JSON.stringify(op.attribute)} attribute.`, `Alarm ${op.target} rows accept: ${[...allowed].join(', ')}.`)
+  }
+  const row = alarmRows(xml, op.target).find(candidate => candidate.id === op.id)
+  if (row === undefined) {
+    throw new EngineeringError('ALARM_NOT_FOUND', `No alarm ${op.target} in this document has id ${JSON.stringify(op.id)}.`, 'Run ftview_alarm_report to list the trigger and message ids.')
+  }
+  if (new Set(['use-ack-all', 'audio', 'display', 'print', 'message-to-tag']).has(op.attribute) && !/^(true|false)$/u.test(op.value)) {
+    throw new EngineeringError('INVALID_ALARM_VALUE', `${JSON.stringify(op.attribute)} takes "true" or "false", not ${JSON.stringify(op.value)}.`, 'Pass true or false.')
+  }
+  if (new Set(['ack-all-value', 'identifier', 'trigger-value']).has(op.attribute) && !/^-?\d*$/u.test(op.value)) {
+    throw new EngineeringError('INVALID_ALARM_VALUE', `${JSON.stringify(op.attribute)} takes a number, not ${JSON.stringify(op.value)}.`, 'Pass an integer, or an empty value where the wizard allows one.')
+  }
+  const existing = new RegExp(`\\b${op.attribute}\\s*=\\s*("[^"]*"|'[^']*')`, 'u')
+  const attributes = existing.test(row.attributes)
+    ? row.attributes.replace(existing, `${op.attribute}="${escapeAttribute(op.value)}"`)
+    : `${row.attributes} ${op.attribute}="${escapeAttribute(op.value)}"`
+  return xml.slice(0, row.start) + `<${op.target}${attributes}/>` + xml.slice(row.end)
+}
+
+/**
+ * Remove one alarm trigger and every message row that points at it.
+ *
+ * Deleting a trigger without its messages leaves rows whose `trigger` attribute
+ * addresses nothing, which the wizard reports as import errors.
+ *
+ * @param xml - Whole Alarms.xml.
+ * @param op - Trigger id to delete.
+ * @returns The modified alarm document.
+ */
+export function deleteAlarm(xml: string, op: AlarmDeleteOperation): string {
+  if (!/^T\d+$/u.test(op.trigger)) {
+    throw new EngineeringError('INVALID_ALARM', `${JSON.stringify(op.trigger)} is not a trigger id.`, 'Pass the trigger id as the wizard writes it, for example "T12".')
+  }
+  const target = alarmRows(xml, 'trigger').find(row => row.id === op.trigger)
+  if (target === undefined) {
+    throw new EngineeringError('ALARM_NOT_FOUND', `No alarm trigger in this document has id ${JSON.stringify(op.trigger)}.`, 'Run ftview_alarm_report to list the trigger ids.')
+  }
+  const messages = alarmRows(xml, 'message').filter(row => attributeValue(row.attributes, 'trigger') === `#${op.trigger}`)
+  const spans = [target, ...messages]
+    .map(row => {
+      let start = row.start
+      while (start > 0 && xml[start - 1] !== '\n') start -= 1
+      let end = row.end
+      if (xml.startsWith('\r\n', end)) end += 2
+      else if (xml[end] === '\n') end += 1
+      return { start, end }
+    })
+    .sort((a, b) => b.start - a.start)
+  let out = xml
+  for (const span of spans) out = out.slice(0, span.start) + out.slice(span.end)
+  return out
 }

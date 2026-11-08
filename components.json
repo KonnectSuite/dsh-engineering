@@ -1,8 +1,8 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 143,
-    "defaultOnSchemaCharacters": 120000,
+    "defaultOnTools": 147,
+    "defaultOnSchemaCharacters": 121916,
     "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 115116 characters of the 133 default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 9 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
@@ -72,7 +72,7 @@
       "package": "packages/ftview",
       "tools": {
         "product": "FactoryTalk View",
-        "count": 47,
+        "count": 51,
         "inReference": true
       },
       "skill": {

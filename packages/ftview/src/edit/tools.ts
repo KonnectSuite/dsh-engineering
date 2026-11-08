@@ -79,6 +79,44 @@ async function findImage(name: string, root: string, fs: FsService, signal: Abor
 
 const VIEW_ID = string('View handle returned by ftview_open. Omit when exactly one export is open in this chat.')
 
+/**
+ * The alarm document this export carries.
+ *
+ * Alarms travel as the Alarm Import Export Wizard's own XML at
+ * `Alarms/Alarms.xml`; an export without one cannot be drafted, because the
+ * wizard imports a whole configuration, not a merge.
+ */
+function alarmFileOf(app: { readonly files: readonly { readonly file: string }[] }): string {
+  const found = app.files.find(file => /^alarms\/alarms\.xml$/iu.test(file.file))
+    ?? app.files.find(file => /(^|\/)alarms\.xml$/iu.test(file.file))
+  if (found === undefined) {
+    throw new EngineeringError('ALARM_FILE_MISSING', 'This export has no Alarms/Alarms.xml, so alarms cannot be drafted.', 'Export the alarm configuration from Studio (right-click Alarms > Alarm Setup > Import and Export) into the export folder, then reopen it with ftview_open.')
+  }
+  return found.file
+}
+
+/**
+ * The Alarm Import Export Wizard steps appended to IMPORT.md.
+ *
+ * The wizard imports the whole alarm configuration at once, so the backup
+ * export is part of the steps, and its error log — not a display comparison —
+ * is the proof the import landed.
+ */
+function alarmImportSteps(): readonly string[] {
+  return [
+    '## Alarm setup',
+    '',
+    'This package changes the alarm setup. In FactoryTalk View Studio open the application, then right-click **Alarms > Alarm Setup** and choose **Import and Export**.',
+    '',
+    '1. Export the current alarm configuration first: the import **overwrites the entire alarm setup**, so the export is your backup.',
+    '2. Choose "Import alarm configuration into application" and select `Alarms/Alarms.xml` from this package.',
+    '3. The import error log opens when the import finishes; read it before opening the alarm setup. That log, not a display comparison, is the proof the alarm import landed.',
+    '',
+    'Alarm counts are limited by the licence (FactoryTalk VIE Alarm Pack counts alarm points), so an over-limit import reports its errors in that log.',
+    '',
+  ]
+}
+
 /** The draft handle parameter, described once. */
 const DRAFT_ID = string('Draft handle returned by an ftview_draft_* tool. Omit when exactly one draft exists in this chat.')
 
@@ -1134,6 +1172,97 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       },
     }),
     tool({
+      name: 'ftview_draft_alarm_add',
+      description: 'Stage one new alarm: a trigger row with its expression plus a first message row, numbered and defaulted the way the Alarm Import Export Wizard writes them. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        expression: string('Trigger expression as Studio writes it. Example: "{[PLC]PumpPS>5}".'),
+        message_text: string('Operator message the alarm shows. Example: "Pump discharge pressure above 5 psi".'),
+        type: choice('Trigger type: bit alarms fire on a digital expression, value alarms on an analog one.', ['bit', 'value']),
+        label: string('Alarm label. Defaults to the next LabelN the wizard would generate; pass a real label for anything an operator reads.'),
+        trigger_value: string('Trigger-value for the message row. Defaults to the new message number, which is what the wizard writes for a bit alarm.'),
+        ack_all: choice('Ack-all behaviour for a bit trigger.', ['default', 'yes', 'no']),
+        audio: choice('Sound the alarm on first occurrence.', ['default', 'yes', 'no']),
+        show: choice('Display the alarm in the alarm view.', ['default', 'yes', 'no']),
+        print: choice('Print the alarm record.', ['default', 'yes', 'no']),
+      }, ['expression', 'message_text']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const file = alarmFileOf(view.app)
+        const flag = (name: string): boolean | undefined => {
+          const value = optionalString(args, name)
+          return value === undefined || value === 'default' ? undefined : value === 'yes'
+        }
+        const label = optionalString(args, 'label')
+        const triggerValue = optionalString(args, 'trigger_value')
+        const ackAll = flag('ack_all')
+        const audio = flag('audio')
+        const show = flag('show')
+        const print = flag('print')
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'alarm_add',
+          file,
+          type: optionalString(args, 'type') === 'value' ? 'value' as const : 'bit' as const,
+          exp: requiredString(args, 'expression'),
+          text: requiredString(args, 'message_text'),
+          ...(label === undefined ? {} : { label }),
+          ...(triggerValue === undefined ? {} : { triggerValue }),
+          ...(ackAll === undefined ? {} : { ackAll }),
+          ...(audio === undefined ? {} : { audio }),
+          ...(show === undefined ? {} : { display: show }),
+          ...(print === undefined ? {} : { print }),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_alarm_set',
+      description: 'Stage one attribute change on an alarm trigger row (by id, e.g. "T12") or a message row (by id, e.g. "M3"). Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        trigger: string('Trigger id to change, as ftview_alarm_report lists them. Example: "T12". Pass this or message, exactly one.'),
+        message: string('Message id to change. Example: "M3".'),
+        attribute: string('Attribute to set. Trigger rows take exp, label, type, ack-tag, remote-ack-exp and the rest of the wizard columns; message rows take text, trigger, audio, display, print and colours.'),
+        value: string('New attribute value. Example: "Pump pressure high".'),
+      }, ['attribute', 'value']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const file = alarmFileOf(view.app)
+        const trigger = optionalString(args, 'trigger')
+        const message = optionalString(args, 'message')
+        if ((trigger === undefined) === (message === undefined)) {
+          throw new EngineeringError('INVALID_ARGUMENT', 'An alarm row edit names exactly one row: pass trigger for a trigger row, or message for a message row.', 'Example: trigger "T12" with attribute "label" and value "Pump pressure high".')
+        }
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'alarm_set',
+          file,
+          target: trigger === undefined ? 'message' as const : 'trigger' as const,
+          id: (trigger ?? message) as string,
+          attribute: requiredString(args, 'attribute'),
+          value: requiredString(args, 'value'),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
+      name: 'ftview_draft_alarm_delete',
+      description: 'Stage the removal of one alarm trigger, together with every message row that points at it. Nothing is written until ftview_apply.',
+      parameters: object({
+        view_id: VIEW_ID,
+        trigger: string('Trigger id to delete, as ftview_alarm_report lists them. Example: "T12".'),
+      }, ['trigger']),
+      async run(args, exec) {
+        const view = session.require(optionalString(args, 'view_id'), exec)
+        const file = alarmFileOf(view.app)
+        const { draft } = stage(exec, optionalString(args, 'view_id'), {
+          kind: 'alarm_delete',
+          file,
+          trigger: requiredString(args, 'trigger'),
+        })
+        return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation)
+      },
+    }),
+    tool({
       name: 'ftview_validate',
       description: 'Prepare the staged edits: apply them to a re-parsed copy, validate the changed displays against the installed Gfx-ME schema, and report the changed files and findings. Writes nothing.',
       parameters: object({ draft_id: DRAFT_ID, limit: integer('Maximum findings to return; the counts in by_rule stay complete.', { minimum: 1, maximum: 500 }) }, []),
@@ -1184,9 +1313,9 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
         const view = session.require(draft.viewId, exec)
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
-        const expected = new Map([...prepared.texts].filter(([file]) => /\.xml$/iu.test(file) && !/batchimport/iu.test(file)))
+        const expected = new Map([...prepared.texts].filter(([file]) => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file)))
         if (expected.size === 0) {
-          throw new EngineeringError('NOTHING_TO_VERIFY', 'This draft changes no display, so there is nothing to compare.', 'Stage a display edit first, import it in Studio, then run this again.')
+          throw new EngineeringError('NOTHING_TO_VERIFY', 'This draft changes no display, so there is nothing to compare.', 'Alarm setup changes are proven by the wizard import log, not by this comparison; stage a display edit to verify one.')
         }
         const application = requiredString(args, 'application')
         const manual = optionalString(args, 'export_root')
@@ -1302,6 +1431,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         // `X.xml` when a draft created the display, so both shapes count.
         const changedDisplays = [...prepared.texts.keys()]
           .filter(file => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file))
+        const changedAlarms = [...prepared.texts.keys()].filter(file => /^alarms\//iu.test(file) && /\.xml$/iu.test(file))
         const packageMode = optionalString(args, 'package') ?? 'delta'
         // A delta is right for an application that already holds the screens.
         // A fresh application needs every display, or the ones the draft did
@@ -1358,6 +1488,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             '2. Choose Yes to back up the displays that will be modified -> Next (accept the backup folder).',
             '3. Choose "Multiple displays batch import file" -> Next.',
             `4. Select \`${manifest}\` -> Finish.`,
+            '5. The wizard opens an import error log text file when the import ends: read it before opening any display — a refused file is named there.',
             '',
             `The manifest holds ${rows.length} display(s): ${creates.length} to create${creates.length === 0 ? '' : ` (${creates.join(', ')})`}, ${updates.length} to update${updates.length === 0 ? '' : ` (${updates.join(', ')})`}.`,
             'A "create" entry fails when the display already exists, and an "update" entry fails when it does not.',
@@ -1367,8 +1498,13 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             '2. Create the runtime application (`.mer`).',
             '3. Run `ftview_verify_import` to prove the import matches this draft.',
             '',
+            ...(changedAlarms.length === 0 ? [] : alarmImportSteps()),
           ].join('\n')
           await fs.writeText(`${outputRoot}/IMPORT.md`, steps, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
+          written += 1
+        }
+        if (manifest === undefined && changedAlarms.length > 0) {
+          await fs.writeText(`${outputRoot}/IMPORT.md`, `# Import ${view.app.name}\n\n${alarmImportSteps().join('\n')}`, { kind: 'createIfAbsent' }, exec.signal, policyFor(exec))
           written += 1
         }
         session.recordApplied(outputRoot, writtenFiles)

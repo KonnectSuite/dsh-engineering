@@ -36,12 +36,12 @@ async function opened() {
 describe('editing registration', () => {
   it('mounts the edit tools after the read surface', () => {
     const { definitions } = harness(exportFiles(), { edit: true })
-    expect(definitions.map(definition => definition.name).slice(22)).toEqual([
+    expect(definitions.map(definition => definition.name).slice(23)).toEqual([
       'ftview_draft_display_set', 'ftview_draft_display_attrs', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard', 'ftview_draft_ops', 'ftview_draft_drop',
       'ftview_draft_display_create', 'ftview_draft_display_scaffold', 'ftview_draft_screen', 'ftview_draft_popup', 'ftview_draft_object_add',
       'ftview_draft_object_set',
       'ftview_draft_restyle',
-      'ftview_draft_object_delete', 'ftview_bulk_set', 'ftview_draft_object_order', 'ftview_validate',
+      'ftview_draft_object_delete', 'ftview_bulk_set', 'ftview_draft_object_order', 'ftview_draft_alarm_add', 'ftview_draft_alarm_set', 'ftview_draft_alarm_delete', 'ftview_validate',
       'ftview_verify_import', 'ftview_apply', 'ftview_render',
     ])
   })

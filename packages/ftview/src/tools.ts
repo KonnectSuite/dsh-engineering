@@ -15,7 +15,7 @@ import { documentApplication } from './document.ts'
 import { designFindings } from './design.ts'
 import { themeAudit } from './theme-audit.ts'
 import { SCAFFOLD_THEME } from './edit/scaffold.ts'
-import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
+import { acceptAsset, comparePackage, displayNamesIn, prepareAlarmExport, prepareComponentPackage, prepareDisplayImport, prepareTagExport } from './studio-assets.ts'
 import { defaultTagCsv, exportTagSnapshot } from './tagdb.ts'
 import { defaultAlarmXml, exportAlarmSnapshot } from './alarmdb.ts'
 import { alarmReport } from './alarm-report.ts'
@@ -776,6 +776,46 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         } catch (error) {
           if (error instanceof EngineeringError) throw error
           throw new EngineeringError('IMPORT_PREPARE_FAILED', error instanceof Error ? error.message : String(error), 'Pass an applied export folder and display names it actually contains; each display file must be a <gfx> document.')
+        }
+      },
+    }),
+    tool({
+      name: 'ftview_component_package',
+      description: 'Package display XML from an applied export for Studio’s Add Component Tool: copies the component files and writes the component list file (<hmi><category><component/></category></hmi>), then returns the SEAddComponent command line. Does not install by itself; $AddComponent.txt beside the list file is the install log, exit 0 installed and 1 refused.',
+      parameters: object({
+        application: string('Application name as ftview_apps lists it.'),
+        export_root: string('Applied export folder that contains Displays/.'),
+        components: string('Component (display) names to install, separated by commas, without .xml.'),
+        category: string('Category to install into: Graphics;Displays, Graphics;Global Objects, Graphics;Images, Graphics;DisplayFolders or Graphics;GlobalObjectsFolders. Defaults to Graphics;Displays.'),
+        target_folder: string('Folder inside the application the components land in. Defaults to \\ (the application root).'),
+        overwrite: choice('Append overwrite to the command: replace components the application already has.', ['no', 'yes']),
+        output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
+      }, ['application', 'export_root', 'components']),
+      async run(args) {
+        const application = requiredString(args, 'application')
+        const exportRoot = resolve(requiredString(args, 'export_root'))
+        const names = requiredString(args, 'components').split(',').map(name => name.trim()).filter(name => name !== '')
+        const category = optionalString(args, 'category') ?? 'Graphics;Displays'
+        const outputRoot = resolve(optionalString(args, 'output_root') ?? join(tmpdir(), `ftview-components-${Date.now().toString(36)}`))
+        try {
+          const plan = prepareComponentPackage(
+            application,
+            exportRoot,
+            names,
+            outputRoot,
+            category,
+            optionalString(args, 'target_folder') ?? '\\',
+            optionalString(args, 'overwrite') === 'yes',
+          )
+          return success(
+            `Packaged ${plan.components.length} component(s) for ${application} into ${category}: list file ${plan.listFile}. Run ${plan.command}, then read ${plan.logFile}.`,
+            plan,
+            [{ tool: 'ftview_studio_export_prepare', why: 'After the install, export the application and check the component appears in it.' }],
+            COVERAGE,
+          )
+        } catch (error) {
+          if (error instanceof EngineeringError) throw error
+          throw new EngineeringError('COMPONENT_PACKAGE_FAILED', error instanceof Error ? error.message : String(error), 'Pass the application, an applied export folder with Displays/, and component names it contains. Component names cannot carry % . " : ? * < > # { } - [ ] \' \\ / ; = & +.')
         }
       },
     }),

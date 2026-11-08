@@ -79,6 +79,8 @@ to check before you promise a result.
 - **`ApplicationManagerServer.AppMgrServer`** is a 32-bit COM server with List/Backup/Restore/Copy/Rename. `ListLocalApps` answers, but `BackupLocal` fails on this host (`Class not registered` for app type `ME`, range error otherwise), so backup is reported as unverified rather than promised.
 - **`ApplicationManager.exe`**, **`FactoryTalk View ME Application Documenter.exe`**, **`Icedbe.exe`**, **`LegacyTagDBConvertTool.exe`** are GUI tools with no documented command line; the Documenter can produce a human-readable report but not an importable XML export.
 - **Display import still needs a running Studio.** `ftview_capabilities` reports that per host instead of leaving it to assumption.
+- **The vendor guide now documents the XML.** VIEWME-UM004T (Oct 2025, v16.00) Appendix D gives the display XML element tree (`<gfx>`, `<caption />`, `animateVisibility`/`animateColor`, `<confirm>`, `<group>`, `<vbaProject>`, self-closing empty elements) and the wizard workflow (batch manifest, create/update entries, the import error log that opens when the import ends); Appendix C gives the alarm XML export → edit → import workflow, where import replaces the entire alarm setup, so export a backup first. Corpus pages `view-graphics-import-export` and `view-alarm-xml` carry those rules; the PDF is in `packages/resources/evidence/view/`.
+- **Component install is a command-line tool.** `SEAddComponent.exe <app> ME / "<componentListFile>" [overwrite]` installs displays, global objects, images and folders from a component list file; `ftview_component_package` writes that list file and returns the command, and `$AddComponent.txt` beside it is the install log (exit 0 installed, 1 refused).
 
 
 ## Handover without Studio

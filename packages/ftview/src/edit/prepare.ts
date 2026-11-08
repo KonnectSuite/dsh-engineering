@@ -12,7 +12,8 @@ import { createHash } from 'node:crypto'
 import { EngineeringError, type Coverage, type FsService } from '../core.ts'
 import { findingsOf, type Finding } from '../checks.ts'
 import { parseDisplay, parseTagCsv, type Application, type DisplayFile, type TagRow } from '../model.ts'
-import { addObject, createDisplay, deleteObject, orderObject, renameDisplay, setAttribute, setObject, upsertTag, type EditOperation } from './operations.ts'
+import { addObject, addAlarm, createDisplay, deleteAlarm, deleteObject, orderObject, renameDisplay, setAlarmAttribute, setAttribute, setObject, upsertTag, type EditOperation } from './operations.ts'
+import { alarmReport } from '../alarm-report.ts'
 import { DISPLAY_SETTING_ATTRIBUTES, setDisplaySetting } from '../display-tree.ts'
 import { validateSchema, type SchemaValidation } from '../schema.ts'
 
@@ -239,6 +240,17 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
       displayNames.add(operation.name)
       continue
     }
+    if (operation.kind === 'alarm_add' || operation.kind === 'alarm_set' || operation.kind === 'alarm_delete') {
+      if (!app.files.some(file => file.file === operation.file) && !texts.has(operation.file)) {
+        throw new EngineeringError('COMPONENT_NOT_FOUND', `The draft targets ${operation.file}, which this export no longer contains.`, 'Reopen the export and stage the edit again.')
+      }
+      const current = texts.get(operation.file) ?? await readText(fs, app.root, operation.file, signal)
+      const next = operation.kind === 'alarm_add' ? addAlarm(current, operation)
+        : operation.kind === 'alarm_set' ? setAlarmAttribute(current, operation)
+          : deleteAlarm(current, operation)
+      texts.set(operation.file, next)
+      continue
+    }
     const tagFile = tagFileOf(app)
     const current = texts.get(tagFile) ?? await readText(fs, app.root, tagFile, signal)
     texts.set(tagFile, upsertTag(current, operation))
@@ -277,7 +289,17 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
     const file = diagnostic.split(':')[0] ?? ''
     return !changedFiles.has(file)
   })
-  const findings = [...findingsOf({ displays, tags, tagErrors, diagnostics }), ...draftLayoutFindings(operations, displays), ...missingTargets]
+  // The alarm review runs on the edited document, so a draft that adds a
+  // trigger with no message, or deletes one with messages left behind, is
+  // reported before apply writes the package.
+  const alarmFindings: Finding[] = []
+  for (const [file, text] of texts) {
+    if (!/alarms\//iu.test(file) || !/\.xml$/iu.test(file)) continue
+    for (const finding of alarmReport(text).findings) {
+      alarmFindings.push({ rule: finding.rule, severity: finding.severity, message: `${finding.subject}: ${finding.detail}`, evidence: { file, alarm: finding.subject } })
+    }
+  }
+  const findings = [...findingsOf({ displays, tags, tagErrors, diagnostics }), ...draftLayoutFindings(operations, displays), ...missingTargets, ...alarmFindings]
   // Validate only the documents this draft writes: the unchanged ones were
   // already read by the session, and re-validating 18 displays per call would
   // make every edit pay for the whole export.

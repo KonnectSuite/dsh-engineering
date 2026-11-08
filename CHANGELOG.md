@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+- **Alarm setup is now draftable.** `ftview_draft_alarm_add`, `ftview_draft_alarm_set` and
+  `ftview_draft_alarm_delete` stage edits to the export's `Alarms/Alarms.xml` — a trigger with its first
+  message, one attribute at a time, or a trigger and its messages — and `ftview_apply` writes them beside
+  the display changes with wizard import steps that say plainly that the import replaces the entire alarm
+  configuration, so export the backup first. The alarm findings from `ftview_alarm_report` ride the
+  `ftview_validate` findings, and `ftview_verify_import` states that alarm changes are proven by the
+  wizard's import log, not by a display comparison.
+- **Component install for the Add Component Tool.** `ftview_component_package` copies display XML out of
+  an applied export, writes the component list file (`<hmi><category><component/></category></hmi>`) and
+  returns the `SEAddComponent <app> ME / "<list file>" [overwrite]` command; `$AddComponent.txt` beside the
+  list file is the install log. Component names carrying `% . " : ? * < > # { } - [ ] ' \ / ; = & +` are
+  refused with the offenders listed.
+- **VIEWME-UM004T grounds the view corpus.** The Oct 2025 Machine Edition User's Guide is kept under
+  `packages/resources/evidence/view/`, and two corpus pages carry its appendices:
+  `view-graphics-import-export` (Appendix D display XML element tree, batch manifest create/update entries,
+  the import error log that opens when the import ends, PanelView Plus display-count limits) and
+  `view-alarm-xml` (Appendix C export → edit → import, whole-setup replacement, backup-first). The wizard
+  steps gained the import-error-log step, and the draft tools refuse object types named after the
+  structural elements the guide documents (`animateVisibility`, `animateColor`, `confirm`, `group`,
+  `vbaProject`, `vbaItem`, `vbaCode`).
+
 ## [0.88.0] - 2026-11-08
 
 - **The L5X studio tools spend the cheap checks before the build.** `verify_offline_l5x` now refuses a

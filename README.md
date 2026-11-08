@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 159 tools · 9 rows · 5 products · MIT
+`@aryacode/dsh-engineering` · 163 tools · 9 rows · 5 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -62,7 +62,7 @@ package registers exactly one browser bundle.
 | Product | Tools | Default | Needs |
 |---|---|---|---|
 | **Studio 5000 L5X** | 54 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
-| **FactoryTalk View ME** | 47 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
+| **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **ECAD electrical prints** | 16 | off | none; reads DXF prints (DWG through the embedded converter, no external app); writes stay off until enabled |
