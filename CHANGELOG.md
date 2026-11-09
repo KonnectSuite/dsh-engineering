@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+- **RSLogix 5 (PLC-5) is a product row of its own.** The new `plc5` component (row ships off) adds
+  eight read-only tools and the `rslogix-5` skill: `plc5_capabilities`, `plc5_open`, `plc5_ladder`,
+  `plc5_find`, `plc5_io_census`, `plc5_io_config`, `plc5_data_read` and `plc5_processor`. The ladder
+  reads open an `.RSP` hidden through the `RSLogix5.Application` automation server from the 32-bit
+  PowerShell host and close with the do-not-save flag. The container reader (a dependency-free CFBF
+  parser) walks the directory tree, unpacks the vendor's zlib payloads and answers from the file alone
+  when RSLogix 5 is not installed or will not start: project name, processor type string, author,
+  RSWho route with its IP, and the ladder program-file names. The footprint census reduces every
+  `I:`/`O:` reference in rung text to rack/slot cells and splits configured racks from program-only
+  racks; the chassis reader lists adapters and rack/group ranges and states that the point cards are
+  not in the project; the data-file table reports the catalog, never values. Verified against
+  `F00607.RSP`: the container path names project `F00607`, processor `MML10PF3PX3R9`, route
+  `045_VIM\10.164.108.113\Backplane\1\CH A\1` and 38 ladder program files across 53 streams; the
+  server path returns 52 program files, 2,168 rungs, 226 data files, 4,189 symbols, 10 configured
+  chassis, 443 I/O cells and processor type code 17 from the same file, with the source hash
+  unchanged. The vendor server is single-instance: a hidden `RSLGX5.exe` left by an aborted attempt
+  holds it and makes every new activation fail with `CO_E_SERVER_EXEC_FAILURE`, which the tools' fix
+  text now names; a chassis the server enumerates twice when `ChassisCount` overstates the
+  collection is dropped before the answer is built. The migration row keeps its seven tools; the
+  PLC-5 reads do not reach SLC 500.
+
 ## [0.89.0] - 2026-11-08
 
 - **Alarm setup is now draftable.** `ftview_draft_alarm_add`, `ftview_draft_alarm_set` and

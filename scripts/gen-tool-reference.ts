@@ -29,6 +29,7 @@ import { liveTools } from '../packages/l5x/src/tools/live.ts'
 import { ftviewTools } from '../packages/ftview/src/tools.ts'
 import { resourceTools } from '../packages/resources/src/tools.ts'
 import { migrationTools } from '../packages/migration/src/tools.ts'
+import { plc5Tools } from '../packages/plc5/src/tools.ts'
 import { vendorTools } from '../packages/ftview/src/vendor-tools.ts'
 import { editTools } from '../packages/ftview/src/edit/tools.ts'
 import { studioTools as ftviewStudioTools } from '../packages/ftview/src/studio/tools.ts'
@@ -56,7 +57,7 @@ export interface ToolGroup {
 }
 
 /** Group metadata, in registration order. */
-const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'ECAD' | 'Engineering resources' | 'Migration'; blurb: string }[] = [
+const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'ECAD' | 'Engineering resources' | 'Migration' | 'PLC-5'; blurb: string }[] = [
   { group: 'L5X read', product: 'L5X', blurb: 'Open a Studio 5000 L5X export and read its structure and components.' },
   { group: 'L5X references', product: 'L5X', blurb: 'Follow a symbol through exported logic without opening every routine.' },
   { group: 'L5X checks', product: 'L5X', blurb: 'Evidence-backed structural checks and export comparison.' },
@@ -68,6 +69,7 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'M
   { group: 'L5X controller', product: 'L5X', blurb: 'Supervised controller access. Upload, mode changes and downloads require per-call human approval.' },
   { group: 'L5X live', product: 'L5X', blurb: 'Direct EtherNet/IP reads with no Studio, FactoryTalk Linx or ACD snapshot.' },
   { group: 'Migration', product: 'Migration', blurb: 'Assess a legacy RSLogix 500 export and lint the .L5K a migration wizard writes. Offline file readers; no controller and no claim that a file is migrated.' },
+  { group: 'PLC-5', product: 'PLC-5', blurb: 'Read an RSLogix 5 (PLC-5) .RSP project headlessly through the vendor automation server — ladder in neutral text, I/O footprint, chassis configuration, data-file table, processor identity. Read-only; no controller, and the container reader answers from the file alone when RSLogix 5 is absent.' },
   { group: 'Engineering resources', product: 'Engineering resources', blurb: 'The local standards corpus and the house-style profile read from the open project. No network, no model calls.' },
   { group: 'ECAD read', product: 'ECAD', blurb: 'Probe the drawing engine, confirm the set profile, index the sheets, then open, read, review, cross-reference, render and compare DXF (and DWG through the embedded converter) drawings with stated coverage.' },
   { group: 'ECAD drafts', product: 'ECAD', blurb: 'Stage print edits and prove them: `draft_ops` validates and stages, `draft_apply` writes one NEW drawing beside the source, and `draft_discard`/`verify` close the loop. Requires the row write switch.' },
@@ -105,6 +107,7 @@ export function collectTools(): readonly ToolGroup[] {
     ['ECAD drafts', ecadDraftTools(stub)],
     ['ECAD deliverables', ecadDeliverTools(stub)],
     ['Migration', migrationTools(stub)],
+    ['PLC-5', plc5Tools(stub)],
     ['FTView read', [...ftviewTools(stub), ...vendorTools(stub)]],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],

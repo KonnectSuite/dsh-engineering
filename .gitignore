@@ -26,3 +26,6 @@ __pycache__/
 .l5x-preview-test/
 .l5x-diagram/
 /tmp/
+
+# Session scratch: exported-session extracts, live-verification logs and probe output.
+.scratch/

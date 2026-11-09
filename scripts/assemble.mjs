@@ -22,7 +22,8 @@ export const COMPONENTS = [
   "resources",
   "optix",
   "migration",
-  "ecad"
+  "ecad",
+  "plc5"
 ]
 
 /** The newest modification time under a directory, or undefined when it is absent. */

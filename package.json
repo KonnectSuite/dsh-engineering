@@ -135,6 +135,7 @@
     "./mwi/edit": "./vendor/mwi/lib/edit.js",
     "./resources": "./entries/resources.js",
     "./migration": "./entries/migration.js",
+    "./plc5": "./entries/plc5.js",
     "./preset": "./entries/preset.js",
     "./arya-standard": "./presets/arya-standard/engine.js",
     "./arya-standard-policy": "./presets/arya-standard/policy.js"

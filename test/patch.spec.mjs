@@ -37,6 +37,7 @@ test('is one row per product plus the component rows', () => {
     { id: 'viewers', name: '@aryacode/dsh-engineering' },
     { id: 'engineering-resources', name: '@aryacode/dsh-engineering/resources' },
     { id: 'migration', name: '@aryacode/dsh-engineering/migration' },
+    { id: 'plc5', name: '@aryacode/dsh-engineering/plc5', disabled: true },
     { id: 'optix', name: '@aryacode/dsh-engineering/optix' },
     { id: 'engineering-preset', name: '@aryacode/dsh-engineering/preset' },
   ])

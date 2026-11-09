@@ -61,6 +61,14 @@
     "migration_resolve",
     "migration_report",
     "migration_plan",
+    "plc5_capabilities",
+    "plc5_open",
+    "plc5_ladder",
+    "plc5_find",
+    "plc5_io_census",
+    "plc5_io_config",
+    "plc5_data_read",
+    "plc5_processor",
     "engineering_reference",
     "engineering_profile",
     "ecad_capabilities",
@@ -295,6 +303,21 @@
       "contextChars": 9025
     },
     {
+      "product": "PLC-5",
+      "group": "PLC-5",
+      "tools": [
+        "plc5_capabilities",
+        "plc5_open",
+        "plc5_ladder",
+        "plc5_find",
+        "plc5_io_census",
+        "plc5_io_config",
+        "plc5_data_read",
+        "plc5_processor"
+      ],
+      "contextChars": 5144
+    },
+    {
       "product": "Engineering resources",
       "group": "Engineering resources",
       "tools": [
@@ -466,10 +489,11 @@
     }
   ],
   "context": {
-    "characters": 137643,
+    "characters": 142787,
     "byProduct": {
       "L5X": 50378,
       "Migration": 9025,
+      "PLC-5": 5144,
       "Engineering resources": 1454,
       "ECAD": 15727,
       "FactoryTalk View": 43073,

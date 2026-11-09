@@ -322,6 +322,44 @@
       "vendor": true
     },
     {
+      "id": "plc5",
+      "title": "RSLogix 5 (PLC-5) program reads",
+      "kind": "product",
+      "capability": "offline-file",
+      "default": "off",
+      "namespace": { "prefixes": ["plc5_"], "legacy": false },
+      "row": "plc5",
+      "rowName": "@aryacode/dsh-engineering/plc5",
+      "entry": "entries/plc5.js",
+      "package": "packages/plc5",
+      "tools": {
+        "product": "PLC-5",
+        "count": 8,
+        "inReference": true
+      },
+      "skill": {
+        "name": "rslogix-5",
+        "file": "packages/plc5/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "plc5_capabilities",
+          "plc5_open",
+          "plc5_ladder",
+          "plc5_find",
+          "plc5_io_census",
+          "plc5_io_config",
+          "plc5_data_read",
+          "plc5_processor"
+        ]
+      },
+      "probe": "plc5_capabilities",
+      "gate": null,
+      "docs": [
+        "docs/reference/plc5.md"
+      ],
+      "vendor": true
+    },
+    {
       "id": "viewers",
       "title": "Ladder and display previews",
       "kind": "surface",

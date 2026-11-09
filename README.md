@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 163 tools · 9 rows · 5 products · MIT
+`@aryacode/dsh-engineering` · 171 tools · 10 rows · 6 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -68,6 +68,7 @@ package registers exactly one browser bundle.
 | **ECAD electrical prints** | 16 | off | none; reads DXF prints (DWG through the embedded converter, no external app); writes stay off until enabled |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
+| **RSLogix 5 (PLC-5) program reads** | 8 | off | RSLogix 5 installed for the automation-server reads (the container reader answers from the file alone without it); Node for the container census |
 
 Tool groups, by product:
 
@@ -82,6 +83,7 @@ Tool groups, by product:
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
 - **Optix** — 9 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, and the bridge tools need Studio
 - **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
+- **PLC-5** — 8 read-only tools and the `rslogix-5` skill: `plc5_capabilities` reports the 32-bit host, the registered RSLogix 5 automation server and the container census (streams, sizes, packed flags); `plc5_open` opens an .RSP hidden through `RSLogix5.Application` with the do-not-save flag and returns the program-file census (52 files / 2,168 rungs on the reference project), falling back to the container reader — which names the project, the processor and the ladder program files from the file alone — when RSLogix 5 is absent or will not start; `plc5_ladder` pages rung text in neutral mnemonic form; `plc5_find` searches every rung and the symbol table; `plc5_io_census` reduces the program's `I:`/`O:` references to rack/slot cells and splits configured racks from program-only racks; `plc5_io_config` lists the configured chassis with adapter part numbers and rack/group ranges; `plc5_data_read` returns the data-file table (data-file values are not stored readably and are never claimed); `plc5_processor` names the controller — type string, author, memory, type code, series, driver and RSWho route, each labelled with its source. The point cards are not in the project and no tool invents them
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
@@ -108,10 +110,12 @@ down:
 | `engineering-preset` | none — the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
 | `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
+| `plc5` | RSLogix 5 (PLC-5) `.RSP` reads — capabilities, project census, ladder, search, I/O footprint, chassis configuration, data-file table, processor identity, with the `rslogix-5` skill; the row ships off and writes nothing | `capabilities` (on), `open` (on), `ladder` (on), `find` (on), `ioCensus` (on), `ioConfig` (on), `dataRead` (on), `processor` (on) |
 | `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 A row can also be inserted `disabled` when a component ships off by default: the row is still listed,
-and one switch enables it. ECAD is the one row in this release that ships off; every other row ships on.
+and one switch enables it. ECAD and RSLogix 5 (PLC-5) are the two rows in this release that ship off;
+every other row ships on.
 
 **Why the row list collapsed.** The Plugins page lists a bundle's rows flat and skips `cordis:group`
 containers (`plugin-manager/src/index.ts`: *"Group rows are containers … their children carry the
@@ -213,7 +217,7 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 149 tools built from this repository (133 default-on plus 16 ECAD tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- The generated tool reference covers the 157 tools built from this repository (133 default-on plus 16 ECAD and 8 RSLogix 5 tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
 - ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: line/polyline/circle/arc/ellipse grips stage their setters, while generic geometry and dimension grips still wait on engine setters; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; intersection snap covers straight segments only; entity colour is ACI 1–255 (ByLayer/ByBlock stay on the layer); mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
@@ -347,6 +351,7 @@ even when the implementation behind a row is replaced.
 | [Arya Automation Engineer](docs/preset-arya-automation.md) | The agent preset this bundle ships: the five-step contract, the engineering-tuned compaction, the ledger, and what a preset cannot make true |
 | [Engineering resources](docs/resources.md) | The 41-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [SLC 500 and PLC-5 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
+| [RSLogix 5 (PLC-5) reads](docs/reference/plc5.md) | The eight read-only tools, the two read paths, the three inventories and the known gaps |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
 | [Tool reference](docs/reference/tools.md) | Every tool, parameter and description (generated) |
 | [Components](docs/reference/components.md) | What a component is, the capability classes, the manifest fields, and the checklist for adding one |

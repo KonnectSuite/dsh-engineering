@@ -11,6 +11,7 @@
 #   mwi    → edit                                  (on by default)
 #   optix  → authoring, destructive, invoke, preview, netlogic (all on by default)
 #   ecad   → writes                                (off; the row itself ships off)
+#   plc5   → (the row itself ships off)           (reads only; no writes switch)
 #
 # Every product except ECAD ships on so a fresh install can use it. ECAD is a new,
 # large surface, so it ships listed and disabled until a person enables it. Turn
@@ -62,6 +63,17 @@
     # and nothing claims a file is migrated.
     - id: migration
       name: '@aryacode/dsh-engineering/migration'
+
+    # RSLogix 5 (PLC-5) product row: the headless .RSP reader, the ladder in
+    # neutral text, the ladder search, the I/O footprint census, the chassis
+    # configuration, the data-file table, the processor identity and the
+    # rslogix-5 skill. Every read opens the project hidden through the RSLogix 5
+    # automation server and closes with the do-not-save flag; the container
+    # reader answers from the file alone when RSLogix 5 is absent. The row ships
+    # OFF (a new surface on a legacy platform) and writes nothing at all.
+    - id: plc5
+      name: '@aryacode/dsh-engineering/plc5'
+      disabled: true
 
     # FactoryTalk Optix: vendored like the other three products, so one install
     # carries every surface and no component package is a dependency.
