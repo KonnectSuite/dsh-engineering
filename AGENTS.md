@@ -95,3 +95,19 @@ A client face is part of the app, and the owner judges it that way. Every face �
 - **Test on Dev AryaCode**, `%LOCALAPPDATA%\AryaCode-dev\home`, never on the installed instance: install the tarball there, compose the profile, then boot.
 - **Harness fixes are not this repository's.** If a change requires editing the shell or a `@deepseek-ai` package, it belongs in `KonnectSuite/AryaCode`, verified on Dev AryaCode, and shipped as a harness patch release — not as a local edit here or in the installed app.
 - **No in-place rescue.** If a fix seems to need touching the installed copy, that is the signal the change belongs upstream. Say so and take the release path.
+
+## Releasing: the market step is not optional
+
+This repository releases in batches, only on request, through its own pipeline
+(`pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`) — see the change
+policy above. The catalogue step comes after it and has no substitute: a version on npm
+that the market does not list is not released, it is hidden, because the market answers
+from `releases[0]`.
+
+    node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests
+
+`--skip-build --skip-tests` because the pipeline above already built, tested and
+published the archive; the command then verifies the four conditions (npm serves the
+version, the `catalog` branch lists it, the recorded `sha256` is the hash npm serves,
+`check-catalogue-parity.mjs` is green) and writes the catalogue entry. Never hand-edit
+`data/arya-plugins.json`.
