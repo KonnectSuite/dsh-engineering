@@ -43,6 +43,18 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.90.0 release record (2026-11-09).** Built from `Release 0.90.0` (`ff812c8`), tagged `v0.90.0`.
+Root suite 43 specs green (the tool reference now names 162 tools, and `components.json` carries eight
+components), plc5 vitest 17 passed / 1 skipped (census, container, `rslogix5` and the eight tool
+definitions); `pnpm -r build` + `assemble` (eight components) deterministic. The published tarball is
+3.8 MB / 14.4 MB unpacked / 766 files, sha256 `b34f5a17450c0d3e07ff195ffeaef1ea92c67950924baddedcda8bdf7044a0de`;
+the packaged-bytes smoke extracted the published tarball and mounted its `vendor/plc5` row: the eight
+`plc5_*` tools registered, `plc5_capabilities` answered honestly on this host (`com_server: false`, the
+"RSLogix 5 is not usable on this machine" summary), `plc5_open` on a missing path refused with
+`FILE_MISSING` and the "Pass an existing .RSP project path" fix, and the packaged `rslogix-5` skill
+exported its body and path. The registry serves 0.90.0 as `latest`; the market `catalog` branch records
+the same tarball and sha256.
+
 **0.89.0 release record (2026-11-08).** Built from `Release 0.89.0` (`5ba019a`), tagged `v0.89.0`.
 Root suite 43 specs green, ftview vitest 319/319 (new: alarm drafts 10 tests, component package 5
 tests); `pnpm -r build` + `assemble` (seven components) deterministic. The published tarball is
