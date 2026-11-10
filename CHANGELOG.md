@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.90.0] - 2026-11-09
+
 - **RSLogix 5 (PLC-5) is a product row of its own.** The new `plc5` component (row ships off) adds
   eight read-only tools and the `rslogix-5` skill: `plc5_capabilities`, `plc5_open`, `plc5_ladder`,
   `plc5_find`, `plc5_io_census`, `plc5_io_config`, `plc5_data_read` and `plc5_processor`. The ladder
