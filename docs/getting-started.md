@@ -108,6 +108,13 @@ and reads the diagnostics.
 The agent reads the live model through the Studio bridge, applies typed edits, and can validate
 expressions and read NetLogic guidance from the pinned cheat-sheet snapshot.
 
+The preview chain is four links, and `optix_status` names the first one that is missing: the row's
+`preview` switch, a browser (by default the plugin starts Chrome or Edge itself), the project's **Web
+presentation engine** serving `previewUrl` while the project runs in Studio, and — for canvas text —
+a host Tesseract named by `ocrExecutable`. `optix_ocr_setup` reports that install and, on request,
+runs it through `winget`; `optix_action` with `ensure_web_engine` adds the engine node a project
+lacks. See [the Optix port](port/optix.md) for what each link needs.
+
 ## 5. What the bundle will not pretend
 
 - **FactoryTalk View import and runtime creation are Studio steps.** The bundle exports, authors,
@@ -116,7 +123,8 @@ expressions and read NetLogic guidance from the pinned cheat-sheet snapshot.
   database the result says so instead of presenting them as current.
 - **MotionWorks needs its IDE running.** Without it, the row is read-only over saved files.
 - **Optix needs the Studio bridge.** Disk files can be stale while Studio is open; the bridge is the
-  truth.
+  truth. `optix_bridge_arm` can put the bridge source into a project that has none, but compiling it
+  and right-clicking `StartBridge` are Studio actions no tool can take for you.
 - **L5X builds need Studio 5000 and the SDK**, and no surface can prove that online logic matches the
   export or that the machine is safe. Coverage fields say what was not established.
 

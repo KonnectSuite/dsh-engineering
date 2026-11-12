@@ -14,12 +14,26 @@ runtime values unless a tool says it does, and every authoring call is validated
 model first.
 
 The rows are switches. `allowWrites`, `allowDestructive` and `allowInvoke` gate what
-`optix_edit` and `optix_action` may do; the preview tools need the emulator browser and its CDP
-endpoint. If a tool is missing, that switch is off in this profile.
+`optix_edit` and `optix_action` may do. The preview tools need the project's **Web presentation
+engine** running in Studio and a browser to read it: by default the plugin starts Chrome or Edge
+itself (`browser: launch`), so nobody has to open a browser or a CDP port by hand; `browser: attach`
+connects to one you started. If a tool is missing, that switch is off in this profile. `optix_status`
+answers the preview question rather than leaving you to guess: its `preview_chain` reports the
+switch, the browser mode and whether a browser is available, whether the emulator serves its URL,
+how many tabs match it, and whether the OCR executable and language data are installed — and its
+`next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
+retry a preview tool against a dead link.
 
 ## Read before you write
 
-1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on.
+1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on, and what
+   the preview chain is missing.
+   When it answers `Bridge unavailable` for a project that has never been bridged, that project holds
+   no bridge source at all. `optix_bridge_arm` with `confirm: false` shows what would be written into
+   the project's `ProjectFiles/NetSolution`; with `confirm: true` it writes the bridge this bundle ships
+   after copying any file the project already held. Ask before writing into an engineer's project
+   directory, and say plainly that Studio still compiles the class and the engineer still right-clicks
+   StartBridge — neither is automatable from outside Studio.
 2. `optix_read` — screens, widgets, types, variable members, schemas, CLR diagnostics. Start with
    `map` at `overview` depth, then `detail` for the one subtree that matters.
 3. `optix_validate_expression` — check an expression against real node paths before attaching it.
@@ -53,8 +67,14 @@ compilation and runtime behaviour as unverified until Studio compiles it.
 - `optix_edit` applies one typed batch; run it with `dry_run` first and read the validation result.
 - `optix_action` creates NetLogic, ensures a web engine, adds a translation, converts an instance to a
   type, or invokes an exported method. Invocation needs a session-safe bridge and `allowInvoke`.
-- `optix_preview` and `optix_screenshot` inspect the emulator through CDP. Input can change runtime
-  values; state that before using it.
+- `optix_preview` and `optix_screenshot` read the emulator page. By default the plugin starts its own
+  Chrome or Edge for this; input can change runtime values, so state that before using it.
+- `optix_ocr` reads text rendered on the canvas — labels a web page exposes no DOM for — through the
+  host Tesseract. It is registered only when the row names an `ocrExecutable`.
+- `optix_ocr_setup` reports whether that Tesseract and its language data are on the machine, and with
+  `install: true` installs it through winget. It never installs a Python service or an OCR daemon. If
+  Tesseract is already present it says so and names the path to put in `ocrExecutable`, which is a
+  config change, not an install. Ask before running the install: it downloads software.
 - `optix_template` discovers the packaged Optix IPC and OptixPanel starter projects. Copy the chosen
   project with filesystem tools, never overwrite an existing project, and keep the template's name.
 

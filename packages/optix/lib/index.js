@@ -4,9 +4,11 @@ import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
+import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
+import { armBridge } from "./arm.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -549,39 +551,103 @@ function applyPreview(ctx, config) {
 		await Promise.allSettled([...clients].map((browser) => browser.close()));
 		await Promise.allSettled(pending);
 	});
-	/** Acquire one unambiguous preview page; external Chromium stays running on disconnect. */
+	let launched;
+	/**
+	* Start the browser the plugin owns, once, and keep its page so the emulator keeps state between
+	* calls. Playwright resolves a channel to an installed Chrome or Edge; `auto` tries both.
+	* @param combined - The call's abort signal.
+	* @returns The one page the preview tools act on.
+	*/
+	async function launchedPage(combined) {
+		if (launched !== undefined && !launched.browser.isConnected()) launched = undefined;
+		if (launched === undefined) {
+			const { chromium } = await import("playwright-core");
+			const channels = config.browserChannel === "auto" ? [
+				"chrome",
+				"msedge"
+			] : [config.browserChannel];
+			let browser;
+			let failure;
+			for (const channel of channels) try {
+				browser = await chromium.launch({
+					headless: config.browserHeadless,
+					...config.browserPath ? {
+						executablePath: config.browserPath
+					} : {
+						channel
+					}
+				});
+				break;
+			} catch (error) {
+				failure = error;
+			}
+			if (browser === undefined) throw new Error(`Optix preview could not start a browser: ${String(failure)}; set browserChannel to chrome or msedge, or browserPath to the executable.`);
+			clients.add(browser);
+			browser.on("disconnected", () => {
+				if (launched !== undefined && launched.browser === browser) launched = undefined;
+			});
+			launched = {
+				browser,
+				page: await (await browser.newContext()).newPage()
+			};
+		}
+		if (launched.page.isClosed()) launched.page = await (await launched.browser.newContext()).newPage();
+		combined.throwIfAborted();
+		if (new URL(launched.page.url()).href !== target.href) await launched.page.goto(config.previewUrl, {
+			timeout: config.requestTimeoutMs,
+			waitUntil: "load"
+		});
+		return launched.page;
+	}
+	/** Connect to a browser the engineer started; the connection is ours, the browser is not. */
+	async function attachedBrowser(combined) {
+		const { chromium } = await import("playwright-core");
+		const browser = await chromium.connectOverCDP(config.cdpUrl, {
+			timeout: config.requestTimeoutMs,
+			noDefaults: true
+		});
+		clients.add(browser);
+		combined.throwIfAborted();
+		return browser;
+	}
+	/** Acquire one preview page: attach leaves an external browser running, launch keeps its own alive. */
 	function withPage(signal, run) {
 		if (busy) return Promise.reject(/* @__PURE__ */ new Error("An Optix preview call is already running"));
 		busy = true;
 		const work = (async () => {
 			const combined = AbortSignal.any([signal, disposed.signal]);
 			combined.throwIfAborted();
-			const { chromium } = await import("playwright-core");
-			const browser = await chromium.connectOverCDP(config.cdpUrl, {
-				timeout: config.requestTimeoutMs,
-				noDefaults: true
-			});
-			clients.add(browser);
+			const launch = config.browser === "launch";
+			let browser;
+			let page;
+			if (launch) {
+				page = await launchedPage(combined);
+				browser = launched.browser;
+			} else {
+				browser = await attachedBrowser(combined);
+				const pages = browser.contexts().flatMap((context) => context.pages()).filter((candidate) => samePreviewTarget(new URL(candidate.url()), target));
+				if (pages.length !== 1 || !pages[0]) {
+					await browser.close().catch(() => {});
+					clients.delete(browser);
+					throw new Error("Open exactly one tab at the configured Optix previewUrl");
+				}
+				page = pages[0];
+			}
 			let disconnected;
-			const disconnect = () => {
+			const release = () => {
+				if (launch) return;
 				disconnected = Promise.allSettled([browser.close()]);
+				clients.delete(browser);
 			};
-			combined.addEventListener("abort", disconnect, { once: true });
+			combined.addEventListener("abort", release, { once: true });
 			try {
 				combined.throwIfAborted();
-				const pages = browser.contexts().flatMap((context) => context.pages()).filter((page) => {
-					const url = new URL(page.url());
-					return url.origin === target.origin && url.pathname === target.pathname && url.search === target.search;
-				});
-				const page = pages[0];
-				if (pages.length !== 1 || !page) throw new Error("Open exactly one tab at the configured Optix previewUrl");
 				page.setDefaultTimeout(config.requestTimeoutMs);
 				return await run(page);
 			} finally {
-				combined.removeEventListener("abort", disconnect);
+				combined.removeEventListener("abort", release);
+				release();
 				if (disconnected) await disconnected;
-				else await browser.close();
-				clients.delete(browser);
 			}
 		})();
 		pending.add(work);
@@ -972,6 +1038,51 @@ function applyTemplates(ctx, maxBytes) {
 	})));
 }
 //#endregion
+//#region lib/types/arm.js
+/**
+ * Arm an existing project with the bridge it lacks, which is the usual reason every other
+ * Optix tool answers `Bridge unavailable`. No bridge is assumed to be running here: the tool
+ * works on the project directory, and the two steps that need Studio stay in its report.
+ * @param ctx - Harness tool runtime context.
+ */
+function applyBridgeArm(ctx) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_bridge_arm",
+		description: "Report, and on confirmation write, the Studio bridge an existing Optix project needs so it can be read and authored at all. Works on the project directory, not through a bridge: it checks ProjectFiles/NetSolution, keeps whatever the project already holds under ProjectFiles/.dsh-backups, and writes the bridge this bundle ships. With confirm false nothing is written. Studio still compiles the class and the engineer still runs StartBridge; no tool can do either from outside Studio.",
+		parameters: {
+			project: {
+				type: "string",
+				required: true,
+				description: "Absolute path of the project directory holding the .optix file and ProjectFiles."
+			},
+			confirm: {
+				type: "boolean",
+				required: true,
+				description: "false returns the plan and writes nothing; true writes the bridge after backing up any file already there."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "Arm the Optix project bridge",
+			kind: "edit"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
+			const report = await armBridge(args.project, shipped, args.confirm);
+			exec.signal.throwIfAborted();
+			return report;
+		}
+	})));
+}
+//#endregion
 //#region lib/types/index.js
 /** Native FactoryTalk Optix discovery and live authoring tools. @module dsh-tool-ft-optix */
 /** Cordis plugin name. */
@@ -991,6 +1102,17 @@ const Config = z.object({
 	maxMapNodes: z.natural().min(1).default(800),
 	maxMapDepth: z.natural().min(1).default(8),
 	preview: z.boolean().default(false),
+	browser: z.enum([
+		"attach",
+		"launch"
+	]).default("launch"),
+	browserChannel: z.enum([
+		"auto",
+		"chrome",
+		"msedge"
+	]).default("auto"),
+	browserPath: z.string().default(""),
+	browserHeadless: z.boolean().default(false),
 	cdpUrl: z.string().default("http://127.0.0.1:9223"),
 	previewUrl: z.string().default("http://127.0.0.1:8081/"),
 	allowPreviewInput: z.boolean().default(false),
@@ -1035,6 +1157,10 @@ function resolve(config) {
 		maxMapNodes: config.maxMapNodes ?? 800,
 		maxMapDepth: config.maxMapDepth ?? 8,
 		preview: config.preview ?? false,
+		browser: config.browser ?? "launch",
+		browserChannel: config.browserChannel ?? "auto",
+		browserPath: config.browserPath ?? "",
+		browserHeadless: config.browserHeadless ?? false,
 		cdpUrl: config.cdpUrl ?? "http://127.0.0.1:9223",
 		previewUrl: config.previewUrl ?? "http://127.0.0.1:8081/",
 		allowPreviewInput: config.allowPreviewInput ?? false,
@@ -1055,6 +1181,7 @@ function resolve(config) {
 	if (/[\r\n]/.test(resolved.bridgeToken)) throw new Error("bridgeToken cannot contain header delimiters");
 	resolved.cdpUrl = bridgeOrigin(resolved.cdpUrl);
 	resolved.previewUrl = previewTarget(resolved.previewUrl);
+	if (/[\0\r\n]/.test(resolved.browserPath)) throw new Error("browserPath must be a plain path without control characters");
 	if (resolved.ocr) {
 		if (!resolved.preview) throw new Error("Optix OCR requires preview enabled");
 		if (!resolved.ocr.executable.trim() || resolved.ocr.executable.includes("\0")) throw new Error("OCR executable must be non-empty");
@@ -1072,6 +1199,102 @@ function acceptedValidation(value, count) {
 	if (typeof value.ok !== "boolean" || value.op_count !== count || !Array.isArray(value.errors) || !Array.isArray(value.warnings)) throw new Error("Bridge returned an incomplete batch validation report");
 	return value.ok && value.errors.length === 0 && value.warnings.length === 0;
 }
+/** An OCR install is a package-manager download, so it gets far longer than a request. */
+const OCR_INSTALL_TIMEOUT_MS = 300000;
+/**
+ * Report the host Tesseract that `optix_ocr` reads with, and install it on request.
+ * Registered whether or not OCR is configured, so a missing OCR tool can be explained
+ * rather than guessed at, and so the fix is one config value where Tesseract is already
+ * on the machine. No Python service and no OCR daemon is ever installed.
+ * @param ctx - Cordis context with the harness tool runtime.
+ * @param settings - Resolved deployment settings.
+ */
+function applyOcrSetup(ctx, settings) {
+	/** Run a host command and resolve its combined output, rejecting with that output on failure. */
+	function hostRun(command, args, timeoutMs, signal) {
+		const completed = Promise.withResolvers();
+		const child = execFile(command, args, {
+			env: scrubbedParentEnv(),
+			windowsHide: true,
+			timeout: timeoutMs,
+			maxBuffer: settings.maxResponseBytes,
+			encoding: "utf8",
+			signal
+		}, (_error, stdout, stderr) => {
+			const output = `${stdout ?? ""}\n${stderr ?? ""}`.trim();
+			completed.resolve(output);
+		});
+		signal.addEventListener("abort", () => {
+			child.kill();
+		}, {
+			once: true
+		});
+		return completed.promise;
+	}
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_ocr_setup",
+		description: "Report the host Tesseract install that optix_ocr reads canvas text with, and with install set to true install it through the Windows package manager. Detection names the executable, whether it is on this machine, and whether the language data is present; the install is idempotent and never installs a Python service or an OCR daemon. Run this before telling an engineer that canvas text cannot be read.",
+		parameters: {
+			install: {
+				type: "boolean",
+				required: true,
+				description: "true installs Tesseract through winget when it is missing; false only reports the state."
+			}
+		},
+		output: {
+			schema: {
+				type: "json"
+			},
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "Check the OCR install",
+			kind: "edit"
+		}),
+		async execute(args, exec) {
+			let probe = await ocrProbe(settings.ocr);
+			let installedNow = false;
+			if (args.install && !probe.installed && probe.discovered === "") {
+				const command = await tesseractInstallCommand();
+				if (command.length === 0) throw new Error("Tesseract is not installed and winget is not on PATH: install Tesseract-OCR yourself, then set ocrExecutable to its tesseract.exe");
+				await hostRun(command[0], command.slice(1), OCR_INSTALL_TIMEOUT_MS, exec.signal);
+				probe = await ocrProbe(null);
+				installedNow = true;
+			}
+			const executable = probe.installed ? probe.executable : probe.discovered;
+			const tessdataDirectory = executable === "" ? "" : probe.installed ? probe.tessdataDirectory : join(dirname(executable), "tessdata");
+			const traineddata = executable === "" ? false : probe.traineddata;
+			let version = "";
+			if (executable !== "") version = (await hostRun(executable, ["--version"], settings.requestTimeoutMs, exec.signal)).match(/v?(\d+\.\d+[^\s)]*)/u)?.[1] ?? "";
+			let next = "";
+			if (!settings.preview) next = "preview is off on the Optix row: turn it on before optix_ocr can read the canvas.";
+			else if (executable === "") next = args.install ? "The package manager did not install Tesseract: install Tesseract-OCR yourself, then set ocrExecutable to its tesseract.exe." : "Tesseract is not on this machine: call this tool with install set to true to install it through winget.";
+			else if (!traineddata) next = `Tesseract is installed but ${probe.language}.traineddata is not in ${tessdataDirectory}: set ocrTessdataDirectory to the folder that holds it.`;
+			else if (settings.ocr === null) next = `Set the Optix row's ocrExecutable to ${executable} to register optix_ocr.`;
+			else next = "optix_ocr is registered: call it with psm 11 for scattered HMI labels and verify each value against the live model.";
+			return {
+				preview: settings.preview,
+				registered: settings.ocr !== null && probe.installed && traineddata,
+				installed: executable !== "",
+				executable,
+				...version === "" ? {} : {
+					version
+				},
+				language: probe.language,
+				tessdataDirectory,
+				traineddata,
+				...installedNow ? {
+					installedNow: true
+				} : {},
+				next
+			};
+		}
+	})));
+}
 /**
 * Register native tools and abort transport work on plugin disposal.
 * @param ctx - Cordis context with the harness tool runtime.
@@ -1080,6 +1303,8 @@ function acceptedValidation(value, count) {
 function apply(ctx, config = {}) {
 	const settings = resolve(config);
 	applyTemplates(ctx, settings.maxResponseBytes);
+	applyBridgeArm(ctx);
+	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);
 	});
@@ -1107,7 +1332,7 @@ function apply(ctx, config = {}) {
 	}
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_status",
-		description: "Discover loaded FactoryTalk Optix Studio projects directly through configured local bridges. Use before selecting a project. No MCP or Python service is required.",
+		description: "Discover loaded FactoryTalk Optix Studio projects directly through configured local bridges, and report the state of the preview, emulator and OCR chain with the first missing link named. Use before selecting a project, and before any preview or screenshot call. No MCP or Python service is required.",
 		parameters: {},
 		output: jsonOutput,
 		presentCall: () => ({
@@ -1138,7 +1363,8 @@ function apply(ctx, config = {}) {
 				endpoints,
 				authoring: settings.allowWrites,
 				destructive: settings.allowDestructive,
-				invoke: settings.allowInvoke
+				invoke: settings.allowInvoke,
+				preview_chain: await chainReport(settings, exec.signal)
 			};
 		}
 	})));

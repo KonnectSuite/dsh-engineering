@@ -29,6 +29,8 @@ const BUNDLE = [
   'test/config.spec.mjs',
   'test/ecad-policy.spec.mjs',
   'test/netlogic.spec.mjs',
+  'test/optix-chain.spec.mjs',
+   'test/optix-arm.spec.mjs',
   'test/resources.spec.mjs',
   'test/viewer-face-css.spec.mjs',
   'test/diagram-face.spec.mjs',

@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 171 tools · 10 rows · 6 products · MIT
+`@aryacode/dsh-engineering` · 173 tools · 10 rows · 6 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -64,7 +64,7 @@ package registers exactly one browser bundle.
 | **Studio 5000 L5X** | 54 | all on | Node for reads and edits; an optional Logix Designer SDK for SDK builds; a controller for live |
 | **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **FactoryTalk Optix** | 11 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **ECAD electrical prints** | 16 | off | none; reads DXF prints (DWG through the embedded converter, no external app); writes stay off until enabled |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
@@ -111,7 +111,7 @@ down:
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
 | `migration` | legacy SLC 500 / PLC-5 assessment, the .L5K linter, the conversion-marker resolver and the signed migration report, with the `legacy-to-logix-migration` skill | `assess` (on), `lint` (on), `compare` (on), `resolve` (on), `report` (on), `plan` (on) |
 | `plc5` | RSLogix 5 (PLC-5) `.RSP` reads — capabilities, project census, ladder, search, I/O footprint, chassis configuration, data-file table, processor identity, with the `rslogix-5` skill; the row ships off and writes nothing | `capabilities` (on), `open` (on), `ladder` (on), `find` (on), `ioCensus` (on), `ioConfig` (on), `dataRead` (on), `processor` (on) |
-| `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
+| `optix` | FactoryTalk Optix Studio authoring and the NetLogic reader | `bridgeUrls` (8768), `bridgeToken` (empty), `allowWrites` (on), `allowDestructive` (on), `allowInvoke` (on), `preview` (on), `allowPreviewInput` (on), `browser` (`launch`), `browserChannel` (`auto`), `browserPath` (empty), `browserHeadless` (off), `cdpUrl`, `previewUrl`, `ocrExecutable` (empty), `ocrLanguage` (`eng`), `ocrTessdataDirectory` (empty), `netlogic` (on) |
 
 A row can also be inserted `disabled` when a component ships off by default: the row is still listed,
 and one switch enables it. ECAD and RSLogix 5 (PLC-5) are the two rows in this release that ship off;

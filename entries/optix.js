@@ -34,10 +34,22 @@ export const Config = z.object({
     'Invoke exported methods on a session-safe bridge build.',
   ),
   preview: z.boolean().default(true).volatile().description(
-    'Register the direct-CDP preview and screenshot tools. Needs the emulator browser open.',
+    'Register the preview, screenshot and OCR tools. The plugin starts its own browser unless you set browser to attach.',
+  ),
+  browser: z.enum(['attach', 'launch']).default('launch').volatile().description(
+    'launch starts a Chrome or Edge for the preview itself; attach connects to a browser you started with --remote-debugging-port.',
+  ),
+  browserChannel: z.enum(['auto', 'chrome', 'msedge']).default('auto').volatile().description(
+    'Which installed browser to start in launch mode. auto tries Chrome then Edge.',
+  ),
+  browserPath: z.string().default('').volatile().description(
+    'Full path to a browser executable, for a install that is not in the usual location. Empty uses browserChannel.',
+  ),
+  browserHeadless: z.boolean().default(false).volatile().description(
+    'Start the preview browser without a window. Leave off so the engineer can watch the emulator being read.',
   ),
   cdpUrl: z.string().default('http://127.0.0.1:9223').volatile().description(
-    'Chromium DevTools endpoint used only when preview is on.',
+    'Chromium DevTools endpoint, used only when browser is attach.',
   ),
   previewUrl: z.string().default('http://127.0.0.1:8081/').volatile().description(
     'Already-open emulator tab, matched by exact origin, path and query.',
@@ -80,6 +92,10 @@ export function apply(ctx, config = {}) {
       allowDestructive: flag(config.allowDestructive),
       allowInvoke: flag(config.allowInvoke),
       preview: flag(config.preview),
+      browser: text(config.browser) || 'launch',
+      browserChannel: text(config.browserChannel) || 'auto',
+      browserPath: text(config.browserPath),
+      browserHeadless: flag(config.browserHeadless),
       cdpUrl: text(config.cdpUrl) || 'http://127.0.0.1:9223',
       previewUrl: text(config.previewUrl) || 'http://127.0.0.1:8081/',
       allowPreviewInput: flag(config.allowPreviewInput),

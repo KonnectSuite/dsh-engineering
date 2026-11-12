@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+- **The Optix preview chain reports itself, and the plugin starts its own browser.** Reading the
+  emulator needs four links the row never described: the `preview` switch, a browser answering CDP,
+  the project's **Web presentation engine** serving `previewUrl`, and — for canvas text — a host
+  Tesseract. `optix_status` now returns all of it in `preview_chain` with `next` naming the first
+  unmet link, in words that say what to do: `Nothing serves http://127.0.0.1:8081/: run the loaded
+  project in Studio so its Web presentation engine answers that address; if the project has no such
+  engine, optix_action with action ensure_web_engine adds one`. Attach mode was the only mode, so the
+  engineer had to start Chrome with `--remote-debugging-port` by hand before any preview tool worked;
+  `browser: launch` is now the default and the plugin starts Chrome or Edge itself through the
+  `playwright-core` it already depends on, keeping one browser alive across calls so the emulator page
+  keeps its state. `browserChannel`, `browserPath` and `browserHeadless` cover the machine where that
+  guess is wrong, and `browser: attach` keeps the old path for a browser someone else owns.
+- **OCR stops being an invisible prerequisite.** `optix_ocr` registers only when the row names an
+  `ocrExecutable`, and nothing said so: the tool was simply absent. `optix_ocr_setup` reports whether
+  that executable and its `.traineddata` are on the machine, discovers a Tesseract already installed
+  under `Program Files\Tesseract-OCR` and names the one config value that would use it, and with
+  `install: true` runs `winget install --id UB-Mannheim.TesseractOCR` — the package upstream's
+  `setup.ps1` uses, without its venv, its Pillow dependency or its Python service. It asks before
+  downloading anything.
+- **A project with no bridge can be armed, and the human step is stated.** `Bridge unavailable` used to
+  be the end of the road: the bridge is an `[ExportMethod]` right-clicked inside Studio, so nothing
+  outside can start it. `optix_bridge_arm` writes the shipped `StudioMCPBridge.cs` into the project's
+  `ProjectFiles/NetSolution` — an SDK-style project, so a `.cs` beside it compiles — after copying
+  whatever the project held to `ProjectFiles/.dsh-backups`, and reports both versions. `confirm: false`
+  plans without writing. It then stops and says what only Studio can do: compile, add the
+  `StudioMCPBridge` NetLogic node if the project has none, right-click StartBridge.
+- **New document:** [`docs/port/optix.md`](docs/port/optix.md) records why Optix is the one component
+  with no source here, what the pinned upstream bridge is and is not (the bundle runs none of
+  upstream's MCP or Python), and the four-link chain; `docs/getting-started.md` gained the chain and
+  the bridge-arm caveat.
+
 ## [0.91.0] - 2026-11-12
 
 - **A rung copied out of a Studio routine is now an input the plugin reads.** `parseLadder` accepted
