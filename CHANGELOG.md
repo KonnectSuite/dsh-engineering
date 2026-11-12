@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.91.0] - 2026-11-12
+
 - **A rung copied out of a Studio routine is now an input the plugin reads.** `parseLadder` accepted
   only this plugin's bracket NeutralText, so the text an engineer actually holds — `XIC Start XIO Stop
   OTE Run`, a branch written `BST … NXB … BND`, no parentheses and no terminator — came back
