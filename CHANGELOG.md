@@ -1,5 +1,39 @@
 ## [Unreleased]
 
+- **A rung copied out of a Studio routine is now an input the plugin reads.** `parseLadder` accepted
+  only this plugin's bracket NeutralText, so the text an engineer actually holds — `XIC Start XIO Stop
+  OTE Run`, a branch written `BST … NXB … BND`, no parentheses and no terminator — came back
+  `INVALID_LADDER: Rung contains malformed structure`. `parseRung` reads both formats now: an operand
+  run ends at a whitespace gap unless an operator token continues the expression, so
+  `Local:1:I.Pt12.Data` stays one operand and `MOV Tag1 + Tag2 Tag3` keeps its arithmetic, and the next
+  instruction begins only at a mnemonic the instruction catalog knows — an AOI call written without
+  parentheses is still refused. What is staged and written is unchanged NeutralText: `neutralText`
+  normalises every accepted rung, so an export never stores pasted copy text, and `studioForm` answers
+  the other direction. `checkRungText` refuses the `?` Studio writes for an operand the engineer left
+  unconnected and refuses a two-rung paste in one field with a fix that names `compose_batch`.
+  `draft_rung`, `compose_rung`, `compose_batch`, `add_routine` and `l5x_rung_preview` all take either
+  format, and `rung_list` carries `text` in copy format beside `neutral_text` in bracket form.
+- **An alias to an I/O point resolves instead of blocking the edit.** A module contributes its tags
+  through `TagDefinition` under `Module`, and the image type that names the member — `1756-IB16/Data` —
+  is never declared as a `DataType` anywhere in the export, so `DI_Gate_Fault` → `Local:1:I.Pt12.Data`
+  failed with `Member Pt12 is absent from 1756-IB16/Data` and every `draft_rung` touching the alias was
+  refused on a file that imports and builds in Studio unchanged. `tag-resolution.ts` indexes
+  `Modules/Module/TagDefinition` in controller scope and answers `resolved: true` with
+  `type_unverified: true` and the reason, and an alias whose target the export does not carry resolves
+  to the alias with `Alias target … is absent from the export`. A member absent from a type the export
+  *does* declare — a UDT, an AOI, a built-in structure — is still refused. `resolve_tag` puts the reason
+  in its summary and in `coverage.unverified` instead of blaming a dynamic subscript, and
+  `project-analysis` reports the real gap.
+- **The Logix Designer SDK is an optional extra, not a precondition for editing.** The `l5x` component
+  drops its `studio_sdk_status` probe and its gate moves from `verify_offline_l5x` to
+  `compare_projects`: the written L5X differing from the source by exactly the draft's operations, with
+  `run_checks` passing on it, proves the edit offline. `engineering_capabilities` answers
+  `studio_validation: 'optional'` with a note that `draft_validate` and `draft_apply` need only Node,
+  and the `offline_build` next step tells the reader to hand the new L5X to Studio 5000 for Import +
+  Verify, which is the normal path when no SDK is installed — a licence very few people purchase.
+  `rockwell-l5x` SKILL body grew to 12,121 characters (budget raised to match), and the default-on
+  schema ceiling moved to 127,423 with the measured 122,522.
+
 ## [0.90.0] - 2026-11-09
 
 - **RSLogix 5 (PLC-5) is a product row of its own.** The new `plc5` component (row ships off) adds

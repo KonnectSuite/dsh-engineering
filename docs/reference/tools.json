@@ -213,7 +213,7 @@
         "l5x_compose_logic",
         "l5x_routine_diagram"
       ],
-      "contextChars": 4116
+      "contextChars": 4407
     },
     {
       "product": "L5X",
@@ -245,7 +245,7 @@
         "draft_validate",
         "draft_apply"
       ],
-      "contextChars": 17367
+      "contextChars": 17682
     },
     {
       "product": "L5X",
@@ -489,9 +489,9 @@
     }
   ],
   "context": {
-    "characters": 142787,
+    "characters": 143393,
     "byProduct": {
-      "L5X": 50378,
+      "L5X": 50984,
       "Migration": 9025,
       "PLC-5": 5144,
       "Engineering resources": 1454,

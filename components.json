@@ -2,8 +2,8 @@
   "catalog": 1,
   "contextBudget": {
     "defaultOnTools": 147,
-    "defaultOnSchemaCharacters": 121916,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 115116 characters of the 133 default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 9 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
+    "defaultOnSchemaCharacters": 127423,
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 9 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -33,13 +33,14 @@
       "skill": {
         "name": "rockwell-l5x",
         "file": "packages/l5x/SKILL.md",
-        "budget": 10265,
+        "budget": 12121,
         "allow": [
           "project_id",
           "verification_id",
           "spec_json",
           "arguments_json",
           "paste_text",
+          "neutral_text",
           "start_stop_latch",
           "fault_latch",
           "ton_delay",
@@ -49,10 +50,10 @@
           "untested_revision"
         ]
       },
-      "probe": "studio_sdk_status",
+      "probe": null,
       "gate": {
-        "tool": "verify_offline_l5x",
-        "why": "a draft is only safe once the Studio SDK imports and builds the changed L5X"
+        "tool": "compare_projects",
+        "why": "the written L5X differs from the source by exactly the draft's operations and run_checks passes on it, which proves the edit offline without any Studio install"
       },
       "docs": [
         "docs/port/l5x.md"

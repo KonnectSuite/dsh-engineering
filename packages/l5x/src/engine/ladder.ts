@@ -137,21 +137,25 @@ function resolveOperand(project: ProjectSnapshot, text: string): ReturnType<type
 }
 /** One tag or literal operand, checked against its slot kind. */
 /** The refusal for an operand that names no declaration, naming the program that owns it when known. */
-function missingTag(project: ProjectSnapshot, text: string): L5xError {
+function missingTag(project: ProjectSnapshot, text: string, reason?: string): L5xError {
   const base = text.split(/[.[:]/u)[0] ?? text
   const near = project.document.tags
     .map(tag => tag.name)
     .filter(name => name.toLowerCase().includes(text.split('.')[0]!.toLowerCase()))
     .slice(0, 5)
   const scope = project.programScope
+  // A controller-scope tag is visible from every program, so naming it as where the name lives
+  // explains nothing and sends the reader on a scope hunt that is not the failure. Only another
+  // program's tag is a scope mistake worth reporting.
   const elsewhere = scope === undefined ? [] : [...new Set(project.document.tags
-    .filter(tag => tag.name.toUpperCase() === base.toUpperCase() && tag.scope.toLowerCase() !== scope.toLowerCase())
+    .filter(tag => tag.name.toUpperCase() === base.toUpperCase() && tag.scope.toLowerCase() !== scope.toLowerCase() && tag.scope.toLowerCase() !== 'controller')
     .map(tag => tag.scope))]
   // A tag local to another program exists in the export but not in this rung's program; saying
   // "does not exist" would send the reader looking for a typo that is not there.
+  const absent = `No tag named "${text}" resolves in this export.`
   const message = scope !== undefined && elsewhere.length > 0
     ? `${text} is not declared in program ${scope}; it is declared in ${elsewhere.join(', ')}.`
-    : `No tag named "${text}" resolves in this export.`
+    : reason === undefined ? absent : `${absent} ${reason}.`
   return new L5xError(
     'TAG_NOT_FOUND',
     message,
@@ -318,11 +322,15 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
   }
   const resolution = resolveOperand(project, text)
   if (!resolution.resolved) {
-    throw missingTag(project, text)
+    throw missingTag(project, text, resolution.reason)
   }
   const type = (resolution.data_type ?? '').toUpperCase()
   const operand: ComposedOperand = { text, resolved: true, canonical: resolution.canonical ?? text, ...(type === '' ? {} : { data_type: type }), ...(resolution.dimensions === undefined ? {} : { dimensions: resolution.dimensions }) }
   seen.push(operand)
+  // A declared alias whose target the export does not carry has no readable type, so the slot
+  // kind checks below have nothing to compare. The name is still the name Studio accepts in the
+  // rung, so the operand is kept and only the type claim is withheld.
+  if (resolution.type_unverified === true) return operand
   if (kind === 'BOOL' && type !== 'BOOL') {
     throw new L5xError('INVALID_OPERAND', `${text} is ${type || 'an unknown type'}; this slot needs a BOOL tag.`, 'Use a BOOL tag, or an alias that resolves to BOOL.', [])
   }

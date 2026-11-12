@@ -165,6 +165,7 @@ export function module(
     readonly safetyNetwork?: string
     readonly majorFault?: boolean
     readonly inhibited?: boolean
+    readonly tagDefinitions?: string
   } = {},
 ): string {
   const safety = options.safety === true ? ' SafetyEnabled="true"' : ''
@@ -173,5 +174,23 @@ export function module(
   const nameAttribute = name === '' ? '' : ` Name="${name}"`
   const slot = options.slot === undefined ? '' : `<Ports><Port Id="1" Address="${options.slot}"/></Ports>`
   const open = `<Module${nameAttribute} CatalogNumber="${catalogNumber}" Vendor="1" ProductType="14" ProductCode="0" Major="1" Minor="11" ParentModule="${options.parentModule ?? 'Local'}" ParentModPortId="${options.parentPortId ?? '1'}" Inhibited="${options.inhibited === true ? 'true' : 'false'}" MajorFault="${options.majorFault === true ? 'true' : 'false'}"${safety}${network}`
-  return slot === '' ? `${open}/>` : `${open}>${slot}</Module>`
+  const body = `${slot}${options.tagDefinitions ?? ''}`
+  return body === '' ? `${open}/>` : `${open}>${body}</Module>`
+}
+
+/**
+ * One tag an I/O module contributes to the controller tag list. Studio writes these under the
+ * `Module`, and the image type it names is NOT declared as a `DataType` anywhere in the export.
+ */
+export function tagDefinition(tagName: string, dataType: string, tagMember: string, options: { readonly dimensions?: string } = {}): string {
+  const dimensions = options.dimensions === undefined ? '' : ` Dimensions="${options.dimensions}"`
+  return `<TagDefinition Tag="${tagName}" DataType="${dataType}" Scope="Controller" TagMember="${tagMember}"${dimensions}/>`
+}
+
+/**
+ * One alias tag. Studio leaves `DataType` empty when the alias takes its target's type, which is
+ * the shape that made an alias to an I/O point unresolvable.
+ */
+export function aliasTag(name: string, aliasFor: string, dataType = ''): string {
+  return `<Tag Name="${name}" TagType="Alias" DataType="${dataType}" AliasFor="${aliasFor}"/>`
 }

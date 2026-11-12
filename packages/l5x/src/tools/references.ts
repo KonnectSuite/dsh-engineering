@@ -264,9 +264,12 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           }
         }
         const canonical = resolution.canonical
+        // A resolved address can still carry an unverified type: an alias to an I/O module tag whose
+        // module type is not in the export resolves to the point, but nothing proves the member.
+        const caveat = resolution.type_unverified === true ? ` ${resolution.reason ?? 'The declared type could not be verified from this export.'}.` : ''
         return success(
           resolution.resolved
-            ? `${address} resolves to ${canonical ?? 'its declared type'}${resolution.data_type === undefined ? '' : ` (${resolution.data_type})`}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}.`
+            ? `${address} resolves to ${canonical ?? 'its declared type'}${resolution.data_type === undefined ? '' : ` (${resolution.data_type})`}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}.${caveat}`
             : `${address} does not resolve: ${resolution.reason ?? 'not declared in this export'}.`,
           adoptedFrom === '' ? resolution : { ...resolution, adopted_from: adoptedFrom },
           [
@@ -275,9 +278,15 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
               ? []
               : [{ tool: 'find_references', args: { symbol: canonical.split(/[.[]/u)[0] ?? canonical }, why: 'Follow the base declaration this address resolves to.' }]),
           ],
-          resolution.indices_verified
+          resolution.indices_verified && resolution.type_unverified !== true
             ? COVERAGE
-            : { complete: false, unverified: ['a dynamic subscript was not expanded', ...COVERAGE.unverified] },
+            : {
+                complete: false,
+                unverified: [
+                  ...(resolution.type_unverified === true ? [resolution.reason ?? 'The declared type could not be verified from this export.'] : ['a dynamic subscript was not expanded']),
+                  ...COVERAGE.unverified,
+                ],
+              },
         )
       },
     }),

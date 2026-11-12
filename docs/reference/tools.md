@@ -4,7 +4,7 @@
 
 The engineering bundle registers **162 tools** for L5X and Migration and PLC-5 and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 162 definitions total **142787 characters** of model-visible JSON — name, description and
+Those 162 definitions total **143393 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -202,7 +202,7 @@ Render proposed rungs as a viewer document so a chat answer shows ladder, not Ne
 
 #### `l5x_rung_preview`
 
-Return proposed ladder rungs as paste-ready Studio neutral text, and write one minimal L5X preview document so the project viewer can show them. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. The answer carries the exact block to paste into a ladder routine (`paste_text`); the diagram is drawn only when asked for. Nothing is imported and no project is modified.
+Return proposed ladder rungs as Studio 5000 ladder copy text (`paste_text`: mnemonics and operands space separated, parallel branches as BST/NXB/BND — the format Studio writes when you copy a routine), and write one minimal L5X preview document so the project viewer can show them. Accepts either format on input: this plugin's bracket NeutralText or text pasted out of Studio. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. Nothing is imported and no project is modified.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -215,7 +215,7 @@ Return proposed ladder rungs as paste-ready Studio neutral text, and write one m
 
 #### `l5x_compose_logic`
 
-Compose ladder logic in the chat when no project is open and no workspace file is wanted. Returns `paste_text`: NeutralText ready to paste into a Studio 5000 ladder routine, plus the tag declarations it expects. Writes no file and needs no L5X/ACD. Use a named pattern (start_stop_latch, fault_latch, ton_delay, interlock, analog_scale, totalizer, run_hour_meter) or pass the NeutralText yourself: one rung per line ending in ";", and parallel branches written [path1,path2] such as [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);. Syntax and catalogued instruction mnemonics are validated; tag existence/types and Studio compilation are not. In your answer, put paste_text in a fenced code block so the reader can copy it into Studio.
+Compose ladder logic in the chat when no project is open and no workspace file is wanted. Returns `paste_text` in Studio 5000 ladder copy format — mnemonics and operands space separated, parallel branches as BST/NXB/BND, no parentheses — which is what a Studio 5000 ladder-editor paste expects, plus the tag declarations it expects. Writes no file and needs no L5X/ACD. Use a named pattern (start_stop_latch, fault_latch, ton_delay, interlock, analog_scale, totalizer, run_hour_meter) or pass the rung text yourself in either format: this plugin's NeutralText (one rung per line ending in ";", parallel branches [path1,path2], such as [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);) or text copied out of Studio. Syntax and catalogued instruction mnemonics are validated; tag existence/types and Studio compilation are not. In your answer, put paste_text in a fenced code block so the reader can copy it into Studio.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -260,7 +260,7 @@ Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source 
 
 #### `draft_rung`
 
-Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags and this draft's staged tags are visible; another program's local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.
+Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The rung text may be this plugin's NeutralText or text copied straight out of a Studio 5000 ladder routine (mnemonics and operands space separated, parallel branches as BST/NXB/BND) — both parse. The text is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags, controller-scope I/O alias tags and this draft's staged tags are visible; another program's local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -268,7 +268,7 @@ Append one ladder rung operation to the chat draft: replace, insert or delete. A
 | `routine` | string | yes | Routine the rung belongs to. Example: "MainRoutine". |
 | `mode` | string (replace \| insert \| delete) | yes | replace rewrites an existing rung, insert adds one, delete removes one. |
 | `rung` | integer | no | Rung number the operation targets. Required for replace and delete; for insert it is the position the new rung takes, 0..the current rung count. |
-| `text` | string | no | NeutralText for replace or insert. Omit for delete. Example: "XIC(Start)OTE(Run);" |
+| `text` | string | no | Rung text for replace or insert, in either format: NeutralText (Example: "XIC(Start)OTE(Run);") or Studio copy text (Example: "XIC Start XIO Stop OTE Run"). Omit for delete. |
 | `before_rung` | integer | no | For insert only: put the new rung immediately before this rung; it must equal rung. |
 | `comment` | string | no | Optional rung comment, written above the rung in Studio. Omit to leave an existing comment unchanged. |
 | `project_id` | string | no | Handle returned by open_project. Omit when exactly one project is open in this chat. |

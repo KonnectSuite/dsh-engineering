@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { instructionByName } from './instructions.ts'
 import { loadL5x } from '../model/index.ts'
 import type { L5xDocument } from '../model/types.ts'
-import { parseLadder, lexLogic, rightRailReader } from './logic-syntax.ts'
+import { lexLogic, neutralText, parseRung, placeholderOperands, rightRailReader, type LadderNode } from './logic-syntax.ts'
 import { compareProjects, runChecks } from './review.ts'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
 import { typeInstances, typeIndex, udtDetail } from './details.ts'
@@ -209,14 +209,19 @@ function externalAccess(row: Record<string, unknown>): string | undefined {
  * Refuse rung text Studio cannot compile as written.
  *
  * The draft path and the change-set path both write NeutralText into a routine,
- * so both check it here: malformed structure, and a rung whose right power rail
- * is fed by a read-only instruction (`RxCMP_E_AUDIT_OUTPUTS` in Studio).
+ * so both check it here: malformed structure, an unconnected `?` pasted out of a
+ * Studio routine, and a rung whose right power rail is fed by a read-only
+ * instruction (`RxCMP_E_AUDIT_OUTPUTS` in Studio). Text copied out of a routine is
+ * accepted as pasted: no terminator, no parentheses, `BST` … `NXB` … `BND` branches.
  */
-export function checkRungText(text: string): void {
-  const parsed = parseLadder(text)
-  if (parsed.issues.length > 0) throw new EngineeringError('INVALID_LADDER', 'Rung contains malformed or unsupported NeutralText structure', 'Write one complete rung, ending in a semicolon.')
+export function checkRungText(text: string): { nodes: readonly LadderNode[]; text: string } {
+  const parsed = parseRung(text)
+  if (parsed.issues.length > 0) throw new EngineeringError('INVALID_LADDER', `Rung contains malformed structure: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}`, 'Write one complete rung. Either format is accepted: NeutralText such as "XIC(Start)OTE(Motor);", or text copied out of a Studio routine such as "XIC Start XIO Stop OTE Motor" with parallel branches as BST … NXB … BND. Pass one rung per call; compose_batch takes a block of them.')
+  const placeholders = placeholderOperands(parsed.nodes)
+  if (placeholders.length > 0) throw new EngineeringError('INVALID_LADDER', `The operand ? after ${placeholders.join(', ')} is how Studio's copy format marks an operand the engineer left unconnected`, 'Replace every ? with the tag or value the instruction should use, then retry.')
   const rail = rightRailReader(parsed.nodes)
   if (rail !== undefined) throw new EngineeringError('INVALID_LADDER', `The rung ends in ${rail}, which reads the condition but never drives the right power rail; Studio refuses to build it (RxCMP_E_AUDIT_OUTPUTS)`, 'End the rung with an output instruction such as OTE, OTL or a timer; put the condition before it.')
+  return { nodes: parsed.nodes, text: neutralText(parsed.text, parsed.nodes) }
 }
 
 function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation {
@@ -228,8 +233,7 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
       fields(row, row.operation === 'delete_rung' ? ['operation', 'program', 'routine', 'rung'] : row.operation === 'insert_rung' ? ['operation', 'program', 'routine', 'rung', 'text', 'before_rung', 'comment'] : ['operation', 'program', 'routine', 'rung', 'text', 'comment'])
       const selected = { program: identifier(row, 'program'), routine: identifier(row, 'routine'), rung: integer(row, 'rung') }
       if (row.operation === 'delete_rung') return { operation: row.operation, ...selected }
-      const source = text(row, 'text')
-      checkRungText(source)
+      const source = checkRungText(text(row, 'text')).text
       const comment = row.comment === undefined ? {} : { comment: text(row, 'comment') }
       if (row.operation === 'replace_rung') return { operation: row.operation, ...selected, text: source, ...comment }
       return { operation: row.operation, ...selected, text: source, ...comment, ...(row.before_rung === undefined ? {} : { before_rung: integer(row, 'before_rung') }) }
@@ -465,8 +469,7 @@ function applyOperation(xml: string, operation: Operation, context: ApplyContext
     else if (operation.language === 'SFC') body = '<SFCContent SheetSize="Letter - 8.5 x 11 in" SheetOrientation="Landscape"/>'
     else if (operation.language === 'ST') body = stContent(operation.code)
     else {
-      const lines = (operation.code ?? '').split('\n').filter(line => line.trim() !== '')
-      for (const line of lines) checkRungText(line)
+      const lines = (operation.code ?? '').split('\n').filter(line => line.trim() !== '').map(line => checkRungText(line).text)
       body = '<RLLContent>' + lines.map((line, index) => `<Rung Number="${index}" Type="N"><Text>${cdata(line)}</Text></Rung>`).join('') + '</RLLContent>'
     }
     return insert(xml, routines, `<Routine Name="${operation.name}" Type="${operation.language}">${body}</Routine>`)

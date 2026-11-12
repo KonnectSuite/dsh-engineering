@@ -19,6 +19,12 @@ export interface TagResolution {
   readonly dimensions?: readonly number[]
   /** Scopes that declare the base name when the requested scope does not. */
   readonly scopes?: readonly string[]
+  /**
+   * The name resolves to a declaration, but its type could not be read from the export — an
+   * alias whose target the export does not carry. The name is still valid to write in a rung;
+   * only the type claim is unverified.
+   */
+  readonly type_unverified?: boolean
 }
 
 /** Scopes that declare one base name, ignoring case, in table order. */
@@ -58,6 +64,27 @@ function tableOf(document: L5xDocument): ReadonlyMap<string, Declaration> {
   }
   const controller = controllerElementOf(document)
   add(controller, 'controller', 'Tags', 'Tag')
+  // An I/O point tag is declared by the module that owns it, not in the controller's `<Tags>`
+  // list, and Studio resolves it as a controller-scope tag. An alias tag (`TagType="Alias"`)
+  // then names it in `AliasFor`, so reading only Controller/Tags made every alias to an I/O
+  // point unresolvable and refused rungs that Studio accepts. Both shapes are read: the
+  // attribute form (`<TagDefinition Tag=".." DataType=".."/>`, what a module emits) and the
+  // container form (`<TagDefinition><Tag Name=".."/></TagDefinition>`).
+  const modules = firstChild(controller, 'Modules')
+  if (modules !== undefined) for (const module of elementChildren(modules, 'Module')) {
+    for (const definition of elementChildren(module, 'TagDefinition')) {
+      const direct = definition.attrs.Tag ?? definition.attrs.Name
+      if (direct !== undefined && direct !== '') {
+        table.set(key('controller', direct), { name: direct, scope: 'controller', type: definition.attrs.DataType ?? '', dimensions: dimensionsOf(definition) })
+        continue
+      }
+      for (const element of elementChildren(definition, 'Tag')) {
+        const name = element.attrs.Name ?? ''
+        if (name === '') continue
+        table.set(key('controller', name), { name, scope: 'controller', type: element.attrs.DataType ?? '', dimensions: dimensionsOf(element) })
+      }
+    }
+  }
   const programs = firstChild(controller, 'Programs')
   if (programs !== undefined) for (const program of elementChildren(programs, 'Program')) add(program, program.attrs.Name ?? '', 'Tags', 'Tag')
   const aois = firstChild(controller, 'AddOnInstructionDefinitions')
@@ -151,8 +178,26 @@ export function resolveTag(document: L5xDocument, scope: string, symbol: string)
     if (target === undefined) return fail('Malformed alias target')
     if (segments[0]!.indices !== undefined) return fail('Subscript on an alias requires explicit target verification')
     segments = [...target, ...segments.slice(1)]
-    declaration = table.get(key(targetScope, target[0]!.name)) ?? (targetQualification === null ? table.get(key('controller', target[0]!.name)) : undefined)
-    if (declaration === undefined) return fail('Alias target is absent from the export')
+    const aliasOwner = declaration
+    const found = table.get(key(targetScope, target[0]!.name)) ?? (targetQualification === null ? table.get(key('controller', target[0]!.name)) : undefined)
+    if (found === undefined) {
+      // The alias itself is declared; only its target is missing from this export — an I/O point
+      // the export does not carry, or a tag owned by equipment that was not exported. Studio
+      // accepts the alias name in a rung, so the name resolves and only the type is unverified:
+      // refusing here blocked edits that the same file imports and builds without complaint.
+      const declared = aliasOwner.type
+      return {
+        symbol,
+        scope,
+        resolved: true,
+        canonical: `${aliasOwner.scope}::${aliasOwner.name}`,
+        ...(declared === '' ? { type_unverified: true } : { data_type: declared }),
+        aliases,
+        indices_verified: false,
+        reason: `Alias target ${aliasOwner.alias} is absent from the export`,
+      }
+    }
+    declaration = found
   }
   let dataType = declaration.type
   let dimensions = declaration.dimensions
@@ -170,7 +215,27 @@ export function resolveTag(document: L5xDocument, scope: string, symbol: string)
         const member = udt?.members.find(entry => entry.name.toLowerCase() === segment.name.toLowerCase())
         const aoi = document.aois.find(entry => entry.name.toLowerCase() === dataType.toLowerCase())
         const parameter = aoi?.parameters.find(entry => entry.name.toLowerCase() === segment.name.toLowerCase())
-        if (builtin === undefined && member === undefined && parameter === undefined) return fail(`Member ${segment.name} is absent from ${dataType}`)
+        if (builtin === undefined && member === undefined && parameter === undefined) {
+          // Two different refusals hide in here. When the plugin knows the type (a built-in
+          // structure, a UDT or an AOI in this export) a member that is not in it is a real typo
+          // and must be refused. An I/O image type — the type a module's `TagDefinition` names,
+          // which is why an alias such as `DI_Gate_Fault` → `Local:1:I.Pt12.Data` walks into it —
+          // is not declared in the export at all, so the member cannot be checked: Studio accepts
+          // it, and refusing it blocked edits of a file that imports and builds unchanged.
+          if (builtins[previousType] === undefined && udt === undefined && aoi === undefined) {
+            return {
+              symbol,
+              scope,
+              resolved: true,
+              canonical: `${declaration.scope}::${[...canonical, ...segments.slice(position).map(entry => entry.name)].join('.')}`,
+              type_unverified: true,
+              aliases,
+              indices_verified: false,
+              reason: `Member ${segment.name} cannot be checked: type ${dataType} is not declared in this export`,
+            }
+          }
+          return fail(`Member ${segment.name} is absent from ${dataType}`)
+        }
         name = member?.name ?? parameter?.name ?? segment.name.toUpperCase()
         dataType = builtin ?? member?.dataType ?? parameter!.dataType
         dimensions = member?.dimension === undefined ? [] : [member.dimension]

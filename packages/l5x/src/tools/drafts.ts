@@ -11,7 +11,7 @@
 
 import { prepareChangeSet, checkRungText, fbdSheetXml, sfcChartXml } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
-import { parseLadder } from '../engine/logic-syntax.ts'
+import { studioForm, type LadderNode } from '../engine/logic-syntax.ts'
 import { previewDocument, previewDocumentOf, previewSlug, type PreviewBody } from '../engine/preview-document.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
@@ -77,6 +77,16 @@ const COMPOSED_COVERAGE: Coverage = {
     'Studio 5000 import and build are not performed by this surface',
     'runtime behavior',
   ],
+}
+
+/** One composed rung with its Studio 5000 copy form added beside the NeutralText. */
+function withStudio(rung: ComposedRung): ComposedRung & { readonly studio_text: string } {
+  return { ...rung, studio_text: studioForm(rung.neutral_text) ?? rung.neutral_text }
+}
+
+/** The composed rungs as one block in Studio 5000 ladder copy format, one rung per line. */
+function pasteBlock(rungs: readonly ComposedRung[]): string {
+  return rungs.map(rung => studioForm(rung.neutral_text) ?? rung.neutral_text).join('\n')
 }
 
 /** Parse one JSON-object argument, refusing anything else. */
@@ -193,13 +203,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
   return [
     tool({
       name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The NeutralText is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags and this draft\'s staged tags are visible; another program\'s local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The rung text may be this plugin\'s NeutralText or text copied straight out of a Studio 5000 ladder routine (mnemonics and operands space separated, parallel branches as BST/NXB/BND) — both parse. The text is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags, controller-scope I/O alias tags and this draft\'s staged tags are visible; another program\'s local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
         mode: choice('replace rewrites an existing rung, insert adds one, delete removes one.', ['replace', 'insert', 'delete']),
         rung: integer('Rung number the operation targets. Required for replace and delete; for insert it is the position the new rung takes, 0..the current rung count.', { minimum: 0 }),
-        text: string('NeutralText for replace or insert. Omit for delete. Example: "XIC(Start)OTE(Run);"'),
+        text: string('Rung text for replace or insert, in either format: NeutralText (Example: "XIC(Start)OTE(Run);") or Studio copy text (Example: "XIC Start XIO Stop OTE Run"). Omit for delete.'),
         before_rung: integer('For insert only: put the new rung immediately before this rung; it must equal rung.', { minimum: 0 }),
         comment: string('Optional rung comment, written above the rung in Studio. Omit to leave an existing comment unchanged.'),
         project_id: PROJECT_ID,
@@ -215,33 +225,40 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           throw new L5xError('PROTECTED_TARGET', `Routine ${routine} in ${program} is source-protected in this export; its body cannot be read or changed.`, 'Obtain an unprotected export or the source project from the vendor.')
         }
         const mode = requiredString(args, 'mode')
-        const text = optionalString(args, 'text')
+        const supplied = optionalString(args, 'text')
         const rung = optionalInteger(args, 'rung')
         const before = optionalInteger(args, 'before_rung')
         const comment = args.comment === undefined ? undefined : String(args.comment)
+        // Refuse malformed rungs, and rungs that never reach the right rail, now rather than
+        // carrying them in the draft until Studio's build rejects them. Text pasted out of a
+        // Studio routine is accepted here and normalised to NeutralText before it is staged, so
+        // the file this draft writes always carries the form Studio reads back.
+        let text: string | undefined
+        let nodes: readonly LadderNode[] = []
+        if (mode !== 'delete' && supplied !== undefined) {
+          const checked = checkRungText(supplied)
+          text = checked.text
+          nodes = checked.nodes
+        }
         let operation: DraftOperation
         if (mode === 'delete') {
           if (rung === undefined) throw invalid('rung', 'Required when mode is delete.', 'Pass the rung number to remove.')
           operation = { operation: 'delete_rung', program, routine, rung }
         } else if (mode === 'replace') {
-          if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is replace.', 'Pass the rung number and its new NeutralText.')
+          if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is replace.', 'Pass the rung number and its new rung text: NeutralText, or text copied out of a Studio routine.')
           operation = { operation: 'replace_rung', program, routine, rung, text, ...(comment === undefined ? {} : { comment }) }
         } else if (mode === 'insert') {
-          if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is insert.', 'Pass the new rung number and its NeutralText.')
+          if (rung === undefined || text === undefined) throw invalid('rung and text', 'Required when mode is insert.', 'Pass the new rung number and its rung text: NeutralText, or text copied out of a Studio routine.')
           operation = { operation: 'insert_rung', program, routine, rung, text, ...(before === undefined ? {} : { before_rung: before }), ...(comment === undefined ? {} : { comment }) }
         } else {
           throw invalid('mode', `Unknown mode ${JSON.stringify(mode)}.`, 'Pass one of: replace, insert, delete.')
         }
-        // Refuse malformed rungs and rungs that never reach the right rail now,
-        // rather than carrying them in the draft until Studio's build rejects them.
-        if (mode !== 'delete' && text !== undefined) {
-          checkRungText(text)
+        if (text !== undefined) {
           // A raw rung is still composed against one program: its tags resolve only there and in
           // the controller, plus tags this draft stages for that program.
           const stagedNow = drafts.existing(exec, project.id)
           const view = withStagedTags(project, stagedFromDraft(stagedNow?.operations ?? [], project))
-          const parsed = parseLadder(text)
-          if (parsed.issues.length === 0) validateRungTags({ ...view, programScope: program }, parsed.nodes)
+          validateRungTags({ ...view, programScope: program }, nodes)
         }
         return appended(drafts.append(exec, project.id, operation, maxOperations), operation)
       },
@@ -310,8 +327,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const staged = program !== undefined || routine !== undefined || mode !== undefined || rung !== undefined
         if (!staged) {
           return success(
-            `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}; pass program and routine to stage it.`,
-            { ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs },
+            `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}; paste_text is Studio 5000 ladder copy format, or pass program and routine to stage it.`,
+            { ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs.map(rung => withStudio(rung)), paste_text: pasteBlock(composed.rungs) },
             [{ tool: 'compose_rung', args: { spec_json: '{"series":[]}' }, why: 'Adjust the structure, or stage this text with draft_rung.' }],
             COMPOSED_COVERAGE,
           )
@@ -343,9 +360,9 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         }
         return success(
           `Composed and staged ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}. Draft ${stagedDraft.id}: ${stagedDraft.operations.length} operation(s).${previewWritten === undefined ? '' : ` Ladder preview at ${previewWritten}.`}`,
-          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs, ...(previewWritten === undefined ? {} : { preview_path: previewWritten }) },
+          { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs.map(rung => withStudio(rung)), paste_text: pasteBlock(composed.rungs), ...(previewWritten === undefined ? {} : { preview_path: previewWritten }) },
           [
-            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed rungs' }] }, why: 'Show the composed rungs as ladder in the chat, with the NeutralText ready to copy.' }]),
+            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed rungs' }] }, why: 'Show the composed rungs as ladder in the chat; paste_text is the Studio copy block.' }]),
             { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' },
           ],
           COMPOSED_COVERAGE,
@@ -433,11 +450,12 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           {
             draft_id: stagedDraft.id,
             operation_count: stagedDraft.operations.length,
-            rungs: composed.map((rung, index) => ({ rung: first + index, neutral_text: rung.neutral_text })),
+            rungs: composed.map((rung, index) => ({ rung: first + index, ...withStudio(rung) })),
+            paste_text: pasteBlock(composed),
             ...(previewWritten === undefined ? {} : { preview_path: previewWritten }),
           },
           [
-            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed batch' }] }, why: 'Show the batch as ladder in the chat, with the NeutralText ready to copy.' }]),
+            ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed batch' }] }, why: 'Show the batch as ladder in the chat; paste_text is the Studio copy block.' }]),
             { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' },
           ],
           COMPOSED_COVERAGE,

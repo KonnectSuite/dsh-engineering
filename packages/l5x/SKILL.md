@@ -9,7 +9,9 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 ## Boundary
 
 This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into
-Studio, or touches a controller. Live reads are read-only; controller writes need per-call human approval.
+Studio, or touches a controller. The engineer imports that new file into Studio 5000 themselves — that is the
+normal workflow, not a fallback. Reads, drafts and `draft_apply` need Node only: no Studio, no Logix Designer SDK,
+no Linx. Live reads are read-only; controller writes need per-call human approval.
 
 ## Compose in chat without a project
 
@@ -19,12 +21,16 @@ Studio, or touches a controller. Live reads are read-only; controller writes nee
 - Use `l5x_compose_logic`: pass a named pattern with `arguments_json`, or pass the NeutralText
   `rungs` directly. It needs no project and writes nothing. It returns `paste_text` and the tag
   declarations the rung expects.
-- **Put `paste_text` in a fenced code block** in the answer so the reader can copy it straight into
-  a Studio 5000 ladder routine. List the tags to declare and one sentence on how the rung works.
+- **Put `paste_text` in a fenced code block** in the answer: it is Studio's own copy format — mnemonics
+  and operands space separated, parallel branches `BST` … `NXB` … `BND`, no parentheses, no semicolon —
+  so it pastes straight into a routine in the ladder editor. List the tags to declare.
 - NeutralText grammar: one rung per line ending in `;`; instructions are `MNEMONIC(operands)`;
   **parallel branches are `[path1,path2]`**, for example
   `[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);`. `l5x_compose_logic` validates syntax and catalogued
   instruction names; it cannot check tag existence/types without a project, and it says so.
+- **Both formats parse.** Text copied out of a Studio routine is accepted by `l5x_compose_logic`,
+  `draft_rung` and `compose_rung`, so a rung the engineer pasted can be staged as-is. `paste_text`
+  always returns the Studio format; `neutral_text` beside it is the bracket form.
 - Only when the person also wants the change applied to an export should you open that project and
   use the `draft_*`/`compose_rung` path. A pasted rung is a complete answer on its own.
 
@@ -53,6 +59,9 @@ truth. Never write to `<workspace>/_backups`.
 - Vendor and product data types are readable: `get_component kind="udt"` returns them with `vendorOwned`;
   `list_components` lists them only with `include_vendor: true`.
 - An unresolved symbol is refused with `UNRESOLVED_SYMBOL` plus candidate scopes. Fix the scope, do not guess.
+- A controller-scope tag resolves from every program rung, including an I/O alias such as
+  `DI_Gate_Fault` → `Local:1:I.Pt12.Data`; the alias target lives in the module, not in the tag list.
+  A `TAG_NOT_FOUND` on such a name means the spelling is wrong, not that the scope is missing.
 
 ## Checks and comparison
 
@@ -81,10 +90,14 @@ truth. Never write to `<workspace>/_backups`.
 ## Revisions
 
 - Reading accepts revision 19+; outside the observed matrix reports `verification: unverified`.
-- Reading never needs Studio; `l5x-studio` adds offline build and approval-gated controller tools.
+- Reading never needs Studio. `l5x-studio` is an **optional** extra that some sites license: do not
+  probe it, install .NET, or treat a missing SDK as a blocker before editing — reads and drafts work
+  without it, and the engineer imports the result in Studio.
 
-## Studio
+## Studio (optional — most sites have no SDK license)
 
+- Nothing in read, draft or `draft_apply` needs the SDK. When `studio_sdk_status` reports it
+  unavailable, say so once and continue offline; never install a runtime to satisfy it.
 - `export_acd_to_l5x` writes a new full L5X from an ACD; no controller contact.
 - `verify_offline_l5x` imports and builds; it needs revision 37+ and the matching Studio release.
   Its baseline must be exported in this chat: export the `.ACD`, `open_project` that L5X, verify
@@ -103,13 +116,19 @@ truth. Never write to `<workspace>/_backups`.
   description, FBD, SFC.
 - `draft_validate` prepares the draft against the project; `draft_apply` writes ONE new L5X and never overwrites.
 - Reopen the written file to review it. Drafts belong to this chat.
+- **Prove the edit offline, then hand it over.** Reopen the written file, `run_checks` it, and
+  `compare_projects` the source against it: the diff must be exactly the draft's operations. That is
+  the evidence, and it needs no Studio. The engineer imports the new file into Studio 5000.
+- **When the composer cannot express the change** (`FAL`/`FSC`, or a shape it refuses), edit the
+  export at text level: copy the source into the backup folder, edit the **copy** with the harness
+  file tools, then `open_project` + `run_checks` + `compare_projects` on it. Never edit the engineer's
+  source in place, and name the file to import.
 
 ## Compose
 
 - `list_instructions` lists slots and kinds; read it first. Its flags are enforced: array_tag, no_array,
   minimum/maximum, types (MESSAGE, alarms, PID, CONTROL).
-- For a chat-only answer, `l5x_compose_logic` is the no-project/no-file path: a named pattern or raw
-  NeutralText, with `paste_text` ready to paste. Parallel branches are `[path1,path2]`.
+- For a chat-only answer, `l5x_compose_logic` is the no-project/no-file path.
 - `compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
   `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
   `ton_delay` enable/timer/preset_ms; `interlock` conditions (array) and output;
@@ -146,7 +165,7 @@ truth. Never write to `<workspace>/_backups`.
 - A rung whose only instruction is `SBR()` is refused (`LgxSrv_E_FATAL_ERROR`; `AUDIT_OUTPUTS` beside `RET`). Write
   the body without a header rung, or declare parameters.
 - Repair: `run_checks` names it, `compose_rung` with `mode: "replace"` rewrites the rung, `draft_apply` writes a new
-  export, `verify_offline_l5x` builds it.
+  export. The engineer imports and verifies it in Studio; `verify_offline_l5x` builds it only where the SDK is licensed.
 - If a previously imported export now aborts, the controller **name is registered** with the SDK; import the same bytes under a new name.
 
 ## Documentation

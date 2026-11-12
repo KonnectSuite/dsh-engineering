@@ -36,9 +36,10 @@ const HOST_TOOLS = new Set([
   'read_controller_mode',
   'read_live_tag',
   'studio_review_evidence',
+  'studio_sdk_status',
   'verify_offline_l5x',
 ])
-const PARAMETERS = new Set(['project_id', 'spec_json', 'arguments_json', 'paste_text'])
+const PARAMETERS = new Set(['project_id', 'spec_json', 'arguments_json', 'paste_text', 'neutral_text'])
 
 describe('the skill surface', () => {
   it('fits the component budget', () => {

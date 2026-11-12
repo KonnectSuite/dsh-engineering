@@ -27,7 +27,9 @@ Reading accepts L5X revision 19 or later and never needs Studio. A changed expor
 `draft_rung`, `draft_st`, `draft_routine`, `draft_tag`, `draft_tag_description`, `draft_udt_member` and
 `draft_udt_description` append one operation per call; `draft_validate` prepares the draft and
 `draft_apply` writes one new L5X beside the source. Nothing overwrites, imports, connects or changes
-a controller.
+a controller. The whole editing path needs Node only — no Studio, no Logix Designer SDK, no Linx. The
+engineer imports the new L5X into Studio 5000, which is the normal workflow, not a fallback; the SDK
+row is an optional extra for people who bought it.
 
 ## Studio and controller
 

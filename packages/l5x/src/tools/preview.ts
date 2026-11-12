@@ -16,7 +16,7 @@ import { success, type Coverage } from '../core/result.ts'
 import { choice, integer, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import { previewDocument, previewSlug } from '../engine/preview-document.ts'
-import { parseLadder, type LadderNode } from '../engine/logic-syntax.ts'
+import { neutralText, parseRung, studioForm, type LadderNode } from '../engine/logic-syntax.ts'
 import { instructionByName } from '../engine/instructions.ts'
 import { PATTERNS, type PatternName } from '../engine/ladder.ts'
 import { getRoutine, listRoutines } from '../model/routines.ts'
@@ -40,6 +40,8 @@ const PREVIEW_COVERAGE: Coverage = {
 interface PreviewRung {
   readonly number: number
   readonly text: string
+  /** The same rung in Studio 5000's own ladder copy format (`BST`/`NXB`/`BND`, no parentheses). */
+  readonly studio_text?: string
   readonly comment?: string
   readonly instructions: readonly string[]
 }
@@ -220,18 +222,19 @@ function composeRungsFromText(text: string, comments: string | undefined): Compo
   const lines = rungsOf(text, comments)
   const commentLines = comments?.split(/\r?\n/u) ?? []
   const rungs = lines.map((line, index) => {
-    const parsed = parseLadder(line)
+    const parsed = parseRung(line)
     if (parsed.issues.length > 0) {
       throw new L5xError(
         'INVALID_RUNG',
         `Rung ${index + 1} does not parse: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}.`,
-        'Write one rung per line ending in ";"; parallel branches are [path1,path2], for example [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);.',
+        'Write one rung per line. Either format works: NeutralText "XIC(Start)OTE(Run);" with branches as [path1,path2], or text copied out of a Studio routine "XIC Start XIO Stop OTE Run" with branches as BST … NXB … BND.',
         [`Rung ${index + 1}: ${line}`],
       )
     }
     assertKnownInstructions(parsed.nodes, line)
     const comment = commentLines[index]?.trim()
-    return comment === undefined || comment === '' ? { text: line } : { text: line, comment }
+    const neutral = neutralText(parsed.text, parsed.nodes)
+    return comment === undefined || comment === '' ? { text: neutral } : { text: neutral, comment }
   })
   return { rungs, tags: [], notes: ['Tag existence and data types were not checked because no project is open.'] }
 }
@@ -266,7 +269,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
   return [
     tool({
       name: 'l5x_rung_preview',
-      description: 'Return proposed ladder rungs as paste-ready Studio neutral text, and write one minimal L5X preview document so the project viewer can show them. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. The answer carries the exact block to paste into a ladder routine (`paste_text`); the diagram is drawn only when asked for. Nothing is imported and no project is modified.',
+      description: 'Return proposed ladder rungs as Studio 5000 ladder copy text (`paste_text`: mnemonics and operands space separated, parallel branches as BST/NXB/BND — the format Studio writes when you copy a routine), and write one minimal L5X preview document so the project viewer can show them. Accepts either format on input: this plugin\'s bracket NeutralText or text pasted out of Studio. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. Nothing is imported and no project is modified.',
       parameters: object({
         rungs: string('NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);". Pass this or rungs_file.'),
         rungs_file: string('Optional text file whose lines are the NeutralText rungs, one per line. Use it when the rungs are already written to disk.'),
@@ -287,12 +290,12 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         const lines = rungsOf(source, comments)
         const commentLines = comments?.split(/\r?\n/u) ?? []
         const rungs: PreviewRung[] = lines.map((line, index) => {
-          const parsed = parseLadder(line)
+          const parsed = parseRung(line)
           if (parsed.issues.length > 0) {
             throw new L5xError(
               'INVALID_RUNG',
               `Rung ${index + 1} does not parse: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}.`,
-              'Fix the NeutralText and retry; compose_rung produces text this parser accepts.',
+              'Fix the rung and retry; either format is accepted — NeutralText, or text copied out of a Studio routine.',
               [`Rung ${index + 1}: ${line}`],
             )
           }
@@ -300,7 +303,8 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
           const comment = commentLines[index]?.trim()
           return {
             number: index,
-            text: line,
+            text: neutralText(parsed.text, parsed.nodes),
+            studio_text: studioForm(line) ?? neutralText(parsed.text, parsed.nodes),
             ...(comment === undefined || comment === '' ? {} : { comment }),
             instructions: instructionsOf(line),
           }
@@ -308,7 +312,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         const slug = previewSlug(title)
         const path = optionalString(args, 'output') ?? `.l5x-preview/${slug}.L5X`
         const written = await session.writeTextAt(path, previewDocument(slug, rungs), exec)
-        const pasteText = rungs.map(rung => rung.text).join('\n')
+        const pasteText = rungs.map(rung => rung.studio_text ?? rung.text).join('\n')
         let image: { svg: string; png?: string } = { svg: '' }
         let rasterError: string | undefined
         let skipped = false
@@ -342,10 +346,10 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
             rungs: rungs.length,
             instructions: [...new Set(rungs.flatMap(rung => rung.instructions))],
             paste_text: pasteText,
-            rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.text, instructions: rung.instructions })),
+            rung_list: rungs.map(rung => ({ number: rung.number, comment: rung.comment ?? '', text: rung.studio_text ?? rung.text, neutral_text: rung.text, instructions: rung.instructions })),
             ...(image.svg === '' ? {} : { diagram_svg: image.svg }),
             ...(png === undefined ? {} : { diagram_png: png }),
-            note: 'paste_text is the block to paste into a ladder routine; the diagram is a schematic drawn from the parsed rungs, and the L5X preview document is what the sidebar viewer draws. Neither is an importable project.',
+            note: 'paste_text is Studio 5000 ladder copy format (mnemonics and operands space separated, branches as BST/NXB/BND), so it pastes into a routine in the ladder editor. rung_list text is the same rung in that format and neutral_text is this plugin\'s bracket form, which parses here but is not what a Studio paste expects. The diagram is a schematic drawn from the parsed rungs, and the L5X preview document is what the sidebar viewer draws. Neither is an importable project.',
           },
           png === undefined
             ? [{ tool: 'present', why: 'Open the preview document so the answer shows ladder, not NeutralText.', args: { files: [{ path: written, description: 'Ladder preview of the proposed rungs' }] } }]
@@ -356,7 +360,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
     }),
     tool({
       name: 'l5x_compose_logic',
-      description: 'Compose ladder logic in the chat when no project is open and no workspace file is wanted. Returns `paste_text`: NeutralText ready to paste into a Studio 5000 ladder routine, plus the tag declarations it expects. Writes no file and needs no L5X/ACD. Use a named pattern (start_stop_latch, fault_latch, ton_delay, interlock, analog_scale, totalizer, run_hour_meter) or pass the NeutralText yourself: one rung per line ending in ";", and parallel branches written [path1,path2] such as [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);. Syntax and catalogued instruction mnemonics are validated; tag existence/types and Studio compilation are not. In your answer, put paste_text in a fenced code block so the reader can copy it into Studio.',
+      description: 'Compose ladder logic in the chat when no project is open and no workspace file is wanted. Returns `paste_text` in Studio 5000 ladder copy format — mnemonics and operands space separated, parallel branches as BST/NXB/BND, no parentheses — which is what a Studio 5000 ladder-editor paste expects, plus the tag declarations it expects. Writes no file and needs no L5X/ACD. Use a named pattern (start_stop_latch, fault_latch, ton_delay, interlock, analog_scale, totalizer, run_hour_meter) or pass the rung text yourself in either format: this plugin\'s NeutralText (one rung per line ending in ";", parallel branches [path1,path2], such as [XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);) or text copied out of Studio. Syntax and catalogued instruction mnemonics are validated; tag existence/types and Studio compilation are not. In your answer, put paste_text in a fenced code block so the reader can copy it into Studio.',
       parameters: object({
         pattern: choice('Named pattern to compose without a project.', PATTERNS),
         arguments_json: string('Pattern arguments as JSON, for example {"start":"Start","stop":"Stop","run":"Run"}. See the pattern list in the tool description.'),
@@ -388,16 +392,16 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         } else {
           composed = composeRungsFromText(raw as string, optionalString(args, 'comments'))
         }
-        const pasteText = composed.rungs.map(rung => rung.text).join('\n')
+        const pasteText = composed.rungs.map(rung => studioForm(rung.text) ?? rung.text).join('\n')
         const instructions = [...new Set(composed.rungs.flatMap(rung => rung.text.match(/[A-Z][A-Z0-9_]*(?=\()/gu) ?? []))]
         const tagList = composed.tags.map(tag => `${tag.name} (${tag.data_type})`).join(', ')
         return success(
-          `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` with ${composed.pattern}`}; paste_text is ready for a Studio 5000 ladder routine. No project or file was touched.`,
+          `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` with ${composed.pattern}`}; paste_text is Studio 5000 ladder copy format, ready for a ladder-editor paste. No project or file was touched.`,
           {
             ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }),
             rungs: composed.rungs.length,
             paste_text: pasteText,
-            rung_list: composed.rungs.map((rung, index) => ({ number: index, text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })),
+            rung_list: composed.rungs.map((rung, index) => ({ number: index, text: studioForm(rung.text) ?? rung.text, neutral_text: rung.text, ...(rung.comment === undefined ? {} : { comment: rung.comment }) })),
             instructions,
             ...(composed.tags.length === 0 ? {} : { tags: composed.tags }),
             notes: composed.notes,

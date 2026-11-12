@@ -23,7 +23,7 @@ describe('l5x_rung_preview', () => {
     expect(result.data?.path).toBe('.l5x-preview/PumpStart.L5X')
     expect(result.data?.rungs).toBe(2)
     expect(result.data?.instructions).toEqual(expect.arrayContaining(['XIC', 'OTE', 'XIO', 'TON']))
-    expect(result.data?.paste_text).toBe('XIC(Start)OTE(Run);\nXIO(Stop)TON(Timer1,?,?);')
+    expect(result.data?.paste_text).toBe('XIC Start OTE Run\nXIO Stop TON Timer1 ? ?')
     expect(result.data?.diagram_svg).toBeUndefined()
 
     const document = l5x.written.get('.l5x-preview/PumpStart.L5X') ?? ''
@@ -178,7 +178,7 @@ describe('l5x_compose_logic', () => {
       arguments_json: '{"start":"Start","stop":"Stop","run":"Run"}',
     })
     expect(result.error).toBeUndefined()
-    expect(result.data?.paste_text).toBe('[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);')
+    expect(result.data?.paste_text).toBe('BST XIC Start NXB XIC Run BND XIO Stop OTE Run')
     expect(result.data?.rungs).toBe(1)
     expect(result.data?.tag_hint).toContain('Start (BOOL)')
     expect(result.data?.pattern).toBe('start_stop_latch')
@@ -193,7 +193,7 @@ describe('l5x_compose_logic', () => {
       comments: 'two ways to seal in',
     })
     expect(result.error).toBeUndefined()
-    expect(result.data?.paste_text).toBe('[XIC(A),XIC(B)]XIO(C)OTE(Run);')
+    expect(result.data?.paste_text).toBe('BST XIC A NXB XIC B BND XIO C OTE Run')
     expect(result.data?.rung_list[0].comment).toBe('two ways to seal in')
     expect(l5x.written.size).toBe(0)
   })

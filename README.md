@@ -40,7 +40,7 @@ need:
 | Product row | Config option | Default | What turning it on adds |
 |---|---|---|---|
 | `l5x` | `editing` | on | the 17 staged-draft schemas |
-| `l5x` | `studio` | on | the Logix Designer SDK and supervised controller schemas |
+| `l5x` | `studio` | on | the optional Logix Designer SDK and supervised controller schemas |
 | `l5x` | `live` | on | the EtherNet/IP read, batch, discovery, clock and trend schemas |
 | `l5x` | `allowWrites` | on | the two approval-gated writes (tag, wall clock) |
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
@@ -61,7 +61,7 @@ package registers exactly one browser bundle.
 
 | Product | Tools | Default | Needs |
 |---|---|---|---|
-| **Studio 5000 L5X** | 54 | all on | Node for offline reads; Studio 5000 + Logix Designer SDK for SDK work; a controller for live |
+| **Studio 5000 L5X** | 54 | all on | Node for reads and edits; an optional Logix Designer SDK for SDK builds; a controller for live |
 | **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 9 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
@@ -331,7 +331,7 @@ even when the implementation behind a row is replaced.
 | Surface | Needs |
 |---|---|
 | L5X read, references, checks, drafts | Node only; reads `.L5X` revision 19 or later |
-| L5X Studio SDK | Studio 5000 with the Logix Designer SDK service, FactoryTalk Linx, .NET |
+| L5X Studio SDK (optional) | Studio 5000 with the Logix Designer SDK service, FactoryTalk Linx, .NET. An optional extra: reads, drafts and the written L5X need none of it, and the engineer imports the new file into Studio themselves |
 | L5X controller | Reachable controller, FactoryTalk Linx, a matching uploaded ACD |
 | L5X live | A reachable controller over EtherNet/IP; no Studio, Linx or ACD |
 | FactoryTalk View read, edit, author | Node only; a FactoryTalk View ME export folder, plus an installed `Gfx-ME*.xsd` for schema validation |

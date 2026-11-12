@@ -314,7 +314,7 @@ describe('composition payload', () => {
     const l5x = await opened()
     const composed = await l5x.call('compose_rung', { spec_json: spec })
     expect(composed.error).toBeUndefined()
-    expect(Object.keys(composed.data as Record<string, unknown>)).toEqual(['rungs'])
+    expect(Object.keys(composed.data as Record<string, unknown>)).toEqual(['rungs', 'paste_text'])
     // The host serialises this document as lossless JSON; an empty member is
     // refused outright, so the round trip has to return the same document.
     expect(JSON.parse(JSON.stringify(composed))).toEqual(composed)
