@@ -43,6 +43,19 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.91.0 release record (2026-11-12).** Built from `Release 0.91.0` (`9356b3d`), tagged `v0.91.0`.
+Root suite 43 specs green (the default-on schema ceiling moved to 127,423 with the measured 122,522
+characters), l5x vitest 573 passed — new `copy-format` 7 tests and `io-alias-tags` 4 tests — and
+`pnpm --filter @aryacode/dsh-engineering-l5x typecheck` plus `pnpm docs:check` (162 tools) clean;
+`pnpm -r build` + `assemble` (eight components) deterministic. The published tarball is 4.0 MB /
+14.5 MB unpacked / 766 files, sha256 `71a9b6c26b2ca56e0467d61dd7ca9d21f8a947e5903ba55d1146d7f26c766bad`.
+The registry held the version in a staged state for about five minutes after `npm publish` printed
+"being processed": `npm view` still answered `latest = 0.90.0`, so the first `release-plugin` run found
+nothing published and its own publish attempt was refused with `E409 … Cannot publish over previously
+staged version`. Run the market step only once the registry serves the version. The registry now serves
+0.91.0 as `latest`; the market `catalog` branch records the same tarball and sha256, and
+`arya-release-status` reports the plugin in sync across repo, npm and catalogue.
+
 **0.90.0 release record (2026-11-09).** Built from `Release 0.90.0` (`ff812c8`), tagged `v0.90.0`.
 Root suite 43 specs green (the tool reference now names 162 tools, and `components.json` carries eight
 components), plc5 vitest 17 passed / 1 skipped (census, container, `rslogix5` and the eight tool
