@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.92.0] - 2026-11-12
 
 - **The Optix preview chain reports itself, and the plugin starts its own browser.** Reading the
   emulator needs four links the row never described: the `preview` switch, a browser answering CDP,
