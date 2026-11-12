@@ -5,6 +5,38 @@
   "title": "Arya OptixPanel Project",
   "description": "OptixPanel starter with native panel runtime, StudioMCPBridge, and loopback web-emulator verification.",
   "target": "optix-panel",
+  "questions": [
+    {
+      "id": "target",
+      "question": "Is this project for an OptixPanel device, or for a PC that runs the HMI in a browser?",
+      "why": "This template is the OptixPanel one; the PC answer is the arya-optix-ipc template instead. The runtime, the deploy path and the emulator differ, so the answer cannot be undone by an edit later."
+    },
+    {
+      "id": "resolution",
+      "question": "What is the panel's screen size in pixels?",
+      "why": "MainWindow carries Width 1280 and Height 800 in Nodes/UI/UI.yaml, and every screen is laid out against that box. The shipped default suits a 10-inch 1280x800 panel; a different panel means editing those two values before any screen is drawn. The device reports its own Display.HorizontalResolution and Display.VerticalResolution read-only, so the project cannot be asked what it is."
+    },
+    {
+      "id": "orientation",
+      "question": "Is the panel mounted landscape or portrait?",
+      "why": "System/Display.Orientation is a DisplayOrientationEnum and the window box follows it; a portrait mount needs the Width and Height swapped, not just the enum."
+    },
+    {
+      "id": "project_name",
+      "question": "Keep the shipped project name AryaNewHMIProject_OptixPanel, or rename it?",
+      "why": "The name is not a folder label: Nodes/AryaNewHMIProject_OptixPanel.yaml, the .optix file, the .code-workspace, the .csproj and .sln, and DynamicLinks such as /Objects/AryaNewHMIProject_OptixPanel@BrowseName all carry it. A rename is a set of edits across those files, not a copy."
+    },
+    {
+      "id": "destination",
+      "question": "Which empty directory should the copy go to?",
+      "why": "The copy must never land on an existing project, and Studio opens the .optix file by absolute path."
+    },
+    {
+      "id": "data_source",
+      "question": "What will the HMI talk to: a Logix controller over EtherNet/IP, OPC UA, MQTT, or nothing yet?",
+      "why": "The template ships empty CommDrivers, OPC-UA and MQTT folders, so the connection is authored, not configured by a switch. The answer decides which node to create first and what tags the screens bind to."
+    }
+  ],
   "optixStudioVersion": "1.7.4.32-Stable",
   "sourceProjectName": "AryaNewHMIProject_OptixPanel",
   "contentHash": "06c8e5dfe2279ded81ab5c8036f0cc0f812ccb044ba19b7943426e61528c96a5",

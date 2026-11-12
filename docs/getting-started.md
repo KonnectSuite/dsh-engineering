@@ -110,10 +110,12 @@ expressions and read NetLogic guidance from the pinned cheat-sheet snapshot.
 
 The preview chain is four links, and `optix_status` names the first one that is missing: the row's
 `preview` switch, a browser (by default the plugin starts Chrome or Edge itself), the project's **Web
-presentation engine** serving `previewUrl` while the project runs in Studio, and — for canvas text —
-a host Tesseract named by `ocrExecutable`. `optix_ocr_setup` reports that install and, on request,
-runs it through `winget`; `optix_action` with `ensure_web_engine` adds the engine node a project
-lacks. See [the Optix port](port/optix.md) for what each link needs.
+presentation engine** serving `previewUrl` while the project runs, and — for canvas text —
+a host Tesseract named by `ocrExecutable`. Nothing runs that engine from the command line documented
+in the cheat sheet, so `optix_emulator` starts the installed `FTOptixRuntime.exe` against the project
+folder instead, and stops only what it started. `optix_ocr_setup` reports that Tesseract install and,
+on request, runs it through `winget`; `optix_action` with `ensure_web_engine` adds the engine node a
+project lacks. See [the Optix port](port/optix.md) for what each link needs.
 
 ## 5. What the bundle will not pretend
 

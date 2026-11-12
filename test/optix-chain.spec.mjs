@@ -285,3 +285,29 @@ test('Tesseract installed while the row points nowhere is discovered, not reinst
     assert.equal(probe.traineddata, true)
   })
 })
+
+// The live machine put its language data beside the executable and the row left the
+// directory empty, so an empty value has to mean the installer's own tessdata.
+test('an empty tessdata directory falls back to the installer tessdata beside the executable', async () => {
+  await withFakeHost({ 'ocr/tesseract.exe': '', 'ocr/tessdata/eng.traineddata': '' }, async (root) => {
+    const probe = await ocrProbe({
+      executable: join(root, 'ocr', 'tesseract.exe'),
+      language: 'eng',
+      tessdataDirectory: '',
+    })
+    assert.deepEqual(
+      { installed: probe.installed, tessdata: probe.tessdata, traineddata: probe.traineddata },
+      { installed: true, tessdata: join(root, 'ocr', 'tessdata'), traineddata: true },
+    )
+  })
+})
+
+test('a chain probe outside a tool call still answers', async () => {
+  const port = await closedPort()
+  await withFakeHost({ 'Google/Chrome/Application/chrome.exe': '' }, async () => {
+    const chain = await chainReport(settings(port, { browser: 'launch' }))
+    assert.equal(chain.browser.launchable, true)
+    assert.equal(chain.emulator.listening, false)
+    assert.match(chain.next, /optix_emulator with action start/)
+  })
+})

@@ -23,13 +23,25 @@ export async function executablePresent(executable) {
 	return false;
 }
 /**
+* The folder the language check looks in: the row's value, else the installer's own
+* tessdata beside the executable, which is where the Windows package puts its data.
+* @param ocr - Configured or discovered OCR block.
+* @returns The directory to search, or an empty string when there is no executable.
+*/
+export function tessdataDirectoryFor(ocr) {
+	if (typeof ocr.tessdataDirectory === "string" && ocr.tessdataDirectory !== "") return ocr.tessdataDirectory;
+	return typeof ocr.executable === "string" && ocr.executable !== "" ? join(dirname(ocr.executable), "tessdata") : "";
+}
+/**
 * Whether the configured OCR language data is installed.
 * @param ocr - Configured OCR block.
 * @returns Whether the first language's traineddata file exists.
 */
 async function languageDataPresent(ocr) {
+	const directory = tessdataDirectoryFor(ocr);
+	if (directory === "") return false;
 	try {
-		await access(join(ocr.tessdataDirectory, `${ocr.language.split("+")[0]}.traineddata`));
+		await access(join(directory, `${ocr.language.split("+")[0]}.traineddata`));
 		return true;
 	} catch {
 		return false;
@@ -89,19 +101,24 @@ export async function ocrProbe(ocr) {
 		break;
 	}
 	const effective = installed ? {
+		executable,
 		tessdataDirectory,
 		language
 	} : found === "" ? null : {
 		tessdataDirectory: join(dirname(found), "tessdata"),
 		language
 	};
+	const searched = effective === null ? "" : tessdataDirectoryFor(effective);
 	return {
 		configured,
 		executable,
 		installed,
 		language,
 		tessdataDirectory,
-		traineddata: effective === null || effective.tessdataDirectory === "" ? false : await languageDataPresent(effective),
+		// The folder the language check actually looked in, so an empty row value reads
+		// as the installer's own tessdata rather than as nothing checked.
+		tessdata: searched,
+		traineddata: searched === "" ? false : await languageDataPresent(effective),
 		// Where Tesseract is on this machine while the row points somewhere else, so the
 		// fix is one config value rather than an install.
 		discovered: found,
@@ -117,10 +134,10 @@ function chainBlocker(config, chain) {
 	if (!chain.preview) return "The preview tools are not registered: set preview to true in the Optix row's plugin configuration.";
 	if (chain.browser.mode === "launch" && chain.browser.launchable === false) return `No Chromium-family browser is installed where the plugin looks: install Chrome or Edge, or set browserPath to the browser executable.`;
 	if (chain.browser.mode === "attach" && !chain.browser.listening) return `No browser answers CDP on ${chain.browser.cdp_url}: set browser to launch so the plugin starts its own browser, or start a Chromium-family browser with --remote-debugging-port=${chain.browser.port} and open ${config.previewUrl} in it.`;
-	if (!chain.emulator.listening) return `Nothing serves ${chain.emulator.url}: run the loaded project in Studio so its Web presentation engine answers that address; if the project has no such engine, optix_action with action ensure_web_engine adds one, then call optix_status again.`;
+	if (!chain.emulator.listening) return `Nothing serves ${chain.emulator.url}: optix_emulator with action start launches the project's runtime, or run the project in Studio so its Web presentation engine answers that address; if the project has no such engine, optix_action with action ensure_web_engine adds one, then call optix_status again.`;
 	if (chain.browser.mode === "attach" && chain.preview_tabs !== 1) return `The preview tools need exactly one open tab at ${chain.emulator.url}, and found ${chain.preview_tabs}.`;
 	if (chain.ocr.configured && chain.ocr.installed !== true) return `OCR is configured but ${chain.ocr.executable} was not found: install Tesseract or set ocr.executable to its full path.`;
-	if (chain.ocr.configured && chain.ocr.traineddata !== true) return `OCR language data for ${chain.ocr.language} is not in ${chain.ocr.tessdataDirectory}: point tessdataDirectory at the folder holding ${chain.ocr.language.split("+")[0]}.traineddata.`;
+	if (chain.ocr.configured && chain.ocr.traineddata !== true) return `OCR language data for ${chain.ocr.language} is not in ${chain.ocr.tessdata}: point ocrTessdataDirectory at the folder holding ${chain.ocr.language.split("+")[0]}.traineddata.`;
 	return "";
 }
 /**
@@ -155,12 +172,14 @@ async function browserLaunchable(config) {
 /**
 * Probe the preview, emulator and OCR chain so a missing link names itself instead of hiding a tool.
 * @param config - Resolved deployment settings.
-* @param signal - Caller abort signal.
+* @param signal - Caller abort signal; optional, so a probe can run outside a tool call.
 * @returns One entry per link, with the first unmet link named in `next`.
 */
 export async function chainReport(config, signal) {
+	// The row always resolves a mode; this fallback only covers a bare probe.
 	const mode = config.browser ?? "attach";
-	const deadline = AbortSignal.any([signal, AbortSignal.timeout(Math.min(config.requestTimeoutMs, 3000))]);
+	const timeout = AbortSignal.timeout(Math.min(config.requestTimeoutMs ?? 3000, 3000));
+	const deadline = signal ? AbortSignal.any([signal, timeout]) : timeout;
 	const get = async (href) => {
 		try {
 			const response = await fetch(href, {
@@ -173,7 +192,7 @@ export async function chainReport(config, signal) {
 				text: await response.text().catch(() => "")
 			};
 		} catch (error) {
-			if (signal.aborted) throw error;
+			if (signal?.aborted) throw error;
 			return {
 				answered: false,
 				status: 0,
@@ -208,11 +227,13 @@ export async function chainReport(config, signal) {
 	}
 	const ocr = { configured: config.ocr !== null };
 	if (config.ocr) {
-		ocr.executable = config.ocr.executable;
-		ocr.language = config.ocr.language;
-		ocr.tessdata = config.ocr.tessdataDirectory;
-		ocr.installed = await executablePresent(config.ocr.executable);
-		ocr.traineddata = await languageDataPresent(config.ocr);
+		const probe = await ocrProbe(config.ocr);
+		ocr.executable = probe.executable;
+		ocr.language = probe.language;
+		ocr.tessdata = probe.tessdata;
+		ocr.installed = probe.installed;
+		ocr.traineddata = probe.traineddata;
+		if (probe.discovered !== "") ocr.discovered = probe.discovered;
 	}
 	const chain = {
 		preview: config.preview,

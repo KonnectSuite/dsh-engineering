@@ -5,6 +5,43 @@
   "title": "Arya Optix IPC Project",
   "description": "Ready-to-use industrial-PC starter with StudioMCPBridge and loopback web-emulator support.",
   "target": "industrial-pc",
+  "questions": [
+    {
+      "id": "target",
+      "question": "Is this project for a PC or industrial-PC that runs the HMI in a browser, or for an OptixPanel device?",
+      "why": "This template is the PC one, verified through the loopback web emulator; the panel answer is the arya-optix-panel template instead, which deploys natively and cannot be reached through the web emulator."
+    },
+    {
+      "id": "resolution",
+      "question": "What is the display size in pixels the operator will see?",
+      "why": "MainWindow carries Width 1920 and Height 1080 in Nodes/UI/UI.yaml and every screen is laid out against that box. On a PC the browser window can be any size, so the box has to be chosen deliberately: a smaller box letterboxes on a full-HD console, a larger one clips, and the screenshot checks compare against the box the project declares."
+    },
+    {
+      "id": "kiosk",
+      "question": "Does the operator get a kiosk browser with no chrome and no address bar, or a normal window?",
+      "why": "It decides whether the window box is the whole viewport and whether keyboard input is available; the preview tools read the page the browser shows, so what the operator sees is what is verified."
+    },
+    {
+      "id": "web_engine_port",
+      "question": "Which port should the Web presentation engine serve on?",
+      "why": "The engine is a project node with a fixed Port, default 8081, and it does not negotiate. Two projects emulating at once need different ports, and the row's previewUrl has to name the same one."
+    },
+    {
+      "id": "project_name",
+      "question": "Keep the shipped project name AryaNewHMIProject_IPC, or rename it?",
+      "why": "The name is not a folder label: Nodes/AryaNewHMIProject_IPC.yaml, the .optix file, the .code-workspace, the .csproj and .sln, and DynamicLinks carrying /Objects/AryaNewHMIProject_IPC all carry it. A rename is a set of edits across those files, not a copy."
+    },
+    {
+      "id": "destination",
+      "question": "Which empty directory should the copy go to?",
+      "why": "The copy must never land on an existing project, and Studio opens the .optix file by absolute path."
+    },
+    {
+      "id": "data_source",
+      "question": "What will the HMI talk to: a Logix controller over EtherNet/IP, OPC UA, MQTT, or nothing yet?",
+      "why": "The template ships empty CommDrivers, OPC-UA and MQTT folders, so the connection is authored, not configured by a switch. The answer decides which node to create first and what tags the screens bind to."
+    }
+  ],
   "optixStudioVersion": "1.7.4.32-Stable",
   "sourceProjectName": "AryaNewHMIProject_IPC",
   "contentHash": "57cabafdbffc9884e11c5f62f6caed3bd6f8e0a47cd45aa24651172751b9f6d6",

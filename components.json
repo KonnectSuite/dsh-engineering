@@ -1,9 +1,9 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 149,
+    "defaultOnTools": 150,
     "defaultOnSchemaCharacters": 127423,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 11 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 12 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -200,7 +200,7 @@
       "vendored": true,
       "tools": {
         "product": "FactoryTalk Optix",
-        "count": 11,
+        "count": 12,
         "inReference": false
       },
       "skill": {
@@ -219,6 +219,7 @@
           "optix_ocr",
           "optix_ocr_setup",
           "optix_bridge_arm",
+          "optix_emulator",
           "optix_template",
           "dry_run"
         ]

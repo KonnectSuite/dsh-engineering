@@ -9,6 +9,7 @@ import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge } from "./arm.js";
+import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -990,7 +991,7 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, or read their NetLogic and project files. Copy the selected project directory into a new workspace directory with filesystem tools; preserve the original project name. Never overwrite an existing project. Templates include bridge 1.0.7; exported method invocation requires upgrading to the separately supplied session-safe bridge. No Studio connection is required.",
+		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, or read their NetLogic and project files. The manifest carries `questions`: ask them before copying, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Copy the selected project directory into a new workspace directory with filesystem tools; preserve the original project name. Never overwrite an existing project. Templates include bridge 1.0.7; exported method invocation requires upgrading to the separately supplied session-safe bridge. No Studio connection is required.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1022,7 +1023,8 @@ function applyTemplates(ctx, maxBytes) {
 				manifest,
 				sourceDirectory: fileURLToPath(new URL("project/", root)),
 				bridgeVersion: "1.0.7",
-				instructions: "Copy to a new directory, open the .optix file in Studio 1.7.4.32, compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
+				questions: manifest.questions ?? [],
+				instructions: "Ask the manifest's questions before copying anything: which runtime, what screen size, whether the project keeps its shipped name, and where the copy goes. Then copy to a new directory, open the .optix file in Studio 1.7.4.32, compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
 			};
 			const path = args.path;
 			if (!path || path.includes("\\") || path.split("/").some((part) => !part || part === "." || part === "..") || !manifest.files.some((file) => file !== null && typeof file === "object" && !Array.isArray(file) && file.path === path && file.text === true)) throw new Error("Choose an exact text file path listed in the template manifest");
@@ -1078,6 +1080,68 @@ function applyBridgeArm(ctx) {
 			const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
 			const report = await armBridge(args.project, shipped, args.confirm);
 			exec.signal.throwIfAborted();
+			return report;
+		}
+	})));
+}
+//#endregion
+//#region lib/emulator-tool.js
+/**
+ * Run the project's own web runtime, which is the scripted route to the preview: the
+ * Studio CLI has `export` and no run verb, so the emulator leg otherwise needs a human
+ * at the Studio toolbar. The port belongs to the project, not to this tool.
+ * @param ctx - Harness tool runtime context.
+ * @param settings - Resolved deployment settings, for the preview address to probe.
+ */
+function applyEmulator(ctx, settings) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_emulator",
+		description: "Read, start, or stop the Optix runtime that serves a project's web preview. It finds FTOptixRuntime.exe under the Studio install, loads the project's .optix file, and reports the preview address the project's Web presentation engine sets. status probes that address; start launches the runtime; stop ends only a runtime this tool launched, never one the engineer opened in Studio. The port is a project setting, so a project serving another port needs its engine changed, not this tool.",
+		parameters: {
+			action: {
+				type: "string",
+				required: true,
+				description: "status reads the leg, start launches the runtime, stop ends the one this tool started."
+			},
+			project: {
+				type: "string",
+				required: true,
+				description: "Absolute path of the project directory holding the .optix file."
+			},
+			runtime: {
+				type: "string",
+				required: false,
+				description: "Runtime executable path; empty discovers it under the Studio install."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "Run the Optix project emulator",
+			kind: "invoke"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			if (args.action !== "status" && !settings.allowInvoke) throw new Error("Starting or stopping a process needs allowInvoke in the Optix row's plugin configuration; status works without it.");
+			if (args.action === "start") return await startEmulator({
+				project: args.project,
+				runtime: args.runtime ?? ""
+			});
+			if (args.action === "stop") return await stopEmulator({
+				project: args.project,
+				project_file: ""
+			});
+			const report = await emulatorStatus({
+				project: args.project,
+				previewUrl: settings.previewUrl
+			}, exec.signal);
+			if (!report.serving) report.next = report.project_file === "" ? "Point project at the folder holding the project's .optix file." : "Nothing serves the preview address: optix_emulator with action start launches the runtime, or run the project from Studio.";
 			return report;
 		}
 	})));
@@ -1304,6 +1368,7 @@ function apply(ctx, config = {}) {
 	const settings = resolve(config);
 	applyTemplates(ctx, settings.maxResponseBytes);
 	applyBridgeArm(ctx);
+	applyEmulator(ctx, settings);
 	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);

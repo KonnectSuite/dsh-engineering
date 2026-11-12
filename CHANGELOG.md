@@ -26,10 +26,27 @@
   whatever the project held to `ProjectFiles/.dsh-backups`, and reports both versions. `confirm: false`
   plans without writing. It then stops and says what only Studio can do: compile, add the
   `StudioMCPBridge` NetLogic node if the project has none, right-click StartBridge.
+- **The emulator can be run without a human at Studio.** The Optix CLI has an `export` verb and no run
+  verb, so the chain's third link used to be a sentence telling the engineer to go run the project.
+  The runtime executable under the Studio install takes the project file
+  (`FTOptixRuntime [options] [<project_file>]`, found at
+  `Studio <version>\FTOptixRuntime\<version>\Win32_x64\FTOptixRuntime.exe`), and `optix_emulator`
+  drives it: `status` reports whether anything serves `previewUrl` and which runtime the machine
+  holds, `start` launches it against the project's `.optix` file, and `stop` ends only a runtime the
+  tool started — never one opened from Studio. Starting a process needs `allowInvoke`. On the machine
+  tested, the runtime serving the shipped IPC starter project made `http://127.0.0.1:8081/` answer
+  `200` with the real Optix web HMI, and the plugin-launched Chrome screenshotted it and read the
+  authored label back through Tesseract.
+- **Starting from a template asks first.** `optix_template` returns the manifest, and both manifests now
+  carry `questions`: which runtime (OptixPanel device or a PC in a browser — it picks the template and
+  the deploy path), the screen's real size (`MainWindow` `Width`/`Height` in `Nodes/UI/UI.yaml` is the
+  box every screen is laid out against, and the starter ships 1920×1080), the project name, and where
+  to copy it. Those answers are baked into files that are tedious to re-edit afterwards, so the skill
+  asks them before any copy happens.
 - **New document:** [`docs/port/optix.md`](docs/port/optix.md) records why Optix is the one component
   with no source here, what the pinned upstream bridge is and is not (the bundle runs none of
-  upstream's MCP or Python), and the four-link chain; `docs/getting-started.md` gained the chain and
-  the bridge-arm caveat.
+  upstream's MCP or Python), the four-link chain, and the runtime route to the emulator;
+  `docs/getting-started.md` gained the chain and the bridge-arm caveat.
 
 ## [0.91.0] - 2026-11-12
 

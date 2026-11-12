@@ -15,11 +15,14 @@ model first.
 
 The rows are switches. `allowWrites`, `allowDestructive` and `allowInvoke` gate what
 `optix_edit` and `optix_action` may do. The preview tools need the project's **Web presentation
-engine** running in Studio and a browser to read it: by default the plugin starts Chrome or Edge
-itself (`browser: launch`), so nobody has to open a browser or a CDP port by hand; `browser: attach`
-connects to one you started. If a tool is missing, that switch is off in this profile. `optix_status`
-answers the preview question rather than leaving you to guess: its `preview_chain` reports the
-switch, the browser mode and whether a browser is available, whether the emulator serves its URL,
+engine** serving its URL and a browser to read it. Nothing serves it until the project runs: the
+Studio CLI has no run verb, so `optix_emulator` with `action: start` launches the installed
+`FTOptixRuntime.exe` against the project folder (needs `allowInvoke`), and `action: stop` ends only
+a runtime this tool started. The browser side needs no hand-holding: by default the plugin starts
+Chrome or Edge itself (`browser: launch`); `browser: attach` connects to one you started. If a tool
+is missing, that switch is off in this profile. `optix_status` answers the preview question rather
+than leaving you to guess: its `preview_chain` reports the switch, the browser mode and whether a
+browser is available, whether the emulator serves its URL,
 how many tabs match it, and whether the OCR executable and language data are installed — and its
 `next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
 retry a preview tool against a dead link.
@@ -27,7 +30,8 @@ retry a preview tool against a dead link.
 ## Read before you write
 
 1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on, and what
-   the preview chain is missing.
+   the preview chain is missing. When `next` names the emulator link, `optix_emulator` with
+   `action: status` shows whether a runtime exists on the machine before anything is started.
    When it answers `Bridge unavailable` for a project that has never been bridged, that project holds
    no bridge source at all. `optix_bridge_arm` with `confirm: false` shows what would be written into
    the project's `ProjectFiles/NetSolution`; with `confirm: true` it writes the bridge this bundle ships
@@ -69,6 +73,11 @@ compilation and runtime behaviour as unverified until Studio compiles it.
   type, or invokes an exported method. Invocation needs a session-safe bridge and `allowInvoke`.
 - `optix_preview` and `optix_screenshot` read the emulator page. By default the plugin starts its own
   Chrome or Edge for this; input can change runtime values, so state that before using it.
+- `optix_emulator` with `action: status` says whether anything serves the preview URL and which
+  runtime executable the machine holds; `start` runs that runtime against the project folder and
+  `stop` ends only a runtime this tool started, never one the engineer opened from Studio. Starting a
+  process needs `allowInvoke`, and it is the only scripted route to the emulator — say so rather than
+  implying Studio was asked to run the project.
 - `optix_ocr` reads text rendered on the canvas — labels a web page exposes no DOM for — through the
   host Tesseract. It is registered only when the row names an `ocrExecutable`.
 - `optix_ocr_setup` reports whether that Tesseract and its language data are on the machine, and with
@@ -77,6 +86,28 @@ compilation and runtime behaviour as unverified until Studio compiles it.
   config change, not an install. Ask before running the install: it downloads software.
 - `optix_template` discovers the packaged Optix IPC and OptixPanel starter projects. Copy the chosen
   project with filesystem tools, never overwrite an existing project, and keep the template's name.
+
+## Starting from a template
+
+`optix_template` returns the manifest, and the manifest carries `questions`. Ask them before copying
+anything, because each one is baked into files you would otherwise have to re-edit:
+
+- **Which runtime** — an OptixPanel device or a PC in a browser. It picks the template, and the deploy
+  path and the emulator differ; an edit does not convert one into the other.
+- **Screen size** — `MainWindow` `Width`/`Height` in `Nodes/UI/UI.yaml` is the box every screen is laid
+  out against (1280×800 shipped). Ask the panel's real size; the device reports its own resolution
+  read-only, so the project cannot answer.
+- **Keep or rename the project** — the shipped name is carried by the `.optix` file, the root
+  `Nodes/<name>.yaml`, the `.csproj`/`.sln`/`.code-workspace` and DynamicLinks such as
+  `/Objects/<name>@BrowseName`. A rename is a set of coordinated edits, not a folder rename.
+- **Where the copy goes** — an empty directory, named, because Studio opens the `.optix` by absolute
+  path and the copy must never land on an existing project.
+- **What it talks to** — a Logix controller, OPC UA, MQTT, or nothing yet. The templates ship those
+  folders empty, so the connection is authored; the answer decides which node comes first and what the
+  screens bind to.
+
+Then copy, and state what you did not do: Studio opens the project, compiles NetSolution, and the
+engineer runs StartBridge.
 
 A successful model change does not save Studio and does not prove rendering. Say what was applied, what
 was only validated, and what a human must check in Studio.
