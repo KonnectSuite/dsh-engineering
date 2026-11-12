@@ -43,6 +43,26 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.92.0 release record (2026-11-12).** Built from `Release 0.92.0` (`917d948`), tagged `v0.92.0`.
+Root suite 47 specs green — four new Optix specs (`optix-chain` 20 tests, `optix-arm` 7,
+`optix-template` and `optix-emulator` 7) — `pnpm docs:check` clean (174 tools), and `assemble`
+(eight components) deterministic. The Optix row grew from 9 tools to 12, so the recorded default-on
+ceiling is 150 tools. Published with `pnpm publish --no-git-checks --access public`, whose `prepack`
+rebuilds the three faces and the vendor tree, so the tarball cannot carry a stale client bundle. The
+published tarball is 4.0 MB / 772 files, sha256
+`82e59f39ee8bceced9d592f7ad256cad0c28f68cf5b4a641888d930210ff50ad`. The packaged-bytes smoke
+extracted that tarball and called the new Optix code **from the published bytes**: the runtime
+discovery found the real `FTOptixRuntime.exe` under the Studio install, `emulatorStatus` reported the
+project's web engine serving `200`, and a chain probe returned `next: ""` with the browser launchable
+and Tesseract plus its `eng.traineddata` present — the whole preview chain satisfied on a machine with
+no help from the repository build. Two release mechanics notes: the registry again held the version
+staged (about five and a half minutes before `npm view` answered `latest = 0.92.0`), and this time the
+market script's own repack did **not** match the registry bytes (`3a854c2a7060…` against
+`82e59f39ee8b…`) because `pnpm publish` normalises the manifest inside the tarball; the script records
+the registry copy, which is the copy the catalogue must point at. The registry now serves 0.92.0 as
+`latest`; the market `catalog` branch records the same tarball and sha256, and `arya-release-status`
+reports the plugin in sync across repo, npm and catalogue.
+
 **0.91.0 release record (2026-11-12).** Built from `Release 0.91.0` (`9356b3d`), tagged `v0.91.0`.
 Root suite 43 specs green (the default-on schema ceiling moved to 127,423 with the measured 122,522
 characters), l5x vitest 573 passed — new `copy-format` 7 tests and `io-alias-tags` 4 tests — and
