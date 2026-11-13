@@ -1,3 +1,75 @@
+## [0.93.0]
+
+- **Breaking: the ECAD row stopped being a CAD editor.** Four tools are gone — `ecad_draft_ops`,
+  `ecad_draft_apply`, `ecad_draft_discard` and `ecad_verify` — and the surface behind them with them:
+  `packages/ecad/src/engine/ops.ts` (73,716 bytes of staged operation), `engine/ops-geom.ts`,
+  `src/tools/drafts.ts`, and the `EcadOp` union with its `EcadDraft`/`EcadDraftContext` types. The row
+  registers **twelve** tools, not sixteen. Anything that named one of the four in a saved prompt or a
+  session note now gets an unknown-tool envelope; the gate that used to be `ecad_verify` is
+  **`ecad_compare`**, and the row's `writes` switch means deliverables only — a document bundle or a
+  backup copy, each to a new path.
+- **Why: maintaining a second CAD editor was not worth the upkeep.** Drawing authoring needs grips,
+  setters, trim/extend, offset, layer tables and a plot engine — an application, not a review pane, and
+  one whose correctness this bundle could only ever approximate. The owner already maintains
+  **AryaCAD Electrical**, a fork of OpenCAD Studio with an electrical component and a documented
+  automation and MCP surface, so the ownership line moved there: reading, reviewing, viewing and
+  exporting stay offline here; authoring, plotting, publishing and netlist/BOM go through the vendor
+  application.
+- **The drawing pane is a read-only viewer.** It keeps what a review needs and gained what it lacked:
+  drag to pan, wheel zoom at the cursor, `+`/`−`/`0` and the arrow keys, layout tabs, a layer panel with
+  per-layer entity counts and show-all/hide-all, **text search with on-sheet highlight** (with a stated
+  cap before it stops highlighting), a status line with sheet size, zoom and match count, print through
+  the host print dialog, and SVG/PNG export. Gone: mode switch, tool palette, command bar, marquee,
+  grips, osnaps, grid/ortho, properties, context menu, layer create/rename/colour, undo/redo, apply and
+  the written-drawing banner. The committed face is **160,003 bytes where the editor was 412,825**; the
+  locale dictionary is **139 keys per language where it was 409**; the stylesheet is **741 lines where it
+  was 1,705**, with no class the viewer reads missing and no defined class it never reads.
+- **Breaking: the ECAD Remote contract is version 2.** `apply` is dropped from `ECAD_METHODS`, which is
+  now `open`, `sheets` and `capabilities`, and `ECAD_CONTRACT_VERSION` goes 1 → 2. The client face and
+  the Remote service ship in the same bundle and must ship together; a composition mixing a version-1
+  face with a version-2 service shows a preview-unavailable state rather than a half-mounted editor.
+- **The row reports what it can see of the CAD bridge.** New `packages/ecad/src/bridge.ts` probes the
+  composition for `mcp__<serverName>__*` tools, and `ecad_capabilities` gained a `cad` section:
+  `serverName`, `entryTool` (`mcp__ocs__ocs_sessions` by default), `mounted`, the tools seen, and a hint
+  that says a configured bridge whose discovery is still in flight also reads as not mounted. New row
+  config `bridgeServerName` (default `ocs`) names the server to report on. **This row never starts,
+  installs or ships the CAD application** — AryaCAD Electrical is GPL-3.0 and its portable build is a
+  158 MB executable, and nothing in this bundle links to it or spawns it.
+- **The bridge is the owner's row, and the bundle ships the overlay instead.**
+  `overlays/aryacad-mcp.patch.yml` carries the ready-to-apply `@deepseek-ai/dsh-mcp-client` row
+  (`serverName: ocs`, stdio, `--mcp`, a 180 s tool-call deadline). It is not in this bundle's
+  `cordis.patch.yml` on purpose: `test/patch.spec.mjs` and `test/docs.spec.mjs` constrain what this
+  bundle may insert, and a row naming a host package breaks composition on any profile that does not
+  carry it.
+- **The skill is `ecad-review`, not `ecad-drafting`.** Rewritten around two lanes: read a print honestly
+  (coverage, candidates, stated limits) and view/export it locally; then hand authoring to AryaCAD
+  Electrical and prove the result — `ecad_backup` to keep the before-state, the bridge's own
+  `save_verified` to write it, `ecad_open` with `reload: true` and `ecad_compare` against the kept copy
+  to accept the change. It refuses to imitate a CAD edit by hand-editing DXF text.
+- **New document:** [`docs/aryacad-bridge.md`](docs/aryacad-bridge.md) owns the seam — the two halves and
+  the GPL boundary, how to mount the overlay and which two names must agree, the four facades and
+  seventeen intent tools AryaCAD exposes, the backup → edit → save_verified → reload → compare sequence,
+  and why the pane's Print is the local route to a PDF while a headless plot goes through the bridge.
+  `docs/architecture.md` and `docs/port/ecad.md` record the retirement where the editor used to be
+  described.
+- **Tests moved with the surface.** Deleted `test/ops.spec.mjs`, `test/ops-cad.spec.mjs`,
+  `test/client/cad.spec.mjs`, `test/client/cadTools.spec.mjs` and `test/client/edits.spec.mjs`; pruned
+  the draft cases out of `test/tools.spec.mjs`, `test/corpus.spec.mjs`, `test/dxf.spec.mjs` and
+  `test/client/toolCards.spec.mjs`; `test/client-face.spec.mjs` now asserts the viewer's own
+  `data-ecad-*` markers, the absence of the apply bridge and the editor controls, and the trimmed
+  stylesheet pair. `test/tools.spec.mjs` asserts the twelve-tool inventory, contract version 2 and the
+  `cad` section of a row built with no bridge. `test/bridge.spec.mjs` and `test/compare-gate.spec.mjs`
+  are new: the first pins what `ecad_capabilities` says when the bridge is absent, present, added after
+  mount, or named wrong; the second drives the acceptance gate — a kept copy against a copy edited
+  elsewhere, where only the change list may differ. The headless interaction harness was rebuilt for the
+  viewer and now takes **11 shots with zero page errors**, measuring drag pan
+  (`translate(0 0) scale(1)` → `translate(90 50) scale(1)`), wheel zoom 100% → 115%, keyboard zoom and
+  extents, a layer hide taking the drawn count 40 → 29, and a text search reporting its matches with the
+  highlight markers present; it caught two real defects — a badge reading "1 text matches", and a
+  highlight carrying no marker to count. `test/aryacad-fixture.spec.mjs` reads a drawing produced by
+  AryaCAD Electrical and **skips rather than fakes** when the file is absent: the application is GPL-3.0
+  and this bundle is MIT, so its drawings are not committed here.
+
 ## [0.92.0] - 2026-11-12
 
 - **The Optix preview chain reports itself, and the plugin starts its own browser.** Reading the

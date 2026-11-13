@@ -3,6 +3,14 @@
 Status: **M0 gate 1 and 2 passed on the owner's real print set (2026-11-04).** The typert
 client-remote gate is still open; nothing ships until it lands.
 
+**Read this as a port log, not as the current shape.** The milestones below record what was measured
+and built at the time, and several of them describe a drafting surface that has since been removed:
+the four draft tools, `engine/ops.ts`, the CAD-style editing pane and the `ecad/apply` Remote method
+are gone, and the row now registers twelve tools over a read-only viewer. The current ownership line —
+read, review, view and export here; authoring in AryaCAD Electrical through the owner's own MCP row —
+is in [the bridge document](../aryacad-bridge.md), and the closing section of this file records the
+retirement and why.
+
 ## What the owner provided
 
 `Prints.zip` (outside this repository; customer drawings are never committed):
@@ -539,3 +547,62 @@ booted on the development home; the installed product was never written.
 This completes the end-to-end verification on a Development instance. Release remains gated on the
 owner's explicit **ship**: version bump, `[Unreleased]` → version heading, tag, publish and catalog
 entry; nothing in this batch is published.
+
+## Bridge redesign — the row stops being a CAD editor (unreleased)
+
+The M4/M5 sections above describe the peak of the second approach: a CAD-style workspace inside the
+pane, a staged operation engine, and a write path that verified itself against a re-read. That surface
+is now removed, and the reason is ownership, not quality. A drafting engine needs grips, setters,
+trim/extend, offset, a layer table, a plot engine and a block/attribute editor that behaves the way an
+electrical draughtsman expects — an application, whose correctness this bundle could only approximate,
+maintained by someone who was not going to use it daily. The owner already maintains **AryaCAD
+Electrical** (`KonnectSuite/AryaCADElectrical`, a fork of OpenCAD Studio with an added electrical
+component) and updates it on purpose, and it exposes a documented automation and MCP surface. So the
+line moved: this row reads, reviews, views and exports; AryaCAD Electrical authors.
+
+What was removed, measured as it went:
+
+| Removed | Size / count |
+|---|---|
+| `engine/ops.ts` + `engine/ops-geom.ts` | 73,716 bytes of staged operation and its geometry helpers |
+| `src/tools/drafts.ts`, the `EcadOp` union (29 variants), `EcadDraft`, `EcadDraftContext` | 4 tools: `ecad_draft_ops`, `ecad_draft_apply`, `ecad_draft_discard`, `ecad_verify` |
+| `client/EcadCad.tsx`, `cad.ts`, `cadTools.ts`, `edits.ts`, `EcadDraft.tsx` | the editing face: marquee, grips, osnaps, grid/ortho, palette, command bar, properties, context menu, layer editing, undo/redo, apply |
+| `ecad/apply` from the Remote contract | `ECAD_CONTRACT_VERSION` 1 → 2; methods are now `open`, `sheets`, `capabilities` |
+| dead locale keys and dead stylesheet rules | 409 → **139** keys per language; 1,705 → **741** CSS lines |
+| the committed ECAD face | **412,825 → 160,003 bytes** |
+
+What replaced it is smaller and, for review work, better: a read-only viewer with drag pan, wheel zoom
+at the cursor, `+`/`−`/`0` and arrow-key pan, layout tabs, a layer panel with entity counts,
+**text search with on-sheet highlight**, a status line, print through the host print dialog, and SVG/PNG
+export. Search is the one capability the old pane never had. `ecad_capabilities` gained a `cad` section
+that reports whether the AryaCAD MCP row is visible to the composition (`serverName`, `entryTool`,
+`mounted`, the tools seen, and a hint that a still-discovering bridge also reads as not mounted), and
+the row config `bridgeServerName` (default `ocs`) names the server to report on. The gate that used to
+be `ecad_verify` is now `ecad_compare`: a drawing changed in AryaCAD is accepted only against a kept
+copy. `writes` now means deliverables only — `ecad_document` and `ecad_backup`, each to a new path.
+
+The mount itself is deliberately **not** in this bundle's `cordis.patch.yml`: `test/patch.spec.mjs` and
+`test/docs.spec.mjs` constrain what the bundle may insert, and a row naming a host package and an
+absolute path to a 158 MB GPL executable breaks composition on any profile that does not carry it. The
+bundle ships `overlays/aryacad-mcp.patch.yml` for the owner to apply to their own profile instead, and
+never starts or ships the application.
+
+Verification state of this batch, stated honestly: the package and bundle suites pass with the draft
+specs deleted and the surviving ones pruned (21 package specs: 182 pass, 0 fail, 4 skipped; 19 bundle
+specs: 166 pass, 0 fail), `pnpm docs:check` and `pnpm -r build` pass, and the built face is asserted
+to carry the viewer's controls and **not** the apply bridge. The headless interaction harness was
+rebuilt for the viewer and now drives **11 shots with zero page errors**: drag pan measured as
+`translate(0 0) scale(1)` → `translate(90 50) scale(1)`, wheel zoom 100% → 115%, keyboard `+` 100% →
+169% and `0` back to extents, hiding a layer taking the drawn count 40 → 29 and restoring it, and a
+text search for `REV` reporting two matches with the highlight markers present. It also caught two
+real viewer defects — a search badge reading "1 text matches", and a highlight that carried no
+`data-ecad-found` marker so the count could not be asserted — both fixed. A 10,040-primitive sheet
+renders in 154 ms. A fixture spec reads a drawing produced by AryaCAD Electrical itself; it is
+**skipped, not faked**, because the application is GPL-3.0 and this bundle is MIT, so its drawings are
+not committed here — the read path was instead verified out of tree against the application's own
+`samples/demo-line` and `templates/{iec,nec}` sheets. The live acceptance the plan asks for —
+Dev AryaCode with the overlay applied reporting `mounted: true`, then a real print through
+`ecad_backup` → a bridge plot → `ecad_compare` against the kept copy, with the PDF opened in Document
+Preview — has **not** been run yet, and the `dwg`/`corpus` specs were deliberately not run in this
+pass because the embedded converter aborts intermittently on the full print set.
+

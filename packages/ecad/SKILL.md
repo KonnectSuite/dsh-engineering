@@ -1,19 +1,22 @@
 ---
-name: ecad-drafting
-description: Read, review, cross-reference and redline electrical drawings in DXF and DWG, with every written file verified against the staged edit and the source never overwritten.
-whenToUse: When the user works with electrical prints (DXF and DWG drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, annotated, edited or turned into a review bundle.
+name: ecad-review
+description: Read, review and cross-reference electrical drawings in DXF and DWG with stated coverage, view them in the drawing pane, and write review or backup bundles; authoring belongs to AryaCAD Electrical, which ecad_capabilities reports as mounted or not.
+whenToUse: When the user works with electrical prints (DXF and DWG drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, viewed, exported, compared or turned into a review bundle.
 ---
 
 # ECAD drawings (DXF and DWG)
 
-An electrical print is evidence: the drawing says what it says, and a change is only accepted once
-the written file reads back as the change that was staged. Work in four steps — probe, profile, read,
-prove — and never describe a written file as a faithful round-trip you did not measure.
+An electrical print is evidence: the drawing says what it says, and every answer names what this
+engine could not see. This row reads, reviews, views and exports. **Authoring lives in AryaCAD
+Electrical**, the owner's CAD application, reached through its own MCP bridge — so a change is
+something you hand over, then read back here, not something you draw in this pane.
 
 ## Order of operations
 
-1. Run `ecad_capabilities` first. It says whether the engine is available, what the limits are, and
-   whether writes are on. If writes are off, review is still possible; do not promise an edit.
+1. Run `ecad_capabilities` first. It says whether the engine is available, what the limits are,
+   whether deliverable writes are on, and — in its `cad` section — whether the AryaCAD Electrical
+   bridge is mounted in this composition and under which entry tool. Treat that section as the
+   authority on whether authoring and plotting can be promised at all.
 2. Run `ecad_profile` with `action: "infer"` on the drawing set (or read the saved profile). The
    profile is the set's own convention: title-block layer and labels, wire/tag/xref layers, device-tag
    and wire-label formats. Inference reports evidence and a confidence; **confirm the important
@@ -22,8 +25,7 @@ prove — and never describe a written file as a faithful round-trip you did not
 3. Run `ecad_scan` to index the workspace queue of prints: sheet numbers, title blocks, entity and
    unsupported counts, and the index sheet if the set has one. Then `ecad_open` the sheet you are
    asked about, and `ecad_overview` before answering structural questions.
-4. Answer read-only questions with `ecad_find`, `ecad_cross_reference`, `ecad_checks`,
-   `ecad_compare` and `ecad_render`. Only then consider a draft.
+4. Answer with `ecad_find`, `ecad_cross_reference`, `ecad_checks`, `ecad_compare` and `ecad_render`.
 
 ## Reading a print honestly
 
@@ -36,35 +38,46 @@ prove — and never describe a written file as a faithful round-trip you did not
 - `ecad_render` writes an image a person can look at. Use it for review, not as proof of runtime
   behaviour or of the vendor application's own view.
 
-## Drafting a change
+## Viewing and exporting
 
-1. Stage the edit with `ecad_draft_ops` against the open sheet: annotations first (text, leader,
-   revision cloud, rectangle, circle, arc), then attribute/title-block values, layer changes,
-   colours, copy, move, rotate, scale, mirror, offset, trim, extend, erase, grip setters
-   (`setLine`/`setPolyline`/`setCircle`/`setArc`/`setEllipse`) and a library block insert only when
-   the block exists in the drawing.
-2. Read the validation result. A rejected operation is not applied; fix it, do not force it.
-3. Apply with `ecad_draft_apply` to a **new** file. The source is never overwritten. The result
-   carries the written path and a verification: expected versus applied changes, geometry the writer
-   dropped (proxy/custom objects), and any problem that keeps the write unproven. Quote the dropped
-   entities instead of hiding them, and never call the output "the same drawing".
-4. Run `ecad_verify` when a change must be proven separately, and `ecad_compare` when the user asks
-   what changed between two versions. `ecad_draft_discard` abandons a staged draft without writing.
-5. Only after a verified write, offer `ecad_document` for the handover bundle (sheet index, title
-   blocks, cross-reference, findings, per-sheet renders) and `ecad_backup` when the user wants the
-   source copied into the shared backup tree.
+- A `.dxf` or `.dwg` opened from the file manager renders in the drawing pane: drag to pan, wheel to
+  zoom, `+`/`−`/`0` and the arrow keys, a layer panel to hide and show, and a text search that
+  highlights matches on the sheet. The pane is read-only by design; it says so.
+- The pane exports what it is showing: **Print** hands the sheet to the host's print dialog, which is
+  how a PDF is produced, and **SVG** / **PNG** write the current sheet to a file. Quote the name of
+  the file that was written.
+- `ecad_render` is the tool version of the same thing when the answer should be a file rather than a
+  pane, and it states its own coverage.
+
+## Editing belongs to AryaCAD Electrical
+
+- When the user wants the drawing changed, say where the change happens: AryaCAD Electrical, through
+  its MCP tools. `ecad_capabilities` names the entry tool; start there and read its capabilities
+  before promising a plot, a netlist or an edit. A bridge that is configured but still discovering
+  tools also reads as not mounted, so confirm with the entry tool rather than concluding.
+- This row never starts the CAD application and never ships it: it is a program the owner installs and
+  configures in their own profile.
+- After the edit lands in the workspace, reload the sheet here (`ecad_open` with `reload: true`) and
+  prove the change with `ecad_compare` against the previous file. Report what the comparison measured,
+  including anything it could not compare.
+- Do not hand-edit DXF text to imitate a CAD edit. If no bridge is mounted, say that authoring is
+  unavailable in this composition and offer the review bundle instead.
+
+## Deliverables
+
+- `ecad_document` writes the handover bundle: sheet index, title blocks, cross-reference, findings and
+  per-sheet renders. It names its own new output folder and never touches the source drawings.
+- `ecad_backup` copies source drawings into the shared backup tree. Offer it before any change the
+  user makes in the CAD application, so the before-state is kept.
 
 ## Safety boundaries
 
-- **Never overwrite.** Reject the urge to edit the source path; every apply names a new file.
-- **Redline first for customer prints.** When the user wants a marked-up print rather than a modified
-  drawing, stage annotations only and leave the geometry untouched — a rewrite through the MIT DXF
-  writer is a new drawing, not the customer's file.
-- **Confirm the profile.** Guessed conventions that drive checks or cross-reference are the fastest
-  way to a confident wrong answer.
+- **Never overwrite.** This row writes bundles and backups into new paths; the source drawings stay as
+  the user left them.
+- **Confirm the profile.** Guessed conventions that drive checks or cross-reference are the fastest way
+  to a confident wrong answer.
 - **DWG goes through the embedded converter.** A `.dwg` is converted (acadrust, WASM) before the same
-  engine reads it and converted back on apply; quote the conversion provenance and any warnings. A DWG
-  write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; proxy
-  objects, ACIS bodies and xrefs in a DWG are unmeasured and must be reported as such.
+  engine reads it. Quote the conversion provenance and any warnings: substituted fonts, dropped proxy
+  objects, ACIS bodies and xrefs are unmeasured and must be reported as such.
 - **Coverage is stated.** Every render, cross-reference row and check result names what it cannot
   establish. Review findings are evidence for a person, not a release certificate.

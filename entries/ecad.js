@@ -1,12 +1,14 @@
 /**
- * The ECAD product row: the sixteen drawing tools and the `ecad-drafting` skill
+ * The ECAD product row: the twelve drawing tools and the `ecad-review` skill
  * behind one switch.
  *
  * The row ships OFF by default (it is a new surface over a large schema set), so
  * its tools cost a fresh install nothing until a person enables it. Writes are a
  * second switch on the row and start off: a mounted row reads and reviews, and
- * only writes what a person enabled. Every written file is a new file beside the
- * source.
+ * only writes the deliverables a person enabled — every written file is a new
+ * file. Drawing authoring is not this row's: it runs in AryaCAD Electrical, which
+ * the owner mounts as an MCP server in their own profile (docs/aryacad-bridge.md);
+ * `bridgeServerName` only tells this row which server name to report on.
  */
 import z from '@deepseek-ai/schemastery'
 import * as ecad from '../vendor/ecad/lib/index.js'
@@ -42,9 +44,19 @@ function limitOf(input, fallback) {
   return typeof current === 'number' && Number.isInteger(current) && current > 0 ? current : fallback
 }
 
+/** Read a non-empty string row field that may arrive as a volatile getter reference. */
+function textOf(input, fallback) {
+  const current =
+    input !== null && typeof input === 'object' && typeof input.get === 'function' ? input.get() : input
+  return typeof current === 'string' && current.trim() !== '' ? current.trim() : fallback
+}
+
 export const Config = z.object({
   writes: z.boolean().default(false).volatile().description(
-    'Allow ECAD writes: draft apply writes a NEW drawing beside the source, and documentation or backups name their own new output. Off by default; a customer drawing is never overwritten.',
+    'Allow ECAD writes of deliverables: a document export or a backup copy, each naming its own new output. Drawing geometry is never written by these tools; authoring runs in AryaCAD Electrical. Off by default; a customer drawing is never overwritten.',
+  ),
+  bridgeServerName: z.string().default('ocs').volatile().description(
+    'The MCP serverName the AryaCAD Electrical bridge is mounted under. `ecad_capabilities` reports that server\'s tools that are registered in this composition; this row never starts the CAD application.',
   ),
   maxFiles: z.natural().default(2000).volatile().description(
     'Most drawings a scan, review or backup call may touch in one call.',
@@ -69,6 +81,9 @@ export function apply(ctx, config = {}) {
   const policy = {
     get writes() {
       return switchOf(config.writes, false)
+    },
+    get bridgeServerName() {
+      return textOf(config.bridgeServerName, 'ocs')
     },
     get maxFileBytes() {
       return limitOf(config.maxFileBytes, 64 * 1024 * 1024)

@@ -81,10 +81,6 @@
     "ecad_checks",
     "ecad_render",
     "ecad_compare",
-    "ecad_draft_ops",
-    "ecad_draft_apply",
-    "ecad_draft_discard",
-    "ecad_verify",
     "ecad_document",
     "ecad_backup",
     "ftview_open",
@@ -341,18 +337,7 @@
         "ecad_render",
         "ecad_compare"
       ],
-      "contextChars": 9542
-    },
-    {
-      "product": "ECAD",
-      "group": "ECAD drafts",
-      "tools": [
-        "ecad_draft_ops",
-        "ecad_draft_apply",
-        "ecad_draft_discard",
-        "ecad_verify"
-      ],
-      "contextChars": 3995
+      "contextChars": 9752
     },
     {
       "product": "ECAD",
@@ -489,13 +474,13 @@
     }
   ],
   "context": {
-    "characters": 143393,
+    "characters": 139608,
     "byProduct": {
       "L5X": 50984,
       "Migration": 9025,
       "PLC-5": 5144,
       "Engineering resources": 1454,
-      "ECAD": 15727,
+      "ECAD": 11942,
       "FactoryTalk View": 43073,
       "MotionWorks IEC": 17986
     }

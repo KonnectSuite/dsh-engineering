@@ -1,0 +1,40 @@
+# AryaCAD Electrical — the CAD bridge companion row (owner-applied, NOT part of this bundle).
+#
+# This file is a ready-to-apply Cordis patch, not a row this bundle ships. Copy the
+# `insert` block into your own profile patch (or apply it with the host's patch
+# command) to mount AryaCAD Electrical's MCP server next to the `ecad` row.
+#
+# Why it is not in this bundle's cordis.patch.yml:
+#   - The bundle's patch may only insert rows this repository owns. A row naming
+#     `@deepseek-ai/dsh-mcp-client` would make composition fail on any profile that
+#     does not carry that host package ("patch: entry ... not found").
+#   - AryaCAD Electrical is GPL-3.0 and a 158 MB executable. This bundle never
+#     ships it, never installs it and never starts it. You install it and you
+#     decide where it lives.
+#   - `ecad_capabilities` reports what it can see: with this row applied and its
+#     tools discovered, the `cad` section says `mounted: true` and lists the
+#     `mcp__ocs__*` tools; without it, `mounted: false` plus this document's path.
+#
+# The `serverName` must match `[A-Za-z0-9_-]{1,32}` and must be unique among
+# mcp-client instances in the composition. Tools land as
+# `mcp__<serverName>__<tool>`, so `ocs` gives `mcp__ocs__ocs_sessions`. The `ecad`
+# row's `bridgeServerName` config (default `ocs`) must name the same server.
+#
+# Replace the `command` path with the real location of YOUR AryaCAD executable —
+# the portable build is `<extract-dir>\dist\AryaCADElectrical-portable\OpenCADStudio.exe`.
+# Use forward slashes or an escaped path; YAML keeps the string literal as written.
+#
+# `--mcp` is what starts the bridge inside the executable. AryaCAD's own docs
+# (docs/automation/MCP-FOR-AGENTS.md, docs/automation/native.md) describe the
+# editor-first model: the MCP server is a client of the desktop editor, and
+# `ocs_sessions` enumerates live editors (launching one when none exists).
+- insert:
+    - id: cad-ocs
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: ocs
+        transport: stdio
+        command: 'C:/Users/you/AryaCode/KonnectSuite/AryaCADElectrical/dist/AryaCADElectrical-portable/OpenCADStudio.exe'
+        args: ['--mcp']
+        env: {}
+        toolCallTimeoutMs: 180000

@@ -10,12 +10,11 @@
  */
 
 import { createElement, useEffect, useRef, useState, type ReactElement } from 'react'
-import type { Translate } from './EcadDraft.tsx'
+import type { Translate } from './EcadBody.tsx'
 import {
   cardOfContent,
   sheetSetOf,
   sheetSetVisible,
-  type EcadApplyCard,
   type EcadCandidateRow,
   type EcadCardContentBlock,
   type EcadCardError,
@@ -305,39 +304,6 @@ function renderCardView(card: EcadRenderCard, t: Translate): ReactElement {
     ]))
 }
 
-/** @returns the DWG round-trip rows of an apply card. */
-function roundTripRows(card: EcadApplyCard, t: Translate): readonly (ReactElement | null)[] {
-  const trip = card.roundTrip
-  if (trip === undefined) return []
-  const rows: (ReactElement | null)[] = [
-    field(t('cardRoundTrip'), trip.ok ? t('cardRoundTripOk') : t('cardRoundTripDiff', { added: trip.added, removed: trip.removed, changed: trip.changed })),
-  ]
-  if (trip.hardChanges !== undefined && trip.hardChanges > 0) rows.push(field(t('cardRoundTripHard'), String(trip.hardChanges)))
-  if (trip.metadataChanges !== undefined && trip.metadataChanges > 0) rows.push(field(t('cardRoundTripMetadata'), String(trip.metadataChanges)))
-  if (trip.warnings > 0) rows.push(field(t('cardRoundTripWarnings'), String(trip.warnings)))
-  return rows
-}
-
-/** @returns the rendered apply card. */
-function applyCardView(card: EcadApplyCard, t: Translate, openFile: EcadToolCardProps['openFile']): ReactElement {
-  const rows: (ReactElement | null)[] = [
-    card.outputPath === undefined ? null : field(t('cardOutput'), card.outputPath, { wide: true, mono: true }),
-    card.sourcePath === undefined ? null : field(t('cardSource'), card.sourcePath, { wide: true, mono: true }),
-    field(t('cardFormat'), card.format.toUpperCase()),
-    field(t('cardChanges'), String(card.changes)),
-    card.touched === undefined ? null : field(t('cardTouched'), String(card.touched)),
-    ...roundTripRows(card, t),
-    ...card.problems.map((problem, index) => createElement('div', { key: `problem-${index}`, className: css.problem }, problem)),
-    openAction(t, card.outputPath, openFile, true),
-  ]
-  return createElement('div', { className: css.card, 'data-ecad-card': 'apply', 'data-tool': 'ecad_draft_apply' },
-    header(t('cardTitleApply'), card.summary, [
-      badge(t, card.verificationOk ? t('cardVerified') : t('cardNotVerified'), card.verificationOk ? 'success' : 'error'),
-      badge(t, card.format.toUpperCase(), 'business'),
-    ]),
-    body(rows))
-}
-
 /** @returns the rendered generic or fallback card. */
 function genericCardView(card: EcadGenericCard, toolName: string, t: Translate): ReactElement {
   const title = toolName === '' ? t('cardTitleTool', { tool: 'ECAD' }) : t('cardTitleTool', { tool: toolName })
@@ -365,7 +331,6 @@ function cardView(card: EcadToolCard, toolName: string, t: Translate, openFile: 
     case 'checks': return checksCardView(card, t)
     case 'crossReference': return crossReferenceCardView(card, t)
     case 'render': return renderCardView(card, t)
-    case 'apply': return applyCardView(card, t, openFile)
     case 'generic': return genericCardView(card, toolName, t)
   }
 }
@@ -400,7 +365,6 @@ export function titleKeyOf(toolName: string): string {
     case 'ecad_checks': return 'cardTitleChecks'
     case 'ecad_cross_reference': return 'cardTitleCrossReference'
     case 'ecad_render': return 'cardTitleRender'
-    case 'ecad_draft_apply': return 'cardTitleApply'
     default: return 'cardTitleTool'
   }
 }

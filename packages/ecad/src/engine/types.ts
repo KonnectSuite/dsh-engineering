@@ -303,65 +303,10 @@ export interface EcadDiff {
   readonly truncated: boolean
 }
 
-/** Where a draft applies. */
-export interface EcadDraftContext {
-  readonly layout: string
-}
-
-/**
- * One staged edit. Ids are the ids carried by the render model.
- *
- * Entity operations carry a `layout`; the layer-table operations do not, because
- * a layer is shared by every layout of the drawing.
- */
-export type EcadOp =
-  | { readonly op: 'addText'; readonly layout: string; readonly p: EcadPoint; readonly text: string; readonly height: number; readonly layer?: string; readonly rotation?: number }
-  | { readonly op: 'addLine'; readonly layout: string; readonly a: EcadPoint; readonly b: EcadPoint; readonly layer?: string }
-  | { readonly op: 'addPolyline'; readonly layout: string; readonly pts: readonly EcadPoint[]; readonly closed?: boolean; readonly layer?: string }
-  | { readonly op: 'addRectangle'; readonly layout: string; readonly corner1: EcadPoint; readonly corner2: EcadPoint; readonly layer?: string }
-  | { readonly op: 'addRevisionCloud'; readonly layout: string; readonly pts: readonly EcadPoint[]; readonly bulge?: number; readonly layer?: string }
-  | { readonly op: 'addLeader'; readonly layout: string; readonly pts: readonly EcadPoint[]; readonly arrow?: boolean; readonly layer?: string }
-  | { readonly op: 'addBlock'; readonly layout: string; readonly block: string; readonly p: EcadPoint; readonly rotation?: number; readonly scale?: EcadPoint; readonly layer?: string }
-  | { readonly op: 'addCircle'; readonly layout: string; readonly center: EcadPoint; readonly radius: number; readonly layer?: string }
-  | { readonly op: 'addArc'; readonly layout: string; readonly center: EcadPoint; readonly radius: number; readonly startAngleDeg: number; readonly endAngleDeg: number; readonly layer?: string }
-  | { readonly op: 'setText'; readonly layout: string; readonly id: string; readonly text: string }
-  | { readonly op: 'setAttribute'; readonly layout: string; readonly id: string; readonly tag: string; readonly value: string }
-  | { readonly op: 'setLayer'; readonly layout: string; readonly id: string; readonly layer: string }
-  | { readonly op: 'move'; readonly layout: string; readonly ids: readonly string[]; readonly dx: number; readonly dy: number }
-  | { readonly op: 'rotate'; readonly layout: string; readonly ids: readonly string[]; readonly center: EcadPoint; readonly angleDeg: number }
-  | { readonly op: 'copy'; readonly layout: string; readonly ids: readonly string[]; readonly dx: number; readonly dy: number }
-  | { readonly op: 'scale'; readonly layout: string; readonly ids: readonly string[]; readonly center: EcadPoint; readonly factor: number }
-  | { readonly op: 'mirror'; readonly layout: string; readonly ids: readonly string[]; readonly axisA: EcadPoint; readonly axisB: EcadPoint; readonly eraseSource?: boolean }
-  | { readonly op: 'offset'; readonly layout: string; readonly id: string; readonly distance: number; readonly side?: EcadPoint }
-  | { readonly op: 'trim'; readonly layout: string; readonly id: string; readonly boundaryId: string; readonly pick?: EcadPoint }
-  | { readonly op: 'extend'; readonly layout: string; readonly id: string; readonly boundaryId: string }
-  | { readonly op: 'setLine'; readonly layout: string; readonly id: string; readonly a: EcadPoint; readonly b: EcadPoint }
-  | { readonly op: 'setPolyline'; readonly layout: string; readonly id: string; readonly pts: readonly EcadPoint[]; readonly closed?: boolean }
-  | { readonly op: 'setCircle'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly radius: number }
-  | { readonly op: 'setArc'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly radius: number; readonly startAngleDeg: number; readonly endAngleDeg: number }
-  | { readonly op: 'setEllipse'; readonly layout: string; readonly id: string; readonly center: EcadPoint; readonly rx: number; readonly ry: number; readonly rotDeg: number }
-  | { readonly op: 'setColor'; readonly layout: string; readonly ids: readonly string[]; readonly color: number }
-  | { readonly op: 'addLayer'; readonly name: string; readonly color?: number }
-  | { readonly op: 'setLayerColor'; readonly name: string; readonly color: number }
-  | { readonly op: 'renameLayer'; readonly from: string; readonly to: string }
-  | { readonly op: 'erase'; readonly layout: string; readonly ids: readonly string[] }
-
-/** A staged draft written to `.ecad/drafts/<id>.json`. */
-export interface EcadDraft {
-  readonly schema: 1
-  readonly id: string
-  /** Path of the source drawing the draft was staged against. */
-  readonly path: string
-  /** SHA-256 of the source bytes when staged; a changed source rejects the apply. */
-  readonly baseVersion: string
-  readonly createdAt: string
-  readonly ops: readonly EcadOp[]
-}
-
 /** What a verification observed after writing the new file. */
 export interface EcadVerification {
   readonly ok: boolean
-  /** Per operation kind, the number of changes the draft expected. */
+  /** Per operation kind, the number of changes the caller expected. */
   readonly expected: Readonly<Record<string, number>>
   /** The same counters read back from the written file. */
   readonly applied: Readonly<Record<string, number>>

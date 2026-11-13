@@ -3,7 +3,7 @@
   "contextBudget": {
     "defaultOnTools": 150,
     "defaultOnSchemaCharacters": 127423,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (16 tools) ships off and is excluded, and the 12 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the 12 vendored Optix definitions are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -150,11 +150,11 @@
       "package": "packages/ecad",
       "tools": {
         "product": "ECAD",
-        "count": 16,
+        "count": 12,
         "inReference": true
       },
       "skill": {
-        "name": "ecad-drafting",
+        "name": "ecad-review",
         "file": "packages/ecad/SKILL.md",
         "budget": 8000,
         "allow": [
@@ -168,21 +168,18 @@
           "ecad_checks",
           "ecad_render",
           "ecad_compare",
-          "ecad_draft_ops",
-          "ecad_draft_apply",
-          "ecad_draft_discard",
-          "ecad_verify",
           "ecad_document",
           "ecad_backup"
         ]
       },
       "probe": "ecad_capabilities",
       "gate": {
-        "tool": "ecad_verify",
-        "why": "a written drawing is only accepted once a re-read proves the staged change and the source is untouched"
+        "tool": "ecad_compare",
+        "why": "a drawing changed in AryaCAD Electrical is only accepted once a re-read here compares it against the kept copy and names what moved"
       },
       "docs": [
-        "docs/port/ecad.md"
+        "docs/port/ecad.md",
+        "docs/aryacad-bridge.md"
       ],
       "vendor": true
     },

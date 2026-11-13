@@ -11,7 +11,6 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  applyOps,
   buildSheetModel,
   crossReference,
   defaultProfile,
@@ -25,7 +24,6 @@ import {
   renderLayoutSvg,
   renderStackSvg,
   runChecks,
-  validateOps,
   verifyWritten
 } from '../src/engine/index.ts'
 import { corpusAvailable, corpusDir, ok } from './helpers.mjs'
@@ -243,29 +241,5 @@ test('writing every sheet back and re-reading it changes nothing in the model', 
     assert.equal(diff.truncated, false)
     const verification = await verifyWritten(sheet.opened, bytes, { changes: {}, baseModel: sheet.model })
     assert.equal(verification.ok, true, `${sheet.path}: ${JSON.stringify(verification.problems)}`)
-  }
-})
-
-test('a draft applies and verifies on the index sheet, a crowded sheet and a small sheet', { skip }, async () => {
-  const sheets = await sheetsPromise
-  for (const path of ['FC1000495-001.dxf', 'FC1000495-031.dxf', 'FC1000495-051.dxf']) {
-    const source = sheets.find(sheet => sheet.path === path)
-    const opened = await openSheet({ path, bytes: source.bytes })
-    const base = buildSheetModel(opened)
-    const anchor = base.layouts[0].entities.find(entry => entry.k === 'text' && !entry.g) ?? base.layouts[0].entities.find(entry => entry.k === 'line')
-    const ops = [
-      { op: 'addText', layout: 'Model', p: [1, 1], text: 'ARIA REVIEW', height: 0.2, layer: 'REVIEW' },
-      { op: 'addRectangle', layout: 'Model', corner1: [0, 0], corner2: [2, 2], layer: 'REVIEW' },
-      { op: 'setLayer', layout: 'Model', id: anchor.id, layer: 'REVIEW' }
-    ]
-    const validation = validateOps(opened, ops)
-    assert.equal(validation.ok, true, `${path}: ${JSON.stringify(validation.errors)}`)
-    const result = applyOps(opened, ops)
-    const bytes = dxfBytes(opened)
-    const verification = await verifyWritten(opened, bytes, { changes: result.changes, baseModel: base })
-    assert.equal(verification.ok, true, `${path}: ${JSON.stringify(verification.problems)}`)
-    const after = buildSheetModel(await openSheet({ path, bytes }))
-    ok(after.layouts[0].entities.some(entry => entry.t === 'ARIA REVIEW'), `${path} did not keep the added text`)
-    ok(after.layers.some(layer => layer.name === 'REVIEW'), `${path} did not keep the new layer`)
   }
 })

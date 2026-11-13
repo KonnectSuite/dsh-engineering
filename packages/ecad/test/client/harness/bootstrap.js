@@ -12,7 +12,9 @@
 
 const params = new URLSearchParams(window.location.search)
 const LARGE = params.get('large') === '1'
-const READ_ONLY = params.get('readonly') === '1'
+// The second source variant: a DWG that reached the sheet model through the
+// embedded converter, so the pane's provenance row and format badge are exercised.
+const DWG = params.get('dwg') === '1'
 
 /** Build the fake sheet model the face will draw. */
 function buildModel() {
@@ -130,7 +132,10 @@ const fakeEcad = {
   open: async () => ({
     ok: true,
     path: MODEL.path,
-    format: 'dxf',
+    format: DWG ? 'dwg' : 'dxf',
+    ...(DWG
+      ? { converted: { converter: 'acadrust', version: '0.4.2', warnings: ['A proxy object on layout Model was skipped'] } }
+      : {}),
     version: MODEL.version,
     dxfVersion: MODEL.dxfVersion,
     units: MODEL.units,
@@ -153,29 +158,23 @@ const fakeEcad = {
       },
     },
     modelPath: '.ecad/previews/harness.json',
-    writes: !READ_ONLY,
+    // The pane no longer reads this: the face has no editing surface to gate.
+    writes: true,
   }),
-  capabilities: async () => ({ ok: true, contractVersion: 1, writes: !READ_ONLY, engine: 'harness', profileSource: 'inferred' }),
-  apply: async (_sessionId, _path, _base, ops) => {
-    const changes = ops.reduce((counters, op) => {
-      counters[op.op] = (counters[op.op] ?? 0) + 1
-      return counters
-    }, {})
-    return {
-      ok: true,
-      contractVersion: 1,
-      sourcePath: MODEL.path,
-      sourceVersion: MODEL.version,
-      outputPath: 'Prints/A-101-edited.dxf',
-      outputVersion: 'harness-v2',
-      format: 'dxf',
-      modelPath: '.ecad/previews/harness-edited.json',
-      changes,
-      verification: { ok: true, expected: { ...changes }, applied: { ...changes }, dropped: {}, problems: [], notes: [] },
-      notes: ['The source drawing was not changed.'],
-      writes: true,
-    }
-  },
+  capabilities: async () => ({
+    ok: true,
+    contractVersion: 2,
+    writes: false,
+    engine: 'harness',
+    profileSource: 'inferred',
+    cad: {
+      serverName: 'ocs',
+      entryTool: 'mcp__ocs__ocs_sessions',
+      mounted: false,
+      tools: [],
+      hint: 'No AryaCAD Electrical MCP row is visible to this composition; see docs/aryacad-bridge.md.',
+    },
+  }),
   sheets: async () => ({ ok: true, sheets: [{ path: MODEL.path, entityCount: MODEL.stats.entities }] }),
 }
 
@@ -329,7 +328,7 @@ const ready = (async () => {
   window.__HARNESS__ = {
     model: MODEL,
     large: LARGE,
-    readOnly: READ_ONLY,
+    dwg: DWG,
     renderMs: elapsed,
     primitives: document.querySelectorAll('[data-ecad-id]').length,
     worldToClient,
@@ -352,16 +351,34 @@ const ready = (async () => {
     emptyPoint: () => worldToClient(370, 270),
     /** The client point over one primitive's own geometry, by world point. */
     pointOn: (x, y) => worldToClient(x, y),
-    mode: () => document.querySelector('[data-ecad-pane]')?.getAttribute('data-ecad-mode') ?? 'view',
-    editable: () => document.querySelector('[data-ecad-pane]')?.getAttribute('data-ecad-editable') === 'true',
-    selectedCount: () => document.querySelectorAll('[data-ecad-selected]').length,
-    statusText: () => document.querySelector('[data-ecad-status]')?.textContent ?? '',
-    /** The outer pan/zoom group's transform, so a right-drag pan can be measured. */
+    statusText: () => document.querySelector('[role="status"]')?.textContent ?? '',
+    /** The zoom percentage the status line reports. */
+    zoomPercent: () => /(\d+)%/.exec(document.querySelector('[role="status"]')?.textContent ?? '')?.[1] ?? '',
+    /** The outer pan/zoom group's transform, so a pan and a zoom can be measured. */
     viewTransform: () => document.querySelector('[data-ecad-view]')?.getAttribute('transform') ?? '',
-    contextMenuOpen: () => Boolean(document.querySelector('[data-ecad-context-menu]')),
-    /** The snap class the status/sheet marker is currently showing. */
-    snapLabelKind: () => document.querySelector('[data-ecad-snap-label]')?.getAttribute('data-ecad-snap-label') ?? '',
-    snapLabelText: () => document.querySelector('[data-ecad-snap-label]')?.textContent ?? '',
+    /** The primitives currently drawn, so a hidden layer can be proved by count. */
+    primitiveCount: () => document.querySelectorAll('[data-ecad-id]').length,
+    /** The primitives the current text search highlighted on the sheet. */
+    foundCount: () => document.querySelectorAll('[data-ecad-found]').length,
+    matchBadge: () => document.querySelector('[data-ecad-match]')?.textContent ?? '',
+    /** The layer rows the panel lists, and how many of them are hidden. */
+    layerRowCount: () => document.querySelectorAll('[data-ecad-layer-row]').length,
+    hiddenLayerCount: () => [...document.querySelectorAll('[data-ecad-layer-row] button[aria-pressed]')]
+      .filter(button => button.getAttribute('aria-pressed') === 'false').length,
+    /** The sheet-action buttons the pane offers, matched on their accessible name. */
+    actionButton: (name) => {
+      const button = [...document.querySelectorAll('button')].find(candidate =>
+        (candidate.getAttribute('aria-label') ?? candidate.textContent.trim()) === name)
+      return button === undefined ? null : { name, disabled: button.disabled }
+    },
+    /** Press the control whose accessible name is `name`. */
+    clickNamed: (name) => {
+      const button = [...document.querySelectorAll('button')].find(candidate =>
+        (candidate.getAttribute('aria-label') ?? candidate.textContent.trim()) === name)
+      if (button === undefined) throw new Error(`harness: no control named ${name}`)
+      button.click()
+      return true
+    },
     setTheme: (theme) => {
       document.documentElement.setAttribute('data-theme', theme)
     },

@@ -10,8 +10,8 @@
  * conversation-draft bridge the other engineering faces use for Ask Arya.
  *
  * `ctx.remote` is optional on purpose: in a composition without the client
- * gateway the preview still registers and shows a read-only "editing
- * unavailable" state instead of throwing at apply time.
+ * gateway the preview still registers and shows a "preview unavailable" state
+ * instead of throwing at load time.
  *
  * @module dsh-engineering-ecad/client
  */
@@ -25,11 +25,6 @@ import {
   EcadArtifactError,
   readPreviewArtifact,
   unwrapRemoteValue,
-  type EcadApply,
-  type EcadApplyEnvelope,
-  type EcadApplyResult,
-  type EcadCapabilities,
-  type EcadDwgState,
   type EcadFailure,
   type EcadOpenEnvelope,
   type EcadOpenResult,
@@ -44,8 +39,6 @@ const ID = 'dsh-engineering-ecad/drawing'
 const NS = 'sidebarEcad'
 /** How long the face waits for the Remote namespace before reporting it absent. */
 const MOUNT_TIMEOUT_MS = 15_000
-/** Bytes per workspace read of the cached preview. */
-const READ_CHUNK = 1024 * 1024
 
 /** Locale namespace declaration for the typed UI dictionaries. */
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -237,118 +230,6 @@ export function apply(ctx: ClientContext): void {
     return carrier.workspaceFiles.readBytes(sessionId, path, options, signal) as ReturnType<EcadReadBytes>
   }
 
-  /**
-   * Read the service's capability report through one call.
-   *
-   * A failure here is not a failure to draw: the `open` envelope's own `writes`
-   * flag stays the fallback, and an edit offered without a capability report is
-   * still gated by that flag and by the host's own refusal.
-   * @param call - the mounted Remote call.
-   * @param sessionId - session the drawing belongs to.
-   * @param signal - cancellation.
-   * @returns the report, or undefined when the service did not answer.
-   */
-  const readCapabilities = async (call: EcadInvoke, sessionId: string, signal: AbortSignal): Promise<EcadCapabilities | undefined> => {
-    try {
-      signal.throwIfAborted()
-      // The Remote layer resolves a successful call to `{ ok, value }`; the ECAD
-      // report is the value. A failure wrapper passes through and is ignored here.
-      const payload = unwrapRemoteValue(await call('capabilities', sessionId))
-      const envelope = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : undefined
-      if (envelope?.ok !== true) return undefined
-      const dwgRecord = envelope.dwg !== null && typeof envelope.dwg === 'object' ? envelope.dwg as Record<string, unknown> : undefined
-      const dwg: EcadDwgState | undefined = dwgRecord === undefined
-        ? undefined
-        : {
-          available: dwgRecord.available === true,
-          ...(typeof dwgRecord.kind === 'string' ? { kind: dwgRecord.kind } : {}),
-          ...(typeof dwgRecord.version === 'string' ? { version: dwgRecord.version } : {}),
-          ...(Array.isArray(dwgRecord.versions) ? { versions: dwgRecord.versions.filter((value): value is string => typeof value === 'string') } : {}),
-        }
-      return {
-        writes: envelope.writes === true,
-        ...(typeof envelope.contractVersion === 'number' ? { contractVersion: envelope.contractVersion } : {}),
-        ...(typeof envelope.engine === 'string' ? { engine: envelope.engine } : {}),
-        ...(dwg === undefined ? {} : { dwg }),
-        ...(typeof envelope.profileSource === 'string' ? { profileSource: envelope.profileSource } : {}),
-        ...(typeof envelope.maxFileBytes === 'number' ? { maxFileBytes: envelope.maxFileBytes } : {}),
-        ...(typeof envelope.workspace === 'string' ? { workspace: envelope.workspace } : {}),
-      }
-    } catch {
-      return undefined
-    }
-  }
-
-  /**
-   * Claim every ECAD wire tool name for its own transcript card. The tool UI
-   * owns this slot and is loaded by the shell's own web composition, so a
-   * composition without it simply never declares the slot and no card mounts.
-   */
-
-  /**
-   * Apply one staged draft. The host writes a NEW drawing; this bridge then
-   * reads the written sheet back so the pane can show it without touching the
-   * source file or the source view.
-   * @param address - the preview body's file address.
-   * @param baseVersion - source version the draft was staged against.
-   * @param ops - staged operations, in order.
-   * @param signal - cancellation.
-   * @returns the envelope, the written model when readable, or the failure.
-   */
-  const applyDraft: EcadApply = async (address, baseVersion, ops, signal): Promise<EcadApplyResult> => {
-    let file: { readonly sessionId: string; readonly path: string }
-    try {
-      file = hostFileOf(address)
-    } catch (error) {
-      return { ok: false, error: failureOf(error, { code: 'ECAD_NO_SESSION', fix: t('unavailableFix') }) }
-    }
-    const call = await ready
-    if (call === undefined) return { ok: false, error: mountFailure ?? unavailable(t('unavailable')) }
-    signal.throwIfAborted()
-    let payload: unknown
-    try {
-      // Same carrier rule as open: a successful call is `{ ok, value }`, where
-      // the value is the service's apply envelope (or its failure envelope).
-      payload = unwrapRemoteValue(await call('apply', file.sessionId, file.path, baseVersion, ops))
-    } catch (error) {
-      return { ok: false, error: failureOf(error, { code: 'ECAD_DISABLED', fix: t('applyFailureFix') }) }
-    }
-    const envelope = payload !== null && typeof payload === 'object' ? payload as Record<string, unknown> : undefined
-    if (envelope === undefined || envelope.ok !== true) {
-      return { ok: false, error: failureOf(envelope?.error ?? payload, { code: 'ECAD_INTERNAL', fix: t('applyFailureFix') }) }
-    }
-    const summary = envelope as unknown as EcadApplyEnvelope & { contractVersion?: number }
-    if (summary.contractVersion !== undefined && summary.contractVersion !== ECAD_CONTRACT_VERSION) {
-      return {
-        ok: false,
-        error: {
-          code: 'ECAD_CONTRACT_MISMATCH',
-          message: `the Host speaks ECAD contract ${summary.contractVersion}; this face speaks ${ECAD_CONTRACT_VERSION}`,
-          fix: 'Update the engineering bundle so both halves are the same release.',
-        },
-      }
-    }
-    if (typeof summary.outputPath !== 'string' || typeof summary.outputVersion !== 'string') {
-      return {
-        ok: false,
-        error: { code: 'ECAD_APPLY_INVALID', message: t('applyInvalid'), fix: t('applyFailureFix') },
-      }
-    }
-    let written
-    let writtenError: EcadFailure | undefined
-    if (typeof summary.modelPath === 'string' && summary.modelPath !== '') {
-      try {
-        const artifact = await readPreviewArtifact(readBytes, file.sessionId, summary.modelPath, signal)
-        written = { model: artifact.model, version: summary.outputVersion }
-      } catch (error) {
-        if (signal.aborted) throw error
-        writtenError = failureOf(error, { code: 'ECAD_PREVIEW_READ', fix: t('writtenUnreadable') })
-      }
-    } else {
-      writtenError = { code: 'ECAD_PREVIEW_READ', message: t('writtenUnreadable'), fix: t('writtenUnreadable') }
-    }
-    return { ok: true, result: summary, ...(written === undefined ? {} : { written }), ...(writtenError === undefined ? {} : { writtenError }) }
-  }
 
   const open = async (address: string, signal: AbortSignal): Promise<EcadOpenResult> => {
     let file: { readonly sessionId: string; readonly path: string }
@@ -393,8 +274,7 @@ export function apply(ctx: ClientContext): void {
     }
     try {
       const artifact = await readPreviewArtifact(readBytes, file.sessionId, summary.modelPath, signal)
-      const capabilities = await readCapabilities(call, file.sessionId, signal)
-      return { ok: true, summary, model: artifact.model, ...(capabilities === undefined ? {} : { capabilities }) }
+      return { ok: true, summary, model: artifact.model }
     } catch (error) {
       if (signal.aborted) throw error
       return { ok: false, error: failureOf(error, { code: 'ECAD_PREVIEW_READ', fix: 'Reload the drawing; the preview artifact could not be read.' }) }
@@ -403,7 +283,6 @@ export function apply(ctx: ClientContext): void {
 
   const injected: EcadBodyInjected = {
     open,
-    apply: applyDraft,
     ask: (address, context) => draft(address, context),
   }
 

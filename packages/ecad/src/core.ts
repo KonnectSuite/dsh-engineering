@@ -360,6 +360,12 @@ export async function resolveTarget(fs: FsService, path: string, cwd: string | u
 /** The tool registry the plugin registers into. */
 export interface ToolRegistry {
   register(definition: ToolDefinition): unknown
+  /**
+   * Optional read face of the host registry. `ecad_capabilities` uses it to report
+   * which AryaCAD bridge tools are live in this composition; the host declares
+   * `definitions(scope?, toolSet?)` and both arguments are optional.
+   */
+  definitions?(scope?: unknown, toolSet?: unknown): readonly { readonly name: string }[]
 }
 
 /** The host's per-session sandbox policy service. */

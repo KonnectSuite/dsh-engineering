@@ -11,7 +11,7 @@
  * @module dsh-engineering-ecad/client/artifacts
  */
 
-import type { EcadOp, EcadSheetModel, EcadTitleBlock } from '../engine/types.ts'
+import type { EcadSheetModel, EcadTitleBlock } from '../engine/types.ts'
 
 /** Bytes per read request. */
 export const PREVIEW_CHUNK = 1024 * 1024
@@ -94,80 +94,6 @@ export interface EcadCapabilities {
   readonly maxFileBytes?: number
   readonly workspace?: string
 }
-
-/** One verification counter the host reads back from a written drawing. */
-export interface EcadVerification {
-  readonly ok: boolean
-  readonly expected: Readonly<Record<string, number>>
-  readonly applied: Readonly<Record<string, number>>
-  readonly dropped: Readonly<Record<string, number>>
-  readonly problems: readonly string[]
-  readonly notes: readonly string[]
-}
-
-/** The DWG write path's round-trip comparison, when the source was DWG. */
-export interface EcadDwgRoundTrip {
-  readonly ok: boolean
-  readonly added: number
-  readonly removed: number
-  readonly changed: number
-  /**
-   * Changes that keep the write unproven: values or geometry the converter
-   * really altered. The service separates these from metadata-only changes.
-   */
-  readonly hardChanges?: number
-  /** Changes the service classified as conversion normalisation, not a real edit. */
-  readonly metadataChanges?: number
-  readonly truncated: boolean
-  readonly targetVersion?: string
-  readonly backVersion?: string
-  readonly warnings: readonly string[]
-}
-
-/** The successful `ecad/apply` envelope. */
-export interface EcadApplyEnvelope {
-  readonly sourcePath: string
-  readonly sourceVersion: string
-  readonly outputPath: string
-  readonly outputVersion: string
-  readonly format?: string
-  readonly converted?: EcadConversion
-  /** Workspace-relative path of the written drawing's cached render model. */
-  readonly modelPath?: string
-  /** Per op kind, the number of changes the host made. */
-  readonly changes: Readonly<Record<string, number>>
-  readonly verification?: EcadVerification
-  readonly dwgRoundTrip?: EcadDwgRoundTrip
-  readonly notes?: readonly string[]
-  readonly writes: boolean
-}
-
-/** The written drawing, read back through the workspace so the pane can show it. */
-export interface EcadWrittenDrawing {
-  readonly model: EcadSheetModel
-  /** The written file's version hash. */
-  readonly version: string
-}
-
-/** What one apply produced. */
-export type EcadApplyResult =
-  | {
-    readonly ok: true
-    readonly result: EcadApplyEnvelope
-    /** The written sheet, when its cached model could be read; the write still happened. */
-    readonly written?: EcadWrittenDrawing
-    /** Why the written model could not be read, when `written` is absent. */
-    readonly writtenError?: EcadFailure
-  }
-  | { readonly ok: false; readonly error: EcadFailure }
-
-/** Applies one staged draft; implemented by the registration, injected into the body. */
-export type EcadApply = (
-  address: string,
-  baseVersion: string,
-  ops: readonly EcadOp[],
-  signal: AbortSignal,
-) => Promise<EcadApplyResult>
 
 /** What one drawing open produced. */
 export type EcadOpenResult =

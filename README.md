@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 174 tools · 10 rows · 6 products · MIT
+`@aryacode/dsh-engineering` · 170 tools · 10 rows · 6 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -46,7 +46,7 @@ need:
 | `ftview` | `edit`, `studio` | on | staged ME edits and the Studio handoff |
 | `mwi` | `edit` | on | the seven MotionWorks edit schemas |
 | `optix` | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `ocrExecutable` | on | Studio authoring, destructive ops, method invocation, emulator preview and OCR when Tesseract is set |
-| `ecad` | `writes` | off | staged drawing drafts that write a new DXF/DWG beside the source (the row itself also ships off) |
+| `ecad` | `writes`, `bridgeServerName` | off | deliverable writes only — a document export or a backup copy, each naming its own new path (the row itself also ships off); drawing authoring runs in AryaCAD Electrical |
 
 The default-on surface is a budgeted quantity: `components.json` records the tools and the characters
 of model-visible schema a fresh install may mount, and a component that would exceed either ceiling
@@ -65,7 +65,7 @@ package registers exactly one browser bundle.
 | **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
 | **FactoryTalk Optix** | 12 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
-| **ECAD electrical prints** | 16 | off | none; reads DXF prints (DWG through the embedded converter, no external app); writes stay off until enabled |
+| **ECAD electrical prints** | 12 | off | none; reads DXF prints (DWG through the embedded converter, no external app); authoring is optional and runs in AryaCAD Electrical through its own MCP row |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
 | **RSLogix 5 (PLC-5) program reads** | 8 | off | RSLogix 5 installed for the automation-server reads (the container reader answers from the file alone without it); Node for the container census |
@@ -87,11 +87,12 @@ Tool groups, by product:
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
   local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
-- **ECAD** — 10 read (`ecad_capabilities` … `ecad_compare`), 4 staged drafts (`ecad_draft_*`, `ecad_verify`) and 2 deliverables
-  (`ecad_document`, `ecad_backup`), plus the `ecad-drafting` skill: the engine parses DXF (and DWG through the embedded
+- **ECAD** — 10 read (`ecad_capabilities` … `ecad_compare`) and 2 deliverables (`ecad_document`,
+  `ecad_backup`), plus the `ecad-review` skill: the engine parses DXF (and DWG through the embedded
   converter), infers the print set's profile from the title blocks and ACADE `WD_M`, reads title blocks, an index sheet,
-  cross-reference candidates and checks, renders layouts as SVG, and writes an edited drawing as a NEW file whose
-  write is verified against the staged change
+  cross-reference candidates and checks, renders layouts as SVG, and compares a drawing against a kept copy.
+  Authoring is not this row's: it runs in AryaCAD Electrical, whose MCP bridge `ecad_capabilities` reports as mounted
+  or not ([the bridge](docs/aryacad-bridge.md))
 
 ## Switches
 
@@ -105,7 +106,7 @@ down:
 | `l5x` | offline reads, checks, comparison and the `rockwell-l5x` guidance; optionally drafts, SDK, live (reads, batch, discovery, clock) and supervised writes | `editing` (on), `studio` (on), `live` (on), `allowWrites` (on) |
 | `ftview` | FactoryTalk View ME read, guidance and edits; optionally the Studio handoff | `edit` (on), `studio` (on) |
 | `mwi` | MotionWorks IEC session, reads, verify, guidance and the edits | `workspace` (empty), `edit` (on) |
-| `ecad` | ECAD drawing reads, review, cross-reference, checks, render/compare, staged drafts and the review/backup deliverables, with the `ecad-drafting` skill; the row ships off, and writes are a second switch | `writes` (off), `maxFiles` (2000), `maxFileBytes` (64 MiB), `maxEntities` (200000) |
+| `ecad` | ECAD drawing reads, review, cross-reference, checks, render/compare and the review/backup deliverables, with the `ecad-review` skill; the row ships off, `writes` covers deliverables only, and `bridgeServerName` names the AryaCAD MCP server it reports on | `writes` (off), `bridgeServerName` (`ocs`), `maxFiles` (2000), `maxFileBytes` (64 MiB), `maxEntities` (200000) |
 | `viewers` | ladder, ME display and ECAD drawing previews | — |
 | `engineering-preset` | none — the preset's own settings, read from the row | on | nothing; registers through the host's `agentPresets` service and tolerates a composition without one |
 | `engineering-resources` | the engineering corpus, the house-style profile and the `engineering-standards` skill; no project of its own | `reference` (on) |
@@ -156,48 +157,41 @@ Where each surface actually stands, based on what has been exercised.
 - ECAD electrical prints: the engine parses all 34 sheets of a real print set into 83,936 primitives with
   zero unsupported and zero truncated layouts, reads title blocks, the 80-row index sheet, a 0.95-confidence
   profile from the ACADE `WD_M` attributes, 74 cross-reference candidates and 97 findings; all 34 sheets
-  write → re-read → rebuild with zero model difference, and the sixteen tools are exercised through a fake
+  write → re-read → rebuild with zero model difference, and the twelve tools are exercised through a fake
   Host composition (sandbox-policy writes, source untouched, explicit failure envelopes). The right-panel
   viewer and the DWG converter landed in the same batch.
 - ECAD DWG: the embedded acadrust 0.6.8 converter (WASM, 6.4 MB) converted **33/33** real DWGs in
   **1.17 s** total with zero reader warnings, preserving each drawing's version (16 AC1027, 17 AC1032);
   DXF→DWG→DXF and DWG→DXF→DWG→DXF round trips were **0/0/0** on the measured sheets (one sheet showed
-  only an anonymous-block rename), and the panel service opened a real DWG (title block `004`), applied a
-  redline to a **new** AC1027 DWG with `verification.ok` and `dwgRoundTrip 0/0/0`, leaving the source
-  untouched. The DWG and DXF sets are different title-block issues, so equivalence is reported as measured
-  (~90 % shared geometry) rather than as equality.
+  only an anonymous-block rename), and the panel service opened a real DWG (title block `004`) with its
+  conversion provenance, leaving the source untouched. The DWG and DXF sets are different title-block
+  issues, so equivalence is reported as measured (~90 % shared geometry) rather than as equality.
 - ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
   sheet — fit, pan, zoom, selection, layer hide, light and dark, zh and en, narrow panes, and the error,
   empty, truncated and DWG states — with zero console errors. The Dev AryaCode pass then opened a real
   DWG in the app's right panel: DWG badge, 213 entities, layer list, title-block fields and conversion
   provenance, with no client error.
-- ECAD CAD workspace: with the row's `writes` switch on, the drawing pane is a CAD-style editor.
-  Selection is a set with Shift-add and Ctrl-toggle; left-drag on empty sheet draws an AutoCAD
-  marquee — left→right is a blue **window** (fully enclosed), right→left a green **crossing**
-  (anything touched); middle-drag, right-drag and Space+left-drag pan, the wheel zooms at the cursor,
-  and a right-click menu carries Select all, Zoom extents/window, Pan, Move, Copy, Erase, Properties,
-  Ask, Print and Export SVG. Selection shows grips (line endpoints, polyline vertices, circle radii,
-  arc sweeps, ellipse axes, insertions) with live setter previews; object snaps cover endpoint,
-  midpoint, centre, nearest, **intersection** and grid with F3/F7/F8 for osnap, grid and ortho;
-  undo/redo over staged edits, Delete, Ctrl+A, Escape and a status line with world coordinates and
-  selection count. The tool palette stages real engine operations with live previews and numeric
-  entry: line, polyline, rectangle, circle, arc, revision cloud, leader, text and block insert; move,
-  copy, rotate, scale, mirror, offset, trim, extend and erase. Properties edit text, block attribute
-  values, layer and entity ACI colour (bulk layer/colour for a multi-selection); layers support
-  visibility, current layer, lock and staged create/rename/color. Sheet actions keep apply as a
-  **new verified file** (never overwrite), plus written-view toggle, print, SVG/PNG export, layout
-  tabs, zoom extents and a one-click **Expand drawing** whole-window mode (Escape returns it to the
-  sidebar). With writes off the same selection/navigation and print/export stay; every
-  write control disappears. Verified by 38 new client tests and a 24-shot headless interaction
-  harness (right-drag pan, marquee, multi-select, context menu, grips/setter previews, intersection
-  snap, layer/colour staging, apply with verification 4/4, print, read-only, 10k-primitive sheet),
-  inside a 398-test bundle suite.
+- ECAD drawing preview: the committed face artifact was rendered in headless Chrome against a real corpus
+  sheet — fit, pan, zoom, layer hide, text search, light and dark, zh and en, narrow panes, and the error,
+  empty, truncated and DWG states — with zero console errors. The Dev AryaCode pass then opened a real
+  DWG in the app's right panel: DWG badge, 213 entities, layer list, title-block fields and conversion
+  provenance, with no client error.
+- ECAD CAD workspace: **retired in 0.93.0.** The pane was a CAD-style editor — marquee window/crossing
+  selection, grips with live setter previews, endpoint/midpoint/centre/nearest/intersection/grid osnaps,
+  a staged tool palette (line, polyline, rectangle, circle, arc, revision cloud, leader, text, block insert;
+  move, copy, rotate, scale, mirror, offset, trim, extend, erase), properties and layer editing, and apply
+  to a **new verified file** — measured through 38 client tests and a 24-shot headless interaction harness.
+  Maintaining a second CAD editor was not worth the upkeep: AryaCAD Electrical is the authoring surface, and
+  the pane is now a read-only viewer — drag to pan, wheel zoom, `+`/`−`/`0` and the arrow keys, layer
+  hide/show with entity counts, text search with on-sheet highlight, print, and SVG/PNG export. The
+  committed face is 159,804 bytes where the editor was 412,825, and its stylesheet carries only the classes
+  the viewer reads.
 - ECAD conversation intelligence: every `ecad_*` tool renders as a themed card instead of the generic
   row — open (DXF/DWG badge, conversion warnings, coverage, title block), scan, checks (severity counts
-  and findings), cross-reference (candidate confidence), render (layout and SVG path) and draft_apply
-  (verified badge, output path, counters, DWG round-trip split, “Open written drawing”) are specialised,
+  and findings), cross-reference (candidate confidence), render (layout and SVG path) and capabilities
+  (engine, limits, contract and whether the AryaCAD bridge is mounted) are specialised,
   the rest use labelled field cards; errors print code/message/fix and malformed payloads never invent
-  counts. The panel carries its own sheet, layer and selection status; there is no separate composer
+  counts. The panel carries its own sheet and layer status; there is no separate composer
   status bar above the message input.
 
 **On by default** — every tool surface except ECAD mounts on a fresh install; ECAD is listed and off
@@ -217,8 +211,8 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 157 tools built from this repository (133 default-on plus 16 ECAD and 8 RSLogix 5 tools that ship off); the 9 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 133 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
-- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per written file, the pinned writer does not carry ATTRIB vertical justification, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened, redlined, written to a new DWG and re-verified (33/33), with four sheets reporting linetype-metadata normalisation only. The CAD workspace covers the common edit/annotation surface with the limits named in the panel: line/polyline/circle/arc/ellipse grips stage their setters, while generic geometry and dimension grips still wait on engine setters; trim/extend are LINE against LINE; offset is LINE/CIRCLE/ARC; intersection snap covers straight segments only; entity colour is ACI 1–255 (ByLayer/ByBlock stay on the layer); mirror keeps text readable; only top-level entities edit in place; layer-table changes appear in the layer panel after apply/reopen; print uses the current view through the browser print dialog; PNG export rasterises the SVG through a browser canvas. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; a DWG write renumbers anonymous blocks, so verification compares geometry and text, not byte identity; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
+- The generated tool reference covers the 158 tools built from this repository (138 default-on plus 12 ECAD and 8 RSLogix 5 tools that ship off); the 12 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README. The context budget's character ceiling covers the 138 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per sheet, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened and converted with its version preserved (33/33), with four sheets reporting linetype-metadata normalisation only. The drawing pane is a read-only viewer: pan, zoom, fit, layer visibility, text search with highlight, print through the browser print dialog, and PNG export that rasterises the SVG through a browser canvas; the CAD editing surface it replaced was measured in its own release and is recorded where it was retired. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
 electrical drawings (DXF, and DWG through the embedded converter) are in this bundle.
@@ -280,7 +274,7 @@ flowchart TB
   Bundle -->|insert| L5X["l5x (on) — read + guidance + drafts / SDK / live"]
   Bundle -->|insert| FTV["ftview (on) — read, edits, Studio handoff"]
   Bundle -->|insert| MWI["mwi (on) — session, read, verify, edit"]
-  Bundle -->|insert| ECAD["ecad (off) — DXF/DWG reads, review, drafts"]
+  Bundle -->|insert| ECAD["ecad (off) — DXF/DWG reads, review, view, export"]
   Bundle -->|insert| Viewers["viewers (on) — ladder, ME display and ECAD drawing previews"]
   Bundle -->|insert| Optix["optix (on)"]
 ```
@@ -293,7 +287,7 @@ even when the implementation behind a row is replaced.
 | `l5x` | `dsh-engineering-l5x` | `editing` on · `studio` on · `live` on · `allowWrites` on |
 | `ftview` | `dsh-engineering-ftview` | `edit` on · `studio` on |
 | `mwi` | `dsh-engineering-mwi` | `edit` on |
-| `ecad` | `@aryacode/dsh-engineering/ecad` (sixteen drawing tools + the `ecad-drafting` skill) | `writes` off · `maxFiles` 2000 · `maxFileBytes` 64 MiB · `maxEntities` 200000 |
+| `ecad` | `@aryacode/dsh-engineering/ecad` (twelve drawing tools + the `ecad-review` skill) | `writes` off · `bridgeServerName` `ocs` · `maxFiles` 2000 · `maxFileBytes` 64 MiB · `maxEntities` 200000 |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face: ladder, ME display and ECAD drawing previews) | — |
 | `optix` | `@aryacode/dsh-engineering/optix` (wraps the prebuilt `@aryacode/dsh-tool-ft-optix`) | `allowWrites` on · `allowDestructive` on · `allowInvoke` on · `preview` on · `netlogic` on |
 
@@ -304,9 +298,11 @@ even when the implementation behind a row is replaced.
   overwrite; `ftview_apply` writes a new export folder and leaves the source untouched. MotionWorks
   edits write the real workspace project, after one complete backup under
   `<workspace>/backups/motionworks/`, and verify unrelated saved and native state.
-- **Drawing edits write new files.** `ecad_draft_apply` and the panel's Edit mode write one new DXF (or
-  DWG) beside the source and refuse to overwrite; the row's `writes` switch must be on first, review never
-  writes, and a read-only session refuses. Drawing bytes are published through a policy-checked writer
+- **Drawing deliverables write new files.** `ecad_document` and `ecad_backup` write a review bundle or a
+  copy into a new path and refuse to overwrite; the row's `writes` switch must be on first, review never
+  writes, and a read-only session refuses. The pane never edits a drawing: authoring runs in AryaCAD
+  Electrical, and this row's gate is that a bridge-made change is only accepted once `ecad_compare`
+  against a kept copy names what moved. Binary deliverables are published through a policy-checked writer
   because the host filesystem service is text-only: the destination must stay inside the writable
   workspace, and the create guard is kept.
 - **One backup tree.** Every product backs up into
@@ -338,7 +334,7 @@ even when the implementation behind a row is replaced.
 | FactoryTalk View export | FactoryTalk View ME Studio installed on the host (the export server runs without an open window) |
 | FactoryTalk View Studio | FactoryTalk View Studio ME for discovery and the manual import |
 | MotionWorks IEC | MotionWorks IEC 3 Pro; the 32-bit COM bridge and the Python saved-model engine |
-| ECAD read, review, drafts | Node only; DXF drawings (DWG through the embedded converter, no external app); the row and its `writes` switch must be enabled before drafting |
+| ECAD read, review, view, export | Node only; DXF drawings (DWG through the embedded converter, no external app); the row must be enabled, and its `writes` switch only for the document/backup deliverables. Authoring needs AryaCAD Electrical mounted as an MCP row by the owner — the bundle never installs or starts it |
 | Optix | FactoryTalk Optix Studio |
 
 ## Documentation
@@ -363,6 +359,7 @@ even when the implementation behind a row is replaced.
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |
 | [ECAD port](docs/port/ecad.md) | ECAD engine measurements, the DWG converter decision and the Typert panel service |
+| [AryaCAD Electrical bridge](docs/aryacad-bridge.md) | Where reading ends and authoring begins: the overlay that mounts the CAD MCP row, what `ecad_capabilities` reports, and the backup → edit → save_verified → compare sequence |
 | [FTView port](docs/port/ftview.md) | FactoryTalk View port decisions |
 | [MotionWorks IEC port](docs/port/mwi.md) | MWI migration design, phases and inventory |
 | [Packaging](docs/port/packaging.md) | How the bundle is packed and pinned |

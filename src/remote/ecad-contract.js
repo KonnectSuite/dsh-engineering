@@ -19,8 +19,8 @@
 export const ECAD_PACKAGE = '@aryacode/dsh-engineering'
 /** Remote namespace, Cordis service key, and the service the Gateway dispatches to. */
 export const ECAD_NAMESPACE = 'ecad'
-/** Wire contract version the client checks against `capabilities`. */
-export const ECAD_CONTRACT_VERSION = 1
+/** Wire contract version the client checks against `capabilities`; 2 dropped `apply`. */
+export const ECAD_CONTRACT_VERSION = 2
 
 /**
  * One strict codec over the shape a parameter or result carries.
@@ -58,8 +58,6 @@ const nonEmptyString = value => typeof value === 'string' && value.length > 0
 const finiteNumber = value => typeof value === 'number' && Number.isFinite(value)
 /** @returns true when `value` is a JSON object (not an array or null). */
 const jsonObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
-/** @returns true when `value` is a JSON array. */
-const jsonArray = value => Array.isArray(value)
 
 /**
  * One parameter of one method: name and wire name are the same, order is the
@@ -86,19 +84,6 @@ export const ECAD_METHODS = [
       parameter('path', 'workspace-relative path of the drawing (a .dxf file)', nonEmptyString, { type: 'string' }),
     ],
     result: parameter('result', 'the open result: version, model path and a short summary', jsonObject, { type: 'object' }),
-  },
-  {
-    method: 'apply',
-    description:
-      'Apply a staged draft to a NEW drawing beside the source (same format, never overwriting it), re-read the written file and return the verification.',
-    signature: 'async apply(sessionId: string, path: string, baseVersion: string, ops: readonly EcadOp[]): Promise<EcadApplyResult>',
-    parameters: [
-      parameter('sessionId', 'the session whose workspace holds the drawing', nonEmptyString, { type: 'string' }),
-      parameter('path', 'workspace-relative path of the source drawing', nonEmptyString, { type: 'string' }),
-      parameter('baseVersion', 'SHA-256 of the source bytes the draft was staged against', nonEmptyString, { type: 'string' }),
-      parameter('ops', 'the staged operations, in application order', jsonArray, { type: 'array' }),
-    ],
-    result: parameter('result', 'the apply result: output path, version and verification', jsonObject, { type: 'object' }),
   },
   {
     method: 'sheets',
@@ -162,8 +147,8 @@ export function buildHostDescriptor(method) {
 export function buildHostModel() {
   return {
     services: [{
-      description: 'Engineering bundle Remote service for ECAD drawings: open, apply, sheets and capabilities.',
-      summary: 'ECAD drawings: open a sheet model, apply a verified draft, list workspace drawings.',
+      description: 'Engineering bundle Remote service for ECAD drawings: open, sheets and capabilities.',
+      summary: 'ECAD drawings: open a sheet model for the viewer and list workspace drawings.',
       tags: [],
       jsDoc: '/** Engineering bundle Remote service for ECAD drawings. */',
       key: ECAD_NAMESPACE,

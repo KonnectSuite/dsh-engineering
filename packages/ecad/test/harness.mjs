@@ -66,6 +66,8 @@ export function harness(files = new Map(), options = {}) {
   const store = new Map()
   for (const [path, value] of files) store.set(normalizePath(path), typeof value === 'string' ? new TextEncoder().encode(value) : new Uint8Array(value))
   const definitions = []
+  /** Tool names a mounted MCP server contributes to the composition, added by `addBridgeTool`. */
+  const extraTools = []
   const written = []
   const deleted = []
   const writeCalls = []
@@ -185,7 +187,21 @@ export function harness(files = new Map(), options = {}) {
   }
 
   const ctx = {
-    tools: { register(definition) { definitions.push(definition) } },
+    tools: {
+      register(definition) { definitions.push(definition) },
+      // The read face a real registry exposes is optional on ToolRegistry, and
+      // `ecad_capabilities` uses it to report which AryaCAD bridge tools are live.
+      // `bridge: false` models a host that cannot answer at all; `addBridgeTool`
+      // models a server whose tools appeared in the composition.
+      ...(options.bridge === false
+        ? {}
+        : {
+            definitions: () => [
+              ...definitions.map(definition => ({ name: definition.name })),
+              ...extraTools.map(name => ({ name })),
+            ],
+          }),
+    },
     fs,
     get(name) { return services.get(name) },
     provide(name, value) { services.set(name, value) },
@@ -216,6 +232,10 @@ export function harness(files = new Map(), options = {}) {
     remoteService,
     ctx,
     exec,
+    /** Name a tool as contributed by a mounted MCP server, after the row applied. */
+    addBridgeTool(name) {
+      extraTools.push(name)
+    },
     call(name, args = {}, execOverride = {}) {
       const definition = byName.get(name)
       if (definition === undefined) throw new Error(`no tool ${name}`)

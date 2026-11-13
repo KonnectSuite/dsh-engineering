@@ -76,9 +76,7 @@ export type { DiffSheetModelsOptions } from './diff.ts'
 export { renderLayoutSvg, renderStackSvg } from './render.ts'
 export type { RenderOptions, RenderStackItem, RenderStackOptions } from './render.ts'
 
-// Editing and write verification.
-export { applyOps, attributeRows, validateOps } from './ops.ts'
-export type { EcadOpError, EcadOpsResult, EcadOpsValidation } from './ops.ts'
+// Writing and write verification.
 export { dxfBytes, verifyWritten, writeAndVerify } from './dxf.ts'
 export type { VerifyExpected, VerifyOptions } from './dxf.ts'
 

@@ -37,7 +37,7 @@ user's enabled state.
 | `l5x` | `entries/l5x.js` | read, `rockwell-l5x` guidance, drafts, SDK, live | `editing` on, `studio` on, `live` on, `allowWrites` on |
 | `ftview` | `entries/ftview.js` | read, guidance, edits; optionally the Studio handoff | `edit` on, `studio` on |
 | `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `edit` on |
-| `ecad` | `entries/ecad.js` | drawing reads, review, cross-reference, checks, render/compare, staged drafts, review and backup deliverables, `ecad-drafting` guidance; the row ships off | `writes` off, `maxFiles` 2000, `maxFileBytes` 64 MiB, `maxEntities` 200000 |
+| `ecad` | `entries/ecad.js` | drawing reads, review, cross-reference, checks, render/compare, the read-only viewer and export, review and backup deliverables, `ecad-review` guidance; the row ships off, and authoring belongs to AryaCAD Electrical through the owner's MCP row | `writes` off, `bridgeServerName` `ocs`, `maxFiles` 2000, `maxFileBytes` 64 MiB, `maxEntities` 200000 |
 | `viewers` | `@aryacode/dsh-engineering` (its own client face) | ladder + ME display previews | — |
 | `optix` | `entries/optix.js` | Optix Studio reads, authoring, preview and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview` on, `netlogic` on |
 
@@ -185,17 +185,20 @@ carries all three engineering previews in its single `./client` bundle:
 
 - the ladder viewer renders rungs for an L5X routine opened from the workspace;
 - the ME display preview draws an exported display instead of its XML;
-- the ECAD drawing pane is a CAD workspace on a DXF (or converted DWG) sheet: multi-select with
-  window/crossing marquee, middle/right/Space pan, wheel zoom, right-click menu, grips (line,
-  polyline, circle, arc, ellipse and insertion setters), object snaps including intersection,
-  ortho/grid, undo/redo, a draw/modify tool palette, editable text/attribute/layer/colour
-  properties and layers, print/export, and — when the row's `writes` switch is on — staged edits
-  applied through `ecad/apply` to a new verified drawing (the shell's filesystem service is
-  text-only, so drawing bytes go through a policy-checked local writer that refuses a read-only
-  session or an outside destination). The same face also claims all
-  sixteen ECAD tool names in the shell's keyed `tool.call.toolview` slot (specialised cards for
-  open/scan/checks/cross-reference/render/draft_apply). It does not mount a composer dock: the
-  drawing pane owns the sheet, layer and selection status, and the status bar duplicated that
+- the ECAD drawing pane is a **read-only viewer** on a DXF (or converted DWG) sheet: drag to pan, wheel
+  zoom at the cursor, `+`/`−`/`0` and the arrow keys, layout tabs, a layer panel that hides and shows with
+  entity counts, text search that highlights matches on the sheet, a coverage and conversion badge, print
+  through the host print dialog, and SVG/PNG export of the current sheet. The CAD editing surface this pane
+  carried (marquee selection, grips, osnaps, a staged tool palette, properties and layer editing, staged
+  edits applied through `ecad/apply` to a new verified drawing) was **retired in 0.93.0**: authoring belongs
+  to AryaCAD Electrical, reached through the owner's own MCP row, and the Remote contract dropped `apply`
+  with it (`ECAD_CONTRACT_VERSION` 1 → 2, so the face and the service must ship together). The shell's
+  filesystem service is text-only, so the binary deliverables this row does write — a document bundle, a
+  backup copy — still go through a policy-checked local writer that refuses a read-only session or an
+  outside destination. The same face also claims all
+  twelve ECAD tool names in the shell's keyed `tool.call.toolview` slot (specialised cards for
+  open/scan/checks/cross-reference/render/capabilities). It does not mount a composer dock: the
+  drawing pane owns the sheet and layer status, and the status bar duplicated that
   information above the message input.
 
 `scripts/build-client.mjs` produces that bundle from the three face bundles in
@@ -297,7 +300,7 @@ Every product backs up into one workspace tree, so a backup means the same place
 | MotionWorks IEC | `motionworks` | project name | on `mw_project_open`, once per project, and before an edit that finds none |
 | Studio 5000 | `l5x` | project name | on request; drafts and SDK builds already write new files |
 | FactoryTalk View | `ftview` | export folder name | on request; `ftview_apply` already writes a new folder |
-| ECAD | `ecad` | drawing set | on request; `ecad_draft_apply` already writes a new drawing |
+| ECAD | `ecad` | drawing set | on request, and before a change made in AryaCAD Electrical, so the comparison has a baseline |
 | FactoryTalk Optix | `optix` | project name | on request, as a manual Studio export into that folder |
 
 The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, … ] }`, the same shape

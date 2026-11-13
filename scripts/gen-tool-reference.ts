@@ -37,7 +37,7 @@ import { sessionTools as mwiSessionTools } from '../packages/mwi/src/tools/sessi
 import { readTools as mwiReadTools } from '../packages/mwi/src/tools/read.ts'
 import { verifyTools as mwiVerifyTools } from '../packages/mwi/src/tools/verify.ts'
 import { editTools as mwiEditTools } from '../packages/mwi/src/tools/edit.ts'
-import { ecadDeliverTools, ecadDraftTools, ecadReadTools } from '../packages/ecad/src/tools/index.ts'
+import { ecadDeliverTools, ecadReadTools } from '../packages/ecad/src/tools/index.ts'
 import type { Parameters } from '../packages/l5x/src/core/params.ts'
 import type { ToolDefinition } from '../packages/l5x/src/core/tool.ts'
 
@@ -71,8 +71,7 @@ const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'M
   { group: 'Migration', product: 'Migration', blurb: 'Assess a legacy RSLogix 500 export and lint the .L5K a migration wizard writes. Offline file readers; no controller and no claim that a file is migrated.' },
   { group: 'PLC-5', product: 'PLC-5', blurb: 'Read an RSLogix 5 (PLC-5) .RSP project headlessly through the vendor automation server — ladder in neutral text, I/O footprint, chassis configuration, data-file table, processor identity. Read-only; no controller, and the container reader answers from the file alone when RSLogix 5 is absent.' },
   { group: 'Engineering resources', product: 'Engineering resources', blurb: 'The local standards corpus and the house-style profile read from the open project. No network, no model calls.' },
-  { group: 'ECAD read', product: 'ECAD', blurb: 'Probe the drawing engine, confirm the set profile, index the sheets, then open, read, review, cross-reference, render and compare DXF (and DWG through the embedded converter) drawings with stated coverage.' },
-  { group: 'ECAD drafts', product: 'ECAD', blurb: 'Stage print edits and prove them: `draft_ops` validates and stages, `draft_apply` writes one NEW drawing beside the source, and `draft_discard`/`verify` close the loop. Requires the row write switch.' },
+  { group: 'ECAD read', product: 'ECAD', blurb: 'Probe the drawing engine, confirm the set profile, index the sheets, then open, read, review, cross-reference, render and compare DXF (and DWG through the embedded converter) drawings with stated coverage. Editing belongs to AryaCAD Electrical, which the `ecad_capabilities` row reports as mounted or not.' },
   { group: 'ECAD deliverables', product: 'ECAD', blurb: 'Write a review/documentation bundle and back up source drawings into the shared `backups/ecad/` tree. Both name their own new output.' },
   { group: 'FTView read', product: 'FactoryTalk View', blurb: 'Open a FactoryTalk View ME export and read displays and HMI tags.' },
   { group: 'FTView edit', product: 'FactoryTalk View', blurb: 'Stage display and tag edits. `ftview_apply` writes a new export folder and leaves the source untouched.' },
@@ -104,7 +103,6 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X live', liveTools(stub, stub, stub, { transactions: stub, allowWrites: false, maxBatchTags: 64 })],
     ['Engineering resources', resourceTools(() => undefined)],
     ['ECAD read', ecadReadTools(stub)],
-    ['ECAD drafts', ecadDraftTools(stub)],
     ['ECAD deliverables', ecadDeliverTools(stub)],
     ['Migration', migrationTools(stub)],
     ['PLC-5', plc5Tools(stub)],

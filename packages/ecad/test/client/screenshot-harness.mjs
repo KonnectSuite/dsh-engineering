@@ -16,7 +16,7 @@
  * It needs a Chrome or Edge binary on the machine and no npm dependency beyond
  * the workspace's own esbuild.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, copyFileSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -28,9 +28,27 @@ const ROOT = resolve(HERE, '../../../..')
 const HARNESS = join(HERE, 'harness')
 const FACE = join(ROOT, 'packages/ecad/lib/client.js')
 
-/** Where the screenshots go. */
+/**
+ * How long one DevTools call may take. A call that never answers used to stop the run
+ * silently, which is the worst possible failure for a tool whose whole job is to show
+ * what the face is doing.
+ */
+const CDP_TIMEOUT_MS = 30_000
+
+/**
+ * Where the screenshots go.
+ *
+ * The page directory carries the browser profile, and Chrome re-launches itself, so the
+ * process this harness spawned is not the one holding the profile: a killed or orphaned
+ * run leaves that directory locked. A fresh name per run means the next run never has to
+ * win the lock. It does not mean the leftovers are free: `artifacts/` is a tracked tree in
+ * this repository and a Chrome profile costs over a hundred megabytes once the browser has
+ * downloaded its component and on-device models into it, so a run prunes the page
+ * directories its earlier runs left behind and keeps its own small.
+ */
 const outArg = process.argv.indexOf('--out')
 const OUT = resolve(outArg === -1 ? join(tmpdir(), 'ecad-cad-face-shots') : process.argv[outArg + 1])
+const PAGE = `page-${process.pid}`
 
 /** Load the esbuild the workspace installed. */
 function loadEsbuild() {
@@ -124,7 +142,34 @@ class Cdp {
       this.pending.set(id, { resolve, reject, method })
     })
     this.socket.send(JSON.stringify({ id, method, params }))
-    return promise
+    // A call whose response never arrives (a crashed renderer, a lost socket) used to
+    // hang the whole run with no output at all. Name the call that stopped answering.
+    let timer
+    return Promise.race([
+      promise,
+      new Promise((resolveTimeout, rejectTimeout) => {
+        timer = setTimeout(
+          () => rejectTimeout(new Error(`${method}: no DevTools response after ${CDP_TIMEOUT_MS}ms (id ${id})`)),
+          CDP_TIMEOUT_MS,
+        )
+        // The watchdog must not be what keeps the process alive on a clean run.
+        timer.unref?.()
+      }),
+    ]).finally(() => clearTimeout(timer))
+  }
+
+  /**
+   * Release the socket. Left open, it holds the event loop, so a run that failed printed
+   * its stack and then sat there looking like it was still working.
+   */
+  close() {
+    for (const entry of this.pending.values()) entry.reject(new Error(`${entry.method}: the DevTools socket closed`))
+    this.pending.clear()
+    try {
+      this.socket.close()
+    } catch {
+      // Already closed.
+    }
   }
 
   on(method, handler) {
@@ -217,9 +262,15 @@ async function mouse(cdp, type, point, options = {}) {
     type,
     x: Math.round(point.x),
     y: Math.round(point.y),
-    button: options.button ?? 'left',
-    buttons: options.buttons ?? (type === 'mouseMoved' ? 0 : 1),
-    clickCount: type === 'mouseMoved' ? 0 : 1,
+    // A wheel event carries its deltas instead of a button press; Chrome rejects the
+    // call outright when they are missing.
+    ...(type === 'mouseWheel'
+      ? { deltaX: options.deltaX ?? 0, deltaY: options.deltaY ?? 0 }
+      : {
+          button: options.button ?? 'left',
+          buttons: options.buttons ?? (type === 'mouseMoved' ? 0 : 1),
+          clickCount: type === 'mouseMoved' ? 0 : 1,
+        }),
     modifiers: options.modifiers ?? 0,
   })
 }
@@ -247,38 +298,6 @@ async function click(cdp, point, modifiers = 0) {
   await mouse(cdp, 'mouseReleased', point, { buttons: 0, modifiers })
 }
 
-/** Press the right button, drag, and release: a right-drag pan gesture. */
-async function rightDrag(cdp, from, to, options = {}) {
-  await mouse(cdp, 'mouseMoved', from, { buttons: 0 })
-  await mouse(cdp, 'mousePressed', from, { button: 'right', buttons: 2 })
-  const steps = options.steps ?? 8
-  for (let step = 1; step <= steps; step += 1) {
-    const point = {
-      x: from.x + ((to.x - from.x) * step) / steps,
-      y: from.y + ((to.y - from.y) * step) / steps,
-    }
-    await mouse(cdp, 'mouseMoved', point, { button: 'right', buttons: 2 })
-  }
-  if (options.during !== undefined) await options.during()
-  await mouse(cdp, 'mouseReleased', to, { button: 'right', buttons: 0 })
-}
-
-/** Right-click one point, falling back to a synthetic contextmenu event. */
-async function rightClick(cdp, point) {
-  await mouse(cdp, 'mouseMoved', point, { buttons: 0 })
-  await mouse(cdp, 'mousePressed', point, { button: 'right', buttons: 2 })
-  await mouse(cdp, 'mouseReleased', point, { button: 'right', buttons: 0 })
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  const open = await evaluate(cdp, 'Boolean(document.querySelector("[data-ecad-context-menu]"))')
-  if (open === true) return
-  await evaluate(cdp, `(() => {
-    const wrap = document.querySelector('[data-ecad-canvas]').parentElement
-    wrap.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: ${Math.round(point.x)}, clientY: ${Math.round(point.y)} }))
-    return true
-  })()`)
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-}
-
 /** Keydown/up one key. */
 async function key(cdp, keyName, code, modifiers = 0) {
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, modifiers, windowsVirtualKeyCode: keyCodeOf(keyName) })
@@ -298,20 +317,16 @@ async function setInputValue(cdp, selector, value) {
   })()`)
 }
 
-/** Press a Ctrl-modified key chord. */
-async function ctrlKey(cdp, keyName, code) {
-  const windowsVirtualKeyCode = keyName.toUpperCase().charCodeAt(0)
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: keyName, code, modifiers: 2, windowsVirtualKeyCode })
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: keyName, code, modifiers: 2, windowsVirtualKeyCode })
-}
-
 /** The Windows virtual key code of the keys this harness presses. */
 function keyCodeOf(keyName) {
   if (keyName === 'Escape') return 27
-  if (keyName === 'Delete') return 46
-  if (keyName === 'F3') return 114
-  if (keyName === 'F7') return 118
-  if (keyName === 'F8') return 119
+  if (keyName === 'ArrowLeft') return 37
+  if (keyName === 'ArrowUp') return 38
+  if (keyName === 'ArrowRight') return 39
+  if (keyName === 'ArrowDown') return 40
+  if (keyName === '0') return 48
+  if (keyName === '-') return 189
+  if (keyName === '+') return 107
   return 0
 }
 
@@ -349,7 +364,11 @@ function pageHtml() {
 
 /** Prepare the harness directory. */
 async function preparePage(directory) {
-  rmSync(directory, { recursive: true, force: true })
+  try {
+    rmSync(directory, { recursive: true, force: true })
+  } catch {
+    // A leftover directory from an interrupted run; this run uses its own name anyway.
+  }
   mkdirSync(directory, { recursive: true })
   await buildReactGlobals(reactRoots(), directory)
   copyFileSync(FACE, join(directory, 'face.js'))
@@ -368,7 +387,7 @@ async function capture(cdp, directory) {
   await cdp.send('Page.enable')
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false })
 
-  const base = `file:///${join(directory, 'page', 'index.html').replaceAll('\\', '/')}`
+  const base = `file:///${join(directory, PAGE, 'index.html').replaceAll('\\', '/')}`
   console.log(`  page url: ${base}`)
   const open = async (query = '') => {
     await cdp.send('Page.navigate', { url: `${base}${query}` })
@@ -381,16 +400,16 @@ async function capture(cdp, directory) {
   await open('')
   await evaluate(cdp, 'window.__HARNESS__.setTheme("light")')
   await new Promise(resolveWait => setTimeout(resolveWait, 120))
-  result.measurements.small = await evaluate(cdp, '({ renderMs: window.__HARNESS__.renderMs, primitives: window.__HARNESS__.primitives, modelEntities: window.__HARNESS__.model.stats.entities, editable: window.__HARNESS__.editable() })')
+  result.measurements.small = await evaluate(cdp, '({ renderMs: window.__HARNESS__.renderMs, primitives: window.__HARNESS__.primitives, modelEntities: window.__HARNESS__.model.stats.entities, layers: window.__HARNESS__.layerRowCount(), hidden: window.__HARNESS__.hiddenLayerCount(), zoom: window.__HARNESS__.zoomPercent() })')
   result.shots.push(await shot(cdp, directory, '01-light-view.png'))
 
-  // Focus mode: the whole-window CAD surface, then back to the sidebar.
+  // Focus mode: the pane fills the window, then returns to the sidebar.
   await evaluate(cdp, 'document.querySelector("[data-ecad-focus]").click()')
   await new Promise(resolveWait => setTimeout(resolveWait, 220))
   result.measurements.focus = await evaluate(cdp, `(() => {
     const root = document.querySelector('[data-ecad-pane="drawing"]')
     const rect = root.getBoundingClientRect()
-    return { focused: root.dataset.ecadFocused === 'true', width: Math.round(rect.width), height: Math.round(rect.height), viewport: [innerWidth, innerHeight] }
+    return { pressed: document.querySelector('[data-ecad-focus]')?.getAttribute('aria-pressed') ?? '', width: Math.round(rect.width), height: Math.round(rect.height), viewport: [innerWidth, innerHeight] }
   })()`)
   result.shots.push(await shot(cdp, directory, '01b-focus-mode.png'))
   await evaluate(cdp, 'document.querySelector("[data-ecad-focus]").click()')
@@ -401,216 +420,134 @@ async function capture(cdp, directory) {
   result.shots.push(await shot(cdp, directory, '02-dark-view.png'))
   await evaluate(cdp, 'window.__HARNESS__.setTheme("light")')
 
-  // Edit mode: the second button of the view/edit switch.
-  await evaluate(cdp, 'document.querySelector("[data-ecad-mode-switch] button:nth-of-type(2)").click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 180))
-  result.measurements.mode = await evaluate(cdp, 'window.__HARNESS__.mode()')
+  // Zoom in through the toolbar button, twice, and read the status line back.
+  const zoomBefore = await evaluate(cdp, 'window.__HARNESS__.zoomPercent()')
+  const transformBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  await evaluate(cdp, 'window.__HARNESS__.clickNamed("Zoom in")')
+  await evaluate(cdp, 'window.__HARNESS__.clickNamed("Zoom in")')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.zoomIn = {
+    before: zoomBefore,
+    after: await evaluate(cdp, 'window.__HARNESS__.zoomPercent()'),
+    transformChanged: (await evaluate(cdp, 'window.__HARNESS__.viewTransform()')) !== transformBefore,
+  }
+  result.shots.push(await shot(cdp, directory, '03-zoomed-in.png'))
 
-  // Crossing marquee: drag right-to-left over the drawing, capture mid-drag.
-  const start = await harness(cdp, 'emptyPoint()')
-  const end = await harness(cdp, 'pointOn(140, 90)')
-  await drag(cdp, start, end, {
+  // The keyboard on the canvas: 0 frames the sheet, the arrows pan, − zooms out.
+  await evaluate(cdp, 'document.querySelector("[data-ecad-canvas]").parentElement.focus()')
+  await key(cdp, '0', 'Digit0')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.extents = await evaluate(cdp, 'window.__HARNESS__.zoomPercent()')
+  const arrowBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  await key(cdp, 'ArrowRight', 'ArrowRight')
+  await key(cdp, 'ArrowDown', 'ArrowDown')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.arrowPan = {
+    changed: (await evaluate(cdp, 'window.__HARNESS__.viewTransform()')) !== arrowBefore,
+  }
+  await key(cdp, '-', 'Minus')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.zoomOutKey = await evaluate(cdp, 'window.__HARNESS__.zoomPercent()')
+  result.shots.push(await shot(cdp, directory, '04-keyboard-view.png'))
+
+  // A plain left-drag pans the sheet: the read-only pane has no selection to make.
+  await key(cdp, '0', 'Digit0')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  const panBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
+  const panFrom = await harness(cdp, 'pointOn(200, 150)')
+  const panTo = { x: panFrom.x + 90, y: panFrom.y + 50 }
+  await drag(cdp, panFrom, panTo, {
     steps: 8,
     during: async () => {
-      result.shots.push(await shot(cdp, directory, '03-marquee-crossing.png'))
+      result.shots.push(await shot(cdp, directory, '05-pan-drag.png'))
     },
   })
   await new Promise(resolveWait => setTimeout(resolveWait, 250))
-  result.measurements.selectedAfterMarquee = await evaluate(cdp, 'window.__HARNESS__.selectedCount()')
-  result.shots.push(await shot(cdp, directory, '04-multi-selection.png'))
-
-  // Context menu on the sheet.
-  const contextPoint = await harness(cdp, 'pointOn(110, 60)')
-  await rightClick(cdp, contextPoint)
-  result.shots.push(await shot(cdp, directory, '05-context-menu.png'))
-  const menuOpen = await evaluate(cdp, 'Boolean(document.querySelector("[data-ecad-context-menu]"))')
-  if (menuOpen !== true) result.pageErrors.push('context menu did not open')
-  await key(cdp, 'Escape', 'Escape')
-  await new Promise(resolveWait => setTimeout(resolveWait, 120))
-
-  // A single line selection shows grips and the properties panel.
-  await key(cdp, 'Escape', 'Escape')
-  await new Promise(resolveWait => setTimeout(resolveWait, 100))
-  await click(cdp, await harness(cdp, 'pointOn(110, 60)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.shots.push(await shot(cdp, directory, '06-selection-grips.png'))
-
-  // Grip drag on the line's right endpoint: preview then staged setLine.
-  const gripFrom = await harness(cdp, 'pointOn(200, 60)')
-  const gripTo = await harness(cdp, 'pointOn(215, 75)')
-  await drag(cdp, gripFrom, gripTo, {
-    steps: 6,
-    during: async () => {
-      result.shots.push(await shot(cdp, directory, '07-grip-drag.png'))
-    },
-  })
-  await new Promise(resolveWait => setTimeout(resolveWait, 250))
-  result.measurements.draftAfterGrip = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '08-grip-staged.png'))
-
-  // Apply the staged grip edit through the same draft/apply path the shell uses.
-  await evaluate(cdp, 'document.querySelector("[data-ecad-apply]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 600))
-  result.measurements.applyOutcome = await evaluate(cdp, 'document.querySelector("[data-ecad-apply-outcome]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '08b-apply-outcome.png'))
-  await evaluate(cdp, '(() => { const panel = document.querySelector("[data-ecad-apply-outcome]"); const buttons = panel ? [...panel.querySelectorAll("button")] : []; buttons[buttons.length - 1]?.click(); return true })()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-
-  // A text entity's properties plus an open layer edit form.
-  await evaluate(cdp, 'document.querySelectorAll("[data-ecad-id]").length')
-  await click(cdp, await harness(cdp, 'pointOn(304, 40)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await evaluate(cdp, 'document.querySelector("[data-ecad-layer-edit=\\"WIRES\\"]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  result.shots.push(await shot(cdp, directory, '09-properties-layers.png'))
-
-  // Stage a layer rename through the layer panel, then undo and redo it.
-  await setInputValue(cdp, '[data-ecad-layer-rename]', 'WIRES-A')
-  await evaluate(cdp, 'document.querySelector("[data-ecad-layer-rename-apply]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.measurements.layerDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '09b-layer-staged.png'))
-  await evaluate(cdp, 'document.querySelector("[data-ecad-canvas]").parentElement.focus()')
-  await ctrlKey(cdp, 'z', 'KeyZ')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.measurements.undoDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  await ctrlKey(cdp, 'y', 'KeyY')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.measurements.redoDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-
-  // Delete erases the selection through a staged erase op, and undo retracts it.
-  await click(cdp, await harness(cdp, 'pointOn(110, 60)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 120))
-  await key(cdp, 'Delete', 'Delete')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.measurements.deleteDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  await ctrlKey(cdp, 'z', 'KeyZ')
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-
-  // Clean slate, then the merged-engine setters: circle radius, arc geometry and
-  // ellipse axes through their grips, each previewed before the release.
-  await evaluate(cdp, '(() => { const button = [...document.querySelectorAll("button")].find(candidate => candidate.textContent.trim() === "Clear all"); button?.click(); return true })()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await key(cdp, 'Escape', 'Escape')
-  await evaluate(cdp, 'document.querySelector("[data-ecad-tool=\\"select\\"]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 100))
-
-  // Circle: select the ring, drag a quadrant grip; the live preview draws the
-  // new radius and releasing stages setCircle.
-  await click(cdp, await harness(cdp, 'pointOn(250, 180)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await drag(cdp, await harness(cdp, 'pointOn(280, 150)'), await harness(cdp, 'pointOn(290, 152)'), {
-    steps: 6,
-    during: async () => {
-      result.shots.push(await shot(cdp, directory, '14-circle-grip-drag.png'))
-    },
-  })
-  await new Promise(resolveWait => setTimeout(resolveWait, 220))
-  result.measurements.circleGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '14b-circle-grip-staged.png'))
-
-  // Arc: select the arc, drag its start endpoint; setArc carries the new angle.
-  await key(cdp, 'Escape', 'Escape')
-  await click(cdp, await harness(cdp, 'pointOn(281.8, 181.8)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await drag(cdp, await harness(cdp, 'pointOn(295, 150)'), await harness(cdp, 'pointOn(295, 136)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 220))
-  result.measurements.arcGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '14c-arc-grip-staged.png'))
-
-  // Ellipse: select the ellipse, drag the major-axis grip; setEllipse stages the
-  // new rx and rotation.
-  await key(cdp, 'Escape', 'Escape')
-  await click(cdp, await harness(cdp, 'pointOn(380, 200)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await drag(cdp, await harness(cdp, 'pointOn(380, 200)'), await harness(cdp, 'pointOn(383, 213)'))
-  await new Promise(resolveWait => setTimeout(resolveWait, 220))
-  result.measurements.ellipseGripDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '14d-ellipse-grip-staged.png'))
-
-  // Colour: shift-click the circle into the ellipse selection and stage one bulk
-  // setColor op for both entities.
-  await click(cdp, await harness(cdp, 'pointOn(250, 180)'), 8)
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  await setInputValue(cdp, '[data-ecad-property-color]', '5')
-  await evaluate(cdp, 'document.querySelector("[data-ecad-stage-color]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  await evaluate(cdp, 'document.querySelector("[data-ecad-property-color]")?.scrollIntoView({ block: "center" })')
-  await new Promise(resolveWait => setTimeout(resolveWait, 200))
-  result.measurements.colourDraft = await evaluate(cdp, 'document.querySelector("[data-ecad-draft]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '15-colour-staged.png'))
-
-  // Apply the whole setter draft through the normal apply/verification path.
-  await evaluate(cdp, 'document.querySelector("[data-ecad-apply]")?.click()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 600))
-  result.measurements.colourApply = await evaluate(cdp, 'document.querySelector("[data-ecad-apply-outcome]")?.textContent ?? ""')
-  result.shots.push(await shot(cdp, directory, '15b-colour-apply.png'))
-  await evaluate(cdp, '(() => { const panel = document.querySelector("[data-ecad-apply-outcome]"); const buttons = panel ? [...panel.querySelectorAll("button")] : []; buttons[buttons.length - 1]?.click(); return true })()')
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-
-  // A command preview: arm Line and pick its first point, then move.
-  await evaluate(cdp, 'document.querySelector("[data-ecad-tool=\\"line\\"]")?.click()')
-  await click(cdp, await harness(cdp, 'pointOn(60, 220)'))
-  const previewTo = await harness(cdp, 'pointOn(150, 255)')
-  await mouse(cdp, 'mouseMoved', previewTo, { buttons: 0 })
-  await new Promise(resolveWait => setTimeout(resolveWait, 150))
-  result.shots.push(await shot(cdp, directory, '10-line-preview.png'))
-  await key(cdp, 'Escape', 'Escape')
-  await new Promise(resolveWait => setTimeout(resolveWait, 120))
-
-  // The line preview step leaves the cursor elsewhere; with the command ended,
-  // hover the intersection of the two crossing wires and read the osnap label.
-  const intersectPoint = await harness(cdp, 'pointOn(260.4, 60.4)')
-  await mouse(cdp, 'mouseMoved', intersectPoint, { buttons: 0 })
-  await new Promise(resolveWait => setTimeout(resolveWait, 220))
-  result.measurements.intersectionSnap = {
-    kind: await evaluate(cdp, 'window.__HARNESS__.snapLabelKind()'),
-    text: await evaluate(cdp, 'window.__HARNESS__.snapLabelText()'),
+  result.measurements.pan = {
+    before: panBefore,
+    after: await evaluate(cdp, 'window.__HARNESS__.viewTransform()'),
   }
-  result.shots.push(await shot(cdp, directory, '10b-intersection-snap.png'))
 
-  // Print layout.
+  // The wheel zooms at the cursor, and the toolbar frames the sheet again.
+  const wheelBefore = await evaluate(cdp, 'window.__HARNESS__.zoomPercent()')
+  await mouse(cdp, 'mouseWheel', await harness(cdp, 'pointOn(140, 90)'), { deltaX: 0, deltaY: -240 })
+  await new Promise(resolveWait => setTimeout(resolveWait, 250))
+  result.measurements.wheel = {
+    before: wheelBefore,
+    after: await evaluate(cdp, 'window.__HARNESS__.zoomPercent()'),
+  }
+  await evaluate(cdp, 'window.__HARNESS__.clickNamed("Zoom extents")')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+
+  // The layer panel: hide one layer, count what disappears, show it again.
+  const drawnBefore = await evaluate(cdp, 'window.__HARNESS__.primitiveCount()')
+  await evaluate(cdp, `(() => {
+    const row = document.querySelector('[data-ecad-layer-row="WIRES"]')
+    if (row === null) throw new Error('harness: the WIRES layer row is not in the panel')
+    row.querySelector('button[aria-pressed]').click()
+    return true
+  })()`)
+  await new Promise(resolveWait => setTimeout(resolveWait, 250))
+  result.measurements.layerHide = {
+    drawnBefore,
+    drawnAfter: await evaluate(cdp, 'window.__HARNESS__.primitiveCount()'),
+    hidden: await evaluate(cdp, 'window.__HARNESS__.hiddenLayerCount()'),
+  }
+  result.shots.push(await shot(cdp, directory, '06-layer-hidden.png'))
+  await evaluate(cdp, `(() => {
+    const row = document.querySelector('[data-ecad-layer-row="WIRES"]')
+    row.querySelector('button[aria-pressed]').click()
+    return true
+  })()`)
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+  result.measurements.layerShow = {
+    drawn: await evaluate(cdp, 'window.__HARNESS__.primitiveCount()'),
+    hidden: await evaluate(cdp, 'window.__HARNESS__.hiddenLayerCount()'),
+  }
+
+  // Text search: the query highlights matches on the sheet and reports them. REV is the
+  // word the harness sheet carries twice (the title block and the revision note).
+  await setInputValue(cdp, '[data-ecad-search] input', 'REV')
+  await new Promise(resolveWait => setTimeout(resolveWait, 320))
+  result.measurements.search = {
+    found: await evaluate(cdp, 'window.__HARNESS__.foundCount()'),
+    badge: await evaluate(cdp, 'window.__HARNESS__.matchBadge()'),
+  }
+  result.shots.push(await shot(cdp, directory, '07-search-highlight.png'))
+  await setInputValue(cdp, '[data-ecad-search] input', 'NO-SUCH-TEXT')
+  await new Promise(resolveWait => setTimeout(resolveWait, 260))
+  result.measurements.searchNone = {
+    found: await evaluate(cdp, 'window.__HARNESS__.foundCount()'),
+    badge: await evaluate(cdp, 'window.__HARNESS__.matchBadge()'),
+  }
+  await setInputValue(cdp, '[data-ecad-search] input', '')
+  await new Promise(resolveWait => setTimeout(resolveWait, 220))
+
+  // The deliverable controls the pane offers and the layout tabs it carries.
+  result.measurements.sheetActions = await evaluate(cdp, `({
+    print: window.__HARNESS__.actionButton('Print'),
+    svg: window.__HARNESS__.actionButton('Export SVG'),
+    png: window.__HARNESS__.actionButton('Export PNG'),
+    layoutTabs: document.querySelectorAll('[role="tab"]').length,
+  })`)
+
+  // Print layout: the sheet-only arrangement the host print dialog prints.
   await cdp.send('Emulation.setEmulatedMedia', { media: 'print' })
   await new Promise(resolveWait => setTimeout(resolveWait, 250))
   result.shots.push(await shot(cdp, directory, '11-print-layout.png'))
   await cdp.send('Emulation.setEmulatedMedia', { media: '' })
-  result.measurements.sheetActions = await evaluate(cdp, `({
-    print: Boolean(document.querySelector('[data-ecad-print]:not([disabled])')),
-    svg: Boolean(document.querySelector('[data-ecad-export-svg]:not([disabled])')),
-    png: Boolean(document.querySelector('[data-ecad-export-png]:not([disabled])')),
-    layoutTabs: document.querySelectorAll('[role="tab"]').length,
-  })`)
 
-  // Right-drag pans without raising the context menu; a right click still does.
-  const panBefore = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
-  const panFrom = await harness(cdp, 'pointOn(300, 150)')
-  const panTo = { x: panFrom.x + 90, y: panFrom.y + 50 }
-  await rightDrag(cdp, panFrom, panTo, {
-    steps: 8,
-    during: async () => {
-      result.shots.push(await shot(cdp, directory, '02b-right-drag-pan.png'))
-    },
-  })
-  await new Promise(resolveWait => setTimeout(resolveWait, 250))
-  const panAfter = await evaluate(cdp, 'window.__HARNESS__.viewTransform()')
-  const menuAfterDrag = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
-  await rightClick(cdp, await harness(cdp, 'emptyPoint()'))
-  const menuAfterClick = await evaluate(cdp, 'window.__HARNESS__.contextMenuOpen()')
-  result.measurements.rightDrag = { panBefore, panAfter, menuAfterDrag, menuAfterClick }
-  await key(cdp, 'Escape', 'Escape')
-  await new Promise(resolveWait => setTimeout(resolveWait, 120))
-
-  // Read-only mode.
-  await open('?readonly=1')
-  result.measurements.readOnly = await evaluate(cdp, `({
-    editable: window.__HARNESS__.editable(),
-    modeSwitch: Boolean(document.querySelector('[data-ecad-mode-switch]')),
-    paletteTools: document.querySelectorAll('[data-ecad-tool]').length,
-    writeControls: document.querySelectorAll('[data-ecad-tool="line"], [data-ecad-tool="move"], [data-ecad-stage-erase]').length,
-    layerMutation: document.querySelectorAll('[data-ecad-layer-create]').length,
-    colourControl: document.querySelectorAll('[data-ecad-property-color], [data-ecad-stage-color]').length,
-  })`)
-  result.shots.push(await shot(cdp, directory, '12-read-only.png'))
+  // A DWG source: the format badge and the converter provenance in the sheet panel.
+  await open('?dwg=1')
+  result.measurements.dwg = await evaluate(cdp, `(() => {
+    const pane = document.querySelector('[data-ecad-pane]')
+    return {
+      format: pane?.getAttribute('data-ecad-format') ?? '',
+      state: pane?.getAttribute('data-ecad-state') ?? '',
+      namesConverter: (pane?.textContent ?? '').includes('acadrust'),
+    }
+  })()`)
+  result.shots.push(await shot(cdp, directory, '12-dwg-source.png'))
 
   // A 10k-primitive sheet: the responsiveness claim.
   await open('?large=1')
@@ -619,11 +556,51 @@ async function capture(cdp, directory) {
   return result
 }
 
+/**
+ * Kill the browser tree a run launched against `path`.
+ *
+ * Chrome re-launches itself, so the process a run spawned is not the root of the tree that
+ * holds the profile, and a taskkill on that dead pid reaches nothing. The launch command
+ * line carries the page directory, which is unique per run, so matching on it cannot reach
+ * a concurrent run or a browser the owner opened themselves.
+ */
+function reapDirectory(path) {
+  try {
+    spawnSync('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      `Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" | Where-Object { $_.CommandLine -like '*${path}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`,
+    ], { stdio: 'ignore' })
+  } catch {
+    // Nothing to reap, or the shell is not available; the delete below reports the lock.
+  }
+}
+
 /** The whole run. */
 async function main() {
   if (!existsSync(FACE)) throw new Error(`the committed face artifact is missing: ${FACE} (run node scripts/build-ecad-face.mjs)`)
-  const directory = join(OUT, 'page')
+  const directory = join(OUT, PAGE)
   mkdirSync(OUT, { recursive: true })
+  // A run whose profile was locked leaves a page-<pid> tree behind, and that tree is a
+  // whole Chrome profile: over a hundred megabytes of downloaded models. `artifacts/` is
+  // tracked here, so the next run clears what its predecessors could not — which means
+  // reaping the browser that still holds the directory, then deleting it.
+  for (const name of readdirSync(OUT)) {
+    if (!name.startsWith('page-') || name === PAGE) continue
+    const stale = join(OUT, name)
+    reapDirectory(stale)
+    let removed = false
+    for (let attempt = 0; attempt < 4 && !removed; attempt += 1) {
+      try {
+        rmSync(stale, { recursive: true, force: true })
+        removed = true
+      } catch {
+        await new Promise(resolveWait => setTimeout(resolveWait, 400))
+      }
+    }
+    if (!removed) console.error(`harness: could not remove the leftover page directory ${name}; it is still locked by an orphaned browser`)
+  }
   console.log(`harness page: ${directory}`)
   await preparePage(directory)
   const chrome = findChrome()
@@ -637,26 +614,89 @@ async function main() {
     '--hide-scrollbars',
     '--allow-file-access-from-files',
     '--force-device-scale-factor=1',
+    // A fresh profile downloads Chrome's component and on-device models into the profile
+    // directory this harness owns: measured at 112.8 MB for one run, most of it a single
+    // model.tflite. None of it is wanted by a page that renders a sheet model, and the
+    // download is what makes the profile too large and too locked to delete afterwards.
+    '--disable-component-update',
+    '--disable-background-networking',
+    '--disable-features=OptimizationGuideModelDownloading,OptimizationHints,Translate,MediaRouter,DialMediaRouteProvider,InterestFeedContentSuggestions',
     `--user-data-dir=${profile}`,
     `--remote-debugging-port=${port}`,
     '--window-size=1440,980',
     'about:blank',
   ], { stdio: 'ignore' })
+  // On Windows the Chrome child outlives this process when it is interrupted, and its
+  // locked profile then breaks the next run. Reap the whole tree on any exit path.
+  const reap = () => {
+    try {
+      spawnSync('taskkill.exe', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
+    } catch {
+      try {
+        child.kill()
+      } catch {
+        // Already gone.
+      }
+    }
+    // The process spawned above is not the browser: Chrome re-launches itself, so the tree
+    // that holds the profile has a different root and a taskkill on the dead pid reaches
+    // nothing — measured as a 112.8 MB profile that survived every retry.
+    reapDirectory(profile)
+  }
+  process.once('exit', reap)
+  process.once('SIGINT', () => {
+    reap()
+    process.exit(130)
+  })
+  process.once('SIGTERM', () => {
+    reap()
+    process.exit(143)
+  })
+  let cdp
   try {
     await waitForDevtools(port)
-    const cdp = await connectPage(port)
+    cdp = await connectPage(port)
     const result = await capture(cdp, OUT)
     const summary = { out: OUT, chrome, ...result }
     writeFileSync(join(OUT, 'summary.json'), JSON.stringify(summary, null, 2))
     console.log(JSON.stringify({ out: OUT, shots: result.shots.length, measurements: result.measurements, pageErrors: result.pageErrors }, null, 2))
     if (result.pageErrors.length > 0) process.exitCode = 1
   } finally {
-    child.kill()
-    await new Promise(resolveWait => setTimeout(resolveWait, 400))
+    // Ask the browser to shut down before the socket goes away: a clean exit releases the
+    // profile, which is what lets the delete below succeed instead of leaving a locked
+    // hundred-megabyte directory behind.
     try {
-      rmSync(profile, { recursive: true, force: true })
+      await cdp?.send('Browser.close', {})
     } catch {
-      // A locked profile is left for the OS to clean up.
+      // The socket may already be gone; the reaper below covers it.
+    }
+    cdp?.close()
+    // Wait for the browser to actually exit before deleting its profile: a fixed pause
+    // left the directory locked and the next run died on EPERM before it started.
+    await new Promise(resolveExit => {
+      if (child.exitCode !== null || child.signalCode !== null) {
+        resolveExit()
+        return
+      }
+      const timer = setTimeout(resolveExit, 5_000)
+      child.once('exit', () => {
+        clearTimeout(timer)
+        resolveExit()
+      })
+    })
+    reap()
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      try {
+        rmSync(profile, { recursive: true, force: true })
+        break
+      } catch {
+        // The browser may still be releasing one file; retry, then say so out loud rather
+        // than leaving a hundred-megabyte directory in a tracked tree with no trace.
+        await new Promise(resolveWait => setTimeout(resolveWait, 400))
+      }
+    }
+    if (existsSync(profile)) {
+      console.error(`harness: the browser profile survived at ${profile}; the next run removes it`)
     }
   }
 }

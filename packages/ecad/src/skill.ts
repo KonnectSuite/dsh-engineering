@@ -1,8 +1,8 @@
 /**
- * The `ecad-drafting` skill, mounted as its own plugin.
+ * The `ecad-review` skill, mounted as its own plugin.
  *
  * It tells a model to probe, confirm the set's own conventions, read with stated
- * coverage, and draft to a new file whose write is verified.
+ * coverage, view and export the sheet, and hand authoring to AryaCAD Electrical.
  *
  * @module dsh-engineering-ecad/skill
  */
@@ -19,11 +19,11 @@ export const inject = ['skills'] as const
 
 /** The skill metadata. */
 export const SKILL = {
-  name: 'ecad-drafting',
+  name: 'ecad-review',
   description:
-    'Read, review, cross-reference and redline electrical drawings in DXF and DWG: probe the engine, confirm the set profile, index the sheets, read with stated coverage, and draft to a new file whose write is verified against the staged edit.',
+    'Read, review and cross-reference electrical drawings in DXF and DWG with stated coverage, view them in the drawing pane, and write review or backup bundles; authoring belongs to AryaCAD Electrical, which ecad_capabilities reports as mounted or not.',
   whenToUse:
-    'When the user works with electrical prints (DXF and DWG drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, annotated, edited or turned into a review bundle.',
+    'When the user works with electrical prints (DXF and DWG drawings, panel layouts, schematics, title blocks, device tags, wire numbers) and wants them read, checked, viewed, exported, compared or turned into a review bundle.',
 } as const
 
 const HERE = dirname(fileURLToPath(import.meta.url))

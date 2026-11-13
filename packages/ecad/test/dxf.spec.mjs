@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
-import { applyOps, buildSheetModel, dxfBytes, openSheet, verifyWritten, writeAndVerify } from '../src/engine/index.ts'
+import { buildSheetModel, dxfBytes, openSheet, verifyWritten, writeAndVerify } from '../src/engine/index.ts'
 import { fixturesDir, sheetModel, layout, entity, ok } from './helpers.mjs'
 
 /** Fresh database from the titleblock fixture. */
@@ -33,24 +33,6 @@ test('an unmodified write verifies with no problems', async () => {
   assert.deepEqual(verification.problems, [])
   assert.deepEqual(verification.dropped, {})
   ok(verification.notes.some(note => note.includes('re-read')))
-})
-
-test('a write of applied ops verifies against the expected counters', async () => {
-  const opened = await openTitleblock()
-  const base = buildSheetModel(opened)
-  const textId = base.layouts[0].entities.find(entity => entity.k === 'text' && entity.t === '007').id
-  const result = applyOps(opened, [
-    { op: 'addText', layout: 'Model', p: [1, 1], text: 'ADDED', height: 0.2 },
-    { op: 'addLine', layout: 'Model', a: [0, 0], b: [1, 1] },
-    { op: 'setText', layout: 'Model', id: textId, text: '041' }
-  ])
-  const bytes = dxfBytes(opened)
-  const verification = await verifyWritten(opened, bytes, { changes: result.changes, baseModel: base })
-  assert.equal(verification.ok, true, JSON.stringify(verification.problems))
-  assert.equal(verification.expected.addText, 1)
-  assert.equal(verification.applied.addText, 1)
-  assert.equal(verification.applied.addLine, 1)
-  ok(verification.applied.setText >= 1)
 })
 
 test('an unmet expectation is reported as a problem, not smoothed over', async () => {

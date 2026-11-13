@@ -280,16 +280,11 @@
 
 .more,
 .scope,
-.problem,
 .hint,
 .runningLabel {
   color: var(--dsw-alias-label-tertiary);
   font-size: 10px;
   line-height: 16px;
-}
-
-.problem {
-  color: var(--dsw-alias-state-error-primary);
 }
 
 .scope {

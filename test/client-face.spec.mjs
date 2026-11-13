@@ -28,7 +28,6 @@ const ECAD_PREVIEW_ID = 'dsh-engineering-ecad/drawing'
 const ECAD_CARD_KEYS = [
   'ecad_capabilities', 'ecad_profile', 'ecad_scan', 'ecad_open', 'ecad_overview',
   'ecad_find', 'ecad_cross_reference', 'ecad_checks', 'ecad_render', 'ecad_compare',
-  'ecad_draft_ops', 'ecad_draft_apply', 'ecad_draft_discard', 'ecad_verify',
   'ecad_document', 'ecad_backup',
 ]
 
@@ -282,14 +281,15 @@ test('the ECAD face mounts its drawing preview without a Remote carrier or Bette
   ]) {
     assert.ok(mounted.includes(expected), `the ECAD face did not register ${expected} (got ${mounted.join(', ')})`)
   }
-  // The body is handed the three bridges it needs: the reader, the writer and
-  // the conversation draft. The writer is what edit mode calls; a body without
-  // it would offer an apply it cannot perform.
+  // The body is handed the two bridges it needs: the reader and the
+  // conversation draft. It has no writer: the pane views drawings, and the
+  // editing happens in AryaCAD Electrical, which this bundle does not own.
   const body = injected()
   assert.ok(body !== undefined, 'the ECAD body registration injects no props')
-  for (const method of ['open', 'apply', 'ask']) {
+  for (const method of ['open', 'ask']) {
     assert.equal(typeof body[method], 'function', `the ECAD body is not injected with ${method}()`)
   }
+  assert.equal(body.apply, undefined, 'the ECAD body is still injected with a write bridge')
 })
 
 test('the ECAD conversation surfaces register on the host slots they were built for', async () => {
@@ -338,15 +338,6 @@ test('a composition without the tool UI registers no card and still mounts', () 
     'the removed composer dock came back')
 })
 
-test('the ECAD editing copy is part of the same dictionary', () => {
-  // The mode switch, the staged list and the apply action all read from the
-  // dictionary; a missing key would print a raw key in the panel.
-  for (const key of ['viewMode', 'editMode', 'addTextTool', 'stagedOps', 'apply', 'applyFailureFix', 'moveAction', 'eraseAction', 'verification', 'dwgRoundTrip']) {
-    assert.ok(Object.hasOwn(en, key), `the editing dictionary is missing ${key}`)
-    assert.ok(Object.hasOwn(zh, key), `the editing dictionary is missing the Chinese ${key}`)
-  }
-})
-
 test('the ECAD dictionaries agree on keys, and the body only asks for keys they define', () => {
   assert.deepEqual(Object.keys(zh).sort(), Object.keys(en).sort(), 'en and zh disagree on the ECAD preview keys')
   for (const [key, value] of Object.entries(en)) {
@@ -356,8 +347,6 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   // Every literal key the UI asks the locale service for must exist.
   for (const file of [
     'packages/ecad/src/client/EcadBody.tsx',
-    'packages/ecad/src/client/EcadDraft.tsx',
-    'packages/ecad/src/client/EcadCad.tsx',
     'packages/ecad/src/client/EcadCards.tsx',
     'packages/ecad/src/client/index.tsx',
   ]) {
@@ -371,76 +360,41 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   }
 })
 
-test('every CAD tool has its label and hint in both dictionaries', async () => {
-  const { CAD_TOOLS, PENDING_ENGINE_OPS, ENGINE_OPS_SUPPORTED } = await import('../packages/ecad/src/client/cadTools.ts')
-  assert.ok(CAD_TOOLS.length >= 21, 'the tool palette lost tools')
-  for (const tool of CAD_TOOLS) {
-    assert.ok(Object.hasOwn(en, tool.labelKey), `the tool palette asks for the missing locale key ${tool.labelKey}`)
-    assert.ok(Object.hasOwn(zh, tool.labelKey), `the tool palette asks for the missing Chinese locale key ${tool.labelKey}`)
-    assert.ok(Object.hasOwn(en, tool.hintKey), `the tool palette asks for the missing locale key ${tool.hintKey}`)
-    assert.ok(Object.hasOwn(zh, tool.hintKey), `the tool palette asks for the missing Chinese locale key ${tool.hintKey}`)
-    if (tool.writes) assert.ok(ENGINE_OPS_SUPPORTED.has(tool.op) || PENDING_ENGINE_OPS.includes(tool.op), `${tool.id} names an unknown engine op`)
-  }
-  // The keyboard map the report documents: one shortcut per letter tool.
-  const shortcuts = CAD_TOOLS.map(tool => tool.shortcut).filter(key => key !== undefined && key !== 'Del')
-  assert.equal(new Set(shortcuts).size, shortcuts.length, 'two CAD tools share a keyboard shortcut')
-})
-
-test('the CAD workspace controls are in the committed face', () => {
+test('the read-only viewer controls are in the committed face', () => {
   const source = read('packages/ecad/lib/client.js')
   for (const marker of [
-    'data-ecad-palette',
-    'data-ecad-command-bar',
-    'data-ecad-status',
-    'data-ecad-context-menu',
-    'data-ecad-properties',
+    'data-ecad-pane',
+    'data-ecad-state',
+    'data-ecad-format',
+    'data-ecad-canvas',
+    'data-ecad-view',
+    'data-ecad-search',
+    'data-ecad-match',
     'data-ecad-layers',
-    'data-ecad-print',
-    'data-ecad-export-svg',
-    'data-ecad-export-png',
-    'data-ecad-marquee',
-    'data-ecad-grip',
-    'data-ecad-property-text',
-    'data-ecad-property-color',
-    'data-ecad-stage-color',
-    'data-ecad-attribute-editor',
-    'data-ecad-current-layer',
-    'data-ecad-layer-create',
-    'data-ecad-stage-move',
-    'data-ecad-stage-rotate',
-    'data-ecad-apply',
-    'data-ecad-open-written',
-    'data-ecad-written-banner',
+    'data-ecad-layer-row',
+    'data-ecad-found',
+    'data-ecad-focus',
+    'data-ecad-id',
+    'data-ecad-kind',
+    'data-ecad-card',
   ]) {
     assert.ok(source.includes(marker), `the committed ECAD face does not carry the ${marker} control`)
   }
-  // The keyboard aids the report documents are part of the face.
-  for (const key of ['F3', 'F7', 'F8']) {
+  // The keyboard aids the viewer documents: the two zoom keys, the frame-the-
+  // sheet key, the pan arrows and the focus escape.
+  for (const key of ['"+"', '"-"', '"0"', '"ArrowUp"', '"Escape"']) {
     assert.ok(source.includes(key), `the committed ECAD face does not handle ${key}`)
   }
-})
-
-test('the CAD workspace locale strings exist in both languages', () => {
-  for (const key of [
-    'toolPalette', 'toolSelect', 'toolLine', 'toolPolyline', 'toolRectangle', 'toolCircle', 'toolArc',
-    'toolRevisionCloud', 'toolLeader', 'toolText', 'toolBlock', 'toolMove', 'toolCopy', 'toolRotate',
-    'toolScale', 'toolMirror', 'toolOffset', 'toolTrim', 'toolExtend', 'toolErase',
-    'engineOpPending', 'commandBarLabel', 'contextMenuLabel', 'properties', 'layersCurrent',
-    'statusBarLabel', 'snapEndpoint', 'snapIntersection', 'snapMidpoint', 'snapCenter', 'snapNearest', 'snapGrid',
-    'propertiesColor', 'propertiesColorApply', 'propertiesColorHint', 'propertiesColorInvalid',
-    'stageSetterSummary', 'stageColorSummary',
-    'marqueeWindowLabel', 'marqueeCrossingLabel', 'gripOpPending', 'undo', 'redo', 'print',
-    'exportSvg', 'exportPng', 'layerOpPending',
-  ]) {
-    assert.ok(Object.hasOwn(en, key), `the CAD dictionary is missing ${key}`)
-    assert.ok(Object.hasOwn(zh, key), `the CAD dictionary is missing the Chinese ${key}`)
+  // The pane must not carry an editing surface it cannot back with a write.
+  for (const gone of ['data-ecad-apply', 'data-ecad-palette', 'data-ecad-command-bar', 'data-ecad-marquee']) {
+    assert.equal(source.includes(gone), false, `the committed ECAD face still carries the ${gone} control`)
   }
 })
 
 test('every ECAD stylesheet defines exactly the classes its bodies read', () => {
   // Comments are removed first: prose such as "palette.ts" is not a selector.
   const pairs = [
-    { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx', 'packages/ecad/src/client/EcadDraft.tsx', 'packages/ecad/src/client/EcadCad.tsx'] },
+    { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx'] },
     { css: 'packages/ecad/src/client/EcadCards.module.css', sources: ['packages/ecad/src/client/EcadCards.tsx'] },
   ]
   for (const pair of pairs) {

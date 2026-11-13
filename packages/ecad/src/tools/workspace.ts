@@ -10,6 +10,8 @@
  */
 
 import type { EcadSheetSummary, EcadWorkspaceIndex } from '../engine/index.ts'
+import { bridgeReport } from '../bridge.ts'
+import type { CadBridge } from '../bridge.ts'
 import { EngineeringError, boolean, choice, integer, list, object, string, success, tool } from '../core.ts'
 import type { NextStep, ToolDefinition } from '../core.ts'
 import { EcadSession, INDEX_FILE, PROFILE_FILE, engine, sha256 } from '../session.ts'
@@ -48,36 +50,37 @@ export const ECAD_TOOL_NAMES: readonly string[] = [
   'ecad_checks',
   'ecad_render',
   'ecad_compare',
-  'ecad_draft_ops',
-  'ecad_draft_apply',
-  'ecad_draft_discard',
-  'ecad_verify',
   'ecad_document',
   'ecad_backup'
 ]
 
 /** The Remote methods the panel service exposes beside these tools. */
-const REMOTE_METHODS = ['open', 'apply', 'sheets', 'capabilities'] as const
+const REMOTE_METHODS = ['open', 'sheets', 'capabilities'] as const
+
+/** The contract the client face and the Remote service must agree on. */
+const CONTRACT_VERSION = 2
 
 /**
  * The workspace tools this module contributes.
  *
  * @param session - the row session.
+ * @param bridge - the configured CAD bridge, when the caller has a registry to read.
  */
-export function workspaceTools(session: EcadSession): ToolDefinition[] {
-  return [capabilities(session), profile(session), scan(session)]
+export function workspaceTools(session: EcadSession, bridge?: CadBridge): ToolDefinition[] {
+  return [capabilities(session, bridge), profile(session), scan(session)]
 }
 
 /**
- * The capabilities tool.
+ * The capabilities tool, and the bridge probe.
  *
  * @param session - the row session.
+ * @param bridge - the configured CAD bridge, when the caller has a registry to read.
  */
-function capabilities(session: EcadSession): ToolDefinition {
+function capabilities(session: EcadSession, bridge?: CadBridge): ToolDefinition {
   return tool({
     name: 'ecad_capabilities',
     description:
-      'Report the ECAD surface before anything else: the drawing engine and its pinned version, the DWG converter and whether it is available, which formats are supported (DXF, and DWG through the embedded converter), the workspace root, whether a saved profile and a workspace index exist, whether writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.',
+      'Report the ECAD surface before anything else: the drawing engine and its pinned version, the DWG converter and whether it is available, which formats are supported (DXF, and DWG through the embedded converter), the state of the AryaCAD Electrical MCP bridge (the configured server name, the tools of that server registered in this composition, and whether authoring and PDF plotting are therefore available), the workspace root, whether a saved profile and a workspace index exist, whether deliverable writes are enabled, the row limits, the registered tools and rule ids, and the list of things this build cannot establish.',
     parameters: object({}),
     async run(_args, exec) {
       const workspace = session.workspace(exec)
@@ -94,12 +97,14 @@ function capabilities(session: EcadSession): ToolDefinition {
       next.push({ tool: 'ecad_scan', why: 'Index the workspace drawings so the set tools know which sheets exist.' })
       const converter = await converterInfo()
       const dwgReady = converter.kind !== 'unavailable'
+      const cad = bridgeReport(bridge)
       return success(
-        `DXF engine ${ENGINE_VERSION}${dwgReady ? ` with the DWG converter (acadrust ${converter.version})` : ' without a DWG converter'} ready; writes are ${session.writes ? 'on' : 'off'}.`,
+        `DXF engine ${ENGINE_VERSION}${dwgReady ? ` with the DWG converter (acadrust ${converter.version})` : ' without a DWG converter'} ready; the AryaCAD bridge is ${cad.mounted ? `mounted as ${cad.entryTool}` : 'not mounted'}; deliverable writes are ${session.writes ? 'on' : 'off'}.`,
         {
           engine: { id: 'dxf', version: ENGINE_VERSION, reader: '@mlightcad/data-model', dwg: { kind: converter.kind, version: converter.version }, writes: true },
           formats: { supported: SUPPORTED_EXTENSIONS, recognised: RECOGNISED_EXTENSIONS, dwg: dwgReady },
-          contract: { namespace: 'ecad', version: 1, methods: REMOTE_METHODS },
+          contract: { namespace: 'ecad', version: CONTRACT_VERSION, methods: REMOTE_METHODS },
+          cad,
           workspace: {
             root: workspace,
             profile: profileState,

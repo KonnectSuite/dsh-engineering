@@ -26,10 +26,6 @@ export const ECAD_TOOL_NAMES: readonly string[] = [
   'ecad_checks',
   'ecad_render',
   'ecad_compare',
-  'ecad_draft_ops',
-  'ecad_draft_apply',
-  'ecad_draft_discard',
-  'ecad_verify',
   'ecad_document',
   'ecad_backup',
 ]
@@ -61,17 +57,6 @@ export interface EcadCandidateRow {
   readonly confidence: number
   readonly occurrences: number
   readonly note?: string
-}
-
-/** The DWG write path's round-trip comparison, when it was reported. */
-export interface EcadCardRoundTrip {
-  readonly ok: boolean
-  readonly added: number
-  readonly removed: number
-  readonly changed: number
-  readonly hardChanges?: number
-  readonly metadataChanges?: number
-  readonly warnings: number
 }
 
 /** One already-known detail row a generic card prints. */
@@ -150,21 +135,6 @@ export interface EcadRenderCard {
   readonly truncated: boolean
 }
 
-/** The written drawing `ecad_draft_apply` produced and verified. */
-export interface EcadApplyCard {
-  readonly kind: 'apply'
-  readonly summary: string
-  readonly sourcePath?: string
-  readonly outputPath?: string
-  readonly format: EcadCardFormat
-  readonly changes: number
-  readonly touched?: number
-  readonly verificationOk: boolean
-  readonly problems: readonly string[]
-  readonly notes: number
-  readonly roundTrip?: EcadCardRoundTrip
-}
-
 /** Everything else: a known ECAD tool whose specialised card does not exist, a failure, or unreadable text. */
 export interface EcadGenericCard {
   readonly kind: 'generic'
@@ -181,7 +151,6 @@ export type EcadToolCard =
   | EcadChecksCard
   | EcadCrossReferenceCard
   | EcadRenderCard
-  | EcadApplyCard
   | EcadGenericCard
 
 /** One content block as the transcript carries it. */
@@ -218,19 +187,6 @@ function arrayOf(value: unknown): readonly unknown[] | undefined {
 /** @returns the strings of an array, dropping everything else. */
 function stringsOf(value: unknown): readonly string[] {
   return (arrayOf(value) ?? []).filter((entry): entry is string => typeof entry === 'string' && entry.trim() !== '')
-}
-
-/** @returns the sum of a `{ kind: count }` map, or undefined when it is not one. */
-function countSum(value: unknown): number | undefined {
-  const record = recordOf(value)
-  if (record === undefined) return undefined
-  let total = 0
-  for (const entry of Object.values(record)) {
-    const count = numberOf(entry)
-    if (count === undefined) continue
-    total += count
-  }
-  return total
 }
 
 /** @returns a bounded, single-line version of the text. */
@@ -446,42 +402,6 @@ function renderCardOf(data: Record<string, unknown>, summary: string): EcadRende
   }
 }
 
-/** @returns the round-trip comparison the apply answer carried, when it carried one. */
-function roundTripOf(value: unknown): EcadCardRoundTrip | undefined {
-  const record = recordOf(value)
-  if (record === undefined) return undefined
-  return {
-    ok: record.ok === true,
-    added: numberOf(record.added) ?? 0,
-    removed: numberOf(record.removed) ?? 0,
-    changed: numberOf(record.changed) ?? 0,
-    ...(numberOf(record.hardChanges) === undefined ? {} : { hardChanges: numberOf(record.hardChanges) }),
-    ...(numberOf(record.metadataChanges) === undefined ? {} : { metadataChanges: numberOf(record.metadataChanges) }),
-    warnings: stringsOf(record.warnings).length,
-  }
-}
-
-/** @returns the apply card, or undefined when the payload is not an apply answer. */
-function applyCardOf(data: Record<string, unknown>, summary: string): EcadApplyCard | undefined {
-  const outputPath = textOf(data.outputPath)
-  if (outputPath === undefined) return undefined
-  const verification = recordOf(data.verification)
-  const touched = numberOf(data.touched)
-  return {
-    kind: 'apply',
-    summary,
-    ...(textOf(data.sourcePath) === undefined ? {} : { sourcePath: textOf(data.sourcePath) }),
-    outputPath,
-    format: formatOf(data, outputPath),
-    changes: countSum(data.changes) ?? 0,
-    ...(touched === undefined ? {} : { touched }),
-    verificationOk: verification !== undefined && verification.ok === true,
-    problems: verification === undefined ? [] : stringsOf(verification.problems).slice(0, 4),
-    notes: verification === undefined ? 0 : stringsOf(verification.notes).length,
-    ...(roundTripOf(data.dwgRoundTrip) === undefined ? {} : { roundTrip: roundTripOf(data.dwgRoundTrip) }),
-  }
-}
-
 /** @returns the detail fields a known non-specialised tool's answer states. */
 function fieldsOf(toolName: string, data: Record<string, unknown>): readonly EcadCardField[] {
   switch (toolName) {
@@ -493,18 +413,22 @@ function fieldsOf(toolName: string, data: Record<string, unknown>): readonly Eca
       }
       return [...paths, ...scalarFields(data, ['added', 'removed', 'changed', 'truncated'])].slice(0, LIMIT)
     }
-    case 'ecad_verify':
-      return scalarFields(data, ['outputPath', 'draftId', 'mode', 'outputChanged'])
-    case 'ecad_capabilities':
-      return scalarFields(data, ['engine', 'writes', 'profileSource', 'maxFileBytes'])
+    case 'ecad_capabilities': {
+      const cad = recordOf(data.cad)
+      const fields: EcadCardField[] = []
+      if (cad !== undefined) {
+        const entry = textOf(cad.entryTool) ?? 'the CAD bridge'
+        fields.push({ name: 'cad', value: cad.mounted === true ? `mounted: ${entry}` : `not mounted: ${entry}` })
+      }
+      fields.push(...scalarFields(data, ['writes', 'profileSource', 'maxFileBytes']))
+      return fields.slice(0, LIMIT)
+    }
     case 'ecad_profile':
       return scalarFields(data, ['path', 'source', 'sheets'])
     case 'ecad_overview':
       return scalarFields(data, ['sheets', 'source', 'truncated'])
     case 'ecad_find':
       return scalarFields(data, ['rows', 'sheets', 'truncated'])
-    case 'ecad_draft_ops':
-      return scalarFields(data, ['draftId', 'ops', 'path', 'baseVersion'])
     case 'ecad_document':
       return scalarFields(data, ['outputPath', 'files', 'format'])
     case 'ecad_backup':
@@ -557,11 +481,6 @@ export function cardOfValue(toolName: string, value: unknown, text: string, isEr
     }
     case 'ecad_render': {
       const card = renderCardOf(data, summary)
-      if (card !== undefined) return card
-      break
-    }
-    case 'ecad_draft_apply': {
-      const card = applyCardOf(data, summary)
       if (card !== undefined) return card
       break
     }

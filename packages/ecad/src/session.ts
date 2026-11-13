@@ -1,11 +1,13 @@
 /**
- * The ECAD row's workspace state: open sheets, the profile, drafts and index.
+ * The ECAD row's workspace state: open sheets, the profile and the index.
  *
  * A sheet is read and parsed at most once per chat until the caller asks for a
  * reload, so a set-level review does not re-parse the same drawings. The files
  * this class writes are the engine's own workspace artifacts under `.ecad/`
- * (previews, index, profile, drafts); source drawings are only ever read, and a
- * new drawing is written by `draft_apply` beside its source with a create guard.
+ * (previews, index, profile, renders, documentation); source drawings are only
+ * ever read, and a deliverable names its own new output with a create guard.
+ * Drawing geometry is not edited here: authoring happens in AryaCAD Electrical
+ * through its MCP bridge, and this row only re-reads what that app wrote.
  *
  * Writes outside `.ecad/` require the row's writes switch, which is off by
  * default. A refused or failed provider write becomes a typed error naming the
@@ -14,15 +16,12 @@
  * @module dsh-engineering-ecad/session
  */
 
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import type {
   EcadDiff,
-  EcadDraft,
-  EcadOp,
   EcadProfile,
   EcadSheetModel,
   EcadTitleBlock,
-  EcadVerification,
   EcadWorkspaceIndex
 } from './engine/index.ts'
 import type { OpenedSheet } from './engine/index.ts'
@@ -53,8 +52,6 @@ export const PROFILE_FILE = `${ECAD_DIR}/profile.json`
 export const INDEX_FILE = `${ECAD_DIR}/index.json`
 /** Cached render models, one per drawing path. */
 export const PREVIEW_DIR = `${ECAD_DIR}/previews`
-/** Staged drafts. */
-export const DRAFT_DIR = `${ECAD_DIR}/drafts`
 /** Rendered SVG previews. */
 export const RENDER_DIR = `${ECAD_DIR}/renders`
 /** Documentation bundles written by `ecad_document`. */
@@ -102,30 +99,6 @@ export interface WorkspaceIndexState {
   readonly path: string
 }
 
-/** A staged draft on disk. */
-export interface StagedDraft extends EcadDraft {
-  /** Artifact path of the draft file. */
-  readonly draftPath: string
-}
-
-/** The record `draft_apply` leaves so `ecad_verify` can prove the same write again. */
-export interface AppliedRecord {
-  readonly draftId: string
-  readonly sourcePath: string
-  readonly sourceVersion: string
-  /** Format of the source drawing; absent for DXF records written before DWG support. */
-  readonly sourceFormat?: DrawingFormat
-  readonly outputPath: string
-  readonly outputVersion: string
-  /** Format of the written drawing; absent for DXF records. */
-  readonly outputFormat?: DrawingFormat
-  /** Conversion detail when the written drawing's format differs from the source. */
-  readonly conversion?: ConversionInfo
-  readonly changes: Readonly<Record<string, number>>
-  readonly verification: EcadVerification
-  readonly appliedAt: string
-}
-
 /** Limits and switches the row was configured with. */
 export interface EcadSessionOptions {
   /** Whether tools may write outside `.ecad/`. */
@@ -139,9 +112,6 @@ export interface EcadSessionOptions {
   /** Per-session sandbox policy, resolved for every mutation this session writes. */
   readonly policy?: SandboxPolicyResolver
 }
-
-/** One id that is safe as a file name. */
-const DRAFT_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
 
 /**
  * Join a workspace root and a relative artifact path.
@@ -203,10 +173,6 @@ export class EcadSession {
   private readonly chats = new WeakMap<object, Map<string, CacheEntry>>()
   /** Sheets for a call without a chat identity, which happens only in tests. */
   private readonly detached = new Map<string, CacheEntry>()
-  /** Draft ids discarded in this chat when the provider cannot delete files. */
-  private readonly discarded = new WeakMap<object, Set<string>>()
-  /** Discarded ids for the detached case. */
-  private readonly detachedDiscarded = new Set<string>()
 
   /**
    * @param fs - filesystem provider, addressed by resolved targets.
@@ -385,7 +351,7 @@ export class EcadSession {
    * Publish one drawing to a new path and read it back, so the answer comes from
    * the written file rather than from the bytes that were planned.
    *
-   * This is the write half of `ecad_draft_apply`, kept here so the DWG output
+   * The only path that publishes a drawing file, kept here so the DWG output
    * conversion lands in {@link writeDrawing} alone. The destination is guarded
    * create-only: a customer drawing is never overwritten.
    *
@@ -466,13 +432,12 @@ export class EcadSession {
   }
 
   /**
-   * Drop every cached sheet and draft marker for this chat.
+   * Drop every cached sheet for this chat.
    *
    * @param exec - calling context.
    */
   clearCache(exec?: ExecContext): void {
     this.cacheOf(exec).clear()
-    this.discardedOf(exec).clear()
   }
 
   /**
@@ -561,117 +526,6 @@ export class EcadSession {
     const path = joinPath(this.workspace(exec), INDEX_FILE)
     await this.writeText(path, `${JSON.stringify(index, undefined, 2)}\n`, exec, { replace: true })
     return path
-  }
-
-  /**
-   * Stage one draft as a new file; an existing id is never overwritten.
-   *
-   * @param draft - the draft document.
-   * @param exec - calling context.
-   * @returns the staged draft with its artifact path.
-   */
-  async stageDraft(draft: EcadDraft, exec?: ExecContext): Promise<StagedDraft> {
-    if (!DRAFT_ID.test(draft.id)) {
-      throw new EngineeringError('INVALID_DRAFT_ID', `draft id ${JSON.stringify(draft.id)} is not a safe file name`, 'Use letters, digits, "-" and "_", starting with a letter or digit.')
-    }
-    const relative = `${DRAFT_DIR}/${draft.id}.json`
-    const path = joinPath(this.workspace(exec), relative)
-    if (await this.exists(path, exec)) {
-      throw new EngineeringError('DRAFT_EXISTS', `A draft ${JSON.stringify(draft.id)} is already staged.`, 'Discard it first or stage with a different draft_id.')
-    }
-    await this.writeText(path, `${JSON.stringify(draft, undefined, 2)}\n`, exec)
-    return { ...draft, draftPath: relative }
-  }
-
-  /**
-   * Read one staged draft.
-   *
-   * @param draftId - the draft id.
-   * @param exec - calling context.
-   * @returns the draft document and its artifact path.
-   */
-  async readDraft(draftId: string, exec?: ExecContext): Promise<StagedDraft> {
-    const id = this.checkDraftId(draftId)
-    if (this.discardedOf(exec).has(id)) throw this.draftMissing(id)
-    const relative = `${DRAFT_DIR}/${id}.json`
-    const text = await this.readText(joinPath(this.workspace(exec), relative), exec)
-    if (text === undefined) throw this.draftMissing(id)
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(text)
-    } catch {
-      throw new EngineeringError('DRAFT_INVALID', `Draft ${JSON.stringify(id)} is not valid JSON.`, 'Discard it and stage the operations again.')
-    }
-    const record = parsed as Partial<EcadDraft>
-    if (record.schema !== 1 || typeof record.path !== 'string' || typeof record.baseVersion !== 'string' || !Array.isArray(record.ops)) {
-      throw new EngineeringError('DRAFT_INVALID', `Draft ${JSON.stringify(id)} does not match the draft schema.`, 'Discard it and stage the operations again.')
-    }
-    return { ...(record as EcadDraft), draftPath: relative }
-  }
-
-  /**
-   * Record the result of one applied draft so `ecad_verify` can re-prove it.
-   *
-   * @param record - what was written.
-   * @param exec - calling context.
-   * @returns the artifact path.
-   */
-  async saveApplied(record: AppliedRecord, exec?: ExecContext): Promise<string> {
-    const relative = `${DRAFT_DIR}/${record.draftId}.applied.json`
-    await this.writeText(joinPath(this.workspace(exec), relative), `${JSON.stringify(record, undefined, 2)}\n`, exec, { replace: true })
-    return relative
-  }
-
-  /**
-   * Read the applied record of one draft.
-   *
-   * @param draftId - the draft id.
-   * @param exec - calling context.
-   * @returns the record, or undefined when the draft was never applied.
-   */
-  async readApplied(draftId: string, exec?: ExecContext): Promise<AppliedRecord | undefined> {
-    const id = this.checkDraftId(draftId)
-    const text = await this.readText(joinPath(this.workspace(exec), `${DRAFT_DIR}/${id}.applied.json`), exec)
-    if (text === undefined) return undefined
-    try {
-      const parsed = JSON.parse(text) as Partial<AppliedRecord>
-      if (parsed.draftId === id && typeof parsed.outputPath === 'string' && typeof parsed.sourcePath === 'string' && typeof parsed.outputVersion === 'string') {
-        return parsed as AppliedRecord
-      }
-    } catch {
-      // A corrupt record is reported as absent; the tool then asks for a fresh apply.
-    }
-    return undefined
-  }
-
-  /**
-   * Discard one staged draft.
-   *
-   * @param draftId - the draft id.
-   * @param exec - calling context.
-   * @returns whether the file was deleted (false when the provider cannot delete).
-   */
-  async discardDraft(draftId: string, exec?: ExecContext): Promise<{ deleted: boolean; path: string }> {
-    const id = this.checkDraftId(draftId)
-    const relative = `${DRAFT_DIR}/${id}.json`
-    const path = joinPath(this.workspace(exec), relative)
-    if (!(await this.exists(path, exec))) throw this.draftMissing(id)
-    if (this.fs.deleteFile !== undefined) {
-      const target = await this.resolve(path, exec)
-      await this.fs.deleteFile(target, undefined, exec?.signal, this.policyFor(exec)).catch((error: unknown) => {
-        throw new EngineeringError(
-          'WRITE_REFUSED',
-          `The filesystem provider refused to delete ${target.displayPath}: ${error instanceof Error ? error.message : String(error)}`,
-          'Nothing was deleted. Discard the draft again from a session whose sandbox allows it, or leave the file in .ecad/drafts/.'
-        )
-      })
-      this.discardedOf(exec).add(id)
-      return { deleted: true, path }
-    }
-    // Older providers have no delete primitive: refuse it in memory so an
-    // apply cannot use the draft again, and say the file stays on disk.
-    this.discardedOf(exec).add(id)
-    return { deleted: false, path }
   }
 
   /**
@@ -779,19 +633,6 @@ export class EcadSession {
     )
   }
 
-  /** Validate one draft id before it is used as a file name. */
-  private checkDraftId(draftId: string): string {
-    if (!DRAFT_ID.test(draftId)) {
-      throw new EngineeringError('INVALID_DRAFT_ID', `draft_id ${JSON.stringify(draftId)} is not a valid draft id.`, 'Pass the id ecad_draft_ops returned.')
-    }
-    return draftId
-  }
-
-  /** The failure for a draft that is not staged. */
-  private draftMissing(id: string): EngineeringError {
-    return new EngineeringError('DRAFT_NOT_FOUND', `No staged draft ${JSON.stringify(id)} exists in this workspace.`, 'Run ecad_draft_ops to stage one, or pass the draft_id it returned.')
-  }
-
   /** The cache for one chat. */
   private cacheOf(exec?: ExecContext): Map<string, CacheEntry> {
     const chat = exec?.chat
@@ -803,26 +644,7 @@ export class EcadSession {
     return created
   }
 
-  /** The discarded-id set for one chat. */
-  private discardedOf(exec?: ExecContext): Set<string> {
-    const chat = exec?.chat
-    if (chat === undefined) return this.detachedDiscarded
-    const existing = this.discarded.get(chat)
-    if (existing !== undefined) return existing
-    const created = new Set<string>()
-    this.discarded.set(chat, created)
-    return created
-  }
-}
 
-/**
- * A new draft id that is safe as a file name.
- *
- * @returns a stable, sortable id.
- */
-export function newDraftId(): string {
-  const stamp = new Date().toISOString().replace(/[-:]/gu, '').replace(/\..+$/u, '')
-  return `${stamp}-${randomUUID().slice(0, 8)}`
 }
 
 /**
@@ -839,9 +661,6 @@ export interface SheetTitleBlock {
   readonly layout?: string
   readonly fields: EcadTitleBlock['fields']
 }
-
-/** The operations a draft may carry. */
-export type DraftOps = readonly EcadOp[]
 
 /** A diff document as tools report it. */
 export type DiffDocument = EcadDiff

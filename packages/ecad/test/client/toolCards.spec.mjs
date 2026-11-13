@@ -185,49 +185,8 @@ test('an ecad_render answer becomes the rendered-SVG card', () => {
   assert.equal(card.approximate, 1)
 })
 
-test('a verified ecad_draft_apply answer becomes the written-drawing card', () => {
-  const card = cardOfContent('ecad_draft_apply', answer('Applied draft d-1 to Prints/DWG/out.dwg and verified the write.', {
-    draftId: 'd-1',
-    sourcePath: 'Prints/DWG/in.dwg',
-    outputPath: 'Prints/DWG/out.dwg',
-    outputFormat: 'dwg',
-    outputVersion: 'v2',
-    outputBytes: 1024,
-    converted: { converter: 'acadrust/0.6.8', warnings: ['font substituted'] },
-    changes: { addText: 1, move: 2 },
-    touched: 2,
-    verification: { ok: true, expected: { addText: 1, move: 2 }, applied: { addText: 1, move: 2 }, dropped: {}, problems: [], notes: ['re-read matched'] },
-    dwgRoundTrip: { ok: true, added: 0, removed: 0, changed: 0, hardChanges: 0, metadataChanges: 1, truncated: false, warnings: ['font substituted'] },
-  }))
-  assert.equal(card.kind, 'apply')
-  assert.equal(card.outputPath, 'Prints/DWG/out.dwg')
-  assert.equal(card.sourcePath, 'Prints/DWG/in.dwg')
-  assert.equal(card.format, 'dwg')
-  assert.equal(card.changes, 3)
-  assert.equal(card.touched, 2)
-  assert.equal(card.verificationOk, true)
-  assert.deepEqual(card.problems, [])
-  assert.equal(card.notes, 1)
-  assert.equal(card.roundTrip.ok, true)
-  assert.equal(card.roundTrip.metadataChanges, 1)
-  assert.equal(card.roundTrip.warnings, 1)
-})
-
-test('a failed verification keeps the apply card and its problems', () => {
-  const card = cardOfContent('ecad_draft_apply', answer('Wrote out.dxf but verification reported 1 problem(s).', {
-    outputPath: 'Prints/out.dxf',
-    changes: { erase: 1 },
-    verification: { ok: false, problems: ['the erased entity is still present'], notes: [] },
-  }))
-  assert.equal(card.kind, 'apply')
-  assert.equal(card.verificationOk, false)
-  assert.deepEqual(card.problems, ['the erased entity is still present'])
-  assert.equal(card.notes, 0)
-  assert.equal(card.format, 'dxf')
-})
-
 test('the tool error envelope becomes an error card with code, message and fix', () => {
-  const card = cardOfContent('ecad_draft_apply', contentOf({
+  const card = cardOfContent('ecad_document', contentOf({
     error: { code: 'ECAD_WRITES_DISABLED', message: 'writes are off', fix: 'Enable writes, then apply again.', candidates: [] },
   }))
   assert.equal(card.kind, 'generic')
@@ -303,9 +262,9 @@ test('no payload, however malformed, throws out of the card model', () => {
 })
 
 test('the face claims its whole ECAD tool inventory once', () => {
-  assert.equal(ECAD_TOOL_NAMES.length, 16)
-  assert.equal(new Set(ECAD_TOOL_NAMES).size, 16)
-  for (const required of ['ecad_open', 'ecad_scan', 'ecad_checks', 'ecad_cross_reference', 'ecad_render', 'ecad_draft_apply']) {
+  assert.equal(ECAD_TOOL_NAMES.length, 12)
+  assert.equal(new Set(ECAD_TOOL_NAMES).size, 12)
+  for (const required of ['ecad_open', 'ecad_scan', 'ecad_checks', 'ecad_cross_reference', 'ecad_render', 'ecad_capabilities']) {
     assert.ok(ECAD_TOOL_NAMES.includes(required), `the card inventory is missing ${required}`)
   }
 })
@@ -323,7 +282,7 @@ const SHEETS = {
 }
 
 const CAPABILITIES = {
-  contractVersion: 1,
+  contractVersion: 2,
   engine: 'dxf+dwg',
   writes: true,
   profileSource: 'workspace',

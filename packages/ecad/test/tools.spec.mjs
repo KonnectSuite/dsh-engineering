@@ -65,16 +65,16 @@ function writtenText(instance, path) {
 
 test('the tool factories build without a live session, for the generated reference', () => {
   const definitions = ecadTools({})
-  assert.equal(definitions.length, 16)
+  assert.equal(definitions.length, 12)
   assert.deepEqual(definitions.map(definition => definition.name), [...ECAD_TOOL_NAMES])
   for (const definition of definitions) assert.doesNotThrow(() => JSON.stringify(definition.parameters))
 })
 
-test('the row registers exactly the sixteen documented tools', () => {
+test('the row registers exactly the twelve documented tools', () => {
   const instance = harness(fixtureSet())
   const names = instance.definitions.map(definition => definition.name)
   assert.deepEqual(names, [...ECAD_TOOL_NAMES])
-  assert.equal(new Set(names).size, 16)
+  assert.equal(new Set(names).size, 12)
   for (const definition of instance.definitions) {
     ok(definition.name.startsWith('ecad_'), `${definition.name} keeps the ecad_ namespace`)
     ok(typeof definition.description === 'string' && definition.description.length > 40, `${definition.name} is described`)
@@ -109,7 +109,15 @@ test('capabilities reports formats, limits, writes and what the build cannot do,
   assert.equal(data.engine.dwg.kind, 'wasm')
   assert.equal(data.engine.dwg.version, '0.6.8')
   assert.equal(data.limits.maxFileBytes, 64 * 1024 * 1024)
-  assert.equal(data.tools.length, 16)
+  assert.equal(data.tools.length, 12)
+  assert.deepEqual(data.contract, { namespace: 'ecad', version: 2, methods: ['open', 'sheets', 'capabilities'] })
+  // The row reports the AryaCAD bridge it was configured to look for, and says
+  // plainly when nothing of that server is registered.
+  assert.equal(data.cad.serverName, 'ocs')
+  assert.equal(data.cad.entryTool, 'mcp__ocs__ocs_sessions')
+  assert.equal(data.cad.mounted, false, 'a row built without a bridge reports it not mounted')
+  assert.deepEqual(data.cad.tools, [])
+  ok(data.cad.hint.includes('docs/aryacad-bridge.md'), 'the hint points at the bridge note')
   assert.deepEqual(data.rules, [...ECAD_RULES])
   assert.equal(data.workspace.index.present, false)
   assert.equal(data.workspace.profile.source, 'default')
@@ -129,7 +137,7 @@ test('the row configures the panel service and resets its writes switch on dispo
 
 test('a service that refuses the policy is reported and does not stop the mount', async () => {
   const instance = harness(fixtureSet(), { writes: true, service: true, configureThrows: true })
-  assert.equal(instance.definitions.length, 16)
+  assert.equal(instance.definitions.length, 12)
   ok(instance.warnings.some(message => message.includes('did not accept the row policy')), `warnings: ${JSON.stringify(instance.warnings)}`)
   succeed(await instance.call('ecad_capabilities'), 'capabilities after service refusal')
 })
@@ -239,8 +247,6 @@ test('every drawing read goes through the format module, so an invalid DWG is a 
     ['ecad_overview', { path: 'Prints/legacy.dwg' }],
     ['ecad_render', { path: 'Prints/legacy.dwg' }],
     ['ecad_compare', { a: 'Prints/legacy.dwg', b: 'Prints/tiny.dxf' }],
-    ['ecad_draft_ops', { path: 'Prints/legacy.dwg', ops: [{ op: 'addText', layout: 'Model', p: [1, 1], text: 'x', height: 0.1 }] }],
-    ['ecad_verify', { path: 'Prints/legacy.dwg' }],
     ['ecad_find', { query: 'x', path: 'Prints/legacy.dwg' }],
     ['ecad_checks', { path: 'Prints/legacy.dwg' }],
     ['ecad_cross_reference', { path: 'Prints/legacy.dwg' }]
@@ -358,109 +364,6 @@ test('compare reports semantic changes and identical files as no change', async 
   assert.equal(same.data.truncated, false)
 })
 
-test('draft_ops validates first and stages only a valid draft', async () => {
-  const instance = harness(fixtureSet())
-  const ops = [
-    { op: 'addText', layout: 'Model', p: [1, 1], text: 'REVIEWED', height: 0.2 },
-    { op: 'addRectangle', layout: 'Model', corner1: [0, 0], corner2: [2, 2] }
-  ]
-  const staged = succeed(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'draft-one' }), 'draft_ops valid')
-  assert.equal(staged.data.staged, true)
-  assert.equal(staged.data.draftId, 'draft-one')
-  assert.equal(staged.data.draftPath, '.ecad/drafts/draft-one.json')
-  ok(instance.files.has('/ws/.ecad/drafts/draft-one.json'))
-  assert.deepEqual(staged.data.changes, { addText: 1, addRectangle: 1 })
-  assert.equal(staged.data.validation.ok, true)
-
-  const invalid = succeed(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops: [{ op: 'erase', layout: 'Model', ids: ['FFFF'] }], draft_id: 'draft-bad' }), 'draft_ops invalid')
-  assert.equal(invalid.data.staged, false)
-  assert.equal(invalid.data.validation.ok, false)
-  assert.ok(invalid.data.validation.errors.length >= 1)
-  ok(invalid.data.validation.errors[0].fix.length > 0)
-  assert.equal(instance.files.has('/ws/.ecad/drafts/draft-bad.json'), false, 'an invalid draft is not staged')
-  assert.equal(invalid.coverage.complete, false)
-
-  fail(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf' }), 'INVALID_ARGUMENT', 'draft_ops without ops')
-  fail(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, expect_version: 'deadbeef' }), 'ECAD_STALE_DOCUMENT', 'draft_ops stale version')
-})
-
-test('draft_apply writes a NEW drawing, verifies it and records the applied draft', async () => {
-  const instance = harness(fixtureSet(), { writes: true })
-  const ops = [{ op: 'addText', layout: 'Model', p: [1, 1], text: 'ARIA REVIEW', height: 0.2, layer: 'REVIEW' }]
-  succeed(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'apply-one' }), 'stage')
-  const applied = succeed(await instance.call('ecad_draft_apply', { draft_id: 'apply-one' }), 'apply')
-  const data = applied.data
-  assert.equal(applied.coverage.complete, true, JSON.stringify(applied.coverage.unverified))
-  ok(data.outputPath.endsWith('.dxf'))
-  ok(data.outputPath.includes('-ecad-'))
-  assert.notEqual(data.outputPath, data.sourcePath)
-  ok(instance.files.has(`/ws/${data.outputPath}`), 'the edited drawing is written')
-  assert.match(data.outputVersion, /^[0-9a-f]{64}$/)
-  assert.equal(data.verification.ok, true)
-  assert.deepEqual(data.changes, { addText: 1 })
-  assert.equal(data.format, undefined, 'DXF output carries no format field')
-  ok(data.modelPath.startsWith('.ecad/previews/'))
-  ok(instance.files.has('/ws/.ecad/drafts/apply-one.applied.json'), 'the applied record is kept for ecad_verify')
-  assert.equal(instance.files.get('/ws/Prints/titleblock.dxf').byteLength, fixtureBytes('titleblock.dxf').byteLength, 'the source is untouched')
-})
-
-test('draft_apply refuses to overwrite, refuses when writes are off, and refuses a stale source', async () => {
-  const off = harness(fixtureSet())
-  const ops = [{ op: 'addText', layout: 'Model', p: [1, 1], text: 'X', height: 0.2 }]
-  succeed(await off.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'no-writes' }), 'stage with writes off')
-  fail(await off.call('ecad_draft_apply', { draft_id: 'no-writes' }), 'ECAD_WRITES_DISABLED', 'apply with writes off')
-
-  const on = harness(fixtureSet(), { writes: true })
-  succeed(await on.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'overwrite-check' }), 'stage')
-  fail(await on.call('ecad_draft_apply', { draft_id: 'overwrite-check', overwrite: true }), 'ECAD_OVERWRITE_REFUSED', 'apply overwrite')
-
-  on.files.set('/ws/Prints/existing.dxf', fixtureBytes('tiny.dxf'))
-  succeed(await on.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'explicit-path' }), 'stage explicit')
-  const applied = succeed(await on.call('ecad_draft_apply', { draft_id: 'explicit-path', output_path: 'Prints/existing.dxf' }), 'apply explicit path')
-  assert.equal(applied.data.outputPath, 'Prints/existing-1.dxf', 'an existing output path is never overwritten')
-
-  on.files.set('/ws/Prints/titleblock.dxf', fixtureBytes('tiny.dxf'))
-  fail(await on.call('ecad_draft_apply', { draft_id: 'explicit-path' }), 'ECAD_STALE_SOURCE', 'apply after source changed')
-})
-
-test('draft_discard deletes the draft, and refuses it in memory when the provider cannot delete', async () => {
-  const instance = harness(fixtureSet(), { writes: true })
-  const ops = [{ op: 'addText', layout: 'Model', p: [1, 1], text: 'X', height: 0.2 }]
-  succeed(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'discard-me' }), 'stage')
-  const discarded = succeed(await instance.call('ecad_draft_discard', { draft_id: 'discard-me' }), 'discard')
-  assert.equal(discarded.data.discarded, true)
-  assert.equal(discarded.data.deleted, true)
-  assert.equal(instance.files.has('/ws/.ecad/drafts/discard-me.json'), false)
-  fail(await instance.call('ecad_draft_discard', { draft_id: 'discard-me' }), 'DRAFT_NOT_FOUND', 'discard twice')
-
-  const noDelete = harness(fixtureSet(), { writes: true, delete: false })
-  succeed(await noDelete.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'keep-file' }), 'stage')
-  const refused = succeed(await noDelete.call('ecad_draft_discard', { draft_id: 'keep-file' }), 'discard without delete')
-  assert.equal(refused.data.deleted, false)
-  ok(noDelete.files.has('/ws/.ecad/drafts/keep-file.json'), 'the draft file stays on disk')
-  ok(refused.coverage.unverified.some(line => line.includes('remains on disk')))
-  fail(await noDelete.call('ecad_draft_apply', { draft_id: 'keep-file' }), 'DRAFT_NOT_FOUND', 'apply a discarded draft')
-})
-
-test('verify proves an applied draft and re-reads a drawing by path', async () => {
-  const instance = harness(fixtureSet(), { writes: true })
-  const ops = [{ op: 'addText', layout: 'Model', p: [1, 1], text: 'PROOF', height: 0.2 }]
-  succeed(await instance.call('ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops, draft_id: 'proof' }), 'stage')
-  const applied = succeed(await instance.call('ecad_draft_apply', { draft_id: 'proof' }), 'apply')
-  const verified = succeed(await instance.call('ecad_verify', { draft_id: 'proof' }), 'verify draft')
-  assert.equal(verified.data.mode, 'draft')
-  assert.equal(verified.data.verification.ok, true)
-  assert.equal(verified.data.outputPath, applied.data.outputPath)
-  assert.equal(verified.data.outputChanged, false)
-  assert.equal(verified.coverage.complete, true)
-  fail(await instance.call('ecad_verify', { draft_id: 'never-applied' }), 'ECAD_NO_APPLIED_RECORD', 'verify unknown draft')
-  const readback = succeed(await instance.call('ecad_verify', { path: 'Prints/titleblock.dxf' }), 'verify readback')
-  assert.equal(readback.data.mode, 'readback')
-  assert.match(readback.data.version, /^[0-9a-f]{64}$/)
-  fail(await instance.call('ecad_verify', {}), 'INVALID_ARGUMENT', 'verify without arguments')
-  fail(await instance.call('ecad_verify', { draft_id: 'x', path: 'Prints/titleblock.dxf' }), 'INVALID_ARGUMENT', 'verify both arguments')
-})
-
 test('document writes the review bundle with the measured findings and title blocks', async () => {
   const instance = harness(fixtureSet(), { writes: true })
   const envelope = succeed(await instance.call('ecad_document', { paths: ALL_PATHS, output: 'review-bundle', title: 'ACME review' }), 'document')
@@ -524,10 +427,6 @@ test('every tool failure is an envelope, never a throw', async () => {
     ['ecad_checks', { path: 'Prints/missing.dxf' }],
     ['ecad_render', {}],
     ['ecad_compare', { a: 'Prints/tiny.dxf' }],
-    ['ecad_draft_ops', { path: 'Prints/titleblock.dxf', ops: [] }],
-    ['ecad_draft_apply', {}],
-    ['ecad_draft_discard', {}],
-    ['ecad_verify', {}],
     ['ecad_document', { paths: [] }],
     ['ecad_backup', { paths: [] }],
     ['ecad_profile', { action: 'infer', paths: [] }]

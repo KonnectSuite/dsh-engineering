@@ -16,7 +16,7 @@
 
 import { existsSync, mkdirSync, statSync } from 'node:fs'
 import { readdir, writeFile as writeFileNode } from 'node:fs/promises'
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { bindTypertRemote } from '@deepseek-ai/dsh-typert-protocol'
 import { ECAD_CONTRACT_VERSION, ECAD_METHODS, ECAD_NAMESPACE } from './ecad-contract.js'
 
@@ -32,7 +32,7 @@ export const DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
  * The package-root row mounts this Remote service and the `ecad` row mounts the
  * tools; sibling rows may be applied in either order. Reading the policy on
  * every call, instead of relying on a one-time `configure` from the row's
- * `apply`, keeps the panel and the tools agreeing whichever mounted first.
+ * the viewer, keeps the panel and the tools agreeing whichever mounted first.
  */
 const POLICY_SERVICE = 'ecadPolicy'
 
@@ -482,44 +482,6 @@ async function listDrawings(cwd, limit, extensions = ['.dxf']) {
 }
 
 /**
- * @param sourceRelative - source drawing path.
- * @param extension - output extension, `dxf` or `dwg`.
- * @returns a fresh output name in the same folder.
- */
-function outputNameFor(sourceRelative, extension = 'dxf') {
-  const directory = posix.dirname(sourceRelative) === '.' ? '' : `${posix.dirname(sourceRelative)}/`
-  const base = posix.basename(sourceRelative)
-  const stem = base.slice(0, base.length - posix.extname(base).length)
-  const stamp = new Date().toISOString().replace(/[-:]/gu, '').replace(/\..+$/u, '')
-  return `${directory}${stem}-ecad-${stamp}.${extension}`
-}
-
-/**
- * Pick an output path that does not exist yet.
- * @param ctx - Host context.
- * @param cwd - workspace root.
- * @param proposed - proposed workspace-relative path.
- * @returns the first free workspace-relative path.
- */
-async function uniqueOutputPath(ctx, cwd, proposed) {
-  const fs = ctx.get?.('fs')
-  if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Enable the ECAD row in a full AryaCode profile.')
-  for (let index = 0; index < 100; index += 1) {
-    const candidate = index === 0 ? proposed : proposed.replace(/(\.[a-z0-9]+)$/iu, `-${index}$1`)
-    const { absolute } = workspacePathOf(cwd, candidate)
-    let exists = false
-    try {
-      const info = await fs.stat(await fs.resolve(absolute, { cwd }))
-      exists = info !== undefined
-    } catch {
-      exists = false
-    }
-    if (!exists) return candidate
-  }
-  throw new EcadRemoteError('ECAD_EXISTS', 'every candidate output name already exists', 'Rename the source or move it to a fresh folder, then apply again.')
-}
-
-/**
  * Create the ECAD Remote service and register its Gateway binding.
  *
  * @param ctx - Host plugin context from the package-root row.
@@ -562,7 +524,7 @@ export function createEcadService(ctx) {
   const service = {
     /** The Cordis service key the descriptors name, exposed for tests. */
     serviceKey: ECAD_SERVICE_KEY,
-    /** Whether `apply` may write. Read live from the ECAD row's policy. */
+    /** Whether the row's deliverable writes are enabled. Read live from the ECAD row's policy. */
     get writes() { return writesNow() },
     /**
      * Apply the ECAD row's policy.
@@ -613,108 +575,7 @@ export function createEcadService(ctx) {
       })
     },
     /**
-     * Apply a staged draft to a NEW drawing and verify it.
-     * @param sessionId - live session id.
-     * @param path - source drawing path.
-     * @param baseVersion - source bytes hash the draft was staged against.
-     * @param ops - staged operations.
-     * @returns the Remote envelope with the written path and verification.
-     */
-    async apply(sessionId, path, baseVersion, ops) {
-      return envelope(async () => {
-        const { session, cwd } = sessionWorkspace(ctx, sessionId)
-        if (writesNow() !== true) {
-          throw new EcadRemoteError('ECAD_WRITES_DISABLED', 'ECAD writes are switched off for this row', 'Open Plugins → Engineering → ECAD, enable writes, then apply again.')
-        }
-        const engineModule = await engine()
-        const file = await readWorkspaceFile(ctx, cwd, path)
-        const sourceVersion = engineModule.sha256(file.bytes)
-        if (typeof baseVersion === 'string' && baseVersion.length > 0 && baseVersion !== sourceVersion) {
-          throw new EcadRemoteError('ECAD_STALE_DOCUMENT', `"${file.relative}" changed after the draft was staged`, 'Reload the drawing, re-stage the change and apply again; the source was not touched.')
-        }
-        const drawing = await drawingDxfBytes(file)
-        const opened = await engineModule.openSheet({ path: file.relative, bytes: drawing.dxfBytes, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
-        const baseModel = engineModule.buildSheetModel(opened)
-        const validation = engineModule.validateOps(opened, Array.isArray(ops) ? ops : [])
-        if (validation.ok !== true) {
-          throw new EcadRemoteError('ECAD_INVALID_DRAFT', `the draft has ${validation.errors.length} invalid operation(s)`, validation.errors.map(item => `#${item.opIndex} ${item.message}`).join('; '))
-        }
-        const result = engineModule.applyOps(opened, Array.isArray(ops) ? ops : [])
-        const dxf = engineModule.dxfBytes(opened)
-        const verification = await engineModule.verifyWritten(opened, dxf, { changes: result.changes, baseModel })
-        if (drawing.format === 'dwg') {
-          const converter = await dwg()
-          if (converter === undefined) {
-            throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'DWG output is not installed in this build', 'Reinstall the engineering bundle with the ECAD converter, or save the draft as DXF.')
-          }
-          const outputRelative = await uniqueOutputPath(ctx, cwd, outputNameFor(file.relative, 'dwg'))
-          const written = await converter.dxfToDwg(dxf, { targetVersion: drawing.converted?.sourceVersion, maxBytes: DEFAULT_MAX_FILE_BYTES })
-          await writeWorkspaceFile(ctx, session, cwd, outputRelative, written.dwg, 'createIfAbsent')
-          const outputVersion = engineModule.sha256(written.dwg)
-          const back = await converter.dwgToDxf(written.dwg, { maxBytes: DEFAULT_MAX_FILE_BYTES })
-          const reopened = await engineModule.openSheet({ path: outputRelative, bytes: back.dxf, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
-          const model = engineModule.buildSheetModel(reopened)
-          const expected = engineModule.buildSheetModel(opened)
-          const diff = engineModule.diffSheetModels(expected, model)
-          const changes = [...diff.added, ...diff.removed, ...diff.changed]
-          // A DWG write can normalise a linetype without touching geometry or
-          // text; that is a metadata difference, reported with its count instead
-          // of failing the write. A changed kind, layer, text, position, size or
-          // any added/removed primitive stays a hard difference.
-          const metadataOnly = change => change.kind === 'changed'
-            && typeof change.reason === 'string'
-            && change.reason.split(', ').every(part => part === 'linetype changed')
-          const hard = changes.filter(change => !metadataOnly(change))
-          const dwgRoundTrip = {
-            ok: hard.length === 0,
-            added: diff.added.length,
-            removed: diff.removed.length,
-            changed: diff.changed.length,
-            hardChanges: hard.length,
-            metadataChanges: changes.length - hard.length,
-            truncated: diff.truncated,
-            targetVersion: written.version,
-            backVersion: back.version,
-            warnings: [...(written.warnings ?? []), ...(back.warnings ?? [])],
-          }
-          const modelPath = await writePreview(ctx, session, cwd, outputRelative, outputVersion, model)
-          return {
-            sourcePath: file.relative,
-            sourceVersion,
-            format: 'dwg',
-            converted: drawing.converted,
-            outputPath: outputRelative,
-            outputVersion,
-            modelPath,
-            changes: result.changes,
-            verification: { ...verification, ok: verification.ok && dwgRoundTrip.ok },
-            dwgRoundTrip,
-            notes: validation.notes,
-            writes: true,
-          }
-        }
-        const outputRelative = await uniqueOutputPath(ctx, cwd, outputNameFor(file.relative, 'dxf'))
-        await writeWorkspaceFile(ctx, session, cwd, outputRelative, dxf, 'createIfAbsent')
-        const outputVersion = engineModule.sha256(dxf)
-        const reopened = await engineModule.openSheet({ path: outputRelative, bytes: dxf, maxFileBytes: DEFAULT_MAX_FILE_BYTES })
-        const model = engineModule.buildSheetModel(reopened)
-        const modelPath = await writePreview(ctx, session, cwd, outputRelative, outputVersion, model)
-        return {
-          sourcePath: file.relative,
-          sourceVersion,
-          format: 'dxf',
-          outputPath: outputRelative,
-          outputVersion,
-          modelPath,
-          changes: result.changes,
-          verification,
-          notes: validation.notes,
-          writes: true,
-        }
-      })
-    },
-    /**
-     * List the drawings in the session workspace, enriched from the cached index.
+     * Open a drawing and cache its render model.
      * @param sessionId - live session id.
      * @param limit - most drawings to return.
      * @returns the Remote envelope.

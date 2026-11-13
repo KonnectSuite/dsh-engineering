@@ -10,7 +10,7 @@
 #   ftview → edit, studio                          (both on by default)
 #   mwi    → edit                                  (on by default)
 #   optix  → authoring, destructive, invoke, preview, netlogic (all on by default)
-#   ecad   → writes                                (off; the row itself ships off)
+#   ecad   → writes, bridgeServerName          (off; the row itself ships off)
 #   plc5   → (the row itself ships off)           (reads only; no writes switch)
 #
 # Every product except ECAD ships on so a fresh install can use it. ECAD is a new,
@@ -35,11 +35,13 @@
     # MotionWorks IEC: session, reads, verify and guidance on; edits opt-in.
     - id: mwi
       name: '@aryacode/dsh-engineering/mwi'
-    # ECAD electrical prints: read, review, cross-reference and redline DXF
-    # drawings through the sixteen ecad_* tools and the ecad-drafting skill. The
-    # row ships OFF (a new, large surface) and its writes switch starts off: a
-    # mounted row reads and reviews, and a written drawing is always a NEW file
-    # beside the source. Enable the row, then its writes switch, before drafting.
+    # ECAD electrical prints: read, review, cross-reference, check, view and export DXF
+    # drawings through the twelve ecad_* tools and the ecad-review skill. The row ships
+    # OFF (a new, large surface) and its writes switch starts off: a mounted row reads,
+    # reviews and views, and its deliverables (a document bundle, a backup copy) are
+    # always NEW files. Drawing authoring is not this row's — it runs in AryaCAD
+    # Electrical, which the owner mounts as their own MCP row (overlays/aryacad-mcp.patch.yml);
+    # this bundle never ships or starts that application.
     - id: ecad
       name: '@aryacode/dsh-engineering/ecad'
       disabled: true
