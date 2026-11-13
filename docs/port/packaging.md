@@ -43,6 +43,24 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.93.0 release record (2026-11-13).** Built from `feat(ecad): make the row a review-and-view row,
+not a CAD editor` (`bf16673`), tagged `v0.93.0`. Root suite 19 specs green (166 tests) and the ECAD
+package 21 specs green (182 pass, 4 skipped — the AryaCAD fixture skips rather than fakes, because the
+application is GPL-3.0 and this bundle MIT), `pnpm docs:check` clean (**158 tools**, down from 174:
+the ECAD row registers twelve, not sixteen), and `pnpm -r build` + `assemble` (eight components)
+deterministic. **Two ECAD specs were deliberately not run:** `dwg.spec.mjs` and `corpus.spec.mjs` push
+the whole 34-sheet print corpus through the `acadrust` converter, which aborts intermittently with
+`memory access out of bounds` — the retry wrapper at `packages/ecad/src/dwg/index.ts` documents it, and
+the batch died on it twice — so the DWG round trip is unverified for this release. The published
+tarball is 3.9 MB / 774 files, sha256
+`db6c1da91afb96ecfcfe19641c492160e1097dfbb3a036648407c347e3658d35`. The market script's own repack
+again did not match (`5990d2af37d4…`) for the same manifest-normalisation reason, and it records the
+registry copy. The registry held the version staged for **nine minutes** — `npm view` answered for the
+exact version only after 540 s, against 0.92.0's five and a half — so a waiting release is normal, not
+a failure. One thing this release ships unverified: the live AryaCAD MCP bridge. The overlay, an
+`ecad_capabilities` answer of `mounted`, and one edit round-tripped through `ocs_save_verified` into
+`ecad_compare` have not been run against a real instance; `docs/port/ecad.md` says so plainly.
+
 **0.92.0 release record (2026-11-12).** Built from `Release 0.92.0` (`917d948`), tagged `v0.92.0`.
 Root suite 47 specs green — four new Optix specs (`optix-chain` 20 tests, `optix-arm` 7,
 `optix-template` and `optix-emulator` 7) — `pnpm docs:check` clean (174 tools), and `assemble`
