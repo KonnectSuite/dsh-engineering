@@ -2,6 +2,7 @@ import z from "@deepseek-ai/schemastery";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -16,6 +17,7 @@ import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
+import { MARKER, NETLOGIC_FOLDER, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, templateCode, writeNetLogic } from "./netlogic.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -3290,6 +3292,280 @@ function apply(ctx, config = {}) {
 		}
 	})));
 
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_script",
+		description: "Add, read, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; add creates the node and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
+		parameters: {
+			project: projectParameter,
+			action: {
+				type: "string",
+				description: "list (default) sends no writes; read returns a class; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
+			},
+			project_root: {
+				type: "string",
+				description: "Folder that holds <project>.optix. Optional: searched in Documents\\Rockwell Automation\\FactoryTalk Optix\\Projects, the Desktop and AryaCode\\KonnectSuite when omitted, and refused with the candidates when several match."
+			},
+			name: {
+				type: "string",
+				description: "NetLogic node name and C# class name - Optix binds the node to a class by name, so they must match. Required for read, add, edit, delete."
+			},
+			parent: {
+				type: "string",
+				description: "Folder that will own the node, for add. Default NetLogic. Place a runtime NetLogic under the object whose children it reads when it uses Owner."
+			},
+			kind: {
+				type: "string",
+				description: "runtime (Start/Stop run in the runtime) or design ([ExportMethod] helpers, run by right-click Execute or action run). Default runtime."
+			},
+			template: {
+				type: "string",
+				description: "For add with no code: blank, or periodic for a runtime class with a PeriodicTask and a Tick method. Default blank."
+			},
+			code: {
+				type: "string",
+				description: "Full C# source for add or edit. The class it declares must equal name; for edit pass the whole file, not a fragment."
+			},
+			expect_sha256: {
+				type: "string",
+				description: "For edit: the sha256 you read, so a file that changed underneath is not overwritten silently."
+			},
+			method: {
+				type: "string",
+				description: "For run: the [ExportMethod] name to execute at design time."
+			},
+			args: {
+				type: "string",
+				description: "For run: comma-separated string arguments for the method."
+			},
+			force: {
+				type: "boolean",
+				description: "For delete: remove a file this tool did not write (a shipped library class, say). Off means such a file is left in place and reported."
+			},
+			build: {
+				type: "boolean",
+				description: "For add and edit: run dotnet build afterwards. Default true; the compile result is the only proof the class is real."
+			}
+		},
+		output: jsonOutput,
+		presentCall: () => ({
+			card: "generic",
+			title: "NetLogic",
+			kind: "write"
+		}),
+		async execute(args, exec) {
+			const action = args.action ?? "list";
+			const allowed = ["list", "read", "add", "edit", "delete", "build", "run"];
+			if (!allowed.includes(action)) throw new Error(`action must be one of ${allowed.join(", ")} (got ${String(action)})`);
+			if (action === "add" || action === "edit" || action === "delete") allowWrite(true);
+			if (action === "run" && settings.allowInvoke !== true) throw new Error("Running a NetLogic method needs allowInvoke on the Optix row");
+			const resolved = await findProjectRoot(args.project, args.project_root);
+			const root = resolved.root;
+			const wanted = args.name === void 0 || String(args.name).trim() === "" ? void 0 : String(args.name).trim();
+			if (action !== "list" && action !== "build" && wanted === void 0) throw new Error(`action ${action} needs name`);
+			if (wanted !== void 0) checkName(wanted);
+			if (action === "build") {
+				const compile = await buildNetSolution(root);
+				return {
+					status: compile.ok ? "completed" : "failed",
+					action,
+					project_root: root,
+					net_solution: netSolutionDir(root),
+					build: compile,
+					next: compile.ok ? "The assembly compiled on disk. A running Studio still has its own copy loaded: build in Studio (Ctrl+Shift+B) before a class is exercisable with action run." : compile.locked ? "The Optix runtime holds bin/&lt;project&gt;.dll open, so the copy step failed after the C# compiled. Stop the emulator (optix_emulator action stop), build again, then start it." : "Read the diagnostics, fix the class, then build again."
+				};
+			}
+			const requester = async (origin) => (route, signal, query) => bridge.request(origin, route, signal, query);
+			const liveNodes = async () => {
+				try {
+					const selected = await bridge.select(args.project, exec.signal);
+					return { origin: selected.origin, nodes: await liveNetLogicNodes(await requester(selected.origin), exec.signal) };
+				} catch {
+					return { origin: void 0, nodes: [] };
+				}
+			};
+			if (action === "list") {
+				const files = await listNetLogics(root);
+				const live = await liveNodes();
+				const byName = new Map(live.nodes.map((node) => [node.name, node.path]));
+				const entries = files.map((entry) => ({
+					...netLogicReport(resolved, entry, {
+						node: byName.get(entry.name) ?? ""
+					}),
+					in_project: byName.has(entry.name)
+				}));
+				const known = new Set(files.map((entry) => entry.name));
+				const orphans = live.nodes.filter((node) => !known.has(node.name)).map((node) => ({
+					node: node.path,
+					reason: "the project has this node but ProjectFiles\\NetSolution has no matching class file"
+				}));
+				return {
+					status: "completed",
+					action,
+					project_root: resolved.root,
+					optix_file: resolved.optixFile,
+					net_solution: netSolutionDir(root),
+					count: entries.length,
+					entries,
+					...(orphans.length === 0 ? {} : {
+						nodes_without_file: orphans
+					}),
+					next: "read one with action read; add one with action add (kind runtime or design). A class only runs after Studio builds the solution."
+				};
+			}
+			if (action === "read") {
+				const entry = await readNetLogic(root, wanted).catch((error) => {
+					if (!/no .*\.cs in /u.test(String(error?.message ?? error))) throw error;
+					return void 0;
+				});
+				const live = await liveNodes();
+				const node = live.nodes.find((candidate) => candidate.name === wanted)
+					?? (live.origin === void 0 ? void 0 : await findNetLogicNode(await requester(live.origin), exec.signal, wanted).catch(() => void 0));
+				return {
+					...netLogicReport(resolved, entry, {
+						node: node === void 0 ? "" : node.path,
+						code: entry.code
+					}),
+					status: "completed",
+					action,
+					...(node === void 0 ? {
+						note: "no NetLogic node with this name in the open project - the file is an orphan until one exists"
+					} : {})
+				};
+			}
+			if (action === "build") {
+				const compile = await buildNetSolution(root);
+				return {
+					status: compile.ok ? "completed" : "failed",
+					action,
+					project_root: root,
+					compile,
+					next: compile.ok ? "Ask the engineer to build in Studio so the loaded assembly includes this code." : "Fix the reported errors; nothing in Studio changes until it compiles."
+				};
+			}
+			if (action === "add") {
+				const kind = args.kind ?? "runtime";
+				if (kind !== "runtime" && kind !== "design") throw new Error("kind must be runtime or design");
+				const template = args.template ?? "blank";
+				if (template !== "blank" && template !== "periodic") throw new Error("template must be blank or periodic");
+				const file = fileFor(root, wanted);
+				if (existsSync(file) && (args.code === void 0 || String(args.code).trim() === "")) throw new Error(`${wanted}.cs already exists - use action edit, or pass code to replace it`);
+				const created = await liveNodes();
+				if (created.origin === void 0) throw new Error("the bridge is not answering, so the NetLogic node cannot be created - ask the engineer to open the project and start the bridge");
+				let nodeResult;
+				try {
+					nodeResult = await bridge.request(created.origin, "model/netlogic", exec.signal, {
+						parent: args.parent ?? NETLOGIC_FOLDER,
+						name: wanted
+					}, "POST");
+				} catch (error) {
+					if (String(error).includes("name_exists")) nodeResult = { ok: true, existed: true };
+					else throw error;
+				}
+				const code = args.code === void 0 || String(args.code).trim() === "" ? templateCode({
+					name: wanted,
+					kind,
+					template
+				}) : args.code;
+				const stored = await writeNetLogic(root, wanted, code);
+				const compile = args.build === false ? void 0 : await buildNetSolution(root);
+				return {
+					...netLogicReport(resolved, stored, {
+						status: "completed",
+						action,
+						node_result: nodeResult,
+						kind,
+						...(compile === void 0 ? {} : { compile }),
+						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, add again (or build), then start it." : "The class does not compile yet - fix the diagnostics before asking for a Studio build.") : "Ask the engineer to build the solution in Studio (or restart the bridge) so the compiled class is loaded; then a runtime NetLogic runs with its parent's runtime, and a design-time one is exercisable with action run."
+					})
+				};
+			}
+			if (action === "edit") {
+				if (args.code === void 0 || String(args.code).trim() === "") throw new Error("edit needs code (the whole class)");
+				const stored = await writeNetLogic(root, wanted, args.code, {
+					expectSha256: args.expect_sha256
+				});
+				const compile = args.build === false ? void 0 : await buildNetSolution(root);
+				return {
+					...netLogicReport(resolved, stored, {
+						status: "completed",
+						action,
+						...(compile === void 0 ? {} : { compile }),
+						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, then build." : "Fix the diagnostics, then edit again - Studio still runs the previous build.") : "Ask the engineer to build in Studio so this code becomes the loaded class."
+					})
+				};
+			}
+			if (action === "delete") {
+				// Read the file directly: a node can outlive its class, and that orphan
+				// is the case delete must still clean up.
+				const deleteFile = fileFor(root, wanted);
+				const deleteCode = existsSync(deleteFile) ? await readFile(deleteFile, "utf8") : void 0;
+				if (deleteCode !== void 0 && !deleteCode.includes(MARKER) && args.force !== true) throw new Error(`${wanted}.cs was not written by this tool (no marker comment) - a shipped library class is part of a composite. Pass force:true only if you mean to break that composite.`);
+				const live = await liveNodes();
+				const node = live.origin === void 0 ? void 0 : await findNetLogicNode(await requester(live.origin), exec.signal, wanted).catch(() => void 0);
+				if (deleteCode === void 0 && node === void 0) throw new Error(`no ${wanted}.cs in ${netSolutionDir(root)} and no NetLogic node of that name in the open project`);
+				const hadFile = existsSync(deleteFile);
+				let nodeDeleted = false;
+				if (node !== void 0 && live.origin !== void 0) {
+					if (node.path.startsWith("UI/Components/")) throw new Error(`${node.path} lives inside an imported library composite - delete the composite instead, not its logic`);
+					await bridge.request(live.origin, "node/delete", exec.signal, { path: node.path }, "POST");
+					nodeDeleted = true;
+				}
+				const file = await removeNetLogicFile(root, wanted);
+				return {
+					status: "completed",
+					action,
+					project_root: root,
+					name: wanted,
+					node: node === void 0 ? "" : node.path,
+					node_deleted: nodeDeleted,
+					file: file.file,
+					file_removed: !existsSync(deleteFile) && (file.removed || hadFile),
+					...(!hadFile ? {} : nodeDeleted ? { file_note: "Deleting the NetLogic node also removed its class file." } : {}),
+					next: deleteCode === void 0 ? "The node is gone; its class file was already absent. Ask the engineer to build in Studio so the class leaves the loaded assembly, then save." : "Ask the engineer to build in Studio so the deleted class leaves the assembly, then save."
+				};
+			}
+			// run
+			const method = args.method;
+			if (typeof method !== "string" || method.trim() === "") throw new Error("run needs method (the [ExportMethod] name)");
+			const live = await liveNodes();
+			if (live.origin === void 0) throw new Error("the bridge is not answering");
+			const node = live.nodes.find((candidate) => candidate.name === wanted || candidate.path === args.name)
+				?? await findNetLogicNode(await requester(live.origin), exec.signal, wanted).catch(() => void 0);
+			if (node === void 0) throw new Error(`no NetLogic node named ${wanted} in the open project`);
+			const query = { path: node.path,
+				method: method.trim() };
+			if (typeof args.args === "string" && args.args !== "") query.args = args.args;
+			let result;
+			try {
+				result = await bridge.request(live.origin, "node/invoke", exec.signal, query, "POST");
+			} catch (error) {
+				// The bridge answers "No behaviour or observer found" when the class is
+				// not in the NetLogic assembly Studio has loaded, which is what a file
+				// written after Studio opened the project looks like: the C# compiles
+				// (this tool ran dotnet build) but Studio has not rebuilt yet.
+				const text = String(error?.message ?? error);
+				if (!/No behaviour or observer found|execution_failed/u.test(text)) throw error;
+				return {
+					status: "not-loaded",
+					action,
+					project_root: root,
+					node: node.path,
+					method: method.trim(),
+					compiled: void 0,
+					next: `${wanted} compiles, but Studio's loaded NetLogic assembly predates it. Build the project in Studio (Build > Build Solution, or Ctrl+Shift+B) and run this again; the file is already on disk at ProjectFiles/NetSolution/${wanted}.cs.`
+				};
+			}
+			return {
+				status: result.ok === true ? "completed" : "failed",
+				action,
+				project_root: root,
+				node: node.path,
+				method: method.trim(),
+				result,
+				next: "A design-time method runs against Project.Current the way right-click Execute does; a throwing method is reported in the result, and a runtime-only class has nothing to run here."
+			};
+		}
+	})));
 }
 //#endregion
 export { Config, apply, inject, name };

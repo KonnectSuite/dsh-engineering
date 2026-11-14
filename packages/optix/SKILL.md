@@ -66,6 +66,18 @@ The repository states the snippets may use non-public APIs, may break a project 
 production as-is. Quote the risk with the snippet, adapt it to the loaded project, and treat
 compilation and runtime behaviour as unverified until Studio compiles it.
 
+## Write, change and delete NetLogic C# with `optix_script`
+
+A NetLogic is two writes that must agree: a node whose BrowseName equals the class name, and a `.cs` file in `ProjectFiles\NetSolution` that Studio's SDK-style csproj globs on the next build. `optix_script` owns both sides, so never hand-write the node or guess the folder:
+
+1. `action: "list"` pairs every `.cs` class with the live node it is bound to (and reports nodes with no class as `nodes_without_file`). Run it first; it also tells you which `project_root` was resolved.
+2. `action: "add"` with `name`, `kind` (`runtime` or `design`) and `template` (`blank` or `periodic`) creates the node through the bridge, writes a compiling class and runs `dotnet build`. A class whose name differs from the node is refused, because Optix binds by name.
+3. `action: "edit"` replaces the whole class. Pass the `sha256` you read so a concurrent change is refused instead of overwritten.
+4. `action: "delete"` removes the node and the file; deleting the node also removes its class file, and a class this tool did not write (no `// aria-netlogic:` marker) is refused unless you pass `force: true` - a shipped library class belongs to a composite, and a node under `UI/Components/` is refused outright.
+5. `action: "build"` compiles the solution and returns the diagnostics a Studio engineer would read. Stop the emulator first when it reports the assembly is locked.
+6. `action: "run"` with `method` runs a design-time `[ExportMethod]` exactly as right-click Execute does. It answers `not-loaded` when the class compiles but Studio has not rebuilt: ask the engineer to build in Studio, then run again.
+
+Read `engineering_reference` page `netlogic-cheatsheet` when you need a Studio API you have not used. Say plainly that the class is only live after Studio builds it - `dotnet build` proves the C# compiles, not that Studio loaded it.
 ## Build a screen from what Studio ships
 
 Before composing a screen out of builtin widget types, ask the library. `optix_library { action: "list" }`

@@ -1,5 +1,18 @@
 ## [Unreleased]
 
+- **NetLogic C# is now authored, compiled and deleted through the tools.** `optix_script` owns both halves of a
+  NetLogic - the bridge node whose BrowseName equals the class name and the `.cs` file the project's csproj globs -
+  with `action: list | read | add | edit | delete | build | run`. `add` writes a compiling class from a `blank` or
+  `periodic` template and runs `dotnet build`; `edit` replaces the whole class behind the sha256 you read; `delete`
+  removes the node (which also removes the class file) and refuses a class it did not write; `build` returns the
+  diagnostics, with `locked: true` when the emulator holds `bin\<project>.dll` open and one `-t:Rebuild` retry when a
+  killed build left `obj\` inconsistent; `run` executes a design-time `[ExportMethod]` through `/bridge/node/invoke`
+  and answers `not-loaded` - not an exception - when the class compiles but Studio has not rebuilt yet. Live evidence
+  on `OptixTemplateDemo`: `list` pairs 51 classes with their nodes (`StudioMCPBridge` at `NetLogic/StudioMCPBridge`,
+  `MachineSimulator` at `UI/MainWindow/MachineSimulator`); `run StudioMCPBridge.CheckFormula` through the tool
+  returned the bridge's own OK; a design class added, read, edited (`Ping` + `Describe`), built and deleted left the
+  project at exactly 51 classes and no orphan nodes. Docs: `docs/reference/optix-netlogic.md`, the skill section
+  "Write, change and delete NetLogic C# with `optix_script`", and `test/optix-netlogic.spec.mjs` (12 tests).
 - **The model now has a shape an OPC UA client can walk, and a tool that builds and judges it.** `optix_model`
   (`action: plan | apply | check`) lays out `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>` with equipment
   `ObjectType`s under `Model/Types`, typed instances and PascalCase signal names, then reads the live tree and
