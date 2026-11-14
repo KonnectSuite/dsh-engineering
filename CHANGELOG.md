@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.94.2] - 2026-11-14
 
 - **A Rockwell plant now starts from Rockwell's own published style guide, not only the generic baseline.** New corpus
   page `hmi-rockwell-process-style-guide` (`HMI-RW-01`..`08`) summarises the *Process HMI Style Guide*, publication
