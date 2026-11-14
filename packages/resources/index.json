@@ -659,6 +659,40 @@
       "sha256": "bffd53f4cd10c07a225f34b59346ddf4a66f5863c6b1aa92bab5780f7e75260e"
     },
     {
+      "id": "optix-application-recipe",
+      "title": "Build an Optix application in the order that survives the runtime",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "measured on Studio 1.8.1 with the bridge",
+        "2026-11-14"
+      ],
+      "tags": [
+        "recipe",
+        "workflow",
+        "model",
+        "netlogic",
+        "screens",
+        "navigation",
+        "runtime",
+        "production"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-RCP-01",
+        "OPTIX-RCP-02",
+        "OPTIX-RCP-03",
+        "OPTIX-RCP-04",
+        "OPTIX-RCP-05",
+        "OPTIX-RCP-06"
+      ],
+      "words": 808,
+      "bytes": 5542,
+      "sha256": "b3363cffbf06f6b75f8c79af6d3a0271e35b321af054dac0840a96c120e1539b"
+    },
+    {
       "id": "optix-bindings-and-expressions",
       "title": "Bindings and expressions",
       "domain": "optix",
@@ -682,6 +716,63 @@
       "words": 120,
       "bytes": 1010,
       "sha256": "de1bb831b9b67b191e70a16fe8327a464c29cd907f1740a25e74407e5f95056f"
+    },
+    {
+      "id": "optix-design-resources",
+      "title": "The official sample projects as a design reference",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk-Optix GitHub organisation",
+        "MIT licensed sample projects"
+      ],
+      "tags": [
+        "samples",
+        "templates",
+        "resources",
+        "github",
+        "reference",
+        "patterns"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-RES-01",
+        "OPTIX-RES-02"
+      ],
+      "words": 476,
+      "bytes": 3897,
+      "sha256": "35d19c7c9f364d354a24305474202f20ec88582e84935f82c468e622a1489007"
+    },
+    {
+      "id": "optix-navigation-patterns",
+      "title": "Navigation belongs to the shell, not to each screen",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk Optix sample projects"
+      ],
+      "tags": [
+        "navigation",
+        "panel loader",
+        "change panel",
+        "tabs",
+        "flyout",
+        "menu",
+        "samples"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-NAV-01",
+        "OPTIX-NAV-02",
+        "OPTIX-NAV-03"
+      ],
+      "words": 426,
+      "bytes": 3742,
+      "sha256": "a691eaff888c760adb83eb358b82b12f57a6261d53d8a4175e75c44907106ac7"
     },
     {
       "id": "optix-netlogic-usage",
@@ -729,6 +820,35 @@
       "words": 96,
       "bytes": 859,
       "sha256": "678a9bdd921a2d93ac273ef05f81cfaad6be999ac4978d7ed78bdb74753dd625"
+    },
+    {
+      "id": "optix-widget-patterns",
+      "title": "Use the composite the product ships before drawing the box yourself",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "FactoryTalk Optix sample projects"
+      ],
+      "tags": [
+        "widgets",
+        "gauges",
+        "grid layout",
+        "combobox",
+        "stylesheet",
+        "toast",
+        "samples"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-WID-01",
+        "OPTIX-WID-02",
+        "OPTIX-WID-03"
+      ],
+      "words": 365,
+      "bytes": 3281,
+      "sha256": "3a7059184dba760fa051c918ce4aecbd5c846fbf65f0c4342d6328268d57684c"
     },
     {
       "id": "rockwell-aoi-and-udt",

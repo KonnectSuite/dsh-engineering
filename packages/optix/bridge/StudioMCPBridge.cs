@@ -1002,7 +1002,7 @@ public class StudioMCPBridge : BaseNetLogic
                // under a root session (see InvokeMethodInline). Builds without it
                // run ExecuteMethod session-less, which kills Studio; the service
                // refuses invoke against them.
-               ",\"invoke_session\":\"root" +
+               ",\"invoke_session\":\"root\"" +
                // template_library advertises that THIS build serves
                // POST /bridge/library/import (see ImportLibraryItemInline). An older
                // build answers 404 unknown route instead, and the plugin refuses the
@@ -5400,7 +5400,13 @@ public class StudioMCPBridge : BaseNetLogic
                     }
 
                     // --- Write ObjectPointer value ---
-                    existingObjPtr.Value = objPtrTarget;
+                    // A relative pointer must NOT also keep the absolute NodeId: at run time a UI
+                    // object lives under UI/<engine>/Sessions/<id>/UIRoot/..., so the design-time
+                    // id names a node the session does not have and the runtime answers
+                    // "No behaviour or observer found that handles the method ...". The
+                    // DynamicLink written below is the one that resolves per session.
+                    existingObjPtr.Value = ehRawPath != null ? NodeId.Empty : objPtrTarget;
+
 
                     // --- Write link path ---
                     var opLink = existingObjPtr.Refs.GetVariable(
@@ -5621,6 +5627,10 @@ public class StudioMCPBridge : BaseNetLogic
             }
             if (rawPath != null)
             {
+                // Clear the absolute id first: a pointer that carries both a value and a relative
+                // link resolves the VALUE first, which at run time is the design-time node and
+                // nothing callable ("No behaviour or observer found that handles the method ...").
+                objPtr.Value = NodeId.Empty;
                 // Same legacy pattern as the raw bind: materialize an empty link,
                 // then write the literal path into the DynamicLink variable. Must
                 // happen AFTER mc.Add(objPtr) -- the link is a child reference and

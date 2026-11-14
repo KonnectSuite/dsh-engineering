@@ -102,6 +102,27 @@ export const SCREEN_THEME = {
 function size(value) {
 	return `${Math.round(value)}.0`;
 }
+/**
+ * A CSS colour as the `0xAARRGGBB` uint an ExpressionEvaluator expects.
+ *
+ * `#RRGGBB` is opaque, so the alpha byte is FF. An eight-digit `#AARRGGBB` keeps its own alpha. The
+ * expression evaluator silently no-ops on a `"#RRGGBB"` string, which is why `optix_validate_expression`
+ * and the bridge both reject one (measured live against bridge 1.0.9, 2026-11-14).
+ */
+function colorUint(hex) {
+	const digits = String(hex).replace(/^#/, "");
+	return digits.length === 8 ? `0x${digits.toUpperCase()}` : `0xFF${digits.toUpperCase()}`;
+}
+/**
+ * The lamp formula: one Boolean source in, two uint colours out.
+ *
+ * The evaluator's conditionals are `if(cond, a, b)` — `IIF` is not a function it knows, and the bridge's
+ * `expr/validate` refuses a formula that names one. Verified live against bridge 1.0.9 on 2026-11-14:
+ * `if({0}, 0xFF30A46C, 0xFFE5484D)` validates with one source, `IIF({0}, ...)` does not.
+ */
+function lampExpression(theme) {
+	return `if({0}, ${colorUint(theme.lampOn)}, ${colorUint(theme.lampOff)})`;
+}
 /** One `set_property` operation. */
 function set(path, name, value) {
 	return { op: "set_property", path, name, value };
@@ -247,16 +268,18 @@ export function screenOps(spec) {
 				objects.push({ path: lamp.path, kind: "Rectangle" });
 				if (item.tag !== undefined && item.tag !== "") {
 					// The `{0}` placeholder and the `sources` list are the shape the shipped label styles use:
-					// an ExpressionEvaluator whose Source0 is a dynamic link. The expression itself is only a
-					// guess until `optix_validate_expression` says otherwise, so the tool validates it before applying.
+					// an ExpressionEvaluator whose Source0 is a dynamic link. The formula is `if(...)` with uint
+					// colours because that is what the evaluator accepts; the tool still validates it through
+					// `expr/validate` before applying, so a wrong formula is reported rather than written.
+					const formula = lampExpression(theme);
 					ops.push({
 						op: "attach_expression",
 						path: lamp.path,
 						prop_name: "FillColor",
-						expression: `IIF({0} > 0, "${theme.lampOn}", "${theme.lampOff}")`,
+						expression: formula,
 						sources: item.tag,
 					});
-					expressions.push({ path: lamp.path, prop_name: "FillColor", expression: `IIF({0} > 0, "${theme.lampOn}", "${theme.lampOff}")`, sources: item.tag });
+					expressions.push({ path: lamp.path, prop_name: "FillColor", expression: formula, sources: item.tag });
 				}
 				return;
 			}
@@ -271,7 +294,70 @@ export function screenOps(spec) {
 		});
 	});
 	const pendingWiring = [];
-	if (navSlot !== undefined) {
+	const shell = spec.shell;
+	if (navSlot !== undefined && shell !== undefined && shell.window !== undefined && shell.loader !== undefined && shell.loader !== "") {
+		// The navigation bar belongs to the SHELL, beside the loader, not inside each panel. The runtime
+		// resolves a handler's DynamicLink relative to the node that owns it: a button created inside a
+		// screen is one level deeper in a session (UIRoot/<loader>/<panel>/<button>) than it is in the
+		// design tree, so a loader path written there resolves to the DESIGN-TIME loader and the runtime
+		// answers "No behaviour or observer found that handles the method 'ChangePanel' on node
+		// Root/Objects/.../UI/MainWindow/MainLoader" (measured live 2026-11-14). A button that is a
+		// SIBLING of the loader resolves in both trees; Rockwell's own Optix_Sample_PanelLoaderChangePanelNetLogic
+		// wires its window-level button exactly that way ("../../../../../PanelLoader1/RuntimeNetLogic1@NodeId").
+		// `object_raw` is the path relative to the button's parent, which the bridge prefixes with the four
+		// levels between the ObjectPointer and the button.
+		const loaderName = shell.loader.split("/").filter((segment) => segment !== "").at(-1);
+		const windowWidth = shell.width ?? spec.width;
+		const windowHeight = shell.height ?? spec.height;
+		// The panels keep their footer at the bottom of the window, and a panel's cards already stop
+		// short by NAV because the in-panel layout reserved it; the shell bar goes in that reserved
+		// band, directly above the footer, so it never covers the panel's own text.
+		const contentBottom = windowHeight - FOOTER - PAD;
+		const bar = { left: PAD, top: contentBottom - NAV + 6, width: windowWidth - PAD * 2, height: NAV };
+		// One bar is shared by every screen, so each button is named for the panel it opens and lands
+		// in the next free slot: a second screen's draft ADDS its own buttons instead of replacing the
+		// first screen's, which is what two drafts that both named their button Nav1 did.
+		const existingNav = (shell.children ?? []).filter((child) => typeof child === "string" && child.startsWith("Nav_")).length;
+		const missing = new Set(shell.missing_targets ?? []);
+		const PITCH = 232;
+		const buttonWidth = 220;
+		nav.forEach((entry, index) => {
+			const tail = entry.target.split("/").filter((segment) => segment !== "").at(-1);
+			const name = entry.name ?? `Nav_${tail}`;
+			const path = `${shell.window}/${name}`;
+			const shape = {
+				op: "wire_event",
+				path,
+				event_type: "MouseClickEvent",
+				method_path: `${shell.loader}/ChangePanel`,
+				object_raw: `../${loaderName}`,
+				args: `NewPanel=${entry.target};AliasNode=`,
+			};
+			const present = (shell.children ?? []).includes(name);
+			if (present) {
+				// Already drawn by another screen's draft: keep its geometry, refresh what it opens.
+				if (!missing.has(entry.target)) ops.push(shape);
+				return;
+			}
+			// NAV - 12 keeps the button at 44 px, the minimum the HMI target rule reports.
+			const slot = { left: bar.left + (existingNav + index) * PITCH, top: bar.top + 6, width: buttonWidth, height: NAV - 12 };
+			ops.push(
+				{ op: "create_widget", screen: shell.window, name, widget_type: "Button" },
+				...box(path, slot),
+				set(path, "Text", entry.label),
+				set(path, "TextColor", theme.title),
+				set(path, "FontSize", size(13)),
+			);
+			objects.push({ path, kind: "Button" });
+			if (missing.has(entry.target)) {
+				// The button exists, the panel it opens does not: report the wiring so it can be applied
+				// once that screen has been drafted, rather than losing the whole batch to a refusal.
+				pendingWiring.push({ button: path, label: entry.label, target: entry.target, shape });
+				return;
+			}
+			ops.push(shape);
+		});
+	} else if (navSlot !== undefined) {
 		const buttonWidth = Math.floor((navSlot.width - GAP * (nav.length - 1)) / nav.length);
 		nav.forEach((entry, index) => {
 			const name = `Nav${index + 1}`;

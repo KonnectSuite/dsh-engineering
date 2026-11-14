@@ -93,6 +93,13 @@ export function colour(value) {
 	if (/^#[0-9a-f]{6}$/u.test(text)) return text;
 	if (/^#[0-9a-f]{8}$/u.test(text)) return `#${text.slice(3)}`;
 	if (/^#[0-9a-f]{3}$/u.test(text)) return `#${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}`;
+	// The bridge reports a Color as `ToString()` of the packed uint: "4294967295 (UInt32)" measured live
+	// on Optix 1.8.1 (2026-11-14). Drop the alpha byte: 0xAARRGGBB.
+	const packed = /^(\d+) \((?:u?int32|uint|color)\)$/u.exec(text);
+	if (packed !== null) {
+		const rgb = Number.parseInt(packed[1], 10).toString(16).padStart(8, "0").slice(2);
+		return `#${rgb}`;
+	}
 	const channels = /r(?:gb)?\D+(\d{1,3})\D+(\d{1,3})\D+(\d{1,3})/u.exec(text);
 	if (channels !== null) {
 		const parts = [1, 2, 3].map((index) => Number.parseInt(channels[index], 10));
@@ -268,19 +275,25 @@ export function designFindings(input) {
 		});
 	}
 
-	// VIEW-NAV-01 and VIEW-NAV-02: the screen has a way in and a way out.
+	// VIEW-NAV-01 and VIEW-NAV-02: the screen has a way in and a way out. Navigation drawn in the SHELL
+	// counts for every screen: the bar sits beside the PanelLoader in the start window, which is where
+	// Rockwell's own samples put it, because a button created inside a panel resolves its loader path
+	// against the design tree and the runtime then calls the design-time loader (measured 2026-11-14).
+	const shell = input.shell;
+	const shellNavigation = shell !== void 0 && shell.wired > 0 ? shell : void 0;
 	const controls = nodes.filter((node) => INTERACTIVE_TYPES.has(node.type));
 	const wired = controls.filter((node) => node.children?.some((child) => child.type === "EventHandler" || child.type === "MouseClickEvent") === true);
-	if (controls.length === 0) findings.push({
-		rule: "VIEW-NAV-01",
-		severity: "info",
-		message: `${screen.name} holds no control an operator can press, so it has no navigation area of its own.`,
-		evidence: {
-			path: screen.path,
-			controls: 0
-		}
-	});
-	else if (wired.length === 0) findings.push({
+	if (controls.length === 0) {
+		if (shellNavigation === void 0) findings.push({
+			rule: "VIEW-NAV-01",
+			severity: "info",
+			message: `${screen.name} holds no control an operator can press, so it has no navigation area of its own.`,
+			evidence: {
+				path: screen.path,
+				controls: 0
+			}
+		});
+	} else if (wired.length === 0 && shellNavigation === void 0) findings.push({
 		rule: "VIEW-NAV-02",
 		severity: "warning",
 		message: `${screen.name} has ${controls.length} control(s) and none carries an event handler, so an operator who lands here has no way out through this screen.`,

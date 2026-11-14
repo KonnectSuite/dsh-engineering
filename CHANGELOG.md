@@ -1,5 +1,87 @@
 ## [Unreleased]
 
+- **The release review is a tool: `optix_production_check`.** A screen can pass every geometry rule and
+  still ship dead, so the project is reviewed as a whole in one call: a handler whose `ObjectPointer`
+  still holds the absolute design-time NodeId (`OPTIX-PROD-01`, the measured cause of a button that fires
+  and never switches), a handler with neither reference nor link or navigation to a screen that is not
+  there (`PROD-02`), a screen unreachable from the panel the loader starts on (`PROD-03`, with the shell
+  bar counted for every panel), a presentation engine left on the built-in starting user or the stock
+  style sheet (`PROD-04`), and a screen outside the screen folder (`PROD-05`). It answers `ready`,
+  `review` or `not_ready`, and each finding names the node and the fix. `repair: true` clears the
+  absolute pointer value of every `PROD-01` finding. Live run on the simulator project: `review` with two
+  `PROD-04` warnings about the built-in user `2/46`, zero critical, three screens reachable, nineteen
+  handlers. Reading it needed three measured bridge facts: `map` reports node ids only for `ids=1` (a
+  boolean is ignored), the presentation-engine types are `NativeUIPresentationEngine` and
+  `WebUIPresentationEngine`, and a handler nested inside a shipped composite arrives without the
+  `DynamicLink` at the depth the one tree read reaches, so a handler that looks dead is re-read before it
+  is judged.
+- **The tool surface is seventeen, and the context ceiling moved with the measurement.** The manifest
+  counts 17 (`16` registered by the vendored engine plus `optix_netlogic`), `README.md` says 175 tools,
+  and `contextBudget.defaultOnTools` is 155 with the note recording where the extra one came from.
+- **A NetLogic machine simulator drove the whole loop in the runtime.** A new
+  `ProjectFiles/NetSolution/LineSimulator.cs` (a `BaseNetLogic` with a 200 ms `PeriodicTask`) fills a
+  twelve-tag `Model/Line` tree, and six command buttons on the controls screen set `Start`, `Reset` and
+  `Setpoint` through `VariableCommands` rather than a method path. Proven in the Web presentation engine:
+  clicking `START LINE` ramps the level to 64.35 %, pressure to 4.2 bar, speed to 62 bpm and turns the
+  running lamp green; `STOP LINE` collapses pressure to 0.03 bar and speed to 0; the alarms panel shows
+  44 bottles and 1 reject
+  (`docs/port/optix-live-proof/06-line-overview-running.png`, `07-line-controls-running.png`,
+  `08-line-alarms-bottles.png`). The save is verified by the project file's timestamp, the build by
+  `dotnet build` on `AryaNewHMIProject_IPC.csproj`, and the run by restarting the emulator.
+- **The build order is a corpus page: `optix-application-recipe`.** Six rules (`OPTIX-RCP-01..06`) in
+  the order that survives the runtime — model before screens, a NetLogic class bound by node name,
+  screens with the shared shell bar, command buttons for operator writes, save then build then run, and
+  operator-click verification before the release review — each with the measured failure it avoids.
+  `engineering_reference` returns it for `recipe`, `netlogic`, `navigation` and the rule ids; the Optix
+  and resources skills both point at it.
+- **The batch met a live Studio 1.8.1 and lost six arguments with it.** Nothing in the lane had ever run
+  against a real project; on the first run three defects stopped the plugin loading at all — `z.enum`,
+  which schemastery does not have, in two `Config` fields; a `required: false` parameter; and four
+  `optix_screen` objects with no `additionalProperties` — and three more only a running bridge could show:
+  `POST /bridge/expr/validate` called with the gateway's default `GET` (a 404 that killed the draft), a
+  lamp formula using `IIF` and CSS hex colours where the Optix evaluator has only `if(cond, a, b)` and
+  `0xAARRGGBB`, and a design-check walk that counted every property `UAVariable` as an object. A seventh,
+  found in the rendered screen: the query string was built with `URLSearchParams`, which writes a space as
+  `+`, while the bridge decodes with `Uri.UnescapeDataString` — so every title, caption and tag path with a
+  space reached the project mangled. The encoder now percent-encodes each pair.
+- **`optix_screen` reads its canvas and its loader from the live window.** It used to default to 1280×800
+  and to whatever panel loader the caller named, so every screen drafted on a 1920×1080 window failed its
+  own layout rule and every navigation button stayed unwired. It now reads the start window's size and the
+  single `PanelLoader` from the live model, probes each navigation target before the batch, and withholds a
+  wiring whose target does not exist yet instead of having the whole batch refused — the pending op is
+  reported with the real loader path. Generated screens now pass `optix_design_check` with no findings.
+- **`optix_screen` stamps the composites Studio ships.** A new `library_items` parameter imports each named
+  library item once, instantiates it under the screen and places it — the three bridge calls
+  (`library/import`, `model/object`, `node/property`) that make a composite real, which no single tool
+  exposed before. Imports land under `UI/Components/<Library>` (created when missing) so imported types
+  stay separable from the project's own objects. Proven live with `Widgets/AlarmBanner` and
+  `Widgets/AlarmGrid` on a warning-free screen.
+- **Navigation switches panels at runtime again — and it took a shell bar to do it.** A generated button
+  carried a `MouseClickEvent` handler that reached `ChangePanel`, the runtime received the click, and the
+  panel never changed: the bridge wrote the `ObjectPointer`'s absolute design-time NodeId *beside* the
+  relative `DynamicLink`, and the runtime resolves the absolute id first, so it called the design-time
+  loader and logged `No behaviour or observer found that handles the method 'ChangePanel' on node
+  Root/Objects/<project>/UI/MainWindow/MainLoader`. Two changes close it. `optix_screen` now draws the
+  navigation bar in the *window*, beside the `PanelLoader` — a button inside a panel sits one level deeper
+  in a session than in the design tree, so any loader path written there resolves to the design-time
+  object; the shared bar names each button for the panel it opens (`Nav_<target>`), so a second screen's
+  draft adds its buttons instead of replacing the first screen's, and it sits in the band the panel layout
+  already reserved above the footer. The wiring is `object_raw`-relative, and the absolute pointer value is
+  cleared after the batch (a second screen's deferred wiring clears it too). `wire_event` already accepted
+  `object_raw`; the scaffold never sent it. The bridge source carries the matching fix — it writes
+  `NodeId.Empty` instead of the design-time id whenever a relative path is given — compiled but not yet
+  loaded into a running Studio. The design check now counts wired shell navigation as the screen's exit,
+  so the VIEW-NAV findings stay quiet for a screen whose way out lives in the window. Proven live:
+  clicking `Pumps` renders the second panel and `Home` renders the first
+  (`docs/port/optix-live-proof/04-shell-home-runtime.png`, `05-shell-pumps-runtime.png`).
+- **The design corpus carries Rockwell's own sample projects.** Three Optix pages — `optix-navigation-patterns`,
+  `optix-widget-patterns` and `optix-design-resources` — distil the shell-and-loader scheme, the
+  composite-before-primitives rule and the catalogue that maps a design task to a repository in the MIT-licensed
+  [FactoryTalk-Optix](https://github.com/FactoryTalk-Optix) organisation. They link the samples rather than
+  vendoring them, and `engineering_reference` answers `navigation`, `gauge`, `panel loader`, `samples` and the
+  rule ids from them. `docs/reference/hmi-design.md` gains a "Where the patterns come from" section and loses
+  four gaps the live run closed.
+
 - **Optix reached the template libraries Studio ships.** The row now registers **fourteen** tools, not
   twelve. `optix_library` is one tool with two actions: `list` reads the shipped catalog straight off disk
   (`<Studio>\Files\Libraries\<Library>\Nodes\Items\Items.yaml` plus its `Translations.yaml`) and answers
@@ -101,12 +183,20 @@
   `optix_preview`, `optix_screenshot`, `optix_library` and `optix_ocr` into the engineering loop its
   Engineering tab renders — `optix_library` is classified from its `action` argument, the way a live call is
   classified by `LIVE_WRITE`, so a `list` is not counted as a write and an import is not hidden as a read.
-- **Not shipped as proven.** Nothing in this batch has run against a live Studio project end to end: the
-  import verb and the design rules are compile- and unit-verified, the catalog is read from the installed
-  Studio, and the scaffold is validated against a simulated model in tests — but no bridge session was
-  opened, no screen was built in a real project, and no navigation click was observed in a runtime. The
-  upstream pull request to `asqi-carter/ftx-mcp` is **not filed yet**. `HANDOFF.md` carries the state and the
-  remaining steps, including the sandbox trap that stops `pnpm test` inside a confined shell.
+- **A live Studio session caught a defect in the 1.0.9 health payload.** The first read of a running bridge
+  answered `{"bridge_version":"1.0.9",…,"invoke_session":"root,"template_library":true}`: the quote that
+  closes `root` was dropped when the new field was appended, so the body was not valid JSON. The plugin
+  parses every bridge response as JSON and refuses a body that is not, so that one character broke every
+  Optix verb against a 1.0.9 bridge, not only the import. The bridge now closes the quote and
+  `test/optix-library.spec.mjs` reassembles the health literals and parses them — the regex guard that
+  looked for the new field passed against the broken build, so the guard has to be a parse.
+- **Not shipped as proven.** A live Studio 1.8.1.27 session was opened on a proof copy of
+  `AryaNewHMIProject_IPC` and its bridge answered with `bridge_version 1.0.9`, `model_loaded true` and
+  `template_library true` — that first read is where the defect above was found. The import verb, the
+  scaffold batch and the design rules remain compile- and unit-verified: no library item has been imported
+  into a real project yet, no screen has been built in one, and no navigation click has been observed in a
+  runtime. The upstream pull request to `asqi-carter/ftx-mcp` is **not filed yet**. `HANDOFF.md` carries the
+  state and the remaining steps, including the sandbox trap that stops `pnpm test` inside a confined shell.
 
 
 ## [0.93.0]

@@ -3,12 +3,78 @@
 Written 2026-11-13 on the Windows workstation, from
 `C:\Users\KNPhu\AryaCode\KonnectSuite\dsh-engineering`.
 Branch: **`wip/optix-hmi-design`**, based on `main` @ `5d15103 docs: record the 0.93.0 release`.
-The batch is unfinished work in progress, not a release: `package.json` is still `0.93.0`, there is no
-`## [Unreleased]` section yet, nothing is bumped, tagged or published.
+The batch is unfinished work in progress, not a release: `package.json` is still `0.93.0` and nothing is
+bumped, tagged or published. `## [Unreleased]` now exists in `CHANGELOG.md` and carries both the planned
+work and what the live run below changed.
 
-The approved plan (phases A–E, with the evidence table that justified them) is committed at
-[`docs/port/optix-hmi-design-lane.md`](docs/port/optix-hmi-design-lane.md). Read this file first, then
-that plan.
+Read **Status 2026-11-14** first: the batch has since run against a live Studio, and the section after this
+one describes the plan as it stood before that run.
+
+## Status 2026-11-14
+
+The approved plan (phases A–E, with the evidence table that justified them) stays committed at
+[`docs/port/optix-hmi-design-lane.md`](docs/port/optix-hmi-design-lane.md); read that for why the lane
+exists, and this section for where it ended up.
+
+Everything below through E4 is done, and the batch has now been exercised against FactoryTalk Optix Studio
+1.8.1 with bridge 1.0.9 on a live project (`hmi-e2e\AryaNewHMIProject_IPC`, 1920×1080) — it had never run
+before. What that produced:
+
+- Three load-stopping defects (no `z.enum` in schemastery, a `required: false` parameter, four objects
+  without `additionalProperties`) were fixed before the plugin would mount at all.
+- The draft path was wrong in three ways a mock cannot see: `POST /bridge/expr/validate` (the gateway
+  defaulted to `GET`), the lamp expression (`if({0}, 0xFF30A46C, 0xFFE5484D)`, not `IIF` with CSS hex), and
+  the query encoder (`URLSearchParams` writes a space as `+`, which the bridge does not decode) — the last
+  one had every caption on the screen reading `Plant+overview`.
+- `optix_screen` reads the canvas and the single `PanelLoader` from the live start window, probes navigation
+  targets before the batch, and withholds wiring whose target does not exist yet.
+- `optix_screen` takes `library_items` and stamps shipped composites (import once under
+  `UI/Components/<Library>`, instantiate, place); `optix_library` defaults its import there too.
+- Three new corpus pages carry Rockwell's own sample projects as a design reference
+  (`optix-navigation-patterns`, `optix-widget-patterns`, `optix-design-resources`), linked rather than
+  vendored.
+- Navigation switches panels at runtime. The bridge writes the `ObjectPointer`'s absolute design-time
+  NodeId beside the relative `DynamicLink`, and the runtime resolves the absolute id first — the error was
+  `No behaviour or observer found that handles the method 'ChangePanel' on node
+  Root/Objects/<project>/UI/MainWindow/MainLoader`. A button created inside a panel can never reach the
+  loader for the same family of reason: its instance is one level deeper in a session
+  (`UIRoot/<loader>/<panel>/<button>`) than in the design tree. So `optix_screen` draws the bar in the
+  window beside the loader, names each button for the panel it opens (`Nav_<target>`, so a second screen's
+  draft adds its buttons rather than replacing the first screen's), wires `object_raw`-relative, and clears
+  the absolute pointer value after the batch; `optix_design_check` counts wired shell navigation as the
+  screen's exit. Verified live by clicking both directions
+  (`docs/port/optix-live-proof/04-shell-home-runtime.png`, `05-shell-pumps-runtime.png`).
+- The release review exists as a tool: `optix_production_check` walks the whole `UI` tree in one call and
+  returns a verdict plus findings for the failures a per-screen check cannot see — an absolute design-time
+  pointer (`OPTIX-PROD-01`), a dead handler or a missing navigation screen (`PROD-02`), an unreachable
+  screen (`PROD-03`, shell bar counted), an engine still on the built-in user or stock style sheet
+  (`PROD-04`), a screen outside the folder (`PROD-05`) — and `repair: true` clears the absolute pointer.
+  Measured on the simulator project: `review`, two `PROD-04` warnings, three screens reachable, nineteen
+  handlers. Three bridge facts had to be measured to read it: `map` returns node ids only with `ids=1`,
+  the engine types are `NativeUIPresentationEngine`/`WebUIPresentationEngine`, and a handler inside a
+  shipped composite needs a second, deeper read before it can be judged.
+- A NetLogic machine simulator exercises the whole loop: `hmi-e2e\AryaNewHMIProject_IPC\ProjectFiles\NetSolution\LineSimulator.cs`
+  (a `BaseNetLogic` with a 200 ms `PeriodicTask`) drives a twelve-tag `Model/Line`, six command buttons
+  write `Start`/`Reset`/`Setpoint` through `VariableCommands`, and the runtime shows the level ramping to
+  64 %, pressure 4.2 bar, speed 62 bpm, then collapsing on STOP
+  (`docs/port/optix-live-proof/06-line-overview-running.png` … `08-line-alarms-bottles.png`).
+- The build order is in the corpus as `optix-application-recipe` (`OPTIX-RCP-01..06`), and the Optix and
+  resources skills, `docs/reference/hmi-design.md` and `CHANGELOG.md` all point at it and at the review.
+- Gates: `pnpm test` (48 files), `pnpm docs:tools` and the resources index are green as of this date.
+
+Still open, and not to be claimed as working:
+
+- `packages/optix/bridge/StudioMCPBridge.cs` carries the matching pointer fix (write `NodeId.Empty` when a
+  relative path is given, in both the create and update paths) — compiled, but **not yet loaded into a
+  running Studio** (`bin\AryaNewHMIProject_IPC.dll` is still the old build, and the Studio-side build /
+  reload step has no route through the tools). Until it lands, every caller of `wire_event` with
+  `object_raw` depends on the tool clearing the pointer afterwards, which `optix_screen` now does.
+- A composite placed from the library carries no geometry for its own children, so `optix_design_check`
+  reports those children as unchecked — honest, their layout is computed inside the type.
+- `optix_preview` / `optix_screenshot` have not been exercised through the host: they need the attachment
+  and browser services, and the verification ran in the runtime's Web presentation engine through a
+  headless browser instead.
+- Nothing is committed yet.
 
 ## Picking this up on another PC
 
@@ -18,10 +84,8 @@ git switch --track origin/wip/optix-hmi-design
 pnpm install
 ```
 
-Then start at **B1** below — A1–A5 and the manifest/docs half of E are done, and the suite's doc gates pass
-(`node test/components.spec.mjs` 14/14, `node test/docs.spec.mjs` 9/9, `node test/optix-library.spec.mjs`
-9/9, `node test/optix-template.spec.mjs` 6/6). The remaining work is the draft-screen and design-check lane
-(B1–B3) and the product-neutral `hmi` corpus domain (C1–C4).
+Then read **Status 2026-11-14** above: the phases below describe how the lane was planned, and the parts
+they mark as remaining (B1–B3, C1–C4, E3–E4) are now in the tree.
 
 ## Why this batch exists
 
@@ -101,7 +165,7 @@ answers:
 - `optix_status` health now advertises `"invoke_session":"root"` and `"template_library":true`; the
   first is what `optix_action` invoke requires, the second is what `optix_library import` requires.
 - `packages/optix/bridge/source.json` pins upstream `asqi-carter/ftx-mcp` @
-  `c36163ea88e79efc56d4df10eb337b44969fa922`, sha256 `e42b10a471dcbf86042720573c0de8911bf6819294b558001aae8009490f8748`
+  `c36163ea88e79efc56d4df10eb337b44969fa922`, sha256 `8b208fd26b17c153ec10b70a3915fdc28f4cc03cd384408b483ab8964b52c9ad`
   (measured on the 378,391-byte tracked bridge), and its `localChanges` records the four local edits. The
   upstream pull request is **still not filed** — that is an open task, not a completed one.
 - Budget gates: `components.json` `contextBudget.defaultOnTools = 152` (exact; one more default-on tool

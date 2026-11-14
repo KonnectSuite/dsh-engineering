@@ -12,7 +12,8 @@ import { armBridge, bridgeVersion } from "./arm.js";
 import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
-import { designFindings } from "./design.js";
+import { designFindings, INTERACTIVE_TYPES } from "./design.js";
+import { pointerFacts, productionFindings, walkTree } from "./production.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -97,7 +98,18 @@ var OptixBridgeGateway = class {
 		const payload = body === void 0 ? void 0 : JSON.stringify(body);
 		if (payload && Buffer.byteLength(payload) > this.config.maxResponseBytes) throw new BridgeError("Bridge request exceeds maxResponseBytes", false);
 		const url = new URL(`/bridge/${route}`, origin);
-		url.search = new URLSearchParams(query).toString();
+		// Percent-encode rather than `URLSearchParams`. The bridge reads each pair with
+		// `Uri.UnescapeDataString`, which does NOT decode `+` as a space, while
+		// `URLSearchParams` writes every space as `+`: a screen drafted through it kept the
+		// plus signs and the Web presentation engine rendered "Plant+overview" and
+		// "Station+health+at+a+glance" (live, Studio 1.8.1.27, 2026-11-14). %20 is read the
+		// same way by both sides, so text, tag paths and titles arrive intact.
+		const pairs = [];
+		for (const [key, value] of Object.entries(query)) {
+			if (value === void 0) continue;
+			for (const entry of Array.isArray(value) ? value : [value]) pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(entry))}`);
+		}
+		url.search = pairs.join("&");
 		if (Buffer.byteLength(url.href) > this.config.maxResponseBytes) throw new BridgeError("Bridge query exceeds maxResponseBytes", false);
 		try {
 			const response = await fetch(url, {
@@ -1128,7 +1140,6 @@ function applyEmulator(ctx, settings) {
 			},
 			runtime: {
 				type: "string",
-				required: false,
 				description: "Runtime executable path; empty discovers it under the Studio install."
 			}
 		},
@@ -1185,14 +1196,14 @@ const Config = z.object({
 	maxMapNodes: z.natural().min(1).default(800),
 	maxMapDepth: z.natural().min(1).default(8),
 	preview: z.boolean().default(false),
-	browser: z.enum([
-		"attach",
-		"launch"
+	browser: z.union([
+		z.const("attach"),
+		z.const("launch")
 	]).default("launch"),
-	browserChannel: z.enum([
-		"auto",
-		"chrome",
-		"msedge"
+	browserChannel: z.union([
+		z.const("auto"),
+		z.const("chrome"),
+		z.const("msedge")
 	]).default("auto"),
 	browserPath: z.string().default(""),
 	browserHeadless: z.boolean().default(false),
@@ -1677,11 +1688,19 @@ function apply(ctx, config = {}) {
 						};
 					}
 				}
+				// A wiring operation written with a relative pointer path still leaves the
+				// absolute design-time NodeId in the pointer, and the runtime resolves that
+				// id first (the live failure is "No behaviour or observer found that handles
+				// the method 'ChangePanel'"). Clearing it belongs to every caller that wires
+				// an event, not only to optix_screen, so it happens here too.
+				const pointerClearing = await clearPointerValues(origin, ops, exec.signal);
 				return {
 					status: "completed",
 					applied: results.length,
 					results,
-					validation
+					validation,
+					...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
+					...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed })
 				};
 			});
 		}
@@ -1844,7 +1863,7 @@ function apply(ctx, config = {}) {
 	 */
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_library",
-		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An import is not batch-reversible, so read the model back with optix_read before any retry.",
+		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An imported component belongs at the root of UI in a structural folder named for its library - UI/Components/Widgets/AlarmBanner, UI/Components/StyleSheets/FriendlyDark - so it never lands loose beside the project's screens; dest defaults to that folder and the folders are created when missing. An import is not batch-reversible, so read the model back with optix_read before any retry.",
 		parameters: {
 			action: {
 				type: "string",
@@ -1861,7 +1880,7 @@ function apply(ctx, config = {}) {
 			},
 			dest: {
 				type: "string",
-				description: "Project node to import under (default UI)."
+				description: "Project folder to import under. Defaults to UI/Components/<library>, the structural home for template-library components at the root of UI; the folder chain is created when missing. Name a different folder only to follow a project that already organizes its components elsewhere."
 			},
 			class: {
 				type: "string",
@@ -1973,8 +1992,10 @@ function apply(ctx, config = {}) {
 			return exclusive(async () => {
 				const { origin, health } = await bridge.select(args.project, exec.signal);
 				if (health.template_library !== true) throw new Error("library_import_unsupported_bridge: this Studio bridge does not serve the template-library import; run optix_bridge_arm on the project, compile NetSolution in Studio, start the bridge, then call optix_status again");
+				const folder = args.dest?.trim() === "" || args.dest === void 0 ? libraryComponentFolder(found.library.library) : args.dest.trim();
+				const folders = await ensureFolders(origin, folder, exec.signal);
 				const query = {
-					dest: args.dest?.trim() === "" || args.dest === void 0 ? "UI" : args.dest,
+					dest: folder,
 					class: args.class?.trim() === "" || args.class === void 0 ? "ObjectType" : args.class,
 					library: args.library,
 					item: args.item
@@ -1990,8 +2011,10 @@ function apply(ctx, config = {}) {
 							library: found.library.library,
 							name: found.item.name,
 							display: found.item.display ?? found.item.name,
-							guid: found.item.guid
+							guid: found.item.guid,
+							dest: folder
 						},
+						folders_created: folders,
 						response: result,
 						coverage: "The bridge reports the node it created; rendering, runtime behaviour and the installed Optix version are not established by this call.",
 						next: `Read ${result.created_path ?? "the imported node"} back with optix_read, then run optix_design_check on the screen that hosts it.`
@@ -2006,19 +2029,243 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
+	/**
+	 * Where a template-library component lives: at the root of UI, under a structural folder named for
+	 * the library it came from (`UI/Components/Widgets/AlarmBanner`), so imported types never pile up
+	 * loose beside the screens and style sheets an operator reads the project through.
+	 */
+	const LIBRARY_COMPONENT_ROOT = "UI/Components";
+	/** Project folder that holds one library's imported components. */
+	function libraryComponentFolder(library) {
+		return `${LIBRARY_COMPONENT_ROOT}/${library}`;
+	}
+	/**
+	 * Make a structural folder chain exist, one FolderType at a time. Measured against Studio 1.8.1
+	 * (2026-11-14): `/bridge/model/folder` takes parent and name, refuses a duplicate name, and a folder
+	 * is an organizational node, not a UI control, so it never shows up in a screen.
+	 * @param origin - Bridge origin.
+	 * @param path - Folder path to guarantee, for example UI/Components/Widgets.
+	 * @param signal - Abort signal.
+	 * @returns The folders this call created, oldest first.
+	 */
+	async function ensureFolders(origin, path, signal) {
+		const created = [];
+		let current = "";
+		for (const segment of path.split("/")) {
+			current = current === "" ? segment : `${current}/${segment}`;
+			const probe = await bridge.request(origin, "nodes", signal, { path: current }).catch(() => void 0);
+			if (probe?.path !== void 0) continue;
+			const parent = current.includes("/") ? current.slice(0, current.lastIndexOf("/")) : "";
+			const response = await bridge.request(origin, "model/folder", signal, {
+				parent,
+				name: segment
+			}, "POST");
+			if (response.ok !== true) throw new BridgeError(`Bridge did not create the folder ${current}`, true);
+			created.push(current);
+		}
+		return created;
+	}
+	/**
+	 * Read the window a screen has to live inside: its canvas size and any PanelLoader already mounted
+	 * in it. Measured against Studio 1.8.1 (2026-11-14): the window declares Width and Height as Size
+	 * properties spelled "1920 (Float)", and the presentation engine names the start window through a
+	 * NodePointer, which is the window the operator actually lands on.
+	 */
+	async function liveScreenHost(origin, signal) {
+		const directory = await bridge.request(origin, "map", signal, { path: "UI", depth: 2, max: 200 });
+		const children = directory?.map?.children ?? [];
+		const engine = children.find((entry) => entry.type === "NativeUIPresentationEngine") ?? children.find((entry) => entry.type === "WebUIPresentationEngine");
+		const pointer = (engine?.children ?? []).find((entry) => entry.name === "StartWindow");
+		const referenced = pointer === void 0 || pointer.ref === void 0 ? void 0 : String(pointer.ref).split("/").pop();
+		const windowEntry = referenced === void 0 ? children.find((entry) => entry.type === "WindowType") : children.find((entry) => entry.name === referenced) ?? children.find((entry) => entry.type === "WindowType");
+		if (windowEntry === void 0) return { window: void 0, width: void 0, height: void 0, panel_loader: void 0, panel_loaders: [] };
+		const windowPath = `UI/${windowEntry.name}`;
+		const nodes = await bridge.request(origin, "nodes", signal, { path: windowPath });
+		const size = (name) => {
+			const property = (nodes?.properties ?? []).find((entry) => entry.name === name);
+			const measured = /^(\d+(?:\.\d+)?)/u.exec(String(property?.value ?? ""));
+			return measured === null ? void 0 : Math.round(Number(measured[1]));
+		};
+		const panelLoaders = (nodes?.children ?? []).filter((entry) => entry.dotnet_type === "PanelLoader").map((entry) => `${windowPath}/${entry.browse_name}`);
+		// The window's own children are what a second screen's draft must not replace: the shell bar is
+		// shared, so a button already drawn by an earlier draft is only re-wired, never created again.
+		const windowChildren = (nodes?.children ?? []).map((entry) => String(entry.browse_name ?? ""));
+		return {
+			window: windowPath,
+			width: size("Width"),
+			height: size("Height"),
+			panel_loader: panelLoaders.length === 1 ? panelLoaders[0] : void 0,
+			panel_loaders: panelLoaders,
+			window_children: windowChildren
+		};
+	}
+	/**
+	 * Plan one template-library composite for a screen. The bridge imports a library item as an
+	 * ObjectType (a library of types, not of instances), so a composite reaches a screen in three
+	 * steps the bridge already serves: import the type once under UI, instantiate it under the screen,
+	 * then place it. Measured live against Studio 1.8.1 (2026-11-14): Widgets/AlarmBanner imported to
+	 * UI/AlarmBanner (clr RowLayoutType), instantiated as UI/Screens/LibraryProof/Banner1, and its own
+	 * children (a Label, two Buttons, a NetLogic object) came with it - which is the difference between
+	 * a hand-drawn rectangle and the composite Rockwell ships.
+	 * @param origin - Bridge origin.
+	 * @param screenPath - Screen the instances are created under.
+	 * @param items - Requested composites: library, item, optional name and rect.
+	 * @param catalog - Shipped catalog from readCatalog.
+	 * @param slots - Scaffold slots, for the default card-sized rect.
+	 * @param signal - Abort signal.
+	 * @returns The plan, per-item, with what already exists and what has to be written.
+	 */
+	async function planLibraryItems(origin, screenPath, items, catalog, slots, signal) {
+		const plan = [];
+		for (const [index, item] of items.entries()) {
+			const found = findEntry(catalog, item.library, item.item);
+			if (found === null) {
+				const library = catalog.find((candidate) => candidate.library.toLowerCase() === String(item.library).trim().toLowerCase());
+				return {
+					error: library === void 0 ? {
+						code: "library_not_found",
+						library: item.library,
+						did_you_mean: suggestNames(item.library, libraryNames(catalog)),
+						next: `This Studio ships ${libraryNames(catalog).join(", ")}.`
+					} : {
+						code: "item_not_found",
+						library: library.library,
+						item: item.item,
+						groups: library.groups,
+						did_you_mean: suggestNames(item.item, itemNames(library)),
+						next: "The name may live inside a group folder listed above; nested item paths are unverified, so prefer a top-level name."
+					}
+				};
+			}
+			const name = item.name ?? found.item.name;
+			const rect = item.left !== void 0 && item.top !== void 0 && item.width !== void 0 && item.height !== void 0
+				? { left: item.left, top: item.top, width: item.width, height: item.height }
+				: slots.cards?.[index] ?? slots.body;
+			const typePath = `${libraryComponentFolder(found.library.library)}/${found.item.name}`;
+			const instancePath = `${screenPath}/${name}`;
+			const typeProbe = await bridge.request(origin, "nodes", signal, { path: typePath }).catch(() => void 0);
+			const instanceProbe = await bridge.request(origin, "nodes", signal, { path: instancePath }).catch(() => void 0);
+			plan.push({
+				library: found.library.library,
+				item: found.item.name,
+				display: found.item.display ?? found.item.name,
+				name,
+				type_path: typePath,
+				instance_path: instancePath,
+				rect,
+				type_present: typeProbe?.path !== void 0,
+				instance_present: instanceProbe?.path !== void 0
+			});
+		}
+		return { plan };
+	}
+	/**
+	 * Apply a library plan: import each absent type, instantiate it under the screen, then place it.
+	 * Imports are not reversible, so a failure reports the step it stopped at and never replays the
+	 * ones already acknowledged.
+	 * @param origin - Bridge origin.
+	 * @param screenPath - Screen the instances are created under.
+	 * @param plan - Output of planLibraryItems.
+	 * @param signal - Abort signal.
+	 * @returns { ok, steps, placed } or { ok: false, steps, placed, failed, error }.
+	 */
+	async function applyLibraryPlan(origin, screenPath, plan, signal) {
+		const steps = [];
+		const placed = [];
+		for (const entry of plan) {
+			const step = { item: entry.item, library: entry.library, instance_path: entry.instance_path };
+			try {
+				const folder = libraryComponentFolder(entry.library);
+				if (entry.type_present !== true) {
+					step.folders = await ensureFolders(origin, folder, signal);
+					const imported = await bridge.request(origin, "library/import", signal, {
+						dest: folder,
+						class: "ObjectType",
+						library: entry.library,
+						item: entry.item
+					}, "POST");
+					if (imported.ok !== true) throw new BridgeError(`Bridge did not import ${entry.library}/${entry.item}`, true);
+					step.imported = imported.created_path ?? entry.type_path;
+				}
+				if (entry.instance_present !== true) {
+					const created = await bridge.request(origin, "model/object", signal, {
+						parent: screenPath,
+						name: entry.name,
+						type: entry.type_path
+					}, "POST");
+					if (created.ok !== true) throw new BridgeError(`Bridge did not instantiate ${entry.type_path} under ${screenPath}`, true);
+					step.instantiated = created.created_path ?? entry.instance_path;
+				}
+				const properties = {
+					LeftMargin: entry.rect.left,
+					TopMargin: entry.rect.top,
+					Width: entry.rect.width,
+					Height: entry.rect.height
+				};
+				step.properties = {};
+				for (const [prop_name, value] of Object.entries(properties)) {
+					const written = await bridge.request(origin, "node/property", signal, {
+						path: entry.instance_path,
+						name: prop_name,
+						value: String(value)
+					}, "POST");
+					if (written.ok !== true) throw new BridgeError(`Bridge did not place ${entry.instance_path} (${prop_name})`, true);
+					step.properties[prop_name] = written.value ?? String(value);
+				}
+				placed.push(entry.instance_path);
+				steps.push(step);
+			} catch (error) {
+				return { ok: false, steps, placed, failed: entry, error: String(error) };
+			}
+		}
+		return { ok: true, steps, placed };
+	}
+	/**
+	 * Clear the absolute NodeId a freshly wired ObjectPointer carries, so its relative link is what the
+	 * runtime resolves.
+	 *
+	 * Measured live on Studio 1.8.1.27 (2026-11-14): `node/event` writes the design-time NodeId into
+	 * `ObjectPointer.Value` and the relative target into `DynamicLink`; at run time the session instance
+	 * does not live at that NodeId, so the dispatcher answers "No behaviour or observer found that
+	 * handles the method ...". Setting the value to an empty string writes a Null NodeId (`"via": "self"`)
+	 * and the click then switches the panel. The pointer is cleared in a second, applied-only batch
+	 * because the event handler is created by the wiring call and a hypothetical validation cannot see
+	 * it yet.
+	 */
+	async function clearPointerValues(origin, ops, signal) {
+		let cleared = 0;
+		const failed = [];
+		for (const op of ops) {
+			if (op.op !== "wire_event" || op.object_raw === void 0) continue;
+			const name = op.path.split("/").filter((segment) => segment !== "").at(-1);
+			const pointerPath = `${op.path}/EH_${op.event_type}_${name}/MethodsToCall/MethodContainer1/ObjectPointer`;
+			try {
+				const written = await bridge.request(origin, "node/property", signal, {
+					path: pointerPath,
+					name: "Value",
+					value: ""
+				}, "POST");
+				if (written.ok === true) cleared += 1;
+				else failed.push(pointerPath);
+			} catch (error) {
+				failed.push(`${pointerPath}: ${String(error)}`);
+			}
+		}
+		return { cleared, failed };
+	}
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_screen",
-		description: `Draft or apply a whole Optix screen as one ordered operation batch: backdrop, header band, title, content surface, up to ${MAX_CARDS} data cards with value and lamp rows, and a row of up to ${MAX_NAV} navigation buttons. The slot math, the refusals and the palette are the ones the FactoryTalk View scaffold uses, so one design brief lays out both products. dry_run defaults to true: the batch is validated against the live model and nothing is written. Applying requires allowWrites. The screen is created as a ScreenType because a bare Screen instance does not load at runtime. Navigation is wired only when panel_loader names the PanelLoader read back from the live model, because a UI object is instantiated per session and an absolute design-time path does not resolve at runtime; without it the buttons are created and the wiring each one needs is reported instead. The batch is validated in one call and applied operation by operation, so a failure names the operation that stopped and the batch is never replayed automatically.`,
+		description: `Draft or apply a whole Optix screen as one ordered operation batch: backdrop, header band, title, content surface, up to ${MAX_CARDS} data cards with value and lamp rows, and a row of up to ${MAX_NAV} navigation buttons. The slot math, the refusals and the palette are the ones the FactoryTalk View scaffold uses, so one design brief lays out both products. dry_run defaults to true: the batch is validated against the live model and nothing is written. Applying requires allowWrites. The screen is created as a ScreenType because a bare Screen instance does not load at runtime. Navigation is wired only when a PanelLoader is available, because a UI object is instantiated per session and an absolute design-time path does not resolve at runtime: the tool reads the start window and uses its single mounted PanelLoader unless panel_loader names one; without a loader the buttons are created and the wiring each one needs is reported instead. The canvas defaults to the start window's own size. The batch is validated in one call and applied operation by operation, so a failure names the operation that stopped and the batch is never replayed automatically. Composites named in library_items are stamped in as the shipped library's own types - imported once at the root of UI under a structural folder per library (UI/Components/Widgets, UI/Components/StyleSheets), instantiated under this screen, then placed - so a screen can be built from the components Rockwell ships instead of from hand-drawn panels.`,
 		parameters: {
 			project: projectParameter,
 			name: text,
 			width: {
 				type: "integer",
-				description: "Design width, default 1280: the width the starter Window declares."
+				description: "Design width. Omitted: the start window's own Width read from the live model, so a drafted screen matches its canvas; 1280 only when the window cannot be read."
 			},
 			height: {
 				type: "integer",
-				description: "Design height, default 800: the height the starter Window declares."
+				description: "Design height. Omitted: the start window's own Height read from the live model; 800 only when the window cannot be read."
 			},
 			title: { type: "string" },
 			subtitle: { type: "string" },
@@ -2027,6 +2274,7 @@ function apply(ctx, config = {}) {
 				type: "array",
 				items: {
 					type: "object",
+					additionalProperties: false,
 					properties: {
 						title: {
 							type: "string",
@@ -2036,6 +2284,7 @@ function apply(ctx, config = {}) {
 							type: "array",
 							items: {
 								type: "object",
+								additionalProperties: false,
 								properties: {
 									label: {
 										type: "string",
@@ -2062,6 +2311,7 @@ function apply(ctx, config = {}) {
 				type: "array",
 				items: {
 					type: "object",
+					additionalProperties: false,
 					properties: {
 						label: {
 							type: "string",
@@ -2080,12 +2330,41 @@ function apply(ctx, config = {}) {
 				type: "string",
 				description: "Where the ScreenType is created. Default UI/Screens."
 			},
+			library_items: {
+				type: "array",
+				items: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						library: {
+							type: "string",
+							required: true,
+							description: "Shipped library, for example Widgets."
+						},
+						item: {
+							type: "string",
+							required: true,
+							description: "Top-level item name, for example AlarmBanner. Run optix_library action list for this machine's names."
+						},
+						name: {
+							type: "string",
+							description: "Instance name under the screen. Default: the item name."
+						},
+						left: { type: "integer" },
+						top: { type: "integer" },
+						width: { type: "integer" },
+						height: { type: "integer" }
+					}
+				},
+				description: "Template-library composites stamped onto the screen after the scaffold, in the shipped library's own types rather than hand-drawn panels. Each one is imported once as an ObjectType under UI (the bridge imports types, not instances), instantiated under this screen, and placed. Geometry defaults to the matching card slot, then the content surface. The plan is reported, and applying is not reversible: a failure names the composite it stopped at."
+			},
 			panel_loader: {
 				type: "string",
-				description: "Live PanelLoader path, read back with optix_read. Without it navigation is reported rather than wired."
+				description: "Live PanelLoader path. Omitted: the single PanelLoader mounted in the start window, when there is exactly one. Without a loader navigation is reported rather than wired."
 			},
 			theme: {
 				type: "object",
+				additionalProperties: false,
 				properties: Object.fromEntries(Object.entries(SCREEN_THEME).map(([key, value]) => [key, {
 					type: "string",
 					description: `Default ${value}.`
@@ -2105,48 +2384,97 @@ function apply(ctx, config = {}) {
 			kind: args.dry_run === false ? "edit" : "read"
 		}),
 		async execute(args, exec) {
-			const spec = {
-				name: args.name,
-				width: args.width ?? 1280,
-				height: args.height ?? 800,
-				...(args.title === void 0 ? {} : { title: args.title }),
-				...(args.subtitle === void 0 ? {} : { subtitle: args.subtitle }),
-				...(args.footer === void 0 ? {} : { footer: args.footer }),
-				...(args.cards === void 0 ? {} : { cards: args.cards }),
-				...(args.nav === void 0 ? {} : { nav: args.nav }),
-				...(args.screens_folder === void 0 || args.screens_folder === "" ? {} : { screens_folder: args.screens_folder }),
-				...(args.panel_loader === void 0 || args.panel_loader === "" ? {} : { panel_loader: args.panel_loader }),
-				...(args.theme === void 0 ? {} : { theme: args.theme })
-			};
-			let layout;
-			try {
-				layout = screenOps(spec);
-			} catch (error) {
-				return {
-					status: "refused",
-					error: String(error),
-					next: "Shrink the card count, drop a row, or name a larger display."
-				};
-			}
-			if (layout.op_count > settings.maxScreenOps) return {
-				status: "refused",
-				error: `${layout.op_count} operations exceed maxScreenOps ${settings.maxScreenOps}`,
-				op_count: layout.op_count,
-				next: "Drop a card, drop a row, or raise maxScreenOps. The whole batch must be validated in one call because the bridge only resolves a parent it created in the same batch, so the screen cannot be split."
-			};
-			const dryRun = args.dry_run !== false;
-			allowWrite(isDestructive(layout.ops));
-			const brief = {
-				screen: layout.path,
-				width: layout.width,
-				height: layout.height,
-				op_count: layout.op_count,
-				objects: layout.objects,
-				slots: layout.slots,
-				theme: layout.theme
-			};
 			return exclusive(async () => {
 				const { origin, health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				// The canvas and the loader come from the live window rather than from a starter default: a
+				// 1280x800 screen inside a 1920x1080 window is the layout defect the design check reports, and
+				// the only PanelLoader that can change a panel is the one mounted in the window the operator
+				// lands on. Measured against Studio 1.8.1 (2026-11-14).
+				const host = await liveScreenHost(origin, exec.signal);
+				// A navigation button is wired to a node path, so a target that does not exist yet cannot be
+				// wired in the same batch that creates the screen - and a batch whose wiring is refused would
+				// throw away the whole layout. Instead the target is probed first: with a missing target the
+				// buttons are still built and their wiring is reported, so screens can be created in either
+				// order and one follow-up optix_edit batch (wire_event, shape reported here) completes them.
+				const requestedTargets = [...new Set((args.nav ?? []).map((entry) => entry.target))];
+				const missingTargets = [];
+				for (const target of requestedTargets) {
+					const probe = await bridge.request(origin, "nodes", exec.signal, { path: target }).catch(() => void 0);
+					if (probe === void 0 || probe.path === void 0) missingTargets.push(target);
+				}
+				const namedLoader = args.panel_loader === void 0 || args.panel_loader === "" ? host.panel_loader : args.panel_loader;
+				const usableLoader = missingTargets.length === 0 ? namedLoader : void 0;
+				const spec = {
+					name: args.name,
+					width: args.width ?? host.width ?? 1280,
+					height: args.height ?? host.height ?? 800,
+					...(args.title === void 0 ? {} : { title: args.title }),
+					...(args.subtitle === void 0 ? {} : { subtitle: args.subtitle }),
+					...(args.footer === void 0 ? {} : { footer: args.footer }),
+					...(args.cards === void 0 ? {} : { cards: args.cards }),
+					...(args.nav === void 0 ? {} : { nav: args.nav }),
+					...(args.screens_folder === void 0 || args.screens_folder === "" ? {} : { screens_folder: args.screens_folder }),
+					...(usableLoader === void 0 ? {} : { panel_loader: usableLoader }),
+					// The navigation bar is drawn into the start window, beside the loader, because a button
+					// created inside a panel resolves its loader path against the design tree at run time and
+					// the runtime then points at the design-time loader. Measured live 2026-11-14; the shipped
+					// PanelLoader sample wires its window-level button the same way. A button whose target
+					// screen does not exist yet is still drawn, but its wiring waits (missing_targets), because
+					// a wiring call the bridge refuses would discard the whole batch.
+					...(namedLoader === void 0 || host.window === void 0 ? {} : { shell: { window: host.window, loader: namedLoader, width: host.width, height: host.height, children: host.window_children, missing_targets: missingTargets } }),
+					...(args.theme === void 0 ? {} : { theme: args.theme })
+				};
+				let layout;
+				try {
+					layout = screenOps(spec);
+				} catch (error) {
+					return {
+						status: "refused",
+						error: String(error),
+						next: "Shrink the card count, drop a row, or name a larger display."
+					};
+				}
+				if (layout.op_count > settings.maxScreenOps) return {
+					status: "refused",
+					error: `${layout.op_count} operations exceed maxScreenOps ${settings.maxScreenOps}`,
+					op_count: layout.op_count,
+					next: "Drop a card, drop a row, or raise maxScreenOps. The whole batch must be validated in one call because the bridge only resolves a parent it created in the same batch, so the screen cannot be split."
+				};
+				const dryRun = args.dry_run !== false;
+				// Template-library composites are planned before anything is written: the catalog is read to
+				// refuse a name this machine does not ship, and the live model is probed for the type and the
+				// instance so applying reports what it actually had to create.
+				const requestedLibrary = args.library_items ?? [];
+				let libraryPlan = [];
+				if (requestedLibrary.length > 0) {
+					const roots = await libraryRoots();
+					if (roots.length === 0) return noStudioInstall();
+					const catalog = await readCatalog(roots.at(-1).libraries, exec.signal);
+					const planned = await planLibraryItems(origin, layout.path, requestedLibrary, catalog, layout.slots, exec.signal);
+					if (planned.error !== void 0) return {
+						status: "refused",
+						...planned.error
+					};
+					libraryPlan = planned.plan;
+				}
+				allowWrite(libraryPlan.length > 0 || isDestructive(layout.ops));
+				const brief = {
+					screen: layout.path,
+					width: layout.width,
+					height: layout.height,
+					op_count: layout.op_count,
+					objects: layout.objects,
+					slots: layout.slots,
+					theme: layout.theme,
+					...(libraryPlan.length === 0 ? {} : { library: libraryPlan }),
+					host: {
+						window: host.window,
+						canvas: host.width === void 0 || host.height === void 0 ? void 0 : { width: host.width, height: host.height },
+						panel_loader: spec.panel_loader,
+						panel_loaders: host.panel_loaders,
+						nav_targets_missing: missingTargets
+					}
+				};
 				const normalized = layout.ops.map((op) => op.prop_name === void 0 ? op : {
 					...op,
 					name: op.prop_name
@@ -2160,7 +2488,7 @@ function apply(ctx, config = {}) {
 					const checked = await bridge.request(origin, "expr/validate", exec.signal, {
 						expression: item.expression,
 						sources: item.sources ?? ""
-					});
+					}, "POST");
 					expressions.push({
 						path: item.path,
 						prop_name: item.prop_name,
@@ -2170,12 +2498,22 @@ function apply(ctx, config = {}) {
 					});
 				}
 				const rejected = expressions.filter((item) => item.result?.ok !== true);
+				const pendingWiring = layout.pendingWiring.map((entry) => ({
+					...entry,
+					// The scaffold cannot know the loader when it is withheld for a missing target, so its
+					// reported shape carries a placeholder. The live loader is known here, and a shape that
+					// names it is the one that can be applied later without editing. `object_raw` and
+					// `method_path` have to agree: the pointer resolves the loader relative to the button, and
+					// the absolute alternative is what the runtime rejects at run time.
+					...(usableLoader === void 0 && namedLoader !== void 0 && entry.shape !== void 0 ? { shape: { ...entry.shape, method_path: `${namedLoader}/ChangePanel`, object_raw: `../${namedLoader.split("/").filter((segment) => segment !== "").at(-1)}` } } : {}),
+					...(missingTargets.includes(entry.target) ? { reason: `${entry.target} does not exist yet, so wiring it in this batch would be refused; apply this op once that screen exists.` } : {})
+				}));
 				const report = {
 					...brief,
 					...(args.include_ops === true ? { ops: layout.ops } : {}),
 					validation,
 					expressions,
-					pending_wiring: layout.pendingWiring
+					pending_wiring: pendingWiring
 				};
 				if (!acceptedValidation(validation, layout.ops.length) || rejected.length > 0) return {
 					status: "refused",
@@ -2191,7 +2529,7 @@ function apply(ctx, config = {}) {
 					applied: 0,
 					...report,
 					coverage: "Validation is the bridge's own hypothetical check: it proves the operations resolve against the live model, not that the screen renders. Navigation is unverified until a click is observed in the runtime.",
-					next: layout.pendingWiring.length === 0 ? "Apply with dry_run:false, then read the screen back with optix_read and run optix_design_check on it." : "Read UI/MainWindow with optix_read to find its PanelLoader, then draft again with panel_loader so the buttons are wired."
+					next: pendingWiring.length === 0 ? `Apply with dry_run:false${libraryPlan.length === 0 ? "" : ` (it also imports and places ${libraryPlan.map((entry) => `${entry.library}/${entry.item}`).join(", ")})`}, then read the screen back with optix_read and run optix_design_check on it.` : missingTargets.length > 0 ? `Navigation stays pending: ${missingTargets.join(", ")} ${missingTargets.length === 1 ? "does" : "do"} not exist yet, and a button cannot be wired to a node that is not there. Create the missing screen(s), then apply the reported wire_event ops as one optix_edit batch - or draft this screen last.` : host.window === void 0 ? `No start window was read from the live model, so navigation is unverified: read UI, find the window, and name its PanelLoader.` : `${host.window} hosts ${host.panel_loaders.length === 0 ? "no PanelLoader" : `${host.panel_loaders.length} PanelLoaders`}, so navigation cannot be wired: create or name the loader (optix_edit create_widget widget_type PanelLoader under the window), then draft again.`
 				};
 				const results = [];
 				for (const [index, op] of layout.ops.entries()) {
@@ -2216,12 +2554,33 @@ function apply(ctx, config = {}) {
 						};
 					}
 				}
+				// The composites go in after the scaffold, because an instance can only be created under a
+				// screen that already exists. Imports are not reversible, so a failure stops there and
+				// reports the step; the scaffold is already in place and is not replayed.
+				let pointerClearing = { cleared: 0, failed: [] };
+				if (layout.ops.some((op) => op.op === "wire_event" && op.object_raw !== void 0)) pointerClearing = await clearPointerValues(origin, layout.ops, exec.signal);
+				let libraryApplied;
+				if (libraryPlan.length > 0) {
+					libraryApplied = await applyLibraryPlan(origin, layout.path, libraryPlan, exec.signal);
+					if (libraryApplied.ok !== true) return {
+						status: "partial",
+						applied: results.length,
+						...report,
+						library_applied: { steps: libraryApplied.steps, placed: libraryApplied.placed },
+						failed_library: libraryApplied.failed.instance_path,
+						error: libraryApplied.error,
+						retry: "The scaffold is in place. Inspect the live model, then stamp the remaining composites with optix_library import + optix_edit create_widget, or re-draft the screen once the failure is cleared."
+					};
+				}
 				return {
 					status: "completed",
 					applied: results.length,
 					...report,
+					...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
+					...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed }),
+					...(libraryApplied === void 0 ? {} : { library_applied: { steps: libraryApplied.steps, placed: libraryApplied.placed } }),
 					results,
-					coverage: "Every operation the bridge acknowledged. Rendering, runtime behaviour and whether a navigation button actually changes the panel are not established by this call.",
+					coverage: "Every operation the bridge acknowledged, and the absolute NodeId behind each wired pointer cleared so its relative link is what the runtime resolves. Rendering and whether a navigation button actually changes the panel are not established by this call.",
 					next: "Read the screen back with optix_read, run optix_design_check on it, then look at it with optix_preview and optix_screenshot."
 				};
 			});
@@ -2280,6 +2639,10 @@ function apply(ctx, config = {}) {
 					next: "Confirm the path with optix_read action map on UI/Screens."
 				};
 				const nodes = [];
+				// A property of a widget is a UAVariable child in the model, and `nodes` reports its value -
+				// walking it as an object both doubles the node count and buries the widgets that the rules
+				// actually talk about (a 24-widget screen has ~184 nodes, so the 60-object budget described
+				// the backdrop's properties and never reached the buttons). Read values through `properties`.
 				const walk = (entry, path) => {
 					const node = {
 						name: entry.name,
@@ -2294,7 +2657,10 @@ function apply(ctx, config = {}) {
 						...(entry.more === void 0 ? {} : { more: entry.more })
 					};
 					nodes.push(node);
-					for (const child of entry.children ?? []) walk(child, `${path}/${child.name}`);
+					for (const child of entry.children ?? []) {
+						if ((child.type ?? "") === "UAVariable") continue;
+						walk(child, `${path}/${child.name}`);
+					}
 				};
 				walk(tree.map, args.screen);
 				const screen = nodes[0];
@@ -2350,11 +2716,33 @@ function apply(ctx, config = {}) {
 				} catch (error) {
 					canvasNotes.push(`${screensFolder}: ${String(error)}`);
 				}
+				// The shell's navigation bar counts for every screen in it: the buttons live beside the
+				// PanelLoader in the start window, so a screen with no controls of its own is not
+				// unreachable when the shell carries wired buttons.
+				let shell;
+				try {
+					const shellMap = await bridge.request(origin, "map", exec.signal, {
+						path: window,
+						mode: "detail",
+						depth: 2,
+						max: 200
+					});
+					const shellControls = (shellMap.map?.children ?? []).filter((entry) => INTERACTIVE_TYPES.has(entry.type ?? entry.coll ?? ""));
+					shell = {
+						path: window,
+						controls: shellControls.length,
+						wired: shellControls.filter((entry) => (entry.children ?? []).some((child) => child.type === "EventHandler" || child.type === "MouseClickEvent")).length
+					};
+					if (shellMap.map?.more !== void 0) canvasNotes.push(`${window} holds more children than the map reported`);
+				} catch (error) {
+					canvasNotes.push(`${window} navigation: ${String(error)}`);
+				}
 				const report = designFindings({
 					nodes: described,
 					screen,
 					canvas,
-					siblings
+					siblings,
+					...(shell === void 0 ? {} : { shell })
 				});
 				const unchecked = [...report.unchecked, ...canvasNotes];
 				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", …" : ""}`);
@@ -2375,6 +2763,192 @@ function apply(ctx, config = {}) {
 					unchecked,
 					coverage: "Every finding is a statement about the geometry, colours and wiring the bridge reports. Contrast compares a text colour with the smallest fill that contains the control. A screen with no reported size cannot be compared with the canvas. Nothing here renders the screen or runs it: look at it with optix_preview and optix_screenshot.",
 					next: warnings.length === 0 ? "No warning-level finding. Look at the screen with optix_preview and optix_screenshot before calling it done." : "Fix the warning findings with optix_edit (size, colour, wiring), then check again."
+				};
+			});
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_production_check",
+		description: "Review the whole project the way a commissioning engineer does before release, in one pass: event handlers that still name an absolute design-time object (the runtime instantiates UI per session, so those buttons are dead even though they exist - OPTIX-PROD-01), handlers that point at a screen which is not there (OPTIX-PROD-02), screens the operator cannot reach from the panel the loader starts on (OPTIX-PROD-03), presentation engines left on engineering defaults such as an anonymous starting user or the stock style sheet (OPTIX-PROD-04) and screens that live outside the screen folder (OPTIX-PROD-05). Returns a release verdict with per-rule findings, each naming the node and the fix. repair:true clears the absolute pointer value of every handler OPTIX-PROD-01 reports, which is exactly the measured cause of a navigation button that clicks but never switches; it needs allowWrites and writes only that value.",
+		parameters: {
+			project: projectParameter,
+			window: {
+				type: "string",
+				description: "Window that carries the PanelLoader the checks start from. Default UI/MainWindow."
+			},
+			screens_folder: {
+				type: "string",
+				description: "Folder the screens live in. Default UI/Screens."
+			},
+			depth: {
+				type: "integer",
+				description: "How deep the UI tree is read in one bridge call. Default 8."
+			},
+			max_handlers: {
+				type: "integer",
+				description: "How many event handlers are inspected in full. Default 120."
+			},
+			repair: {
+				type: "boolean",
+				description: "Clear the absolute design-time value of every pointer OPTIX-PROD-01 reports. Requires allowWrites."
+			}
+		},
+		output: jsonOutput,
+		presentCall: () => ({
+			card: "generic",
+			title: "Production check",
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			const window = args.window ?? "UI/MainWindow";
+			const screensFolder = args.screens_folder ?? "UI/Screens";
+			const depth = args.depth ?? 8;
+			const maxHandlers = args.max_handlers ?? 120;
+			if (args.repair === true) allowWrite(true);
+			return exclusive(async () => {
+				const { origin, health } = await bridge.select(args.project, exec.signal);
+				// One structural read of the whole UI tree carries every widget, every handler and
+				// every pointer reference the rules need. Reading node by node is what made the
+				// per-screen check slow on a real project, so this tool walks the tree once and
+				// then asks for the few values the tree does not carry (arguments, engine settings).
+				const tree = await bridge.request(origin, "map", exec.signal, {
+					path: "UI",
+					mode: "detail",
+					depth,
+					// The bridge only reports node ids for `ids=1`; `ids=true` is ignored (measured 2026-11-14).
+					ids: 1,
+					max: 4000
+				});
+				if (tree.map === void 0) return {
+					status: "failed",
+					error: "The bridge returned no tree for UI",
+					response: tree,
+					next: "Confirm the project is loaded with optix_status."
+				};
+				const nodes = [];
+				walkTree(tree.map, "UI", (entry, path) => nodes.push({ entry, path }));
+				const byId = new Map();
+				for (const node of nodes) if (typeof node.entry.id === "string") byId.set(node.entry.id, node.path);
+				const pathOf = (value) => {
+					if (typeof value !== "string") return void 0;
+					const id = /(\d+\/[0-9a-f-]{36})/u.exec(value)?.[1];
+					if (id === void 0) return void 0;
+					return byId.get(id) ?? `#${id}`;
+				};
+				const propertyValue = (properties, name) => properties?.find((entry) => entry.name === name)?.value;
+				const coverage = [];
+				const screens = nodes
+					.filter((node) => node.path.startsWith(`${screensFolder}/`) && node.path.slice(screensFolder.length + 1).indexOf("/") === -1 && `${node.entry.type ?? ""}`.includes("Screen"))
+					.map((node) => ({ path: node.path, name: node.entry.name }));
+				coverage.push(`${nodes.length} object(s) read from one map of UI at depth ${depth}`);
+				const handlers = [];
+				const handlerNodes = nodes.filter((node) => `${node.entry.type ?? ""}` === "EventHandler").slice(0, maxHandlers);
+				for (const node of handlerNodes) {
+					const owner = node.path.replace(/\/EH_[^/]+$/u, "");
+					const parent = screens
+						.map((screen) => screen.path)
+						.filter((path) => owner === path || owner.startsWith(`${path}/`))
+						.sort((left, right) => right.length - left.length)[0];
+					const screenPath = parent ?? (owner === window || owner.startsWith(`${window}/`) ? window : owner);
+					let target;
+					// A method that takes no arguments (every handler inside the shipped libraries) has no
+					// InputArguments node at all; only a handler the tree lists but the read cannot resolve
+					// is worth reporting as an unknown.
+					const argumentsPath = `${node.path}/MethodsToCall/MethodContainer1/InputArguments`;
+					if (nodes.some((entry) => entry.path === argumentsPath)) try {
+						const arguments_ = await bridge.request(origin, "nodes", exec.signal, { path: argumentsPath });
+						target = pathOf(propertyValue(arguments_.properties, "NewPanel"));
+					} catch {
+						coverage.push(`${node.path}: arguments could not be read`);
+					}
+					handlers.push({
+						path: node.path,
+						owner,
+						screen: screenPath,
+						pointer: pointerFacts(node.entry),
+						target
+					});
+				}
+				if (nodes.filter((node) => `${node.entry.type ?? ""}` === "EventHandler").length > handlerNodes.length) coverage.push(`${nodes.filter((node) => `${node.entry.type ?? ""}` === "EventHandler").length - handlerNodes.length} handler(s) past max_handlers were not inspected`);
+				// A handler nested inside a shipped composite sits deeper than one structural read
+				// reaches, so its ObjectPointer arrives without the DynamicLink that makes it work.
+				// Re-read only the handlers that look dead, one short map each, before judging them.
+				for (const handler of handlers) {
+					if (!(handler.pointer.present === true && handler.pointer.ref === void 0 && handler.pointer.linked !== true)) continue;
+					try {
+						const detail = await bridge.request(origin, "map", exec.signal, { path: handler.path, mode: "detail", depth: 5, ids: 1, max: 200 });
+						if (detail.map !== void 0) handler.pointer = pointerFacts(detail.map);
+					} catch {
+						coverage.push(`${handler.path}: the pointer could not be re-read, so it was not judged`);
+					}
+				}
+				const engines = [];
+				for (const node of nodes.filter((entry) => /^UI\/(?:Native|Web)PresentationEngine$/u.test(entry.path))) {
+					try {
+						const detail = await bridge.request(origin, "nodes", exec.signal, { path: node.path });
+						engines.push({
+							path: node.path,
+							styleSheet: pathOf(propertyValue(detail.properties, "StyleSheet")),
+							startingUser: pathOf(propertyValue(detail.properties, "StartingUser")) ?? String(propertyValue(detail.properties, "StartingUser") ?? "").replace(/\s*\([^)]*\)$/u, "")
+						});
+					} catch {
+						coverage.push(`${node.path}: settings could not be read`);
+					}
+				}
+				let startTarget;
+				const loader = nodes.find((node) => `${node.entry.type ?? ""}` === "PanelLoader" && node.path.startsWith(`${window}/`));
+				if (loader === void 0) coverage.push(`no PanelLoader under ${window}, so reachability was not checked`);
+				else startTarget = void 0;
+				if (loader !== void 0) try {
+					const detail = await bridge.request(origin, "nodes", exec.signal, { path: loader.path });
+					const panelValue = propertyValue(detail.properties, "Panel");
+					startTarget = pathOf(panelValue);
+					if (startTarget === void 0) coverage.push(`${loader.path}: the start panel value read ${JSON.stringify(panelValue)} and did not resolve to a screen`);
+				} catch {
+					coverage.push(`${loader.path}: Panel could not be read`);
+				}
+				const hasApplicationStyleSheet = nodes.some((node) => `${node.entry.type ?? ""}`.includes("StyleSheet") && !/\/DefaultStyleSheet$/u.test(node.path) && !/DefaultStyleSheet\//u.test(node.path));
+				const report = productionFindings({
+					projectName: health.project,
+					screensFolder,
+					screens,
+					handlers,
+					engines,
+					startTarget,
+							shellPath: window,
+							hasApplicationStyleSheet
+				});
+				let repaired = [];
+				let unrepaired = [];
+				if (args.repair === true) {
+					for (const finding of report.findings) {
+						if (finding.rule !== "OPTIX-PROD-01") continue;
+						const pointerPath = `${finding.evidence.path}/MethodsToCall/MethodContainer1/ObjectPointer`;
+						try {
+							const written = await bridge.request(origin, "node/property", exec.signal, {
+								path: pointerPath,
+								name: "Value",
+								value: ""
+							}, "POST");
+							if (written.ok === true) repaired.push(pointerPath);
+							else unrepaired.push(pointerPath);
+						} catch (error) {
+							unrepaired.push(`${pointerPath}: ${String(error)}`);
+						}
+					}
+					if (repaired.length > 0) coverage.push(`${repaired.length} absolute pointer value(s) cleared; wire the handler again in the runtime if the button still does not switch`);
+				}
+				const verdict = report.verdict;
+				return {
+					status: "completed",
+					project: health.project,
+					verdict,
+					counts: report.counts,
+					findings: report.findings,
+					...(repaired.length === 0 ? {} : { repaired }),
+					...(unrepaired.length === 0 ? {} : { unrepaired }),
+					coverage: [...report.coverage, ...coverage],
+					next: verdict === "ready" ? "Nothing blocks release by these rules. Run optix_design_check per screen and look at the runtime before signing off." : verdict === "review" ? "Fix the warning-level findings, run optix_production_check again, then check each screen." : "Fix the critical findings first: a dead handler or a dead navigation button is invisible until an operator clicks it. repair:true clears the pointer values this check reports."
 				};
 			});
 		}

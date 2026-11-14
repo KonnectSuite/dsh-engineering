@@ -199,7 +199,11 @@ test('the readout is a bound label and the lamp is an expression, because Optix 
 	assert.equal(layout.expressions.length, 2)
 	for (const entry of layout.expressions) {
 		assert.equal(entry.prop_name, 'FillColor')
-		assert.match(entry.expression, /^IIF\(\{0\} > 0, "#30A46C", "#E5484D"\)$/u)
+		// Measured live against bridge 1.0.9 on Studio 1.8.1 (2026-11-14): the evaluator has no IIF,
+		// its conditional is if(cond, a, b), and a colour is a 0xAARRGGBB uint - a "#RRGGBB" string is
+		// silently ignored. `expr/validate` rejects the old spelling, so this is the only shape that
+		// can be applied.
+		assert.equal(entry.expression, 'if({0}, 0xFF30A46C, 0xFFE5484D)')
 		assert.match(entry.sources, /^Model\//u)
 	}
 	// The invented part of the port has to be the part the tool validates before it applies anything.
@@ -212,9 +216,105 @@ test('the tool is mounted, allowed by the skill it teaches, and validates before
 	assert.match(plugin, /maxScreenOps/u)
 	// Draft by default: the batch is validated and reported, and only dry_run:false writes.
 	assert.match(plugin, /dry_run/u)
-	assert.match(plugin, /allowWrite\(isDestructive\(layout\.ops\)\)/u)
+	assert.match(plugin, /allowWrite\(libraryPlan\.length > 0 \|\| isDestructive\(layout\.ops\)\)/u)
 	const optix = manifest.components.find((component) => component.id === 'optix')
 	assert.ok(optix !== undefined)
 	assert.ok(optix.skill.allow.includes('optix_screen'), 'the skill does not allow the tool it is meant to teach')
 	assert.ok(optix.tools.count >= 16, `the manifest count has to include optix_screen: ${optix.tools.count}`)
+})
+
+test('the canvas and the loader are read from the live start window instead of a starter default', () => {
+	// Measured live against Studio 1.8.1 (2026-11-14): MainWindow declares 1920x1080 while the tool
+	// used to draft 1280x800, so every scaffolded screen tripped VIEW-LAYOUT-02, and the window's
+	// PanelLoader is the only object whose ChangePanel resolves at runtime.
+	assert.match(plugin, /async function liveScreenHost/u)
+	assert.match(plugin, /entry\.name === "StartWindow"/u)
+	assert.match(plugin, /width: args\.width \?\? host\.width \?\? 1280/u)
+	assert.match(plugin, /height: args\.height \?\? host\.height \?\? 800/u)
+	assert.match(plugin, /panel_loaders/u)
+})
+
+test('a navigation target that does not exist yet costs the wiring, not the whole screen', () => {
+	// Screens have to be creatable in either order: a button cannot be wired to a node that is not
+	// there, but refusing the batch would throw the layout away. The tool probes the targets, keeps
+	// the loader out of the batch when one is missing, and reports the wiring with the live loader.
+	assert.match(plugin, /missingTargets/u)
+	assert.match(plugin, /nav_targets_missing/u)
+	assert.match(plugin, /method_path: `\$\{namedLoader\}\/ChangePanel`/u)
+})
+
+test('a space reaches the bridge as %20, not as a plus', () => {
+	// Live on Studio 1.8.1.27 (2026-11-14): every label written through the bridge came back
+	// reading "Plant+overview", and the Web presentation engine drew the plus signs, because
+	// URLSearchParams encodes a space as "+" while the bridge decodes with Uri.UnescapeDataString,
+	// which leaves "+" alone. Percent encoding is the one spelling both sides read as a space.
+	assert.match(plugin, /encodeURIComponent\(String\(entry\)\)/u)
+	assert.doesNotMatch(plugin, /new URLSearchParams\(query\)/u)
+})
+
+test('a template-library component lives at the root of UI, in a folder named for its library', () => {
+	// An imported composite is a type the screens instantiate, and the project tree is how an engineer
+	// reads an Optix application: importing every composite loose beside the screens buries them.
+	// The structural home is UI/Components/<library>/<item>, created when it is missing.
+	assert.match(plugin, /const LIBRARY_COMPONENT_ROOT = "UI\/Components"/u)
+	assert.match(plugin, /function libraryComponentFolder\(library\) \{\n\t\treturn `\$\{LIBRARY_COMPONENT_ROOT\}\/\$\{library\}`;/u)
+	assert.match(plugin, /const typePath = `\$\{libraryComponentFolder\(found\.library\.library\)\}\/\$\{found\.item\.name\}`/u)
+	assert.match(plugin, /const folder = libraryComponentFolder\(entry\.library\)/u)
+	assert.match(plugin, /dest: folder/u)
+})
+
+test('the folders a component needs are created before its type is imported', () => {
+	// Measured live (2026-11-14): /bridge/library/import creates a type under an existing Object node
+	// and refuses a screen, so the folder chain has to exist first; /bridge/model/folder is the verb
+	// that makes one. A missing folder must not turn into a refused import.
+	assert.match(plugin, /async function ensureFolders\(/u)
+	assert.match(plugin, /bridge\.request\(origin, "model\/folder", signal/u)
+	assert.match(plugin, /step\.folders = await ensureFolders\(origin, folder, signal\)/u)
+	assert.match(plugin, /const folders = await ensureFolders\(origin, folder, exec\.signal\)/u)
+})
+
+	test('navigation is drawn in the shell beside the loader, and the pointer is relative to it', () => {
+	// Measured live on Studio 1.8.1.27 (2026-11-14): a button created INSIDE a screen resolved its
+	// loader path against the design tree at run time (a panel instance sits one level deeper in a
+	// session than in the design tree), so the runtime called the design-time loader and answered
+	// "No behaviour or observer found that handles the method 'ChangePanel' on node
+	// Root/Objects/<project>/UI/MainWindow/MainLoader". A button that is a SIBLING of the loader
+	// switches panels; Rockwell's own Optix_Sample_PanelLoaderChangePanelNetLogic wires its
+	// window-level button the same way. `object_raw` is that relative path.
+	const layout = screenOps({
+		...canonical,
+		panel_loader: 'UI/MainWindow/MainLoader',
+		shell: { window: 'UI/MainWindow', loader: 'UI/MainWindow/MainLoader', width: 1920, height: 1080 },
+	})
+	const inWindow = layout.ops.filter((op) => op.op === 'create_widget' && op.screen === 'UI/MainWindow')
+	assert.equal(inWindow.length, canonical.nav.length, 'the buttons are created in the window, not in the screen')
+	const wired = layout.ops.filter((op) => op.op === 'wire_event')
+	assert.equal(wired.length, canonical.nav.length)
+	for (const op of wired) {
+		assert.equal(op.method_path, 'UI/MainWindow/MainLoader/ChangePanel')
+		assert.equal(op.object_raw, '../MainLoader', 'the pointer is the loader beside the button')
+	}
+	assert.deepEqual(layout.pendingWiring, [], 'a shell draft wires its navigation in the same batch')
+	const width = layout.ops.find((op) => op.op === 'set_property' && op.path === 'UI/MainWindow/Nav_Overview' && op.name === 'Width')
+	assert.ok(Number.parseFloat(width.value) <= 360, `a single navigation button stretched to ${width.value} px`)
+})
+
+test('a second screen adds its own button to the shared shell bar instead of replacing the first', () => {
+	// Two drafts that both named their shell button Nav1 silently replaced each other, so the first
+	// screen kept no way out. Each button is named for the panel it opens and only re-wired when it is
+	// already in the window.
+	const first = screenOps({
+		...canonical,
+		panel_loader: 'UI/MainWindow/MainLoader',
+		shell: { window: 'UI/MainWindow', loader: 'UI/MainWindow/MainLoader', width: 1920, height: 1080, children: ['MainLoader'] },
+	})
+	const created = first.ops.filter((op) => op.op === 'create_widget' && op.screen === 'UI/MainWindow')
+	assert.ok(created.every((op) => op.name.startsWith('Nav_')), 'shell buttons are named after their target')
+	const second = screenOps({
+		...canonical,
+		panel_loader: 'UI/MainWindow/MainLoader',
+		shell: { window: 'UI/MainWindow', loader: 'UI/MainWindow/MainLoader', width: 1920, height: 1080, children: ['MainLoader', ...created.map((op) => op.name)] },
+	})
+	assert.equal(second.ops.filter((op) => op.op === 'create_widget' && op.screen === 'UI/MainWindow').length, 0, 'an existing bar button is not created twice')
+	assert.equal(second.ops.filter((op) => op.op === 'wire_event').length, canonical.nav.length, 'it is re-wired in place')
 })

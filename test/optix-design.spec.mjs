@@ -39,6 +39,11 @@ test('a colour is read in every spelling the model actually produces', () => {
 	// The bridge renders a Color through ToString(); that spelling has never been observed live, so the
 	// shapes .NET produces are tolerated rather than guessed at.
 	assert.equal(colour('rgb [R:42, G:65, B:145]'), '#2a4191')
+	// Observed live on Studio 1.8.1 / bridge 1.0.9 (2026-11-14): a FillColor comes back as
+	// "4279114276 (UInt32)", a packed 0xAARRGGBB. Before this spelling was read, every label reported
+	// "no readable TextColor" and no contrast figure was ever measured.
+	assert.equal(colour('4294967295 (UInt32)'), '#ffffff')
+	assert.equal(colour('4279114276 (UInt32)'), '#0e1a24')
 	assert.equal(colour('#2a419'), undefined)
 	assert.equal(colour('not a colour'), undefined)
 	assert.equal(colour(undefined), undefined)
@@ -131,6 +136,19 @@ test('VIEW-NAV-01 and VIEW-NAV-02: a screen needs a way in and a way out', () =>
 	assert.deepEqual(wired.findings.map((finding) => finding.rule), [])
 })
 
+test('navigation drawn in the shell counts for the screen inside it', () => {
+	// The navigation bar sits beside the PanelLoader in the start window, so the screen below it has no
+	// controls of its own and still has a way out. Measured live 2026-11-14: a bar inside a panel called
+	// the design-time loader, so the shell is where the bar belongs.
+	const bare = designFindings({ nodes: [node('Readout', 'Label', box(10, 10, 200, 30))], screen, canvas: undefined, siblings: [] })
+	assert.deepEqual(bare.findings.map((finding) => finding.rule), ['VIEW-NAV-01'])
+	const shell = { path: 'UI/MainWindow', controls: 2, wired: 2 }
+	const withShell = designFindings({ nodes: [node('Readout', 'Label', box(10, 10, 200, 30))], screen, canvas: undefined, siblings: [], shell })
+	assert.deepEqual(withShell.findings.map((finding) => finding.rule), [], 'a shell bar left the screen reported as unreachable')
+	const unwiredShell = designFindings({ nodes: [node('Readout', 'Label', box(10, 10, 200, 30))], screen, canvas: undefined, siblings: [], shell: { path: 'UI/MainWindow', controls: 2, wired: 0 } })
+	assert.deepEqual(unwiredShell.findings.map((finding) => finding.rule), ['VIEW-NAV-01'], 'an unwired shell bar must not read as navigation')
+})
+
 test('VIEW-LAYOUT-02 measures the screen against the canvas the project declares', () => {
 	const own = { ...screen, properties: box(0, 0, 1024, 768) }
 	const mismatch = designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, siblings: [] })
@@ -199,7 +217,10 @@ test('the tool reads the model through the two calls that report it, and writes 
 	assert.match(plugin, /max_nodes/u)
 	const block = plugin.slice(plugin.indexOf('name: "optix_design_check"'))
 	assert.ok(block.length > 0)
-	const designTool = block.slice(0, block.indexOf('//#endregion'))
+	// The block ends where the next tool starts: optix_production_check legitimately writes when
+	// asked to repair, and this assertion is only about the design check.
+	const end = block.indexOf('name: "optix_production_check"')
+	const designTool = block.slice(0, end === -1 ? block.indexOf('//#endregion') : end)
 	assert.match(designTool, /"map"/u)
 	assert.match(designTool, /"nodes"/u)
 	assert.doesNotMatch(designTool, /allowWrite/u)

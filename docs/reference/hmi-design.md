@@ -92,6 +92,28 @@ not visible to it; changing View's shipped palette is a separate decision with i
 report, or a screen whose own geometry the model did not give, is listed in `unchecked` rather than
 scored, so a clean summary and a blind summary are distinguishable.
 
+## The release review: `optix_production_check`
+
+A screen can pass every geometry rule and still ship dead. The review that runs over the whole project
+is `optix_production_check`; it reads the `UI` tree once and answers with a verdict (`ready`, `review`,
+`not_ready`), a count per severity and findings that name the node and the fix.
+
+| Rule | What it catches | Why the designer does not show it |
+|---|---|---|
+| `OPTIX-PROD-01` | a handler whose `ObjectPointer` still holds the absolute design-time NodeId | the button and its handler both exist; the runtime instantiates UI per session and reports `No behaviour or observer found that handles the method` when it is clicked |
+| `OPTIX-PROD-02` | a handler with neither a reference nor a dynamic link, or navigation to a screen that is not there | the property editor shows a path that used to exist |
+| `OPTIX-PROD-03` | a screen the operator cannot reach from the panel the loader starts on | nothing marks a screen as orphaned; the shell bar counts for every panel because it sits in the start window |
+| `OPTIX-PROD-04` | a presentation engine on the built-in starting user or the stock style sheet | the defaults are legitimate engineering values; they are not a production policy |
+| `OPTIX-PROD-05` | a screen outside the screen folder | the tree renders it identically |
+
+`repair: true` clears the absolute pointer value of every `OPTIX-PROD-01` finding — the measured cause of
+"the click fires and nothing switches" — and needs `allowWrites`. It writes only that value; re-check
+afterwards, then click the button in the runtime, because the review reports what the model says, not
+what an operator saw.
+
+The build order that avoids these failures in the first place (model, NetLogic class, screens, command
+buttons, save/build/run, operator click, review) is `optix-application-recipe` in the corpus.
+
 ## Build from what the product ships
 
 The fastest way to a screen that looks designed is to stop drawing primitives. Both products ship
@@ -105,13 +127,35 @@ composition, and the tools reach it:
   FeaturePreview 6, Misc 6, StyleSheets 4 (`FriendlyLight`, `FriendlyDark`, `MaterialDark`,
   `ISAStyleSheet`), GraphicElements 2 items plus 8 group folders (the industrial graphics: pumps, valves,
   tanks, motors, signs), Keyboards 1. `action: "import"` pulls one into the open project through the
-  bridge. A `Rectangle`/`Label`/`Panel` composition is the fallback, not the first answer.
+  bridge, landing it under `UI/Components/<Library>` (the folder chain is created when missing), so the
+  imported types stay separable from the project's own objects. `optix_screen` with `library_items` does
+  the whole step for a screen in one call: import each named composite once, instantiate it under the
+  screen, place it in a card slot. A `Rectangle`/`Label`/`Panel` composition is the fallback, not the
+  first answer.
 - **FactoryTalk View ME** carries its own composition in the export, and `ftview_theme_audit` reports
   how much of the house palette a display already uses, paired with `ftview_draft_restyle` for the
   display that does not.
 
 A shipped item is not a design decision by itself: it arrives with its own layout and its own
 properties, so it goes through the same draft → validate → check → look loop as anything hand-built.
+
+## Where the patterns come from
+
+Rockwell publishes its own Optix screens as complete, MIT-licensed projects in the
+[FactoryTalk-Optix](https://github.com/FactoryTalk-Optix) organisation: navigation shells
+(`Optix_Template_NavigationButtons`, `Optix_Template_NavigationPanel*`, `Optix_Template_FlyoutMenu`),
+panel switching (`Optix_Sample_PanelLoaderChangePanelNetLogic`, `Optix_Sample_ChangeScreenFromTag`),
+widgets and gauges (`Optix_Sample_OptixPanelLibraryWidgets`, `Optix_Sample_CustomGaugeWidget`,
+`Optix_Sample_GridLayout`), style sheets (`ChangeStyleSheetComboBox`), alarm grids
+(`Optix_Sample_AlarmsGridWithClickableFilters`) and the full demos (`FeaturesDemo2`,
+`Optix_Lab_BasicTemplate`). They are the closest published statement of the product's own idioms.
+
+Three corpus pages distil them, and `engineering_reference` serves them:
+`optix-navigation-patterns` (the window's loader owns navigation, not each screen),
+`optix-widget-patterns` (composite before primitives, layout containers before constants) and
+`optix-design-resources` (the catalogue that maps a design task to a repository). They are references
+to read, not files to vendor: the pattern is rebuilt with this project's types, tags and style sheet,
+and a sample's names and colours are never authority.
 
 ## What a clean report does not prove
 
@@ -126,11 +170,17 @@ the picture.
 - Whether an Optix library item nested inside a group folder can be imported by a nested path is
   unverified; only top-level items are documented, and `optix_library` reports group folders as groups
   rather than as importable names.
-- Navigation wiring in Optix needs the `PanelLoader` path from the live model. `optix_screen` wires a
-  navigation button only when that path is supplied; otherwise it creates the buttons and reports the
-  exact wiring operation it left pending.
-- How a `Screen` becomes reachable from the window is not documented in the installed help, so the
-  scaffold composes screens under `UI/Screens` and leaves the window's own panel setup to the engineer.
-- The spelling the bridge uses when it reports a colour value has never been observed live, so
-  `optix_design_check` accepts several spellings and reports the ones it cannot parse as unchecked.
-- There is no Optix screen viewer. Optix is looked at through `optix_preview` and `optix_screenshot`.
+- A navigation button inside a *panel* cannot reach the loader. A panel's instance sits one level deeper
+  in a session (`UIRoot/<loader>/<panel>/<button>`) than it does in the design tree, so a loader path
+  written inside a screen resolves to the design-time loader and the runtime logs `No behaviour or
+  observer found that handles the method 'ChangePanel'`. `optix_screen` therefore draws the bar in the
+  window beside the `PanelLoader`, names each button for the panel it opens (`Nav_<target>`), wires it
+  `object_raw`-relative, and clears the absolute `ObjectPointer` value the bridge also writes — the
+  runtime resolves that absolute id first. Verified live by clicking both buttons; a caller that wires
+  its own panel-internal buttons will reproduce the failure.
+- A composite placed from the library carries no geometry for its own children, so `optix_design_check`
+  reports those children as unchecked. That is the honest answer: their layout is computed inside the
+  type, not by the screen.
+- `optix_preview` and `optix_screenshot` need the host's attachment and browser services, which a
+  headless harness does not provide; the verification runs in this repository looked at the runtime's
+  Web presentation engine through a browser instead of through those two tools.

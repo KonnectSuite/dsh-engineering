@@ -75,8 +75,16 @@ and the usage text the library ships for it. `optix_library { action: "import", 
 item: "AlarmIcon", dest: "UI" }` pulls that item and the types it owns into the loaded project: it needs
 `allowWrites`, a bridge that advertises `template_library: true` in `optix_status` (a copied starter needs
 `optix_bridge_arm` first), and an import is **not** reversible as a batch, so read the node back with
-`optix_read` before any retry. A bare `Rectangle`/`Label`/`Panel` composition is the fallback, not the
-first answer.
+`optix_read` before any retry. Imports land under `UI/Components/<Library>` (the folder chain is created
+when it is missing), so the project's own objects and the imported types stay separable. `optix_screen`
+with `library_items` takes that further in one call: it imports each named composite once, instantiates it
+under the screen and places it in a card slot. A bare `Rectangle`/`Label`/`Panel` composition is the
+fallback, not the first answer.
+
+Before hand-building a pattern the product already demonstrates, read the corpus: `engineering_reference`
+searches `optix-navigation-patterns` (the window's loader owns navigation, not each screen),
+`optix-widget-patterns` (composite before primitives) and `optix-design-resources` (which official sample
+project to open for a nav shell, gauge, alarm grid, style sheet or NetLogic snippet), and cite the page.
 
 ## Draft a screen, then check it
 
@@ -85,8 +93,12 @@ footer, up to four cards with labelled rows, up to four navigation buttons — f
 View side uses, and it refuses rather than squeezes: a display too small for the scaffold, a body with
 no room under the header and footer, or a card too small to read are refusals, not warnings. Leave
 `dry_run` on: the draft is validated against the live model in one call, including each lamp expression,
-before anything is written. Navigation is wired only when you pass `panel_loader`, because that path comes
-from the project; without it the tool reports the exact `wire_event` it left pending.
+before anything is written. The navigation bar is drawn in the start window, beside the `PanelLoader` —
+a button created inside a panel resolves its loader path to the design-time object and the runtime then
+refuses the click — and each button is named for the panel it opens (`Nav_<target>`) so drafting a second
+screen adds its buttons to the shared bar instead of replacing the first screen's. Navigation is wired
+only when the live model names one loader; without it the tool reports the exact `wire_event` it left
+pending, with the relative pointer path and the absolute-value clearing the runtime needs.
 
 Then run `optix_design_check` on the screen. It reports touch targets under 44 px, controls with no text
 of their own, text below 4.5:1 against the object it actually sits on, a screen nothing navigates to, a
@@ -97,6 +109,24 @@ screens built from the same hand-made child set, and behaviour living inside the
 Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
 the rule-to-tool map are in `docs/reference/hmi-design.md`.
+
+## Review the project before calling it released
+
+`optix_production_check` is the release review: it reads the whole `UI` tree in one call and answers with
+a verdict — `ready`, `review` or `not_ready` — plus findings that each name the node and the fix. It
+catches what a per-screen geometry check cannot see: a handler whose `ObjectPointer` still holds the
+absolute design-time NodeId (the click is delivered, nothing switches, and the runtime log says
+`No behaviour or observer found that handles the method`), a navigation argument pointing at a screen that
+is not there, a screen the operator cannot reach from the panel the loader starts on, presentation engines
+left on the built-in starting user or the stock style sheet, and screens outside the screen folder. The
+shell bar counts as navigation for every panel, because it sits in the start window. `repair: true` clears
+the absolute pointer value of every handler the first rule reports; it needs `allowWrites` and writes only
+that value. Run `optix_design_check` on each screen after it, and click the buttons in the runtime: a
+verdict of `ready` says these rules did not fire, not that an operator saw the application.
+
+The order that survives the runtime — model, NetLogic class, screens, command buttons, save/build/run,
+operator click, release review — is written down as `optix-application-recipe` in
+`engineering_reference`, with the measured failure each step avoids.
 
 ## Author and verify
 

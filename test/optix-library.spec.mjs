@@ -139,6 +139,35 @@ test('the bridge serves the import as a mutation route and runs it inside an imp
   assert.match(bridge, /BridgeVersion\s*=\s*"1\.0\.9"/u, 'the build that adds the verb must say so in its version')
 })
 
+test('the health payload the bridge assembles is JSON, not only a shape a regex likes', () => {
+  // Every optix call reads health first, and the gateway refuses a body that is not
+  // JSON, so a dropped quote in this one concatenation breaks every bridge verb.
+  // Each piece the bridge fills in at runtime is replaced with null, which is a valid
+  // value whether the bridge quoted it or not, leaving the literal text itself on trial.
+  const start = bridge.indexOf('private string HealthJson(')
+  assert.ok(start >= 0, 'HealthJson is not where it was')
+  const block = bridge.slice(start, bridge.indexOf('private string NodeJson('))
+  const returned = block.slice(block.indexOf('return "')).replace(/\/\/[^\n]*/gu, '')
+  const end = returned.indexOf('";')
+  assert.ok(end > 0, 'the health payload does not end where it was')
+  const payload = returned
+    .slice('return '.length, end + 1)
+    .split('+')
+    .map(part => {
+      const literal = /^"((?:[^"\\]|\\.)*)"/u.exec(part.trim())
+      return literal === null ? 'null' : literal[1].replace(/\\"/gu, '"').replace(/\\\\/gu, '\\')
+    })
+    .join('')
+  const health = JSON.parse(payload)
+  assert.deepEqual(
+    Object.keys(health),
+    ['bridge_version', 'project', 'model_loaded', 'port', 'project_path', 'pid', 'invoke_session', 'template_library'],
+    'the health fields the plugin reads are not the ones the bridge reports',
+  )
+  assert.equal(health.invoke_session, 'root', 'invoke_session is not a closed string, so the payload after it is unparseable')
+  assert.equal(health.template_library, true)
+})
+
 test('the plugin registers optix_library and keeps an import out of the reversible batch', () => {
   assert.match(plugin, /name: "optix_library"/u, 'optix_library is not registered')
   assert.match(plugin, /library_import_unsupported_bridge/u, 'an import against an older bridge is not refused by name')
