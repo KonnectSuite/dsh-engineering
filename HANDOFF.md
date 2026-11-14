@@ -60,7 +60,15 @@ before. What that produced:
   (`docs/port/optix-live-proof/06-line-overview-running.png` … `08-line-alarms-bottles.png`).
 - The build order is in the corpus as `optix-application-recipe` (`OPTIX-RCP-01..06`), and the Optix and
   resources skills, `docs/reference/hmi-design.md` and `CHANGELOG.md` all point at it and at the review.
-- Gates: `pnpm test` (48 files), `pnpm docs:tools` and the resources index are green as of this date.
+- The packaged bundle mounts. The row's own `entries/optix.js` had the same `z.enum` defect the library
+  had — every test passed because the suites read `packages/**`, and a packed install failed the whole
+  Optix row with `z.enum is not a function`. It is a `z.union([z.const(…)])` pair now, and
+  `test/entries-schema.spec.mjs` (wired into `scripts/test.mjs`) reads every entry for the call. Verified
+  by installing the packed tarball into the `optix-dev` profile on the dev home and booting it: no import
+  warning, all ten engineering rows `Running`, the Optix row's settings page rendering
+  (`docs/port/optix-live-proof/09-dev-optix-row-settings.png`, `10-dev-rows-running.png`).
+- Gates: `pnpm test` (49 files), `pnpm docs:tools` and the resources index (52 pages) are green as of this
+  date.
 
 Still open, and not to be claimed as working:
 
@@ -74,7 +82,31 @@ Still open, and not to be claimed as working:
 - `optix_preview` / `optix_screenshot` have not been exercised through the host: they need the attachment
   and browser services, and the verification ran in the runtime's Web presentation engine through a
   headless browser instead.
-- Nothing is committed yet.
+- The commit is `e6c7077` ("feat(optix): run the design lane live, make navigation switch panels, and add a
+  release review"); the entry fix, its test and the dev-home proof came after it.
+
+## Use it in AryaCode today (dev home, never the installed profile)
+
+The installed product at `~/.aryacode` is read-only by policy; the working bundle is proven on the dev home
+instead. The `optix-dev` profile there installs the packed tarball:
+
+```powershell
+$env:DSH_HOME = "$env:LOCALAPPDATA\AryaCode-dev\home"
+$dsh = "C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\apps\desktop\.desktop-build\targets\win-x64\dsh\lib\bin.js"
+node $dsh --profile optix-dev --host 127.0.0.1 --port 0 --no-open
+```
+
+That prints `dsh web: http://127.0.0.1:<port>/?token=<token>` — open it, and the Plugins page shows
+`@aryacode/dsh-engineering 0.93.0` with ten rows, `optix` among them `Running`. Repack after a code change:
+
+```powershell
+pnpm -r build; pnpm assemble; npm pack --ignore-scripts
+Copy-Item aryacode-dsh-engineering-0.93.0.tgz artifacts\aryacode-dsh-engineering-0.93.0-bridgefix-2026-11-14.tgz -Force
+# then, in %LOCALAPPDATA%\AryaCode-dev\home\profiles\optix-dev: pnpm install --force --config.auto-install-peers=false
+```
+
+Keep the tarball name distinct per build: pnpm reports "Already up to date" when version and path are
+unchanged, and the installed copy silently stays old.
 
 ## Picking this up on another PC
 

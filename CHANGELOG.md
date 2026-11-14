@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+- **The packaged bundle mounts: the entry's own schema had the same `z.enum`.** The row that turns Optix
+  on carried `z.enum([...])` in `entries/optix.js`, a schemastery API that does not exist, so a packed
+  install failed the whole row with `TypeError: z.enum is not a function` at import — while every test
+  passed, because the suites read `packages/**` and never the entry the host imports. Both switches are
+  now `z.union([z.const(…)]).default(…)`, and `test/entries-schema.spec.mjs` reads every `entries/*.js`
+  for the call, so the next one is caught by `pnpm test`. Verified by installing the packed tarball into
+  a fresh `optix-dev` profile on the dev home and booting it: the web app started with no import
+  warning, the engineering bundle's ten rows all report `Running`, and the Optix row's settings page
+  renders its preview and OCR switches (`docs/port/optix-live-proof/09-dev-optix-row-settings.png`,
+  `10-dev-rows-running.png`).
 - **The release review is a tool: `optix_production_check`.** A screen can pass every geometry rule and
   still ship dead, so the project is reviewed as a whole in one call: a handler whose `ObjectPointer`
   still holds the absolute design-time NodeId (`OPTIX-PROD-01`, the measured cause of a button that fires

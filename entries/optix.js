@@ -36,10 +36,13 @@ export const Config = z.object({
   preview: z.boolean().default(true).volatile().description(
     'Register the preview, screenshot and OCR tools. The plugin starts its own browser unless you set browser to attach.',
   ),
-  browser: z.enum(['attach', 'launch']).default('launch').volatile().description(
+  // schemastery has no `enum`; a union of consts is the same one-of and it is what the host accepts.
+  // The live run of 2026-11-14 shipped this file with `z.enum` and the whole row failed to import
+  // ("z.enum is not a function"), which no test caught because the tests read the lib, not the entry.
+  browser: z.union([z.const('attach'), z.const('launch')]).default('launch').volatile().description(
     'launch starts a Chrome or Edge for the preview itself; attach connects to a browser you started with --remote-debugging-port.',
   ),
-  browserChannel: z.enum(['auto', 'chrome', 'msedge']).default('auto').volatile().description(
+  browserChannel: z.union([z.const('auto'), z.const('chrome'), z.const('msedge')]).default('auto').volatile().description(
     'Which installed browser to start in launch mode. auto tries Chrome then Edge.',
   ),
   browserPath: z.string().default('').volatile().description(
