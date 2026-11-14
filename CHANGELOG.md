@@ -1,5 +1,15 @@
 ## [Unreleased]
 
+- **`optix_screenshot` captures the painted screen, at the project's own size.** The preview capture
+  screenshotted immediately after the page's `load` event, which on Studio 1.8.1 is a blank white frame —
+  measured in a packaged app as "captured 1280×720, the image appears blank". It now waits for the
+  presentation engine's canvas to report a size and lets one frame settle (`PREVIEW_SETTLE_MS`), and the
+  preview browser opens at `previewWidth`×`previewHeight` (1920×1080 by default) instead of the browser's
+  1280×720 default, so the capture matches the designed screen. Verified twice: a direct Playwright capture
+  of the running emulator renders the whole HMI at 1920×1080
+  (`docs/port/optix-live-proof/14-preview-render-1920x1080.png`), and in the packaged app `optix_screenshot`
+  now answers `1920×1080` instead of a blank sheet
+  (`docs/port/optix-live-proof/13-dev-app-preview-capture.png`).
 - **A packaged AryaCode app drafts Optix screens against the live bridge.** With the packed bundle in the
   `optix-live` dev profile and a local `AryaInfer` model in the composer (no API key needed; the
   `deepseek-official` route inside a standalone `dsh web` answers `MISSING_CREDENTIAL`), the agent called

@@ -67,6 +67,13 @@ before. What that produced:
   by installing the packed tarball into the `optix-dev` profile on the dev home and booting it: no import
   warning, all ten engineering rows `Running`, the Optix row's settings page rendering
   (`docs/port/optix-live-proof/09-dev-optix-row-settings.png`, `10-dev-rows-running.png`).
+- The preview chain is exercised in a packaged app, not just reasoned about. `optix_screenshot` used to
+  return a blank white frame because it captured at the page's `load` event; it now waits for the
+  presentation engine's canvas and for one frame to settle, and its browser opens at the project's size.
+  Measured: the tool answers `1920×1080` and the image is the rendered screen
+  (`docs/port/optix-live-proof/13-dev-app-preview-capture.png`,
+  `14-preview-render-1920x1080.png`). `optix_emulator` inside the app reports the Studio-owned runtime as
+  `running: false, serving: true` by design — it never claims a runtime the engineer started in Studio.
 - A packaged AryaCode UI really does drive the bridge. The `optix-live` dev profile (a copy of the
   installed desktop profile with the engineering dependency swapped for the packed tarball) boots on the
   local `AryaInfer` route, and with a local model in the composer it called `optix_status` (answered

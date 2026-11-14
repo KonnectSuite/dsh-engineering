@@ -604,10 +604,16 @@ function applyPreview(ctx, config) {
 			});
 			launched = {
 				browser,
-				page: await (await browser.newContext()).newPage()
+				page: await (await browser.newContext({ viewport: {
+					width: config.previewWidth,
+					height: config.previewHeight
+				} })).newPage()
 			};
 		}
-		if (launched.page.isClosed()) launched.page = await (await launched.browser.newContext()).newPage();
+		if (launched.page.isClosed()) launched.page = await (await launched.browser.newContext({ viewport: {
+			width: config.previewWidth,
+			height: config.previewHeight
+		} })).newPage();
 		combined.throwIfAborted();
 		if (new URL(launched.page.url()).href !== target.href) await launched.page.goto(config.previewUrl, {
 			timeout: config.requestTimeoutMs,
@@ -678,6 +684,19 @@ function applyPreview(ctx, config) {
 	}
 	/** Capture within the configured viewport and encoded image limits. */
 	async function capture(page) {
+		// The Web presentation engine paints its canvas after the websocket handshake, so a capture
+		// taken at the "load" event is a blank white frame (measured on Studio 1.8.1, 2026-11-14:
+		// 1280x720 of nothing). Wait for a canvas that has size, then let one frame settle.
+		await page.waitForFunction(
+			/* v8 ignore next */
+			() => {
+				const canvas = document.querySelector("canvas");
+				return canvas !== null && canvas.width > 0 && canvas.height > 0;
+			},
+			void 0,
+			{ timeout: config.requestTimeoutMs }
+		).catch(() => {});
+		await page.waitForTimeout(PREVIEW_SETTLE_MS);
 		const viewport = await page.evaluate(
 			/* v8 ignore next */
 			() => ({
@@ -1210,6 +1229,8 @@ const Config = z.object({
 	cdpUrl: z.string().default("http://127.0.0.1:9223"),
 	previewUrl: z.string().default("http://127.0.0.1:8081/"),
 	allowPreviewInput: z.boolean().default(false),
+	previewWidth: z.natural().min(320).max(7680).default(1920),
+	previewHeight: z.natural().min(200).max(4320).default(1080),
 	maxPreviewPixels: z.natural().min(1).default(8e6),
 	ocr: z.union([z.const(null), z.object({
 		executable: z.string(),
@@ -1259,6 +1280,8 @@ function resolve(config) {
 		cdpUrl: config.cdpUrl ?? "http://127.0.0.1:9223",
 		previewUrl: config.previewUrl ?? "http://127.0.0.1:8081/",
 		allowPreviewInput: config.allowPreviewInput ?? false,
+		previewWidth: config.previewWidth ?? 1920,
+		previewHeight: config.previewHeight ?? 1080,
 		maxPreviewPixels: config.maxPreviewPixels ?? 8e6,
 		ocr: config.ocr ?? null
 	};
@@ -1297,6 +1320,12 @@ function acceptedValidation(value, count) {
 }
 /** An OCR install is a package-manager download, so it gets far longer than a request. */
 const OCR_INSTALL_TIMEOUT_MS = 300000;
+/**
+ * How long a preview frame is allowed to settle after the canvas first reports a size.
+ * Measured on Studio 1.8.1 (2026-11-14): the Web presentation engine creates its canvas at
+ * load and paints a frame or two later, so an immediate screenshot is a blank page.
+ */
+const PREVIEW_SETTLE_MS = 900;
 /**
  * Report the host Tesseract that `optix_ocr` reads with, and install it on request.
  * Registered whether or not OCR is configured, so a missing OCR tool can be explained
