@@ -122,6 +122,23 @@ Still open, and not to be claimed as working:
   (packaged-app proof + launcher), `1bb2bde` (ASCII launcher), `56f2ffd` (painted preview); the scaffold,
   arm and no-IDE workflow land in the commit after those.
 
+### Since 0.94.1: the model has a shape, and a tool that builds and judges it
+
+Committed `1340987` on `main`. `optix_model` (`plan | apply | check`) and `packages/optix/lib/model.js` add
+the OPC UA information-model lane: `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>`, equipment `ObjectType`s
+under `Model/Types`, typed instances, PascalCase names, and rules `OPTIX-MDL-01`..`06` with a
+`structured` / `needs-work` verdict. Two limits are measured, reported in every result, and documented in
+`docs/reference/optix-model.md` + corpus page `optix-opcua-model-structure`: Studio 1.8.1 writes only
+`DisplayName` as a node attribute, so units/range/description are child String variables; and a type member
+written with `ModellingRule` None is not instantiated, so members are copied onto instances until the bridge
+sets a rule for them. `runValidatedBatch` was extracted from `optix_edit` so both tools share one strict
+write path. Surface: 18 optix tools, README 176, `defaultOnTools` 156, 51 test files.
+
+Checked live against the operator's open `OptixTemplateDemo` project, whose `Model/Machine` holds twenty flat
+signals: `needs-work`, `{critical 20, warning 32, info 1}`, every critical being `OPTIX-MDL-01`
+("sits 3 level(s) deep, inside a hierarchy that needs 6"). That is the honest reading of a flat model, and the
+tool does not rewrite it - moving tags changes NodeIds and breaks bindings. Do not archive the model of a
+project that is not yours without asking.
 ## Use it in AryaCode today (dev home, never the installed profile)
 
 The installed product at `~/.aryacode` is read-only by policy; the working bundle is proven on the dev home
