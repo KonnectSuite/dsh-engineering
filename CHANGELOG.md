@@ -4,8 +4,8 @@
   twelve. `optix_library` is one tool with two actions: `list` reads the shipped catalog straight off disk
   (`<Studio>\Files\Libraries\<Library>\Nodes\Items\Items.yaml` plus its `Translations.yaml`) and answers
   with the browse name, the display name in English and Chinese, the owned-type count, the component files,
-  and the usage text each item ships — 94 importable items across Widgets (42), Scripts (34), Misc (6),
-  FeaturePreview (5), StyleSheets (4), GraphicElements (2 items + 8 group folders) and Keyboards (1), with
+  and the usage text each item ships — 94 importable items across Widgets (42), Scripts (33), Misc (6),
+  FeaturePreview (6), StyleSheets (4), GraphicElements (2 items + 8 group folders) and Keyboards (1), with
   no bridge and no Studio session. `import` pulls one item and its dependency types into the loaded project.
 - **Why the verb had to go into the vendored bridge.** `TemplateLibrary.ImportLibraryItem` is a static
   method on `UAManagedCore.TemplateLibrary`, and the bridge's generic `node/invoke` route dispatches
@@ -30,11 +30,84 @@
   left `optix_netlogic` — registered by this repository's own `entries/netlogic.js` — out of both the
   manifest and the context budget. The manifest counts 14 (13 vendored + the NetLogic reader), and
   `contextBudget.defaultOnTools` moved 150 → 152 with the measurement written into the manifest note.
+- **`optix_screen` drafts a whole screen as one batch.** `packages/optix/lib/screens.js` ports the View
+  scaffold and screen layout onto Optix: the same pad (24), header band (88), footer band (56), content gap
+  (20), card row pitch (36) and navigation strip (56), the same refusals (a display under 200×150, a body
+  with less than 60 px left under the header and footer, more than four cards, more than four navigation
+  buttons, a card under 180×120, more rows in a card than fit), and the same house palette. Cards are a
+  bordered rectangle plus a bold title and label rows; a value row is a `Label` bound to the tag (Optix has
+  no `numericDisplay`), a lamp row is a 26×26 rectangle whose `FillColor` carries
+  `IIF({0} > 0, "#30A46C", "#E5484D")`. Navigation is wired only when the caller passes `panel_loader`,
+  because that path comes from the live model; without it the tool reports the exact `wire_event` it left
+  pending instead of guessing one. The draft is validated in one `validate_ops` call, so a new
+  `maxScreenOps` config (default 240) bounds it: the canonical 1280×800 screen with two cards, three rows
+  and three buttons is 204 operations against `maxBatchOps` 40, and the batch cannot be split because the
+  bridge only resolves a parent it created in the same call.
+- **`optix_design_check` reads the live model and reports the same rule families View reports.**
+  `packages/optix/lib/design.js` ports `packages/ftview/src/design.ts` onto Optix nodes: a pressable widget
+  under 44 px (`HMI-TARGET-01`), a control the model reports with no text of its own (`HMI-TARGET-02`), text
+  below 4.5:1 measured against the smallest filled object that contains it
+  rather than the backdrop (`HMI-CONTRAST-01`), a screen holding nothing pressable (`VIEW-NAV-01`), a screen
+  whose controls carry no event handler (`VIEW-NAV-02`), a screen whose extents differ from the window
+  canvas (`VIEW-LAYOUT-02`), sibling screens holding the same hand-built child set (`OPTIX-UI-01`) and
+  behaviour living inside the composition (`OPTIX-UI-02`). A colour the bridge did not report, or a screen
+  node it did not describe, lands in `unchecked` with the reason, so a clean report and a blind report are
+  not the same answer.
+- **The scaffold palette failed its own contrast rule, and the header band moved.** Measured with the
+  ported `contrastRatio`: a white title on the View header `#0088C8` is **3.92:1** and `#CFE0EA` on it is
+  **2.89:1**, both under the 4.5:1 minimum the same check reports. Optix's header band is now `#005D8A`
+  (7.16 and 5.29) — darkening keeps the identity and costs nothing else, and every other pair in the
+  scaffold already passed (9.89 to 17.62). The View scaffold keeps `#0088C8`: its own check compares a
+  colour only when the same object carries both the text colour and the fill, so it cannot see the
+  violation, and changing an application the engineer already owns is not this change to make. The
+  navigation buttons were 40 px tall and are now 44, which is the minimum the check reports.
+- **Studio 1.8.1.27 replaced 1.7.4.32 on this machine.** The bridge compiles clean against the new
+  assemblies (`Build succeeded. 0 Warning(s) 0 Error(s)` against `UAManagedCore.dll` 5.0.1.46 and
+  `FTOptix.HMIProject.Net` 6.0.0.36 among others), and the names the import verb calls are still there:
+  `TemplateLibrary`, `ImportLibraryItem`, `TypeConflictResolutionChoice`, `ConflictResolution`,
+  `ImpersonateRootTemporary`. The shipped catalog is 94 items on both versions but not the same split —
+  FeaturePreview went 5 → 6 and Scripts 34 → 33. The stale 1.7.4.32 claims were fixed where they live
+  (`optix_template`'s instructions now name the Studio the machine has and point at the manifest's
+  `optixStudioVersion` instead, `emulator.js` and `docs/port/optix.md` record that the same path shape is
+  what 1.8.1.27 shows, `library.d.ts`'s example is version-neutral). The starter projects keep their
+  `1.7.4.32-Stable` manifest fields and `IDEVersion.txt`: those record what the starter was built with.
+- **The corpus gained a product-neutral `hmi` domain, and `VIEW-LAYOUT` finally has a page.**
+  `packages/resources/corpus/hmi/hmi-targets-and-labels.md` (`HMI-TARGET-01` 44 px, `HMI-TARGET-02` a control
+  carries its own label) and `hmi-colour-and-contrast.md` (`HMI-CONTRAST-01` 4.5:1 against what the text
+  actually sits on, `HMI-CONTRAST-02` a palette comes from the style sheet the product ships) carry the
+  numbers both products' checks enforce and apply to View and Optix alike. The plan asked for four new
+  pages; four of the topics already exist in the `view` domain and already name both products, so writing
+  them again would have given one fact two homes. `packages/resources/corpus/view/view-layout.md`
+  (`VIEW-LAYOUT-01`, `VIEW-LAYOUT-02`) was added because both ids were cited by tools and by
+  `docs/reference/standards-checks.md` with no corpus page behind them. The corpus is now **48 pages in
+  eight domains**; adding a domain means editing two lists that were already out of step
+  (`scripts/gen-resources.mjs` and `packages/resources/src/corpus.ts`). The repository's "41-page corpus"
+  claims were stale before this batch — the committed index already held 45 pages — and the four places
+  that said 41 now say 48.
+- **`docs/reference/hmi-design.md` is the design answer for both products.** It owns the four-step loop
+  (draft, validate, check, look), the shared slot table, the refusal list, the palette with its one
+  divergence and the measured ratios, a rule-to-corpus-page-to-tool table, what to build from what each
+  product ships, and what a clean report does not prove. `docs/reference/standards-checks.md` now names
+  three review surfaces instead of two, carries the Optix rows and the missing `VIEW-LAYOUT-02` row, and
+  says plainly that `VIEW-HPM-02` and `VIEW-COLOR-01` have always named a touch target and a contrast
+  finding while the corpus rules of those ids say something else — the ids stay because findings and tests
+  cite them, and the Basis column now names the rule each finding actually encodes.
+- **The Optix tool count moved again, and so did two skill ceilings.** The row now registers **sixteen**
+  tools (14 vendored + the NetLogic reader), `contextBudget.defaultOnTools` moved 152 → 154 with the
+  measurement in the manifest note, and the `factorytalk-view` skill budget moved 8000 → 8970 because the
+  View lane now names `ftview_design_check`, `ftview_theme_audit` and `ftview_draft_screen` and links the
+  design document (measured body 8,625 characters). `packages/resources/SKILL.md` names the `hmi` domain in
+  its search examples, and the `arya-automation` preset folds `optix_screen`, `optix_design_check`,
+  `optix_preview`, `optix_screenshot`, `optix_library` and `optix_ocr` into the engineering loop its
+  Engineering tab renders — `optix_library` is classified from its `action` argument, the way a live call is
+  classified by `LIVE_WRITE`, so a `list` is not counted as a write and an import is not hidden as a read.
 - **Not shipped as proven.** Nothing in this batch has run against a live Studio project end to end: the
-  import is compile-verified against the installed assemblies (`Build succeeded. 0 Warning(s) 0 Error(s)`)
-  and the catalog is read from the installed Studio, but no bridge session was opened. `HANDOFF.md` carries
-  the state, the ordered next steps (the draft-screen and design-check lane, then the product-neutral `hmi`
-  corpus domain), and the sandbox trap that stops `pnpm test` inside a confined shell.
+  import verb and the design rules are compile- and unit-verified, the catalog is read from the installed
+  Studio, and the scaffold is validated against a simulated model in tests — but no bridge session was
+  opened, no screen was built in a real project, and no navigation click was observed in a runtime. The
+  upstream pull request to `asqi-carter/ftx-mcp` is **not filed yet**. `HANDOFF.md` carries the state and the
+  remaining steps, including the sandbox trap that stops `pnpm test` inside a confined shell.
+
 
 ## [0.93.0]
 

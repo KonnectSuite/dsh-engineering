@@ -147,8 +147,8 @@ export function search(query: string, limit = 8, domain?: string): readonly Corp
     .map(hit => ({ id: hit.row.id, title: hit.row.title, domain: hit.row.domain, level: hit.row.level, rules: hit.row.rules, score: hit.score }))
 }
 
-/** Domain order for the contents listing. */
-export const DOMAINS = ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'craft'] as const
+/** Domain order for the contents listing. Kept in step with `DOMAINS` in `scripts/gen-resources.mjs`. */
+export const DOMAINS = ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'hmi', 'craft'] as const
 
 /** The contents, grouped by domain, with word counts. */
 export function contents(): { domains: readonly string[]; pages: readonly { id: string; title: string; domain: string; level: string; words: number }[] } {

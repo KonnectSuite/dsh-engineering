@@ -78,6 +78,26 @@ item: "AlarmIcon", dest: "UI" }` pulls that item and the types it owns into the 
 `optix_read` before any retry. A bare `Rectangle`/`Label`/`Panel` composition is the fallback, not the
 first answer.
 
+## Draft a screen, then check it
+
+`optix_screen` builds a whole screen as one `optix_edit` batch — header band, title, content surface,
+footer, up to four cards with labelled rows, up to four navigation buttons — from the same scaffold the
+View side uses, and it refuses rather than squeezes: a display too small for the scaffold, a body with
+no room under the header and footer, or a card too small to read are refusals, not warnings. Leave
+`dry_run` on: the draft is validated against the live model in one call, including each lamp expression,
+before anything is written. Navigation is wired only when you pass `panel_loader`, because that path comes
+from the project; without it the tool reports the exact `wire_event` it left pending.
+
+Then run `optix_design_check` on the screen. It reports touch targets under 44 px, controls with no text
+of their own, text below 4.5:1 against the object it actually sits on, a screen nothing navigates to, a
+screen whose controls carry no event handler, a screen whose size is not the window's canvas, sibling
+screens built from the same hand-made child set, and behaviour living inside the composition. Read its
+`unchecked` list as part of the answer: a colour the bridge did not report is not a passing colour.
+
+Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
+a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
+the rule-to-tool map are in `docs/reference/hmi-design.md`.
+
 ## Author and verify
 
 - `optix_edit` applies one typed batch; run it with `dry_run` first and read the validation result.

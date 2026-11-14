@@ -46,6 +46,11 @@ is ever written to `<workspace>/_backups`.
 - `ftview_check` reports structural findings: tag CSV integrity, duplicate display/object/tag names,
   and files that did not parse. It is not vendor schema validation and says nothing about PLC
   binding.
+- `ftview_design_check` runs the design rules over the opened export: touch targets under 44 px,
+  captionless controls, text contrast, a display nothing navigates to, a display an operator cannot
+  leave, and a display whose canvas differs from the rest. `ftview_theme_audit` measures how much of
+  the house palette each display already uses. `docs/reference/hmi-design.md` carries the shared
+  screen grammar and names the corpus page behind every rule.
 - `ftview_compare` compares two opened exports by display name, tag name and file hash.
 - `ftview_cross_reference` joins the export's tags to an L5X: device address, display use, logic use.
 
@@ -77,6 +82,8 @@ Start from the installed application:
    to `ftview_studio_export_prepare` for an alarm snapshot.
 3. `ftview_open` that folder, then author against it:
    - `ftview_draft_display_scaffold` for a new screen: chrome plus `slots` rectangles to place into;
+   - `ftview_draft_screen` for a whole screen in one call: the scaffold plus up to four cards of
+     label/value or label/lamp rows and up to four navigation buttons, positioned on those slots;
 - `ftview_draft_popup` for a modal popup: title, message (`\n` breaks a line), 1-3 buttons;
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,

@@ -162,6 +162,60 @@
       "sha256": "c08d6cf6e901445357df5601742a1fdc779c900a03805e0b8be40252e33bc992"
     },
     {
+      "id": "hmi-colour-and-contrast",
+      "title": "Contrast numbers and where a palette comes from",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "WCAG 2.1",
+        "ISA-101"
+      ],
+      "tags": [
+        "hmi",
+        "colour",
+        "contrast",
+        "palette"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "HMI-CONTRAST-01",
+        "HMI-CONTRAST-02"
+      ],
+      "words": 339,
+      "bytes": 2287,
+      "sha256": "a7668b6a4bd291b10429197a329b0567638938bc43dda1bf40a9f1ff4172a6f8"
+    },
+    {
+      "id": "hmi-targets-and-labels",
+      "title": "Touch targets and controls that name themselves",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "WCAG 2.1",
+        "ISA-101"
+      ],
+      "tags": [
+        "hmi",
+        "touch",
+        "ergonomics",
+        "labels"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "HMI-TARGET-01",
+        "HMI-TARGET-02"
+      ],
+      "words": 288,
+      "bytes": 1854,
+      "sha256": "bf471684d5ead442b9263fd220ba9623a318ac8980b23b442b81f75364662877"
+    },
+    {
       "id": "iec-ld-fbd-equivalence",
       "title": "Ladder, FBD and ST: same logic, different reading",
       "domain": "iec",
@@ -989,6 +1043,32 @@
       "words": 155,
       "bytes": 1131,
       "sha256": "2073a919373d10a9c04b1f2572ea58179b65ef76852ca327de62363a96d8e45a"
+    },
+    {
+      "id": "view-layout",
+      "title": "Objects that do not fight and screens that fit their canvas",
+      "domain": "view",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101"
+      ],
+      "tags": [
+        "hmi",
+        "layout",
+        "overlap",
+        "canvas"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "VIEW-LAYOUT-01",
+        "VIEW-LAYOUT-02"
+      ],
+      "words": 305,
+      "bytes": 2039,
+      "sha256": "63b13fc406576c0f0c8dc371e9f693b0d50e81158dcdd2bc3e9a61a505465518"
     },
     {
       "id": "view-navigation",

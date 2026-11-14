@@ -3,7 +3,7 @@
 export interface StudioLibraries {
 	/** The Studio install folder. */
 	studio: string;
-	/** The version folder name, for example `Studio 1.7.4.32`. */
+	/** The version folder name, a `Studio <version>` folder such as the newest one installed. */
 	version: string;
 	/** The `Files/Libraries` folder holding the library folders. */
 	libraries: string;

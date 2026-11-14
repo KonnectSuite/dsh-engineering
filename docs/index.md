@@ -42,12 +42,13 @@ Five products, one install. Each has a guide, a tool reference, and — where th
 | Surface | Where to read |
 |---|---|
 | **Studio 5000 L5X** | [Tool reference](reference/tools.md) · [Capabilities](capabilities.md) · [Live controllers](live-controller.md) · [L5X port spec](port/l5x.md) |
-| **FactoryTalk View ME** | [Working with any application](reference/ftview-any-app.md) · [Cross-referencing HMI against PLC](reference/ftview-cross.md) · [Port](port/ftview.md) |
+| **FactoryTalk View ME** | [Working with any application](reference/ftview-any-app.md) · [Cross-referencing HMI against PLC](reference/ftview-cross.md) · [HMI design](reference/hmi-design.md) · [Port](port/ftview.md) |
 | **MotionWorks IEC** | [Tool reference](reference/tools.md) · [Port](port/mwi.md) |
-| **FactoryTalk Optix** | [NetLogic cheat sheet](optix-netlogic.md) · [Tool reference](reference/tools.md) |
+| **FactoryTalk Optix** | [NetLogic cheat sheet](optix-netlogic.md) · [HMI design](reference/hmi-design.md) · [Tool reference](reference/tools.md) |
 
-Cross-cutting: [Engineering resources](resources.md) (the 41-page standards corpus, rule IDs and the house-style
-profile), [Standards checks](reference/standards-checks.md), and the
+Cross-cutting: [Engineering resources](resources.md) (the 48-page standards corpus, rule IDs and the house-style
+profile), [Standards checks](reference/standards-checks.md), [HMI design](reference/hmi-design.md) (the screen
+grammar and the rule-to-tool map shared by both HMI products), and the
 [SLC 500 / PLC-5 migration reference](reference/migration.md).
 
 ## The agent this ships with

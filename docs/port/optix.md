@@ -52,7 +52,9 @@ fresh engine left at Studio's defaults serves nothing.
 
 The Optix CLI documented in the pinned cheat sheet has an `export` verb and no run verb, so there is
 no documented command line for the emulator. There is an executable, and it was read on a machine
-with Studio 1.7.4.32 installed:
+with Studio 1.7.4.32 installed; the same path shape is what the discovery finds on the 1.8.1.27
+install this repository is tested against now, though only the 1.7.4.32 machine was observed serving
+a project:
 
 ```text
 %PROGRAMFILES%\Rockwell Automation\FactoryTalk Optix\Studio <version>\FTOptixRuntime\<version>\Win32_x64\FTOptixRuntime.exe

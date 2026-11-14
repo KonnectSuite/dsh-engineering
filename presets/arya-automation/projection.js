@@ -39,12 +39,13 @@ const READ = new Set([
   'resolve_tag', 'usage_map', 'project_overview', 'read_live_tag', 'read_live_tags', 'poll_live_tags',
   'ftview_open', 'ftview_list', 'ftview_get', 'ftview_find', 'ftview_live_map', 'ftview_cross_reference',
   'mw_project_find', 'mw_project_overview', 'mw_get', 'mw_list', 'mw_references', 'mw_search', 'mw_help',
-  'optix_status', 'optix_read', 'optix_netlogic',
+  'optix_status', 'optix_read', 'optix_netlogic', 'optix_library', 'optix_ocr',
   'slc_read', 'inspect_artifact', 'migration_plan',
 ])
 
 const CHECK = new Set([
   'run_checks', 'ftview_check', 'ftview_design_check', 'ftview_theme_audit', 'ftview_validate',
+  'optix_design_check',
   'verify_offline_l5x', 'build_acd_from_draft', 'compare_projects', 'compare_functions',
   'migration_assess', 'migration_compare', 'migration_resolve', 'migration_report',
   'mw_validate', 'mw_review', 'mw_compile', 'optix_validate_expression',
@@ -60,11 +61,12 @@ const WRITE = new Set([
   'ftview_draft_drop', 'ftview_draft_ops', 'ftview_draft_popup', 'ftview_draft_restyle',
   'ftview_draft_screen', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_apply',
   'mw_edit_code', 'mw_edit_structure', 'mw_edit_variables', 'mw_insert_block', 'mw_apply',
-  'optix_edit', 'optix_action',
+  'optix_edit', 'optix_action', 'optix_screen',
 ])
 
 const VERIFY = new Set([
   'verify_offline_l5x', 'build_acd_from_draft', 'ftview_verify_import', 'ftview_render',
+  'optix_preview', 'optix_screenshot',
   'mw_compile', 'l5x_rung_preview', 'l5x_routine_diagram', 'l5x_diagram',
 ])
 
@@ -78,6 +80,30 @@ const LIVE = new Set([
 const LIVE_WRITE = new Set([
   'write_live_tag', 'write_controller_clock', 'change_controller_mode', 'download_project',
 ])
+
+/**
+ * A tool whose step depends on its `action` argument rather than its name. The fold
+ * classifies names, so a tool that reads with one action and writes with another is
+ * promoted at the call site the way a live call is promoted by `LIVE_WRITE`.
+ */
+const ACTION_WRITES = new Map([['optix_library', 'import']])
+
+/**
+ * @param {string} name the tool name.
+ * @param {string} argumentsJson the raw argument string.
+ * @returns {boolean} whether this call writes, judged from its action.
+ */
+function writesFromCall(name, argumentsJson) {
+  const action = ACTION_WRITES.get(name)
+  if (action === undefined) return false
+  let args
+  try {
+    args = typeof argumentsJson === 'string' ? JSON.parse(argumentsJson) : argumentsJson
+  } catch {
+    return false
+  }
+  return args !== null && typeof args === 'object' && args.action === action
+}
 
 /**
  * Classify one tool name.

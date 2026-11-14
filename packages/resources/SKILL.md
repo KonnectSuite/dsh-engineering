@@ -6,8 +6,10 @@ after.
 ## Read first
 
 - `engineering_reference` with no arguments lists the corpus. Search it for the language and the domain
-  you are about to touch (`iec state machine`, `rockwell naming`, `view alarm`, `craft fault`), then read
-  the page. Each page carries rule IDs; cite the ID when you report a finding.
+  you are about to touch (`iec state machine`, `rockwell naming`, `view alarm`, `hmi touch target`,
+  `hmi contrast`, `craft fault`), then read the page. Each page carries rule IDs; cite the ID when you
+  report a finding. The `hmi` domain carries the product-neutral numbers behind a screen decision —
+  target size, label, contrast, shared palette — and applies to View and Optix alike.
 - When a project or export is open, call `engineering_profile` **before** writing. It reports the naming,
   idioms and visual conventions the plant already uses, with evidence and a confidence level. Follow the
   profile where it is confident; where it is low, say so and ask.

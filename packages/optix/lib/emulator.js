@@ -7,6 +7,8 @@ import { spawn } from "node:child_process";
 * Verified on Studio 1.7.4.32: `FTOptixRuntime.exe [options] <project_file>` starts the
 * runtime for a project, and the project's Web presentation engine then answers its
 * configured port. The Studio CLI has no run verb, so this is the only scripted route.
+* `runtimeCandidates` finds the same layout under a Studio 1.8.1.27 install; only the
+* 1.7.4.32 machine was observed serving a project.
 * @module
 */
 /**

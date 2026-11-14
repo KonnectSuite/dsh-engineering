@@ -54,7 +54,19 @@ test('an unknown page returns a repairable failure', async () => {
 
 test('the contents lists every domain', async () => {
   const contents = await referenceTool.execute({})
-  assert.deepEqual(contents.data.domains, ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'craft'])
+  assert.deepEqual(contents.data.domains, ['iec', 'rockwell', 'migration', 'yaskawa', 'view', 'optix', 'hmi', 'craft'])
+})
+
+test('the product-neutral design pages answer a design query', async () => {
+  const targets = await referenceTool.execute({ query: 'touch target size' })
+  assert.ok(targets.data.hits.some(hit => hit.id === 'hmi-targets-and-labels'), 'no page owns touch target sizing')
+
+  const contrast = await referenceTool.execute({ query: 'text contrast ratio' })
+  assert.ok(contrast.data.hits.some(hit => hit.id === 'hmi-colour-and-contrast'), 'no page owns the contrast numbers')
+
+  const page = await referenceTool.execute({ id: 'hmi-colour-and-contrast' })
+  assert.ok(page.data.rules.includes('HMI-CONTRAST-01'))
+  assert.match(page.data.markdown, /4\.5:1/u)
 })
 
 test('the standards skill mounts through the skills service', () => {

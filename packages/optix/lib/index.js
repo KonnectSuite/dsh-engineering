@@ -11,6 +11,8 @@ import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } fro
 import { armBridge, bridgeVersion } from "./arm.js";
 import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
+import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
+import { designFindings } from "./design.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -1039,7 +1041,7 @@ function applyTemplates(ctx, maxBytes) {
 					bridgeVersion: bridgeVersion(shipped),
 					bundledBridgeVersion: bundled,
 					questions: manifest.questions ?? [],
-					instructions: "Ask the manifest's questions before copying anything: which runtime, what screen size, whether the project keeps its shipped name, and where the copy goes. Then copy to a new directory, run optix_bridge_arm on the copy so it carries this bridge instead of the older one the starter ships, open the .optix file in Studio 1.7.4.32, compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
+					instructions: "Ask the manifest's questions before copying anything: which runtime, what screen size, whether the project keeps its shipped name, and where the copy goes. Then copy to a new directory, run optix_bridge_arm on the copy so it carries this bridge instead of the older one the starter ships, open the .optix file in the Studio this machine has (the manifest's `optixStudioVersion` is the version the starter was built with, not a requirement), compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
 				};
 			}
 			const path = args.path;
@@ -1179,6 +1181,7 @@ const Config = z.object({
 	requestTimeoutMs: z.natural().min(1).max(2147483647).default(2e4),
 	maxResponseBytes: z.natural().min(1).default(2e6),
 	maxBatchOps: z.natural().min(1).default(40),
+	maxScreenOps: z.natural().min(1).default(240),
 	maxMapNodes: z.natural().min(1).default(800),
 	maxMapDepth: z.natural().min(1).default(8),
 	preview: z.boolean().default(false),
@@ -1234,6 +1237,7 @@ function resolve(config) {
 		requestTimeoutMs: config.requestTimeoutMs ?? 2e4,
 		maxResponseBytes: config.maxResponseBytes ?? 2e6,
 		maxBatchOps: config.maxBatchOps ?? 40,
+		maxScreenOps: config.maxScreenOps ?? 240,
 		maxMapNodes: config.maxMapNodes ?? 800,
 		maxMapDepth: config.maxMapDepth ?? 8,
 		preview: config.preview ?? false,
@@ -1251,6 +1255,7 @@ function resolve(config) {
 		"requestTimeoutMs",
 		"maxResponseBytes",
 		"maxBatchOps",
+		"maxScreenOps",
 		"maxMapNodes",
 		"maxMapDepth",
 		"maxPreviewPixels"
@@ -1998,6 +2003,379 @@ function apply(ctx, config = {}) {
 						retry: "Inspect the live model before retrying"
 					};
 				}
+			});
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_screen",
+		description: `Draft or apply a whole Optix screen as one ordered operation batch: backdrop, header band, title, content surface, up to ${MAX_CARDS} data cards with value and lamp rows, and a row of up to ${MAX_NAV} navigation buttons. The slot math, the refusals and the palette are the ones the FactoryTalk View scaffold uses, so one design brief lays out both products. dry_run defaults to true: the batch is validated against the live model and nothing is written. Applying requires allowWrites. The screen is created as a ScreenType because a bare Screen instance does not load at runtime. Navigation is wired only when panel_loader names the PanelLoader read back from the live model, because a UI object is instantiated per session and an absolute design-time path does not resolve at runtime; without it the buttons are created and the wiring each one needs is reported instead. The batch is validated in one call and applied operation by operation, so a failure names the operation that stopped and the batch is never replayed automatically.`,
+		parameters: {
+			project: projectParameter,
+			name: text,
+			width: {
+				type: "integer",
+				description: "Design width, default 1280: the width the starter Window declares."
+			},
+			height: {
+				type: "integer",
+				description: "Design height, default 800: the height the starter Window declares."
+			},
+			title: { type: "string" },
+			subtitle: { type: "string" },
+			footer: { type: "string" },
+			cards: {
+				type: "array",
+				items: {
+					type: "object",
+					properties: {
+						title: {
+							type: "string",
+							required: true
+						},
+						rows: {
+							type: "array",
+							items: {
+								type: "object",
+								properties: {
+									label: {
+										type: "string",
+										required: true
+									},
+									kind: {
+										type: "string",
+										enum: ["value", "lamp"],
+										required: true,
+										description: "value is a label whose text is a dynamic link to tag; lamp is a square whose fill colour is driven by an expression over tag."
+									},
+									tag: {
+										type: "string",
+										description: "Model variable path the row follows."
+									}
+								}
+							}
+						}
+					}
+				},
+				description: `Up to ${MAX_CARDS} cards. Each row needs a label, a kind, and the Model path it reads.`
+			},
+			nav: {
+				type: "array",
+				items: {
+					type: "object",
+					properties: {
+						label: {
+							type: "string",
+							required: true
+						},
+						target: {
+							type: "string",
+							required: true,
+							description: "Screen or panel path the button opens."
+						}
+					}
+				},
+				description: `Up to ${MAX_NAV} buttons.`
+			},
+			screens_folder: {
+				type: "string",
+				description: "Where the ScreenType is created. Default UI/Screens."
+			},
+			panel_loader: {
+				type: "string",
+				description: "Live PanelLoader path, read back with optix_read. Without it navigation is reported rather than wired."
+			},
+			theme: {
+				type: "object",
+				properties: Object.fromEntries(Object.entries(SCREEN_THEME).map(([key, value]) => [key, {
+					type: "string",
+					description: `Default ${value}.`
+				}])),
+				description: "Override one or more scaffold colours. Prefer importing a StyleSheet Studio ships over re-picking a palette."
+			},
+			include_ops: {
+				type: "boolean",
+				description: "Return the full operation batch. Off by default because a screen is a long batch; the tool applies it itself."
+			},
+			dry_run: { type: "boolean" }
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: args.dry_run === false ? `Build Optix screen ${args.name}` : `Draft Optix screen ${args.name}`,
+			kind: args.dry_run === false ? "edit" : "read"
+		}),
+		async execute(args, exec) {
+			const spec = {
+				name: args.name,
+				width: args.width ?? 1280,
+				height: args.height ?? 800,
+				...(args.title === void 0 ? {} : { title: args.title }),
+				...(args.subtitle === void 0 ? {} : { subtitle: args.subtitle }),
+				...(args.footer === void 0 ? {} : { footer: args.footer }),
+				...(args.cards === void 0 ? {} : { cards: args.cards }),
+				...(args.nav === void 0 ? {} : { nav: args.nav }),
+				...(args.screens_folder === void 0 || args.screens_folder === "" ? {} : { screens_folder: args.screens_folder }),
+				...(args.panel_loader === void 0 || args.panel_loader === "" ? {} : { panel_loader: args.panel_loader }),
+				...(args.theme === void 0 ? {} : { theme: args.theme })
+			};
+			let layout;
+			try {
+				layout = screenOps(spec);
+			} catch (error) {
+				return {
+					status: "refused",
+					error: String(error),
+					next: "Shrink the card count, drop a row, or name a larger display."
+				};
+			}
+			if (layout.op_count > settings.maxScreenOps) return {
+				status: "refused",
+				error: `${layout.op_count} operations exceed maxScreenOps ${settings.maxScreenOps}`,
+				op_count: layout.op_count,
+				next: "Drop a card, drop a row, or raise maxScreenOps. The whole batch must be validated in one call because the bridge only resolves a parent it created in the same batch, so the screen cannot be split."
+			};
+			const dryRun = args.dry_run !== false;
+			allowWrite(isDestructive(layout.ops));
+			const brief = {
+				screen: layout.path,
+				width: layout.width,
+				height: layout.height,
+				op_count: layout.op_count,
+				objects: layout.objects,
+				slots: layout.slots,
+				theme: layout.theme
+			};
+			return exclusive(async () => {
+				const { origin, health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				const normalized = layout.ops.map((op) => op.prop_name === void 0 ? op : {
+					...op,
+					name: op.prop_name
+				});
+				const validation = await bridge.request(origin, "validate_ops", exec.signal, {}, "POST", {
+					ops: normalized,
+					strict: true
+				});
+				const expressions = [];
+				for (const item of layout.expressions) {
+					const checked = await bridge.request(origin, "expr/validate", exec.signal, {
+						expression: item.expression,
+						sources: item.sources ?? ""
+					});
+					expressions.push({
+						path: item.path,
+						prop_name: item.prop_name,
+						expression: item.expression,
+						sources: item.sources,
+						result: checked
+					});
+				}
+				const rejected = expressions.filter((item) => item.result?.ok !== true);
+				const report = {
+					...brief,
+					...(args.include_ops === true ? { ops: layout.ops } : {}),
+					validation,
+					expressions,
+					pending_wiring: layout.pendingWiring
+				};
+				if (!acceptedValidation(validation, layout.ops.length) || rejected.length > 0) return {
+					status: "refused",
+					applied: 0,
+					...report,
+					...(rejected.length > 0 ? {
+						rejected_expressions: rejected,
+						next: "The lamp colours are the only invented part of this layout: replace the expression or drop the lamp rows, then draft again."
+					} : { next: "Read the reported errors; the layout itself is sound." })
+				};
+				if (dryRun) return {
+					status: "validated",
+					applied: 0,
+					...report,
+					coverage: "Validation is the bridge's own hypothetical check: it proves the operations resolve against the live model, not that the screen renders. Navigation is unverified until a click is observed in the runtime.",
+					next: layout.pendingWiring.length === 0 ? "Apply with dry_run:false, then read the screen back with optix_read and run optix_design_check on it." : "Read UI/MainWindow with optix_read to find its PanelLoader, then draft again with panel_loader so the buttons are wired."
+				};
+				const results = [];
+				for (const [index, op] of layout.ops.entries()) {
+					let dispatched = false;
+					try {
+						const health = await bridge.request(origin, "health", exec.signal);
+						if (health.project !== args.project || health.model_loaded !== true || health.pid !== selectedHealth.pid || health.project_path !== selectedHealth.project_path) throw new Error("Serving Studio project changed during the batch");
+						const request = operationRequest(op);
+						dispatched = true;
+						const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+						if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the authoring operation", true);
+						results.push(result);
+					} catch (error) {
+						return {
+							status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+							applied: results.length,
+							failed_index: index,
+							...report,
+							results,
+							error: String(error),
+							retry: "Inspect the live model; do not replay the entire batch automatically"
+						};
+					}
+				}
+				return {
+					status: "completed",
+					applied: results.length,
+					...report,
+					results,
+					coverage: "Every operation the bridge acknowledged. Rendering, runtime behaviour and whether a navigation button actually changes the panel are not established by this call.",
+					next: "Read the screen back with optix_read, run optix_design_check on it, then look at it with optix_preview and optix_screenshot."
+				};
+			});
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_design_check",
+		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text whose colour does not stand out from the fill it sits on, a screen with no navigation area, a screen whose controls carry no event handler, a screen whose size is not the window canvas, the same hand-built composition repeated across screens, and behaviour living inside a composition. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
+		parameters: {
+			project: projectParameter,
+			screen: {
+				type: "string",
+				required: true,
+				description: "Screen path to check, for example UI/Screens/AlarmSummary."
+			},
+			window: {
+				type: "string",
+				description: "Window whose Width and Height are the canvas. Default UI/MainWindow."
+			},
+			screens_folder: {
+				type: "string",
+				description: "Folder the other screens are read from for the reuse rule. Default UI/Screens."
+			},
+			depth: {
+				type: "integer",
+				description: "How deep the screen tree is walked. Default 3."
+			},
+			max_nodes: {
+				type: "integer",
+				description: "How many objects are described in full. Default 60; anything past it is reported as unchecked."
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Design check ${args.screen}`,
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			const window = args.window ?? "UI/MainWindow";
+			const screensFolder = args.screens_folder ?? "UI/Screens";
+			const maxNodes = args.max_nodes ?? 60;
+			const depth = args.depth ?? 3;
+			return exclusive(async () => {
+				const { origin } = await bridge.select(args.project, exec.signal);
+				const tree = await bridge.request(origin, "map", exec.signal, {
+					path: args.screen,
+					mode: "detail",
+					depth,
+					max: 400
+				});
+				if (tree.map === void 0) return {
+					status: "failed",
+					error: "The bridge returned no tree for that screen",
+					response: tree,
+					next: "Confirm the path with optix_read action map on UI/Screens."
+				};
+				const nodes = [];
+				const walk = (entry, path) => {
+					const node = {
+						name: entry.name,
+						type: entry.type ?? "",
+						path,
+						...(entry.coll === void 0 ? {} : { coll: entry.coll }),
+						children: (entry.children ?? []).map((child) => ({
+							name: child.name,
+							type: child.type ?? child.coll ?? ""
+						})),
+						...(entry.n === void 0 ? {} : { descendants: entry.n }),
+						...(entry.more === void 0 ? {} : { more: entry.more })
+					};
+					nodes.push(node);
+					for (const child of entry.children ?? []) walk(child, `${path}/${child.name}`);
+				};
+				walk(tree.map, args.screen);
+				const screen = nodes[0];
+				const described = [];
+				const notDescribed = [];
+				for (const node of nodes) {
+					if (described.length >= maxNodes) {
+						notDescribed.push(node.path);
+						continue;
+					}
+					try {
+						const detail = await bridge.request(origin, "nodes", exec.signal, { path: node.path });
+						described.push({
+							path: node.path,
+							name: node.name,
+							type: node.type,
+							properties: detail.properties ?? [],
+							children: node.children
+						});
+					} catch (error) {
+						notDescribed.push(`${node.path}: ${String(error)}`);
+					}
+				}
+				let canvas;
+				const canvasNotes = [];
+				try {
+					const windowNode = await bridge.request(origin, "nodes", exec.signal, { path: window });
+					const width = Number.parseFloat(windowNode.properties?.find((entry) => entry.name === "Width")?.value ?? "");
+					const height = Number.parseFloat(windowNode.properties?.find((entry) => entry.name === "Height")?.value ?? "");
+					if (Number.isFinite(width) && Number.isFinite(height)) canvas = { width, height };
+					else canvasNotes.push(`${window} reports no Width/Height`);
+				} catch (error) {
+					canvasNotes.push(`${window}: ${String(error)}`);
+				}
+				let siblings = [];
+				try {
+					const folder = await bridge.request(origin, "map", exec.signal, {
+						path: screensFolder,
+						mode: "detail",
+						depth: 2,
+						max: 400
+					});
+					siblings = (folder.map?.children ?? [])
+						.filter((entry) => `${screensFolder}/${entry.name}` !== args.screen)
+						.map((entry) => ({
+							name: entry.name,
+							children: (entry.children ?? []).map((child) => ({
+								name: child.name,
+								type: child.type ?? child.coll ?? ""
+							}))
+						}));
+					if (folder.map?.more !== void 0) canvasNotes.push(`${screensFolder} holds more screens than the map reported`);
+				} catch (error) {
+					canvasNotes.push(`${screensFolder}: ${String(error)}`);
+				}
+				const report = designFindings({
+					nodes: described,
+					screen,
+					canvas,
+					siblings
+				});
+				const unchecked = [...report.unchecked, ...canvasNotes];
+				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", …" : ""}`);
+				if (screen.descendants !== void 0 && screen.descendants > described.length) unchecked.push(`${screen.name} holds ${screen.descendants} descendants; only ${described.length} were read`);
+				const warnings = report.findings.filter((finding) => finding.severity === "warning");
+				return {
+					status: "completed",
+					screen: args.screen,
+					...(canvas === void 0 ? {} : { canvas }),
+					objects: described.length,
+					screens_compared: siblings.length,
+					findings: report.findings,
+					summary: {
+						findings: report.findings.length,
+						warnings: warnings.length,
+						info: report.findings.length - warnings.length
+					},
+					unchecked,
+					coverage: "Every finding is a statement about the geometry, colours and wiring the bridge reports. Contrast compares a text colour with the smallest fill that contains the control. A screen with no reported size cannot be compared with the canvas. Nothing here renders the screen or runs it: look at it with optix_preview and optix_screenshot.",
+					next: warnings.length === 0 ? "No warning-level finding. Look at the screen with optix_preview and optix_screenshot before calling it done." : "Fix the warning findings with optix_edit (size, colour, wiring), then check again."
+				};
 			});
 		}
 	})));

@@ -65,5 +65,9 @@ quote it rather than rounding it into prose.
 - The engineering tools already carry the domain guidance; invoke the product's
   skill rather than guessing at instruction syntax, L5X node names or ME object
   types.
+- A screen is authored the same way whatever the product: draft it from the product's
+  own scaffold, run that product's design check over the draft, then look at the
+  rendered result. The rules and the shared layout grammar are in the engineering
+  reference, not in your memory of one product's defaults.
 - Large exports are normal. Read the overview first, then the one component the task
   needs; do not dump a whole L5X into the conversation.

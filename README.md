@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 172 tools · 10 rows · 6 products · MIT
+`@aryacode/dsh-engineering` · 174 tools · 10 rows · 6 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -64,7 +64,7 @@ package registers exactly one browser bundle.
 | **Studio 5000 L5X** | 54 | all on | Node for reads and edits; an optional Logix Designer SDK for SDK builds; a controller for live |
 | **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 14 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **FactoryTalk Optix** | 16 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **ECAD electrical prints** | 12 | off | none; reads DXF prints (DWG through the embedded converter, no external app); authoring is optional and runs in AryaCAD Electrical through its own MCP row |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
@@ -81,11 +81,11 @@ Tool groups, by product:
   reported as unverified.
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
-- **Optix** — 14 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, `optix_library` lists and imports the template libraries the Studio install ships, and the bridge tools need Studio
+- **Optix** — 16 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, `optix_library` lists and imports the template libraries the Studio install ships, `optix_screen` drafts a whole screen as one validated batch and `optix_design_check` reports the design rules against the live model, and the bridge tools need Studio
 - **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **PLC-5** — 8 read-only tools and the `rslogix-5` skill: `plc5_capabilities` reports the 32-bit host, the registered RSLogix 5 automation server and the container census (streams, sizes, packed flags); `plc5_open` opens an .RSP hidden through `RSLogix5.Application` with the do-not-save flag and returns the program-file census (52 files / 2,168 rungs on the reference project), falling back to the container reader — which names the project, the processor and the ladder program files from the file alone — when RSLogix 5 is absent or will not start; `plc5_ladder` pages rung text in neutral mnemonic form; `plc5_find` searches every rung and the symbol table; `plc5_io_census` reduces the program's `I:`/`O:` references to rack/slot cells and splits configured racks from program-only racks; `plc5_io_config` lists the configured chassis with adapter part numbers and rack/group ranges; `plc5_data_read` returns the data-file table (data-file values are not stored readably and are never claimed); `plc5_processor` names the controller — type string, author, memory, type code, series, driver and RSWho route, each labelled with its source. The point cards are not in the project and no tool invents them
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the
-  local 41-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
+  local 48-page corpus (IEC 61131-3, Rockwell, SLC/PLC-5 migration, Yaskawa, HMI, Optix, craft) and `engineering_profile` infers the
   open project's own naming, idioms and HMI palette, with evidence and a confidence level
 - **ECAD** — 10 read (`ecad_capabilities` … `ecad_compare`) and 2 deliverables (`ecad_document`,
   `ecad_backup`), plus the `ecad-review` skill: the engine parses DXF (and DWG through the embedded
@@ -211,7 +211,7 @@ the lean profile is the one that turns them off.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately
 - Optix is linked to a skill now: the `factorytalk-optix` guidance plus the NetLogic reader; the bridge tools still follow the `optix` row config and the Studio bridge
-- The generated tool reference covers the 158 tools built from this repository (138 default-on plus 12 ECAD and 8 RSLogix 5 tools that ship off); the 13 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README, and `optix_netlogic` is counted with them rather than inside the 158 because the generator reads the packages' sources, not `entries/`. The context budget's character ceiling covers the 138 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
+- The generated tool reference covers the 158 tools built from this repository (138 default-on plus 12 ECAD and 8 RSLogix 5 tools that ship off); the 15 vendored Optix tools are not generated from source here, so their descriptions live only in their own definitions and in the README, and `optix_netlogic` is counted with them rather than inside the 158 because the generator reads the packages' sources, not `entries/`. The context budget's character ceiling covers the 138 default-on generated definitions only — the tool-count ceiling covers every default-on tool including Optix
 - ECAD support is measured, not assumed: cross-reference rows are candidates with a confidence, unsupported entities are reported per sheet, and geometry beyond the planar drawing assumption (OCS/extrusion normals, thickness, non-uniform block scaling) is reported as approximate. DWG conversion is measured on the print set: every one of the 33 DWGs was opened and converted with its version preserved (33/33), with four sheets reporting linetype-metadata normalisation only. The drawing pane is a read-only viewer: pan, zoom, fit, layer visibility, text search with highlight, print through the browser print dialog, and PNG export that rasterises the SVG through a browser canvas; the CAD editing surface it replaced was measured in its own release and is recorded where it was retired. The DWG converter now uses a fresh wasm instance per conversion with one transient-trap retry, and the test command runs one spec file per child process, because a reused allocator could abort after a long session. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported through the converter's diagnostics; DWG→DXF output is about 5× the shipped DXF because the shipped set is an exploded, block-purged export. No drawing is called a faithful round-trip without that evidence
 
 **Not in this repository** — mechanical CAD mounts (SolidWorks, Inventor) remain an independent plugin;
@@ -345,7 +345,7 @@ even when the implementation behind a row is replaced.
 | [Getting started](docs/getting-started.md) | The first session: what each row needs, the shared loop, and a paste-ready prompt per product |
 | [Capabilities, shown](docs/capabilities.md) | Figures per surface, the exact call behind each one, and what a picture cannot prove |
 | [Arya Automation Engineer](docs/preset-arya-automation.md) | The agent preset this bundle ships: the five-step contract, the engineering-tuned compaction, the ledger, and what a preset cannot make true |
-| [Engineering resources](docs/resources.md) | The 41-page standards corpus, its rule IDs, the generated index, and the house-style profile |
+| [Engineering resources](docs/resources.md) | The 48-page standards corpus, its rule IDs, the generated index, and the house-style profile |
 | [SLC 500 and PLC-5 to Logix migration](docs/reference/migration.md) | The legacy assessment, the .L5K lint rules, the workflow and its limits |
 | [RSLogix 5 (PLC-5) reads](docs/reference/plc5.md) | The eight read-only tools, the two read paths, the three inventories and the known gaps |
 | [Workflow handbook (PDF)](docs/handbook/Engineering-Handbook.pdf) | The whole surface as a printable handbook with the four workflow diagrams; [editable DOCX](docs/handbook/Engineering-Handbook.docx) and [HTML](docs/handbook/Engineering-Handbook.html) beside it |
@@ -355,6 +355,7 @@ even when the implementation behind a row is replaced.
 | [Any FTView application](docs/reference/ftview-any-app.md) | What is generic, what varies per application, and the import/verify loop |
 | [Cross-referencing HMI against PLC](docs/reference/ftview-cross.md) | Join an export's tags to a Studio 5000 L5X: device addresses, display usage, logic usage, one-sided tags |
 | [Optix NetLogic](docs/optix-netlogic.md) | The pinned NetLogic cheat-sheet snapshot: what it covers, its risk flags, and how one page is read |
+| [HMI design](docs/reference/hmi-design.md) | The screen grammar both HMI products draft with, the palette they share and where they diverge, and which tool reports which design rule in each product |
 | [Standards checks](docs/reference/standards-checks.md) | Every PLC and HMI rule a review reports, its severity, the corpus rule behind it and what a clean result does not prove |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
 | [L5X port](docs/port/l5x.md) | L5X port decisions and measurements |

@@ -6,16 +6,17 @@ one generated JSON file, and the profile is counted from the export the product 
 
 ## The corpus
 
-41 pages under `packages/resources/corpus/`, in seven domains:
+48 pages under `packages/resources/corpus/`, in eight domains:
 
 | Domain | Pages | What it covers |
 |---|---|---|
 | `iec` | 6 | Structured Text structure, state machines, tasks, types and scaling, language equivalence, sequences |
 | `rockwell` | 6 | Program structure, AOIs and UDTs, tag naming, fault and alarm words, HMI handshake, safety boundaries |
-| `migration` | 7 | SLC 500 and PLC-5 to Logix: arrival points, PCE markers and their codes, the wizard and its revision ceiling, placeholder tags, unknown operands, indirect addressing, the instruction map |
+| `migration` | 9 | SLC 500 and PLC-5 to Logix: arrival points, PCE markers and their codes, the wizard and its revision ceiling, placeholder tags, unknown operands, indirect addressing, the instruction map |
 | `yaskawa` | 5 | POU organisation, motion FBs, cams and gears, errors, task rates |
-| `view` | 7 | High-performance HMI, colour and contrast, alarms, navigation, popups, faceplates, hierarchy |
+| `view` | 10 | High-performance HMI, colour and contrast, alarms, navigation, popups, faceplates, hierarchy, layout and canvas |
 | `optix` | 4 | Screen structure, bindings, NetLogic use, alarms and trends |
+| `hmi` | 2 | The product-neutral numbers: touch targets and labels, contrast ratios and where a palette comes from |
 | `craft` | 6 | Naming, comments, fault handling, filtering, units, handover review |
 
 Each page carries front matter (`id`, `title`, `domain`, `level`, `basis`, `tags`, `applies_to`, `rules`) and
