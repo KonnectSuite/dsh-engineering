@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.94.1] - 2026-11-14
 
 - **A new project now asks for the screen box, and never uses the workspace root as its own folder.** Two
   defects an operator hit on the first real run: `optix_template` scaffolded a 1920x1080 project without
