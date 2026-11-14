@@ -1,5 +1,21 @@
 ## [Unreleased]
 
+- **A Rockwell plant now starts from Rockwell's own published style guide, not only the generic baseline.** New corpus
+  page `hmi-rockwell-process-style-guide` (`HMI-RW-01`..`08`) summarises the *Process HMI Style Guide*, publication
+  `PROCES-WP023`, 56 pages, aligned with ANSI/ISA-101.01-2015: the four display levels and what each is for, the
+  template every display shares (header with navigation map, system status, home, login/logout, alarm banner, alarm
+  access and silence, plus context button bars), the fixed palette with its hex values (`#E0E0E0` background,
+  `#3F3F3F` labels, `#A0A0A4` process lines, alarm red `#E22028` / orange `#EC8629` / yellow `#F5E11B` / magenta
+  `#916AAD`, running `#F0F0F0`, stopped `#808080`, transitions `#93C2E4`), state never shown by colour alone and a
+  disabled control greyed rather than hidden, Rockwell's touch geometry (40 x 40 command, 35 x 35 navigation, 10 px
+  between command targets, 4 px everywhere else), commands versus navigation (separate Start and Stop, the command
+  names the action, confirmation for consequential actions), data alignment and units, and alarm depiction with the
+  blink rules plus no P&ID or equipment photograph as the display basis. `hmi-standards-precedence` now names the
+  vendor layer explicitly — below the plant's own consistent practice, above this bundle's baseline — and
+  `hmi-standards-precedence`, the engineering-standards skill, the Optix and FactoryTalk View skills and
+  `docs/reference/hmi-design.md` all point at it; the doc also records the one conflict to decide rather than inherit
+  (Rockwell allows a 40 px command button where the shared check wants 44 px). Covered by `test/resources.spec.mjs`.
+
 - **HMI/SCADA screens now start from a product-neutral baseline, and the plant's own convention still wins.**
   Three corpus pages in the `hmi` domain carry the judgements no design check can compute: `hmi-isa101-baseline`
   (`HMI-101-01`..`06` — neutral canvas, colour reserved for state, data over decoration, deviation not raw numbers,

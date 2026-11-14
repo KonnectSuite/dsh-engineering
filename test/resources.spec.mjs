@@ -88,6 +88,22 @@ test('the general HMI/SCADA baseline is reachable and states the precedence', as
   assert.match(precedence.data.markdown, /engineering_profile/u)
 })
 
+test('the Rockwell process style guide is the named vendor layer', async () => {
+  const found = await referenceTool.execute({ query: 'rockwell hmi style guide' })
+  assert.ok(found.data.hits.some(hit => hit.id === 'hmi-rockwell-process-style-guide'), 'no page answers for the Rockwell style guide')
+
+  const page = await referenceTool.execute({ id: 'hmi-rockwell-process-style-guide' })
+  assert.ok(page.data.rules.includes('HMI-RW-01'))
+  assert.ok(page.data.rules.length === 8, `expected eight rules, got ${page.data.rules.length}`)
+  assert.ok(page.data.basis.some(entry => /PROCES-WP023/u.test(entry)), 'the page does not cite the publication')
+  assert.match(page.data.markdown, /#E0E0E0/u)
+  assert.match(page.data.markdown, /#E22028/u)
+  assert.match(page.data.markdown, /literature\.rockwellautomation\.com/u)
+
+  const precedence = await referenceTool.execute({ id: 'hmi-standards-precedence' })
+  assert.match(precedence.data.markdown, /hmi-rockwell-process-style-guide/u, 'precedence does not name the vendor layer')
+})
+
 test('the standards skill mounts through the skills service', () => {
   assert.deepEqual(skill.inject, ['skills'])
   const registered = []

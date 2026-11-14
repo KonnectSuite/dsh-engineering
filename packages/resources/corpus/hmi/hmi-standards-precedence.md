@@ -23,8 +23,10 @@ project wins — provided the deviation is deliberate, recorded, and not itself 
 
 - **HMI-PREC-01** Precedence, highest first: (1) the user's explicit instruction; (2) the project's
   documented standard, theme or style sheet; (3) a convention the existing application follows
-  consistently, as reported by `engineering_profile` with its evidence and confidence; (4) this bundle's
-  baseline pages. Follow the highest layer that speaks. Do not "correct" a deliberate house style.
+  consistently, as reported by `engineering_profile` with its evidence and confidence; (4) the vendor
+  guidance the platform is built on — for a Rockwell plant, its published style guide, as summarised in
+  `hmi-rockwell-process-style-guide`; (5) this bundle's baseline pages. Follow the highest layer that
+  speaks. Do not "correct" a deliberate house style.
 - **HMI-PREC-02** A waiver is recorded, never silent. When a higher layer wins over a baseline rule, state
   which rule was waived, what the project does instead, and why — in the delivery notes and in the review
   finding that would otherwise have fired.
@@ -64,4 +66,5 @@ Before an HMI is called production ready, whoever is handing it over can answer 
 ## Related
 
 `hmi-isa101-baseline` is the visual layer; `hmi-screen-architecture` is the navigation layer;
+`hmi-rockwell-process-style-guide` is the vendor layer Rockwell plants start from;
 `hmi-colour-and-contrast` and `hmi-targets-and-labels` are the numbers the design checks can compute.

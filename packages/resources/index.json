@@ -222,6 +222,44 @@
       "sha256": "53fb92d20a0aac4705ef3d00cce63247f4d362af194d543c0c1fc3b3cc389ac9"
     },
     {
+      "id": "hmi-rockwell-process-style-guide",
+      "title": "The Rockwell process HMI style guide: levels, template, palette and touch",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "Rockwell PROCES-WP023",
+        "ANSI/ISA-101.01-2015",
+        "ANSI/ISA-18.2-2016",
+        "ANSI/ISA-5.1"
+      ],
+      "tags": [
+        "hmi",
+        "rockwell",
+        "plantpax",
+        "factorytalk",
+        "palette",
+        "touch",
+        "screen-levels"
+      ],
+      "applies_to": [
+        "ftview",
+        "optix"
+      ],
+      "rules": [
+        "HMI-RW-01",
+        "HMI-RW-02",
+        "HMI-RW-03",
+        "HMI-RW-04",
+        "HMI-RW-05",
+        "HMI-RW-06",
+        "HMI-RW-07",
+        "HMI-RW-08"
+      ],
+      "words": 703,
+      "bytes": 5020,
+      "sha256": "c006ba2f69e14c192b15c9bdf576f6f118259bc187eb117c2d9f9aad74bdf6c2"
+    },
+    {
       "id": "hmi-screen-architecture",
       "title": "Screen architecture: hierarchy, navigation and the context that never goes away",
       "domain": "hmi",
@@ -279,9 +317,9 @@
         "HMI-PREC-02",
         "HMI-PREC-03"
       ],
-      "words": 581,
-      "bytes": 3977,
-      "sha256": "a9af0a107bd25d7ce2a5c03f11fb87302190bddd3add1883711add1cd91a5932"
+      "words": 612,
+      "bytes": 4219,
+      "sha256": "5ac880e94df95bc1c5bbbe925b25d19eb6cd24b0b4452d55722248de234a3e06"
     },
     {
       "id": "hmi-targets-and-labels",

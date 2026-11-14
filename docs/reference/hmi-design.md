@@ -103,14 +103,21 @@ two:
 |---|---|---|
 | `hmi/hmi-isa101-baseline` | `HMI-101-01`..`06` | neutral base, reserved state colours, data over decoration, deviation not raw numbers, units and precision, consistency |
 | `hmi/hmi-screen-architecture` | `HMI-ARCH-01`..`06` | levels, reachability, persistent header/footer, start screen and alarm access, commands vs indications, popups |
+| `hmi/hmi-rockwell-process-style-guide` | `HMI-RW-01`..`08` | the vendor layer a Rockwell plant starts from: four display levels, template header and button bars, the fixed palette with hex values, state never colour-only, Rockwell touch geometry, commands vs navigation, data alignment, alarm depiction |
 | `hmi/hmi-standards-precedence` | `HMI-PREC-01`..`03` | which layer wins, how a waiver is recorded, when to stop and ask, and the release checklist |
 
 Precedence is deliberate: an explicit operator instruction or the project's own documented standard or
 theme comes first, a convention the existing screens already follow consistently comes second (that is
-what `engineering_profile` measures, with its confidence), and the baseline is the default only when
-neither speaks. A project built to a house style is not a defect to be corrected; a deviation is recorded
-rather than silently applied, and a conflict that would change what the operator has to do is a question,
-not a decision.
+what `engineering_profile` measures, with its confidence), vendor guidance for the platform comes third
+(on a Rockwell plant the page above, summarised from publication `PROCES-WP023`), and this bundle's
+baseline is the default only when none of them speaks. A project built to a house style is not a defect
+to be corrected; a deviation is recorded rather than silently applied, and a conflict that would change
+what the operator has to do is a question, not a decision.
+
+The Rockwell numbers and the general ones do not fully agree: the vendor guide allows a 40 x 40 px command
+button and a 35 x 35 px navigation button, while the shared check treats 44 px as the minimum. On a touch
+panel take the larger of the two and state which number you used, so a design finding is a decision rather
+than an oversight.
 
 ## The model underneath the screens
 

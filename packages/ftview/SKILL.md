@@ -52,8 +52,9 @@ is ever written to `<workspace>/_backups`.
   the house palette each display already uses. `docs/reference/hmi-design.md` carries the shared
   screen grammar and names the corpus page behind every rule. These checks cover the computable part of
   the product-neutral baseline: read `hmi-isa101-baseline` and `hmi-screen-architecture` before
-  authoring, and `hmi-standards-precedence` when the plant's own theme or an operator instruction
-  overrides them — follow the project, and record the waiver.
+  authoring, `hmi-rockwell-process-style-guide` for the vendor layer a FactoryTalk/PlantPAx plant starts
+  from, and `hmi-standards-precedence` when the plant's own theme or an operator instruction overrides
+  them — follow the project, record the waiver.
 - `ftview_compare` compares two opened exports by display name, tag name and file hash.
 - `ftview_cross_reference` joins the export's tags to an L5X: device address, display use, logic use.
 

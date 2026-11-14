@@ -79,7 +79,7 @@
       "skill": {
         "name": "factorytalk-view",
         "file": "packages/ftview/SKILL.md",
-        "budget": 8970,
+        "budget": 9040,
         "allow": [
           "view_id",
           "displays_json",

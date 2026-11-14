@@ -104,7 +104,9 @@ project to open for a nav shell, gauge, alarm grid, style sheet or NetLogic snip
 ## Draft a screen, then check it
 
 Decide first which layer of the standard you are applying: the operator's explicit instruction, the
-project's own theme and existing screens, or the product-neutral baseline (`hmi-isa101-baseline`,
+project's own theme and existing screens, the vendor guidance for the platform (on a Rockwell plant,
+`hmi-rockwell-process-style-guide` — four display levels, template header and button bars, the fixed
+palette and Rockwell's touch geometry), or the product-neutral baseline (`hmi-isa101-baseline`,
 `hmi-screen-architecture`, and `hmi-standards-precedence` for the order). A deliberate house style wins
 over the baseline; record the waiver instead of bending the screen quietly.
 
