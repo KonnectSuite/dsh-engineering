@@ -22,7 +22,9 @@ NetLogic is C# inside the HMI. Use it for what bindings cannot express, and keep
 ## Apply
 
 Check the NetLogic cheat-sheet snapshot for the lifecycle and API before writing a new script; the API is
-version-specific.
+version-specific. The practices that decide whether the class behaves at runtime - dispose, no blocking,
+error isolation, logging, observers, design-time discipline - are written down as
+`optix-netlogic-practices` and enforced by `optix_script action "review"`.
 
 ## Anti-patterns
 

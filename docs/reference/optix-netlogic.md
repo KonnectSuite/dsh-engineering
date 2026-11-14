@@ -15,7 +15,7 @@ Only one node type exists (`FTOptix.NetLogic`). What separates the two is what t
 |---|---|---|
 | How it runs | Studio fires `Start()`/`Stop()` when the node's parent is loaded in the runtime | Studio never fires `Start()`; the engineer's right-click Execute, or `optix_script action "run"`, calls one `[ExportMethod]` |
 | Typical use | machine behaviour, periodic tasks, tag maths | authoring helpers, generators, one-shot fixes |
-| Template | `blank` (Start/Stop) or `periodic` (`PeriodicTask`) | `blank` (`[ExportMethod] Ping()`) |
+| Template | `blank` (Start/Stop), `periodic` (cached handles, `PeriodicTask`, try/catch, dispose) or `observer` (subscribe in `Start`, unsubscribe in `Stop`) | `blank` (`[ExportMethod] Ping()`) |
 | Verification | emulator + a rendered screen | `action: "run"` with a method name |
 
 A class must derive `BaseNetLogic` (or `BaseNetLogic` plus an exported method for design-time work) and its name must equal the node BrowseName. Studio's project does not store a reference to the file; the binding is by name.
@@ -26,11 +26,31 @@ A class must derive `BaseNetLogic` (or `BaseNetLogic` plus an exported method fo
 |---|---|---|
 | `list` | nothing | every `.cs` class, its kind, `Start`/`Stop`, exported methods, sha256, and the live node path it pairs with; `nodes_without_file` for nodes whose class is gone |
 | `read` | nothing | the class code plus that same metadata |
-| `add` | node + `.cs` | the created node result and the build diagnostics |
-| `edit` | `.cs` | the new sha256 and the build diagnostics; refuses a stale `expect_sha256` |
+| `review` | nothing | the practice review (`clean`/`review`/`block`) with findings, and optionally the build diagnostics |
+| `add` | node + `.cs` | the created node result, the practice review, and the build diagnostics |
+| `edit` | `.cs` | the new sha256, the practice review and the build diagnostics; refuses a stale `expect_sha256` |
 | `delete` | node + `.cs` | what was deleted; the node delete also removes the class file |
 | `build` | nothing | `ok`, `errors`, `warnings`, `locked`, `staleObject` from `dotnet build` |
 | `run` | nothing | the bridge's `node/invoke` result, or `status: "not-loaded"` with the reason |
+
+## Practice review (`OPTIX-NL-03` … `OPTIX-NL-12`)
+
+A class compiles long before it behaves, and the failures that reach an operator are silent: a timer that stopped at the first exception, an observer that outlived its page, a model lookup per tick, a class bound to no node. `review` reads the source and answers `clean` / `review` / `block`:
+
+| Rule | Severity | What it catches |
+|---|---|---|
+| `OPTIX-NL-03` | critical | `PeriodicTask` created without a `Dispose()` in `Stop()` |
+| `OPTIX-NL-04` | warning | periodic tick without `try/catch` (one exception ends the timer) |
+| `OPTIX-NL-05` | warning | `Project.Current` read from inside the tick instead of `Start()` |
+| `OPTIX-NL-06` | critical | blocking call: `Thread.Sleep`, `.Wait()`, `.Result`, `GetAwaiter().GetResult()`, `async void` |
+| `OPTIX-NL-07` | warning | empty `catch` block |
+| `OPTIX-NL-08` | warning | event `+=` without a matching `-=` in `Stop()` |
+| `OPTIX-NL-09` | warning | design-time class starting background work Studio never runs |
+| `OPTIX-NL-10` | critical | class name differs from the NetLogic node name |
+| `OPTIX-NL-11` | info | class logs nothing, so runtime output cannot explain it |
+| `OPTIX-NL-12` | info | node path hard-coded as a string literal |
+
+`add` and `edit` run the same review and **refuse code rated `block`** unless `force: true`, so a class that breaks the documented lifecycle does not reach the project. `lint: false` skips the review. The rules, with the reasoning and the cheat-sheet page each comes from, are in the `optix-netlogic-practices` reference page; the static review does not replace the runtime check (a value changing on a bound screen is the only proof the class is loaded and running).
 
 ## Where the project is
 

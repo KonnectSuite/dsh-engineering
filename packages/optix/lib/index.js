@@ -17,7 +17,7 @@ import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
-import { MARKER, NETLOGIC_FOLDER, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, templateCode, writeNetLogic } from "./netlogic.js";
+import { MARKER, NETLOGIC_FOLDER, NETLOGIC_RULES, TEMPLATES, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, reviewNetLogic, templateCode, writeNetLogic } from "./netlogic.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -3294,12 +3294,12 @@ function apply(ctx, config = {}) {
 
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_script",
-		description: "Add, read, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; add creates the node and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
+		description: "Add, read, review, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; review checks the source against the lifecycle, threading, observer, logging and naming rules (OPTIX-NL-03..12) and can compile it; add creates the node and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. add and edit refuse code with a critical finding unless force is true, so a class that breaks the documented lifecycle does not reach the project. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
 		parameters: {
 			project: projectParameter,
 			action: {
 				type: "string",
-				description: "list (default) sends no writes; read returns a class; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
+				description: "list (default) sends no writes; read returns a class; review checks a class against OPTIX-NL-03..12 and optionally compiles it; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
 			},
 			project_root: {
 				type: "string",
@@ -3319,7 +3319,7 @@ function apply(ctx, config = {}) {
 			},
 			template: {
 				type: "string",
-				description: "For add with no code: blank, or periodic for a runtime class with a PeriodicTask and a Tick method. Default blank."
+				description: "For add with no code: blank, periodic (runtime class with a PeriodicTask, cached nodes, try/catch and dispose) or observer (runtime class subscribing to VariableChange and unsubscribing in Stop). Default blank."
 			},
 			code: {
 				type: "string",
@@ -3339,7 +3339,11 @@ function apply(ctx, config = {}) {
 			},
 			force: {
 				type: "boolean",
-				description: "For delete: remove a file this tool did not write (a shipped library class, say). Off means such a file is left in place and reported."
+				description: "For delete: remove a file this tool did not write (a shipped library class, say). For add and edit: write code that the review rates block. Off means such code is refused with the findings."
+			},
+			lint: {
+				type: "boolean",
+				description: "For add and edit: review the code and report findings. Default true; a critical finding is refused unless force is true."
 			},
 			build: {
 				type: "boolean",
@@ -3354,7 +3358,7 @@ function apply(ctx, config = {}) {
 		}),
 		async execute(args, exec) {
 			const action = args.action ?? "list";
-			const allowed = ["list", "read", "add", "edit", "delete", "build", "run"];
+			const allowed = ["list", "read", "review", "add", "edit", "delete", "build", "run"];
 			if (!allowed.includes(action)) throw new Error(`action must be one of ${allowed.join(", ")} (got ${String(action)})`);
 			if (action === "add" || action === "edit" || action === "delete") allowWrite(true);
 			if (action === "run" && settings.allowInvoke !== true) throw new Error("Running a NetLogic method needs allowInvoke on the Optix row");
@@ -3442,13 +3446,39 @@ function apply(ctx, config = {}) {
 					next: compile.ok ? "Ask the engineer to build in Studio so the loaded assembly includes this code." : "Fix the reported errors; nothing in Studio changes until it compiles."
 				};
 			}
+			if (action === "review") {
+				const entry = await readNetLogic(root, wanted);
+				const review = reviewNetLogic(entry.code, { name: wanted, kind: entry.kind === "unknown" ? (args.kind ?? "runtime") : entry.kind });
+				const compile = args.build === false ? void 0 : await buildNetSolution(root);
+				return {
+					...netLogicReport(resolved, entry, {
+						status: "completed",
+						action,
+						review,
+						...(compile === void 0 ? {} : { compile }),
+						next: review.verdict === "block" ? "Fix the critical findings before this class is relied on; then review again and build in Studio." : review.verdict === "review" ? "The class compiles but the warnings above are the measured ways a runtime NetLogic fails silently. Fix them, then build in Studio." : "Nothing found by the static rules. A Studio build is still what puts this class in the loaded assembly."
+					})
+				};
+			}
 			if (action === "add") {
 				const kind = args.kind ?? "runtime";
 				if (kind !== "runtime" && kind !== "design") throw new Error("kind must be runtime or design");
 				const template = args.template ?? "blank";
-				if (template !== "blank" && template !== "periodic") throw new Error("template must be blank or periodic");
+				if (!TEMPLATES.includes(template)) throw new Error(`template must be one of ${TEMPLATES.join(", ")}`);
 				const file = fileFor(root, wanted);
 				if (existsSync(file) && (args.code === void 0 || String(args.code).trim() === "")) throw new Error(`${wanted}.cs already exists - use action edit, or pass code to replace it`);
+				const code = args.code === void 0 || String(args.code).trim() === "" ? templateCode({
+					name: wanted,
+					kind,
+					template
+				}) : args.code;
+				// Review before the node exists: a refused class must not leave a node
+				// without a file behind it.
+				const review = args.lint === false ? void 0 : reviewNetLogic(code, { name: wanted, kind });
+				if (review !== void 0 && review.verdict === "block" && args.force !== true) {
+					const critical = review.findings.filter((finding) => finding.severity === "critical").map((finding) => `${finding.rule} line ${finding.line}: ${finding.message}`);
+					throw new Error(`refusing ${wanted} - the review rates this code block: ${critical.join("; ")}. Fix the findings, or pass force:true to write it anyway.`);
+				}
 				const created = await liveNodes();
 				if (created.origin === void 0) throw new Error("the bridge is not answering, so the NetLogic node cannot be created - ask the engineer to open the project and start the bridge");
 				let nodeResult;
@@ -3461,11 +3491,6 @@ function apply(ctx, config = {}) {
 					if (String(error).includes("name_exists")) nodeResult = { ok: true, existed: true };
 					else throw error;
 				}
-				const code = args.code === void 0 || String(args.code).trim() === "" ? templateCode({
-					name: wanted,
-					kind,
-					template
-				}) : args.code;
 				const stored = await writeNetLogic(root, wanted, code);
 				const compile = args.build === false ? void 0 : await buildNetSolution(root);
 				return {
@@ -3474,6 +3499,7 @@ function apply(ctx, config = {}) {
 						action,
 						node_result: nodeResult,
 						kind,
+						...(review === void 0 ? {} : { review }),
 						...(compile === void 0 ? {} : { compile }),
 						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, add again (or build), then start it." : "The class does not compile yet - fix the diagnostics before asking for a Studio build.") : "Ask the engineer to build the solution in Studio (or restart the bridge) so the compiled class is loaded; then a runtime NetLogic runs with its parent's runtime, and a design-time one is exercisable with action run."
 					})
@@ -3481,6 +3507,11 @@ function apply(ctx, config = {}) {
 			}
 			if (action === "edit") {
 				if (args.code === void 0 || String(args.code).trim() === "") throw new Error("edit needs code (the whole class)");
+				const review = args.lint === false ? void 0 : reviewNetLogic(args.code, { name: wanted, kind: args.kind ?? "runtime" });
+				if (review !== void 0 && review.verdict === "block" && args.force !== true) {
+					const critical = review.findings.filter((finding) => finding.severity === "critical").map((finding) => `${finding.rule} line ${finding.line}: ${finding.message}`);
+					throw new Error(`refusing to write ${wanted} - the review rates this code block: ${critical.join("; ")}. Fix the findings, or pass force:true to write it anyway.`);
+				}
 				const stored = await writeNetLogic(root, wanted, args.code, {
 					expectSha256: args.expect_sha256
 				});
@@ -3489,6 +3520,7 @@ function apply(ctx, config = {}) {
 					...netLogicReport(resolved, stored, {
 						status: "completed",
 						action,
+						...(review === void 0 ? {} : { review }),
 						...(compile === void 0 ? {} : { compile }),
 						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, then build." : "Fix the diagnostics, then edit again - Studio still runs the previous build.") : "Ask the engineer to build in Studio so this code becomes the loaded class."
 					})

@@ -775,6 +775,39 @@
       "sha256": "a691eaff888c760adb83eb358b82b12f57a6261d53d8a4175e75c44907106ac7"
     },
     {
+      "id": "optix-netlogic-practices",
+      "title": "NetLogic practices the runtime rewards",
+      "domain": "optix",
+      "level": "specialist",
+      "basis": [
+        "FactoryTalk Optix"
+      ],
+      "tags": [
+        "netlogic",
+        "csharp",
+        "lifecycle",
+        "threading"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-NL-03",
+        "OPTIX-NL-04",
+        "OPTIX-NL-05",
+        "OPTIX-NL-06",
+        "OPTIX-NL-07",
+        "OPTIX-NL-08",
+        "OPTIX-NL-09",
+        "OPTIX-NL-10",
+        "OPTIX-NL-11",
+        "OPTIX-NL-12"
+      ],
+      "words": 647,
+      "bytes": 4455,
+      "sha256": "de8e117291e4e85499cabf966c50121c7e9f8e60f055b622d44f06e837571e0c"
+    },
+    {
       "id": "optix-netlogic-usage",
       "title": "When to use NetLogic",
       "domain": "optix",
@@ -793,9 +826,9 @@
         "OPTIX-NL-01",
         "OPTIX-NL-02"
       ],
-      "words": 111,
-      "bytes": 905,
-      "sha256": "9b61fd2a83f374c48215972602c33303b51201f7bbce8f096ed336e7cf26bcd9"
+      "words": 143,
+      "bytes": 1149,
+      "sha256": "9950d303364408789efb2e8b239800c90fa6ac346a5a865bf595bd7c4d6236a1"
     },
     {
       "id": "optix-opcua-model-structure",

@@ -151,8 +151,16 @@ const HEADER = (name, kind, stamp) =>
 		? `// Studio does not fire Start() at design time: run these methods with right-click Execute,\n// or with optix_netlogic action "run" while the bridge is up.\n`
 		: `// Start()/Stop() run in the runtime when the node this class is bound to is loaded.\n`);
 
+export const TEMPLATES = ["blank", "periodic", "observer"];
+
 export function templateCode({ name, kind = "runtime", template = "blank", stamp = new Date().toISOString().slice(0, 10) }) {
 	checkName(name);
+	if (!TEMPLATES.includes(template)) {
+		throw new Error(`template must be one of ${TEMPLATES.join(", ")} (got ${String(template)})`);
+	}
+	if (kind === "design" && template !== "blank") {
+		throw new Error(`a design-time NetLogic is a set of [ExportMethod] helpers - template ${template} starts background work, which belongs to a runtime class`);
+	}
 	const header = HEADER(name, kind, stamp);
 	const usingBlock = [
 		"using System;",
@@ -181,9 +189,18 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			"\n" +
 			usingBlock +
 			`public class ${name} : BaseNetLogic\n{\n` +
-			`    private PeriodicTask task;\n\n` +
+			`    private PeriodicTask task;\n` +
+			`    private IUAVariable value;\n\n` +
 			`    public override void Start()\n` +
 			`    {\n` +
+			`        // Resolve every node once, here: a per-tick lookup walks the model on\n` +
+			`        // the timer thread and is the hot path the threading guide warns about.\n` +
+			`        value = Project.Current.GetVariable("Model/Value");\n` +
+			`        if (value == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "Model/Value not found - nothing to write");\n` +
+			`            return;\n` +
+			`        }\n` +
 			`        task = new PeriodicTask(Tick, 1000, LogicObject);\n` +
 			`        task.Start();\n` +
 			`    }\n\n` +
@@ -197,8 +214,54 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			`    }\n\n` +
 			`    private void Tick()\n` +
 			`    {\n` +
-			`        // Write machine behaviour here, for example\n` +
-			`        // LogicObject.GetVariable("../Speed").Value = 12.5;\n` +
+			`        try\n` +
+			`        {\n` +
+			`            // One step of machine behaviour. An exception that escapes a tick\n` +
+			`            // stops the timer for the rest of the session, so it is caught here.\n` +
+			`            value.Value = Convert.ToInt32(value.Value) + 1;\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "tick failed: " + error.Message);\n` +
+			`        }\n` +
+			`    }\n` +
+			`}\n`
+		);
+	}
+	if (template === "observer") {
+		return (
+			header +
+			"\n" +
+			usingBlock +
+			`public class ${name} : BaseNetLogic\n{\n` +
+			`    private IUAVariable watched;\n\n` +
+			`    public override void Start()\n` +
+			`    {\n` +
+			`        watched = Project.Current.GetVariable("Model/Value");\n` +
+			`        if (watched == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "Model/Value not found - not observing anything");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        watched.VariableChange += OnValueChange;\n` +
+			`    }\n\n` +
+			`    public override void Stop()\n` +
+			`    {\n` +
+			`        // Unsubscribe every observer here: a subscription that outlives Stop\n` +
+			`        // keeps this class alive with its page.\n` +
+			`        if (watched != null) watched.VariableChange -= OnValueChange;\n` +
+			`        watched = null;\n` +
+			`    }\n\n` +
+			`    private void OnValueChange(object sender, VariableChangeEventArgs e)\n` +
+			`    {\n` +
+			`        try\n` +
+			`        {\n` +
+			`            Log.Info("${name}", "value is now " + e.NewValue);\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "handler failed: " + error.Message);\n` +
+			`        }\n` +
 			`    }\n` +
 			`}\n`
 		);
@@ -438,4 +501,199 @@ export function netLogicReport(rootInfo, entry, extra = {}) {
 
 export function describeRelative(file) {
 	return relative(process.cwd(), file);
+}
+
+// ---------------------------------------------------------------------------
+// Practice review
+//
+// The compiler proves a class compiles; it says nothing about whether the class
+// is safe in an Optix runtime. These checks encode the parts of the vendor
+// NetLogic guide that are decidable from the source: lifecycle (dispose what
+// Start created), threading (no blocking on the timer thread, no model lookups
+// per tick), error isolation (an escaping exception kills a PeriodicTask),
+// observer hygiene (every += has a -=), design-time discipline (no background
+// work in a class Studio never starts), naming (the class name is the binding)
+// and observability (a silent runtime class cannot be diagnosed).
+//
+// Sources are the pinned cheat-sheet pages: netlogic-lifecycle, threading,
+// register-observers, log-output and good-practices. Each rule names the page
+// it comes from so a reader can check the reasoning rather than trust it.
+// ---------------------------------------------------------------------------
+
+export const NETLOGIC_RULES = {
+	"OPTIX-NL-03": {
+		severity: "critical",
+		title: "A PeriodicTask is created but never disposed",
+		fix: "Dispose the task in Stop() and clear the field - a task that outlives its page keeps running.",
+		source: "netlogic-lifecycle"
+	},
+	"OPTIX-NL-04": {
+		severity: "warning",
+		title: "The periodic tick has no try/catch",
+		fix: "Wrap the tick body in try/catch and log with Log.Error: the first escaping exception ends the timer.",
+		source: "threading"
+	},
+	"OPTIX-NL-05": {
+		severity: "warning",
+		title: "The model is read from inside the tick",
+		fix: "Resolve nodes once in Start() and keep the handles in fields; per-tick lookups walk the model on the timer thread.",
+		source: "threading"
+	},
+	"OPTIX-NL-06": {
+		severity: "critical",
+		title: "Blocking call on a NetLogic thread",
+		fix: "Never block: no Thread.Sleep, .Wait(), .Result, GetAwaiter().GetResult() or async void. Dispatch work instead.",
+		source: "threading"
+	},
+	"OPTIX-NL-07": {
+		severity: "warning",
+		title: "Empty catch block",
+		fix: "Log the exception with Log.Error(category, message); a swallowed failure is invisible in the runtime.",
+		source: "log-output"
+	},
+	"OPTIX-NL-08": {
+		severity: "warning",
+		title: "Event subscription without a matching unsubscribe",
+		fix: "Unsubscribe (-=) in Stop() for every += in Start(); otherwise the observer keeps the class alive.",
+		source: "register-observers"
+	},
+	"OPTIX-NL-09": {
+		severity: "warning",
+		title: "Design-time NetLogic starts background work",
+		fix: "Studio never runs Start() at design time: background work belongs to a runtime class. Keep a design class to [ExportMethod]s.",
+		source: "netlogic-lifecycle"
+	},
+	"OPTIX-NL-10": {
+		severity: "critical",
+		title: "Class name does not match the NetLogic node name",
+		fix: "Rename the class (or the node) so they match - Optix binds the node to the class by name.",
+		source: "good-practices"
+	},
+	"OPTIX-NL-11": {
+		severity: "info",
+		title: "The class logs nothing",
+		fix: "Add Log.Info/Warning/Error with the class name as category, so the runtime output and the emulator log say what happened.",
+		source: "log-output"
+	},
+	"OPTIX-NL-12": {
+		severity: "info",
+		title: "Node path is hard-coded in the source",
+		fix: "Keep the path in one constant, or read through LogicObject/Owner, so a move in the project does not silently break the class.",
+		source: "good-practices"
+	}
+};
+
+const RULE_ORDER = Object.keys(NETLOGIC_RULES);
+
+function lineAt(text, index) {
+	return text.slice(0, Math.max(0, index)).split("\n").length;
+}
+
+/** Method headers with their brace-matched bodies, enough to reason about a class. */
+export function methodBodies(code) {
+	const text = String(code ?? "");
+	const header = /\b(?:public|private|protected|internal)\s+(?:static\s+)?(?:override\s+)?(?:async\s+)?[\w<>\[\],.?\s]+\s+([A-Za-z_][A-Za-z0-9_]*)\s*\([^)]*\)\s*\{/gu;
+	const out = [];
+	let match;
+	while ((match = header.exec(text)) !== null) {
+		const open = text.indexOf("{", match.index + match[0].length - 1);
+		if (open < 0) continue;
+		let depth = 0;
+		let end = open;
+		for (; end < text.length; end += 1) {
+			if (text[end] === "{") depth += 1;
+			else if (text[end] === "}") {
+				depth -= 1;
+				if (depth === 0) break;
+			}
+		}
+		out.push({ name: match[1], start: match.index, bodyStart: open + 1, end, body: text.slice(open + 1, end) });
+	}
+	return out;
+}
+
+/**
+ * Static review of one NetLogic class.
+ *
+ * Answers `clean` / `review` / `block`; every finding names the rule, the line,
+ * what is wrong and what to change. It reasons over source text, so it is a
+ * guardrail, not a proof: the build and the runtime still decide.
+ */
+export function reviewNetLogic(code, { name = "", kind = "runtime" } = {}) {
+	const text = String(code ?? "");
+	const info = parseClass(text);
+	const methods = methodBodies(text);
+	const stop = methods.find((method) => method.name === "Stop");
+	const findings = [];
+	const add = (rule, index, message) => {
+		const spec = NETLOGIC_RULES[rule];
+		findings.push({
+			rule,
+			severity: spec.severity,
+			source: spec.source,
+			line: lineAt(text, index),
+			message,
+			fix: spec.fix
+		});
+	};
+
+	const taskCall = /new\s+PeriodicTask\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)/u.exec(text);
+	if (taskCall !== null) {
+		const stopBody = stop === void 0 ? "" : stop.body;
+		if (!/\.Dispose\s*\(\s*\)/u.test(stopBody)) add("OPTIX-NL-03", taskCall.index, "new PeriodicTask is created but Stop() does not dispose it");
+		const tickName = taskCall[1];
+		const tick = methods.find((method) => method.name === tickName);
+		if (tick !== void 0) {
+			if (!/\btry\b/u.test(tick.body)) add("OPTIX-NL-04", tick.bodyStart, `${tickName}() has no try/catch, so one exception ends the timer`);
+			const lookup = /Project\.Current/u.exec(tick.body);
+			if (lookup !== null) add("OPTIX-NL-05", tick.bodyStart + lookup.index, `${tickName}() reads Project.Current on the timer thread - cache the node in Start()`);
+		}
+	}
+
+	for (const pattern of [
+		{ re: /Thread\.Sleep\s*\(/u, what: "Thread.Sleep" },
+		{ re: /\.Wait\s*\(\s*\)/u, what: ".Wait()" },
+		{ re: /\.Result\b/u, what: ".Result" },
+		{ re: /GetAwaiter\s*\(\s*\)\s*\.\s*GetResult\s*\(\s*\)/u, what: "GetAwaiter().GetResult()" },
+		{ re: /\basync\s+void\b/u, what: "async void" }
+	]) {
+		const hit = pattern.re.exec(text);
+		if (hit !== null) add("OPTIX-NL-06", hit.index, `${pattern.what} blocks a NetLogic thread`);
+	}
+
+	const emptyCatch = /catch\s*(?:\([^)]*\))?\s*\{\s*\}/u.exec(text);
+	if (emptyCatch !== null) add("OPTIX-NL-07", emptyCatch.index, "empty catch block swallows the failure");
+
+	const subscribe = /\.(?:VariableChange|VariableChangeEvent|ValueChange)\s*\+=/u.exec(text);
+	if (subscribe !== null && !/\.(?:VariableChange|VariableChangeEvent|ValueChange)\s*-=/u.test(text)) {
+		add("OPTIX-NL-08", subscribe.index, "subscribes to a change event but never unsubscribes in Stop()");
+	}
+
+	if (kind === "design") {
+		const designTask = /(?:new\s+PeriodicTask|new\s+System\.Threading\.Thread|new\s+Thread\s*\(|Task\.Run\s*\(|new\s+(?:System\.Threading\.Tasks\.)?Task\s*[<(]|new\s+System\.Timers\.Timer)/u.exec(text);
+		if (designTask !== null) add("OPTIX-NL-09", designTask.index, "a design-time class starts background work Studio will never run");
+	}
+
+	if (info.className !== "" && name !== "" && info.className !== name) {
+		add("OPTIX-NL-10", CLASS_PATTERN.exec(text)?.index ?? 0, `class ${info.className} does not match the node name ${name}`);
+	}
+
+	if (!/\bLog\.(?:Debug|Info|Warning|Error|Verbose1|Verbose2)\s*\(/u.test(text)) {
+		add("OPTIX-NL-11", 0, "no Log call: the runtime and emulator output stay silent about this class");
+	}
+
+	const hardPath = /"(?:Model|UI)\//u.exec(text);
+	if (hardPath !== null) add("OPTIX-NL-12", hardPath.index, "node path is a string literal");
+
+	findings.sort((a, b) => a.line - b.line || RULE_ORDER.indexOf(a.rule) - RULE_ORDER.indexOf(b.rule));
+	const counts = { critical: 0, warning: 0, info: 0 };
+	for (const finding of findings) counts[finding.severity] += 1;
+	const verdict = counts.critical > 0 ? "block" : counts.warning > 0 ? "review" : "clean";
+	return {
+		verdict,
+		counts,
+		findings,
+		checked: RULE_ORDER,
+		note: "Static review of the C# only: it does not prove the class is loaded, and Studio still has to build the solution."
+	};
 }

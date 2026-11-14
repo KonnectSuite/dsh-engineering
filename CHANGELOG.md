@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+- **A NetLogic is now reviewed against the practices the runtime rewards, not only compiled.** `optix_script` gained
+  `action: review` and the rules `OPTIX-NL-03`..`12`: a `PeriodicTask` that is never disposed, a tick without
+  `try/catch`, a `Project.Current` lookup on the timer thread, a blocking call (`Thread.Sleep`, `.Wait()`, `.Result`,
+  `GetAwaiter().GetResult()`, `async void`), an empty `catch`, a change subscription with no `-=`, background work in a
+  design-time class, a class name that differs from its node, a class that logs nothing, and a hard-coded node path.
+  Each finding carries the line, the severity, the fix and the cheat-sheet page it comes from; the answer is `clean`,
+  `review` or `block`. `add` and `edit` run the same review and refuse code rated `block` unless `force: true`, so the
+  guardrail is on the path that writes, not only on a request someone remembers to make. The `periodic` template is now
+  the safe shape (nodes cached in `Start`, `try/catch` in the tick, `Log.Error`, `Dispose()` in `Stop`) and a new
+  `observer` template subscribes in `Start` and unsubscribes in `Stop`; `blank` remains for a class you write yourself.
+  Rules, reasoning and sources are the corpus page `optix-netlogic-practices`; `docs/reference/optix-netlogic.md` and
+  the skill section name `review` and both templates. Covered by the extended `test/optix-netlogic.spec.mjs`.
 - **NetLogic C# is now authored, compiled and deleted through the tools.** `optix_script` owns both halves of a
   NetLogic - the bridge node whose BrowseName equals the class name and the `.cs` file the project's csproj globs -
   with `action: list | read | add | edit | delete | build | run`. `add` writes a compiling class from a `blank` or
