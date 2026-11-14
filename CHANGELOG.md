@@ -1,5 +1,14 @@
 ## [Unreleased]
 
+- **A packaged AryaCode app drafts Optix screens against the live bridge.** With the packed bundle in the
+  `optix-live` dev profile and a local `AryaInfer` model in the composer (no API key needed; the
+  `deepseek-official` route inside a standalone `dsh web` answers `MISSING_CREDENTIAL`), the agent called
+  `optix_status` ("Bridge version 1.0.9, project AryaNewHMIProject_IPC"), `optix_design_check` (36
+  objects, 0 findings), and then authored a screen: `optix_screen … dry_run: false` → "completed · applied
+  104 · findings 0", `UI/Screens/LineHistory` appeared in the live model and rendered in the Web
+  presentation engine after a save and emulator restart
+  (`docs/port/optix-live-proof/11-dev-app-calls-optix-status.png`, `12-app-authored-screen-runtime.png`).
+  `scripts/launch-dev-optix.ps1` boots that profile.
 - **The packaged bundle mounts: the entry's own schema had the same `z.enum`.** The row that turns Optix
   on carried `z.enum([...])` in `entries/optix.js`, a schemastery API that does not exist, so a packed
   install failed the whole row with `TypeError: z.enum is not a function` at import — while every test

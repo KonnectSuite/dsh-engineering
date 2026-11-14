@@ -67,6 +67,17 @@ before. What that produced:
   by installing the packed tarball into the `optix-dev` profile on the dev home and booting it: no import
   warning, all ten engineering rows `Running`, the Optix row's settings page rendering
   (`docs/port/optix-live-proof/09-dev-optix-row-settings.png`, `10-dev-rows-running.png`).
+- A packaged AryaCode UI really does drive the bridge. The `optix-live` dev profile (a copy of the
+  installed desktop profile with the engineering dependency swapped for the packed tarball) boots on the
+  local `AryaInfer` route, and with a local model in the composer it called `optix_status` (answered
+  "Bridge version 1.0.9, project AryaNewHMIProject_IPC"), then `optix_design_check` ("36 objects, 0
+  findings"), then authored a screen: `optix_screen … dry_run: false` returned "completed · applied 104 ·
+  findings 0", the screen `UI/Screens/LineHistory` was in the live model, and after a save and an emulator
+  restart it rendered in the Web presentation engine with its card rows bound to `Model/Line/Bottles` and
+  `Rejects` (`docs/port/optix-live-proof/11-dev-app-calls-optix-status.png`,
+  `12-app-authored-screen-runtime.png`). `scripts/launch-dev-optix.ps1` starts that profile.
+  The account model route (`DeepSeek-V4.1-Flash`/`-Pro`) needs an API key inside a standalone `dsh web`;
+  the local `AryaInfer` models need none, which is why they are the demo route.
 - Gates: `pnpm test` (49 files), `pnpm docs:tools` and the resources index (52 pages) are green as of this
   date.
 
@@ -107,6 +118,28 @@ Copy-Item aryacode-dsh-engineering-0.93.0.tgz artifacts\aryacode-dsh-engineering
 
 Keep the tarball name distinct per build: pnpm reports "Already up to date" when version and path are
 unchanged, and the installed copy silently stays old.
+
+### The profile with a model that works: `optix-live`
+
+`optix-dev` composes only the shipped base/web bundles plus engineering, so it has no model route except
+`deepseek-official`, which needs an API key that a standalone `dsh web` does not have (`MISSING_CREDENTIAL`).
+`optix-live` is a copy of the installed desktop profile — every bundle the owner runs today, including
+`@aryacode/dsh-local-llm` — with engineering swapped for the packed tarball. Boot it and pick a local
+`AryaInfer …` model in the composer; no key, and the engineering tools answer live:
+
+```powershell
+pwsh -File scripts\launch-dev-optix.ps1           # = DSH_HOME=dev home, dsh --profile optix-live
+```
+
+That is the configuration proven end to end: local model → `optix_status` / `optix_design_check` /
+`optix_screen` → the live Studio bridge, with the drafted screen rendering in the runtime.
+
+### Installing into the installed app (owner action, not done here)
+
+The installed app still loads the market bundle. To run this working tree in the installed app the owner
+can either publish/tag a release (per AGENTS.md the release steps are owner-requested), or use
+Plugins → Add plugin → local directory path and point it at
+`C:\Users\KNPhu\AryaCode\KonnectSuite\dsh-engineering`. Nothing in this branch writes `~/.aryacode`.
 
 ## Picking this up on another PC
 
