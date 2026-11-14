@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge } from "./arm.js";
 import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
+import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -1806,6 +1807,160 @@ function apply(ctx, config = {}) {
 					return {
 						status: "completed",
 						response: result
+					};
+				} catch (error) {
+					return {
+						status: error instanceof BridgeError && error.mayHaveApplied ? "indeterminate" : "failed",
+						error: String(error),
+						retry: "Inspect the live model before retrying"
+					};
+				}
+			});
+		}
+	})));
+	/**
+	 * The shipped catalog is disk state, so it is read again per call rather than cached: a Studio
+	 * install updated between calls must not answer from the older catalog.
+	 */
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_library",
+		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An import is not batch-reversible, so read the model back with optix_read before any retry.",
+		parameters: {
+			action: {
+				type: "string",
+				enum: ["list", "import"],
+				required: true
+			},
+			library: {
+				type: "string",
+				description: "Library folder name from action list, for example Widgets or GraphicElements."
+			},
+			item: {
+				type: "string",
+				description: "Item browse name or display name; the bridge accepts either."
+			},
+			dest: {
+				type: "string",
+				description: "Project node to import under (default UI)."
+			},
+			class: {
+				type: "string",
+				description: "NodeClass of the imported item (default ObjectType)."
+			},
+			replace: {
+				type: "string",
+				description: "Comma-separated type browse names whose conflict is resolved by replacing, for example LoginForm,Login."
+			},
+			preserve: {
+				type: "boolean",
+				description: "Keep dependency objects in their original library folders instead of beside the import (default false)."
+			},
+			query: {
+				type: "string",
+				description: "For action list: only items whose name or shipped description contains this text."
+			},
+			project: {
+				type: "string",
+				description: "Exact loaded project BrowseName from optix_status. Required for action import."
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Optix library ${args.action}`,
+			kind: args.action === "list" ? "read" : "edit"
+		}),
+		async execute(args, exec) {
+			const roots = await libraryRoots();
+			if (roots.length === 0) return noStudioInstall();
+			const root = roots.at(-1);
+			const catalog = await readCatalog(root.libraries, exec.signal);
+			if (args.action === "list") {
+				const wanted = args.library?.trim() ?? "";
+				if (wanted !== "" && !libraryNames(catalog).some((entry) => entry.toLowerCase() === wanted.toLowerCase())) return {
+					status: "refused",
+					error: "library_not_found",
+					library: wanted,
+					did_you_mean: suggestNames(wanted, libraryNames(catalog)),
+					next: `This Studio ships ${libraryNames(catalog).join(", ")}.`
+				};
+				const needle = args.query?.trim().toLowerCase() ?? "";
+				const libraries = catalog.filter((entry) => wanted === "" || entry.library.toLowerCase() === wanted.toLowerCase()).map((entry) => {
+					const items = entry.items.filter((item) => needle === "" || item.name.toLowerCase().includes(needle) || (item.display ?? "").toLowerCase().includes(needle) || (item.description ?? "").toLowerCase().includes(needle));
+					return {
+						library: entry.library,
+						item_count: entry.item_count,
+						matched: items.length,
+						groups: entry.groups,
+						items
+					};
+				});
+				const matched = libraries.reduce((sum, entry) => sum + entry.matched, 0);
+				return {
+					status: "completed",
+					studio: root.version,
+					libraries,
+					matched,
+					coverage: "Catalog text is the shipped library's own: it proves what can be imported, not how an imported item renders or behaves at runtime. Items held inside a group folder are reported as groups, not as importable names, because only the top-level form is documented.",
+					next: matched === 0 ? "Name a library or a different query; the counts above are what this Studio ships." : "Import one with action import (dest defaults to UI, class defaults to ObjectType), then read it back with optix_read."
+				};
+			}
+			if (args.library === void 0 || args.item === void 0) return {
+				status: "failed",
+				error: "import needs library and item",
+				next: "Run action list first: it names the libraries and items this Studio ships."
+			};
+			if (args.project?.trim() === void 0 || args.project?.trim() === "") return {
+				status: "failed",
+				error: "import needs project: the loaded project BrowseName from optix_status",
+				next: "Open the project in Studio, run StartBridge, then call optix_status."
+			};
+			const found = findEntry(catalog, args.library, args.item);
+			if (found === null) {
+				const entry = catalog.find((candidate) => candidate.library.toLowerCase() === args.library.trim().toLowerCase());
+				if (entry === void 0) return {
+					status: "refused",
+					error: "library_not_found",
+					library: args.library,
+					did_you_mean: suggestNames(args.library, libraryNames(catalog)),
+					next: `This Studio ships ${libraryNames(catalog).join(", ")}.`
+				};
+				return {
+					status: "refused",
+					error: "item_not_found",
+					library: entry.library,
+					item: args.item,
+					groups: entry.groups,
+					did_you_mean: suggestNames(args.item, itemNames(entry)),
+					next: "The name may live inside a group folder listed above; nested item paths are unverified, so prefer a top-level name."
+				};
+			}
+			allowWrite(args.replace !== void 0 && args.replace.trim() !== "");
+			return exclusive(async () => {
+				const { origin, health } = await bridge.select(args.project, exec.signal);
+				if (health.template_library !== true) throw new Error("library_import_unsupported_bridge: this Studio bridge does not serve the template-library import; run optix_bridge_arm on the project, compile NetSolution in Studio, start the bridge, then call optix_status again");
+				const query = {
+					dest: args.dest?.trim() === "" || args.dest === void 0 ? "UI" : args.dest,
+					class: args.class?.trim() === "" || args.class === void 0 ? "ObjectType" : args.class,
+					library: args.library,
+					item: args.item
+				};
+				if (args.replace !== void 0 && args.replace.trim() !== "") query.replace = args.replace;
+				if (args.preserve === true) query.preserve = "1";
+				try {
+					const result = await bridge.request(origin, "library/import", exec.signal, query, "POST");
+					if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the library import", true);
+					return {
+						status: "completed",
+						imported: {
+							library: found.library.library,
+							name: found.item.name,
+							display: found.item.display ?? found.item.name,
+							guid: found.item.guid
+						},
+						response: result,
+						coverage: "The bridge reports the node it created; rendering, runtime behaviour and the installed Optix version are not established by this call.",
+						next: `Read ${result.created_path ?? "the imported node"} back with optix_read, then run optix_design_check on the screen that hosts it.`
 					};
 				} catch (error) {
 					return {

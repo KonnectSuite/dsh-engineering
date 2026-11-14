@@ -41,8 +41,12 @@ public class StudioMCPBridge : BaseNetLogic
     // wrong about behavior). Last bumped for the 1.0.8 batch: the I31 crash-proof
     // dispatch + enum coercion, the NetLogic move refusal, I35's dotnet_type,
     // relative dynamic links inside an ObjectType, and OpenKeyboard - all real
-    // behavior changes to this file.
-    private const string BridgeVersion = "1.0.8";
+    // behavior changes to this file. 1.0.9 is the template-library batch: the
+    // library/import verb (ImportLibraryItemInline) plus the health field that
+    // advertises it - the bridge can now pull a shipped Optix library item
+    // (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) into the
+    // open project instead of only building from builtin widget types.
+    private const string BridgeVersion = "1.0.9";
     // multi-instance support (v1.0.7). Port is no longer a single
     // fixed const - each Studio instance self-assigns the first free port in
     // BasePort..BasePort+PortRangeSize-1, so up to PortRangeSize projects can
@@ -868,6 +872,13 @@ public class StudioMCPBridge : BaseNetLogic
                     body = EnsureWebEngineInline(firstLine);
                     status = "200 OK";
                 }
+                // new dispatcher branch, paired with ImportLibraryItemInline()
+                // below -- the shipped template-library import (1.0.9).
+                else if (firstLine.StartsWith("POST /bridge/library/import"))
+                {
+                    body = ImportLibraryItemInline(firstLine);
+                    status = "200 OK";
+                }
                 else
                 {
                     body = ErrorJson("not_found", "unknown route");
@@ -903,10 +914,10 @@ public class StudioMCPBridge : BaseNetLogic
 
     // Routes that MUTATE the model -- the only ones that log. Keep in sync with
     // the POST branches in the dispatcher (model/*, ui/widget, i18n/translation,
-    // setup/web-engine, and node/{property,bind,alias,move,convert-to-type,
-    // reorder,delete,event,attach-expression}). Read routes are deliberately
-    // absent, and so is POST /bridge/expr/validate -- a POST by shape but a pure
-    // read (it validates, mutates nothing).
+    // setup/web-engine, library/import, and node/{property,bind,alias,move,
+    // convert-to-type,reorder,delete,event,attach-expression}). Read routes are
+    // deliberately absent, and so is POST /bridge/expr/validate -- a POST by shape
+    // but a pure read (it validates, mutates nothing).
     private static readonly string[] _MutationRoutes = {
         "POST /bridge/model/", "POST /bridge/ui/widget",
         "POST /bridge/i18n/translation", "POST /bridge/setup/web-engine",
@@ -920,6 +931,8 @@ public class StudioMCPBridge : BaseNetLogic
         "POST /bridge/node/retype",
         // added for the generic invoke endpoint below.
         "POST /bridge/node/invoke",
+        // added for the template-library import endpoint (1.0.9).
+        "POST /bridge/library/import",
     };
 
     private void MaybeLogMutation(string firstLine, string body)
@@ -989,7 +1002,13 @@ public class StudioMCPBridge : BaseNetLogic
                // under a root session (see InvokeMethodInline). Builds without it
                // run ExecuteMethod session-less, which kills Studio; the service
                // refuses invoke against them.
-               ",\"invoke_session\":\"root\"}";
+               ",\"invoke_session\":\"root" +
+               // template_library advertises that THIS build serves
+               // POST /bridge/library/import (see ImportLibraryItemInline). An older
+               // build answers 404 unknown route instead, and the plugin refuses the
+               // import against it so the engineer gets "arm the bridge" rather than
+               // a confusing HTTP error mid-authoring.
+               ",\"template_library\":true}";
     }
 
     private string NodeJson(string path, IUANode node)
@@ -4869,6 +4888,126 @@ public class StudioMCPBridge : BaseNetLogic
         return "{\"ok\":true,\"path\":\"" + JsonEscape(path) +
                "\",\"method\":\"" + JsonEscape(methodName) +
                "\",\"session\":\"root\",\"output_args\":[" + outSb + "]}";
+    }
+
+    // POST /bridge/library/import?dest=<project node path>&class=<NodeClass>&library=<name>&item=<path>
+    //                            [&replace=<BrowseName[:NodeClass],...>] [&preserve=0|1]
+    // Import one template from the SHIPPED Optix template libraries (Widgets,
+    // GraphicElements, StyleSheets, Keyboards, Misc, Scripts, FeaturePreview - the
+    // folders under <Studio>\Files\Libraries) into the open project. This is
+    // TemplateLibrary.ImportLibraryItem, the API behind Studio's drag-a-library-item
+    // onto-a-folder gesture. Before this verb the bridge could only build from the
+    // builtin FTOptix.<Module>.ObjectTypes catalog (see GetUiTypesJson), so an agent
+    // assembling a screen produced bare Rectangle/Label/Panel widgets while the
+    // shipped library already carried the engineered versions (AlarmBanner,
+    // ConfirmationDialog, PanelWithBackground, the Keyboards, the StyleSheets).
+    //
+    // itemPath accepts the browse name OR the display name of the template (Optix
+    // 1.7.x help, "ImportLibraryItem" arguments); libraryName is the library folder
+    // name; dest is a project node path as ResolveNode reads it ("Root/Objects/UI").
+    // The plugin pre-validates both against the on-disk catalog, so a wrong name is
+    // caught before it reaches here and this verb never has to guess.
+    //
+    // preserve=1 maps to preserveTypeDependencyPaths: by default a template's
+    // dependency objects land in the SAME parent as the imported item; preserved,
+    // they land in their original library nodes (a widget's Model-folder objects stay
+    // in Model).
+    //
+    // SESSION, NOT THREAD (issue #4, see InvokeMethodInline): an Optix call on this
+    // HTTP thread with no session aborts FTOptixStudio.exe with native heap
+    // corruption, so the static template-library call runs inside
+    // ImpersonateRootTemporary() too.
+    //
+    // Type conflicts: the documented default is null (Studio resolves them itself).
+    // replace=<BrowseName> or replace=<BrowseName>:<NodeClass>, comma separated,
+    // builds the documented TypeConflictResolutionChoice list with
+    // ConflictResolution.Replace - the only ConflictResolution member the shipped
+    // docs name, so only that one is offered rather than inventing the others.
+    private string ImportLibraryItemInline(string firstLine)
+    {
+        string dest = QueryParam(firstLine, "dest");
+        string className = QueryParam(firstLine, "class");
+        string library = QueryParam(firstLine, "library");
+        string item = QueryParam(firstLine, "item");
+        if (string.IsNullOrEmpty(dest) || string.IsNullOrEmpty(className)
+            || string.IsNullOrEmpty(library) || string.IsNullOrEmpty(item))
+            return ErrorJson("bad_query",
+                "required query params: dest, class, library, item (+ optional replace, preserve)");
+
+        NodeClass nodeClass;
+        // Case-insensitive so the caller may send "objecttype" or "ObjectType".
+        if (!Enum.TryParse(className, true, out nodeClass))
+            return ErrorJson("unknown_class", "class must be one of: "
+                + string.Join(", ", Enum.GetNames(typeof(NodeClass))));
+
+        var destNode = ResolveNode(dest);
+        if (destNode == null)
+            return ErrorJson("node_not_found", "no node at path: " + dest);
+        var destObj = destNode as IUAObject;
+        if (destObj == null)
+            return ErrorJson("dest_not_container", "node at " + dest + " is a "
+                + destNode.GetType().Name + " - a library item imports under an Object node");
+
+        // TypeConflictResolutionChoice and ConflictResolution are NESTED inside
+        // TemplateLibrary (verified against UAManagedCore.dll 5.0.0.39 by compiling this
+        // file against the shipped assemblies). The cheat sheet writes them bare because
+        // its example opens `using static UAManagedCore.TemplateLibrary;`; this file does
+        // not, so both are qualified here.
+        List<TemplateLibrary.TypeConflictResolutionChoice> choices = null;
+        string replace = QueryParam(firstLine, "replace");
+        if (!string.IsNullOrEmpty(replace))
+        {
+            choices = new List<TemplateLibrary.TypeConflictResolutionChoice>();
+            foreach (var raw in replace.Split(','))
+            {
+                string token = raw.Trim();
+                if (token.Length == 0) continue;
+                var parts = token.Split(':');
+                NodeClass choiceClass = nodeClass;
+                if (parts.Length > 1 && !Enum.TryParse(parts[1].Trim(), true, out choiceClass))
+                    return ErrorJson("unknown_class", "replace entry " + token
+                        + " - class must be one of: "
+                        + string.Join(", ", Enum.GetNames(typeof(NodeClass))));
+                choices.Add(new TemplateLibrary.TypeConflictResolutionChoice(
+                    parts[0].Trim(), choiceClass, TemplateLibrary.ConflictResolution.Replace));
+            }
+            if (choices.Count == 0)
+                return ErrorJson("bad_query", "replace was given but named no type");
+        }
+
+        bool preserve = QueryParam(firstLine, "preserve") == "1";
+
+        IUANode imported = null;
+        try
+        {
+            // NEVER call the template-library API outside this scope (issue #4).
+            using (destObj.Context.Sessions.ImpersonateRootTemporary())
+                imported = TemplateLibrary.ImportLibraryItem(
+                    destNode, nodeClass, library, item, choices, preserve);
+        }
+        catch (Exception ex)
+        {
+            // A thrown import may still have landed part of its dependency graph, so
+            // this is reported as a refusal: the caller reads the model back before
+            // retrying, exactly like every other write verb here.
+            return ErrorJson("import_failed", ExcMsg(ex));
+        }
+        if (imported == null)
+            return ErrorJson("library_item_not_found", "library " + library
+                + " answered nothing for item: " + item);
+
+        // created_path is where the ITEM landed (dest + its browse name). With
+        // preserve=1 the item's dependencies sit in their own library nodes, so the
+        // caller must read the model for the full picture - this path is the handle,
+        // not the whole import.
+        return "{\"ok\":true,\"created_path\":\"" + JsonEscape(dest + "/" + imported.BrowseName) +
+               "\",\"library\":\"" + JsonEscape(library) +
+               "\",\"item\":\"" + JsonEscape(item) +
+               "\",\"node_class\":\"" + JsonEscape(imported.NodeClass.ToString()) +
+               "\",\"clr_type\":\"" + JsonEscape(imported.GetType().Name) +
+               "\",\"conflicts_resolved\":" + (choices == null ? 0 : choices.Count) +
+               ",\"preserve_paths\":" + Bool(preserve) +
+               ",\"session\":\"root\",\"mode\":\"inline\",\"thread\":\"http-bg\"}";
     }
 
     // Wire a UI event on a node (EventHandler graph, reverse-engineered from
