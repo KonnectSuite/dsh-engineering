@@ -146,34 +146,72 @@ operator click, release review — is written down as `optix-application-recipe`
   `install: true` installs it through winget. It never installs a Python service or an OCR daemon. If
   Tesseract is already present it says so and names the path to put in `ocrExecutable`, which is a
   config change, not an install. Ask before running the install: it downloads software.
-- `optix_template` discovers the packaged Optix IPC and OptixPanel starter projects. Copy the chosen
-  project with filesystem tools, never overwrite an existing project, and keep the template's name.
+- `optix_template` discovers the packaged Optix IPC and OptixPanel starter projects. With
+  `destination` it scaffolds one: copies the starter into a new or empty directory, renames it, writes
+  the screen box you pass as `width`/`height`, and replaces the older bridge the starter carries with
+  this bundle's. Never copy a starter with filesystem tools instead: the two steps that matter - the
+  rename and the bridge - are what that call exists for.
 
-## Starting from a template
+## Start from nothing, or join a project that is already running
 
-`optix_template` returns the manifest, and the manifest carries `questions`. Ask them before copying
-anything, because each one is baked into files you would otherwise have to re-edit:
+**The IDE is not yours to drive.** Two actions in Studio belong to the engineer and to nobody else:
+opening the project, and right-clicking `StudioMCPBridge` → `StartBridge` after a build. Never launch
+`FTOptixStudio.exe`, never click or type in Studio, never ask for a screenshot of it, and never stall
+waiting on it. Your side of that line is everything around it: writing the project files, reading and
+writing the live model through the bridge, and starting or stopping the runtime with `optix_emulator`.
+The bridge is the contract - when it answers, Studio is already open and the engineer is available.
 
-- **Which runtime** — an OptixPanel device or a PC in a browser. It picks the template, and the deploy
-  path and the emulator differ; an edit does not convert one into the other.
-- **Screen size** — `MainWindow` `Width`/`Height` in `Nodes/UI/UI.yaml` is the box every screen is laid
-  out against (1280×800 shipped). Ask the panel's real size; the device reports its own resolution
-  read-only, so the project cannot answer.
-- **Keep or rename the project** — the shipped name is carried by the `.optix` file, the root
-  `Nodes/<name>.yaml`, the `.csproj`/`.sln`/`.code-workspace` and DynamicLinks such as
-  `/Objects/<name>@BrowseName`. A rename is a set of coordinated edits, not a folder rename.
-- **Where the copy goes** — an empty directory, named, because Studio opens the `.optix` by absolute
-  path and the copy must never land on an existing project.
-- **What it talks to** — a Logix controller, OPC UA, MQTT, or nothing yet. The templates ship those
-  folders empty, so the connection is authored; the answer decides which node comes first and what the
-  screens bind to.
+### A. New project, no Studio open yet
 
-Then copy, and state what you did not do: Studio opens the project, compiles NetSolution, and the
-engineer runs StartBridge.
+1. `optix_template` without `destination` and ask the manifest's `questions`. Each answer is baked
+   into files that are painful to re-edit later: **runtime** (OptixPanel device or a PC in a browser -
+   it picks the template), **screen size** (the operator's real box; a panel target and a widescreen
+   monitor differ), **project name**, **destination** (a new or empty directory), and **what it talks
+   to** (Logix, OPC UA, MQTT, or nothing yet - the templates ship those folders empty).
+2. Call it again with `template`, `destination`, `name`, `width` and `height`. That is the whole
+   scaffold: copy, rename, bridge, canvas. Report the path and the canvas it got.
+3. Hand the two Studio actions to the engineer in one short message and stop: which `.optix` file to
+   open, that the build must succeed, and that the `StudioMCPBridge` NetLogic wants `StartBridge`.
+   Name the one dialog they will meet: the first `StartBridge` raises Studio's NetLogic security
+   warning (the bridge references System.Net.Sockets, System.IO and friends) and binds only after
+   `Proceed`; ticking "Do not show this warning again" stops it recurring. Then wait for their
+   confirmation - do not poll Studio, do not retry `optix_status` in a loop.
+4. When they say it is up, `optix_status` must answer with a bridge version and a project. If it does
+   not, the three things to check are, in order: the project in Studio is the copy you scaffolded, the
+   build succeeded, and `StartBridge` was chosen on the node. Say which one to look at.
+
+### B. Existing project that already has the bridge
+
+Nothing to write. Find the project directory, ask the engineer to open it and run `StartBridge` if it
+is not already running, then work through the bridge as usual.
+
+### C. Existing project with no bridge
+
+1. `optix_bridge_arm` with `confirm: false`: the report names the NetSolution project, whether a bridge
+   file is already there, its version, and whether the `StudioMCPBridge` NetLogic node exists.
+2. Close that project in Studio before confirming, if it is open there: the write must not race Studio's
+   own save. The call refuses when a running bridge already answers for the same project name.
+3. `confirm: true` writes this bundle's bridge (a bridge file it replaces is copied first), adds the
+   `StudioMCPBridge` NetLogic node to `Nodes/NetLogic/NetLogic.yaml` when the project has none, and
+   registers that node file in the project's `.optix` list when it is missing there - Studio loads only
+   the node files the project lists. A node that is already declared and listed is left byte for byte
+   alone. Every write is copied under `ProjectFiles/.dsh-backups/arm-<stamp>` with a `manifest.json`,
+   and the report's `changed_files` is what it touched.
+4. If the result looks wrong, `optix_bridge_arm` with `restore: true` puts every file back from the
+   newest backup and removes the files that run created. Say so rather than deleting by hand.
+5. Then the same two Studio actions as A.3, and the same wait.
+
+### D. Once the bridge answers
+
+Read before you write (`optix_status`, then `optix_read`), draft and check screens, run
+`optix_production_check` before calling anything released, and use `optix_emulator` to start or stop
+the runtime - never Studio's own toolbar. One measured constraint to state plainly: the runtime loads
+the **saved** project, so a change made through the bridge appears in the emulator only after the
+engineer saves in Studio (Ctrl+S). Ask for that save when a visual check is the point; do not pretend
+the preview shows unsaved edits.
 
 A successful model change does not save Studio and does not prove rendering. Say what was applied, what
-was only validated, and what a human must check in Studio.
-
+was only validated, and what the engineer has to do next.
 ## Reporting
 
 Every result carries `summary`, `data`, `next` and `coverage`. Read `coverage` before claiming

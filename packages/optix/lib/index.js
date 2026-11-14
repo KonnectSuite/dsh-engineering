@@ -9,6 +9,7 @@ import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge, bridgeVersion } from "./arm.js";
+import { scaffoldProject } from "./scaffold.js";
 import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
@@ -1025,7 +1026,7 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, or read their NetLogic and project files. The manifest carries `questions`: ask them before copying, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Copy the selected project directory into a new workspace directory with filesystem tools; preserve the original project name. Never overwrite an existing project. A starter ships an older bridge copy inside itself; run optix_bridge_arm on the copy to carry the session-safe bridge this package tracks. No Studio connection is required.",
+		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, read their NetLogic and project files, or scaffold one into a new directory. With `destination`, the starter is copied into that new or empty directory, renamed to `name` when one is given, and ProjectFiles/NetSolution is given the bridge this bundle ships, so the copy is ready to open in Studio; nothing is overwritten and no Studio connection is required. Without `destination` it only reports: the manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1035,6 +1036,22 @@ function applyTemplates(ctx, maxBytes) {
 			path: {
 				type: "string",
 				description: "Exact manifest-listed project-relative file to read; omit to return the manifest and source directory. NetLogic: ProjectFiles/NetSolution/StudioMCPBridge.cs."
+			},
+			destination: {
+				type: "string",
+				description: "Absolute path of the new or empty directory to scaffold the starter into. Nothing there is overwritten: an occupied directory is refused."
+			},
+			name: {
+				type: "string",
+				description: "Project name for the copy, replacing the starter's own across the project's text files and file names. Omit to keep the shipped name."
+			},
+			width: {
+				type: "integer",
+				description: "Canvas width in pixels for the copy's MainWindow, so the screens drafted later are sized for the operator's box rather than the starter's 1920. Ask the operator; a panel target and a widescreen monitor differ. Omit to keep the starter's width."
+			},
+			height: {
+				type: "integer",
+				description: "Canvas height in pixels for the copy's MainWindow. Omit to keep the starter's height. Taller than wide means a portrait target."
 			}
 		},
 		output: {
@@ -1053,6 +1070,28 @@ function applyTemplates(ctx, maxBytes) {
 			exec.signal.throwIfAborted();
 			const root = new URL(`../templates/${args.template}/`, import.meta.url);
 			const manifest = parseTemplateManifest(await readFile(new URL("manifest.json", root), "utf8"));
+			if (args.path !== void 0 && args.destination !== void 0) throw new Error("Choose one: `path` reads a file from the starter, `destination` scaffolds a copy of it. Both in one call is ambiguous.");
+			if (args.destination !== void 0) {
+				const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
+				const report = await scaffoldProject({
+					templateRoot: fileURLToPath(root),
+					destination: args.destination,
+					sourceProjectName: typeof manifest.sourceProjectName === "string" ? manifest.sourceProjectName : "",
+					name: args.name,
+					width: typeof args.width === "number" ? Math.round(args.width) : void 0,
+					height: typeof args.height === "number" ? Math.round(args.height) : void 0,
+					shipped
+				});
+				exec.signal.throwIfAborted();
+				/**
+				 * Carried with the copy so the answer to "what should I have asked" is the same object
+				 * the manifest exposes, and an agent that scaffolds without asking can see the gap.
+				 */
+				return {
+					...report,
+					questions: manifest.questions ?? []
+				};
+			}
 			if (args.path === void 0) {
 				/**
 				 * The version named here is the one this package actually ships, read from the tracked
@@ -1099,7 +1138,7 @@ function applyTemplates(ctx, maxBytes) {
 function applyBridgeArm(ctx) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_bridge_arm",
-		description: "Report, and on confirmation write, the Studio bridge an existing Optix project needs so it can be read and authored at all. Works on the project directory, not through a bridge: it checks ProjectFiles/NetSolution, keeps whatever the project already holds under ProjectFiles/.dsh-backups, and writes the bridge this bundle ships. With confirm false nothing is written. Studio still compiles the class and the engineer still runs StartBridge; no tool can do either from outside Studio.",
+		description: "Report, and on confirmation write, the Studio bridge an existing Optix project needs so it can be read and authored at all. Works on the project directory, not through a bridge: it checks ProjectFiles/NetSolution, keeps whatever the project already holds under ProjectFiles/.dsh-backups, writes the bridge this bundle ships, and adds the StudioMCPBridge NetLogic node to Nodes/NetLogic/NetLogic.yaml when the project has none (a hand-built project usually does not, and StartBridge is unreachable without it; an existing node is left exactly as it is). With confirm false nothing is written. Studio still compiles the class and the engineer still runs StartBridge; no tool can do either from outside Studio.",
 		parameters: {
 			project: {
 				type: "string",
@@ -1108,8 +1147,11 @@ function applyBridgeArm(ctx) {
 			},
 			confirm: {
 				type: "boolean",
-				required: true,
-				description: "false returns the plan and writes nothing; true writes the bridge after backing up any file already there."
+				description: "false returns the plan and writes nothing; true writes the bridge, the NetLogic node and the node-file registration, after copying every file it touches into one backup folder."
+			},
+			restore: {
+				type: "boolean",
+				description: "true undoes the newest arming run by copying the files it touched back and deleting the files it created. Use it when an arm went to the wrong place; it is the undo of this tool, not a merge."
 			}
 		},
 		output: {
@@ -1127,7 +1169,29 @@ function applyBridgeArm(ctx) {
 		async execute(args, exec) {
 			exec.signal.throwIfAborted();
 			const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
-			const report = await armBridge(args.project, shipped, args.confirm);
+			/**
+			 * A project Studio has open answers on the bridge with its own name. Writing NetSolution
+			 * while that is true races Studio's next save, so the name is read first and the write is
+			 * refused for that same project instead of being attempted and lost.
+			 */
+			let bridgeOpen = "";
+			let studioRunning = false;
+			for (const origin of bridge.config.bridgeUrls) {
+				try {
+					const health = await bridge.request(origin, "health", exec.signal);
+					studioRunning = true;
+					bridgeOpen = typeof health.project === "string" ? health.project : "";
+					break;
+				} catch {
+					continue;
+				}
+			}
+			const report = await armBridge(args.project, shipped, {
+				confirm: args.confirm === true,
+				restore: args.restore === true,
+				bridgeOpen,
+				studioRunning
+			});
 			exec.signal.throwIfAborted();
 			return report;
 		}

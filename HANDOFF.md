@@ -85,7 +85,20 @@ before. What that produced:
   `12-app-authored-screen-runtime.png`). `scripts/launch-dev-optix.ps1` starts that profile.
   The account model route (`DeepSeek-V4.1-Flash`/`-Pro`) needs an API key inside a standalone `dsh web`;
   the local `AryaInfer` models need none, which is why they are the demo route.
-- Gates: `pnpm test` (49 files), `pnpm docs:tools` and the resources index (52 pages) are green as of this
+- A project can start from nothing and end up as a running application, with the engineer doing only two
+  actions. `optix_template` with `destination`/`name`/`width`/`height` scaffolds a starter in one call
+  (copy, rename every file carrying the shipped name, replace the starter bridge 1.0.7 with 1.0.9, write
+  the canvas into `MainWindow`); `optix_bridge_arm` gives a project that has no bridge the
+  `StudioMCPBridge` NetLogic node, registers that node file in the project list, keeps a manifest and
+  flattened backups under `ProjectFiles/.dsh-backups/arm-<stamp>`, and undoes itself with `restore: true`.
+  Neither tool opens Studio: the IDE is the engineer's, and the skill says so in as many words. Proved on
+  a scaffolded `LineDemo`: the engineer opened it, built it and ran `StartBridge` (meeting Studio's NetLogic
+  security warning once, whose `Proceed` is what binds port 8768), then the tools created four tags and a
+  `PanelLoader`, drafted `LineOverview` and `LineControls` (126 and 106 ops), wired the shell bar, both
+  screens passed `optix_design_check` with 0 findings, `optix_production_check` returned `review` with only
+  the two honest built-in-user warnings, `optix_emulator` started the runtime, and clicking `Controls`
+  switched panels (`docs/port/optix-live-proof/15-linedemo-overview-runtime.png`, `16-linedemo-controls-runtime.png`).
+- Gates: `pnpm test` (50 files), `pnpm docs:tools` and the resources index (52 pages) are green as of this
   date.
 
 Still open, and not to be claimed as working:
@@ -100,8 +113,14 @@ Still open, and not to be claimed as working:
 - `optix_preview` / `optix_screenshot` have not been exercised through the host: they need the attachment
   and browser services, and the verification ran in the runtime's Web presentation engine through a
   headless browser instead.
-- The commit is `e6c7077` ("feat(optix): run the design lane live, make navigation switch panels, and add a
-  release review"); the entry fix, its test and the dev-home proof came after it.
+- `CHANGELOG.md` has been mojibake-corrupted (double-encoded UTF-8) since 2026-10-28: `8212ced` is clean,
+  `22fa717` carries 213 damaged sequences and the merge after it thousands. The file is 443 KB and mixed —
+  some runs are still valid UTF-8, so a wholesale re-decode fails; a per-run repair fixed 262 runs and
+  7,133 damaged sequences remain in the historical part. The entries added in this batch are correct UTF-8.
+  This predates the lane and is recorded rather than silently rewritten.
+- `git log` in this branch: `e6c7077` (design lane live), `77e7f7a` (packaged row mounts), `62434ff`
+  (packaged-app proof + launcher), `1bb2bde` (ASCII launcher), `56f2ffd` (painted preview); the scaffold,
+  arm and no-IDE workflow land in the commit after those.
 
 ## Use it in AryaCode today (dev home, never the installed profile)
 

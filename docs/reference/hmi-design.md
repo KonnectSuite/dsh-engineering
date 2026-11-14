@@ -157,6 +157,32 @@ Three corpus pages distil them, and `engineering_reference` serves them:
 to read, not files to vendor: the pattern is rebuilt with this project's types, tags and style sheet,
 and a sample's names and colours are never authority.
 
+## Two ways an Optix project starts, and the line the agent does not cross
+
+There are two entry points, and the tools differ for each. Neither one involves the agent opening
+Studio.
+
+**A project that has no bridge yet** - a new one from a starter, or somebody's existing project.
+`optix_template` with `destination` scaffolds the starter: copy, rename, the bridge this bundle ships,
+and the canvas from `width`/`height` (`Nodes/UI/UI.yaml` `MainWindow`). For an existing project,
+`optix_bridge_arm` with `confirm: false` first reports what is there, and `confirm: true` writes the
+bridge and adds the `StudioMCPBridge` NetLogic node to `Nodes/NetLogic/NetLogic.yaml` when the project
+has none - a hand-built project usually has none, and `StartBridge` is unreachable without it. Every
+file it replaces is kept under `ProjectFiles/.dsh-backups`.
+
+**A project that already has the bridge.** Nothing to write: the engineer opens it and runs
+`StartBridge`, and the agent works through the bridge.
+
+The line: opening the project, building it, and right-clicking `StartBridge` are the engineer's three
+actions. The agent writes the files, then hands over in one short message - which `.optix` file, that
+the build must succeed, that the node wants `StartBridge` - and waits for the engineer's word before
+it calls `optix_status`. It does not launch Studio, click in it, or poll it. Once the bridge answers,
+the agent takes over: read, draft, edit, check, `optix_production_check`, and start or stop the runtime
+with `optix_emulator` - never Studio's own toolbar.
+
+One measured constraint belongs in every handover: the runtime loads the **saved** project, so a change
+made through the bridge reaches the emulator only after the engineer saves in Studio. Ask for that save
+when a visual check is the point.
 ## What a clean report does not prove
 
 Every rule above is a static reading of the model. None of them renders the screen, runs it, or touches
