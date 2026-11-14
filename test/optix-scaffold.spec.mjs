@@ -32,6 +32,7 @@ test('a scaffold copies the starter, renames it, and carries this bridge', async
       name: 'Kymera',
       shipped: SHIPPED,
     })
+    assert.equal(report.layout, 'destination', 'a destination already named after the project is the project folder')
     assert.equal(report.bridge_version, '1.0.9')
     assert.equal(report.project_name, 'Kymera')
     assert.equal(report.file_count, 34)
@@ -70,41 +71,81 @@ test('the screen box the operator gave becomes the canvas the screens inherit', 
   }
 })
 
-test('no screen box keeps the starter canvas instead of inventing one', async () => {
+test('a workspace root is never turned into the project: the copy lands in a folder named after it', async () => {
   const parent = await scratchRoot()
-  const destination = join(parent, 'Stock')
+  const workspace = join(parent, 'myWorkspaces')
   try {
     const report = await scaffoldProject({
       templateRoot: TEMPLATE_ROOT,
-      destination,
+      destination: workspace,
       sourceProjectName: SOURCE_NAME,
       shipped: SHIPPED,
     })
+    assert.equal(report.layout, 'nested')
+    assert.equal(report.project, join(workspace, SOURCE_NAME))
+    assert.equal(report.project_name, SOURCE_NAME)
+    assert.equal(report.file_count, 34)
+    assert.ok((await stat(join(workspace, SOURCE_NAME))).isDirectory())
+    assert.equal((await stat(join(workspace, SOURCE_NAME, 'ProjectFiles'))).isDirectory(), true)
     assert.deepEqual(
       { width: report.screen.width, height: report.screen.height, changed: report.screen.changed },
       { width: 1920, height: 1080, changed: false },
     )
-    assert.equal(report.project_name, SOURCE_NAME)
   } finally {
     await cleanup(parent)
   }
 })
 
-test('a directory holding somebody else is refused rather than merged into', async () => {
+test('a project folder that already holds somebody else is refused rather than merged into', async () => {
   const parent = await scratchRoot()
   const destination = join(parent, 'Taken')
   try {
-    await writeFile(join(parent, 'Taken.keep'), 'x')
-    await rm(destination, { force: true })
     const { mkdir } = await import('node:fs/promises')
     await mkdir(destination, { recursive: true })
     await writeFile(join(destination, 'notes.txt'), 'mine')
     await assert.rejects(
-      () => scaffoldProject({ templateRoot: TEMPLATE_ROOT, destination, sourceProjectName: SOURCE_NAME, shipped: SHIPPED }),
-      /already holds files\. A starter is only copied into a new or empty directory, so nothing there is overwritten\./u,
+      () => scaffoldProject({ templateRoot: TEMPLATE_ROOT, destination, sourceProjectName: SOURCE_NAME, name: 'Taken', shipped: SHIPPED }),
+      /already holds files\. A starter is only copied into a new or empty project folder, so nothing there is overwritten\./u,
     )
     assert.equal((await stat(join(destination, 'notes.txt'))).isFile(), true)
   } finally {
     await cleanup(parent)
   }
+})
+
+test('a workspace root that already holds other work is accepted, because the project goes in a folder of its own', async () => {
+  const parent = await scratchRoot()
+  const workspace = join(parent, 'myWorkspaces')
+  const { mkdir } = await import('node:fs/promises')
+  await mkdir(workspace, { recursive: true })
+  await writeFile(join(workspace, 'notes.txt'), 'mine')
+  try {
+    const report = await scaffoldProject({
+      templateRoot: TEMPLATE_ROOT,
+      destination: workspace,
+      sourceProjectName: SOURCE_NAME,
+      name: 'BottlingLine',
+      width: 1280,
+      height: 800,
+      shipped: SHIPPED,
+    })
+    assert.equal(report.layout, 'nested')
+    assert.equal(report.project, join(workspace, 'BottlingLine'))
+    assert.equal(report.project_name, 'BottlingLine')
+    assert.equal((await stat(join(workspace, 'notes.txt'))).isFile(), true)
+    assert.equal((await stat(join(workspace, 'BottlingLine', 'BottlingLine.optix'))).isFile(), true)
+    assert.deepEqual(
+      { width: report.screen.width, height: report.screen.height },
+      { width: 1280, height: 800 },
+    )
+  } finally {
+    await cleanup(parent)
+  }
+})
+
+test('the tool refuses to scaffold before the operator has named the screen box', async () => {
+  const plugin = await readFile(new URL('../packages/optix/lib/index.js', import.meta.url), 'utf8')
+  assert.match(plugin, /Scaffolding needs the operator's screen box: pass width and height in pixels\./u)
+  assert.match(plugin, /if \(typeof args\.width !== "number" \|\| typeof args\.height !== "number"\)/u)
+  assert.match(plugin, /<destination>\/<name>/u, 'the tool description must say where the project folder lands')
 })

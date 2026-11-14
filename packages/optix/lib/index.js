@@ -1026,7 +1026,7 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, read their NetLogic and project files, or scaffold one into a new directory. With `destination`, the starter is copied into that new or empty directory, renamed to `name` when one is given, and ProjectFiles/NetSolution is given the bridge this bundle ships, so the copy is ready to open in Studio; nothing is overwritten and no Studio connection is required. Without `destination` it only reports: the manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
+		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, read their NetLogic and project files, or scaffold one into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. Without `destination` it only reports: the manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1039,7 +1039,7 @@ function applyTemplates(ctx, maxBytes) {
 			},
 			destination: {
 				type: "string",
-				description: "Absolute path of the new or empty directory to scaffold the starter into. Nothing there is overwritten: an occupied directory is refused."
+				description: "Absolute path of the workspace root (or of a folder already named after the project) to scaffold into. The project lands in `<destination>/<name>`; an existing non-empty project folder is refused, while a workspace root holding other work is fine."
 			},
 			name: {
 				type: "string",
@@ -1047,11 +1047,11 @@ function applyTemplates(ctx, maxBytes) {
 			},
 			width: {
 				type: "integer",
-				description: "Canvas width in pixels for the copy's MainWindow, so the screens drafted later are sized for the operator's box rather than the starter's 1920. Ask the operator; a panel target and a widescreen monitor differ. Omit to keep the starter's width."
+				description: "Canvas width in pixels for the copy's MainWindow. Required with `destination`: ask the operator for the real screen box first, since every screen drafted later inherits this canvas. A panel target and a widescreen monitor differ."
 			},
 			height: {
 				type: "integer",
-				description: "Canvas height in pixels for the copy's MainWindow. Omit to keep the starter's height. Taller than wide means a portrait target."
+				description: "Canvas height in pixels for the copy's MainWindow. Required with `destination`. Taller than wide means a portrait target."
 			}
 		},
 		output: {
@@ -1072,6 +1072,15 @@ function applyTemplates(ctx, maxBytes) {
 			const manifest = parseTemplateManifest(await readFile(new URL("manifest.json", root), "utf8"));
 			if (args.path !== void 0 && args.destination !== void 0) throw new Error("Choose one: `path` reads a file from the starter, `destination` scaffolds a copy of it. Both in one call is ambiguous.");
 			if (args.destination !== void 0) {
+				/**
+				 * The canvas is asked for, not defaulted. Every screen drafted afterwards reads it from the
+				 * live window (`optix_screen` sizes itself from the window), so a wrong answer here is not
+				 * one edit later: it is the size of every screen in the project. Measured 2026-11-14: an
+				 * agent scaffolded with no size question and produced a 1920x1080 project for a panel.
+				 */
+				if (typeof args.width !== "number" || typeof args.height !== "number") {
+					throw new Error("Scaffolding needs the operator's screen box: pass width and height in pixels. Ask the runtime target and the display size first - every screen drafted afterwards inherits this canvas, and changing it later means re-editing every screen.");
+				}
 				const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
 				const report = await scaffoldProject({
 					templateRoot: fileURLToPath(root),

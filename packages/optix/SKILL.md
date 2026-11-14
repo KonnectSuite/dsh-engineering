@@ -163,13 +163,18 @@ The bridge is the contract - when it answers, Studio is already open and the eng
 
 ### A. New project, no Studio open yet
 
-1. `optix_template` without `destination` and ask the manifest's `questions`. Each answer is baked
-   into files that are painful to re-edit later: **runtime** (OptixPanel device or a PC in a browser -
-   it picks the template), **screen size** (the operator's real box; a panel target and a widescreen
-   monitor differ), **project name**, **destination** (a new or empty directory), and **what it talks
-   to** (Logix, OPC UA, MQTT, or nothing yet - the templates ship those folders empty).
-2. Call it again with `template`, `destination`, `name`, `width` and `height`. That is the whole
-   scaffold: copy, rename, bridge, canvas. Report the path and the canvas it got.
+1. `optix_template` without `destination` and ask the manifest's `questions` **before** scaffolding.
+   Each answer is baked into files that are painful to re-edit later: **runtime** (OptixPanel device or
+   a PC in a browser - it picks the template), **screen size** (the operator's real box in pixels; a
+   panel target and a widescreen monitor differ, and every screen drafted afterwards inherits this
+   canvas), **project name**, **destination** (the workspace root or an empty folder), and **what it
+   talks to** (Logix, OPC UA, MQTT, or nothing yet - the templates ship those folders empty). Ask even
+   when the request sounds finished: "make me an Optix app" does not carry a screen size.
+2. Call it again with `template`, `destination`, `name`, `width` and `height`. `width` and `height`
+   are not optional - the tool refuses without them rather than guessing. The copy lands in
+   `<destination>/<name>`, so the folder is named after the project and Studio does not warn that the
+   project name and its folder disagree; a destination that already carries the name is used as the
+   project folder itself. Report the path the tool returned and the canvas it got.
 3. Hand the two Studio actions to the engineer in one short message and stop: which `.optix` file to
    open, that the build must succeed, and that the `StudioMCPBridge` NetLogic wants `StartBridge`.
    Name the one dialog they will meet: the first `StartBridge` raises Studio's NetLogic security

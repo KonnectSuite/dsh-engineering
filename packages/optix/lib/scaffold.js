@@ -118,66 +118,75 @@ async function applyScreenSize(destination, width, height) {
 /**
  * Copy a starter into a new directory, name it, and put this bundle's bridge inside it.
  *
- * The copy is never made over an existing project, and the bridge is replaced after the copy so
- * the result cannot depend on how old the starter's own copy happens to be.
+ * Studio warns when the project name and the folder holding it disagree ("The current project name
+ * 'X' does not match the project folder name 'Y'"), and an operator's workspace root is exactly the
+ * wrong place to unpack a project: it already holds other work. So the copy lands in a folder named
+ * after the project — `<destination>/<name>` — unless the destination already IS a folder of that
+ * name, in which case it is used as the project directory itself. Measured on Studio 1.8.1,
+ * 2026-11-14.
  * @param options - Template root, destination, optional name, shipped bridge source.
  * @param options.templateRoot - Directory holding the starter's `project/` folder.
- * @param options.destination - Absolute path of the new project directory.
+ * @param options.destination - Workspace root (or a project-named folder) the copy is written under.
  * @param options.sourceProjectName - Project name the starter ships under.
- * @param options.name - Optional project name for the copy.
- * @param options.width - Optional canvas width in pixels.
- * @param options.height - Optional canvas height in pixels.
+ * @param options.name - Project name for the copy; the folder takes the same name.
+ * @param options.width - Canvas width in pixels: the operator's screen box.
+ * @param options.height - Canvas height in pixels.
  * @param options.shipped - Current bridge source from this bundle.
- * @returns What was written, the bridge that went in, and the Studio steps that remain.
+ * @returns What was written, where it landed, the bridge that went in, and the Studio steps left.
  */
 export async function scaffoldProject({ templateRoot, destination, sourceProjectName, name, width, height, shipped }) {
 	const source = join(templateRoot, "project");
-	let existing = "absent";
+	const targetName = typeof name === "string" && name.trim() !== "" ? name.trim() : sourceProjectName;
+	if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(targetName)) throw new Error(`"${targetName}" is not a project name Studio accepts: use letters, digits and underscores, starting with a letter.`);
+	// Studio wants the folder named after the project. A destination that is already such a folder is
+	// the project directory; anything else (a workspace root, a fresh empty directory) gets a
+	// project-named folder inside it, so the operator's workspace never becomes the project.
+	const namedFolder = basename(destination).toLowerCase() === targetName.toLowerCase();
+	const root = namedFolder ? destination : join(destination, targetName);
+	let rootState = "absent";
 	try {
-		const info = await stat(destination);
-		if (!info.isDirectory()) throw new Error(`Destination ${destination} exists and is not a directory.`);
-		existing = (await readdir(destination)).length === 0 ? "empty" : "occupied";
+		const info = await stat(root);
+		if (!info.isDirectory()) throw new Error(`${root} exists and is not a directory, so the project cannot be written there.`);
+		rootState = (await readdir(root)).length === 0 ? "empty" : "occupied";
 	} catch (error) {
-		if (error instanceof Error && error.message.startsWith("Destination ")) throw error;
-		existing = "absent";
+		if (error instanceof Error && error.message.endsWith("cannot be written there.")) throw error;
+		rootState = "absent";
 	}
-	if (existing === "occupied") throw new Error(`Destination ${destination} already holds files. A starter is only copied into a new or empty directory, so nothing there is overwritten.`);
-	await mkdir(destination, {
+	if (rootState === "occupied") throw new Error(`${root} already holds files. A starter is only copied into a new or empty project folder, so nothing there is overwritten.`);
+	await mkdir(root, {
 		recursive: true
 	});
 	const templateProject = source;
-	// Copy the starter's top-level entries into the destination, so the destination directory is the
-	// project itself rather than a folder holding a `project` child.
+	// Copy the starter's top-level entries into the project folder, so that folder is the project
+	// itself rather than a folder holding a `project` child.
 	for (const entry of await readdir(templateProject, { withFileTypes: true })) {
-		await cp(join(templateProject, entry.name), join(destination, entry.name), {
+		await cp(join(templateProject, entry.name), join(root, entry.name), {
 			recursive: entry.isDirectory(),
 			force: false,
 			errorOnExist: true
 		});
 	}
-	const targetName = typeof name === "string" && name.trim() !== "" ? name.trim() : sourceProjectName;
-	if (!/^[A-Za-z][A-Za-z0-9_]{0,63}$/u.test(targetName)) throw new Error(`"${targetName}" is not a project name Studio accepts: use letters, digits and underscores, starting with a letter.`);
 	const renamed = [];
 	if (targetName !== sourceProjectName) {
-		for (const path of await walk(destination)) {
+		for (const path of await walk(root)) {
 			const extension = path.includes(".") ? `.${path.split(".").pop().toLowerCase()}` : "";
 			if (!TEXT_EXTENSIONS.has(extension)) continue;
-			const full = join(destination, path);
+			const full = join(root, path);
 			const text = await readFile(full, "utf8");
 			if (!text.includes(sourceProjectName)) continue;
 			await writeFile(full, text.split(sourceProjectName).join(targetName), "utf8");
 		}
 		// Rename the files that carry the name, deepest first so a directory rename cannot invalidate
 		// a path already queued.
-		for (const path of (await walk(destination)).sort((left, right) => right.length - left.length)) {
+		for (const path of (await walk(root)).sort((left, right) => right.length - left.length)) {
 			const namePart = basename(path);
 			if (!namePart.includes(sourceProjectName)) continue;
 			const renamedPath = join(dirname(path), namePart.split(sourceProjectName).join(targetName));
-			await rename(join(destination, path), join(destination, renamedPath));
+			await rename(join(root, path), join(root, renamedPath));
 			renamed.push(renamedPath.split(sep).join("/"));
 		}
 	}
-	const bridgeTarget = join(destination, "ProjectFiles", "NetSolution", BRIDGE_FILE);
+	const bridgeTarget = join(root, "ProjectFiles", "NetSolution", BRIDGE_FILE);
 	let bundledVersion = "";
 	try {
 		bundledVersion = bridgeVersion(await readFile(bridgeTarget, "utf8"));
@@ -185,15 +194,17 @@ export async function scaffoldProject({ templateRoot, destination, sourceProject
 		bundledVersion = "";
 	}
 	await writeFile(bridgeTarget, shipped, "utf8");
-	const screen = await applyScreenSize(destination, width, height);
-	const files = await walk(destination);
+	const screen = await applyScreenSize(root, width, height);
+	const files = await walk(root);
 	const optixFile = files.find((path) => path.endsWith(".optix"));
-	if (optixFile === void 0) throw new Error(`${destination} holds no .optix file after the copy, so Studio cannot open it.`);
-	const projectName = /^\s*Name:\s*(.+)$/mu.exec(await readFile(join(destination, optixFile), "utf8"))?.[1]?.trim() ?? "";
+	if (optixFile === void 0) throw new Error(`${root} holds no .optix file after the copy, so Studio cannot open it.`);
+	const projectName = /^\s*Name:\s*(.+)$/mu.exec(await readFile(join(root, optixFile), "utf8"))?.[1]?.trim() ?? "";
 	return {
-		project: destination,
+		project: root,
+		destination,
+		layout: namedFolder ? "destination" : "nested",
 		project_name: projectName,
-		optix_file: join(destination, optixFile),
+		optix_file: join(root, optixFile),
 		file_count: files.length,
 		renamed_files: renamed,
 		bridge_version: bridgeVersion(shipped),
@@ -206,11 +217,11 @@ export async function scaffoldProject({ templateRoot, destination, sourceProject
 			ui_file: screen.ui_file
 		},
 		studio_steps: [
-			`Ask the engineer to open ${join(destination, optixFile)} in FactoryTalk Optix Studio. You do not open Studio yourself.`,
+			`Ask the engineer to open ${join(root, optixFile)} in FactoryTalk Optix Studio. You do not open Studio yourself.`,
 			"The engineer builds the project (Ctrl+Shift+B, or Build > Build Solution) so the bridge class compiles.",
 			"The engineer right-clicks the StudioMCPBridge NetLogic node and chooses StartBridge.",
 			"Then call optix_status: the bridge answers on the port the profile configures."
 		],
-		next: `The project is at ${destination} with bridge ${bridgeVersion(shipped)} in ProjectFiles/NetSolution and a ${screen.width}x${screen.height} canvas (${screen.height > screen.width ? "portrait" : "landscape"}). It is not running yet, and starting Studio is the engineer's step, not yours: tell them to open that .optix file, build, and right-click the StudioMCPBridge NetLogic > StartBridge, then wait for their word before calling optix_status. Until that is done every other Optix tool answers Bridge unavailable, which is the state this copy exists to shorten, not to hide.`
+		next: `The project is at ${root} with bridge ${bridgeVersion(shipped)} in ProjectFiles/NetSolution and a ${screen.width}x${screen.height} canvas (${screen.height > screen.width ? "portrait" : "landscape"}). It is not running yet, and starting Studio is the engineer's step, not yours: tell them to open that .optix file, build, and right-click the StudioMCPBridge NetLogic > StartBridge, then wait for their word before calling optix_status. Until that is done every other Optix tool answers Bridge unavailable, which is the state this copy exists to shorten, not to hide.`
 	};
 }

@@ -164,7 +164,11 @@ Studio.
 
 **A project that has no bridge yet** - a new one from a starter, or somebody's existing project.
 `optix_template` with `destination` scaffolds the starter: copy, rename, the bridge this bundle ships,
-and the canvas from `width`/`height` (`Nodes/UI/UI.yaml` `MainWindow`). For an existing project,
+and the canvas from `width`/`height` (`Nodes/UI/UI.yaml` `MainWindow`). Those two numbers are required
+rather than defaulted, because every screen drafted afterwards reads the canvas from the live window: a
+wrong answer is not one edit later, it is the size of every screen in the project. The copy lands in
+`<destination>/<name>` - Studio warns (`423`) when a project's name and the folder holding it disagree,
+and a workspace root is not a project folder. For an existing project,
 `optix_bridge_arm` with `confirm: false` first reports what is there, and `confirm: true` writes the
 bridge and adds the `StudioMCPBridge` NetLogic node to `Nodes/NetLogic/NetLogic.yaml` when the project
 has none - a hand-built project usually has none, and `StartBridge` is unreachable without it. Every

@@ -1,3 +1,16 @@
+## [Unreleased]
+
+- **A new project now asks for the screen box, and never uses the workspace root as its own folder.** Two
+  defects an operator hit on the first real run: `optix_template` scaffolded a 1920x1080 project without
+  asking the display size, and it unpacked the starter straight into the workspace folder, so Studio opened
+  `...\Optix Demo\AryaNewHMIProject_IPC.optix` and warned `423 - The current project name
+  'AryaNewHMIProject_IPC' does not match the project folder name 'Optix Demo'`. `width` and `height` are now
+  required with `destination` and refused when missing ("Scaffolding needs the operator's screen box: pass
+  width and height in pixels"), and the copy lands in `<destination>/<name>` unless the destination already
+  carries the project name, so the folder and the project agree while a workspace root keeps its other work.
+  Covered by `test/optix-scaffold.spec.mjs` (6 tests); the skill's new-project steps and
+  `docs/reference/hmi-design.md` now say to ask before scaffolding.
+
 ## [0.94.0] - 2026-11-14
 
 - **A scaffolded project, opened by the engineer, is one tool session away from a running application.**
