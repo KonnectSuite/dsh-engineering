@@ -43,6 +43,23 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.94.1 release record (2026-11-14).** Built from `fix(optix): ask for the screen box and keep a
+new project out of the workspace root` (`f3005c4`) plus the `Release 0.94.1` bump (`e769a10`), tagged
+`v0.94.1`. Two defects an operator hit on the first real scaffold: `optix_template` copied a 1920x1080
+starter without asking the display size, and it unpacked the copy straight into the workspace folder, so
+Studio opened `...\Optix Demo\AryaNewHMIProject_IPC.optix` and warned `423 - The current project name
+'AryaNewHMIProject_IPC' does not match the project folder name 'Optix Demo'`. `width`/`height` are now
+required with `destination` and refused when missing, and the copy lands in `<destination>/<name>` unless
+the destination already carries the project name. Release evidence: the packed tool refused a scaffold with
+no canvas and then produced `workspace-installed/PanelApp/PanelApp.optix` (58 files, 800x480, bridge 1.0.9)
+from the installed bundle; `test/optix-scaffold.spec.mjs` grew to 6 tests; `pnpm test` 50 files passed
+(37,324 ms); `pnpm docs:tools` 158 tools; `pnpm -r build` + `pnpm assemble` clean; `pnpm publish`
+→ `0.94.1`; `scripts/verify-release.mjs --wait 300` answered ok for the registry tarball the moment the
+edge caught up (no `409 previously staged` this time, because the publish was not retried); the market
+`release-plugin.mjs` recorded the registry bytes (`sha256 e708f5c541dc…`) rather than this machine's pack
+(`a4fde89272cf…`), which is the documented immutability rule, and the catalogue and `latest` both read
+`0.94.1`.
+
 **0.94.0 release record (2026-11-14).** Built from `feat(optix): scaffold a project, arm one that has
 no bridge, and keep the IDE in the engineer's hands` (`6a2abb2`) plus the `Release 0.94.0` bump
 (`11a3a35`), tagged `v0.94.0`. Root suite **50 files green** (`pnpm test`, 23,431 ms), `pnpm -r build` +
