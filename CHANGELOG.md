@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.94.0] - 2026-11-14
 
 - **A scaffolded project, opened by the engineer, is one tool session away from a running application.**
   Verified end to end on `C:\Users\KNPhu\Documents\Rockwell Automation\FactoryTalk Optix\Projects\LineDemo`,
