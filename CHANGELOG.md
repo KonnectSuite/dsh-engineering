@@ -1,3 +1,17 @@
+## [Unreleased]
+
+- **The model now has a shape an OPC UA client can walk, and a tool that builds and judges it.** `optix_model`
+  (`action: plan | apply | check`) lays out `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>` with equipment
+  `ObjectType`s under `Model/Types`, typed instances and PascalCase signal names, then reads the live tree and
+  reports `OPTIX-MDL-01`..`06` with a `structured` / `needs-work` verdict. Planned and applied live on
+  `OptixTemplateDemo` (34 ops: 1 folder, 1 type, 1 instance, 5 variables, 10 metadata children; check
+  `structured`; a flat `Model/flat_tag` then produced the critical "sits 2 level(s) deep" plus units,
+  description and naming warnings, and deleting it restored `structured`). Two limits are measured and
+  reported rather than hidden: Studio 1.8.1 writes only `DisplayName` as an attribute, so units and range are
+  child String variables, and type members are copied onto instances because a `ModellingRule` None member is
+  not instantiated. Covered by `test/optix-model.spec.mjs` (9 tests), the skill's new "Lay out the model the
+  way an OPC UA client expects" section, `docs/reference/optix-model.md` and the corpus page
+  `optix-opcua-model-structure`; tool surface 18, README 176, `defaultOnTools` 156.
 ## [0.94.1] - 2026-11-14
 
 - **A new project now asks for the screen box, and never uses the workspace root as its own folder.** Two

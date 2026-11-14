@@ -4,7 +4,7 @@
 MotionWorks IEC, FactoryTalk Optix and ECAD electrical prints sit behind a single install, one row per
 surface. A row is the switch: disable it and that plugin unloads, so its tool schemas leave the request.
 
-`@aryacode/dsh-engineering` · 175 tools · 10 rows · 6 products · MIT
+`@aryacode/dsh-engineering` · 176 tools · 10 rows · 6 products · MIT
 
 **New here? Start with [Getting started](docs/getting-started.md)** — what each row needs, the loop every
 product follows, and the first prompt to paste per product.
@@ -64,7 +64,7 @@ package registers exactly one browser bundle.
 | **Studio 5000 L5X** | 54 | all on | Node for reads and edits; an optional Logix Designer SDK for SDK builds; a controller for live |
 | **FactoryTalk View ME** | 51 | all on | Node for an export folder; FactoryTalk View Studio ME for discovery and the handoff |
 | **MotionWorks IEC** | 24 | all on | MotionWorks IEC 3 Pro installed; verified against 1.19 |
-| **FactoryTalk Optix** | 17 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
+| **FactoryTalk Optix** | 18 (3 need preview) | all on | Optix Studio installed; Tesseract for OCR |
 | **ECAD electrical prints** | 12 | off | none; reads DXF prints (DWG through the embedded converter, no external app); authoring is optional and runs in AryaCAD Electrical through its own MCP row |
 | **Engineering resources** | 2 | all on | none; a profile needs an L5X or FactoryTalk View project open |
 | **SLC 500 and PLC-5 to Logix migration** | 7 | all on | none; reads an RSLogix 500 .RSS/.ACH or RSLogix 5 .RSP project hidden when that product is installed, otherwise the .SLC export, plus the .L5K a migration wizard writes |
@@ -81,7 +81,7 @@ Tool groups, by product:
   reported as unverified.
 - **FactoryTalk View** — 22 read (including `ftview_document`), 22 staged edits, 3 Studio handoff
 - **MotionWorks IEC** — 7 session, 7 saved-project reads, 3 verify, 7 direct edits
-- **Optix** — 16 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, `optix_library` lists and imports the template libraries the Studio install ships, `optix_screen` drafts a whole screen as one validated batch and `optix_design_check` reports the design rules against the live model, and the bridge tools need Studio
+- **Optix** — 17 tools, linked to the `factorytalk-optix` guidance; `optix_netlogic` reads the pinned NetLogic cheat-sheet snapshot, `optix_library` lists and imports the template libraries the Studio install ships, `optix_screen` drafts a whole screen as one validated batch, `optix_design_check` reports the design rules against the live model, `optix_production_check` reviews the whole project before release and `optix_model` lays out the OPC UA information model under `Model`; the bridge tools need Studio
 - **Migration** — 7 tools and the `legacy-to-logix-migration` skill: `slc_read` opens an .RSS/.ACH (RSLogix 500) or .RSP (RSLogix 5) hidden through its 32-bit automation server and returns program files, rung text, symbols and data files without a window; `migration_assess` reads an .SLC, .RSS/.ACH/.RSP or .L5K file and states what it is; `l5k_lint` reports the import blockers in the .L5K with line numbers; `migration_compare` scores an .RSS against the converted .L5X by routine, rung, symbol and data file; `migration_resolve` turns every PCE marker and unknown `?` operand the wizard left into a proposed Logix answer, marked answerable or needing review; `migration_report` writes the report a person signs off from — a formatted Word document or Markdown carrying the pre- and post-correction census, the corrections rung by rung and the open items that need their decision; `migration_plan` keeps the intake decisions, stage evidence and exceptions in .migration/plan.json
 - **PLC-5** — 8 read-only tools and the `rslogix-5` skill: `plc5_capabilities` reports the 32-bit host, the registered RSLogix 5 automation server and the container census (streams, sizes, packed flags); `plc5_open` opens an .RSP hidden through `RSLogix5.Application` with the do-not-save flag and returns the program-file census (52 files / 2,168 rungs on the reference project), falling back to the container reader — which names the project, the processor and the ladder program files from the file alone — when RSLogix 5 is absent or will not start; `plc5_ladder` pages rung text in neutral mnemonic form; `plc5_find` searches every rung and the symbol table; `plc5_io_census` reduces the program's `I:`/`O:` references to rack/slot cells and splits configured racks from program-only racks; `plc5_io_config` lists the configured chassis with adapter part numbers and rack/group ranges; `plc5_data_read` returns the data-file table (data-file values are not stored readably and are never claimed); `plc5_processor` names the controller — type string, author, memory, type code, series, driver and RSWho route, each labelled with its source. The point cards are not in the project and no tool invents them
 - **Engineering resources** — 2 tools and the `engineering-standards` skill: `engineering_reference` reads the

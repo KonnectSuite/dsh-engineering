@@ -92,6 +92,16 @@ not visible to it; changing View's shipped palette is a separate decision with i
 report, or a screen whose own geometry the model did not give, is listed in `unchecked` rather than
 scored, so a clean summary and a blind summary are distinguishable.
 
+## The model underneath the screens
+
+A screen binds to a tag path; the tag path is the part of the application an OPC UA client, a future alarm
+server and the next engineer actually navigate. `optix_model` owns that shape: `Model/Types` for equipment
+`ObjectType`s and `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>` for instances and signals, with units,
+range and a description travelling as child String variables. Its rules (`OPTIX-MDL-01`..`06`) are reported
+with a `structured` / `needs-work` verdict, every finding naming the path and the fix, and it never rewrites
+a flat model it finds. `docs/reference/optix-model.md` carries the convention, the rule table and the two
+measured limits - metadata as String variables, and type members copied onto instances until the bridge
+writes a modelling rule for them - and the corpus page is `optix/optix-opcua-model-structure`.
 ## The release review: `optix_production_check`
 
 A screen can pass every geometry rule and still ship dead. The review that runs over the whole project

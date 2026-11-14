@@ -798,6 +798,38 @@
       "sha256": "9b61fd2a83f374c48215972602c33303b51201f7bbce8f096ed336e7cf26bcd9"
     },
     {
+      "id": "optix-opcua-model-structure",
+      "title": "Structure the Optix model as an OPC UA information model",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "measured on Studio 1.8.1 with the Studio bridge",
+        "2026-11-14"
+      ],
+      "tags": [
+        "model",
+        "opc ua",
+        "information model",
+        "object types",
+        "variables",
+        "structure"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-MDL-01",
+        "OPTIX-MDL-02",
+        "OPTIX-MDL-03",
+        "OPTIX-MDL-04",
+        "OPTIX-MDL-05",
+        "OPTIX-MDL-06"
+      ],
+      "words": 492,
+      "bytes": 3697,
+      "sha256": "ffcf03eb20a0402f85cad46288c377c094e8c21a60575047eb47ee37385c9dc7"
+    },
+    {
       "id": "optix-ui-structure",
       "title": "Optix screens and reusable types",
       "domain": "optix",

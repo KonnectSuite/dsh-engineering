@@ -15,6 +15,7 @@ import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, read
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
+import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -1723,6 +1724,75 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
+	/**
+	* Validate a typed batch strictly, then apply it one operation at a time.
+	*
+	* One implementation of the batch contract, shared by `optix_edit` and
+	* `optix_model`: `validate_ops` first so a refused batch writes nothing, the
+	* serving project re-checked before every write so a reloaded or switched
+	* project cannot receive a half batch, and partial/indeterminate reported
+	* honestly rather than retried.
+	* @param input - Origin, target project, health snapshot, signal and the batch.
+	* @returns The same report shape `optix_edit` returns.
+	*/
+	async function runValidatedBatch({ origin, project, ops, health: selectedHealth, signal, apply = true }) {
+		if (!ops.length || ops.length > settings.maxBatchOps) throw new Error("Batch must contain 1..maxBatchOps operations");
+		const normalized = ops.map((op) => op.prop_name === void 0 ? op : {
+			...op,
+			name: op.prop_name
+		});
+		const validation = await bridge.request(origin, "validate_ops", signal, {}, "POST", {
+			ops: normalized,
+			strict: true
+		});
+		if (!acceptedValidation(validation, ops.length)) return {
+			status: "refused",
+			applied: 0,
+			validation
+		};
+		if (!apply) return {
+			status: "validated",
+			applied: 0,
+			validation
+		};
+		const results = [];
+		for (const [index, op] of ops.entries()) {
+			let dispatched = false;
+			try {
+				const health = await bridge.request(origin, "health", signal);
+				if (health.project !== project || health.model_loaded !== true || health.pid !== selectedHealth.pid || health.project_path !== selectedHealth.project_path) throw new Error("Serving Studio project changed during the batch");
+				const request = operationRequest(op);
+				dispatched = true;
+				const result = await bridge.request(origin, request.route, signal, request.query, "POST");
+				if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the authoring operation", true);
+				results.push(result);
+			} catch (error) {
+				return {
+					status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+					applied: results.length,
+					failed_index: index,
+					results,
+					validation,
+					error: String(error),
+					retry: "Inspect the live model; do not replay the entire batch automatically"
+				};
+			}
+		}
+		// A wiring operation written with a relative pointer path still leaves the
+		// absolute design-time NodeId in the pointer, and the runtime resolves that id
+		// first (the live failure is "No behaviour or observer found that handles the
+		// method 'ChangePanel'"). Clearing it belongs to every caller that wires an
+		// event, not only to optix_screen, so it happens here too.
+		const pointerClearing = await clearPointerValues(origin, ops, signal);
+		return {
+			status: "completed",
+			applied: results.length,
+			results,
+			validation,
+			...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
+			...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed })
+		};
+	}
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_edit",
 		description: "Strictly validate then sequentially apply a typed Optix authoring batch. dry_run defaults to true. Live writes require allowWrites; destructive operations also require allowDestructive. Stops on first failure; reports partial or indeterminate outcomes. No automatic retry or batch rollback. Re-read the model before retrying an indeterminate operation.",
@@ -1749,61 +1819,14 @@ function apply(ctx, config = {}) {
 			if (!dryRun) allowWrite(isDestructive(ops));
 			return exclusive(async () => {
 				const { origin, health: selectedHealth } = await bridge.select(args.project, exec.signal);
-				const normalized = ops.map((op) => op.prop_name === void 0 ? op : {
-					...op,
-					name: op.prop_name
+				return runValidatedBatch({
+					origin,
+					project: args.project,
+					ops,
+					health: selectedHealth,
+					signal: exec.signal,
+					apply: !dryRun
 				});
-				const validation = await bridge.request(origin, "validate_ops", exec.signal, {}, "POST", {
-					ops: normalized,
-					strict: true
-				});
-				if (!acceptedValidation(validation, ops.length)) return {
-					status: "refused",
-					applied: 0,
-					validation
-				};
-				if (dryRun) return {
-					status: "validated",
-					applied: 0,
-					validation
-				};
-				const results = [];
-				for (const [index, op] of ops.entries()) {
-					let dispatched = false;
-					try {
-						const health = await bridge.request(origin, "health", exec.signal);
-						if (health.project !== args.project || health.model_loaded !== true || health.pid !== selectedHealth.pid || health.project_path !== selectedHealth.project_path) throw new Error("Serving Studio project changed during the batch");
-						const request = operationRequest(op);
-						dispatched = true;
-						const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
-						if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the authoring operation", true);
-						results.push(result);
-					} catch (error) {
-						return {
-							status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
-							applied: results.length,
-							failed_index: index,
-							results,
-							validation,
-							error: String(error),
-							retry: "Inspect the live model; do not replay the entire batch automatically"
-						};
-					}
-				}
-				// A wiring operation written with a relative pointer path still leaves the
-				// absolute design-time NodeId in the pointer, and the runtime resolves that
-				// id first (the live failure is "No behaviour or observer found that handles
-				// the method 'ChangePanel'"). Clearing it belongs to every caller that wires
-				// an event, not only to optix_screen, so it happens here too.
-				const pointerClearing = await clearPointerValues(origin, ops, exec.signal);
-				return {
-					status: "completed",
-					applied: results.length,
-					results,
-					validation,
-					...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
-					...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed })
-				};
 			});
 		}
 	})));
@@ -3055,6 +3078,218 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_model",
+		description: "Scaffold or review the OPC UA information model under Model, the way a structured Optix project is laid out: one folder level per plant, area and line, equipment as ObjectTypes under Model/Types, signals as variables on the type, equipment instances of those types, and the metadata a tag can carry (DisplayName through the attribute route, EngineeringUnits/EURange/Description as child variables). action plan answers with the ordered operations and the folder tree without writing; action apply submits them through the same strictly validated batch optix_edit uses; action check reads the live Model tree and reports OPTIX-MDL-01..06 with a structured/needs-work verdict. Two measured limits are reported honestly: Optix variables cannot take a UA Description attribute or typed properties yet, so units/range/description are child String variables, and a type's members are COPIED onto its instances because the bridge writes them with ModellingRule None (so they would not instantiate on their own). An existing flat model is reported, never rewritten.",
+		parameters: {
+			project: projectParameter,
+			action: {
+				type: "string",
+				description: "plan returns the ops and tree the spec would create; apply creates them (needs allowWrites); check reads Model and reports the rules. Default plan."
+			},
+			spec: {
+				type: "object",
+				additionalProperties: true,
+				description: "The model to build: { plant, area, lines: [{ name, equipment: [{ name, type?, tags?: [{ name, datatype, initial?, display_name?, units?, range?, description? }] }] }], types?: [{ name, tags }] }. Ask the operator for the plant name, the area name and what equipment sits on each line before calling this."
+			},
+			hierarchy: {
+				type: "array",
+				items: {
+					type: "string"
+				},
+				description: "Three level names between Model and the line, in order. Default Plant, Area, Line."
+			},
+			depth: {
+				type: "integer",
+				description: "How deep the Model tree is read for check and for the existing-path scan. Default 8."
+			}
+		},
+		output: jsonOutput,
+		presentCall: () => ({
+			card: "generic",
+			title: "OPC UA model",
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			const action = args.action ?? "plan";
+			if (action === "plan" || action === "apply" || action === "check") {
+				// Known actions: the enum lives in the parameter description because the schema is open.
+			} else throw new Error(`action must be plan, apply or check (got ${String(action)})`);
+			if (action === "apply") allowWrite(true);
+			const hierarchy = args.hierarchy === void 0 ? DEFAULT_HIERARCHY : args.hierarchy;
+			const depth = args.depth ?? 8;
+
+			/** Reads the whole Model tree through /bridge/nodes, one call per folder, object, type and variable. */
+			async function readModel(origin, signal) {
+				const nodes = [];
+				const coverage = [];
+				const limit = 400;
+				let truncated = false;
+				let calls = 0;
+				const queue = [{ path: MODEL_ROOT, datatype: void 0 }];
+				while (queue.length > 0) {
+					if (calls >= limit) {
+						truncated = true;
+						break;
+					}
+					const item = queue.shift();
+					calls += 1;
+					let detail;
+					try {
+						detail = await bridge.request(origin, "nodes", signal, { path: item.path });
+					} catch (error) {
+						coverage.push(`${item.path}: ${String(error)}`);
+						continue;
+					}
+					const browse = String(detail?.browse_name ?? item.path.split("/").filter((segment) => segment !== "").at(-1) ?? "");
+					const nodeClass = String(detail?.node_class ?? "");
+					const dotnet = String(detail?.dotnet_type ?? "");
+					const kind = nodeClass === "ObjectType" ? "type" : nodeClass === "Variable" ? "variable" : dotnet === "Folder" ? "folder" : dotnet === "BaseObject" ? "object" : nodeClass === "Object" ? "folder" : "other";
+					/** Variable children arrive either as children (typed instances, folders) or as properties; both spellings are read once. */
+					const variableTypes = new Map();
+					for (const child of Array.isArray(detail?.children) ? detail.children : []) {
+						if (String(child?.type ?? "") !== "UAVariable") continue;
+						const name = String(child?.browse_name ?? child?.name ?? "");
+						if (name !== "" && !variableTypes.has(name)) variableTypes.set(name, "");
+					}
+					for (const property of Array.isArray(detail?.properties) ? detail.properties : []) {
+						const name = String(property?.name ?? "");
+						if (name !== "") variableTypes.set(name, String(property?.datatype ?? ""));
+					}
+					const members = [...variableTypes.keys()];
+					nodes.push({
+						path: item.path,
+						name: browse,
+						kind,
+						...(item.datatype === void 0 ? {} : { datatype: item.datatype }),
+						...(members.length === 0 ? {} : { members })
+					});
+					if (kind === "variable") continue;
+					const insideTypes = item.path === MODEL_ROOT ? false : item.path.startsWith(`${TYPES_FOLDER}/`) || item.path === TYPES_FOLDER;
+					if (!insideTypes) {
+						for (const [name, datatype] of variableTypes) queue.push({ path: `${item.path}/${name}`, datatype });
+					}
+					for (const child of Array.isArray(detail?.children) ? detail.children : []) {
+						if (String(child?.type ?? "") === "UAVariable") continue;
+						const name = String(child?.browse_name ?? child?.name ?? "");
+						if (name === "") continue;
+						queue.push({ path: `${item.path}/${name}` });
+					}
+				}
+				coverage.push(`${calls} node read(s) from ${MODEL_ROOT}`);
+				if (truncated) coverage.push(`the model read stopped after ${limit} nodes, so the findings describe part of the tree`);
+				return { nodes, coverage, truncated };
+			}
+
+			/** Collects every path that already exists under Model, so a re-run only adds what is missing. */
+			async function existingPaths(origin, signal) {
+				const paths = new Set([MODEL_ROOT]);
+				let truncated = false;
+				try {
+					const tree = await bridge.request(origin, "map", signal, {
+						path: MODEL_ROOT,
+						mode: "detail",
+						depth,
+						ids: 1,
+						max: 4000
+					});
+					const step = (entry, path) => {
+						paths.add(path);
+						for (const child of Array.isArray(entry?.children) ? entry.children : []) {
+							const name = String(child?.name ?? "");
+							if (name !== "") step(child, `${path}/${name}`);
+						}
+					};
+					if (tree?.map !== void 0) step(tree.map, MODEL_ROOT);
+					if (tree?.map?.more !== void 0 || tree?.more !== void 0) truncated = true;
+				} catch (error) {
+					return { paths, truncated: true, note: `${MODEL_ROOT} could not be mapped: ${String(error)}` };
+				}
+				return { paths, truncated };
+			}
+
+			return exclusive(async () => {
+				const { origin, health } = await bridge.select(args.project, exec.signal);
+				if (action === "check") {
+					const read = await readModel(origin, exec.signal);
+					const report = modelFindings({ nodes: read.nodes, hierarchy, truncated: read.truncated });
+					return {
+						status: "completed",
+						project: health.project,
+						verdict: report.verdict,
+						counts: report.counts,
+						findings: report.findings,
+						metadata: report.metadata,
+						...(report.note === void 0 ? {} : { note: report.note }),
+						coverage: [...read.coverage, ...report.coverage],
+						next: report.verdict === "structured" ? "The model follows the convention these rules measure. Bind the screen rows to the signal paths and keep new tags inside the same hierarchy." : "Fix the critical findings first - a signal outside the plant hierarchy is the thing that stops a model being navigable - then the warnings, then run optix_model check again."
+					};
+				}
+				const existing = await existingPaths(origin, exec.signal);
+				const plan = planModel(args.spec, {
+					hierarchy,
+					...(existing === void 0 ? {} : { existing: existing.paths })
+				});
+				if (action === "plan") return {
+					status: "planned",
+					project: health.project,
+					hierarchy: plan.hierarchy,
+					counts: plan.counts,
+					tree: plan.tree,
+					op_count: plan.ops.length,
+					ops: plan.ops,
+					questions: plan.questions,
+					...(plan.skipped.length === 0 ? {} : { skipped: plan.skipped }),
+					metadata: MODEL_METADATA,
+					...(existing?.note === void 0 ? {} : { note: existing.note }),
+					next: "Apply with action:\"apply\" (it needs allowWrites), then save the project in Studio and run action:\"check\" to see the same tree through the rules."
+				};
+				if (plan.ops.length === 0) return {
+					status: "completed",
+					project: health.project,
+					hierarchy: plan.hierarchy,
+					counts: plan.counts,
+					tree: plan.tree,
+					applied: 0,
+					skipped: plan.skipped,
+					questions: plan.questions,
+					metadata: MODEL_METADATA,
+					next: "Every path in the spec already exists. Run action:\"check\" to judge the live model, or change the spec."
+				};
+				const batch = await runValidatedBatch({
+					origin,
+					project: args.project,
+					ops: plan.ops,
+					health,
+					signal: exec.signal
+				});
+				if (batch.status !== "validated" && batch.status !== "completed") return {
+					status: batch.status,
+					project: health.project,
+					applied: batch.applied,
+					...(batch.failed_index === void 0 ? {} : { failed_index: batch.failed_index }),
+					...(batch.error === void 0 ? {} : { error: batch.error }),
+					validation: batch.validation,
+					retry: "Inspect the live Model tree before retrying; a plan is idempotent because existing paths are skipped."
+				};
+				return {
+					status: "completed",
+					project: health.project,
+					hierarchy: plan.hierarchy,
+					counts: plan.counts,
+					tree: plan.tree,
+					applied: batch.applied,
+					questions: plan.questions,
+					...(plan.skipped.length === 0 ? {} : { skipped: plan.skipped }),
+					...(batch.pointer_values_cleared === void 0 ? {} : { pointer_values_cleared: batch.pointer_values_cleared }),
+					metadata: MODEL_METADATA,
+					inheritance: "copied",
+					next: "Save the project in Studio (the model is only in memory until you do), then run action:\"check\". A typed instance carries copies of its type's members because the bridge writes members with ModellingRule None."
+				};
+			});
+		}
+	})));
+
 }
 //#endregion
 export { Config, apply, inject, name };

@@ -110,6 +110,29 @@ Finish by looking. `optix_preview` and `optix_screenshot` are the only step that
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
 the rule-to-tool map are in `docs/reference/hmi-design.md`.
 
+## Lay out the model the way an OPC UA client expects
+
+A screen is only as good as the tree behind it. `optix_model` builds and judges that tree with one
+convention: `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>`, equipment types under `Model/Types`,
+equipment as instances of those types, and signal names PascalCase, forty characters at most.
+
+- `action: "plan"` answers with the ordered operations and the folder tree it would create, without
+  writing. Read it back to the operator before applying: the plant, the area and the equipment names are
+  theirs to choose, and the spec needs all three (`spec.plant`, `spec.area`, `spec.lines[].equipment`).
+- `action: "apply"` submits that plan through the same strictly validated batch `optix_edit` uses (it
+  needs `allowWrites`), skips paths that already exist, and reports what it created.
+- `action: "check"` reads the live `Model` tree and reports `OPTIX-MDL-01`..`06` with a `structured` or
+  `needs-work` verdict: a signal outside the hierarchy, an analog value with no `EngineeringUnits`, a
+  signal with no `Description`, a name that breaks the convention, a folder holding more than twelve
+  variables, and equipment folders with no `ObjectType` behind them.
+
+Two limits are measured, not guessed, and the tool says both in its report. Studio 1.8.1 writes only
+`DisplayName` as a node attribute, so units, range and description travel as child String variables
+(`EngineeringUnits`, `EURange`, `Description`) — not as UA properties; and a type's members are copied
+onto each instance, because the bridge writes members with `ModellingRule` None and a None member is not
+instantiated. Both are reported as `metadata` and `inheritance: "copied"` in the result, and the fix
+belongs in the bridge, not in a workaround. An existing flat model is reported by `check`, never rewritten.
+
 ## Review the project before calling it released
 
 `optix_production_check` is the release review: it reads the whole `UI` tree in one call and answers with

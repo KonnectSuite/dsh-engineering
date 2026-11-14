@@ -38,6 +38,7 @@ const BUNDLE = [
   'test/optix-template.spec.mjs',
   'test/optix-scaffold.spec.mjs',
   'test/optix-emulator.spec.mjs',
+  'test/optix-model.spec.mjs',
   'test/resources.spec.mjs',
   'test/viewer-face-css.spec.mjs',
   'test/diagram-face.spec.mjs',

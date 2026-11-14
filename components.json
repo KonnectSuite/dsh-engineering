@@ -1,9 +1,9 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 155,
+    "defaultOnTools": 156,
     "defaultOnSchemaCharacters": 127423,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-14 after optix_screen and optix_design_check landed: l5x 54 + ftview 51 + mwi 24 + optix 17 (16 vendored engine tools plus optix_netlogic, which entries/netlogic.js registers) + engineering-resources 2 + migration 7 = 155 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-14 after optix_screen and optix_design_check landed: l5x 54 + ftview 51 + mwi 24 + optix 18 (17 vendored engine tools plus optix_netlogic, which entries/netlogic.js registers) + engineering-resources 2 + migration 7 = 156 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -197,7 +197,7 @@
       "vendored": true,
       "tools": {
         "product": "FactoryTalk Optix",
-        "count": 17,
+        "count": 18,
         "inReference": false
       },
       "skill": {
@@ -222,6 +222,7 @@
           "optix_screen",
           "optix_design_check",
           "optix_production_check",
+          "optix_model",
           "dry_run"
         ]
       },
