@@ -43,6 +43,21 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.94.2 release record (2026-11-14).** Built from five feature commits plus the `Release 0.94.2` bump
+(`99f9e26`), tagged `v0.94.2`: the OPC UA information-model lane (`optix_model`, `1340987`), NetLogic
+authoring (`optix_script`, `cf4680f`), the NetLogic practice review and safe templates (`3acd674`), the
+product-neutral HMI/SCADA baseline with its precedence rules (`fc2faf8`) and Rockwell's published process
+style guide as the vendor layer (`7d83334`). Release evidence: `pnpm docs:check` clean; `pnpm test`
+**52 files passed** (25,342 ms, including the extended `test/optix-model.spec.mjs` 9, `test/optix-netlogic.spec.mjs`
+19 and `test/resources.spec.mjs` 11); corpus **58 pages**, digest `318352db85d4`; `pnpm -r build` +
+`pnpm assemble` → 8 components into `vendor/`; `pnpm publish --no-git-checks` →
+`✅ Published package @aryacode/dsh-engineering@0.94.2`. The first `verify-release.mjs --wait 300` answered
+`registry latest is 0.94.1, this repository is 0.94.2` — the CDN edge, not a failure — and the rerun
+answered `ok @aryacode/dsh-engineering@0.94.2`; the publish was **not** retried, which is why there was no
+`409 previously staged`. The market `release-plugin.mjs` recorded the registry copy
+(`sha256 ac9ea4f93fe2…`) rather than this machine's pack (`51d7a2f49d5d…`), per the immutability rule;
+the live catalogue `releases[0]` and npm `latest` both read `0.94.2`.
+
 **0.94.1 release record (2026-11-14).** Built from `fix(optix): ask for the screen box and keep a
 new project out of the workspace root` (`f3005c4`) plus the `Release 0.94.1` bump (`e769a10`), tagged
 `v0.94.1`. Two defects an operator hit on the first real scaffold: `optix_template` copied a 1920x1080
