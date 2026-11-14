@@ -12,9 +12,19 @@ after.
   target size, label, contrast, shared palette — and applies to View and Optix alike. For an Optix
   screen, `optix-application-recipe`, `optix-navigation-patterns`, `optix-widget-patterns` and `optix-design-resources` distil the
   shell-and-loader scheme, the composite-first rule and Rockwell's published sample projects.
+- Any HMI or SCADA screen work starts from the product-neutral baseline, not from the product: read
+  `hmi-isa101-baseline` (situational awareness, neutral canvas, reserved state colours, data over
+  decoration) and `hmi-screen-architecture` (levels, reachability, persistent context, start screen,
+  alarm access, popups) before you draft. `hmi-standards-precedence` decides who wins when the baseline
+  disagrees with the plant.
 - When a project or export is open, call `engineering_profile` **before** writing. It reports the naming,
   idioms and visual conventions the plant already uses, with evidence and a confidence level. Follow the
   profile where it is confident; where it is low, say so and ask.
+- Precedence, highest first: what the operator asked for, the project's own documented standard or theme,
+  a convention the existing screens follow consistently (that is what the profile measures), and then
+  this corpus. A deliberate house style wins over the baseline; record the waiver and the rule it waived
+  instead of bending the baseline silently (`HMI-PREC-01`, `HMI-PREC-02`). Ask rather than guess when the
+  layers conflict in a way that would change what the operator has to do (`HMI-PREC-03`).
 
 ## Order of work
 

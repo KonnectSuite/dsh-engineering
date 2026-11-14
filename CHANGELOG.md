@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+- **HMI/SCADA screens now start from a product-neutral baseline, and the plant's own convention still wins.**
+  Three corpus pages in the `hmi` domain carry the judgements no design check can compute: `hmi-isa101-baseline`
+  (`HMI-101-01`..`06` — neutral canvas, colour reserved for state, data over decoration, deviation not raw numbers,
+  units and precision, consistency), `hmi-screen-architecture` (`HMI-ARCH-01`..`06` — levels, reachability, persistent
+  context, start screen and alarm access, commands versus indications, popups) and `hmi-standards-precedence`
+  (`HMI-PREC-01`..`03` — explicit instruction or documented project standard or consistent observed convention first,
+  the baseline last; a waiver is recorded, never silent; ask when the layers conflict in a way that changes operator
+  action). The release checklist a handover has to answer lives on the precedence page. The engineering-standards
+  skill, the Optix and FactoryTalk View skills and `docs/reference/hmi-design.md` now route screen work through the
+  three pages, so an agent that has to work inside an existing house style has an explicit way to follow it and say
+  so. Covered by `test/resources.spec.mjs`.
+
 - **A NetLogic is now reviewed against the practices the runtime rewards, not only compiled.** `optix_script` gained
   `action: review` and the rules `OPTIX-NL-03`..`12`: a `PeriodicTask` that is never disposed, a tick without
   `try/catch`, a `Project.Current` lookup on the timer thread, a blocking call (`Thread.Sleep`, `.Wait()`, `.Result`,

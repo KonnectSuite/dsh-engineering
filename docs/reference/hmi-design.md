@@ -92,6 +92,26 @@ not visible to it; changing View's shipped palette is a separate decision with i
 report, or a screen whose own geometry the model did not give, is listed in `unchecked` rather than
 scored, so a clean summary and a blind summary are distinguishable.
 
+## The general baseline, and when it yields
+
+The table above covers what a tool can compute. The judgements a tool cannot make — the neutral canvas,
+what colour is allowed to mean, how dense a screen may be, where an operator starts and how they get back
+— live in three product-neutral corpus pages, and they apply to any HMI/SCADA product, not only to these
+two:
+
+| Corpus page | Rules | Answers |
+|---|---|---|
+| `hmi/hmi-isa101-baseline` | `HMI-101-01`..`06` | neutral base, reserved state colours, data over decoration, deviation not raw numbers, units and precision, consistency |
+| `hmi/hmi-screen-architecture` | `HMI-ARCH-01`..`06` | levels, reachability, persistent header/footer, start screen and alarm access, commands vs indications, popups |
+| `hmi/hmi-standards-precedence` | `HMI-PREC-01`..`03` | which layer wins, how a waiver is recorded, when to stop and ask, and the release checklist |
+
+Precedence is deliberate: an explicit operator instruction or the project's own documented standard or
+theme comes first, a convention the existing screens already follow consistently comes second (that is
+what `engineering_profile` measures, with its confidence), and the baseline is the default only when
+neither speaks. A project built to a house style is not a defect to be corrected; a deviation is recorded
+rather than silently applied, and a conflict that would change what the operator has to do is a question,
+not a decision.
+
 ## The model underneath the screens
 
 A screen binds to a tag path; the tag path is the part of the application an OPC UA client, a future alarm

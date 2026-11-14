@@ -189,6 +189,101 @@
       "sha256": "a7668b6a4bd291b10429197a329b0567638938bc43dda1bf40a9f1ff4172a6f8"
     },
     {
+      "id": "hmi-isa101-baseline",
+      "title": "The operating display, ISA-101 style: a neutral canvas and colour that means something",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101",
+        "ASM Consortium",
+        "ISA-18.2"
+      ],
+      "tags": [
+        "hmi",
+        "isa-101",
+        "situational-awareness",
+        "colour",
+        "density",
+        "high-performance-hmi"
+      ],
+      "applies_to": [
+        "hmi"
+      ],
+      "rules": [
+        "HMI-101-01",
+        "HMI-101-02",
+        "HMI-101-03",
+        "HMI-101-04",
+        "HMI-101-05",
+        "HMI-101-06"
+      ],
+      "words": 622,
+      "bytes": 4161,
+      "sha256": "53fb92d20a0aac4705ef3d00cce63247f4d362af194d543c0c1fc3b3cc389ac9"
+    },
+    {
+      "id": "hmi-screen-architecture",
+      "title": "Screen architecture: hierarchy, navigation and the context that never goes away",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101",
+        "ASM Consortium",
+        "EEMUA 201"
+      ],
+      "tags": [
+        "hmi",
+        "architecture",
+        "navigation",
+        "hierarchy",
+        "alarms",
+        "popups"
+      ],
+      "applies_to": [
+        "hmi"
+      ],
+      "rules": [
+        "HMI-ARCH-01",
+        "HMI-ARCH-02",
+        "HMI-ARCH-03",
+        "HMI-ARCH-04",
+        "HMI-ARCH-05",
+        "HMI-ARCH-06"
+      ],
+      "words": 549,
+      "bytes": 3664,
+      "sha256": "14497ea1a570ce461bfce278e4ccb0198c5f2feb5a675c82460eca94bf5d0616"
+    },
+    {
+      "id": "hmi-standards-precedence",
+      "title": "When the baseline yields: precedence, deviations and the release checklist",
+      "domain": "hmi",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101",
+        "ASM Consortium"
+      ],
+      "tags": [
+        "hmi",
+        "standards",
+        "precedence",
+        "conventions",
+        "review",
+        "release"
+      ],
+      "applies_to": [
+        "hmi"
+      ],
+      "rules": [
+        "HMI-PREC-01",
+        "HMI-PREC-02",
+        "HMI-PREC-03"
+      ],
+      "words": 581,
+      "bytes": 3977,
+      "sha256": "a9af0a107bd25d7ce2a5c03f11fb87302190bddd3add1883711add1cd91a5932"
+    },
+    {
       "id": "hmi-targets-and-labels",
       "title": "Touch targets and controls that name themselves",
       "domain": "hmi",

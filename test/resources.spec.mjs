@@ -69,6 +69,25 @@ test('the product-neutral design pages answer a design query', async () => {
   assert.match(page.data.markdown, /4\.5:1/u)
 })
 
+test('the general HMI/SCADA baseline is reachable and states the precedence', async () => {
+  const contents = await referenceTool.execute({})
+  const ids = contents.data.pages.map(page => page.id)
+  for (const id of ['hmi-isa101-baseline', 'hmi-screen-architecture', 'hmi-standards-precedence']) {
+    assert.ok(ids.includes(id), `the corpus is missing ${id}`)
+  }
+
+  const overview = await referenceTool.execute({ query: 'high performance hmi' })
+  assert.ok(overview.data.hits.some(hit => hit.id === 'hmi-isa101-baseline'), 'no page answers for high-performance HMI')
+
+  const architecture = await referenceTool.execute({ query: 'screen hierarchy navigation' })
+  assert.ok(architecture.data.hits.some(hit => hit.id === 'hmi-screen-architecture'), 'no page owns screen architecture')
+
+  const precedence = await referenceTool.execute({ id: 'hmi-standards-precedence' })
+  assert.ok(precedence.data.rules.includes('HMI-PREC-01'))
+  assert.match(precedence.data.markdown, /the user's explicit instruction/u)
+  assert.match(precedence.data.markdown, /engineering_profile/u)
+})
+
 test('the standards skill mounts through the skills service', () => {
   assert.deepEqual(skill.inject, ['skills'])
   const registered = []

@@ -103,6 +103,11 @@ project to open for a nav shell, gauge, alarm grid, style sheet or NetLogic snip
 
 ## Draft a screen, then check it
 
+Decide first which layer of the standard you are applying: the operator's explicit instruction, the
+project's own theme and existing screens, or the product-neutral baseline (`hmi-isa101-baseline`,
+`hmi-screen-architecture`, and `hmi-standards-precedence` for the order). A deliberate house style wins
+over the baseline; record the waiver instead of bending the screen quietly.
+
 `optix_screen` builds a whole screen as one `optix_edit` batch — header band, title, content surface,
 footer, up to four cards with labelled rows, up to four navigation buttons — from the same scaffold the
 View side uses, and it refuses rather than squeezes: a display too small for the scaffold, a body with
