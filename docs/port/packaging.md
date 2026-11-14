@@ -43,6 +43,24 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.94.0 release record (2026-11-14).** Built from `feat(optix): scaffold a project, arm one that has
+no bridge, and keep the IDE in the engineer's hands` (`6a2abb2`) plus the `Release 0.94.0` bump
+(`11a3a35`), tagged `v0.94.0`. Root suite **50 files green** (`pnpm test`, 23,431 ms), `pnpm -r build` +
+`assemble` (eight components) deterministic, published `2026-11-14T18:09:25Z`: 4.0 MB, 787 files, npm
+serves it as `latest` and the catalogue records the registry copy (`sha256 cfefa597640d…`, this
+machine's repack `0d64715cd519…` — the prepack rebuild means two packs of the same tree never match,
+so the registry copy is what the catalogue carries). Release evidence calls the tools that changed:
+`optix_template` scaffolded `…\Projects\LineDemo` (34 files, bridge 1.0.9, 1920×1080), the engineer
+opened/built/`StartBridge`-ed it, then `optix_edit`/`optix_screen` created four tags, a `PanelLoader`
+and two screens (126 and 106 ops, `optix_design_check` 0 findings each, `optix_production_check`
+`review` with only the two `PROD-04` built-in-user warnings), `optix_emulator` started the runtime and
+the rendered app switched panels on a click
+(`docs/port/optix-live-proof/15-linedemo-overview-runtime.png`, `16-linedemo-controls-runtime.png`).
+One measured wrinkle for the next release: `npm view` served `0.93.0` for about ninety seconds after
+the publish finished, and a second `npm publish` during that window answers `409 … previously staged
+version` — that message means "already published, the edge has not caught up", not "waiting for
+approval"; `scripts/verify-release.mjs --wait` is the way to confirm, and the market script skips the
+publish once it sees the registry copy.
 **0.93.0 release record (2026-11-13).** Built from `feat(ecad): make the row a review-and-view row,
 not a CAD editor` (`bf16673`), tagged `v0.93.0`. Root suite 19 specs green (166 tests) and the ECAD
 package 21 specs green (182 pass, 4 skipped — the AryaCAD fixture skips rather than fakes, because the
