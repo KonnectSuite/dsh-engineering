@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
-import { armBridge } from "./arm.js";
+import { armBridge, bridgeVersion } from "./arm.js";
 import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 //#region lib/types/bridge.js
@@ -992,7 +992,7 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, or read their NetLogic and project files. The manifest carries `questions`: ask them before copying, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Copy the selected project directory into a new workspace directory with filesystem tools; preserve the original project name. Never overwrite an existing project. Templates include bridge 1.0.7; exported method invocation requires upgrading to the separately supplied session-safe bridge. No Studio connection is required.",
+		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, or read their NetLogic and project files. The manifest carries `questions`: ask them before copying, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Copy the selected project directory into a new workspace directory with filesystem tools; preserve the original project name. Never overwrite an existing project. A starter ships an older bridge copy inside itself; run optix_bridge_arm on the copy to carry the session-safe bridge this package tracks. No Studio connection is required.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1020,13 +1020,28 @@ function applyTemplates(ctx, maxBytes) {
 			exec.signal.throwIfAborted();
 			const root = new URL(`../templates/${args.template}/`, import.meta.url);
 			const manifest = parseTemplateManifest(await readFile(new URL("manifest.json", root), "utf8"));
-			if (args.path === void 0) return {
-				manifest,
-				sourceDirectory: fileURLToPath(new URL("project/", root)),
-				bridgeVersion: "1.0.7",
-				questions: manifest.questions ?? [],
-				instructions: "Ask the manifest's questions before copying anything: which runtime, what screen size, whether the project keeps its shipped name, and where the copy goes. Then copy to a new directory, open the .optix file in Studio 1.7.4.32, compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
-			};
+			if (args.path === void 0) {
+				/**
+				 * The version named here is the one this package actually ships, read from the tracked
+				 * bridge, alongside the older copy the starter project carries inside itself: the gap
+				 * between the two is the reason `optix_bridge_arm` exists.
+				 */
+				const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
+				let bundled = "";
+				try {
+					bundled = bridgeVersion(await readFile(new URL("project/ProjectFiles/NetSolution/StudioMCPBridge.cs", root), "utf8"));
+				} catch {
+					bundled = "";
+				}
+				return {
+					manifest,
+					sourceDirectory: fileURLToPath(new URL("project/", root)),
+					bridgeVersion: bridgeVersion(shipped),
+					bundledBridgeVersion: bundled,
+					questions: manifest.questions ?? [],
+					instructions: "Ask the manifest's questions before copying anything: which runtime, what screen size, whether the project keeps its shipped name, and where the copy goes. Then copy to a new directory, run optix_bridge_arm on the copy so it carries this bridge instead of the older one the starter ships, open the .optix file in Studio 1.7.4.32, compile NetSolution, and execute StartBridge. The class name StudioMCPBridge is retained; no MCP service is needed."
+				};
+			}
 			const path = args.path;
 			if (!path || path.includes("\\") || path.split("/").some((part) => !part || part === "." || part === "..") || !manifest.files.some((file) => file !== null && typeof file === "object" && !Array.isArray(file) && file.path === path && file.text === true)) throw new Error("Choose an exact text file path listed in the template manifest");
 			const bytes = await readFile(new URL(`project/${path.split("/").map(encodeURIComponent).join("/")}`, root));
@@ -1859,6 +1874,10 @@ function apply(ctx, config = {}) {
 				type: "string",
 				description: "For action list: only items whose name or shipped description contains this text."
 			},
+			detail: {
+				type: "boolean",
+				description: "For action list: include the usage text each item ships with. Off by default because it is long; a query always includes it."
+			},
 			project: {
 				type: "string",
 				description: "Exact loaded project BrowseName from optix_status. Required for action import."
@@ -1885,8 +1904,18 @@ function apply(ctx, config = {}) {
 					next: `This Studio ships ${libraryNames(catalog).join(", ")}.`
 				};
 				const needle = args.query?.trim().toLowerCase() ?? "";
+				const verbose = args.detail === true || needle !== "";
 				const libraries = catalog.filter((entry) => wanted === "" || entry.library.toLowerCase() === wanted.toLowerCase()).map((entry) => {
-					const items = entry.items.filter((item) => needle === "" || item.name.toLowerCase().includes(needle) || (item.display ?? "").toLowerCase().includes(needle) || (item.description ?? "").toLowerCase().includes(needle));
+					const items = entry.items
+						.filter((item) => needle === "" || item.name.toLowerCase().includes(needle) || (item.display ?? "").toLowerCase().includes(needle) || (item.description ?? "").toLowerCase().includes(needle))
+						.map((item) => ({
+							name: item.name,
+							display: item.display ?? item.name,
+							...item.display_zh === void 0 ? {} : { display_zh: item.display_zh },
+							owned_types: item.owned_types,
+							components: item.components,
+							...verbose ? { description: item.description ?? "" } : {}
+						}));
 					return {
 						library: entry.library,
 						item_count: entry.item_count,

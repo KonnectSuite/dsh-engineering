@@ -31,6 +31,7 @@ const BUNDLE = [
   'test/netlogic.spec.mjs',
   'test/optix-chain.spec.mjs',
   'test/optix-arm.spec.mjs',
+  'test/optix-library.spec.mjs',
   'test/optix-template.spec.mjs',
   'test/optix-emulator.spec.mjs',
   'test/resources.spec.mjs',

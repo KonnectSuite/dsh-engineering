@@ -18,8 +18,10 @@ git switch --track origin/wip/optix-hmi-design
 pnpm install
 ```
 
-Then start at **A4** and **A5** below — they are small, they unblock every live-Studio call, and until
-A4 the vendored-bridge diff is unrecorded (the repo's own rule for `packages/optix/bridge/`).
+Then start at **B1** below — A1–A5 and the manifest/docs half of E are done, and the suite's doc gates pass
+(`node test/components.spec.mjs` 14/14, `node test/docs.spec.mjs` 9/9, `node test/optix-library.spec.mjs`
+9/9, `node test/optix-template.spec.mjs` 6/6). The remaining work is the draft-screen and design-check lane
+(B1–B3) and the product-neutral `hmi` corpus domain (C1–C4).
 
 ## Why this batch exists
 
@@ -99,33 +101,35 @@ answers:
 - `optix_status` health now advertises `"invoke_session":"root"` and `"template_library":true`; the
   first is what `optix_action` invoke requires, the second is what `optix_library import` requires.
 - `packages/optix/bridge/source.json` pins upstream `asqi-carter/ftx-mcp` @
-  `c36163ea88e79efc56d4df10eb337b44969fa922`, sha256 `6310701237…`, `localChanges: []` — still stale
-  (A4).
-- Budget gates: `components.json` `contextBudget.defaultOnTools = 150` (exact; one more default-on tool
+  `c36163ea88e79efc56d4df10eb337b44969fa922`, sha256 `e42b10a471dcbf86042720573c0de8911bf6819294b558001aae8009490f8748`
+  (measured on the 378,391-byte tracked bridge), and its `localChanges` records the four local edits. The
+  upstream pull request is **still not filed** — that is an open task, not a completed one.
+- Budget gates: `components.json` `contextBudget.defaultOnTools = 152` (exact; one more default-on tool
   fails the suite until the number is raised *with its measurement*, or the component ships off) and
-  `defaultOnSchemaCharacters = 127423`; `packages/optix/SKILL.md` is 7,992 B against
-  `skillPolicy.defaultBudget 8000`.
+  `defaultOnSchemaCharacters = 127423`. The Optix component now claims **14** tools: 13 vendored engine
+  tools plus `optix_netlogic`, which `entries/netlogic.js` registers. `packages/optix/SKILL.md` is
+  un-budgeted (`skill.budget: null`), so its body may grow past 8,000 bytes without failing the suite —
+  keep it lean anyway, because a skill body is injected into the request.
 
 ## What remains, in order
 
-**A4 — record the vendored change (do this first).** Add one `localChanges` entry to
-`packages/optix/bridge/source.json` describing the `POST /bridge/library/import` verb (rationale: no
-static-call path exists; upstream PR to open later), and update the recorded `sha256` to the new
-`packages/optix/bridge/StudioMCPBridge.cs` (378,391 B now). Keep the added code as one commented block
-so an upstream diff stays reviewable — the file's own comment style already does this.
+**A4 — done.** `packages/optix/bridge/source.json` carries four `localChanges` entries (the 1.0.9 version
+bump and health field, the `POST /bridge/library/import` verb and its `_MutationRoutes` entry, the
+`TemplateLibrary.`-qualified conflict types, and the unfiled upstream PR) and the re-measured sha256.
+**Filing that upstream pull request is still open.**
 
-**A5 — the copied template carries a stale, non-session-safe bridge.** The starter project copy
-`packages/optix/templates/arya-optix-panel/project/ProjectFiles/NetSolution/StudioMCPBridge.cs` is
-238,383 B against the tracked 378,391 B and contains no `ImpersonateRootTemporary`, so a project created
-by `optix_template` has neither new verb and `optix_action` invoke refuses (`health.invoke_session` is
-absent). Either have `optix_template` copy the tracked bridge over the template copy, or make the
-manifest name the replacement step explicitly (worse: a silent quality cliff). Extend
-`test/optix-template.spec.mjs` to assert the copied bridge is byte-identical to
-`packages/optix/bridge/StudioMCPBridge.cs`. This is the last blocker on a truthful end-to-end demo.
+**A5 — done as far as a tool can.** `optix_template` no longer claims a hardcoded `1.0.7`: it reads the
+version out of the tracked bridge, reports the starter's own `bundledBridgeVersion` beside it, and its
+instructions name `optix_bridge_arm` as the step that replaces the stale copy. `test/optix-template.spec.mjs`
+asserts the tracked bridge carries a version and `ImpersonateRootTemporary`, and that any starter whose
+bundled version differs names that step. The starter folders still ship their old 238,383-byte copy on
+purpose — overwriting a vendored starter project is the owner's call, not a silent edit.
 
-**A3 polish.** Decide whether `library.js` needs a `lib/types/*.d.ts` entry like the other modules; make
-sure the tool's description and `docs/reference/tools.md` are regenerated (see E1 for how vendored tools
-appear).
+**A3 polish — done.** `packages/optix/lib/types/library.d.ts` matches the sibling declarations, and
+`test/optix-library.spec.mjs` (9 tests, all offline) holds the catalog parser, the localization header row,
+the name suggestions, the bridge verb's session wrapper and conflict-type nesting, the fact that an import
+stays out of the reversible `optix_edit` allowlist, and the manifest count. It is registered in
+`scripts/test.mjs`'s BUNDLE list.
 
 **B1 — `packages/optix/lib/screens.js`.** Port, do not reinvent: mirror
 `packages/ftview/src/edit/scaffold.ts` (PAD 24, HEADER 88, FOOTER 56; slots header/title/subtitle/body/
@@ -177,21 +181,27 @@ runtime behaviour). **D2 — deferred, own decision:** an Optix screen face (SVG
 `packages/ftview-viewer`) is a new package plus a face, inheriting the AGENTS.md client-UI contract; do
 it only after A–C land.
 
-**E1 — manifest and budget (the suite will fail you here).** `components.json`: optix `tools.count`
-12 → 13 for `optix_library` (+ `optix_screen` and `optix_design_check` as they land, so 14 or 15), add
-the names to the `factorytalk-optix` skill allow-list, and raise
-`contextBudget.defaultOnTools` 150 → 152 *with the measurement recorded in the manifest comment* — or
-ship `optix_design_check` off by default like ECAD and keep the budget. Also check how vendored,
-`inReference:false` Optix tools appear in the generated `docs/reference/tools.json` before assuming the
-generator covers them.
-**E2 —** `README.md` tool counts and the "12 vendored Optix tools are not generated from source here"
-lines, a docs-map row for `docs/reference/hmi-design.md`; `CHANGELOG.md` gets one `## [Unreleased]`
-section (top is `## [0.93.0]`; do not bump/tag/publish until the owner says ship); locales together for
-any new card copy.
-**E3 — tests:** new `test/optix-library.spec.mjs` (route mapping, guard codes, session wrapper present),
+**E1 — done, with a decision to keep or overturn.** `components.json` counts the Optix row at **14** tools
+(13 vendored engine tools + `optix_netlogic`, which `entries/netlogic.js` registers and the old count of 12
+left out of both the manifest and the budget), `optix_library` is in the `factorytalk-optix` allow-list, and
+`contextBudget.defaultOnTools` is **152** with the measurement written into the manifest note. Verified
+against the suite: `node test/components.spec.mjs` 14/14 pass. When `optix_screen` and `optix_design_check`
+land, the count and the ceiling each move again — raise them with the measurement, or ship the new tool off
+by default like ECAD.
+
+**E2 — done except the hmi doc.** `README.md` line 7 total (172), the Optix table row (14), the tool-group
+bullet (14, naming `optix_library`), and the known-limits line (13 vendored + why `optix_netlogic` is not
+inside the 158) are updated; `CHANGELOG.md` has a `## [Unreleased]` batch above `## [0.93.0]` and says plainly
+that nothing here has run against a live Studio project. Version stays `0.93.0`: nothing is bumped, tagged or
+published. `packages/optix/locale/en.json` holds no `optix_*` keys — tool descriptions are not localized, so
+no locale work was needed for `optix_library` (locales serve faces). Still owed: the docs-map row for
+`docs/reference/hmi-design.md` when C2 lands.
+
+**E3 — partly done.** `test/optix-library.spec.mjs` (9 tests) and the bridge-version test in
+`test/optix-template.spec.mjs` are in and registered in `scripts/test.mjs`. Still owed:
 `test/optix-screen.spec.mjs` (slot math, every refusal), `test/optix-design.spec.mjs` (each rule on a
-fixture model); extend `test/optix-template.spec.mjs` (bridge copy), `test/resources.spec.mjs` (hmi
-domain), `test/components.spec.mjs` (counts, budget, namespaces).
+fixture model), `test/resources.spec.mjs` (hmi domain), and the `test/components.spec.mjs` count/budget
+updates as tools land.
 **E4 —** `pnpm test`, `pnpm docs:tools` then `pnpm docs:check`, `pnpm -r build`. Release evidence per
 AGENTS.md: the packaged smoke must exercise one changed tool end to end — `optix_library import` against
 a live Studio project on **Dev AryaCode** (`%LOCALAPPDATA%\AryaCode-dev\home`), never the installed
@@ -254,7 +264,16 @@ dotnet build BridgeCompile.csproj -nologo -v q
 | Path | Change |
 |---|---|
 | `packages/optix/bridge/StudioMCPBridge.cs` | +153/−7: the `POST /bridge/library/import` verb, its dispatcher branch, route allow-list entry, `template_library` health field, 1.0.9 version |
+| `packages/optix/bridge/source.json` | re-pinned sha256 + four `localChanges` entries (the unfiled upstream PR is one of them) |
 | `packages/optix/lib/library.js` | new (286 lines): Studio discovery, `Items.yaml`/`Translations.yaml` readers, name suggestions, `readCatalog` |
-| `packages/optix/lib/index.js` | +155: `optix_library` registration (list/import, pre-validation, `exclusive()`, bridge call) |
+| `packages/optix/lib/types/library.d.ts` | new: the matching declarations, in the style of the sibling `.d.ts` files |
+| `packages/optix/lib/index.js` | +202: `optix_library` registration (list/import, pre-validation, `exclusive()`, bridge call) and the honest `optix_template` bridge reporting |
+| `packages/optix/SKILL.md` | +12: the "Build a screen from what Studio ships" lane |
+| `test/optix-library.spec.mjs` | new (9 tests, all offline): catalog parser, localization header row, suggestions, the bridge verb's session wrapper and conflict-type nesting, the import staying out of the reversible allowlist, the manifest count |
+| `test/optix-template.spec.mjs` | +24: the tracked-vs-bundled bridge version test naming `optix_bridge_arm` |
+| `components.json` | Optix 12 → 14 tools, `optix_library` in the skill allow-list, `defaultOnTools` 150 → 152 with the measurement |
+| `README.md` | total 172, Optix row 14, the tool-group bullet, the vendored-tools known limit |
+| `CHANGELOG.md` | the `## [Unreleased]` batch |
+| `scripts/test.mjs` | `test/optix-library.spec.mjs` added to the BUNDLE list |
 | `HANDOFF.md` | this file |
 | `docs/port/optix-hmi-design-lane.md` | the approved plan, kept as design history |

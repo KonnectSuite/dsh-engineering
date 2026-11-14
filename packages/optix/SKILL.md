@@ -66,6 +66,18 @@ The repository states the snippets may use non-public APIs, may break a project 
 production as-is. Quote the risk with the snippet, adapt it to the loaded project, and treat
 compilation and runtime behaviour as unverified until Studio compiles it.
 
+## Build a screen from what Studio ships
+
+Before composing a screen out of builtin widget types, ask the library. `optix_library { action: "list" }`
+reads the catalog the Studio install carries — Widgets, GraphicElements, StyleSheets, Keyboards, Misc,
+Scripts, FeaturePreview — with no bridge and no Studio session, and answers each item with the display name
+and the usage text the library ships for it. `optix_library { action: "import", library: "Widgets",
+item: "AlarmIcon", dest: "UI" }` pulls that item and the types it owns into the loaded project: it needs
+`allowWrites`, a bridge that advertises `template_library: true` in `optix_status` (a copied starter needs
+`optix_bridge_arm` first), and an import is **not** reversible as a batch, so read the node back with
+`optix_read` before any retry. A bare `Rectangle`/`Label`/`Panel` composition is the fallback, not the
+first answer.
+
 ## Author and verify
 
 - `optix_edit` applies one typed batch; run it with `dry_run` first and read the validation result.

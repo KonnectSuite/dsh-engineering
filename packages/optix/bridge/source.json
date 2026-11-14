@@ -2,9 +2,14 @@
   "repository": "https://github.com/asqi-carter/ftx-mcp",
   "commit": "c36163ea88e79efc56d4df10eb337b44969fa922",
   "path": "studio-bridge/StudioMCPBridge.cs",
-  "sha256": "6310701237425a62e06a25b77937247720aecda7d2aa5a9633737ac861a7a6dd",
+  "sha256": "e42b10a471dcbf86042720573c0de8911bf6819294b558001aae8009490f8748",
   "lineEndings": "LF",
   "license": "MIT",
-  "localChanges": [],
+  "localChanges": [
+    "BridgeVersion 1.0.8 -> 1.0.9, and health now answers \"template_library\":true so the plugin can tell a build that serves the import from one that answers 404.",
+    "POST /bridge/library/import (ImportLibraryItemInline) plus its entry in _MutationRoutes: pulls one shipped template-library item and the types it depends on into the open project, calling TemplateLibrary.ImportLibraryItem inside Context.Sessions.ImpersonateRootTemporary() because a design-time method call without a session kills Studio with native heap corruption (the same root cause as node/invoke).",
+    "TypeConflictResolutionChoice and ConflictResolution are written as TemplateLibrary.TypeConflictResolutionChoice and TemplateLibrary.ConflictResolution: they are nested in TemplateLibrary, verified by compiling against UAManagedCore.dll 5.0.0.39. Only ConflictResolution.Replace is offered, because it is the only member the vendor documents.",
+    "Upstream pull request against asqi-carter/ftx-mcp with the same verb is still OPEN AS A TASK, not filed: filing it needs the upstream repository, so a later vendored release can drop this diff once it lands."
+  ],
   "purpose": "Design-time bridge loaded inside FactoryTalk Optix Studio; the native Node plugin does not run the upstream MCP or Python services."
 }

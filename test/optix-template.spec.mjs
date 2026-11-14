@@ -66,3 +66,27 @@ test('the two starters point at different runtimes and say so to each other', ()
   assert.ok(ipcTarget.why.includes('arya-optix-panel'), 'the IPC target question does not name the other template')
   assert.ok(panelTarget.why.includes('arya-optix-ipc'), 'the panel target question does not name the other template')
 })
+
+/**
+ * Each starter carries its own copy of the Studio bridge, and those copies are older than the
+ * bridge this package tracks. `optix_bridge_arm` is what closes that gap, so the copy has to name
+ * it: a project that keeps the bridge it shipped cannot invoke methods or import library items.
+ */
+const versionOf = text => text.match(/BridgeVersion\s*=\s*"([^"]+)"/u)?.[1] ?? ''
+
+test('a starter whose bridge is older than the tracked one names the step that arms it', () => {
+  const tracked = readFileSync(new URL('../packages/optix/bridge/StudioMCPBridge.cs', import.meta.url), 'utf8')
+  const trackedVersion = versionOf(tracked)
+  assert.ok(trackedVersion !== '', 'the tracked bridge states no version')
+  assert.ok(tracked.includes('ImpersonateRootTemporary'), 'the tracked bridge no longer runs a method inside an impersonated session')
+  const source = readFileSync(new URL('../packages/optix/lib/index.js', import.meta.url), 'utf8')
+  for (const id of templates) {
+    const bundled = versionOf(readFileSync(
+      new URL(`../packages/optix/templates/${id}/project/ProjectFiles/NetSolution/StudioMCPBridge.cs`, import.meta.url), 'utf8',
+    ))
+    assert.ok(bundled !== '', `${id}: its shipped bridge states no version`)
+    if (bundled === trackedVersion) continue
+    assert.ok(source.includes('optix_bridge_arm'), `${id}: ships bridge ${bundled} while the tracked bridge is ${trackedVersion}, and nothing names the arming step`)
+    assert.ok(source.includes('run optix_bridge_arm on the copy'), `${id}: the copy instructions do not tell the engineer to arm the bridge`)
+  }
+})

@@ -1,3 +1,41 @@
+## [Unreleased]
+
+- **Optix reached the template libraries Studio ships.** The row now registers **fourteen** tools, not
+  twelve. `optix_library` is one tool with two actions: `list` reads the shipped catalog straight off disk
+  (`<Studio>\Files\Libraries\<Library>\Nodes\Items\Items.yaml` plus its `Translations.yaml`) and answers
+  with the browse name, the display name in English and Chinese, the owned-type count, the component files,
+  and the usage text each item ships — 94 importable items across Widgets (42), Scripts (34), Misc (6),
+  FeaturePreview (5), StyleSheets (4), GraphicElements (2 items + 8 group folders) and Keyboards (1), with
+  no bridge and no Studio session. `import` pulls one item and its dependency types into the loaded project.
+- **Why the verb had to go into the vendored bridge.** `TemplateLibrary.ImportLibraryItem` is a static
+  method on `UAManagedCore.TemplateLibrary`, and the bridge's generic `node/invoke` route dispatches
+  `IUAObject.ExecuteMethod` on a node path, so no argument set could reach it. `POST /bridge/library/import`
+  (`ImportLibraryItemInline`) is now part of the tracked bridge at **1.0.9**, wrapped in
+  `Context.Sessions.ImpersonateRootTemporary()` for the same reason every other write verb is: a design-time
+  call with no session aborts `FTOptixStudio.exe` with native heap corruption. `packages/optix/bridge/source.json`
+  records the diff in `localChanges` and re-pins the sha256; the upstream pull request to
+  `asqi-carter/ftx-mcp` is **not filed yet**.
+- **The conflict types are nested.** `TypeConflictResolutionChoice` and `ConflictResolution` must be written
+  `TemplateLibrary.TypeConflictResolutionChoice` and `TemplateLibrary.ConflictResolution` — bare names fail
+  with CS0246/CS0103 against `UAManagedCore.dll` 5.0.0.39 (the vendor help example works only because it
+  opens `using static UAManagedCore.TemplateLibrary;`). Only `ConflictResolution.Replace` is offered, because
+  it is the only member the vendor documents.
+- **A copied starter no longer pretends its bridge is current.** `optix_template` reported a hardcoded
+  `bridgeVersion: "1.0.7"` while each starter ships its own older, non-session-safe copy (238,383 bytes
+  against the tracked 378,391, no `ImpersonateRootTemporary`). It now reports the version of the bridge this
+  package actually tracks plus the `bundledBridgeVersion` the starter carries, and its instructions name
+  `optix_bridge_arm` as the step that replaces it. Until that step runs, a copied project answers
+  `library_import_unsupported_bridge` and `optix_action` invoke stays refused.
+- **The Optix tool count is now the surface the row mounts.** Twelve was the vendored engine's count and
+  left `optix_netlogic` — registered by this repository's own `entries/netlogic.js` — out of both the
+  manifest and the context budget. The manifest counts 14 (13 vendored + the NetLogic reader), and
+  `contextBudget.defaultOnTools` moved 150 → 152 with the measurement written into the manifest note.
+- **Not shipped as proven.** Nothing in this batch has run against a live Studio project end to end: the
+  import is compile-verified against the installed assemblies (`Build succeeded. 0 Warning(s) 0 Error(s)`)
+  and the catalog is read from the installed Studio, but no bridge session was opened. `HANDOFF.md` carries
+  the state, the ordered next steps (the draft-screen and design-check lane, then the product-neutral `hmi`
+  corpus domain), and the sandbox trap that stops `pnpm test` inside a confined shell.
+
 ## [0.93.0]
 
 - **Breaking: the ECAD row stopped being a CAD editor.** Four tools are gone — `ecad_draft_ops`,
