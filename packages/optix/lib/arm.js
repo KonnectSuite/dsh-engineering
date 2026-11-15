@@ -40,8 +40,6 @@ const NETLOGIC_NODE = `- Name: ${NETLOGIC_NODE_NAME}
     Name: StartBridge
   - Class: Method
     Name: StopBridge
-  - Class: Method
-    Name: ImportQueuedLibraryItem
 `;
 /**
  * The bridge version a source file declares, or an empty string when it is not the bridge.

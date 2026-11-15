@@ -18,18 +18,97 @@ runtime values unless a tool says it does, and every authoring call is validated
 model first.
 
 The rows are switches. `allowWrites`, `allowDestructive` and `allowInvoke` gate what
-`optix_edit` and `optix_action` may do. The preview tools need the project's **Web presentation
-engine** serving its URL and a browser to read it. Nothing serves it until the project runs: the
-Studio CLI has no run verb, so `optix_emulator` with `action: start` launches the installed
-`FTOptixRuntime.exe` against the project folder (needs `allowInvoke`), and `action: stop` ends only
-a runtime this tool started. The browser side needs no hand-holding: by default the plugin starts
-Chrome or Edge itself (`browser: launch`); `browser: attach` connects to one you started. If a tool
-is missing, that switch is off in this profile. `optix_status` answers the preview question rather
-than leaving you to guess: its `preview_chain` reports the switch, the browser mode and whether a
-browser is available, whether the emulator serves its URL,
-how many tabs match it, and whether the OCR executable and language data are installed — and its
-`next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
+`optix_edit` and `optix_action` may do, and whether the emulator may be started or stopped. If a tool
+is missing, that switch is off in this profile.
+
+### You have no other hands
+
+This skill covers FactoryTalk Optix through these tools and nothing else. Every other way of getting
+the job done is out of bounds, however much faster it looks:
+
+- **No desktop automation.** Never drive Studio, the emulator window or a browser by click, keystroke,
+  key chord or window focus — not to build, not to save, not to start the emulator, not to look at it.
+- **No process handling.** Never `Start-Process`, `Stop-Process`, `taskkill`, or launch
+  `FTOptixRuntime.exe` yourself. `optix_emulator` is the only way to run, restart, stop and inspect the
+  runtime, and it is the only thing that knows which runtime belongs to which project.
+- **No talking to the bridge by hand.** No `curl` or `Invoke-RestMethod` against `/bridge/*`, and no
+  importing `lib/index.js` to call a tool function directly. Use the registered tool, or report that
+  no tool does the job.
+- **No side doors into the project.** Do not edit `Nodes/*.yaml` or the `.optix` file to make something
+  appear in the live model: a project Studio has open belongs to the bridge.
+
+A tool that cannot do what the task needs is a finding to report — "this needs X and no tool does X" —
+never a licence to improvise. Two things genuinely belong to the engineer: opening the project in
+Studio, and right-clicking `StudioMCPBridge` → StartBridge after a build. Ask for them and wait for
+the answer.
+
+### Which state you are looking at
+
+Three different things are called "the project", and confusing them is the most common way a run
+reports success it does not have.
+
+- **The live model** — what `optix_read` sees and every `optix_edit` changes, inside Studio.
+- **The saved project** — what the runtime loads. This plugin cannot save: no tool, no bridge route
+  exists for it. `optix_status` counts the authoring calls made since the last save and reports
+  `needs_save`; `optix_screenshot` repeats it in one line. After the engineer saves and builds, call
+  `optix_status` with `saved: true` to clear the count.
+- **The rendered screen** — what `optix_preview` and `optix_screenshot` see, which is the saved
+  project as the Web presentation engine draws it, or nothing at all if no runtime serves its URL.
+
+The preview tools need the project's **Web presentation engine** serving its URL and a browser to read
+it. Nothing serves it until the project runs: the Studio CLI has no run verb, so `optix_emulator` with
+`action: start` launches the installed `FTOptixRuntime.exe` against the project folder (needs
+`allowInvoke`), waits for the URL to answer, and returns the runtime's own log when it does not.
+`action: restart` is stop-then-start, so the emulator picks up the newest saved build; `action: logs`
+returns that log with a named diagnosis (`port_in_use`, `file_locked`, `licensing`, `exception`,
+`missing_file`) and the hint that goes with it; when the runtime starts cleanly but the log carries a fact
+rather than a fault, the same calls return `notice` instead — `demo_mode` means the machine has no Optix
+entitlement, the runtime says so and closes itself after 120 minutes while the preview works normally. A
+notice is not a defect: name it once, then keep working. `action: stop` ends every runtime holding that
+project, including one started outside this plugin, and `force` also takes the one holding the port. The browser side needs no hand-holding: by default the
+plugin starts Chrome or Edge itself (`browser: launch`); `browser: attach` connects to one you started.
+`optix_status` answers the preview question rather than leaving you to guess: its `preview_chain`
+reports the switch, the browser mode and whether a browser is available, whether the emulator serves
+its URL, how many tabs match it, and whether the OCR executable and language data are installed — and
+its `next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
 retry a preview tool against a dead link.
+
+## The loop
+
+Every request that ends in a working screen walks the same seven phases. Say which phase you are in:
+it is how the engineer knows what you are doing and what is theirs.
+
+| Phase | You | The engineer |
+| --- | --- | --- |
+| **0 Brief** | read the standards, then ask what a copy cannot undo: runtime target, canvas size, project name, destination, what it talks to | answers |
+| **1 Scaffold** | `optix_template` with those answers | — |
+| **2 Open and arm** | nothing; the files are on disk | open the `.optix`, build, start the bridge |
+| **3 Connect** | `optix_status`, then `optix_read` once it answers | — |
+| **4 Author** | `optix_edit` / `optix_screen` / `optix_model` / `optix_script`, then the static checks | — |
+| **5 Persist** | read `needs_save` and ask | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
+| **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, prove the thing changed | — |
+| **7 Release** | `optix_production_check`, then state coverage | deploy in Studio's Deploy dialog |
+
+An existing project starts at phase 3; a request for a template or a standard is workflow E, which
+writes the standard before it scaffolds anything. Phases 0–2 are workflows A, B and C below.
+
+**Phase 5 is the one that goes wrong.** Nothing in this plugin saves the project, so a visual check
+taken before the engineer saves shows the previous build — and a build taken while the emulator runs
+fails on `MSB3061` (the runtime holds `bin/<project>.dll` open) and saves nothing. So the order inside
+phase 5 is fixed: stop the runtime if it is up, ask for save, ask for build, then start again. When
+`needs_save.pending` is zero, say so and skip the handoff; do not ask for a save that changes nothing.
+
+**Phase 6 is proof, not decoration.** A screenshot is evidence only when it shows the change you made:
+the caption you wrote, the value that moved, the screen the button reached. Say what you looked at and
+what it showed, and name anything the picture cannot settle — behaviour with no visible effect, an
+alarm that never fired, a runtime event with no on-screen result.
+
+A freshly scaffolded starter screenshots as one flat colour, and that is the correct picture: the
+templates ship a window (`UI/MainWindow`, the canvas you asked for, caption linked to the project name)
+with no screen inside it. One colour means the runtime, the web engine and the browser all work and
+nothing has been drawn yet — it is not a broken preview, and it is not evidence that a screen exists.
+Content appears after phase 4 has drawn one; check the render for content only once something was built
+into it.
 
 ## What kind of request is this?
 
@@ -51,15 +130,18 @@ workflow E below for a template or standard request.
 
 ### When a project is in play
 
-1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on, and what
-   the preview chain is missing. When `next` names the emulator link, `optix_emulator` with
-   `action: status` shows whether a runtime exists on the machine before anything is started.
-   When it answers `Bridge unavailable` for a project that has never been bridged, that project holds
-   no bridge source at all. `optix_bridge_arm` with `confirm: false` shows what would be written into
-   the project's `ProjectFiles/NetSolution`; with `confirm: true` it writes the bridge this bundle ships
-   after copying any file the project already held. Ask before writing into an engineer's project
-   directory, and say plainly that Studio still compiles the class and the engineer still right-clicks
-   StartBridge — neither is automatable from outside Studio.
+1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on, what the
+   preview chain is missing, and how many authoring changes are waiting for a save (`needs_save`). Its
+   answer to `Bridge unavailable` is a ranked diagnosis, not a shrug: whether Studio is running at all,
+   whether anything listens on the bridge port, and which of the two the engineer must fix. Work
+   through `causes` in order and quote `next`; never start Studio yourself.
+   When `next` names the emulator link, `optix_emulator` with `action: status` shows whether a runtime
+   exists on the machine, and which runtimes belong to other projects, before anything is started. A
+   project that has never been bridged holds no bridge source at all: `optix_bridge_arm` with
+   `confirm: false` shows what would be written into `ProjectFiles/NetSolution`; with `confirm: true` it
+   writes the bridge this bundle ships after copying any file the project already held. Ask before
+   writing into an engineer's project directory, and say plainly that Studio still compiles the class and
+   the engineer still right-clicks StartBridge — neither is automatable from outside Studio.
 2. `optix_read` — screens, widgets, types, variable members, schemas, CLR diagnostics. Start with
    `map` at `overview` depth, then `detail` for the one subtree that matters.
 3. `optix_validate_expression` — check an expression against real node paths before attaching it.
@@ -111,16 +193,20 @@ A runtime NetLogic belongs under `UI/NetLogic` (or beside the screen it serves),
 `NetLogic` will not find one there. The class file is always
 `ProjectFiles\NetSolution\<Name>.cs`; the node is the thing the project tree shows.
 
-Measured loop, in this order, because each step depends on the previous one:
+Measured loop, in this order, because each step depends on the previous one (phase 4 into 5 into 6):
 
 1. `optix_script { action: "add", name, parent: "UI/NetLogic", kind: "runtime" }` - node and class, reviewed
    and compiled by `dotnet build`.
-2. An engineer builds in Studio (**Build > Build Solution**, Ctrl+Shift+B) with the runtime stopped. This is
-   what persists bridge-side edits and loads the class; Ctrl+S alone does not, because Studio never marked the
-   project dirty. With the emulator running the build fails on `MSB3061` (the DLL is locked) and nothing saves.
-3. `optix_emulator { action: "start" }`, then `optix_screenshot`.
+2. Stop the runtime if it is up (`optix_emulator { action: "stop" }`), then the engineer saves and builds in
+   Studio (**Build > Build Solution**, Ctrl+Shift+B). This is what persists bridge-side edits and loads the
+   class; Ctrl+S alone does not, because Studio never marked the project dirty. With the emulator running the
+   build fails on `MSB3061` (the DLL is locked) and nothing saves.
+3. `optix_status { saved: true }` clears the pending count once they confirm; `optix_emulator { action: "start" }`
+   then, and `optix_screenshot`.
 4. Prove it: a bound value on the screen changes because the class wrote it. `optix_script { action: "run" }`
    answers `not-loaded` until step 2 happened, which is a fact about Studio, not about your C#.
+5. If step 3 shows no change, `optix_emulator { action: "logs" }` before anything else: the runtime says why it
+   stopped in its own words, and `restart` is the retry once the build is in.
 
 Two runtime facts that cost a whole demo to learn:
 
@@ -230,11 +316,13 @@ operator click, release review — is written down as `optix-application-recipe`
   type, or invokes an exported method. Invocation needs a session-safe bridge and `allowInvoke`.
 - `optix_preview` and `optix_screenshot` read the emulator page. By default the plugin starts its own
   Chrome or Edge for this; input can change runtime values, so state that before using it.
-- `optix_emulator` with `action: status` says whether anything serves the preview URL and which
-  runtime executable the machine holds; `start` runs that runtime against the project folder and
-  `stop` ends only a runtime this tool started, never one the engineer opened from Studio. Starting a
-  process needs `allowInvoke`, and it is the only scripted route to the emulator — say so rather than
-  implying Studio was asked to run the project.
+- `optix_emulator` is the only way the runtime is run. `action: status` says whether anything serves the
+  preview URL, which runtime the machine holds, and which runtimes belong to other projects;
+  `start` launches that runtime against the project folder and returns only once the preview answers, or
+  returns the runtime's log and a named diagnosis when it does not; `stop` ends every runtime holding
+  that project, including one started outside this plugin; `restart` is start-after-stop for a new build;
+  `logs` returns the log's tail with the diagnosis. Starting and stopping need `allowInvoke`. Say that the
+  runtime was started this way rather than implying Studio was asked to run the project.
 - `optix_ocr` reads text rendered on the canvas — labels a web page exposes no DOM for — through the
   host Tesseract. It is registered only when the row names an `ocrExecutable`.
 - `optix_ocr_setup` reports whether that Tesseract and its language data are on the machine, and with
@@ -255,12 +343,13 @@ A request for a template or a standard is workflow **E**, not A: read the publis
 brief before anything is scaffolded. A, B and C are about getting a bridge and a project into a state
 where the tools can work; E is about deciding what the project should contain.
 
-**The IDE is not yours to drive.** Two actions in Studio belong to the engineer and to nobody else:
-opening the project, and right-clicking `StudioMCPBridge` → `StartBridge` after a build. Never launch
-`FTOptixStudio.exe`, never click or type in Studio, never ask for a screenshot of it, and never stall
-waiting on it. Your side of that line is everything around it: writing the project files, reading and
-writing the live model through the bridge, and starting or stopping the runtime with `optix_emulator`.
-The bridge is the contract - when it answers, Studio is already open and the engineer is available.
+**The IDE is not yours to drive** — the full rule is under *You have no other hands* above. Two actions in
+Studio belong to the engineer and to nobody else: opening the project, and right-clicking
+`StudioMCPBridge` → `StartBridge` after a build. Never launch `FTOptixStudio.exe`, never click or type in
+Studio, never ask for a screenshot of it, and never stall waiting on it. Your side of that line is
+everything around it: writing the project files, reading and writing the live model through the bridge, and
+starting or stopping the runtime with `optix_emulator`. The bridge is the contract - when it answers, Studio
+is already open and the engineer is available.
 
 ### A. New project, no Studio open yet
 
@@ -310,12 +399,18 @@ is not already running, then work through the bridge as usual.
 
 ### D. Once the bridge answers
 
-Read before you write (`optix_status`, then `optix_read`), draft and check screens, run
-`optix_production_check` before calling anything released, and use `optix_emulator` to start or stop
-the runtime - never Studio's own toolbar. One measured constraint to state plainly: the runtime loads
-the **saved** project, so a change made through the bridge appears in the emulator only after the
-engineer saves in Studio (Ctrl+S). Ask for that save when a visual check is the point; do not pretend
-the preview shows unsaved edits.
+Read before you write (`optix_status`, then `optix_read`), draft and check screens, and run
+`optix_production_check` before calling anything released. From then on the loop above is the workflow:
+author in the live model, hand over the save and build, then run the emulator and look.
+
+The runtime is only ever started and stopped by `optix_emulator`, never by Studio's toolbar and never by
+launching the executable yourself. Its `start` waits for the preview and `logs` says why a runtime died,
+so a failed look is diagnosable without touching the desktop. Three measured constraints to state plainly:
+
+- the runtime loads the **saved** project, so a change made through the bridge appears in the emulator
+  only after the engineer saves in Studio (Ctrl+S) and builds (Ctrl+Shift+B) - `needs_save` is the signal;
+- a build taken while the emulator runs fails on `MSB3061` and saves nothing, so stop first;
+- a screenshot is of the saved build, so it can be one save behind the live model: say which one you looked at.
 
 A successful model change does not save Studio and does not prove rendering. Say what was applied, what
 was only validated, and what the engineer has to do next.

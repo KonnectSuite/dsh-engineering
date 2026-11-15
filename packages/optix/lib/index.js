@@ -4,6 +4,7 @@ import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
@@ -11,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge, bridgeVersion } from "./arm.js";
 import { scaffoldProject } from "./scaffold.js";
-import { emulatorStatus, startEmulator, stopEmulator } from "./emulator.js";
+import { emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
@@ -52,6 +53,141 @@ function bridgeOrigin(input) {
 */
 function jsonObject(value) {
 	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+/**
+* Bridge authoring changes this session made, per bridge origin.
+*
+* Every authoring route is a POST, and Studio holds those changes in memory until the
+* engineer saves the project and builds it. The plugin cannot save: no bridge route and no
+* documented API reach it, so the only honest thing it can do is count what is outstanding
+* and say so, which stops an agent from pressing Ctrl+S in Studio or promising a preview
+* that cannot show what it just wrote.
+*/
+const modelChanges = new Map();
+/**
+* Route that reads or validates: a POST there changes nothing the engineer must save.
+* @param route - Bridge route name.
+* @returns Whether the route leaves the project as it was.
+*/
+function readOnlyRoute(route) {
+	return route === "validate_ops" || route === "expr/validate";
+}
+/**
+* Count one authoring change against its bridge origin.
+* @param origin - Bridge origin that accepted the change.
+* @param route - Bridge route that changed the project.
+*/
+function recordModelChange(origin, route) {
+	const entry = modelChanges.get(origin) ?? {
+		pending: 0,
+		first: "",
+		last: "",
+		routes: []
+	};
+	const at = (/* @__PURE__ */ new Date()).toISOString();
+	entry.pending += 1;
+	if (entry.first === "") entry.first = at;
+	entry.last = at;
+	entry.routes = [...entry.routes.filter((name) => name !== route), route].slice(-6);
+	modelChanges.set(origin, entry);
+}
+/**
+* What Studio still has to save for a bridge origin.
+* @param origin - Bridge origin.
+* @returns The outstanding count and the routes that changed it.
+*/
+function pendingModelChanges(origin) {
+	const entry = modelChanges.get(origin);
+	if (entry === void 0) return {
+		pending: 0,
+		routes: []
+	};
+	return {
+		pending: entry.pending,
+		first: entry.first,
+		last: entry.last,
+		routes: entry.routes
+	};
+}
+/**
+* Forget the outstanding changes for origins whose save an engineer confirmed.
+* @param origins - Bridge origins to clear.
+* @returns How many changes were cleared.
+*/
+function clearModelChanges(origins) {
+	let cleared = 0;
+	for (const origin of origins) {
+		const entry = modelChanges.get(origin);
+		if (entry === void 0) continue;
+		cleared += entry.pending;
+		modelChanges.delete(origin);
+	}
+	return cleared;
+}
+/** Save and build are the engineer's keystrokes, because no tool can perform them. */
+const SAVE_HANDOFF = "Ask the engineer to save and build in Studio (Ctrl+S, then Ctrl+Shift+B) with the emulator stopped, then confirm; nothing in this plugin can save the project.";
+/**
+* Whether something accepts a TCP connection on a bridge origin's port.
+* @param origin - Validated loopback origin.
+* @returns True when the port accepts a connection.
+*/
+async function portListening(origin) {
+	const url = new URL(origin);
+	const port = Number(url.port === "" ? 80 : url.port);
+	return await new Promise((resolve) => {
+		const socket = connect({
+			host: url.hostname === "[::1]" ? "::1" : url.hostname,
+			port
+		});
+		const done = (value) => {
+			socket.destroy();
+			resolve(value);
+		};
+		socket.setTimeout(800);
+		socket.once("connect", () => done(true));
+		socket.once("timeout", () => done(false));
+		socket.once("error", () => done(false));
+	});
+}
+/**
+* Name why a bridge origin did not answer, in the order an engineer would check it.
+*
+* "Open the project and run StartBridge" is the right instruction only when Studio is closed.
+* When Studio is running and nothing listens, the cause is a project without the bridge node
+* or a StartBridge that was never chosen after a build; when the port answers but the request
+* did not, the port belongs to something else. An agent that only gets "unavailable" guesses,
+* and guessing is what sends it into Studio's menus.
+* @param origin - Bridge origin that did not answer.
+* @param signal - Caller cancellation; optional.
+* @returns The observed machine facts, the ranked causes and the next step.
+*/
+async function describeSilentBridge(origin, signal) {
+	signal?.throwIfAborted();
+	const url = new URL(origin);
+	const port = Number(url.port === "" ? 80 : url.port);
+	const listening = await portListening(origin);
+	signal?.throwIfAborted();
+	const studios = process.platform === "win32" ? await studioProcesses() : [];
+	const causes = [];
+	let next;
+	if (!listening && studios.length === 0) {
+		causes.push("FactoryTalk Optix Studio is not running on this machine.");
+		next = "Ask the engineer to open the project in Studio, then right-click StudioMCPBridge and choose StartBridge. This plugin never opens or drives Studio.";
+	} else if (!listening) {
+		causes.push(`Studio is running, but nothing accepts a connection on 127.0.0.1:${port}.`);
+		causes.push("Either the open project does not carry the StudioMCPBridge node, or StartBridge was not chosen after the last build.");
+		next = "Ask the engineer which project is open and to choose StudioMCPBridge > StartBridge (the Output window then shows the listening line). If the project has no bridge, optix_bridge_arm adds one while the project is closed.";
+	} else {
+		causes.push(`Something accepts a connection on 127.0.0.1:${port} but did not answer like the Studio bridge.`);
+		causes.push("Another program may own that port, or the bridge threw while handling the request.");
+		next = "Ask the engineer to read Studio's Output window for the bridge line and to check the bridgeUrls value in this plugin's configuration; do not change the port in the project.";
+	}
+	return {
+		port_listening: listening,
+		studio_running: studios.length > 0,
+		causes,
+		next
+	};
 }
 /** Direct bridge transport; writes are never automatically retried or redirected. */
 var OptixBridgeGateway = class {
@@ -147,6 +283,7 @@ var OptixBridgeGateway = class {
 			const json = value;
 			if (!jsonObject(json)) throw new Error("Bridge returned a non-object response");
 			if (!response.ok || json.error !== void 0 && route !== "expr/validate") throw new BridgeError(`Bridge ${route} refused the request (HTTP ${response.status}): ${JSON.stringify(json.error ?? json)}`, method === "POST" && route !== "validate_ops" && route !== "expr/validate");
+			if (method === "POST" && !readOnlyRoute(route)) recordModelChange(origin, route);
 			return json;
 		} catch (error) {
 			if (error instanceof BridgeError) throw error;
@@ -786,6 +923,10 @@ function applyPreview(ctx, config) {
 						type: "string",
 						required: true
 					},
+					unsaved_changes: {
+						type: "integer",
+						description: "Authoring changes the engineer has not saved yet; the render is the project as saved, so these are not in it."
+					},
 					attachment: {
 						type: "object",
 						additionalProperties: false,
@@ -838,7 +979,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -860,9 +1001,11 @@ function applyPreview(ctx, config) {
 					mediaType: "image/png",
 					name: "optix-preview.png"
 				});
+				const unsaved = pendingModelChanges(config.bridgeUrls[0] ?? "").pending;
 				return {
 					url: page.url(),
-					attachment
+					attachment,
+					...(unsaved === 0 ? {} : { unsaved_changes: unsaved })
 				};
 			});
 		}
@@ -1255,12 +1398,13 @@ function applyBridgeArm(ctx) {
 function applyEmulator(ctx, settings) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_emulator",
-		description: "Read, start, or stop the Optix runtime that serves a project's web preview. It finds FTOptixRuntime.exe under the Studio install, loads the project's .optix file, and reports the preview address the project's Web presentation engine sets. status probes that address; start launches the runtime; stop ends only a runtime this tool launched, never one the engineer opened in Studio. The port is a project setting, so a project serving another port needs its engine changed, not this tool.",
+		description: "Read, start, restart, stop or read the log of the Optix runtime that serves a project's web preview. This is the only sanctioned way to run the project: never launch FTOptixRuntime.exe yourself, never stop it with Stop-Process, and never use desktop automation on Studio's toolbar. It finds FTOptixRuntime.exe under the Studio install, loads the project's .optix file, and only reports `started` once the preview address actually answers; when it does not, it returns the runtime's own log tail and a named diagnosis. stop ends the runtime for that project even when this plugin did not start it, which is what a rebuild needs. The runtime loads the project as saved, so changes made through the bridge need the engineer's Save and Build first.",
 		parameters: {
 			action: {
 				type: "string",
 				required: true,
-				description: "status reads the leg, start launches the runtime, stop ends the one this tool started."
+				enum: ["status", "start", "stop", "restart", "logs"],
+				description: "status probes the leg and the preview address; start launches the runtime and waits for it to serve; stop ends the project's runtime (including one Studio started); restart is stop then start; logs returns the runtime log tail."
 			},
 			project: {
 				type: "string",
@@ -1270,6 +1414,18 @@ function applyEmulator(ctx, settings) {
 			runtime: {
 				type: "string",
 				description: "Runtime executable path; empty discovers it under the Studio install."
+			},
+			wait_ms: {
+				type: "integer",
+				description: "How long start waits for the preview address before reporting failure. Default 30000."
+			},
+			force: {
+				type: "boolean",
+				description: "stop: signal a process that ignored the first stop. start: start even though the preview address already answers."
+			},
+			lines: {
+				type: "integer",
+				description: "logs: how many trailing lines to return. Default 60."
 			}
 		},
 		output: {
@@ -1286,21 +1442,52 @@ function applyEmulator(ctx, settings) {
 		}),
 		async execute(args, exec) {
 			exec.signal.throwIfAborted();
-			if (args.action !== "status" && !settings.allowInvoke) throw new Error("Starting or stopping a process needs allowInvoke in the Optix row's plugin configuration; status works without it.");
-			if (args.action === "start") return await startEmulator({
+			const readsOnly = args.action === "status" || args.action === "logs";
+			if (!readsOnly && !settings.allowInvoke) throw new Error("Starting, restarting or stopping a process needs allowInvoke in the Optix row's plugin configuration; status and logs work without it.");
+			const origin = settings.bridgeUrls[0] ?? "";
+			const unsaved = pendingModelChanges(origin);
+			const withSaveState = (report) => {
+				if (unsaved.pending === 0) return report;
+				return {
+					...report,
+					unsaved_changes: unsaved.pending,
+					save_handoff: SAVE_HANDOFF
+				};
+			};
+			if (args.action === "start") return withSaveState(await startEmulator({
 				project: args.project,
-				runtime: args.runtime ?? ""
-			});
+				runtime: args.runtime ?? "",
+				previewUrl: settings.previewUrl,
+				waitMs: args.wait_ms,
+				force: args.force === true,
+				signal: exec.signal
+			}));
+			if (args.action === "restart") return withSaveState(await restartEmulator({
+				project: args.project,
+				runtime: args.runtime ?? "",
+				previewUrl: settings.previewUrl,
+				waitMs: args.wait_ms,
+				force: args.force === true,
+				signal: exec.signal
+			}));
 			if (args.action === "stop") return await stopEmulator({
 				project: args.project,
-				project_file: ""
+				project_file: "",
+				force: args.force === true,
+				previewUrl: settings.previewUrl,
+				signal: exec.signal
+			});
+			if (args.action === "logs") return await emulatorLogs({
+				project: args.project,
+				project_file: "",
+				lines: args.lines
 			});
 			const report = await emulatorStatus({
 				project: args.project,
 				previewUrl: settings.previewUrl
 			}, exec.signal);
-			if (!report.serving) report.next = report.project_file === "" ? "Point project at the folder holding the project's .optix file." : "Nothing serves the preview address: optix_emulator with action start launches the runtime, or run the project from Studio.";
-			return report;
+			if (!report.serving) report.next = report.project_file === "" ? "Point project at the folder holding the project's .optix file." : "Nothing serves the preview address: optix_emulator with action start launches the runtime and waits for it to answer.";
+			return withSaveState(report);
 		}
 	})));
 }
@@ -1568,15 +1755,20 @@ function apply(ctx, config = {}) {
 	}
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_status",
-		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, and the preview, emulator and OCR chain with the first missing link named. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required.",
-		parameters: {},
+		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, the preview, emulator and OCR chain with the first missing link named, and whether the live project has authoring changes the engineer still has to save. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, after authoring, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required.",
+		parameters: {
+			saved: {
+				type: "boolean",
+				description: "Set true only after the engineer confirms they saved and built the project. It clears the outstanding-change count, which nothing else can clear because no tool can save the project."
+			}
+		},
 		output: jsonOutput,
 		presentCall: () => ({
 			card: "generic",
 			title: "Discover Optix projects",
 			kind: "read"
 		}),
-		async execute(_args, exec) {
+		async execute(args, exec) {
 			const endpoints = [];
 			for (const origin of settings.bridgeUrls) {
 				exec.signal.throwIfAborted();
@@ -1584,23 +1776,40 @@ function apply(ctx, config = {}) {
 					endpoints.push({
 						origin,
 						available: true,
-						health: await bridge.request(origin, "health", exec.signal)
+						health: await bridge.request(origin, "health", exec.signal),
+						needs_save: pendingModelChanges(origin)
 					});
 				} catch (error) {
 					if (exec.signal.aborted || disposed.signal.aborted) throw error;
+					const diagnosis = await describeSilentBridge(origin, exec.signal);
 					endpoints.push({
 						origin,
 						available: false,
-						error: "Bridge unavailable; open the project in Studio and run StartBridge"
+						error: "Bridge unavailable",
+						diagnosis,
+						next: diagnosis.next,
+						needs_save: pendingModelChanges(origin)
 					});
 				}
 			}
+			const outstanding = settings.bridgeUrls.reduce((total, origin) => total + pendingModelChanges(origin).pending, 0);
+			const saved = args?.saved === true;
+			const cleared = saved ? clearModelChanges(settings.bridgeUrls) : 0;
 			return {
 				endpoints,
 				authoring: settings.allowWrites,
 				destructive: settings.allowDestructive,
 				invoke: settings.allowInvoke,
-				preview_chain: await chainReport(settings, exec.signal)
+				preview_chain: await chainReport(settings, exec.signal),
+				...(outstanding === 0 && !saved ? {} : {
+					needs_save: {
+						pending: saved ? 0 : outstanding,
+						...(cleared > 0 ? { cleared } : {}),
+						routes: settings.bridgeUrls.flatMap((origin) => pendingModelChanges(origin).routes),
+						next: saved ? "Count cleared after the engineer's save." : SAVE_HANDOFF
+					}
+				}),
+				...(outstanding === 0 || saved ? {} : { next: `${outstanding} authoring change${outstanding === 1 ? "" : "s"} exist in Studio's live model only. ${SAVE_HANDOFF}` })
 			};
 		}
 	})));

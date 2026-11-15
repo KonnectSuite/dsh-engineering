@@ -396,7 +396,7 @@ export function screenOps(spec) {
 		ops,
 		op_count: ops.length,
 		objects,
-		slots: { ...slots, cards: cardSlots, nav: navSlot },
+		slots: { ...slots, cards: cardSlots, ...(navSlot === undefined ? {} : { nav: navSlot }) },
 		expressions,
 		pendingWiring,
 	};

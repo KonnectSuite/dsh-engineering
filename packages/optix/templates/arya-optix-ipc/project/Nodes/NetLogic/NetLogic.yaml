@@ -24,5 +24,3 @@ Children:
     Name: StartBridge
   - Class: Method
     Name: StopBridge
-  - Class: Method
-    Name: ImportQueuedLibraryItem
