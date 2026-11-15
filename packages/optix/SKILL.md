@@ -26,8 +26,13 @@ is missing, that switch is off in this profile.
 This skill covers FactoryTalk Optix through these tools and nothing else. Every other way of getting
 the job done is out of bounds, however much faster it looks:
 
-- **No desktop automation.** Never drive Studio, the emulator window or a browser by click, keystroke,
-  key chord or window focus — not to build, not to save, not to start the emulator, not to look at it.
+- **No desktop automation, with one measured exception.** Never drive Studio, the emulator window or a
+  browser by click, keystroke, key chord or window focus — not to start the emulator, not to look at it,
+  not to navigate Studio. The exception is Save and Build: when the engineer asks you to press them
+  instead of doing it themselves, send exactly two keystrokes to the already-open Studio window
+  (`Ctrl+S`, then `Ctrl+Shift+B`) and nothing else — no clicks, no menus, no dialogs, no launching
+  Studio. Offer the handoff first and take it only on the engineer's word, then verify it on disk: a
+  keystroke you delivered is not a save that landed.
 - **No process handling.** Never `Start-Process`, `Stop-Process`, `taskkill`, or launch
   `FTOptixRuntime.exe` yourself. `optix_emulator` is the only way to run, restart, stop and inspect the
   runtime, and it is the only thing that knows which runtime belongs to which project.
@@ -48,18 +53,20 @@ Three different things are called "the project", and confusing them is the most 
 reports success it does not have.
 
 - **The live model** — what `optix_read` sees and every `optix_edit` changes, inside Studio.
-- **The saved project** — what the runtime loads. This plugin cannot save: no tool, no bridge route
+- **The saved project** — what the runtime loads. This plugin cannot save: no tool and no bridge route
   exists for it, and `UAManagedCore` carries no save member at all (measured: not one `Save`, `IsDirty`
-  or `Persist` symbol in `UAManagedCore.dll`), so persistence is the engineer's action and nothing else.
+  or `Persist` symbol in `UAManagedCore.dll`). Persistence comes from Studio's own **Save** (Ctrl+S) or
+  **Build** (Ctrl+Shift+B) — by the engineer's hand, or by two keystrokes when they ask you to press them
+  (the exception above). Both write bridge edits: measured on the reference machine, a Build wrote the
+  whole bridge-authored screen to `Nodes/**`, and a later Ctrl+S wrote a re-bound `Panel` link on its own.
   `optix_status` counts the authoring calls made since the last save and reports `needs_save`;
-  `optix_screenshot` repeats it in one line. After the engineer saves and builds, call `optix_status`
-  with `saved: true` to clear the count — but clear it on evidence, not on a reply: `optix_emulator`
-  with `action: "status"` reports `disk` (the newest write under `Nodes/` and the project file) and
-  `saved_after_edit`, which is `false` while the newest file on disk is older than the first pending
-  bridge change. Measured on the reference machine: a bridge edit writes nothing, Studio's log showed
-  no save and no build, and a "saved" reply left every file at its pre-edit timestamp. When
-  `saved_after_edit` is `false`, say what you measured and ask for **File > Save** by name; do not
-  treat the reply as the save.
+  `optix_screenshot` repeats it in one line. After the save, call `optix_status` with `saved: true` to
+  clear the count — but clear it on evidence, not on a reply: `optix_emulator` with `action: "status"`
+  reports `disk` (the newest write under `Nodes/` and the project file) and `saved_after_edit`, which is
+  `false` while the newest file on disk is older than the first pending bridge change. A first build on
+  the reference machine took minutes, not seconds, so an early disk check reads as "nothing saved" while
+  the build is still running: confirm Studio's Output pane says the solution built before judging the
+  disk. When `saved_after_edit` is `false`, say what you measured and ask for **File > Save** by name.
 - **The rendered screen** — what `optix_preview` and `optix_screenshot` see, which is the saved
   project as the Web presentation engine draws it, or nothing at all if no runtime serves its URL.
 
@@ -104,18 +111,20 @@ An existing project starts at phase 3; a request for a template or a standard is
 writes the standard before it scaffolds anything. Phases 0–2 are workflows A, B and C below.
 
 **Phase 5 is the one that goes wrong.** Nothing in this plugin saves the project, so a visual check
-taken before the engineer saves shows the previous build — and a build taken while the emulator runs
-fails on `MSB3061` (the runtime holds `bin/<project>.dll` open) and saves nothing. So the order inside
-phase 5 is fixed: stop the runtime if it is up, ask for save, ask for build, then start again. When
-`needs_save.pending` is zero, say so and skip the handoff; do not ask for a save that changes nothing.
+taken before the save shows the previous build — and a build taken while the emulator runs fails on
+`MSB3061` (the runtime holds `bin/<project>.dll` open) and saves nothing. So the order inside phase 5 is
+fixed: stop the runtime if it is up, then save, then build, then start again. When `needs_save.pending`
+is zero, say so and skip the handoff; do not ask for a save that changes nothing. When the engineer asks
+you to press the two keystrokes yourself, that is the exception above — two keys, nothing else.
 
 Verify the save instead of believing it. `optix_emulator { action: "status", project }` reports `disk`
 (newest write under `Nodes/`, its path, the project file's size) and `saved_after_edit`. If that is
-`false`, the save did not reach the files: nothing the runtime loads has changed, so a start now renders
-the old build. Say exactly that, with the timestamp you measured, and ask for **File > Save** by name
-rather than repeating Ctrl+S — a keystroke cannot be confirmed from here, a file timestamp can. Measured
-on the reference machine: after a bridge-authored screen and two "saved" replies, every file in the
-project still carried its pre-edit timestamp and Studio's own log recorded no save and no build.
+`false`, the save did not reach the files yet: nothing the runtime loads has changed, so a start now
+renders the old build. Say exactly that, with the timestamp you measured, and ask for **File > Save** by
+name rather than repeating Ctrl+S — a keystroke cannot be confirmed from here, a file timestamp can. A
+first build measured minutes on the reference machine (a 23:01:46 build was still absent from `Nodes/**`
+when checked a minute later), so re-read the disk before concluding anything, and never report "the save
+did not work" from a single early check.
 
 **Phase 6 is proof, not decoration.** A screenshot is evidence only when it shows the change you made:
 the caption you wrote, the value that moved, the screen the button reached. Say what you looked at and
@@ -129,10 +138,19 @@ what it draws: unless the window already holds a loader, one batch also creates 
 the canvas and binds its `Panel` pointer to the new screen by literal `raw_path` (a screen is an
 `ObjectType`, not a variable, so `source_path` is refused — `source_not_variable`), which is why the
 screen can appear in the render at all. Pass `mount: false` only when something else already mounts it,
-and `mount_name` to name the loader. One colour means the runtime, the web engine and the browser all
-work and nothing has been drawn yet — it is not a broken preview, and it is not evidence that a screen
-exists. Content appears once a screen is drawn *and saved*; check the render for content only after
-`saved_after_edit` is `true`.
+and `mount_name` to name the loader.
+
+The link must be **project-absolute**: `/Objects/<Project>/UI/Screens/<Screen>`. A bare
+`UI/Screens/<Screen>` resolves against the loader's own parent (`UI/MainWindow`), where no such node
+exists — Studio paints the property red and the render stays blank, which cost this project two saved
+builds to find. Measured with an offline probe on a saved project: the pointer as a `DynamicLink` child
+holding `/Objects/<project>/...` renders exactly like a resolved static value (same pixels), so the
+bridge's form and Studio's form are interchangeable — the absolute path is the whole difference. Studio's
+Save keeps the `DynamicLink` form in `Nodes/UI/UI.yaml` rather than flattening it, which is normal.
+
+One colour means the runtime, the web engine and the browser all work and nothing has been drawn yet —
+it is not a broken preview, and it is not evidence that a screen exists. Content appears once a screen is
+drawn, mounted *and saved*; check the render for content only after `saved_after_edit` is `true`.
 
 ## What kind of request is this?
 
@@ -221,12 +239,13 @@ Measured loop, in this order, because each step depends on the previous one (pha
 
 1. `optix_script { action: "add", name, parent: "UI/NetLogic", kind: "runtime" }` - node and class, reviewed
    and compiled by `dotnet build`.
-2. Stop the runtime if it is up (`optix_emulator { action: "stop" }`), then the engineer saves and builds in
-   Studio (**Build > Build Solution**, Ctrl+Shift+B). This is what persists bridge-side edits and loads the
-   class; Ctrl+S alone does not, because Studio never marked the project dirty. With the emulator running the
-   build fails on `MSB3061` (the DLL is locked) and nothing saves.
-3. `optix_status { saved: true }` clears the pending count once they confirm; `optix_emulator { action: "start" }`
-   then, and `optix_screenshot`.
+2. Stop the runtime if it is up (`optix_emulator { action: "stop" }`), then save and build in Studio
+   (**Build > Build Solution**, Ctrl+Shift+B) — the engineer's hand, or two keystrokes when they ask you
+   to press them. The build is what loads the class into Studio's NetLogic assembly and writes both the
+   .cs edits and the node to the project files. With the emulator running the build fails on `MSB3061`
+   (the DLL is locked) and nothing saves.
+3. `optix_status { saved: true }` clears the pending count once the save is confirmed on disk;
+   `optix_emulator { action: "start" }` then, and `optix_screenshot`.
 4. Prove it: a bound value on the screen changes because the class wrote it. `optix_script { action: "run" }`
    answers `not-loaded` until step 2 happened, which is a fact about Studio, not about your C#.
 5. If step 3 shows no change, `optix_emulator { action: "logs" }` before anything else: the runtime says why it
