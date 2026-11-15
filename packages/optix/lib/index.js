@@ -17,6 +17,7 @@ import { scaffoldProject } from "./scaffold.js";
 import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
 import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.js";
 import { THEME_ENGINES, auditTheme, themePlan } from "./theme.js";
+import { PATTERNS, compileBlueprint, kitCatalogue } from "./kit.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -5097,7 +5098,7 @@ function apply(ctx, config = {}) {
 	 */
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_ui",
-		description: `Design languages for Optix screens: ${languageNames.join(", ")}. action languages lists what the kit can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet (tokens plus named button, label, screen, chart and navigation styles) and binds both presentation engines; action audit judges what the model reports against the language that was asked for. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
+		description: `Design languages for Optix screens, and the kit that draws them: ${languageNames.join(", ")}. action languages lists what the theme can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet and binds both presentation engines; action audit judges what the model reports against the language that was asked for; action components lists the kit's components and the grid; action screen compiles a blueprint into a designed screen - header band with chips, clock, language and user, KPI tiles, cards with rows, lamps and progress bars, a bar chart, a message feed and a status strip - placed by a 12-column grid, never by guessed coordinates, and refuses what cannot fit. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
 		parameters: {
 			project: {
 				type: "string",
@@ -5106,17 +5107,43 @@ function apply(ctx, config = {}) {
 			action: {
 				type: "string",
 				required: true,
-				description: "languages lists the catalogue; theme plans or applies one; audit judges the model.",
-				enum: ["languages", "theme", "audit"]
+				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; screen compiles a blueprint into a designed screen.",
+				enum: ["languages", "theme", "audit", "components", "screen"]
 			},
 			mode: {
 				type: "string",
-				description: "theme: plan (default) reports the operations without writing; apply writes behind allowWrites.",
+				description: "theme and screen: plan (default) reports the operations without writing; apply writes behind allowWrites.",
 				enum: ["plan", "apply"]
 			},
 			language: {
 				type: "string",
 				description: `Design language; default ${DEFAULT_LANGUAGE}. One of ${languageNames.join(", ")}.`
+			},
+			pattern: {
+				type: "string",
+				description: `screen: the layout pattern; default overview. One of ${PATTERNS.join(", ")}.`,
+				enum: [...PATTERNS]
+			},
+			blueprint: {
+				type: "json",
+				description: "screen: the screen description {name, title, subtitle, pattern, header{chips,clock,language,user,bell}, kpis[], cards[{title,rows[]}], chart{title,values,labels,unit,threshold}, messages[], status{text,ok}}. Components are placed by the layout grid, not by coordinates."
+			},
+			screen: {
+				type: "string",
+				description: "screen: project path of the screen to draw into, such as UI/Screens/Home. Default UI/Screens/<blueprint.name>."
+			},
+			width: {
+				type: "integer",
+				description: "screen: canvas width in pixels; default the start window's own width from the live model."
+			},
+			height: {
+				type: "integer",
+				description: "screen: canvas height in pixels; default the start window's own height."
+			},
+			chrome: {
+				type: "string",
+				description: "screen: screen draws the header and status bands inside the screen (default); none leaves them to the window shell.",
+				enum: ["screen", "none"]
 			},
 			sheet: {
 				type: "string",
@@ -5135,22 +5162,102 @@ function apply(ctx, config = {}) {
 		output: jsonOutput,
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
-			kind: args.action === "theme" && args.mode === "apply" ? "edit" : "read"
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			kind: (args.action === "theme" || args.action === "screen") && args.mode === "apply" ? "edit" : "read"
 		}),
 		async execute(args, exec) {
 			return exclusive(async () => {
 				const action = typeof args.action === "string" ? args.action : "";
-				const actions = ["languages", "theme", "audit"];
+				const actions = ["languages", "theme", "audit", "components", "screen"];
 				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
 				if (action === "languages") return {
 					languages: languageCatalogue(),
 					default: DEFAULT_LANGUAGE,
 					next: "Pick a language and run action theme with mode plan: the plan names the sheet node, every token and every named style before anything is written."
 				};
+				if (action === "components") {
+					const picked = typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE;
+					return {
+						action,
+						...kitCatalogue(picked),
+						next: "Describe the screen as a blueprint and run action screen with mode plan: the plan names every component and its slot before anything is written."
+					};
+				}
 				if (typeof args.project !== "string" || args.project.trim() === "") throw new Error("theme and audit read the live model: give project (the project name optix_status reports)");
 				const origin = settings.bridgeUrls[0] ?? "";
 				const { health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				if (action === "screen") {
+					const mode = args.mode === "apply" ? "apply" : "plan";
+					const blueprint = args.blueprint;
+					if (blueprint === null || typeof blueprint !== "object" || Array.isArray(blueprint)) throw new Error("screen needs blueprint: the screen description {name, title, pattern, header, kpis, cards, chart, messages, status}");
+					const host = await liveScreenHost(origin, exec.signal);
+					const blueprintName = typeof blueprint.name === "string" ? blueprint.name.trim() : "";
+					const screenPath = (typeof args.screen === "string" && args.screen.trim() !== "" ? args.screen.trim() : blueprintName === "" ? "" : `UI/Screens/${blueprintName}`).replace(/\/+$/u, "");
+					if (screenPath === "") throw new Error("screen needs screen (a project path such as UI/Screens/Home) or blueprint.name");
+					const target = await bridge.request(origin, "map", exec.signal, { path: screenPath, depth: "0", mode: "detail" }).catch(() => void 0);
+					if (target === void 0) throw new Error(`no screen at ${screenPath}: create and mount it with optix_screen first, then compile the blueprint into it`);
+					const width = Number.isInteger(args.width) && args.width > 0 ? args.width : host.width;
+					const height = Number.isInteger(args.height) && args.height > 0 ? args.height : host.height;
+					if (!Number.isFinite(width) || !Number.isFinite(height)) throw new Error(`the start window's own canvas could not be read: give width and height (the screen is ${screenPath})`);
+					const pickedLanguage = typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE;
+					const planned = compileBlueprint(
+						{ ...blueprint, pattern: typeof args.pattern === "string" && args.pattern.trim() !== "" ? args.pattern.trim() : blueprint.pattern },
+						{ screen: screenPath, width, height, language: pickedLanguage, chrome: args.chrome === "none" ? "none" : "screen" }
+					);
+					const validate = async (ops) => bridge.request(origin, "validate_ops", exec.signal, {}, "POST", { ops, strict: true });
+					const accepted = (validation) => validation?.ok === true && (validation.errors ?? []).length === 0;
+					const validation = await validate(planned.ops);
+					const valid = accepted(validation);
+					const base = {
+						action,
+						mode,
+						project: selectedHealth.project,
+						screen: screenPath,
+						pattern: planned.layout.pattern,
+						language: planned.theme.name,
+						layout: planned.layout,
+						counts: planned.counts,
+						op_count: planned.ops.length
+					};
+					if (mode === "plan") return {
+						status: valid ? "planned" : "refused",
+						...base,
+						validation,
+						next: valid
+							? "Run action screen with mode apply and allowWrites: the same operations write the screen, then Save and Build in Studio before the runtime draws them."
+							: "The bridge refused the blueprint before anything was written: read validation for the component whose slot or property it would not resolve."
+					};
+					if (!valid) return { status: "refused", ...base, validation, next: "Nothing was written. Fix what validation names, then plan again." };
+					allowWrite();
+					const results = [];
+					for (const [index, op] of planned.ops.entries()) {
+						let dispatched = false;
+						try {
+							const now = await bridge.request(origin, "health", exec.signal);
+							if (now.project !== selectedHealth.project || now.model_loaded !== true || now.pid !== selectedHealth.pid) throw new Error("Serving Studio project changed during the screen batch");
+							const request = operationRequest(op);
+							dispatched = true;
+							const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+							if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge a screen operation", true);
+							results.push(result);
+						} catch (error) {
+							return {
+								status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+								...base,
+								applied: results.length,
+								failed_index: index,
+								error: String(error),
+								next: "Inspect the screen before retrying: a half-applied screen still renders, so plan again and apply only what is missing."
+							};
+						}
+					}
+					return {
+						status: "applied",
+						...base,
+						applied: results.length,
+						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator: the runtime draws the saved screen with the project's style sheet."
+					};
+				}
 				const childrenOf = (reply) => reply?.map?.children ?? reply?.children ?? [];
 				const nameOf = (entry) => String(entry?.browse_name ?? entry?.name ?? "");
 				const language = typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE;

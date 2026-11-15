@@ -243,6 +243,30 @@ Screens built by `optix_screen` read the same language, so it is not a skin pain
 layout density, the type scale and the target sizes come from it, and `isa101` is judged by ISA-101
 rules rather than by `modern` ones. Switching a finished project is one apply call, not a rebuild.
 
+## A designed screen is a blueprint, not coordinates
+
+Where a screen is not a scaffold but a design, describe it and let the kit place it. `optix_ui` owns
+this: `action: "components"` answers with the components the active language draws with, and
+`action: "screen"` compiles a `pattern` plus its regions into validated operations on a 12-column grid.
+There is no coordinate to get wrong: a body that cannot fit is refused (`layout_overflow`,
+`layout_too_narrow`) rather than drawn overlapping, and `chrome: "none"` leaves the header and footer to
+a window shell.
+
+1. `optix_ui { action: "components", language }` - and, if the brief is a real design, read
+   [`docs/optix-kit.md`](../../docs/optix-kit.md) for the blueprint shape before writing one.
+2. `optix_ui { action: "screen", project, screen, pattern: "overview", mode: "plan", blueprint }`.
+   The answer carries the canvas, the operations, the components and the validation.
+3. The same call with `mode: "apply"` (writes allowed) - it validates the whole batch `strict: true`
+   first, then dispatches one operation at a time and reports `partial`/`indeterminate` honestly.
+4. Save and Build in Studio, restart the emulator, look at the screen. A blueprint that applied is not
+   a screen that reads well; the look is judged on the served preview, not on the operation count.
+
+Two measured rules the kit already obeys, that any hand-written screen must obey too: a colour is a
+`#RRGGBB` string (`validate_ops` refuses `0xRRGGBBAA`), and a node name that a legacy scaffold already
+uses (`Card1`) collides - `already_exists` is reported before anything is written. `pattern` is
+`overview` or `blank` today; the shell, the navigation rail and the dialogs arrive with
+`optix_ui action: "shell"|"dialog"` in the same P-series, so do not hand-draw them in the meantime.
+
 ## Navigation is a bar and a proof
 
 A screen that never changes when a button is clicked is the failure this skill exists to stop: the

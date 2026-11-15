@@ -15,6 +15,19 @@
   catalogue. Re-applying is safe and repairs a sheet someone edited by hand. Proved live on
   `AryaOptixTemplate` (bridge 1.0.9): 78 operations in three phases, `engine_refs_verified: true`,
   `audit` `ok: true, score: 100`, with `test/optix-live-theme.mjs` restoring the project afterwards.
+- **`optix_ui` also drafts screens from a blueprint.** `action components` lists the kit the active
+  language draws with (header band, KPI tile, card, bar chart, message feed, status strip, lamp, divider,
+  hero image) and `action screen` compiles a `pattern` plus its regions into validated operations:
+  `packages/optix/lib/layout.js` is the 12-column arithmetic (`PAD 24`, `GUTTER 20`, 44 px target floor,
+  width classes `compact`/`standard`/`wide`, an 88 px header, a 56 px footer, a 96 px KPI strip) and
+  `packages/optix/lib/kit.js` is one builder per component; a body that cannot fit is refused with
+  `layout_overflow`/`layout_too_narrow` instead of drawn overlapping. The batch is validated
+  `strict: true` before anything is written and applied one operation at a time with a health re-check.
+  Colours are emitted as `#RRGGBB` because `validate_ops` refuses the `0xRRGGBBAA` spelling
+  (`Color must be #RRGGBB / #AARRGGBB hex or a UInt32 decimal`), and the card component is named
+  `DataCard<n>` so it cannot collide with a legacy scaffold's `Card1` (`already_exists`). Proved live on
+  `AryaOptixTemplate` against a fresh `UI/Screens/UiProbe`: `planned`, 287 operations, 19 components,
+  `validation: ok`, then `applied: 287`; the visual proof belongs to the starter release that follows.
 
 ## [0.97.0] - 2026-11-15
 
