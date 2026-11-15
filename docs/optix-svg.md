@@ -54,9 +54,9 @@ the element-property node is named from the id and the property (`Conveyor` + `C
 1. `optix_svg { action: "inspect", source: "<path>.svg" }` — read `conformant` first. If it is false,
    apply the `repairs` list to the drawing: the tool names the exact change (`fill="#30A46C"` for a
    gradient reference, an `id` for an unaddressable element, a rename for a collision).
-2. `optix_svg { action: "add", screen, name, source }` — copies the file to `<project>/imgs/<name>.svg`,
+2. `optix_svg { action: "add", screen, name, source }` — copies the file to `<project>/ProjectFiles/imgs/<name>.svg`,
    creates the `AdvancedSVGImage` on the screen, and writes `Path` as `%PROJECTDIR%/imgs/<name>.svg`.
-   The `%PROJECTDIR%` form is required: the Web presentation engine refuses any path outside the project
+   The file belongs under `<project>/ProjectFiles`, which the engine serves as `/projectfiles/...`; a copy in `<project>/imgs` renders blank and answers 404 (measured 2026-11-15). The `%PROJECTDIR%` form is required: the Web presentation engine refuses any path outside the project
    folder, so an absolute Windows path draws in the native engine and breaks the browser one.
 3. `optix_svg { action: "bind", node, id, property, value }` — creates the
    `AdvancedSVGImageElementProperty` and writes `ID`, `Property` and `Value`. For live data pass

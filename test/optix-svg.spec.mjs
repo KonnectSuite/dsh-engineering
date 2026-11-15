@@ -11,7 +11,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { elementPropertyName, inspectSvg, propertyClass, repairPlan } from '../packages/optix/lib/svg.js'
+import { elementPropertyName, inspectSvg, projectImgsDir, propertyClass, repairPlan } from '../packages/optix/lib/svg.js'
 
 const GOOD = `<?xml version="1.0"?>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.2" baseProfile="tiny" width="240" height="120" viewBox="0 0 240 120">
@@ -119,4 +119,12 @@ test('a property is spelled the way the class enum takes it', () => {
   assert.equal(propertyClass('stroke_width'), 'StrokeWidth')
   assert.equal(propertyClass('Stroke dasharray'), 'StrokeDasharray')
   assert.equal(propertyClass('hue'), undefined)
+})
+
+test('the drawing is written where the Web presentation engine serves it', () => {
+  // Measured on Studio 1.8.1.27: the engine fetches /projectfiles/imgs/<name>.svg, which is
+  // <project>/ProjectFiles/imgs; a drawing in <project>/imgs answers 404 and renders blank.
+  const folder = projectImgsDir('C:/Projects/Line')
+  assert.match(folder, /ProjectFiles[\\/]imgs$/u)
+  assert.ok(projectImgsDir('/tmp/project') !== '/tmp/project/imgs')
 })

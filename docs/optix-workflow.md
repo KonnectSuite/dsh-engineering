@@ -179,7 +179,7 @@ at runtime) and calling that a change would bury the two types and 94 properties
 **Artwork that changes with the process.** `optix_svg { action: "inspect" }` says whether a drawing can be
 driven at all: Optix changes an element's colour, opacity, stroke width and dash array only when the file
 is SVG 1.2 Tiny, the element carries an `id`, and its paint is hexagonal; everything else renders and never
-moves. `add` writes the file into `<project>/imgs/` and creates the image with a `%PROJECTDIR%` path
+moves. `add` writes the file into `<project>/ProjectFiles/imgs/` and creates the image with a `%PROJECTDIR%` path
 (the Web engine refuses paths outside the project), and `bind` creates the element property under the
 image's `SVGElementProperties` collection — named explicitly, because an auto-routed create comes back as a
 warning that a strict batch refuses.

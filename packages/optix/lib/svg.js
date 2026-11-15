@@ -16,6 +16,22 @@
  * Nothing here rewrites the file: a repair is a suggestion the caller applies,
  * because a silent rewrite of artwork is not this tool's call to make.
  */
+import { join } from "node:path";
+
+/**
+ * Where an Advanced SVG image's file has to live, given the folder that holds the `.optix` file.
+ *
+ * The Web presentation engine fetches `/projectfiles/imgs/<name>.svg`, which it maps to
+ * `<project>/ProjectFiles/imgs`; the same drawing left in `<project>/imgs` answers 404 and the image
+ * renders blank (measured against Studio 1.8.1.27 on 2026-11-15). The node's `Path` still reads
+ * `%PROJECTDIR%/imgs/<name>.svg`, because `%PROJECTDIR%` is that ProjectFiles folder.
+ *
+ * @param {string} root Folder that holds the project's `.optix` file.
+ * @returns {string} The `imgs` folder to write the drawing into.
+ */
+export function projectImgsDir(root) {
+	return join(root, "ProjectFiles", "imgs");
+}
 
 /** Colours the named-colour repair can translate, and the hex the drawing means. */
 const NAMED_COLOURS = {

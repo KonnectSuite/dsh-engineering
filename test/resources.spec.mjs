@@ -118,6 +118,41 @@ test('the engagement order is reachable and says the machine is not the brief', 
   assert.ok(contents.data.domains.includes('craft'))
 })
 
+test('every Optix mechanics page answers by id and owns its rules', async () => {
+  const pages = {
+    'optix-style-sheets-and-appearance': 'OPTIX-STYLE-01',
+    'optix-layout-and-containers': 'OPTIX-LAYOUT-01',
+    'optix-panels-and-dialogs': 'OPTIX-PANEL-01',
+    'optix-data-presentation': 'OPTIX-DATA-01',
+    'optix-images-and-svg': 'OPTIX-IMG-01',
+    'optix-alarm-object-model': 'OPTIX-ALARM-01',
+    'optix-users-and-security': 'OPTIX-SEC-01',
+    'optix-translations': 'OPTIX-I18N-01',
+    'optix-recipes-and-retentivity': 'OPTIX-RCP-07',
+    'optix-performance-and-engine': 'OPTIX-PERF-01',
+    'optix-variables-and-properties': 'OPTIX-VAR-01',
+  }
+  const contents = await referenceTool.execute({})
+  const listed = new Set(contents.data.pages.map(page => page.id))
+  for (const [id, rule] of Object.entries(pages)) {
+    assert.ok(listed.has(id), `the corpus does not list ${id}`)
+    const page = await referenceTool.execute({ id })
+    assert.ok(page.data.rules.includes(rule), `${id} does not own ${rule}`)
+    assert.ok(page.data.markdown.length > 1500, `${id} is a stub, not a page`)
+  }
+})
+
+test('a rule id query finds the page that owns it', async () => {
+  for (const [query, id] of [
+    ['OPTIX-STYLE-01', 'optix-style-sheets-and-appearance'],
+    ['OPTIX-IMG-01', 'optix-images-and-svg'],
+    ['OPTIX-VAR-03', 'optix-variables-and-properties'],
+  ]) {
+    const found = await referenceTool.execute({ query })
+    assert.ok(found.data.hits.some(hit => hit.id === id), `no page answers for ${query}`)
+  }
+})
+
 test('the standards skill mounts through the skills service', () => {
   assert.deepEqual(skill.inject, ['skills'])
   const registered = []

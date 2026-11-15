@@ -391,9 +391,12 @@ for two ids that would collide as property names) so the fix can be made in the 
 around. Files with no `id`, gradients, filters, `foreignObject`, `script` or animation elements are
 reported, not silently accepted.
 
-`{ action: "add", screen, name, source }` puts the drawing into the project at `<project>/imgs/<name>.svg`,
-creates the `AdvancedSVGImage` on the screen, and writes `Path` as `%PROJECTDIR%/imgs/<name>.svg` — the
-resource URI the Web presentation engine requires, because it refuses any path outside the project folder.
+`{ action: "add", screen, name, source }` puts the drawing into the project at
+`<project>/ProjectFiles/imgs/<name>.svg`, creates the `AdvancedSVGImage` on the screen, and writes `Path` as
+`%PROJECTDIR%/imgs/<name>.svg` — the resource URI the Web presentation engine requires, because it refuses
+any path outside the project folder. The file goes under `ProjectFiles` because that is the folder the engine
+serves as `/projectfiles/imgs/...`; a copy in `<project>/imgs` answers 404 and the image renders blank
+(measured 2026-11-15, which is why `add` writes there).
 Then `{ action: "bind", node, id, property, value }` (a literal, or `source_path` for a dynamic link, or
 `bool_colours: { on, off }` for a boolean) creates the `AdvancedSVGImageElementProperty` under the image's
 `SVGElementProperties` collection — passed explicitly, because a create that the bridge would auto-route

@@ -16,6 +16,7 @@
  * writes live in Studio's memory until the engineer saves.
  */
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -139,6 +140,10 @@ try {
 	assert.equal(added.status, 'completed', JSON.stringify(added))
 	assert.equal(added.node, 'UI/ProbeHardening/Art')
 	assert.match(added.resource_uri, /^%PROJECTDIR%\/imgs\//u)
+	// Measured 2026-11-15: the Web presentation engine fetches /projectfiles/imgs/<name>.svg, so a drawing
+	// left in <project>/imgs is a 404 and a blank image. The file has to be under ProjectFiles.
+	assert.match(added.file, /ProjectFiles[\\/]imgs[\\/]Art\.svg$/u, added.file)
+	assert.ok(existsSync(added.file), `the drawing is on disk at ${added.file}`)
 
 	step('W5: the image with no bound property is reported, and binding one clears it')
 	const before = await call('optix_design_check', { project, screen: 'UI/ProbeHardening' })
@@ -155,6 +160,16 @@ try {
 		value: '#2FA8E0'
 	})
 	console.log(`bound element ${bound.element ?? 'Conveyor'}: value read back ${JSON.stringify(bound.read_back)}`)
+	// Binding the same part twice must update it, not fail on the node it created the first time.
+	const rebound = await call('optix_svg', {
+		project,
+		action: 'bind',
+		node: 'UI/ProbeHardening/Art',
+		id: 'Conveyor',
+		property: 'Color',
+		value: '#2FA8E0'
+	})
+	assert.equal(rebound.status, 'completed', JSON.stringify(rebound.validation ?? rebound))
 	const listed = await call('optix_svg', { project, action: 'list', screen: 'UI/ProbeHardening' })
 	console.log(`list: ${JSON.stringify(listed.images)}`)
 	assert.equal(listed.images.length, 1)

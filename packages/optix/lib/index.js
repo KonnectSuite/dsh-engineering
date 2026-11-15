@@ -20,7 +20,7 @@ import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
 import { MARKER, NETLOGIC_FOLDER, NETLOGIC_RULES, TEMPLATES, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, reviewNetLogic, templateCode, writeNetLogic } from "./netlogic.js";
 import { childrenOf, closest, diffDump, enumInfo, find as findSchema, isDataType, isObjectType, loadSchema, schemaVersion, typeInfo, typeNames } from "./schema.js";
-import { elementPropertyName, inspectSvg, propertyClass, repairPlan } from "./svg.js";
+import { elementPropertyName, inspectSvg, projectImgsDir, propertyClass, repairPlan } from "./svg.js";
 /** A "did you mean" tail for a name the catalog does not know. */
 function suggestSuffix(wrong, candidates) {
 	const near = closest(wrong, candidates);
@@ -1107,7 +1107,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}Ã—${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -2320,7 +2320,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_svg",
-		description: "Work with SVG artwork the way an Advanced SVG image needs it. action inspect checks a drawing BEFORE it is placed: Optix can only drive a part that carries an id and whose fill or stroke is a hexadecimal colour on that part, and a drawing that breaks that rule renders correctly while silently refusing every property. action add copies the file into the project's imgs folder, creates the AdvancedSVGImage and sets its Path to %PROJECTDIR%/imgs/<name>.svg (the Web presentation engine cannot read an absolute path). action bind creates the SVG element property that drives one part - a literal colour, a bound tag, or a boolean with two colours - and reports the node it wrote. action list shows the images on a screen and what each one animates. Nothing here edits your artwork: a repair is a suggestion.",
+		description: "Work with SVG artwork the way an Advanced SVG image needs it. action inspect checks a drawing BEFORE it is placed: Optix can only drive a part that carries an id and whose fill or stroke is a hexadecimal colour on that part, and a drawing that breaks that rule renders correctly while silently refusing every property. action add copies the file into <project>/ProjectFiles/imgs (the folder the Web presentation engine serves as /projectfiles) and sets the image Path to %PROJECTDIR%/imgs/<name>.svg, creates the AdvancedSVGImage and sets its Path to %PROJECTDIR%/imgs/<name>.svg (the Web presentation engine cannot read an absolute path). action bind creates the SVG element property that drives one part - a literal colour, a bound tag, or a boolean with two colours - and reports the node it wrote. action list shows the images on a screen and what each one animates. Nothing here edits your artwork: a repair is a suggestion.",
 		parameters: {
 			project: projectParameter,
 			action: {
@@ -2456,8 +2456,11 @@ function apply(ctx, config = {}) {
 				const collection = `${node}/SVGElementProperties`;
 				const target = `${collection}/${element}`;
 				const existing = await bridge.request(origin, "nodes", exec.signal, { path: target }).catch(() => void 0);
+				// A `nodes` reply describes the node as properties/children and does not repeat its
+				// own name, so "does it exist" is any descriptive field rather than a name check.
+				const alreadyThere = existing !== void 0 && (existing.browse_name !== void 0 || existing.name !== void 0 || existing.node_class !== void 0 || existing.properties !== void 0 || existing.children !== void 0);
 				const ops = [];
-				if (existing === void 0 || existing?.name === void 0) {
+				if (!alreadyThere) {
 					// The element property is created at its collection path explicitly: the
 					// bridge would otherwise route it there and report the routing as a note.
 					ops.push({
@@ -2549,7 +2552,11 @@ function apply(ctx, config = {}) {
 			const screen = requirePath(args.screen, "action add needs screen: the container to place the image in");
 			const name = requirePath(args.name, "action add needs name: the BrowseName and the file stem");
 			const { root } = await findProjectRoot(args.project, args.project_root);
-			const imgs = join(root, "imgs");
+			// Measured on Studio 1.8.1.27 (2026-11-15): the Web presentation engine asks for
+			// /projectfiles/imgs/<name>.svg and answers 404 unless the file sits under <project>/ProjectFiles,
+			// which is what an AdvancedSVGImage renders blank without. The resource URI the node carries is
+			// still %PROJECTDIR%/imgs/<name>.svg - the variable, not the folder, is the indirection.
+			const imgs = projectImgsDir(root);
 			await mkdir(imgs, { recursive: true });
 			const file = join(imgs, `${name}.svg`);
 			await writeFile(file, text, "utf8");
@@ -3751,7 +3758,7 @@ function apply(ctx, config = {}) {
 					units
 				});
 				const unchecked = [...report.unchecked, ...canvasNotes];
-				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", …" : ""}`);
+				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", â€¦" : ""}`);
 				if (screen.descendants !== void 0 && screen.descendants > described.length) unchecked.push(`${screen.name} holds ${screen.descendants} descendants; only ${described.length} were read`);
 				const warnings = report.findings.filter((finding) => finding.severity === "warning");
 				return {
@@ -4480,3 +4487,4 @@ function apply(ctx, config = {}) {
 }
 //#endregion
 export { Config, apply, inject, name };
+

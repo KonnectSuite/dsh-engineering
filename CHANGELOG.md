@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **The SVG image renders, and a second bind updates instead of refusing.** Two defects the visual probe
+  found on a live Studio 1.8.1.27 project: `optix_svg add` wrote the drawing to `<project>/imgs`, but the Web
+  presentation engine fetches `/projectfiles/imgs/<name>.svg` - the `ProjectFiles` folder - answered 404 and
+  rendered a blank box even though the node, its Path and the element property were all correct; and
+  `optix_svg bind` decided a part already existed by looking for the node name in a `nodes` reply that never
+  carries one, so binding the same part twice was refused as `already_exists`. Proven end to end: red lamp,
+  bind `#30A46C`, save and build, runtime restart, green lamp in `optix_screenshot`; the live E2E asserts the
+  file lands under `ProjectFiles/imgs` and that a re-bind completes.
 - **Optix design hardening: the schema, the artwork, the variables, and four more checks.**
   `optix_schema` answers from a catalog generated out of the installed Studio help
   (`scripts/gen-optix-schema.mjs`; 565 object types, 102 variable types and 110 enums for 1.8.1.27)
