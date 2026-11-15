@@ -236,11 +236,13 @@ Use `optix_nav`, never hand-drawn coordinates:
    first (`OPTIX-PROD-01`). A second apply is a no-op, not a second handler.
 4. Save and Build in Studio, then `optix_emulator { action: "restart" }`.
 5. `optix_nav { action: "verify", project_root }` — it opens a headless browser at the window's size,
-   clicks every button in the served preview and reads the loader's `Panel` back. Only a panel that
-   changed is a pass; a repaint alone is reported as `repaint_only` and never counted.
+   clicks every button in the served preview, and accepts two runtime proofs: the loader's `Panel` read
+   back through the bridge, or the served page naming the target on a line that was not on screen
+   before the click. Bridge 1.0.9 renders a `NodeId` property as `(Null)`, so on some projects the page
+   text is the only evidence available. A repaint alone is reported as `repaint_only` and never counted.
 
 Never report navigation as working from operations alone. "Wired" means the model holds a handler;
-"works" means a click moved the panel, and only `verify` says that.
+"works" means a click put the target screen on the display, and only `verify` says that.
 
 ## What kind of request is this?
 

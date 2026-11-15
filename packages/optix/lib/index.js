@@ -14,7 +14,7 @@ import { armBridge, bridgeVersion } from "./arm.js";
 import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls, writeReferences } from "./build.js";
 import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
 import { scaffoldProject } from "./scaffold.js";
-import { NAV_MAX_BUTTONS, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
+import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -4893,21 +4893,38 @@ function apply(ctx, config = {}) {
 				if (width === void 0 || height === void 0) throw new Error(`could not read the canvas of ${windowPath}: its Width and Height properties were not reported, so a button slot cannot be placed`);
 				const loader = typeof args.loader === "string" && args.loader.trim() !== "" ? args.loader.trim() : host.panel_loader ?? "";
 				const children = (windowNodes?.children ?? []).map((entry) => String(entry.browse_name ?? ""));
-				const resolvedTargets = navTargets({ targets: args.targets, screensFolder: args.screens_folder });
+				const screensFolder = typeof args.screens_folder === "string" && args.screens_folder.trim() !== "" ? args.screens_folder.trim() : "UI/Screens";
+				const requested = Array.isArray(args.targets) ? args.targets : [];
+				// Verify proves the bar that is there, so with no targets named it takes the window's own
+				// Nav_* buttons: a proof that only checks what the caller already listed proves nothing.
+				const resolvedTargets = requested.length > 0
+					? navTargets({ targets: requested, screensFolder })
+					: action === "verify"
+						? children.filter((name) => name.startsWith("Nav_") && name.length > 4).map((name) => ({ name, label: name.slice(4), screen: `${screensFolder}/${name.slice(4)}` }))
+						: navTargets({ targets: requested, screensFolder });
+				if (action === "verify" && resolvedTargets.length === 0) throw new Error(`no Nav_* button in ${windowPath} to prove: name targets to verify, or run action plan to build a bar`);
 				// Only a button with no handler child is wired: a second wire_event would leave the
 				// button with two EventHandlers, and a second apply must be a no-op.
 				const existing = [];
 				const wired = new Set();
+				const probes = new Map();
 				for (const target of resolvedTargets) {
 					if (!children.includes(target.name)) continue;
 					existing.push(target.name);
 					const probe = await bridge.request(origin, "nodes", exec.signal, { path: `${windowPath}/${target.name}` }).catch(() => void 0);
+					probes.set(target.name, probe);
 					if (handlerChild(probe?.children) !== void 0) wired.add(target.name);
 				}
 				const plan = planBar({ window: windowPath, width, height, targets: resolvedTargets, existing, theme: args.theme ?? {} });
 				plan.buttons.forEach((button) => {
 					button.wired = wired.has(button.name);
 				});
+				// Verify clicks where the model says the button is: a bar dragged after the plan was
+				// written must not be clicked at the planned slot.
+				for (const button of plan.buttons) {
+					const probe = probes.get(button.name);
+					if (probe !== void 0) button.slot = buttonSlot(probe, button.slot);
+				}
 				let ops = [];
 				let wiring = [];
 				if (loader !== "") {

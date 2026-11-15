@@ -29,10 +29,13 @@
 - **Typed navigation, and a proof that the buttons work.** `optix_nav` plans the window-level bar from the
   window canvas, creates only the buttons that are missing, wires each one through the loader's
   `ChangePanel` with a relative `../<loader>` pointer (the design-time NodeId that `OPTIX-PROD-01` clears is
-  never written), and then clicks every button in the served preview and reads the loader's `Panel` back:
-  `verify` returns `verified` only when each click changed the panel to that button's screen. `plan`,
-  `apply` and `reconcile` are idempotent; a repaint is reported and never counted as a pass. It exists
-  because the installed help does not document `ChangePanel` at all — the sample projects are the source.
+  never written), and then clicks every button in the served preview: `verify` returns `verified` only when
+  each click put that button's screen on the display, judged by the loader's `Panel` read back through the
+  bridge or by the served page naming the target on a line that was not on screen before the click (bridge
+  1.0.9 renders a `NodeId` property as `(Null)`, so the page text is the evidence when the panel cannot be
+  read). `plan`, `apply` and `reconcile` are idempotent; a repaint is reported and never counted as a pass.
+  It exists because the installed help does not document `ChangePanel` at all — the sample projects are the
+  source. Proven on a running project: three buttons, three clicks, `verified`.
 - **Two NetLogic templates measured from Rockwell's own code.** `optix_script` gained `nav` (a runtime
   class inside the `PanelLoader`, `Owner as PanelLoader`, one parameterless-per-target `Open(string
   screenPath)` that resolves `Project.Current.Get<ScreenType>` and calls `ChangePanel`) and `login`

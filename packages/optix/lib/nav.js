@@ -207,13 +207,47 @@ export function handlerChild(children = []) {
 
 /**
  * The loader's current panel, from the bridge's `nodes` reply for the loader.
+ *
+ * A `NodeId` property whose pointer has no value is rendered by the bridge the way Studio's property grid
+ * renders it - `(Null)` - which is not a screen name; that is reported as unreadable instead of as a panel.
+ * `CurrentPanel` is read when `Panel` carries nothing, because the runtime fills it with the displayed one.
  * @param nodesReply - Reply to `GET /bridge/nodes?path=<loader>`.
- * @returns The property value as a string, or `""` when the bridge did not report it.
+ * @returns The property value as a string, or `""` when the bridge did not report one.
  */
 export function panelProperty(nodesReply) {
 	const properties = nodesReply?.properties ?? [];
-	const found = properties.find((entry) => /(^|\/)Panel$/u.test(String(entry?.name ?? "")));
-	return found === void 0 ? "" : String(found.value ?? "");
+	const read = (name) => {
+		const found = properties.find((entry) => String(entry?.name ?? "") === name);
+		const value = String(found?.value ?? "").trim();
+		return /^\(\s*null\s*\)$/iu.test(value) ? "" : value;
+	};
+	const panel = read("Panel");
+	if (panel !== "") return panel;
+	return read("CurrentPanel");
+}
+
+/**
+ * A button's live rectangle, from the bridge's `nodes` reply for that button.
+ *
+ * A plan computes slots from geometry, but a bar the engineer later dragged has to be clicked where the
+ * model says the button is, not where the plan would have put it. Verify reads the four margin properties
+ * back through this, so a moved button is clicked at its real centre.
+ * @param nodesReply - Reply to `GET /bridge/nodes?path=<window>/<button>`.
+ * @param fallback - The planned slot to keep when a property is not reported.
+ * @returns `{ left, top, width, height }` in canvas pixels.
+ */
+export function buttonSlot(nodesReply, fallback) {
+	const read = (name) => {
+		const property = (nodesReply?.properties ?? []).find((entry) => String(entry?.name ?? "") === name);
+		const hit = /^(-?\d+(?:\.\d+)?)/u.exec(String(property?.value ?? ""));
+		return hit === null ? void 0 : Math.round(Number(hit[1]));
+	};
+	const left = read("LeftMargin");
+	const top = read("TopMargin");
+	const width = read("Width");
+	const height = read("Height");
+	if (left === void 0 || top === void 0 || width === void 0 || height === void 0) return fallback;
+	return { left, top, width, height };
 }
 
 /**
@@ -282,50 +316,114 @@ export async function launchRuntimePage(config, { width, height, settleMs = NAV_
 }
 
 /**
- * Click each button in the running project and report what the loader's panel became.
- *
- * The loop starts with a button whose screen is not the one already open, so the first click proves a
- * change instead of repeating the state the runtime started in.
- * @param input - Page, planned buttons, a `panel()` reader (the bridge's current panel value), settle
- * time, abort signal and a screenshot-hash override for tests.
- * @returns One row per button: the click point, the panel before and after, and whether it opened.
+ * Read the served page's own text, which is the runtime-side evidence a bridge cannot give.
+ * @param page - Page from `launchRuntimePage`.
+ * @returns The visible text, or `""` when the page exposes none.
  */
-export async function verifyNavigation({ page, buttons, panel, settleMs = NAV_SETTLE_MS, signal, hashPage = screenshotHash } = {}) {
+export async function pageText(page) {
+	try {
+		return String(await page.evaluate(() => document.body?.innerText ?? "") ?? "");
+	} catch {
+		return "";
+	}
+}
+
+/** Letters and digits only, upper-cased, so `Alarm Summary` and `ALARM_SUMMARY` compare equal. */
+function nameKey(value) {
+	return String(value ?? "").replace(/[^0-9a-z]+/giu, "").toUpperCase();
+}
+
+/** Does one line of the served page name this button's screen? */
+function lineNamesScreen(line, button) {
+	const key = nameKey(line);
+	if (key === "") return false;
+	for (const name of [button.screen, button.label]) {
+		const wanted = nameKey(String(name ?? "").split("/").pop() ?? "");
+		if (wanted !== "" && key.includes(wanted)) return true;
+	}
+	return false;
+}
+
+/** The first non-empty line of the served page - a screen's title is the usual first line. */
+function firstLine(text) {
+	return String(text ?? "").split(/\r?\n/u).map((line) => line.trim()).find((line) => line !== "") ?? "";
+}
+
+/** Which of the planned buttons is already open, judged by the page's first line when the panel is unreadable. */
+function screenFromText(text, buttons) {
+	const line = firstLine(text);
+	if (line === "") return "";
+	const hit = buttons.find((button) => lineNamesScreen(line, button));
+	return hit === void 0 ? "" : hit.screen;
+}
+
+/** Lines visible after the click that were not visible before it, so a constant nav label never counts. */
+function addedLines(before, after) {
+	const seen = new Set(String(before ?? "").split(/\r?\n/u).map((line) => line.trim()));
+	return String(after ?? "").split(/\r?\n/u).map((line) => line.trim()).filter((line) => line !== "" && !seen.has(line));
+}
+
+/**
+ * Click each button in the running project and report what opened.
+ *
+ * Two proofs are accepted, strongest first: the loader's `Panel` read back through the bridge, and the served
+ * page naming the target on a line that was not on screen before the click (the bridge cannot report a `NodeId`
+ * property on this version). A repaint alone is reported as evidence and never counted as a pass, and a nav bar
+ * always shows its labels, so a name that was already visible is not proof either.
+ * @param input - Page, planned buttons, a `panel()` reader, settle time, abort signal and overrides for tests.
+ * @returns One row per button: the click point, both proofs, and whether the button is proven.
+ */
+export async function verifyNavigation({ page, buttons, panel, settleMs = NAV_SETTLE_MS, signal, hashPage = screenshotHash, readText = pageText } = {}) {
 	if (page === void 0) throw new Error("verifyNavigation needs a page from launchRuntimePage");
 	if (!Array.isArray(buttons) || buttons.length === 0) throw new Error("verifyNavigation needs at least one planned button");
 	if (typeof panel !== "function") throw new Error("verifyNavigation needs a panel() reader: the loader's Panel value from the bridge");
 	const pending = [...buttons];
 	const rows = [];
+	const read = async () => {
+		try {
+			return String(await readText(page) ?? "");
+		} catch {
+			return "";
+		}
+	};
+	let text = await read();
 	let current = String(await panel() ?? "");
+	if (current === "") current = screenFromText(text, buttons);
 	while (pending.length > 0) {
 		signal?.throwIfAborted();
 		const openIndex = pending.findIndex((button) => !panelOpens(current, button.screen));
 		const button = openIndex === -1 ? pending.shift() : pending.splice(openIndex, 1)[0];
 		if (button === undefined) break;
 		const before = current;
+		const textBefore = text;
 		const hashBefore = await hashPage(page);
 		const x = Math.round(button.slot.left + button.slot.width / 2);
 		const y = Math.round(button.slot.top + button.slot.height / 2);
 		await page.mouse.click(x, y);
 		await page.waitForTimeout(settleMs);
 		const after = String(await panel() ?? "");
+		const textAfter = await read();
 		const hashAfter = await hashPage(page);
 		const opened = panelOpens(after, button.screen);
+		const names = addedLines(textBefore, textAfter).some((line) => lineNamesScreen(line, button));
+		const screenAfter = after !== "" ? after : names ? button.screen : before;
 		rows.push({
 			button: button.path,
 			label: button.label,
 			target: button.screen,
 			click: { x, y },
-			panel_before: before,
+			screen_before: before,
+			screen_after: screenAfter,
 			panel_after: after,
 			panel_read: after !== "",
 			opened,
+			page_names_target: names,
+			proven_by: opened ? "panel" : names ? "page text" : "",
 			screen_changed: hashBefore !== hashAfter,
-			// Only the panel is proof: a repaint can be a hover, a cursor or a clock, so it is
-			// reported as evidence but never counted as a button that opened its screen.
-			ok: opened
+			ok: opened || names
 		});
-		current = after;
+		current = screenAfter;
+		text = textAfter;
 	}
 	const proven = rows.filter((row) => row.ok).length;
 	const repaintOnly = rows.filter((row) => !row.ok && row.screen_changed).length;
@@ -336,6 +434,7 @@ export async function verifyNavigation({ page, buttons, panel, settleMs = NAV_SE
 		failed: rows.filter((row) => !row.ok).length,
 		unverified: rows.filter((row) => !row.ok).length,
 		repaint_only: repaintOnly,
+		proven_by: [...new Set(rows.map((row) => row.proven_by).filter((value) => value !== ""))],
 		status: proven === rows.length ? "verified" : proven > 0 || repaintOnly > 0 ? "partial" : "unverified"
 	};
 }
@@ -347,14 +446,18 @@ export async function verifyNavigation({ page, buttons, panel, settleMs = NAV_SE
  */
 export function verifyNext(result) {
 	if (result.status === "verified") {
-		return "Every button opened its screen in the running project. Save and Build in Studio before release, because the bridge authored the model but only Studio writes the file the runtime loads.";
+		const how = (result.proven_by ?? []).includes("page text") ? "the served page named each target after its click" : "the loader reported each screen";
+		return `Every button opened its screen in the running project - ${how}. Save and Build in Studio before release, because the bridge authored the model but only Studio writes the file the runtime loads.`;
 	}
-	const dead = result.rows.filter((row) => !row.ok && row.panel_read).map((row) => row.button);
+	const dead = result.rows.filter((row) => !row.ok).map((row) => row.button);
+	if (dead.length > 0 && result.rows.some((row) => row.ok)) {
+		return `These buttons did not open their screen: ${dead.join(", ")}. Read the handler back with optix_production_check (OPTIX-PROD-01 is an absolute design-time pointer the runtime resolves first), then run optix_nav action plan again - the runtime is serving the saved project, so a Studio Save and Build may simply not have happened.`;
+	}
+	if (dead.length > 0 && (result.proven ?? 0) === 0 && (result.repaint_only ?? 0) > 0) {
+		return "The clicks changed the page but nothing named the target screen, and the bridge did not report the loader's Panel value: click the buttons in optix_preview with allowPreviewInput and read the screen in Studio before calling the bar wired.";
+	}
 	if (dead.length > 0) {
-		return `These buttons did not change the panel: ${dead.join(", ")}. Read the handler back with optix_production_check (OPTIX-PROD-01 is an absolute design-time pointer the runtime resolves first), then run optix_nav action plan again - the runtime is serving the saved project, so a Studio Save and Build may simply not have happened.`;
+		return `These buttons had no visible effect: ${dead.join(", ")}. Check that the bar is inside the window canvas with optix_nav action plan, then Save and Build in Studio and run action verify again.`;
 	}
-	if (result.unverified > 0) {
-		return "The clicks landed but the bridge did not report the loader's Panel value, so this is evidence of a repaint, not of the screen that opened: click the buttons in optix_preview with allowPreviewInput, or read the loader in Studio.";
-	}
-	return "No button was clicked or no click had an effect: check that the bar is inside the window canvas with optix_nav action plan, then Save and Build in Studio and run action verify again.";
+	return "No button was clicked: check that the window holds the bar with optix_nav action plan, then Save and Build in Studio and run action verify again.";
 }

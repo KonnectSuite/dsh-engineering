@@ -3,10 +3,12 @@ import test from "node:test";
 import {
 	NAV_MAX_BUTTONS,
 	buttonName,
+	buttonSlot,
 	handlerChild,
 	navTargets,
 	panelOpens,
 	panelProperty,
+	pageText,
 	planBar,
 	planOps,
 	verifyNavigation,
@@ -85,6 +87,24 @@ test("handlerChild and panelProperty read the bridge's own words", () => {
 	assert.equal(handlerChild([{ browse_name: "Text", dotnet_type: "Label" }]), undefined);
 	assert.equal(panelProperty({ properties: [{ name: "Width", value: "1024.0" }, { name: "Panel", value: "/Objects/Demo/UI/Screens/Home" }] }), "/Objects/Demo/UI/Screens/Home");
 	assert.equal(panelProperty({ properties: [] }), "");
+	// A NodeId property with no readable value is what bridge 1.0.9 reports as `(Null)`; that is not a screen.
+	assert.equal(panelProperty({ properties: [{ name: "Panel", value: " (Null)" }, { name: "CurrentPanel", value: " (Null)" }] }), "");
+	assert.equal(panelProperty({ properties: [{ name: "Panel", value: " (Null)" }, { name: "CurrentPanel", value: "/Objects/Demo/UI/Screens/Alarms" }] }), "/Objects/Demo/UI/Screens/Alarms");
+});
+
+test("buttonSlot clicks where the model says the button is, and keeps the plan when it says nothing", () => {
+	const fallback = { left: 24, top: 584, width: 200, height: 44 };
+	const moved = buttonSlot({
+		properties: [
+			{ name: "LeftMargin", value: "40.0" },
+			{ name: "TopMargin", value: "600.5" },
+			{ name: "Width", value: "180.0" },
+			{ name: "Height", value: "44" },
+		],
+	}, fallback);
+	assert.deepEqual(moved, { left: 40, top: 601, width: 180, height: 44 });
+	assert.equal(buttonSlot({ properties: [{ name: "Width", value: "180.0" }] }, fallback), fallback);
+	assert.equal(buttonSlot(undefined, fallback), fallback);
 });
 
 test("panelOpens only accepts a readable panel", () => {
@@ -95,10 +115,11 @@ test("panelOpens only accepts a readable panel", () => {
 	assert.equal(panelOpens("/Objects/Demo/UI/Screens/Alarms", "UI/Screens/Home"), false);
 });
 
-/** A page stand-in: records clicks, answers a scripted panel sequence, and hashes differently per step. */
-function fakeRuntime({ panels, hash = () => `hash-${Math.random()}` }) {
+/** A page stand-in: records clicks, answers a scripted panel sequence and page-text sequence, and hashes per step. */
+function fakeRuntime({ panels, texts = [""], hash = () => `hash-${Math.random()}` }) {
 	const clicks = [];
 	let index = 0;
+	let read = 0;
 	return {
 		clicks,
 		page: {
@@ -111,6 +132,7 @@ function fakeRuntime({ panels, hash = () => `hash-${Math.random()}` }) {
 			index += 1;
 			return value;
 		},
+		readText: async () => texts[Math.min(read++, texts.length - 1)],
 		hashPage: async () => hash(index),
 	};
 }
@@ -122,6 +144,7 @@ test("verifyNavigation proves a click by the panel it opens", async () => {
 		page: runtime.page,
 		buttons: plan.buttons,
 		panel: runtime.panel,
+		readText: runtime.readText,
 		hashPage: runtime.hashPage,
 	});
 	assert.equal(result.status, "verified");
@@ -131,15 +154,55 @@ test("verifyNavigation proves a click by the panel it opens", async () => {
 	// The first button whose screen is not already open is clicked first: Home is open, so Alarms goes first.
 	assert.equal(result.rows[0].target, "UI/Screens/Alarms");
 	assert.equal(result.rows[0].opened, true);
+	assert.deepEqual(result.proven_by, ["panel"]);
 });
 
-test("verifyNavigation reports an unreadable panel as evidence of a repaint, not a pass", async () => {
+test("verifyNavigation proves a click by the served page naming the target on a new line", async () => {
 	const plan = planBar({ window: "UI/MainWindow", width: 1280, height: 800, targets: navTargets({ targets: TARGETS }) });
-	const runtime = fakeRuntime({ panels: [""], hash: () => `same-${Math.random()}` });
+	const runtime = fakeRuntime({
+		panels: [""],
+		texts: ["HOME\nlive proof\nHome\nAlarms", "ALARMS\nlive proof\nHome\nAlarms", "HOME\nlive proof\nHome\nAlarms"],
+		hash: () => "same-frame",
+	});
 	const result = await verifyNavigation({
 		page: runtime.page,
 		buttons: plan.buttons,
 		panel: runtime.panel,
+		readText: runtime.readText,
+		hashPage: runtime.hashPage,
+	});
+	assert.equal(result.status, "verified");
+	assert.equal(result.proven, 2);
+	assert.deepEqual(result.proven_by, ["page text"]);
+	// The page's first line said Home was open, so Alarms was clicked first even though the panel was unreadable.
+	assert.equal(result.rows[0].target, "UI/Screens/Alarms");
+	assert.equal(result.rows[0].page_names_target, true);
+	assert.match(verifyNext(result), /served page named each target/u);
+});
+
+test("a page label that was already on screen is not proof", async () => {
+	const plan = planBar({ window: "UI/MainWindow", width: 1280, height: 800, targets: navTargets({ targets: TARGETS }) });
+	// The bar's own labels never move: a page that only shows those and nothing new must not pass.
+	const runtime = fakeRuntime({ panels: [""], texts: ["Home\nAlarms\nSettings"], hash: () => "same-frame" });
+	const result = await verifyNavigation({
+		page: runtime.page,
+		buttons: plan.buttons,
+		panel: runtime.panel,
+		readText: runtime.readText,
+		hashPage: runtime.hashPage,
+	});
+	assert.equal(result.proven, 0);
+	assert.equal(result.status, "unverified");
+});
+
+test("verifyNavigation reports an unreadable panel as evidence of a repaint, not a pass", async () => {
+	const plan = planBar({ window: "UI/MainWindow", width: 1280, height: 800, targets: navTargets({ targets: TARGETS }) });
+	const runtime = fakeRuntime({ panels: [""], texts: [""], hash: () => `same-${Math.random()}` });
+	const result = await verifyNavigation({
+		page: runtime.page,
+		buttons: plan.buttons,
+		panel: runtime.panel,
+		readText: runtime.readText,
 		hashPage: runtime.hashPage,
 	});
 	assert.equal(result.status, "partial");
@@ -148,16 +211,20 @@ test("verifyNavigation reports an unreadable panel as evidence of a repaint, not
 	assert.equal(result.repaint_only, result.clicked);
 	assert.equal(result.rows.every((row) => row.panel_read === false), true);
 	assert.equal(result.rows.every((row) => row.ok === false), true);
-	assert.match(verifyNext(result), /did not report the loader's Panel value/u);
+	assert.match(verifyNext(result), /changed the page but nothing named the target screen/u);
 });
 
-test("verifyNext names the dead buttons", () => {
+test("verifyNext names the dead buttons when the rest opened", () => {
 	const dead = verifyNext({
 		status: "partial",
-		rows: [{ button: "UI/MainWindow/Nav_Home", ok: false, panel_read: true }],
-		unverified: 0,
+		rows: [
+			{ button: "UI/MainWindow/Nav_Home", ok: true },
+			{ button: "UI/MainWindow/Nav_Alarms", ok: false },
+		],
+		proven: 1,
 	});
-	assert.match(dead, /did not change the panel: UI\/MainWindow\/Nav_Home/u);
+	assert.match(dead, /did not open their screen: UI\/MainWindow\/Nav_Alarms/u);
 	assert.match(dead, /OPTIX-PROD-01/u);
 	assert.match(verifyNext({ status: "verified" }), /Save and Build in Studio/u);
+	assert.equal(pageText !== undefined, true);
 });
