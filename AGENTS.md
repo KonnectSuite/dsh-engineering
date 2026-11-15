@@ -91,7 +91,8 @@ A client face is part of the app, and the owner judges it that way. Every face �
 ## Change policy (binding)
 
 - **Never change the installed AryaCode.** `%LOCALAPPDATA%\Programs\AryaCode` (payload, `app.asar`, runtime) and `~/.aryacode` (profiles, `node_modules`, `userData`) are the user's live product. Read them; do not write to them, patch them, or edit a profile's `package.json` to work around a bug. Do not stop, uninstall, or launch a second instance against that profile.
-- **Release in batches, and only on request.** Commit and test each change locally with its `CHANGELOG.md` entry under `## [Unreleased]`; do not bump, tag, publish or touch the catalog until the owner says ship. Then release once: bump the version, move the unreleased entries under it, `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`, and record the version in the market catalog. A publish only *stages* the version, so a release per change turns into an approval request per change — the owner rejected that pattern explicitly. `lib/` is gitignored build output, and `scripts/assemble.mjs` refuses a component whose `lib/` is older than its `src/`. npm is the artefact host — the catalog points at `registry.npmjs.org`, so no GitHub release asset is created. Published versions are immutable — never repack or overwrite one.
+- **Release in batches, and only on request.** Commit and test each change locally with its `CHANGELOG.md` entry under `## [Unreleased]`; do not bump, tag, publish or touch the catalog until the owner says ship. Then release once: bump the version, move the unreleased entries under it, `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`, and record the version in the market catalog. A published version becomes readable on the registry minutes later, not at once (measured: about four
+  to ten minutes for this package), so a release per change still costs a verification loop per change — the owner rejected that pattern explicitly. `lib/` is gitignored build output, and `scripts/assemble.mjs` refuses a component whose `lib/` is older than its `src/`. npm is the artefact host — the catalog points at `registry.npmjs.org`, so no GitHub release asset is created. Published versions are immutable — never repack or overwrite one.
 - **Test on Dev AryaCode**, `%LOCALAPPDATA%\AryaCode-dev\home`, never on the installed instance: install the tarball there, compose the profile, then boot.
 - **Harness fixes are not this repository's.** If a change requires editing the shell or a `@deepseek-ai` package, it belongs in `KonnectSuite/AryaCode`, verified on Dev AryaCode, and shipped as a harness patch release — not as a local edit here or in the installed app.
 - **No in-place rescue.** If a fix seems to need touching the installed copy, that is the signal the change belongs upstream. Say so and take the release path.
@@ -111,3 +112,19 @@ published the archive; the command then verifies the four conditions (npm serves
 version, the `catalog` branch lists it, the recorded `sha256` is the hash npm serves,
 `check-catalogue-parity.mjs` is green) and writes the catalogue entry. Never hand-edit
 `data/arya-plugins.json`.
+
+### What a publish looks like while the registry catches up
+
+Measured on this release. `npm publish` printed `Published package ... 0.95.0`, and for about four
+minutes `npm view @aryacode/dsh-engineering@0.95.0 version` answered 404 while a second publish
+answered `409 Conflict - Cannot publish over previously staged version "0.95.0"`. Both readings are
+the lag, not a release waiting for a human: the version went live with no approval, and the tarball
+URL answered 404 a little longer than the packument did. So:
+
+- after `pnpm publish`, wait and re-check `npm view <name>@<version> version`; do not bump the
+  version and do not ask the owner to approve anything at npmjs.com;
+- a 409 is not permission to bump. Versions are immutable, so the needless second publish of the
+  same tree is exactly what 0.95.1 is to 0.95.0;
+- run the catalogue step only once `npm view` answers and the tarball downloads. It records the
+  registry copy's sha256, so a fresh local pack whose digest differs (pnpm and npm pack the same
+  tree to different bytes) is expected and is not an error.

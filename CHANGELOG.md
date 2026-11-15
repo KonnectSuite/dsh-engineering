@@ -1,10 +1,11 @@
 ## [0.95.1] - 2026-11-14
 
-- **0.95.1 is 0.95.0, published.** The npm registry accepted `0.95.0` into a staged state it will neither
-  publish nor name (`npm stage list` answers empty, the version document is a 404, and a re-publish is
-  refused with `Cannot publish over previously staged version "0.95.0"`). The same tree went out as
-  `0.95.1`; nothing in the package changed.
-
+- **0.95.1 is 0.95.0, and both are live; take 0.95.1.** This package's registry writes become readable
+  minutes after `npm publish` reports success - about four here, the packument first and the tarball
+  a little later - so `0.95.0` looked unpublished while it was publishing: `npm view` answered 404 and
+  a republish answered `409 Cannot publish over previously staged version`, which reads as a release
+  waiting for approval but was the lag. The second publish of the same tree is `0.95.1`; nothing in
+  the package changed between them. `AGENTS.md` records the wait in place of the bump.
 
 - **The shell navigation bar is wired and painted by the draft that draws it.** Measured live on
   the LineHMI project: `optix_screen` probed the path of the screen it was about to create, reported
