@@ -580,6 +580,12 @@ export const NETLOGIC_RULES = {
 		title: "Node path is hard-coded in the source",
 		fix: "Keep the path in one constant, or read through LogicObject/Owner, so a move in the project does not silently break the class.",
 		source: "good-practices"
+	},
+	"OPTIX-NL-13": {
+		severity: "warning",
+		title: "SetImageContent is called where it cannot work yet",
+		fix: "The cheat sheet records that SetImageContent does nothing at design time, and that it needs the drawing loaded - so an export method cannot use it and Start() may run before the presentation engine has the image. Move it to a runtime observer, or drive the SVG element properties instead - see advanced-svg.md and element-access.md.",
+		source: "advanced-svg"
 	}
 };
 
@@ -684,6 +690,20 @@ export function reviewNetLogic(code, { name = "", kind = "runtime" } = {}) {
 
 	const hardPath = /"(?:Model|UI)\//u.exec(text);
 	if (hardPath !== null) add("OPTIX-NL-12", hardPath.index, "node path is a string literal");
+
+	// The cheat sheet records SetImageContent as working only once the drawing is
+	// loaded, and not at design time at all - so a design-time class and a Start()
+	// body are both the wrong place for it.
+	const setImageContent = /\.SetImageContent\s*\(/u.exec(text);
+	if (setImageContent !== null) {
+		const start = methods.find((method) => method.name === "Start");
+		const inStart = start !== void 0 && setImageContent.index >= start.bodyStart && setImageContent.index <= start.end;
+		if (kind === "design") {
+			add("OPTIX-NL-13", setImageContent.index, "SetImageContent does nothing at design time (advanced-svg.md)");
+		} else if (inStart) {
+			add("OPTIX-NL-13", setImageContent.index, "SetImageContent in Start() may run before the drawing is loaded (advanced-svg.md)");
+		}
+	}
 
 	findings.sort((a, b) => a.line - b.line || RULE_ORDER.indexOf(a.rule) - RULE_ORDER.indexOf(b.rule));
 	const counts = { critical: 0, warning: 0, info: 0 };

@@ -242,6 +242,21 @@ Two of the snapshot's pages are ours, not upstream's, and they are the routing l
   `LogicObject.GetVariable/GetAlias/SetAlias`, `InformationModel.MakeVariable<T>`, `IUAVariable` links and
   the `VariableChange` pattern. Use it to get a `using` line and a type right before writing code.
 
+Ten behaviours, and the page that answers each - one `optix_netlogic` call, not a search:
+
+| the request | the page |
+| --- | --- |
+| an alarm, an alarm banner, ack or shelve | `alarming.md` |
+| a trend, a history read, a sparkline's data | `trends.md` |
+| read or write a PLC tag | `plc-tags.md` |
+| log a user in, a session, an idle timeout | `users-groups.md` + `sessions.md` |
+| load, save or validate a recipe | `recipes.md` |
+| open a popup, a confirmation dialog | `dialog-boxes.md` |
+| fill or refresh a grid or a list | `datagrids.md` |
+| animate a colour or an opacity | `ui-animations.md` + `advanced-svg.md` |
+| walk the model, query nodes | `queries.md` |
+| a timer or a background job | `async-tasks.md` / `threading.md` |
+
 The repository states the snippets may use non-public APIs, may break a project and must not be used in
 production as-is. Quote the risk with the snippet, adapt it to the loaded project, and treat
 compilation and runtime behaviour as unverified until Studio compiles it.

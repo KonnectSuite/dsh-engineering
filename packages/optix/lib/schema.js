@@ -19,8 +19,10 @@
 import { readFileSync } from "node:fs";
 
 const SCHEMA_URL = new URL("../schema/optix-schema.json", import.meta.url);
+const NETLOGIC_TYPES_URL = new URL("../schema/netlogic-types.json", import.meta.url);
 
 let cached;
+let cachedNetlogicTypes;
 
 /** Read and parse the shipped catalog once per process. */
 export function loadSchema() {
@@ -28,6 +30,28 @@ export function loadSchema() {
 		cached = JSON.parse(readFileSync(SCHEMA_URL, "utf8"));
 	}
 	return cached;
+}
+
+/**
+ * The curated CLR map: the types NetLogic code names when it reaches into a
+ * screen or a model, each with the cheat-sheet page that explains it.
+ *
+ * The catalog's `clr` is derived from the help folder name, which is right for
+ * every product type but tells a class author nothing about *which* namespace to
+ * `using`. This map is the short, reviewed list plus the page to read, and it
+ * ships beside the catalog so both come from the same Studio build.
+ */
+export function loadNetlogicTypes() {
+	if (cachedNetlogicTypes === undefined) {
+		cachedNetlogicTypes = JSON.parse(readFileSync(NETLOGIC_TYPES_URL, "utf8"));
+	}
+	return cachedNetlogicTypes;
+}
+
+/** The curated CLR entry for one type, or undefined when it is not curated. */
+export function netlogicType(name) {
+	const entry = loadNetlogicTypes().types?.[name];
+	return entry === undefined ? undefined : { name, ...entry };
 }
 
 /** Identity of the catalog: which Studio it came from and what it holds. */
@@ -132,12 +156,16 @@ export function typeInfo(name) {
 	if (kind === undefined) return undefined;
 	const type = tables[kind][name];
 	const properties = allProperties(schema, name, kind);
+	const curated = netlogicType(name);
 	return {
 		name,
 		kind,
 		namespace: type.namespace,
 		clr_namespace: clrNamespace(type.namespace) ?? null,
 		clr: clrName(type.namespace, name) ?? null,
+		// Curated rather than derived: what a NetLogic class should name, and the page
+		// that documents using it. Present for the types NetLogic code actually touches.
+		...(curated === undefined ? {} : { clrType: curated.clr, netlogic_page: curated.page }),
 		super_type: type.superType ?? "",
 		super_types: superChain(schema, name, kind),
 		properties: properties.map((property) => property.name),

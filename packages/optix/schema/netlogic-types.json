@@ -1,0 +1,302 @@
+{
+	"schemaVersion": 1,
+	"studioVersion": "1.8.1.27",
+	"note": "The CLR type a NetLogic class must name when it reaches for one of these objects. Generated from the shipped help catalog and curated for the types NetLogic code actually uses; `dotnet build` in Studio stays the authority, and `optix_script review` checks the class, not this map.",
+	"types": {
+		"AdvancedSVGImage": {
+			"clr": "FTOptix.UI.AdvancedSVGImage",
+			"kind": "object",
+			"page": "advanced-svg.md"
+		},
+		"AdvancedSVGImageElementProperty": {
+			"clr": "FTOptix.UI.AdvancedSVGImageElementProperty",
+			"kind": "object",
+			"page": "advanced-svg.md"
+		},
+		"Button": {
+			"clr": "FTOptix.UI.Button",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"CheckBox": {
+			"clr": "FTOptix.UI.CheckBox",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"CircularGauge": {
+			"clr": "FTOptix.UI.CircularGauge",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ColumnLayout": {
+			"clr": "FTOptix.UI.ColumnLayout",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ComboBox": {
+			"clr": "FTOptix.UI.ComboBox",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Container": {
+			"clr": "FTOptix.UI.Container",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"DataGrid": {
+			"clr": "FTOptix.UI.DataGrid",
+			"kind": "object",
+			"page": "datagrids.md"
+		},
+		"DateTimePicker": {
+			"clr": "FTOptix.UI.DateTimePicker",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Dialog": {
+			"clr": "FTOptix.UI.Dialog",
+			"kind": "object",
+			"page": "dialog-boxes.md"
+		},
+		"Ellipse": {
+			"clr": "FTOptix.UI.Ellipse",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"GridLayout": {
+			"clr": "FTOptix.UI.GridLayout",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"HistogramChart": {
+			"clr": "FTOptix.UI.HistogramChart",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Image": {
+			"clr": "FTOptix.UI.Image",
+			"kind": "object",
+			"page": "resource-uri.md"
+		},
+		"Label": {
+			"clr": "FTOptix.UI.Label",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Led": {
+			"clr": "FTOptix.UI.Led",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"LinearGauge": {
+			"clr": "FTOptix.UI.LinearGauge",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ListBox": {
+			"clr": "FTOptix.UI.ListBox",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ListView": {
+			"clr": "FTOptix.UI.ListView",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"MomentaryButton": {
+			"clr": "FTOptix.UI.MomentaryButton",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"MultiStateImage": {
+			"clr": "FTOptix.UI.MultiStateImage",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"MultiStateImageState": {
+			"clr": "FTOptix.UI.MultiStateImageState",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"NavigationPanel": {
+			"clr": "FTOptix.UI.NavigationPanel",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Panel": {
+			"clr": "FTOptix.UI.Panel",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"PanelLoader": {
+			"clr": "FTOptix.UI.PanelLoader",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"PdfViewer": {
+			"clr": "FTOptix.UI.PdfViewer",
+			"kind": "object",
+			"page": "resource-uri.md"
+		},
+		"PieChart": {
+			"clr": "FTOptix.UI.PieChart",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Popup": {
+			"clr": "FTOptix.UI.Popup",
+			"kind": "object",
+			"page": "dialog-boxes.md"
+		},
+		"RadioButton": {
+			"clr": "FTOptix.UI.RadioButton",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"RangeSlider": {
+			"clr": "FTOptix.UI.RangeSlider",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Rectangle": {
+			"clr": "FTOptix.UI.Rectangle",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"RowLayout": {
+			"clr": "FTOptix.UI.RowLayout",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ScaleLayout": {
+			"clr": "FTOptix.UI.ScaleLayout",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Screen": {
+			"clr": "FTOptix.UI.Screen",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ScrollView": {
+			"clr": "FTOptix.UI.ScrollView",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"SpinBox": {
+			"clr": "FTOptix.UI.SpinBox",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"StyleSheet": {
+			"clr": "FTOptix.UI.StyleSheet",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Switch": {
+			"clr": "FTOptix.UI.Switch",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"TextBox": {
+			"clr": "FTOptix.UI.TextBox",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"ToggleButton": {
+			"clr": "FTOptix.UI.ToggleButton",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Trend": {
+			"clr": "FTOptix.UI.Trend",
+			"kind": "object",
+			"page": "trends.md"
+		},
+		"WebBrowser": {
+			"clr": "FTOptix.UI.WebBrowser",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Window": {
+			"clr": "FTOptix.UI.Window",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"XYChart": {
+			"clr": "FTOptix.UI.XYChart",
+			"kind": "object",
+			"page": "element-access.md"
+		},
+		"Alias": {
+			"clr": "FTOptix.Core.Alias",
+			"kind": "variable",
+			"page": "managing-aliases.md"
+		},
+		"NodePointer": {
+			"clr": "FTOptix.Core.NodePointer",
+			"kind": "variable",
+			"page": "managing-aliases.md"
+		},
+		"DynamicLink": {
+			"clr": "FTOptix.CoreBase.DynamicLink",
+			"kind": "variable",
+			"page": "dynamic-links.md"
+		},
+		"AnalogItemType": {
+			"clr": "Opc.Ua.AnalogItemType",
+			"kind": "variable",
+			"page": "engineering-units.md"
+		},
+		"BaseDataVariableType": {
+			"clr": "Opc.Ua.BaseDataVariableType",
+			"kind": "variable",
+			"page": "variables-structure.md"
+		},
+		"RangeType": {
+			"clr": "FTOptix.Core.RangeType",
+			"kind": "variable",
+			"page": "engineering-units.md"
+		},
+		"EUInformationType": {
+			"clr": "FTOptix.Core.EUInformationType",
+			"kind": "variable",
+			"page": "engineering-units.md"
+		},
+		"LimitAlarmController": {
+			"clr": "FTOptix.Alarm.LimitAlarmController",
+			"kind": "object",
+			"page": "alarming.md"
+		},
+		"ExclusiveLevelAlarmController": {
+			"clr": "FTOptix.Alarm.ExclusiveLevelAlarmController",
+			"kind": "object",
+			"page": "alarming.md"
+		},
+		"NonExclusiveLevelAlarmController": {
+			"clr": "FTOptix.Alarm.NonExclusiveLevelAlarmController",
+			"kind": "object",
+			"page": "alarming.md"
+		},
+		"Recipe": {
+			"clr": "FTOptix.Recipe.Recipe",
+			"kind": "object",
+			"page": "recipes.md"
+		},
+		"RecipeSchema": {
+			"clr": "FTOptix.Recipe.RecipeSchema",
+			"kind": "object",
+			"page": "recipes.md"
+		},
+		"UISession": {
+			"clr": "FTOptix.UI.UISession",
+			"kind": "object",
+			"page": "sessions.md"
+		},
+		"VirtualKeyboardPanel": {
+			"clr": "FTOptix.UI.VirtualKeyboardPanel",
+			"kind": "object",
+			"page": "element-access.md"
+		}
+	}
+}

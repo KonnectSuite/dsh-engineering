@@ -274,7 +274,7 @@ public class Helper : BaseNetLogic
 
 test("every review rule names its severity, fix and cheat-sheet page", () => {
 	const ids = Object.keys(NETLOGIC_RULES);
-	assert.equal(ids.length, 10);
+	assert.equal(ids.length, 11);
 	for (const id of ids) {
 		assert.match(id, /^OPTIX-NL-\d{2}$/u);
 		const rule = NETLOGIC_RULES[id];
@@ -283,6 +283,61 @@ test("every review rule names its severity, fix and cheat-sheet page", () => {
 		assert.match(rule.fix, /\w/u);
 		assert.match(rule.source, /^[a-z][a-z-]+$/u);
 	}
+});
+
+test("SetImageContent is flagged where the cheat sheet says it cannot work", () => {
+	const design = `using FTOptix.UI;
+public class Painter : BaseNetLogic
+{
+    [ExportMethod]
+    public void Paint()
+    {
+        Owner.Get<AdvancedSVGImage>("AdvancedSVGImage1").SetImageContent("<svg/>");
+    }
+}
+`;
+	const designReview = reviewNetLogic(design, { name: "Painter", kind: "design" });
+	const designFinding = designReview.findings.find((finding) => finding.rule === "OPTIX-NL-13");
+	assert.ok(designFinding !== undefined, "a design-time SetImageContent should be flagged");
+	assert.match(designFinding.message, /design time/u);
+	assert.equal(designFinding.source, "advanced-svg");
+	assert.match(designFinding.fix, /advanced-svg\.md|element-access\.md/u);
+
+	const start = `using FTOptix.UI;
+public class Painter : BaseNetLogic
+{
+    private AdvancedSVGImage image;
+    public override void Start()
+    {
+        image = Owner.Get<AdvancedSVGImage>("AdvancedSVGImage1");
+        image.SetImageContent("<svg/>");
+    }
+    public override void Stop() { }
+}
+`;
+	const startReview = reviewNetLogic(start, { name: "Painter", kind: "runtime" });
+	const startFinding = startReview.findings.find((finding) => finding.rule === "OPTIX-NL-13");
+	assert.ok(startFinding !== undefined, "SetImageContent in Start() should be flagged");
+	assert.match(startFinding.message, /Start\(\)/u);
+
+	const observer = `using FTOptix.UI;
+public class Painter : BaseNetLogic
+{
+    private AdvancedSVGImage image;
+    public override void Start()
+    {
+        Log.Info("Painter", "ready");
+        image = Owner.Get<AdvancedSVGImage>("AdvancedSVGImage1");
+    }
+    private void OnLoad(object sender, System.EventArgs args)
+    {
+        image.SetImageContent("<svg/>");
+    }
+    public override void Stop() { }
+}
+`;
+	const observerReview = reviewNetLogic(observer, { name: "Painter", kind: "runtime" });
+	assert.ok(!observerReview.findings.some((finding) => finding.rule === "OPTIX-NL-13"), "a call outside Start() is the documented place for it");
 });
 
 test("the tool reviews code on the write path, and refuses a block unless forced", () => {

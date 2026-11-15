@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- **A NetLogic request routes in one call, and an API call can be checked before it compiles.** Added the
+  ten-behaviour routing table to the skill (alarm, trend, tag, session, recipe, dialog, grid, animation,
+  query, timer), a curated `schema/netlogic-types.json` of 59 types so `optix_schema { action: "type" }`
+  answers `clrType` and `netlogic_page` - the C# type a class must name and the cheat-sheet page to read -
+  and review rule `OPTIX-NL-13`: `SetImageContent` in a design-time class does nothing and in `Start()` may
+  run before the drawing is loaded, both cited to `advanced-svg.md`.
 - **A boolean chooses the colour, and it is an expression.** `optix_svg` tested "is there a source"
   before "is there a bool_colours", and bool_colours needs a source, so the first branch always won and a
   Bool was linked straight to a Color while the two colours were dropped. The colour form is now

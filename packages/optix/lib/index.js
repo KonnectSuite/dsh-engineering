@@ -2234,7 +2234,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_schema",
-		description: "Read the Optix object model of the installed Studio: one object type with its properties (data types and inheritance), methods, events and allowed child types; one enum with its members; or a search across types by name or by property. Generated from the installed Studio help, so it names this build rather than a remembered one. Ask it before writing a property, choosing a widget type or picking an enum value - a wrong property name or enum member is the commonest reason the bridge refuses a batch. action refresh compares the shipped catalog with the running Studio's own type dump and reports what a Studio upgrade added, removed or changed.",
+		description: "Read the Optix object model of the installed Studio: one object type with its properties (data types and inheritance), methods, events and allowed child types; one enum with its members; or a search across types by name or by property. Generated from the installed Studio help, so it names this build rather than a remembered one. Ask it before writing a property, choosing a widget type or picking an enum value - a wrong property name or enum member is the commonest reason the bridge refuses a batch. A curated type also answers `clrType` (the C# type a NetLogic class should name, e.g. FTOptix.UI.PanelLoader) and `netlogic_page` (the cheat-sheet page to read first). action refresh compares the shipped catalog with the running Studio's own type dump and reports what a Studio upgrade added, removed or changed.",
 		parameters: {
 			project: projectParameter,
 			action: {

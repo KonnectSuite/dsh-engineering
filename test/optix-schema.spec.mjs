@@ -8,9 +8,10 @@
  * help emits — a fixture page in the same shape, so a Studio help change is
  * caught here rather than in a bundle.
  */
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
@@ -22,10 +23,14 @@ import {
   enumInfo,
   find,
   isObjectType,
+  loadNetlogicTypes,
   schemaVersion,
   typeInfo,
   typeNames,
 } from '../packages/optix/lib/schema.js'
+
+const SPEC_ROOT = dirname(fileURLToPath(import.meta.url))
+const REPO_ROOT = join(SPEC_ROOT, '..')
 
 test('the shipped catalog names the Studio build it came from', () => {
   const version = schemaVersion()
@@ -64,6 +69,29 @@ test('the variable kinds the model writes are in the catalog', () => {
   assert.ok(names.includes('EngineeringUnits'))
   assert.ok(typeInfo('BaseDataVariableType') !== undefined)
   assert.ok(typeInfo('NodePointer') !== undefined)
+})
+
+test("a curated map names the CLR type a NetLogic class should use", () => {
+	const panelLoader = typeInfo('PanelLoader')
+	assert.equal(panelLoader.clrType, 'FTOptix.UI.PanelLoader')
+	assert.equal(panelLoader.netlogic_page, 'element-access.md')
+
+	const analog = typeInfo('AnalogItemType')
+	assert.equal(analog.clrType, 'Opc.Ua.AnalogItemType')
+	assert.equal(analog.netlogic_page, 'engineering-units.md')
+
+	const map = loadNetlogicTypes()
+	const names = Object.keys(map.types)
+	assert.ok(names.length >= 40, `the curated map holds ${names.length} types`)
+	for (const name of names) {
+		const entry = map.types[name]
+		assert.match(entry.clr, /^[A-Z][A-Za-z0-9]*(?:\.[A-Z][A-Za-z0-9]*)+$/u, `${name} clr`)
+		assert.ok(entry.kind === 'object' || entry.kind === 'variable', `${name} kind`)
+		assert.ok(existsSync(join(REPO_ROOT, 'packages', 'optix', 'netlogic', 'pages', `${entry.page}`)), `${name} names a page that exists: ${entry.page}`)
+	}
+	for (const name of ['AdvancedSVGImage', 'Panel', 'PanelLoader', 'Alias', 'NodePointer', 'AnalogItemType']) {
+		assert.ok(names.includes(name), `${name} should be curated`)
+	}
 })
 
 test('a near miss is answered with the closest real names', () => {
