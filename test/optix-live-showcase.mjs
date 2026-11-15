@@ -240,8 +240,7 @@ if (stages.has("dialog")) {
 if (stages.has("status")) {
 	const windowChildren = (await children(WINDOW)).map((child) => child.browse_name);
 	line("window", windowChildren);
-	const railItems = await children(`${RAIL}/Panels`);
-	for (const item of railItems) {
+	for (const item of await children(`${RAIL}/Panels`)) {
 		const reply = await (await fetch(`${BRIDGE}/bridge/map?path=${encodeURIComponent(`${RAIL}/Panels/${item.browse_name}`)}&depth=1&mode=detail`)).json();
 		const pointer = (reply.map?.children ?? []).find((child) => child.name === "Panel");
 		line(`item ${item.browse_name}`, pointer?.ref ?? "(no pointer)");
@@ -251,21 +250,33 @@ if (stages.has("status")) {
 		const pointer = (reply.map?.children ?? []).find((child) => child.name === "StyleSheet");
 		line(engine.split("/").pop(), pointer?.ref ?? "(no pointer)");
 	}
-
 	for (const screenPath of SCREEN_PATHS) {
 		const review = await run("optix_ui", { action: "review", project: PROJECT, screen: screenPath });
-		line(`review ${screenPath.split("/").pop()}`, `${review.status} score=${review.score} grade=${review.grade} must_fix=${(review.must_fix ?? []).map((entry) => entry.rule).join(",") || "none"}`);
+		line(
+			`review ${screenPath.split("/").pop()}`,
+			`${review.status} score=${review.score} grade=${review.grade} must_fix=${(review.must_fix ?? []).map((entry) => entry.rule).join(",") || "none"}`
+		);
 	}
-	const screens = (await children("UI/Screens")).map((child) => `${child.browse_name}[${child.dotnet_type}]`);
-	line("screens", screens);
+	line("screens", (await children("UI/Screens")).map((child) => `${child.browse_name}[${child.dotnet_type}]`));
 	line("pending", String(health.pending_changes ?? 0));
+}
 
-	if (stages.has("serve")) {
-		const emulator = await run("optix_emulator", { action: "status", project: PROJECT_ROOT_DIR });
-		line("runtime", `${emulator.serving ? "serving" : "not serving"} ${emulator.status ?? ""}`);
-		if (emulator.serving) {
-			const nav = await run("optix_nav", { action: "verify", project: PROJECT, screens_folder: "UI/Screens" });
-			line("nav verify", `${nav.status} clicked=${nav.clicked} proven=${nav.proven}`);
-		}
-	}
+if (stages.has("serve")) {
+	// The saved project is what the runtime serves: save and build in Studio first (Ctrl+S then Ctrl+Shift+B).
+	const emulator = await run("optix_emulator", { action: "start", project: PROJECT_ROOT_DIR });
+	line("runtime", `${emulator.started ? "started" : "reused"} serving=${emulator.serving} ${emulator.status ?? ""}`);
+	assert.equal(emulator.serving, true, "the runtime did not answer");
+
+	const before = await run("optix_preview", { request: { action: "text" } });
+	line("page", (before.text ?? "").split("\n").slice(0, 6).join(" | "));
+	const shot = await run("optix_screenshot", {});
+	line("screenshot", shot.path ?? shot.attachment_id ?? JSON.stringify(shot).slice(0, 120));
+
+	// The rail occupies (0,64)-(220,770); the second 44 px tab centres at y = 130.
+	await run("optix_preview", { request: { action: "click", x: 110, y: 130 } });
+	await new Promise((resolve) => setTimeout(resolve, 900));
+	const after = await run("optix_preview", { request: { action: "text" } });
+	line("after click", (after.text ?? "").split("\n").slice(0, 6).join(" | "));
+	const shot2 = await run("optix_screenshot", {});
+	line("screenshot 2", shot2.path ?? shot2.attachment_id ?? JSON.stringify(shot2).slice(0, 120));
 }

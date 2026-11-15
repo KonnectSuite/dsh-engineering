@@ -131,6 +131,46 @@ export function themePlan({
 		path: `${path}/${style.collection}/${style.name}`,
 		properties: { ...style.properties },
 	}));
+	// Controls ask the stylesheet for the style named `Default` before any other: a sheet without it renders with
+	// the engine fallback and the runtime logs `Failed to resolve the style Default in current stylesheet`.
+	// Every collection therefore gets its own `Default`, projected from the same tokens as the named styles.
+	const projected = (entries) => Object.fromEntries(entries.filter(([, value]) => value !== undefined && value !== null && String(value) !== "").map(([key, value]) => [key, String(value)]));
+	const defaults = [
+		{ collection: "ButtonStyles", type: "ButtonStyle", name: "Default", properties: projected([["Color", tokens.InteractiveBackgroundColor], ["TextColor", tokens.TextColor], ["BorderColor", tokens.BorderColor], ["BorderWidth", tokens.BorderWidth], ["Radius", tokens.Radius], ["FontSize", tokens.FontPixelSize]]) },
+		{ collection: "LabelStyles", type: "LabelStyle", name: "Default", properties: projected([["TextColor", tokens.TextColor], ["FontSize", tokens.FontPixelSize]]) },
+		{ collection: "ScreenStyles", type: "ScreenStyle", name: "Default", properties: projected([["BackgroundColor", tokens.ScreenColor ?? tokens.WindowColor], ["BorderColor", tokens.BorderColor], ["BorderThickness", "0.0"]]) },
+		{
+			collection: "NavigationPanelStyles",
+			type: "NavigationPanelStyle",
+			name: "Default",
+			properties: projected([
+				["BackgroundColor", tokens.WindowColor],
+				["InactiveColor", tokens.InteractiveBackgroundColor],
+				["InactiveTextColor", tokens.TextColor],
+				["ActivePrimaryColor", tokens.AccentColor],
+				["FontSize", tokens.FontPixelSize]
+			])
+		},
+		{
+			collection: "ChartStyles",
+			type: "ChartStyle",
+			name: "Default",
+			properties: projected([
+				["BackgroundColor", tokens.InteractiveBackgroundColor],
+				["TextColor", tokens.TextColor],
+				["GridColor", tokens.BorderColor],
+				["AxisColor", tokens.BorderColor],
+				["FontSize", tokens.FontPixelSize]
+			])
+		}
+	];
+	const seen = new Set(styles.map((style) => style.path));
+	for (const style of defaults) {
+		const stylePath = `${path}/${style.collection}/${style.name}`;
+		if (seen.has(stylePath)) continue;
+		seen.add(stylePath);
+		styles.push({ collection: style.collection, type: style.type, name: style.name, path: stylePath, properties: style.properties });
+	}
 	// A style that is already in the sheet is restated, never created twice: a second apply is a no-op that
 	// reasserts the tokens, which is what makes the theme callable after a language change.
 	const already = new Set((existing ?? []).map((entry) => String(entry)));
