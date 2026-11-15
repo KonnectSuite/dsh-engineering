@@ -18,6 +18,7 @@ import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChil
 import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.js";
 import { THEME_ENGINES, auditTheme, themePlan } from "./theme.js";
 import { PATTERNS, compileBlueprint, kitCatalogue } from "./kit.js";
+import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -5098,7 +5099,7 @@ function apply(ctx, config = {}) {
 	 */
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_ui",
-		description: `Design languages for Optix screens, and the kit that draws them: ${languageNames.join(", ")}. action languages lists what the theme can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet and binds both presentation engines; action audit judges what the model reports against the language that was asked for; action components lists the kit's components and the grid; action screen compiles a blueprint into a designed screen - header band with chips, clock, language and user, KPI tiles, cards with rows, lamps and progress bars, a bar chart, a message feed and a status strip - placed by a 12-column grid, never by guessed coordinates, and refuses what cannot fit. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
+		description: `Design languages for Optix screens, and the kit that draws them: ${languageNames.join(", ")}. action languages lists what the theme can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet and binds both presentation engines; action audit judges what the model reports against the language that was asked for; action components lists the kit's components and the grid; action shell draws the window chrome - a header band, a native navigation rail with one item per screen, the content host and the status strip - around the screens; action screen compiles a blueprint into a designed screen - header band with chips, clock, language and user, KPI tiles, cards with rows, lamps and progress bars, a bar chart, a message feed and a status strip - placed by a 12-column grid, never by guessed coordinates, and refuses what cannot fit. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
 		parameters: {
 			project: {
 				type: "string",
@@ -5107,8 +5108,8 @@ function apply(ctx, config = {}) {
 			action: {
 				type: "string",
 				required: true,
-				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; screen compiles a blueprint into a designed screen.",
-				enum: ["languages", "theme", "audit", "components", "screen"]
+				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen.",
+				enum: ["languages", "theme", "audit", "components", "shell", "screen"]
 			},
 			mode: {
 				type: "string",
@@ -5157,18 +5158,31 @@ function apply(ctx, config = {}) {
 				type: "array",
 				items: { type: "json" },
 				description: `Presentation engine paths to bind; default both ${THEME_ENGINES.join(" and ")}.`
+			},
+			screens: {
+				type: "array",
+				items: { type: "json" },
+				description: "shell: the rail's screens as [{screen, title}], such as [{screen: \"UI/Screens/Home\", title: \"Home\"}]; default every Screen under UI/Screens that the model reports."
+			},
+			loader: {
+				type: "string",
+				description: "shell: project path of an existing PanelLoader to host the screens; default creates UI/MainWindow/ShellContent."
+			},
+			rail_width: {
+				type: "integer",
+				description: `shell: rail width in pixels, ${160} to ${280}; default ${RAIL_WIDTH}.`
 			}
 		},
 		output: jsonOutput,
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
-			kind: (args.action === "theme" || args.action === "screen") && args.mode === "apply" ? "edit" : "read"
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell") && args.mode === "apply" ? "edit" : "read"
 		}),
 		async execute(args, exec) {
 			return exclusive(async () => {
 				const action = typeof args.action === "string" ? args.action : "";
-				const actions = ["languages", "theme", "audit", "components", "screen"];
+				const actions = ["languages", "theme", "audit", "components", "shell", "screen"];
 				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
 				if (action === "languages") return {
 					languages: languageCatalogue(),
@@ -5256,6 +5270,120 @@ function apply(ctx, config = {}) {
 						...base,
 						applied: results.length,
 						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator: the runtime draws the saved screen with the project's style sheet."
+					};
+				}
+				if (action === "shell") {
+					const mode = args.mode === "apply" ? "apply" : "plan";
+					const host = await liveScreenHost(origin, exec.signal);
+					const screensReply = await bridge.request(origin, "nodes", exec.signal, { path: "UI/Screens" }).catch(() => void 0);
+					const screenChildren = screensReply?.children ?? screensReply?.nodes ?? [];
+					const fromModel = screenChildren
+						.filter((child) => typeof child === "object" && child !== null && /screen/iu.test(String(child.dotnet_type ?? child.type ?? "")))
+						.map((child) => String(child.browse_name ?? child.name ?? ""))
+						.filter((name) => name !== "")
+						.map((name) => ({ name, screen: `UI/Screens/${name}`, title: name }));
+					const asked = Array.isArray(args.screens)
+						? args.screens.map((entry) => {
+							const value = typeof entry === "string" ? { screen: entry } : entry;
+							const screenPath = String(value?.screen ?? "");
+							return screenPath === "" ? void 0 : { screen: screenPath, title: typeof value?.title === "string" && value.title.trim() !== "" ? value.title.trim() : screenPath.split("/").at(-1) };
+						}).filter(Boolean)
+						: [];
+					const targets = asked.length > 0 ? asked : fromModel;
+					const windowMap = await bridge.request(origin, "nodes", exec.signal, { path: host.window }).catch(() => void 0);
+					const windowChildren = (windowMap?.children ?? windowMap?.nodes ?? []).map((child) => String(child.browse_name ?? child.name ?? ""));
+					// A second apply must not recreate the rail items the first one left behind.
+					const railPanels = await bridge.request(origin, "nodes", exec.signal, { path: `${host.window}/${SHELL_NAMES.rail}/Panels` }).catch(() => void 0);
+					const existingItems = (railPanels?.children ?? railPanels?.nodes ?? []).map((child) => String(child.browse_name ?? child.name ?? ""));
+					const planned = shellPlan({
+						window: host.window,
+						width: host.width,
+						height: host.height,
+						language: typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE,
+						screens: targets,
+						loader: typeof args.loader === "string" ? args.loader.trim() : "",
+						railWidth: Number.isInteger(args.rail_width) && args.rail_width > 0 ? args.rail_width : RAIL_WIDTH,
+						existing: windowChildren,
+						existingItems
+					});
+					const validate = async (ops) => bridge.request(origin, "validate_ops", exec.signal, {}, "POST", { ops, strict: true });
+					const accepted = (validation) => validation?.ok === true && (validation.errors ?? []).length === 0;
+					// Phased like the theme: Studio creates the rail's Panels collection with the panel, so
+					// items and pointer writes validate only against the model the chrome phase leaves behind.
+					const chromeValidation = await validate(planned.phases[0].ops);
+					const valid = accepted(chromeValidation);
+					const base = {
+						action,
+						mode,
+						project: selectedHealth.project,
+						language: planned.language,
+						window: planned.window,
+						canvas: { width: planned.width, height: planned.height },
+						layout: { header: planned.header, rail: planned.rail, content: planned.content, footer: planned.footer },
+						screens: planned.items,
+						loader: planned.loader,
+						counts: planned.counts,
+						op_count: planned.ops.length,
+						phases: planned.phases.map((phase) => ({ name: phase.name, ops: phase.ops.length, validated: phase.name === "chrome" ? valid : false }))
+					};
+					if (mode === "plan") return {
+						status: valid ? "planned" : "refused",
+						...base,
+						validation: chromeValidation,
+						next: valid
+							? "Run action shell with mode apply and allowWrites: it draws the chrome, then the rail items, then the pointers, validating each phase against the model the previous one left. Save and Build in Studio before the runtime draws it."
+							: "The bridge refused the shell chrome before anything was written: read validation for the band it would not resolve."
+					};
+					if (!valid) return { status: "refused", ...base, validation: chromeValidation, next: "Nothing was written. Fix what validation names, then plan again." };
+					allowWrite();
+					const results = [];
+					const report = [];
+					for (const phase of planned.phases) {
+						if (phase.ops.length === 0) {
+							report.push({ name: phase.name, ops: 0, status: "skipped" });
+							continue;
+						}
+						const phaseValidation = phase.name === "chrome" ? chromeValidation : await validate(phase.ops);
+						if (!accepted(phaseValidation)) return {
+							status: "refused_phase",
+							...base,
+							phase: phase.name,
+							applied: results.length,
+							validation: phaseValidation,
+							phases: report,
+							next: `The ${phase.name} phase was refused before anything in it was written. The earlier phases are on the model; plan again - a second apply restates what is missing.`
+						};
+						for (const [index, op] of phase.ops.entries()) {
+							let dispatched = false;
+							try {
+								const now = await bridge.request(origin, "health", exec.signal);
+								if (now.project !== selectedHealth.project || now.model_loaded !== true || now.pid !== selectedHealth.pid) throw new Error("Serving Studio project changed during the shell batch");
+								const request = operationRequest(op);
+								dispatched = true;
+								const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+								if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge a shell operation", true);
+								results.push(result);
+							} catch (error) {
+								return {
+									status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+									...base,
+									phase: phase.name,
+									applied: results.length,
+									failed_index: index,
+									phases: report,
+									error: String(error),
+									next: "Inspect the window before retrying: a half-applied shell still draws, so plan again and apply only what is missing - the plan skips a band that already exists."
+								};
+							}
+						}
+						report.push({ name: phase.name, ops: phase.ops.length, status: "applied" });
+					}
+					return {
+						status: "applied",
+						...base,
+						applied: results.length,
+						phases: report,
+						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator. The rail switches the loader through ChangePanel; a tab that compiles is not a tab that works until a click is seen in the runtime."
 					};
 				}
 				const childrenOf = (reply) => reply?.map?.children ?? reply?.children ?? [];

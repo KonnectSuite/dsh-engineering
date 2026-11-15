@@ -264,8 +264,30 @@ a window shell.
 Two measured rules the kit already obeys, that any hand-written screen must obey too: a colour is a
 `#RRGGBB` string (`validate_ops` refuses `0xRRGGBBAA`), and a node name that a legacy scaffold already
 uses (`Card1`) collides - `already_exists` is reported before anything is written. `pattern` is
-`overview` or `blank` today; the shell, the navigation rail and the dialogs arrive with
+`overview` or `blank` today; the navigation rail and the dialogs arrive with
 `optix_ui action: "shell"|"dialog"` in the same P-series, so do not hand-draw them in the meantime.
+
+## The window is a frame, and the shell draws it
+
+A screen is not the application. Before the screens read well, the window needs the four bands an
+operator expects - a header (brand, title, clock, who is logged in), a navigation rail, a content host
+and a status strip - identical on every screen. `optix_ui { action: "shell" }` draws that frame around
+the start window, and the rail is a **native `NavigationPanel`**, not a row of buttons: one
+`NavigationPanelItem` per screen under `<rail>/Panels`, each with a `Title` and a `Panel` pointer, and
+the panel's `AttachedPanelLoader` pointing at the content host.
+
+1. `optix_ui { action: "shell", project, mode: "plan" }` - read the canvas, the band rectangles, the
+   rail targets it found under `UI/Screens`, and the phases.
+2. The same call with `mode: "apply"` (writes allowed). It runs four phases - `chrome`, `rail`,
+   `attach`, `pointers` - validating each against the model the previous one left behind, because
+   Studio creates a panel's `Panels` collection with the panel and a `NodeId` property has no pointer
+   child until it is written. A refused phase names itself; nothing after it is written.
+3. A second apply is a repair, not a duplicate: a band or rail item that already exists is restated,
+   not created again.
+4. Save and Build in Studio, restart the emulator, then prove a tab: see below.
+
+Optional `screens` (defaults to every `Screen` under `UI/Screens`), `loader` (reuse an existing panel
+loader), `rail_width` (160-280 px), `language`.
 
 ## Navigation is a bar and a proof
 

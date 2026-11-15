@@ -28,6 +28,20 @@
   `DataCard<n>` so it cannot collide with a legacy scaffold's `Card1` (`already_exists`). Proved live on
   `AryaOptixTemplate` against a fresh `UI/Screens/UiProbe`: `planned`, 287 operations, 19 components,
   `validation: ok`, then `applied: 287`; the visual proof belongs to the starter release that follows.
+- **The window shell is a tool now (`optix_ui action shell`).** `packages/optix/lib/shell.js` composes the
+  four bands every professional Optix application keeps around the content — a 64 px header (brand bar,
+  title, clock, user), a native `NavigationPanel` rail (220 px, clamped 160-280), a content host and a
+  30 px status strip — with the active language's tokens. The rail is a real `NavigationPanel`:
+  `NavigationPanelItem`s live under `<rail>/Panels`, each with a `Title` and a `Panel` pointer, and the
+  panel's `AttachedPanelLoader` points at the loader, so a tab click calls the panel's own
+  `ChangePanel` rather than a hand-wired handler. The plan is **phased** — `chrome`, `rail`, `attach`,
+  `pointers` — because Studio creates a panel's `Panels` collection with the panel and a `NodeId`
+  property has no pointer child until it is written (measured: writing `AttachedPanelLoader` materialises
+  the pointer with an empty `ref`; the value goes on the child afterwards). A second apply is a repair:
+  an existing band or rail item is restated, never created twice. Proved live on `AryaOptixTemplate`
+  (bridge 1.0.9): `planned` 59-69 operations across four phases, then `applied` with every phase written,
+  and all four pointer values read back (`RailItem1.Panel = UI/Screens/Settings`,
+  `ShellContent.Panel = UI/Screens/Settings`, `ShellRail.AttachedPanelLoader = UI/MainWindow/ShellContent`).
 
 ## [0.97.0] - 2026-11-15
 
