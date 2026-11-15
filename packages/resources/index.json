@@ -54,6 +54,43 @@
       "sha256": "1394c29be10d3651bbf5f2273116cc9306097f33b4b983b495121c25dd534756"
     },
     {
+      "id": "craft-engagement-order",
+      "title": "Start from the standard and the brief, not the machine",
+      "domain": "craft",
+      "level": "practitioner",
+      "basis": [
+        "ISA-101 HMI lifecycle",
+        "ARC/ASM HMI design guidance",
+        "field practice"
+      ],
+      "tags": [
+        "engagement",
+        "brief",
+        "inventory",
+        "template",
+        "standards",
+        "first-move"
+      ],
+      "applies_to": [
+        "l5x",
+        "ftview",
+        "optix",
+        "plc5",
+        "mwi",
+        "ecad",
+        "migration"
+      ],
+      "rules": [
+        "CRAFT-ORD-01",
+        "CRAFT-ORD-02",
+        "CRAFT-ORD-03",
+        "CRAFT-ORD-04"
+      ],
+      "words": 682,
+      "bytes": 4496,
+      "sha256": "24fc6017529a422b196001dee56394f74a08479a059dade99c8c60bfe2dd10da"
+    },
+    {
       "id": "craft-fault-handling",
       "title": "Faults: detect, latch, annunciate, reset",
       "domain": "craft",

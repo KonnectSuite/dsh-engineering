@@ -104,6 +104,20 @@ test('the Rockwell process style guide is the named vendor layer', async () => {
   assert.match(precedence.data.markdown, /hmi-rockwell-process-style-guide/u, 'precedence does not name the vendor layer')
 })
 
+test('the engagement order is reachable and says the machine is not the brief', async () => {
+  const order = await referenceTool.execute({ query: 'start from standards not the machine' })
+  assert.ok(order.data.hits.some(hit => hit.id === 'craft-engagement-order'), 'no page owns the engagement order')
+
+  const page = await referenceTool.execute({ id: 'craft-engagement-order' })
+  assert.deepEqual(page.data.rules, ['CRAFT-ORD-01', 'CRAFT-ORD-02', 'CRAFT-ORD-03', 'CRAFT-ORD-04'])
+  assert.match(page.data.markdown, /An inventory tells you what exists; the brief and the standard tell you what to make/u)
+  assert.match(page.data.markdown, /CRAFT-ORD-01/u)
+
+  const contents = await referenceTool.execute({})
+  assert.ok(contents.data.pages.some(entry => entry.id === 'craft-engagement-order'))
+  assert.ok(contents.data.domains.includes('craft'))
+})
+
 test('the standards skill mounts through the skills service', () => {
   assert.deepEqual(skill.inject, ['skills'])
   const registered = []

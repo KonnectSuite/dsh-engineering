@@ -6,6 +6,10 @@ whenToUse: The user has MotionWorks IEC 3 Pro open or asks for work in it — a 
 
 # MotionWorks IEC workspace editing
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 ## Boundary
 
 This surface edits the **real workspace project**. `mw_project_open` takes one complete, hash-verified

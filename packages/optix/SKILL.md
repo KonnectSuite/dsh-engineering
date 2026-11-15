@@ -1,10 +1,14 @@
 ---
 name: factorytalk-optix
-description: FactoryTalk Optix Studio engineering — inspect and author the loaded project through the Studio bridge, validate expressions, take preview screenshots, read NetLogic C# snippets from the pinned cheat-sheet snapshot, and start from a template.
-whenToUse: The user asks about FactoryTalk Optix — project structure, nodes, variables, aliases, expressions, NetLogic C#, alarms, trends, recipes, OPC UA, or the emulator preview. Route FactoryTalk View ME elsewhere.
+description: FactoryTalk Optix Studio engineering — author a project or a house template from the published standards, or work in the loaded project through the Studio bridge: inspect and author nodes, validate expressions, write and review NetLogic C#, and start from one of the two packaged starters.
+whenToUse: The user asks about FactoryTalk Optix — project structure, nodes, variables, aliases, expressions, NetLogic C#, alarms, trends, recipes, OPC UA, the emulator preview, or a new Optix house template or standard for a team. Route FactoryTalk View ME elsewhere.
 ---
 
 # FactoryTalk Optix engineering
+
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
 
 ## Boundary
 
@@ -27,7 +31,25 @@ how many tabs match it, and whether the OCR executable and language data are ins
 `next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
 retry a preview tool against a dead link.
 
-## Read before you write
+## What kind of request is this?
+
+Decide before the first tool call. The wrong first move is how a build spends twenty minutes on the
+machine before it starts on the design.
+
+| The request | The first move | The host |
+| --- | --- | --- |
+| A new build, template or standard, nothing named | `engineering_reference` pages (tool calls, one `id` each), then `optix_template {}` (our two starters and their questions), then the brief | not read |
+| "Match what we already have", "use our project", or a project is named | `engineering_profile`, then `optix_status` | read, bounded to that project |
+| Work inside a known project — a screen, a tag, a NetLogic | `optix_status`, then `optix_read` | read, that project only |
+| A real host fact — is Studio installed, does a runtime exist | ask, or one bounded check with the reason stated | one command, never a sweep |
+
+For a new build, the standards are `engineering_reference` pages: `hmi-isa101-baseline`,
+`hmi-screen-architecture`, `hmi-standards-precedence`, `hmi-rockwell-process-style-guide`,
+`optix-application-recipe`, `optix-navigation-patterns`, `optix-widget-patterns` and
+`optix-design-resources`. Read them before writing anything, cite the rule IDs you followed, and follow
+workflow E below for a template or standard request.
+
+### When a project is in play
 
 1. `optix_status` — is Studio reachable, which project is loaded, which capabilities are on, and what
    the preview chain is missing. When `next` names the emulator link, `optix_emulator` with
@@ -191,13 +213,19 @@ operator click, release review — is written down as `optix-application-recipe`
   `install: true` installs it through winget. It never installs a Python service or an OCR daemon. If
   Tesseract is already present it says so and names the path to put in `ocrExecutable`, which is a
   config change, not an install. Ask before running the install: it downloads software.
-- `optix_template` discovers the packaged Optix IPC and OptixPanel starter projects. With
-  `destination` it scaffolds one: copies the starter into a new or empty directory, renames it, writes
-  the screen box you pass as `width`/`height`, and replaces the older bridge the starter carries with
-  this bundle's. Never copy a starter with filesystem tools instead: the two steps that matter - the
-  rename and the bridge - are what that call exists for.
+- `optix_template` is our two packaged starters (Optix IPC and OptixPanel), chosen between rather than
+  surveyed. With no `template` it returns both manifests and their `questions` and writes nothing — that
+  is the call a new template request opens with. With `destination` it scaffolds the starter you name:
+  copies it into a new or empty directory, renames it, writes the screen box you pass as `width`/`height`,
+  and replaces the older bridge the starter carries with this bundle's. Never copy a starter with
+  filesystem tools instead: the two steps that matter - the rename and the bridge - are what that call
+  exists for.
 
 ## Start from nothing, or join a project that is already running
+
+A request for a template or a standard is workflow **E**, not A: read the published standards and ask the
+brief before anything is scaffolded. A, B and C are about getting a bridge and a project into a state
+where the tools can work; E is about deciding what the project should contain.
 
 **The IDE is not yours to drive.** Two actions in Studio belong to the engineer and to nobody else:
 opening the project, and right-clicking `StudioMCPBridge` → `StartBridge` after a build. Never launch
@@ -208,7 +236,8 @@ The bridge is the contract - when it answers, Studio is already open and the eng
 
 ### A. New project, no Studio open yet
 
-1. `optix_template` without `destination` and ask the manifest's `questions` **before** scaffolding.
+1. `optix_template {}` — with no `template` it answers with both starters and their `questions`; ask those
+   answers **before** scaffolding.
    Each answer is baked into files that are painful to re-edit later: **runtime** (OptixPanel device or
    a PC in a browser - it picks the template), **screen size** (the operator's real box in pixels; a
    panel target and a widescreen monitor differ, and every screen drafted afterwards inherits this
@@ -262,6 +291,33 @@ the preview shows unsaved edits.
 
 A successful model change does not save Studio and does not prove rendering. Say what was applied, what
 was only validated, and what the engineer has to do next.
+
+### E. Author a house template or standard
+
+"A template we can start from", "our standard", "something consistent across the team" — that is a design
+deliverable, not a reason to look at the machine.
+
+1. Read the standards first, with no host calls. They are `engineering_reference` **tool calls** — one page
+   per `id`, never a file to look for: `hmi-isa101-baseline`, `hmi-screen-architecture`,
+   `hmi-standards-precedence`, `hmi-rockwell-process-style-guide`, `optix-application-recipe`,
+   `optix-navigation-patterns`, `optix-widget-patterns`, `optix-design-resources`.
+2. `optix_template {}` — our two starters and their questions, nothing written. The starters are the
+   shell; the standard is what goes inside and on top of them.
+3. Ask the template brief: runtime target(s) and canvas(es), display levels and the navigation shell,
+   palette and style sheet, tag and model naming and hierarchy (`optix_model`), alarm strategy, NetLogic
+   patterns (`optix_script` templates), startup and logout, and the deliverable — standard document,
+   starter-based project, or both — and where each one lives.
+4. State the measured constraint before writing anything: nothing in this bundle creates an empty
+   `.optix`. A house template is a standard document applied to a starter copy, or a project the engineer
+   creates in Studio that these tools then fill. Do not promise a from-nothing project.
+5. Write the standard into the workspace as Markdown: the levels, the shell, the palette, the tag
+   convention, the alarm rules, the screen patterns, and the reference page each rule comes from.
+6. If the brief asks for the project too, scaffold the chosen starter with the brief's answers (A.2) and
+   then apply the standard with `optix_*` — style sheet, shell bar, `optix_model` hierarchy, screens,
+   NetLogic templates.
+7. Close on `optix_production_check`, then hand the engineer the two Studio actions (compile,
+   StartBridge). Say which parts of the standard a check enforces and which are judgement.
+
 ## Reporting
 
 Every result carries `summary`, `data`, `next` and `coverage`. Read `coverage` before claiming

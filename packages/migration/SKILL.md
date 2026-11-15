@@ -5,6 +5,10 @@ description: Move an RSLogix 500 (SLC 500) or RSLogix 5 (PLC-5) program into Stu
 
 # SLC 500 and PLC-5 to Logix migration
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 A migration is an evidence exercise, not a conversion button. The wizard maps
 most of the program and silently changes the rest; your job is to find out which
 is which before anyone commissions the machine.

@@ -5,6 +5,10 @@ description: Read RSLogix 5 (PLC-5) .RSP projects headlessly and read-only — l
 
 # RSLogix 5 (PLC-5) reads
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 A PLC-5 project is a legacy artifact: the machine it describes is usually running, the panel drawings are paper, and the file is the only program copy. Every read here is headless, hidden and read-only — the project opens through the RSLogix 5 automation server with `Visible = False` and closes with the do-not-save flag. No tool writes a project, and no tool contacts a controller.
 
 ## The rules

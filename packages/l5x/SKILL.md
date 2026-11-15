@@ -6,6 +6,10 @@ whenToUse: Use when the user asks about a Studio 5000 L5X export, Logix tags, ro
 
 # Rockwell L5X engineering
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 ## Boundary
 
 This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into

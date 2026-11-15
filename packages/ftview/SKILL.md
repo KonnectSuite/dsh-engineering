@@ -6,6 +6,10 @@ whenToUse: Use when the user asks about FactoryTalk View ME, PanelView Plus, ME 
 
 # FactoryTalk View ME engineering
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 ## Boundary
 
 This surface reads and stages changes to documented text exports: display XML and the HMI tag CSV.

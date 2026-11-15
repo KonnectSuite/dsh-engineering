@@ -1029,12 +1029,12 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Discover packaged Arya Optix IPC and OptixPanel starter projects, read their NetLogic and project files, or scaffold one into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. Without `destination` it only reports: the manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
+		description: "Our two packaged starters, Arya Optix IPC and OptixPanel - chosen between, not surveyed. With no arguments it answers with both manifests and their `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
 				enum: ids,
-				required: true
+				description: "Which starter: `arya-optix-ipc` or `arya-optix-panel`. Omit to receive both manifests and their questions, writing nothing."
 			},
 			path: {
 				type: "string",
@@ -1071,6 +1071,40 @@ function applyTemplates(ctx, maxBytes) {
 		}),
 		async execute(args, exec) {
 			exec.signal.throwIfAborted();
+			if (args.template === void 0) {
+				/**
+				 * A template or standard request opens here: both starters and the questions they need
+				 * answered, with nothing written. This is the cheap first call that keeps an agent from
+				 * surveying the machine to work out what our own templates are.
+				 */
+				if (args.path !== void 0) throw new Error(`Name the starter whose file you want: ${ids.join(", ")}`);
+				if (args.destination !== void 0) throw new Error(`Choose the starter to copy: ${ids.join(", ")}`);
+				const shipped = await readFile(new URL("../bridge/StudioMCPBridge.cs", import.meta.url), "utf8");
+				const starters = [];
+				for (const id of ids) {
+					const root = new URL(`../templates/${id}/`, import.meta.url);
+					const manifest = parseTemplateManifest(await readFile(new URL("manifest.json", root), "utf8"));
+					let bundled = "";
+					try {
+						bundled = bridgeVersion(await readFile(new URL("project/ProjectFiles/NetSolution/StudioMCPBridge.cs", root), "utf8"));
+					} catch {
+						bundled = "";
+					}
+					starters.push({
+						template: id,
+						manifest,
+						sourceDirectory: fileURLToPath(new URL("project/", root)),
+						bridgeVersion: bridgeVersion(shipped),
+						bundledBridgeVersion: bundled,
+						questions: manifest.questions ?? []
+					});
+				}
+				exec.signal.throwIfAborted();
+				return {
+					starters,
+					instructions: "These are our two starters - the shell a team starts from. Ask their questions before copying anything: which runtime, the screen box in pixels, the project name and the destination. Then choose one and pass `template`, `destination`, `name`, `width` and `height`. A house standard (levels, palette, naming, alarm strategy) is decided from `engineering_reference` and applied on top of the copy; nothing here creates an empty project."
+				};
+			}
 			const root = new URL(`../templates/${args.template}/`, import.meta.url);
 			const manifest = parseTemplateManifest(await readFile(new URL("manifest.json", root), "utf8"));
 			if (args.path !== void 0 && args.destination !== void 0) throw new Error("Choose one: `path` reads a file from the starter, `destination` scaffolds a copy of it. Both in one call is ambiguous.");
@@ -1534,7 +1568,7 @@ function apply(ctx, config = {}) {
 	}
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_status",
-		description: "Discover loaded FactoryTalk Optix Studio projects directly through configured local bridges, and report the state of the preview, emulator and OCR chain with the first missing link named. Use before selecting a project, and before any preview or screenshot call. No MCP or Python service is required.",
+		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, and the preview, emulator and OCR chain with the first missing link named. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required.",
 		parameters: {},
 		output: jsonOutput,
 		presentCall: () => ({
@@ -1990,7 +2024,7 @@ function apply(ctx, config = {}) {
 	 */
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_library",
-		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An imported component belongs at the root of UI in a structural folder named for its library - UI/Components/Widgets/AlarmBanner, UI/Components/StyleSheets/FriendlyDark - so it never lands loose beside the project's screens; dest defaults to that folder and the folders are created when missing. An import is not batch-reversible, so read the model back with optix_read before any retry.",
+		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An imported component belongs at the root of UI in a structural folder named for its library - UI/Components/Widgets/AlarmBanner, UI/Components/StyleSheets/FriendlyDark - so it never lands loose beside the project's screens; dest defaults to that folder and the folders are created when missing. An import is not batch-reversible, so read the model back with optix_read before any retry. Use it to pick a named component for a design already decided, not to survey what the machine happens to ship: a new build starts from the brief and the published standards (CRAFT-ORD-01).",
 		parameters: {
 			action: {
 				type: "string",

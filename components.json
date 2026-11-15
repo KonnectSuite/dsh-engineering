@@ -33,7 +33,7 @@
       "skill": {
         "name": "rockwell-l5x",
         "file": "packages/l5x/SKILL.md",
-        "budget": 12121,
+        "budget": 12800,
         "allow": [
           "project_id",
           "verification_id",
@@ -79,7 +79,7 @@
       "skill": {
         "name": "factorytalk-view",
         "file": "packages/ftview/SKILL.md",
-        "budget": 9040,
+        "budget": 9500,
         "allow": [
           "view_id",
           "displays_json",
@@ -256,7 +256,7 @@
       "skill": {
         "name": "engineering-standards",
         "file": "packages/resources/SKILL.md",
-        "budget": 4000,
+        "budget": 4700,
         "allow": [
           "engineering_review"
         ]
@@ -311,7 +311,7 @@
       "skill": {
         "name": "legacy-to-logix-migration",
         "file": "packages/migration/SKILL.md",
-        "budget": 9252,
+        "budget": 9800,
         "allow": [
           "migration_assess",
           "l5k_lint",

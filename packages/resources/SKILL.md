@@ -3,6 +3,21 @@
 Use this skill whenever you write, change or review control code or HMI screens — before you author, not
 after.
 
+## First move
+
+Decide what kind of request this is before calling anything.
+
+- **A new build, standard or template.** Read the standards and the brief first. Our packaged templates
+  exist so the shell does not have to be invented: list them from the product's own tool, not from disk.
+- **An existing project.** The operator named it, or the work is inside it. Then the project is the
+  subject: read it, bounded, and say what you read.
+- **A real capability question** (which version is installed, is a bridge answering). Ask, or make one
+  bounded check and state the reason.
+
+Do not inventory the machine, the workspace or the operator's profile to work out what to build — no
+directory listings, no recursive searches for project files, no install-folder globs. An inventory is
+not a brief (`CRAFT-ORD-01`). Read `craft-engagement-order` for the order and the exceptions.
+
 ## Read first
 
 - `engineering_reference` with no arguments lists the corpus. Search it for the language and the domain

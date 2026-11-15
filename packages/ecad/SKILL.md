@@ -6,6 +6,10 @@ whenToUse: When the user works with electrical prints (DXF and DWG drawings, pan
 
 # ECAD drawings (DXF and DWG)
 
+A new build starts from the brief, our packaged templates and `engineering_reference` — not from what is
+installed, open or on disk; the host is read only when the operator points at it, or when the work is
+inside an existing project (`CRAFT-ORD-01`).
+
 An electrical print is evidence: the drawing says what it says, and every answer names what this
 engine could not see. This row reads, reviews, views and exports. **Authoring lives in AryaCAD
 Electrical**, the owner's CAD application, reached through its own MCP bridge — so a change is

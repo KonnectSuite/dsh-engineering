@@ -1,3 +1,34 @@
+## [Unreleased]
+
+- **A new build starts from the brief, our packaged templates and the published standards — the machine is read
+  only when the operator points at it.** Measured on a real session (attached by the operator, 14 Nov 2026): asked
+  for "a new Optix template", an agent made **52 host-survey calls (45 `pwsh` listings, 4 `glob`s, 3 `grep`s) across
+  **23.1 minutes**, and **never called `engineering_reference` once** — although `optix_template` was called at
+  **0.1 minutes** and could have answered with both starters and their questions. The tools were found and not
+  trusted as the starting point, because nothing told the agent that an inventory is not a brief. Fixed at the
+  level where the decision is made:
+  - new corpus page `craft-engagement-order` (domain `craft`, applies to every product row) with `CRAFT-ORD-01`..`04`
+    — a new artefact starts from the standard and the brief, the brief precedes the artefact, an authorised
+    inspection is bounded and its reason stated, and what exists is evidence rather than the requirement;
+  - `packages/resources/SKILL.md` gained `## First move`, which sorts a request into new build / existing project /
+    real capability question and forbids inventory to work out what to build;
+  - the same gate sentence now opens every product skill (`l5x`, `ftview`, `optix`, `plc5`, `mwi`, `ecad`,
+    `migration`), so the rule travels with the row an agent loads;
+  - the Optix skill replaced `## Read before you write` with `## What kind of request is this?` — a request /
+    first-move / host table, the eight standard pages named, and workflow **E. Author a house template or standard**
+    for the case that started this (write the standard, choose a starter, ask the brief; nothing creates an empty
+    `.optix`);
+  - `optix_template` now answers with **both** starters, their manifests and their `questions` when no starter is
+    named, and writes nothing — its `template` parameter is optional, which is what makes that question-first call
+    possible; `optix_status`, `optix_library`, `ftview_apps` and `mw_project_find` say in their own descriptions that
+    they are for a project in play, not for working out what to build.
+  - Skill budgets raised for the added gate: `l5x` 12,121 → 12,800, `ftview` 9,040 → 9,500, `resources` 4,000 →
+    4,700, `migration` 9,252 → 9,800 (`components.json`; bodies measured before and after).
+  Covered by the new `test/skill-engagement.spec.mjs` (gate present and near the title in every skill, first move
+  before read-first, triage before authoring, the order page in the corpus and applying to every row, the four
+  discovery descriptions, and the no-starter answer) plus additions to `test/resources.spec.mjs` and
+  `test/optix-template.spec.mjs`.
+
 ## [0.94.2] - 2026-11-14
 
 - **A Rockwell plant now starts from Rockwell's own published style guide, not only the generic baseline.** New corpus

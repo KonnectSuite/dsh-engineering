@@ -90,3 +90,25 @@ test('a starter whose bridge is older than the tracked one names the step that a
     assert.ok(source.includes('run optix_bridge_arm on the copy'), `${id}: the copy instructions do not tell the engineer to arm the bridge`)
   }
 })
+
+/**
+ * A template or standard request is answered before anything is copied: both starters and the
+ * questions they need answered, with nothing written. That call is only possible because the
+ * `template` parameter is optional, and it is what keeps an agent from surveying the machine to
+ * work out what our own starters are.
+ */
+test('no starter named answers with both manifests and their questions, writing nothing', () => {
+  const source = readFileSync(new URL('../packages/optix/lib/index.js', import.meta.url), 'utf8')
+  const tool = source.slice(source.indexOf('name: "optix_template"'), source.indexOf('name: "optix_template"') + 3000)
+  assert.match(tool, /chosen between, not surveyed/u, 'the description still invites a survey')
+  assert.match(tool, /With no arguments it answers with both manifests and their `questions` and writes nothing/u)
+  const template = tool.slice(tool.indexOf('template: {'), tool.indexOf('path: {'))
+  assert.match(template, /Omit to receive both manifests and their questions, writing nothing\./u)
+  assert.ok(!template.includes('required: true'), 'the template parameter is still required')
+  const execute = source.slice(source.indexOf('if (args.template === void 0) {'), source.indexOf('if (args.template === void 0) {') + 1600)
+  assert.match(execute, /for \(const id of ids\)/u, 'the no-starter answer does not read both starters')
+  assert.match(execute, /starters\.push\(\{/u)
+  assert.match(execute, /return \{\s*starters,\s*instructions:/u)
+  assert.doesNotMatch(execute, /scaffoldProject|writeFile|mkdir/u, 'the no-starter answer must not write anything')
+  for (const id of templates) assert.ok(manifestOf(id).questions.length >= 4, `${id}: no questions to answer before a copy`)
+})
