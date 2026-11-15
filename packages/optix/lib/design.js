@@ -8,7 +8,11 @@
  * (`VIEW-NAV-01`), a screen nothing leaves from (`VIEW-NAV-02`), a screen whose
  * size is not the canvas the project declares (`VIEW-LAYOUT-02`), a hand-built
  * copy repeated across screens instead of a type with instances
- * (`OPTIX-UI-01`) and behaviour living inside a composition (`OPTIX-UI-02`).
+ * (`OPTIX-UI-01`) and behaviour living inside a composition (`OPTIX-UI-02`),
+ * an Advanced SVG image with nothing to animate (`OPTIX-IMG-01`), a literal
+ * colour beside a style sheet that already decides it (`OPTIX-STYLE-01`), a
+ * child drawn outside its parent (`OPTIX-LAYOUT-01`) and a measurement shown
+ * without the unit the model records (`OPTIX-DATA-01`).
  * The rule ids are the corpus ids, so a finding can be cited by
  * `engineering_reference`. The thresholds themselves come from the `hmi` domain
  * pages: 44 px and 4.5:1.
@@ -168,12 +172,46 @@ function textOf(node) {
 }
 
 /**
+ * The node a link points at, or undefined.
+ *
+ * A bound property reports as `DynamicLink` text: a project-absolute
+ * `/Objects/<Project>/Model/...` path measured live on Optix 1.8.1 (2026-11-15),
+ * either bare or with an `@Attribute` tail. An attribute tail is not a node of
+ * the model, so it is left out.
+ *
+ * @param value - The reported property value.
+ * @returns The project-relative node path, or undefined.
+ */
+function linkTarget(value) {
+	if (typeof value !== "string") return undefined;
+	const text = value.trim();
+	const match = /^\/Objects\/([^/]+)\/(.+)$/u.exec(text);
+	if (match === null) return undefined;
+	const rest = match[2];
+	if (rest.includes("@")) return undefined;
+	return rest;
+}
+
+/** The literal colours a node sets on itself, as `{property: #rrggbb}`. */
+function literalsOf(node) {
+	const found = {};
+	for (const name of ["BackgroundColor", "FillColor", "TextColor", "ForegroundColor"]) {
+		const value = colour(property(node, name));
+		if (value !== undefined) found[name] = value;
+	}
+	return found;
+}
+
+/**
  * Run the design checks over one screen.
  *
- * @param input - `{ nodes, screen, canvas, siblings }`: the described nodes of
- *   the screen (each `{ path, name, type, properties }`), the screen node
- *   itself, the canvas the project's Window declares, and the other screens'
- *   `{ name, children }` for the reuse rule.
+ * @param input - `{ nodes, screen, canvas, siblings, images, styled, palette, units }`:
+ *   the described nodes of the screen (each `{ path, name, type, properties }`),
+ *   the screen node itself, the canvas the project's Window declares, the other
+ *   screens' `{ name, children }` for the reuse rule, each `AdvancedSVGImage` as
+ *   `{ path, name, elements }` (how many element properties it binds), the widget
+ *   types the project's `DefaultStyleSheet` styles, the palette the house theme
+ *   uses, and `units` as `{ nodePath: "bar" }` for modelled signals.
  * @returns `{ findings, unchecked, described }`: findings in rule order, the
  *   checks the model could not support, and how many objects were examined.
  */
@@ -362,6 +400,87 @@ export function designFindings(input) {
 			evidence: {
 				path: node.path,
 				type: node.type
+			}
+		});
+	}
+
+	// OPTIX-IMG-01: an animation object with nothing to animate.
+	for (const image of input.images ?? []) {
+		if (image.elements > 0) continue;
+		findings.push({
+			rule: "OPTIX-IMG-01",
+			severity: "info",
+			message: `${image.name} is an Advanced SVG image with no SVG element properties, so it is a static picture drawn with the object that exists to animate one.`,
+			evidence: {
+				path: image.path,
+				elements: 0
+			}
+		});
+	}
+
+	// OPTIX-STYLE-01: a literal colour next to a style sheet that already decides it.
+	const styled = new Set(input.styled ?? []);
+	const palette = new Set((input.palette ?? []).map((value) => colour(value)).filter((value) => value !== undefined));
+	for (const node of nodes) {
+		if (!styled.has(node.type)) continue;
+		const literals = literalsOf(node);
+		const outside = Object.entries(literals).filter(([, value]) => !palette.has(value));
+		if (outside.length === 0) continue;
+		findings.push({
+			rule: "OPTIX-STYLE-01",
+			severity: "info",
+			message: `${node.type} ${node.name} writes ${outside.map(([name, value]) => `${name} ${value}`).join(", ")} as a literal while the project's DefaultStyleSheet already styles ${node.type}; a literal outside the palette bypasses the theme every other screen follows.`,
+			evidence: {
+				path: node.path,
+				type: node.type,
+				literals: Object.fromEntries(outside),
+				style_collection: `${node.type}Style`
+			}
+		});
+	}
+
+	// OPTIX-LAYOUT-01: a child drawn outside the box that holds it. Overlap between
+	// siblings is NOT judged here: a label drawn over a fill is the normal way to
+	// put text on a card, so calling that a defect would flag correct screens.
+	for (const node of nodes) {
+		if (node.path === screen.path) continue;
+		const rect = geometry.get(node.path);
+		if (rect === undefined) continue;
+		const parentPath = node.path.slice(0, node.path.lastIndexOf("/"));
+		const parent = geometry.get(parentPath);
+		if (parent === undefined) continue;
+		if (contains(parent, rect)) continue;
+		findings.push({
+			rule: "OPTIX-LAYOUT-01",
+			severity: "warning",
+			message: `${node.type} ${node.name} sits at ${rect.left},${rect.top} ${rect.width}×${rect.height}, which leaves the ${parent.width}×${parent.height} box of ${parentPath.slice(parentPath.lastIndexOf("/") + 1)}; the part outside is clipped or drawn over its neighbours.`,
+			evidence: {
+				path: node.path,
+				parent: parentPath,
+				child: rect,
+				parent_rect: parent
+			}
+		});
+	}
+
+	// OPTIX-DATA-01: a measurement shown without the unit the model records.
+	const units = input.units ?? {};
+	for (const node of nodes) {
+		if (node.type !== "Label" && node.type !== "TextBox") continue;
+		const target = linkTarget(property(node, "Text"));
+		if (target === undefined) continue;
+		const unit = units[target];
+		if (unit === undefined || String(unit).trim() === "") continue;
+		if (property(node, "Formatter") !== undefined || property(node, "TextFormatter") !== undefined) continue;
+		findings.push({
+			rule: "OPTIX-DATA-01",
+			severity: "info",
+			message: `${node.type} ${node.name} shows ${target} with no formatter while the model records the unit ${unit}; an operator reads a bare number and cannot tell what it measures.`,
+			evidence: {
+				path: node.path,
+				type: node.type,
+				target,
+				units: String(unit)
 			}
 		});
 	}

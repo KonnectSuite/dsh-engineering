@@ -67,17 +67,29 @@ const DATA_TYPES = new Set([
 const ANALOG_TYPES = new Set(["Float", "Double"]);
 
 /**
- * Metadata Optix cannot store as UA Properties yet, and what stands in for it.
- * Every report repeats this so a caller never mistakes a component for a
- * Property.
+ * Metadata Optix stores beside a variable, in the real OPC UA types where the
+ * bridge can reach them.
+ *
+ * Measured on Optix 1.8.1 / bridge 1.0.9 (2026-11-15): `EngineeringUnits`
+ * accepts a `LocalizedText`, `EURange` can be created as a `Range` but its value
+ * cannot be assigned through `node/property` ("Conversion to Struct not
+ * supported"), so the limits are written as `EURangeLow`/`EURangeHigh` Floats,
+ * and `Description` remains a String child because a node attribute cannot be
+ * set. The analog VariableType is out of reach: `model/variable` resolves data
+ * types only. Every report repeats this so a caller never mistakes a component
+ * for a UA Property.
  */
 export const MODEL_METADATA = {
-	units: { property: "EngineeringUnits", emulatedAs: "String variable", datatype: "String" },
-	range: { property: "EURange", emulatedAs: "String variable", datatype: "String" },
+	units: { property: "EngineeringUnits", emulatedAs: "LocalizedText variable", datatype: "LocalizedText" },
+	range: {
+		property: "EURange",
+		emulatedAs: "Range variable with EURangeLow/EURangeHigh Floats beside it",
+		datatype: "Range"
+	},
 	description: { property: "Description", emulatedAs: "String variable", datatype: "String" },
 	attribute: "DisplayName is written as the node's DisplayName attribute",
 	emulated: true,
-	why: "Studio 1.8.1 writes only DisplayName as an attribute, and a plain variable declares no property children - DeclaredPropertyGuard refuses the rest so an orphan cannot access-violate Studio."
+	why: "Studio 1.8.1 writes only DisplayName as an attribute; a Range value cannot be assigned through the bridge, and a plain variable declares no property children - DeclaredPropertyGuard refuses the rest so an orphan cannot access-violate Studio."
 };
 
 /** Rule ids, severities and what each one is about. Kept exported for the docs and the tests. */
@@ -284,25 +296,34 @@ export function planModel(spec, options = {}) {
 			const datatypeIssue = datatypeProblem(tag.datatype, `${label} tag "${tag.name}"`);
 			if (datatypeIssue !== void 0) throw new Error(datatypeIssue);
 			const tagPath = join(ownerPath, tag.name);
-			if (!create({ op: "create_variable", parent: ownerPath, name: tag.name, datatype: tag.datatype }, tagPath)) continue;
-			counts.variables += 1;
-			if (tag.initial !== void 0 && tag.initial !== null)
-				ops.push({ op: "set_property", path: tagPath, name: "Value", value: String(tag.initial) });
-			if (typeof tag.display_name === "string" && tag.display_name.trim() !== "")
-				ops.push({ op: "set_property", path: tagPath, name: "DisplayName", value: tag.display_name });
 			if (tag.range !== void 0 && (!Array.isArray(tag.range) || tag.range.length !== 2 || tag.range.some((bound) => typeof bound !== "number" || !Number.isFinite(bound))))
 				throw new Error(`${label} tag "${tag.name}" has range ${JSON.stringify(tag.range)} - give it two numbers, for example [0, 10]`);
-			const metadata = [
-				["EngineeringUnits", tag.units],
-				["EURange", tag.range === void 0 ? void 0 : `${tag.range[0]}..${tag.range[1]}`],
-				["Description", tag.description]
-			];
-			for (const [name, value] of metadata) {
-				if (value === void 0 || value === null || String(value).trim() === "") continue;
-				const metadataPath = join(tagPath, name);
-				if (!create({ op: "create_variable", parent: tagPath, name, datatype: "String" }, metadataPath)) continue;
-				ops.push({ op: "set_property", path: metadataPath, name: "Value", value: String(value) });
-				counts.metadata += 1;
+			// One operation, expanded by the editor into the variable plus its OPC UA
+			// metadata (see `expandVariables` in index.js): units travel as a
+			// LocalizedText, the limits as EURangeLow/High Floats beside a Range.
+			const analog = ANALOG_TYPES.has(tag.datatype);
+			if (!create({
+				op: "create_variable",
+				parent: ownerPath,
+				name: tag.name,
+				datatype: tag.datatype,
+				...(analog && (tag.units !== void 0 || tag.range !== void 0 || tag.description !== void 0) ? { kind: "analog" } : {}),
+				...(tag.units === void 0 ? {} : { units: tag.units }),
+				...(tag.range === void 0 ? {} : { range: tag.range }),
+				...(typeof tag.display_name !== "string" || tag.display_name.trim() === "" ? {} : { display_name: tag.display_name })
+			}, tagPath)) continue;
+			counts.variables += 1;
+			if (tag.units !== void 0) counts.metadata += 1;
+			if (tag.range !== void 0) counts.metadata += 2;
+			if (tag.initial !== void 0 && tag.initial !== null)
+				ops.push({ op: "set_property", path: tagPath, name: "Value", value: String(tag.initial) });
+			// Description stays a String child: the attribute itself is refused by the bridge.
+			if (typeof tag.description === "string" && tag.description.trim() !== "") {
+				const metadataPath = join(tagPath, "Description");
+				if (create({ op: "create_variable", parent: tagPath, name: "Description", datatype: "String" }, metadataPath)) {
+					ops.push({ op: "set_property", path: metadataPath, name: "Value", value: String(tag.description) });
+					counts.metadata += 1;
+				}
 			}
 		}
 	}

@@ -9,6 +9,8 @@
     "lib/**/*",
     "bridge/**/*",
     "templates/**/*",
+    "netlogic/**/*",
+    "schema/**/*",
     "locale/**/*",
     "icon.svg"
   ],

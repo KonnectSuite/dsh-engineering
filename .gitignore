@@ -1,6 +1,7 @@
 node_modules/
 *.tgz
 *.log
+*.err
 packages/*/lib/
 # Only the assembled root tree is ignored: `vendor/<component>` is written by
 # `npm run assemble`, while a package may carry its own vendored sources (the

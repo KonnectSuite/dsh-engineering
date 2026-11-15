@@ -805,6 +805,43 @@
       "sha256": "955873619b3edf19c03104013a7e6d7b34bcd37cf6f047a56341663b9f0a79ef"
     },
     {
+      "id": "optix-alarm-object-model",
+      "title": "An alarm is a model object, not a red lamp",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/alarms/Alarms.html",
+        "creating-projects/alarms/Alarm-types.html",
+        "creating-projects/alarms/Create-an-alarm.html",
+        "creating-projects/alarms/Create-an-alarm-type.html",
+        "creating-projects/alarms/Custom-alarm-types.html",
+        "creating-projects/alarms/Alarm-variables.html",
+        "creating-projects/alarms/Alarm-grid.html",
+        "creating-projects/alarms/Alarm-log-grids.html",
+        "creating-projects/alarms/Confirm-and-acknowledge-alarms.html",
+        "creating-projects/alarms/shelve_alarms.html",
+        "Reference/FTOptix-Alarm/ObjectTypes/AlarmController.html"
+      ],
+      "tags": [
+        "alarms",
+        "severity",
+        "acknowledgement",
+        "model",
+        "history"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-ALARM-01",
+        "OPTIX-ALARM-02",
+        "OPTIX-ALARM-03"
+      ],
+      "words": 811,
+      "bytes": 6221,
+      "sha256": "11c54a50081755bf567f25c7b3611591434009d8944990c12bf1cb64d77bc7ed"
+    },
+    {
       "id": "optix-alarms-and-trends",
       "title": "Alarms and trends in Optix",
       "domain": "optix",
@@ -888,6 +925,46 @@
       "sha256": "de1bb831b9b67b191e70a16fe8327a464c29cd907f1740a25e74407e5f95056f"
     },
     {
+      "id": "optix-data-presentation",
+      "title": "The widget decides what the operator reads",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "Reference/FTOptix-UI/ObjectTypes/Label.html",
+        "Reference/FTOptix-UI/ObjectTypes/TextBox.html",
+        "Reference/FTOptix-UI/ObjectTypes/DataGrid.html",
+        "Reference/FTOptix-UI/ObjectTypes/ListView.html",
+        "Reference/FTOptix-UI/ObjectTypes/Led.html",
+        "Reference/FTOptix-UI/ObjectTypes/CircularGauge.html",
+        "Reference/FTOptix-UI/ObjectTypes/Trend.html",
+        "creating-projects/converters/String-formatter.html",
+        "creating-projects/converters/Engineering-unit-converter.html",
+        "creating-projects/converters/Converters.html",
+        "creating-projects/graphic-objects/predefined/Data-grid.html",
+        "creating-projects/graphic-objects/predefined/Trends.html",
+        "best-practices/model_complexity_and_node_count.html"
+      ],
+      "tags": [
+        "labels",
+        "formatting",
+        "units",
+        "datagrid",
+        "trend",
+        "cost"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-DATA-01",
+        "OPTIX-DATA-02",
+        "OPTIX-DATA-03"
+      ],
+      "words": 804,
+      "bytes": 6071,
+      "sha256": "a91e8e7127dcd139ec63c112b87752e7b651b31f6e5e61bf13f02084342de186"
+    },
+    {
       "id": "optix-design-resources",
       "title": "The official sample projects as a design reference",
       "domain": "optix",
@@ -911,9 +988,95 @@
         "OPTIX-RES-01",
         "OPTIX-RES-02"
       ],
-      "words": 476,
-      "bytes": 3897,
-      "sha256": "35d19c7c9f364d354a24305474202f20ec88582e84935f82c468e622a1489007"
+      "words": 577,
+      "bytes": 4819,
+      "sha256": "9e78e4a945bda841241c5822e341c3a74179cf60277c1e84d534c1db6693fdba"
+    },
+    {
+      "id": "optix-images-and-svg",
+      "title": "Vector artwork that can be driven, not swapped",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/graphic-objects/predefined/Image.html",
+        "creating-projects/graphic-objects/predefined/Multistate-image.html",
+        "creating-projects/graphic-objects/predefined/Add-an-Advanced-SVG-image.html",
+        "creating-projects/graphic-objects/predefined/Advanced-SVG-image.html",
+        "creating-projects/graphic-objects/predefined/configure_an_image.html",
+        "creating-projects/graphic-objects/predefined/Presentation-engines.html",
+        "Reference/FTOptix-UI/ObjectTypes/Image.html",
+        "Reference/FTOptix-UI/ObjectTypes/MultiStateImage.html",
+        "Reference/FTOptix-UI/ObjectTypes/MultiStateImageState.html",
+        "Reference/FTOptix-UI/ObjectTypes/AdvancedSVGImage.html",
+        "Reference/FTOptix-UI/ObjectTypes/AdvancedSVGImageElementProperty.html",
+        "creating-projects/project-nodes/Paths.html",
+        "best-practices/graphic_rendering_impact.html"
+      ],
+      "tags": [
+        "images",
+        "svg",
+        "multistate",
+        "colour",
+        "resources"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-IMG-01",
+        "OPTIX-IMG-02",
+        "OPTIX-IMG-03",
+        "OPTIX-IMG-04"
+      ],
+      "words": 858,
+      "bytes": 6711,
+      "sha256": "667a6e5e5ffed801f4e0fc3e4189619c35971cd6b248a6c30eca1a37f66479a9"
+    },
+    {
+      "id": "optix-layout-and-containers",
+      "title": "Layout is margins and alignment, not canvas coordinates",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/graphic-objects/layout/Graphic-objects-layout.html",
+        "creating-projects/graphic-objects/layout/Set-margins.html",
+        "creating-projects/graphic-objects/layout/Dock-an-object.html",
+        "creating-projects/graphic-objects/layout/Move-an-object.html",
+        "creating-projects/graphic-objects/layout/Resize-an-object.html",
+        "creating-projects/graphic-objects/layout/Change-objects-order.html",
+        "creating-projects/graphic-objects/layout/Create-a-responsive-user-interface.html",
+        "creating-projects/graphic-objects/predefined/Size-conventions.html",
+        "creating-projects/graphic-objects/predefined/Containers.html",
+        "Reference/FTOptix-UI/ObjectTypes/Container.html",
+        "Reference/FTOptix-UI/ObjectTypes/GridLayout.html",
+        "Reference/FTOptix-UI/ObjectTypes/ColumnLayout.html",
+        "Reference/FTOptix-UI/ObjectTypes/RowLayout.html",
+        "Reference/FTOptix-UI/ObjectTypes/ScaleLayout.html",
+        "Reference/FTOptix-UI/ObjectTypes/Window.html",
+        "Reference/FTOptix-UI/DataTypes/HorizontalAlignment.html",
+        "Reference/FTOptix-UI/DataTypes/VerticalAlignment.html",
+        "best-practices/responsive_design_use_case_awareness.html",
+        "best-practices/ui_objects.html"
+      ],
+      "tags": [
+        "layout",
+        "containers",
+        "alignment",
+        "z-order",
+        "responsive"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-LAYOUT-01",
+        "OPTIX-LAYOUT-02",
+        "OPTIX-LAYOUT-03",
+        "OPTIX-LAYOUT-04"
+      ],
+      "words": 880,
+      "bytes": 7139,
+      "sha256": "f9e0878561149a469834a1a8bb270b7300fe654e122bf23dced3a545385af482"
     },
     {
       "id": "optix-navigation-patterns",
@@ -1033,6 +1196,192 @@
       "sha256": "ffcf03eb20a0402f85cad46288c377c094e8c21a60575047eb47ee37385c9dc7"
     },
     {
+      "id": "optix-panels-and-dialogs",
+      "title": "One loader owns the swap, one shell owns the frame",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/graphic-objects/predefined/Panel.html",
+        "creating-projects/graphic-objects/predefined/Panel-loader.html",
+        "creating-projects/graphic-objects/predefined/Screens.html",
+        "creating-projects/graphic-objects/predefined/Containers.html",
+        "creating-projects/graphic-objects/predefined/Dialog-box.html",
+        "creating-projects/graphic-objects/predefined/Configure-button-to-open-dialog-box.html",
+        "creating-projects/graphic-objects/predefined/Configure-button-close-dialog-box.html",
+        "Reference/FTOptix-UI/ObjectTypes/PanelLoader.html",
+        "Reference/FTOptix-UI/ObjectTypes/Panel.html",
+        "Reference/FTOptix-UI/ObjectTypes/Screen.html",
+        "Reference/FTOptix-UI/ObjectTypes/Popup.html",
+        "Reference/FTOptix-UI/ObjectTypes/Dialog.html",
+        "tutorials/graphic-objects/confirmation-dialog/Create-panels.html"
+      ],
+      "tags": [
+        "panel",
+        "panel-loader",
+        "dialog",
+        "popup",
+        "navigation"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-PANEL-01",
+        "OPTIX-PANEL-02",
+        "OPTIX-PANEL-03"
+      ],
+      "words": 790,
+      "bytes": 6117,
+      "sha256": "d10ce415a442776a72c65d0bf6b70c545e4494eaa36828b055dc564370ed17ee"
+    },
+    {
+      "id": "optix-performance-and-engine",
+      "title": "Choose the engine, then measure what costs",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/graphic-objects/predefined/Presentation-engines.html",
+        "creating-projects/graphic-objects/predefined/Native-presentation-engine.html",
+        "creating-projects/graphic-objects/predefined/Web-presentation-engine.html",
+        "creating-projects/graphic-objects/predefined/Configure-a-web-presentation-engine.html",
+        "creating-projects/graphic-objects/predefined/Configure-a-native-presentation-engine.html",
+        "Reference/FTOptix-UI/ObjectTypes/PresentationEngine.html",
+        "Reference/FTOptix-NativeUI/ObjectTypes/NativePresentationEngine.html",
+        "Reference/FTOptix-WebUI/ObjectTypes/PresentationEngine.html",
+        "best-practices/performance_optimization.html",
+        "best-practices/graphic_rendering_impact.html",
+        "best-practices/reduce_overhead.html",
+        "best-practices/statistics.html",
+        "best-practices/model_complexity_and_node_count.html",
+        "best-practices/ui_objects.html"
+      ],
+      "tags": [
+        "performance",
+        "presentation-engine",
+        "polling",
+        "trends",
+        "node-count"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-PERF-01",
+        "OPTIX-PERF-02",
+        "OPTIX-PERF-03"
+      ],
+      "words": 882,
+      "bytes": 6856,
+      "sha256": "8f43676aaaf3269f6705109238424d097c669e0b8f725a970eb5040e318d815f"
+    },
+    {
+      "id": "optix-recipes-and-retentivity",
+      "title": "Recipes are rows, retentivity is a scope",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/recipes/Recipes.html",
+        "creating-projects/recipes/Recipe-schemas.html",
+        "creating-projects/recipes/recipe_schema_model_structure.html",
+        "creating-projects/recipes/recipe_schema_methods_events.html",
+        "creating-projects/recipes/Manage-recipes-at-runtime.html",
+        "creating-projects/recipes/Import-or-export-recipes-at-runtime.html",
+        "creating-projects/retentivity/Retentitivity-storage.html",
+        "creating-projects/retentivity/Create-retentivity-storage.html",
+        "creating-projects/retentivity/retentivity_storage_properties.html",
+        "creating-projects/retentivity/retentivity_storage_methods.html",
+        "creating-projects/project-nodes/Paths.html"
+      ],
+      "tags": [
+        "recipes",
+        "schema",
+        "retentivity",
+        "storage",
+        "backup"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-RCP-07",
+        "OPTIX-RCP-08"
+      ],
+      "words": 860,
+      "bytes": 6600,
+      "sha256": "3ac0c78af19f334d436c01f21dd7991eca36030d88da7af300ee8683acca6bda"
+    },
+    {
+      "id": "optix-style-sheets-and-appearance",
+      "title": "One style sheet carries the house palette",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/graphic-objects/predefined/Style-sheets.html",
+        "creating-projects/graphic-objects/predefined/Configure-a-style-sheet.html",
+        "creating-projects/graphic-objects/predefined/Apply-a-global-style-to-the-project.html",
+        "creating-projects/graphic-objects/predefined/apply-a-style-sheet-to-a-graphic-object.html",
+        "tutorials/graphic-objects/style-pick/add-and-configure-a-combo-box.html",
+        "Reference/FTOptix-UI/ObjectTypes/StyleSheet.html",
+        "Reference/FTOptix-UI/ObjectTypes/PresentationEngine.html",
+        "best-practices/ui_objects.html"
+      ],
+      "tags": [
+        "style-sheet",
+        "palette",
+        "theme",
+        "appearance",
+        "consistency"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-STYLE-01",
+        "OPTIX-STYLE-02",
+        "OPTIX-STYLE-03"
+      ],
+      "words": 793,
+      "bytes": 6246,
+      "sha256": "705ffd6a3dc4b39486576d5c06910b00591f1cca61720d3b4c7f88c446137373"
+    },
+    {
+      "id": "optix-translations",
+      "title": "Text is a key, and the session picks the language",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/translations/Translations.html",
+        "creating-projects/translations/Translate-a-string.html",
+        "creating-projects/translations/Change-the-interface-language.html",
+        "creating-projects/translations/language-displayed-at-runtime.html",
+        "creating-projects/translations/Localization-editor.html",
+        "creating-projects/translations/Add-a-locale-language-to-a-localization-dictionary.html",
+        "creating-projects/translations/Use-translated-texts-in-a-string-formatter.html",
+        "creating-projects/sessions/translation-scope-for-localized-text.html",
+        "creating-projects/sessions/Configure-session-and-fallback-locales.html",
+        "creating-projects/sessions/Configure-the-locale-at-runtime.html",
+        "creating-projects/sessions/Locales.html",
+        "Reference/FTOptix-UI/ObjectTypes/UISession.html"
+      ],
+      "tags": [
+        "translations",
+        "localization",
+        "locale",
+        "text",
+        "i18n"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-I18N-01",
+        "OPTIX-I18N-02"
+      ],
+      "words": 779,
+      "bytes": 6136,
+      "sha256": "55038324942421e1e85ea64f4268ff298bad525309abe8aa675435476f724644"
+    },
+    {
       "id": "optix-ui-structure",
       "title": "Optix screens and reusable types",
       "domain": "optix",
@@ -1055,6 +1404,79 @@
       "words": 96,
       "bytes": 859,
       "sha256": "678a9bdd921a2d93ac273ef05f81cfaad6be999ac4978d7ed78bdb74753dd625"
+    },
+    {
+      "id": "optix-users-and-security",
+      "title": "The session carries the rights",
+      "domain": "optix",
+      "level": "practitioner",
+      "basis": [
+        "creating-projects/users/Users-and-groups.html",
+        "creating-projects/users/Roles.html",
+        "creating-projects/users/Groups.html",
+        "creating-projects/users/Add-a-user.html",
+        "creating-projects/users/Configure-visibility-at-runtime.html",
+        "creating-projects/authentication/Authentication.html",
+        "creating-projects/authentication/Configure-the-authentication-mode.html",
+        "creating-projects/audit-signing/Audit-signing.html",
+        "creating-projects/sessions/ui-session.html",
+        "creating-projects/sessions/Configure-idle-timeout-for-a-session.html",
+        "creating-projects/sessions/Configure-a-screen-saver-or-automatic-logout.html",
+        "Reference/FTOptix-UI/ObjectTypes/UISession.html",
+        "Reference/FTOptix-UI/ObjectTypes/PresentationEngine.html"
+      ],
+      "tags": [
+        "users",
+        "roles",
+        "sessions",
+        "login",
+        "audit",
+        "security"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-SEC-01",
+        "OPTIX-SEC-02",
+        "OPTIX-SEC-03"
+      ],
+      "words": 848,
+      "bytes": 6379,
+      "sha256": "7db7693d2588074919235d8e3758a150322125fe477247b05143a2d176fe98ef"
+    },
+    {
+      "id": "optix-variables-and-properties",
+      "title": "Variables on a component — the data a screen owns",
+      "domain": "optix",
+      "level": "specialist",
+      "basis": [
+        "FactoryTalk Optix Studio 1.8.1 help, creating-projects/project-nodes: Variables.html, Create-a-variable.html, Create-an-analog-variable.html, Create-a-node-pointer.html, Create-a-variable-from-a-type.html, Add-limits-to-a-variable.html, Set-the-unit-of-measure-for-a-variable.html, Change-the-unit-of-measure-for-a-variable.html, Remove-the-unit-of-measure-for-a-variable.html, Delete-a-range-from-a-variable.html, Create-a-variable-type.html; measured against Studio 1.8.1.27 with bridge 1.0.9 on 2026-11-15 (New menu offers Variable, Analog variable, Node pointer and Alias; create_variable refuses a VariableType name as a datatype; a Range value cannot be assigned through set_property)."
+      ],
+      "tags": [
+        "variables",
+        "analog",
+        "node-pointer",
+        "alias",
+        "units",
+        "range",
+        "bindings"
+      ],
+      "applies_to": [
+        "optix"
+      ],
+      "rules": [
+        "OPTIX-VAR-01",
+        "OPTIX-VAR-02",
+        "OPTIX-VAR-03",
+        "OPTIX-VAR-04",
+        "OPTIX-VAR-05",
+        "OPTIX-VAR-06",
+        "OPTIX-VAR-07"
+      ],
+      "words": 700,
+      "bytes": 5131,
+      "sha256": "8e8d99badb8453b564c8ca0750b5c2abe8a063d9d0f29d57ec0b1d61bcb51139"
     },
     {
       "id": "optix-widget-patterns",

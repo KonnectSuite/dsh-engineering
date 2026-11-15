@@ -35,6 +35,16 @@ way.
 | Messages and overlays | `Optix_Sample_ToastNotification`, `Optix_Sample_ScreenSaver` |
 | A complete application to compare against | `FeaturesDemo2`, `Optix_Lab_BasicTemplate`, `Optix_Demo_RecipeX` |
 | NetLogic snippets | `NetLogic_CheatSheet`, `ToolboX`, `Training_NetLogicRuntime` |
+| Style sheet, palette and theme switching | `optix-style-sheets-and-appearance` (OPTIX-STYLE-01..03) |
+| Layout, containers and Z order | `optix-layout-and-containers` (OPTIX-LAYOUT-01..04) |
+| Panels, loaders and dialogs | `optix-panels-and-dialogs` (OPTIX-PANEL-01..03) |
+| Value presentation, units and refresh cost | `optix-data-presentation` (OPTIX-DATA-01..03) |
+| Images, SVGs and driven element properties | `optix-images-and-svg` (OPTIX-IMG-01..04) |
+| Alarm objects, severity and acknowledgement | `optix-alarm-object-model` (OPTIX-ALARM-01..03) |
+| Users, roles, sessions and audit | `optix-users-and-security` (OPTIX-SEC-01..03) |
+| Translation keys and locale switching | `optix-translations` (OPTIX-I18N-01..02) |
+| Recipes, schemas and retentivity | `optix-recipes-and-retentivity` (OPTIX-RCP-07, OPTIX-RCP-08) |
+| Presentation engine and performance | `optix-performance-and-engine` (OPTIX-PERF-01..03) |
 
 Prefix each name with `https://github.com/FactoryTalk-Optix/` to reach the repository.
 

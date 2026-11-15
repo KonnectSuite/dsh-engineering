@@ -3,7 +3,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -19,6 +19,56 @@ import { designFindings, INTERACTIVE_TYPES } from "./design.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
 import { MARKER, NETLOGIC_FOLDER, NETLOGIC_RULES, TEMPLATES, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, reviewNetLogic, templateCode, writeNetLogic } from "./netlogic.js";
+import { childrenOf, closest, diffDump, enumInfo, find as findSchema, isDataType, isObjectType, loadSchema, schemaVersion, typeInfo, typeNames } from "./schema.js";
+import { elementPropertyName, inspectSvg, propertyClass, repairPlan } from "./svg.js";
+/** A "did you mean" tail for a name the catalog does not know. */
+function suggestSuffix(wrong, candidates) {
+	const near = closest(wrong, candidates);
+	return near.length === 0 ? "" : `. Closest: ${near.join(", ")}`;
+}
+/** Read the SVG a call points at: `inline` text wins, else the file at `source`. */
+async function svgText(args) {
+	if (typeof args.inline === "string" && args.inline.trim() !== "") return args.inline;
+	if (typeof args.source !== "string" || args.source.trim() === "") throw new Error("give inline SVG text or source: the path to a .svg file");
+	const text = await readFile(args.source, "utf8");
+	if (!/<svg[\s>]/iu.test(text)) throw new Error(`${args.source} does not look like an SVG drawing`);
+	return text;
+}
+/** A required path argument, with a message that says what to pass. */
+function requirePath(value, message) {
+	if (typeof value !== "string" || value.trim() === "") throw new Error(message);
+	return value.trim();
+}
+/** A hexadecimal colour argument, refusing anything Optix could not paint. */
+function hexColour(value, label) {
+	if (!/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/u.test(String(value ?? "").trim())) {
+		throw new Error(`${label} must be a hexadecimal colour such as #30A46C`);
+	}
+	return String(value).trim();
+}
+/** Every node in a `map` reply, with its full path, depth first. */
+function flattenTree(map, base = "") {
+	if (map === void 0 || map === null) return [];
+	const path = base === "" ? map.name ?? "" : `${base}/${map.name}`;
+	const rows = [{ path, name: map.name, type: map.type }];
+	for (const child of map.children ?? []) rows.push(...flattenTree(child, path));
+	return rows;
+}
+/** One property value out of a `nodes` reply, whether it arrived as a map or a list. */
+function nodeValue(detail, name) {
+	const properties = detail?.properties;
+	if (Array.isArray(properties)) {
+		const row = properties.find((entry) => entry?.name === name);
+		return row?.value;
+	}
+	return properties?.[name];
+}
+/** A pixel length the drawing declares, so a placed image is not stretched by accident. */
+function svgLength(analysis, which) {
+	const raw = analysis?.size?.[which];
+	const number = Number.parseFloat(String(raw ?? ""));
+	return Number.isFinite(number) && number > 0 ? Math.round(number) : void 0;
+}
 //#region lib/types/bridge.js
 /** Bounded direct HTTP transport to the in-Studio Optix bridge. @module dsh-tool-ft-optix/bridge */
 /** A failure after dispatch may leave a mutation's outcome uncertain. */
@@ -374,7 +424,21 @@ const operations = {
 		fields: {
 			parent: text$1,
 			name: text$1,
-			datatype: text$1
+			datatype: text$1,
+			kind: {
+				type: "string",
+				enum: ["value", "analog"],
+				description: "value creates the variable alone; analog adds the OPC UA metadata children (EngineeringUnits, EURange, EURangeLow/High) so a number carries its unit and limits."
+			},
+			units: optionalText,
+			range: { type: "array", items: { type: "number" } },
+			// The length a caller means when they say "an array of four", not the `dims` text `retype` takes.
+			array: {
+				type: "integer",
+				description: "Array length, for a one-dimensional array."
+			},
+			dims: optionalText,
+			display_name: optionalText
 		}
 	},
 	create_folder: {
@@ -559,6 +623,70 @@ function operationRequest(op) {
 	return {
 		route: op.op === "set_property" && op.name === "DisplayName" ? "node/displayname" : spec.route,
 		query
+	};
+}
+/**
+ * Expand one `create_variable` into the operations that give it OPC UA anatomy.
+ *
+ * A component variable is the case that keeps coming up: a Float with a unit and
+ * a range. The bridge creates the numeric variable, and the metadata has to be
+ * created beside it: `EngineeringUnits` as a real `LocalizedText` (the bridge
+ * assigns a string into one), `EURange` as a real `Range` for the OPC UA shape,
+ * and `EURangeLow`/`EURangeHigh` as Floats because a `Range` struct cannot be
+ * assigned through `node/property` (measured live 2026-11-15: "Conversion to
+ * Struct not supported"). The analog *VariableType* itself is not reachable:
+ * `model/variable` resolves data types only, and `node/retype` changes the
+ * DataType of an existing variable, so the variable stays a BaseDataVariable of
+ * that DataType and the result says so.
+ *
+ * @param ops - Schema-validated operations.
+ * @returns `{ ops, notes }`: the expanded batch and what the expansion could not do.
+ */
+function expandVariables(ops) {
+	const expanded = [];
+	const notes = [];
+	for (const op of ops) {
+		if (op.op !== "create_variable") {
+			expanded.push(op);
+			continue;
+		}
+		const { kind, units, range, array, dims, display_name, ...base } = op;
+		expanded.push(base);
+		const path = `${op.parent}/${op.name}`;
+		const analog = kind === "analog";
+		// `array: 4` is the natural way to ask for a one-dimensional array; `dims: "4 2"` covers the rest.
+		const shape = dims !== void 0 ? String(dims) : array === void 0 ? void 0 : String(array);
+		if (units !== void 0 || range !== void 0 || display_name !== void 0 || shape !== void 0) {
+			if (op.datatype === void 0) throw new Error(`create_variable ${path} needs a datatype to carry units, a range, an array shape or a display name`);
+		}
+		if (range !== void 0) {
+			if (!Array.isArray(range) || range.length !== 2 || range.some((bound) => typeof bound !== "number" || !Number.isFinite(bound)))
+				throw new Error(`create_variable ${path} range must be two numbers, for example [0, 100]`);
+			if (!analog) notes.push(`${path}: a range was given without kind "analog", so only the limits are created`);
+		}
+		if (analog) {
+			if (units !== void 0) {
+				expanded.push({ op: "create_variable", parent: path, name: "EngineeringUnits", datatype: "LocalizedText" });
+				expanded.push({ op: "set_property", path: `${path}/EngineeringUnits`, name: "Value", value: String(units) });
+			}
+			expanded.push({ op: "create_variable", parent: path, name: "EURange", datatype: "Range" });
+			notes.push(`${path}: created as a ${op.datatype} variable with EURange metadata; the analog VariableType (AnalogItemType) is not reachable through the bridge, and a Range value cannot be assigned, so the limits live in EURangeLow/EURangeHigh`);
+		}
+		if (range !== void 0) {
+			expanded.push({ op: "create_variable", parent: path, name: "EURangeLow", datatype: "Float" });
+			expanded.push({ op: "set_property", path: `${path}/EURangeLow`, name: "Value", value: String(range[0]) });
+			expanded.push({ op: "create_variable", parent: path, name: "EURangeHigh", datatype: "Float" });
+			expanded.push({ op: "set_property", path: `${path}/EURangeHigh`, name: "Value", value: String(range[1]) });
+		}
+		if (display_name !== void 0 && String(display_name).trim() !== "") expanded.push({ op: "set_property", path, name: "DisplayName", value: String(display_name) });
+		if (shape !== void 0 && shape.trim() !== "") {
+			expanded.push({ op: "retype", path, datatype: op.datatype, dims: shape });
+			notes.push(`${path}: the array shape is applied with retype after the create, so the value is initialized element-wise`);
+		}
+	}
+	return {
+		ops: expanded,
+		notes
 	};
 }
 /**
@@ -2077,14 +2205,17 @@ function apply(ctx, config = {}) {
 			kind: args.dry_run === false ? "edit" : "read"
 		}),
 		async execute(args, exec) {
-			const ops = args.ops;
-			if (!ops.length || ops.length > settings.maxBatchOps) throw new Error("Batch must contain 1..maxBatchOps operations");
-			checkOperations(ops);
+			const requested = args.ops;
+			if (!requested.length || requested.length > settings.maxBatchOps) throw new Error("Batch must contain 1..maxBatchOps operations");
+			checkOperations(requested);
+			const expansion = expandVariables(requested);
+			const ops = expansion.ops;
+			if (ops.length > settings.maxBatchOps) throw new Error(`These operations expand to ${ops.length} bridge calls, over the batch limit of ${settings.maxBatchOps}: split the variables into more than one call`);
 			const dryRun = args.dry_run !== false;
-			if (!dryRun) allowWrite(isDestructive(ops));
+			if (!dryRun) allowWrite(isDestructive(requested) || isDestructive(ops));
 			return exclusive(async () => {
 				const { origin, health: selectedHealth } = await bridge.select(args.project, exec.signal);
-				return runValidatedBatch({
+				const report = await runValidatedBatch({
 					origin,
 					project: args.project,
 					ops,
@@ -2092,7 +2223,391 @@ function apply(ctx, config = {}) {
 					signal: exec.signal,
 					apply: !dryRun
 				});
+				return expansion.notes.length === 0 ? report : {
+					...report,
+					...(report.applied === void 0 ? {} : { applied: report.applied }),
+					expanded_ops: ops.length,
+					notes: expansion.notes
+				};
 			});
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_schema",
+		description: "Read the Optix object model of the installed Studio: one object type with its properties (data types and inheritance), methods, events and allowed child types; one enum with its members; or a search across types by name or by property. Generated from the installed Studio help, so it names this build rather than a remembered one. Ask it before writing a property, choosing a widget type or picking an enum value - a wrong property name or enum member is the commonest reason the bridge refuses a batch. action refresh compares the shipped catalog with the running Studio's own type dump and reports what a Studio upgrade added, removed or changed.",
+		parameters: {
+			project: projectParameter,
+			action: {
+				type: "string",
+				required: true,
+				enum: [
+					"type",
+					"enum",
+					"find",
+					"children",
+					"refresh"
+				],
+				description: "type reads one object type; enum reads one enum; find searches types, enums and properties; children lists the types that may be created inside a type; refresh diffs the shipped catalog against the running Studio."
+			},
+			name: {
+				type: "string",
+				description: "Type or enum name for action type, enum or children. A fully qualified name such as FTOptix.UI.AdvancedSVGImage is accepted."
+			},
+			query: {
+				type: "string",
+				description: "Type name, enum name or property name to search for with action find."
+			},
+			limit: {
+				type: "integer",
+				description: "Most matches for action find. Default 12."
+			}
+		},
+		output: jsonOutput,
+		presentCall: () => ({
+			card: "generic",
+			title: "Read the Optix object model",
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			const catalog = schemaVersion();
+			if (args.action === "refresh") {
+				// The dump reflects the RUNNING Studio, so it is the only way to see a
+				// Studio upgrade the shipped catalog predates.
+				const { origin, health } = await bridge.select(args.project, exec.signal);
+				const dump = await bridge.request(origin, "schema/dump", exec.signal);
+				return {
+					...catalog,
+					project: health.project,
+					dump: diffDump(dump)
+				};
+			}
+			if (args.action === "find") {
+				if (typeof args.query !== "string" || args.query.trim() === "") throw new Error("action find needs query: a type name, an enum name or a property name");
+				return {
+					...catalog,
+					...findSchema(args.query, args.limit === void 0 ? 12 : args.limit)
+				};
+			}
+			const wanted = typeof args.name === "string" ? args.name.trim() : "";
+			if (wanted === "") throw new Error(`action ${args.action} needs name: an object type name from action find`);
+			// A NetLogic writes `FTOptix.UI.AdvancedSVGImage`; the catalog keys on the
+			// browse name. Accept both rather than making the caller guess.
+			const name = !isObjectType(wanted) && wanted.includes(".") ? wanted.slice(wanted.lastIndexOf(".") + 1) : wanted;
+			if (args.action === "enum") {
+				const info = enumInfo(name);
+				if (info === undefined) throw new Error(`${wanted} is not an enum in this Studio build${suggestSuffix(name, Object.keys(loadSchema().enums ?? {}))}`);
+				return {
+					...catalog,
+					enum: info
+				};
+			}
+			if (args.action === "children") {
+				const children = childrenOf(name);
+				if (children === undefined) throw new Error(`${wanted} is not a type in this Studio build${suggestSuffix(name, typeNames())}`);
+				return {
+					...catalog,
+					type: name,
+					children
+				};
+			}
+			const info = typeInfo(name);
+			if (info === undefined) throw new Error(`${wanted} is not a type in this Studio build${suggestSuffix(name, typeNames())}`);
+			return {
+				...catalog,
+				type: info
+			};
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_svg",
+		description: "Work with SVG artwork the way an Advanced SVG image needs it. action inspect checks a drawing BEFORE it is placed: Optix can only drive a part that carries an id and whose fill or stroke is a hexadecimal colour on that part, and a drawing that breaks that rule renders correctly while silently refusing every property. action add copies the file into the project's imgs folder, creates the AdvancedSVGImage and sets its Path to %PROJECTDIR%/imgs/<name>.svg (the Web presentation engine cannot read an absolute path). action bind creates the SVG element property that drives one part - a literal colour, a bound tag, or a boolean with two colours - and reports the node it wrote. action list shows the images on a screen and what each one animates. Nothing here edits your artwork: a repair is a suggestion.",
+		parameters: {
+			project: projectParameter,
+			action: {
+				type: "string",
+				required: true,
+				enum: [
+					"inspect",
+					"add",
+					"bind",
+					"list"
+				],
+				description: "inspect reads a drawing; add places it; bind drives one part; list reports what a screen animates."
+			},
+			source: { type: "string", description: "Path to the .svg file, for inspect or add." },
+			inline: { type: "string", description: "SVG text, for inspect or add, instead of source." },
+			project_root: { type: "string", description: "Folder holding the project's .optix file, for add. Omit to search the usual places." },
+			screen: { type: "string", description: "Path of the container to add the image to (for add), or the screen to report (for list)." },
+			name: { type: "string", description: "BrowseName for the new image node, for add. Also the file stem: <name>.svg." },
+			box: {
+				type: "object",
+				additionalProperties: false,
+				description: "Where the image sits, for add.",
+				properties: {
+					left: { type: "integer", description: "Left margin in pixels. Default 0." },
+					top: { type: "integer", description: "Top margin in pixels. Default 0." },
+					width: { type: "integer", description: "Width in pixels. Default: the drawing's own width, else 200." },
+					height: { type: "integer", description: "Height in pixels. Default: the drawing's own height, else 200." }
+				}
+			},
+			node: { type: "string", description: "Path of the AdvancedSVGImage, for bind." },
+			id: { type: "string", description: "The element id inside the drawing whose property to drive, for bind." },
+			property: {
+				type: "string",
+				enum: [
+					"Color",
+					"Opacity",
+					"StrokeWidth",
+					"StrokeDasharray"
+				],
+				description: "Which Advanced SVG image property to drive, for bind."
+			},
+			value: { type: "string", description: "Literal value for bind, for example #30A46C or 0.45." },
+			source_path: { type: "string", description: "Live-model tag or variable path to bind the property to, for bind." },
+			bool_colours: {
+				type: "object",
+				additionalProperties: false,
+				description: "Drive a colour from a boolean tag, for bind: true and false render with these colours.",
+				properties: {
+					on: { type: "string", required: true, description: "Colour when the tag is true, in hexadecimal." },
+					off: { type: "string", required: true, description: "Colour when the tag is false, in hexadecimal." }
+				}
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: args.action === "inspect" ? "Inspect SVG" : args.action === "list" ? "List SVG images" : "Author SVG image",
+			kind: args.action === "inspect" || args.action === "list" ? "read" : "edit"
+		}),
+		async execute(args, exec) {
+			if (args.action === "inspect") {
+				const text = await svgText(args);
+				const analysis = inspectSvg(text);
+				const repairs = repairPlan(analysis);
+				return {
+					...analysis,
+					repairs,
+					next: analysis.conformant
+						? "Conformant: every controllable part is listed in controlable. Place it with action add, then drive a part with action bind."
+						: "Not controllable as drawn: apply the repairs, re-run action inspect, and place it only once conformant. Optix will render this file, but every property you ask for will be ignored."
+				};
+			}
+
+			if (args.action === "list") {
+				const { origin } = await bridge.select(args.project, exec.signal);
+				const screen = requirePath(args.screen, "action list needs screen: the screen or panel path to report");
+				const tree = await bridge.request(origin, "map", exec.signal, {
+					path: screen,
+					mode: "detail",
+					depth: 4,
+					max: 400
+				});
+				const images = [];
+				// A `map` reply's root node IS the requested node, so the walk has to start from its parent
+				// or every composed path loses the first segment ("ProbeHardening/Art" instead of
+				// "UI/ProbeHardening/Art", measured live against bridge 1.0.9).
+				const parent = screen.includes("/") ? screen.slice(0, screen.lastIndexOf("/")) : "";
+				for (const node of flattenTree(tree.map, parent)) {
+					if (node.type !== "AdvancedSVGImage") continue;
+					const detail = await bridge.request(origin, "nodes", exec.signal, { path: node.path }).catch(() => void 0);
+					// A `nodes` reply names children `browse_name` where a `map` reply names them `name`;
+					// looking for `name` here found nothing and reported every image as driving no part.
+					const collection = [...(detail?.children ?? [])].find((child) => (child.name ?? child.browse_name) === "SVGElementProperties");
+					const rows = collection === void 0 ? [] : await bridge.request(origin, "map", exec.signal, {
+						path: `${node.path}/SVGElementProperties`,
+						mode: "detail",
+						depth: 1,
+						max: 100
+					}).then((reply) => (reply.map?.children ?? []).map((child) => ({ name: child.name, type: child.type }))).catch(() => []);
+					images.push({
+						path: node.path,
+						path_property: nodeValue(detail, "Path"),
+						element_properties: rows
+					});
+				}
+				return {
+					project: args.project,
+					screen,
+					images,
+					next: images.length === 0
+						? "No AdvancedSVGImage on that screen. Add one with action add, after action inspect says the drawing is conformant."
+						: "Each element_properties row is a part this image drives; a drawing with none animates nothing."
+				};
+			}
+
+			const { origin, health } = await bridge.select(args.project, exec.signal);
+			allowWrite(false);
+
+			if (args.action === "bind") {
+				const node = requirePath(args.node, "action bind needs node: the AdvancedSVGImage path");
+				const id = requirePath(args.id, "action bind needs id: the element id inside the drawing");
+				const klass = propertyClass(args.property);
+				if (klass === undefined) throw new Error(`property "${args.property}" is not one of Color, Opacity, StrokeWidth, StrokeDasharray`);
+				// bool_colours needs source_path as well (the tag that chooses), so it is an
+				// alternative to source_path, not an addition to it.
+				const modes = [
+					args.value !== void 0,
+					args.source_path !== void 0 && args.bool_colours === void 0,
+					args.bool_colours !== void 0
+				].filter(Boolean).length;
+				if (modes !== 1) throw new Error("action bind takes exactly one of value, source_path or bool_colours; bool_colours also needs source_path (the boolean tag)");
+				const element = elementPropertyName(id, klass);
+				const collection = `${node}/SVGElementProperties`;
+				const target = `${collection}/${element}`;
+				const existing = await bridge.request(origin, "nodes", exec.signal, { path: target }).catch(() => void 0);
+				const ops = [];
+				if (existing === void 0 || existing?.name === void 0) {
+					// The element property is created at its collection path explicitly: the
+					// bridge would otherwise route it there and report the routing as a note.
+					ops.push({
+						op: "create_widget",
+						screen: collection,
+						name: element,
+						widget_type: "AdvancedSVGImageElementProperty"
+					}, {
+						op: "set_property",
+						path: target,
+						name: "ID",
+						value: id
+					}, {
+						op: "set_property",
+						path: target,
+						name: "Property",
+						value: klass
+					});
+				}
+				if (args.source_path !== void 0) {
+					ops.push({
+						op: "bind",
+						path: target,
+						name: "Value",
+						source_path: args.source_path,
+						mode: "Read"
+					});
+				} else if (args.bool_colours !== void 0) {
+					// A boolean drives a colour through an expression: the element property's
+					// Value is BaseDataType, so a conditional yields the colour string itself.
+					const on = hexColour(args.bool_colours.on, "bool_colours.on");
+					const off = hexColour(args.bool_colours.off, "bool_colours.off");
+					if (args.source_path === void 0) throw new Error("bool_colours needs source_path: the boolean tag that chooses between the two colours");
+					ops.push({
+						op: "attach_expression",
+						path: target,
+						prop_name: "Value",
+						expression: `if({0}, "${on}", "${off}")`,
+						sources: args.source_path
+					});
+				} else {
+					ops.push({
+						op: "set_property",
+						path: target,
+						name: "Value",
+						value: args.value
+					});
+				}
+				const result = await runValidatedBatch({
+					origin,
+					project: args.project,
+					ops,
+					health,
+					signal: exec.signal,
+					apply: true
+				});
+				const detail = await bridge.request(origin, "nodes", exec.signal, { path: target }).catch(() => void 0);
+				return {
+					...result,
+					node: target,
+					...(result.status === "completed" ? {
+						written: {
+							id,
+							property: klass,
+							...(args.value === void 0 ? {} : { value: args.value }),
+							...(args.source_path === void 0 ? {} : { source_path: args.source_path }),
+							...(args.bool_colours === void 0 ? {} : { bool_colours: args.bool_colours })
+						},
+						read_back: nodeValue(detail, "Value")
+					} : {}),
+					next: result.status === "completed"
+						? "Saved in the live model only: the drawing shows the change after the engineer saves and builds in Studio, then optix_emulator start and optix_screenshot."
+						: "Read the refusal, fix it, and re-read the live model before retrying."
+				};
+			}
+
+			// action add
+			const text = await svgText(args);
+			const analysis = inspectSvg(text);
+			if (!analysis.conformant) {
+				return {
+					status: "refused",
+					reason: "the drawing cannot be controlled as written",
+					findings: analysis.findings,
+					repairs: repairPlan(analysis),
+					next: "Apply the repairs, then call action inspect again. A non-conformant drawing renders but ignores every Advanced SVG property, which is a silent failure at runtime."
+				};
+			}
+			const screen = requirePath(args.screen, "action add needs screen: the container to place the image in");
+			const name = requirePath(args.name, "action add needs name: the BrowseName and the file stem");
+			const { root } = await findProjectRoot(args.project, args.project_root);
+			const imgs = join(root, "imgs");
+			await mkdir(imgs, { recursive: true });
+			const file = join(imgs, `${name}.svg`);
+			await writeFile(file, text, "utf8");
+			const resourceUri = `%PROJECTDIR%/imgs/${name}.svg`;
+			const width = args.box?.width ?? svgLength(analysis, "width") ?? 200;
+			const height = args.box?.height ?? svgLength(analysis, "height") ?? 200;
+			const path = `${screen}/${name}`;
+			const ops = [{
+				op: "create_widget",
+				screen,
+				name,
+				widget_type: "AdvancedSVGImage"
+			}, {
+				op: "set_property",
+				path,
+				name: "Path",
+				value: resourceUri
+			}, {
+				op: "set_property",
+				path,
+				name: "LeftMargin",
+				value: String(args.box?.left ?? 0)
+			}, {
+				op: "set_property",
+				path,
+				name: "TopMargin",
+				value: String(args.box?.top ?? 0)
+			}, {
+				op: "set_property",
+				path,
+				name: "Width",
+				value: String(width)
+			}, {
+				op: "set_property",
+				path,
+				name: "Height",
+				value: String(height)
+			}];
+			const result = await runValidatedBatch({
+				origin,
+				project: args.project,
+				ops,
+				health,
+				signal: exec.signal,
+				apply: true
+			});
+			const detail = await bridge.request(origin, "nodes", exec.signal, { path }).catch(() => void 0);
+			return {
+				...result,
+				file,
+				resource_uri: resourceUri,
+				node: path,
+				controlable: analysis.controlable,
+				...(result.status === "completed" ? { read_back: nodeValue(detail, "Path") } : {}),
+				next: result.status === "completed"
+					? `Drive a part with action bind: node "${path}", id one of ${analysis.controlable.map((row) => row.id).join(", ") || "(none)"}. Then the engineer saves and builds, and optix_emulator start plus optix_screenshot shows it.`
+					: "Read the refusal and fix it before retrying."
+			};
 		}
 	})));
 	ctx.effect(() => ctx.tools.register(defineTool({
@@ -3015,7 +3530,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_design_check",
-		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text whose colour does not stand out from the fill it sits on, a screen with no navigation area, a screen whose controls carry no event handler, a screen whose size is not the window canvas, the same hand-built composition repeated across screens, and behaviour living inside a composition. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
+		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text whose colour does not stand out from the fill it sits on, a screen with no navigation area, a screen whose controls carry no event handler, a screen whose size is not the window canvas, the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
 		parameters: {
 			project: projectParameter,
 			screen: {
@@ -3164,12 +3679,76 @@ function apply(ctx, config = {}) {
 				} catch (error) {
 					canvasNotes.push(`${window} navigation: ${String(error)}`);
 				}
+				// The four newer rules need facts the screen tree cannot carry: how many element
+				// properties an Advanced SVG image binds, which widget types the project's style
+				// sheet already styles, the units the model records for the signals a label shows,
+				// and the palette the other screens follow. Every read is bounded, and a read that
+				// fails becomes an `unchecked` line rather than a silent pass.
+				const images = [];
+				const imageNodes = described.filter((node) => node.type === "AdvancedSVGImage");
+				for (const node of imageNodes.slice(0, 8)) {
+					try {
+						const collection = await bridge.request(origin, "map", exec.signal, {
+							path: `${node.path}/SVGElementProperties`,
+							mode: "detail",
+							depth: 1,
+							max: 40
+						});
+						images.push({
+							path: node.path,
+							name: node.name,
+							elements: (collection.map?.children ?? []).length
+						});
+					} catch (error) {
+						canvasNotes.push(`${node.path} element properties: ${String(error)}`);
+					}
+				}
+				if (imageNodes.length > 8) canvasNotes.push(`${imageNodes.length - 8} Advanced SVG image(s) were not measured for OPTIX-IMG-01`);
+				let styled = [];
+				const uiRoot = screensFolder.includes("/") ? screensFolder.slice(0, screensFolder.lastIndexOf("/")) : "";
+				const sheetPath = uiRoot === "" ? "DefaultStyleSheet" : `${uiRoot}/DefaultStyleSheet`;
+				try {
+					const sheet = await bridge.request(origin, "map", exec.signal, {
+						path: sheetPath,
+						mode: "detail",
+						depth: 1,
+						max: 120
+					});
+					styled = (sheet.map?.children ?? [])
+						.map((entry) => String(entry.coll ?? ""))
+						.filter((name) => name.endsWith("Style"))
+						.map((name) => name.slice(0, -"Style".length));
+				} catch (error) {
+					canvasNotes.push(`${sheetPath}: ${String(error)}`);
+				}
+				const units = {};
+				for (const node of described) {
+					if (node.type !== "Label" && node.type !== "TextBox") continue;
+					if (Object.keys(units).length >= 8) break;
+					const link = /^\/Objects\/[^/]+\/(.+)$/u.exec(String(node.properties.find((entry) => entry.name === "Text")?.value ?? "").trim());
+					if (link === null || link[1].includes("@") || units[link[1]] !== void 0) continue;
+					try {
+						const detail = await bridge.request(origin, "nodes", exec.signal, { path: `${link[1]}/EngineeringUnits` });
+						// A LocalizedText reports as "NamespaceIndex: -1, TextId: , Text: %, LocaleId: en-US (LocalizedText)".
+						const text = String(detail.properties?.find((entry) => entry.name === "Value")?.value ?? "")
+							.replace(/^.*\bText:\s*/u, "")
+							.replace(/\s*\(LocalizedText\)$/u, "")
+							.trim();
+						if (text !== "") units[link[1]] = text;
+					} catch {
+						// The label may show something that is not a modelled signal; OPTIX-DATA-01 stays silent.
+					}
+				}
 				const report = designFindings({
 					nodes: described,
 					screen,
 					canvas,
 					siblings,
-					...(shell === void 0 ? {} : { shell })
+					...(shell === void 0 ? {} : { shell }),
+					...(images.length === 0 ? {} : { images }),
+					styled,
+					palette: Object.values(SCREEN_THEME),
+					units
 				});
 				const unchecked = [...report.unchecked, ...canvasNotes];
 				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", …" : ""}`);
@@ -3561,7 +4140,7 @@ function apply(ctx, config = {}) {
 				const batch = await runValidatedBatch({
 					origin,
 					project: args.project,
-					ops: plan.ops,
+					ops: expandVariables(plan.ops).ops,
 					health,
 					signal: exec.signal
 				});

@@ -25,8 +25,9 @@ Model/
   accepts, and the point where paths stop resolving.
 - A typed instance declares `type: Model/Types/<Type>` and then carries copies of the type's members.
   A tag belongs on the type, not on one instance of it.
-- A signal carries its metadata as child variables: `EngineeringUnits`, `EURange` (`"min..max"`) and
-  `Description`.
+- A signal carries its metadata as child variables, written by `create_variable` with `kind: "analog"`:
+  `EngineeringUnits` (a `LocalizedText`), `EURange` (an empty `Range` node) with `EURangeLow` and
+  `EURangeHigh` Floats beside it, and `Description` (a `String`).
 
 ## Rules (`optix_model action: "check"`)
 
@@ -46,10 +47,14 @@ path and the fix, because "your model is unstructured" is not something an engin
 
 1. **Metadata is emulated, not typed.** Studio 1.8.1 writes only `DisplayName` as a node attribute
    (`node/displayname`), and a plain variable declares no property children, so `DeclaredPropertyGuard`
-   refuses `EngineeringUnits`/`EURange` as UA properties. `optix_model` creates them as child **String
-   variables** and sets their `Value`. They read correctly in a browser tree and in the UI, but a
-   companion-spec client will not see a typed `PropertyType`. The bridge needs a route that declares the
-   property as a typed child for that to change.
+   refuses `EngineeringUnits`/`EURange` as UA properties. `optix_model` writes them as child variables in
+   the shape measured on 2026-11-15: `EngineeringUnits` as a `LocalizedText`, `Description` as a `String`,
+   and the limits as an empty `EURange` `Range` node with `EURangeLow` and `EURangeHigh` Floats beside it.
+   Two facts forced that shape and are reported in every result: `create_variable` takes a datatype and
+   refuses a VariableType, so a variable of `AnalogItemType` cannot be created through the bridge at all,
+   and a `Range` value cannot be assigned (`Conversion to Struct not supported`), so the limits cannot live
+   inside `EURange`. A companion-spec client will therefore see the limits as separate Floats, not as a UA
+   `Range` property. The bridge needs a route that declares a typed analog item for that to change.
 2. **Type members are copied, not inherited.** `model/variable` writes members with `ModellingRule` None,
    and a None member is not instantiated into instances (bridge comment in `StudioMCPBridge.cs` around
    the model writer). The planner therefore copies the type's members — same names, datatypes and

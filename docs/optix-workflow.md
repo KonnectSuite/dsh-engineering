@@ -165,6 +165,36 @@ Every result carries `coverage`, which names what the call cannot establish: ren
 behaviour, the installed Optix version, anything outside the loaded project. Read it before claiming
 completeness.
 
+## Phase 4b — caption, artwork and the data a screen owns
+
+Three things a screen must get right that geometry alone cannot judge.
+
+**A type's real contract.** `optix_schema` answers from a catalog generated out of the installed Help
+(565 object types, 102 variable types, 110 enums for Studio 1.8.1.27), so a property name is checked
+before it is written instead of learned from a refusal. `action: "refresh"` diffs that catalog against the
+running bridge's own dump; it reports `added`, `changed` and `datatype_drift` separately, because the Help
+names the UA datatype where the runtime reports the CLR one (`Width` is `Size` in the reference, `Single`
+at runtime) and calling that a change would bury the two types and 94 properties that really are new.
+
+**Artwork that changes with the process.** `optix_svg { action: "inspect" }` says whether a drawing can be
+driven at all: Optix changes an element's colour, opacity, stroke width and dash array only when the file
+is SVG 1.2 Tiny, the element carries an `id`, and its paint is hexagonal; everything else renders and never
+moves. `add` writes the file into `<project>/imgs/` and creates the image with a `%PROJECTDIR%` path
+(the Web engine refuses paths outside the project), and `bind` creates the element property under the
+image's `SVGElementProperties` collection — named explicitly, because an auto-routed create comes back as a
+warning that a strict batch refuses.
+
+**Variables on the object that owns them.** A value an operator edits or reads belongs on the faceplate,
+label or model object that shows it, never directly in `UI` (which cannot hold variables). `optix_edit`
+with `create_variable` writes a plain value, and `kind: "analog"` with `units` and `range` writes the
+engineering metadata as child variables; `array` or `dims` declares a shape, `display_name` gives the
+operator words without changing the path. The rules are in `optix-variables-and-properties`.
+
+`optix_design_check` gains four rules for exactly these: `OPTIX-IMG-01` (an image with nothing bound),
+`OPTIX-STYLE-01` (a literal colour outside the palette on a styled type), `OPTIX-LAYOUT-01` (a child drawn
+outside its parent), `OPTIX-DATA-01` (a label showing a model number with a recorded unit but no
+formatter).
+
 ## Tools by phase
 
 | Phase | Tools |
@@ -172,7 +202,7 @@ completeness.
 | Brief | `engineering_reference`, `engineering_profile`, `optix_template {}` |
 | Scaffold | `optix_template` with `template`, `destination`, `name`, `width`, `height` |
 | Connect | `optix_status`, `optix_bridge_arm`, `optix_read`, `optix_validate_expression` |
-| Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check` |
+| Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check`, `optix_schema`, `optix_svg` |
 | Persist | `optix_status` (`needs_save`, `saved: true`), `optix_emulator { action: "status" }` (`disk`, `saved_after_edit`) |
 | Look | `optix_emulator` (`status`, `start`, `restart`, `logs`, `stop`), `optix_preview`, `optix_screenshot`, `optix_ocr` |
 | Release | `optix_production_check` |

@@ -231,6 +231,17 @@ Every page carries a `risk`:
 - `unsupported` — it is listed in the repository's Advanced section, which says those features are not
   officially supported and may change.
 
+Two of the snapshot's pages are ours, not upstream's, and they are the routing layer:
+
+- `optix_netlogic { slug: "index-by-task" }` maps a task ("react to a tag change", "log to a file",
+  "write a recipe", "start a background job") to the upstream page that answers it, and indexes all
+  fifty-one pages with a line each. Start here when the request names a behaviour rather than an API.
+- `optix_netlogic { slug: "api-namespaces" }` lists the namespaces and the members that matter
+  (`FTOptix.HMIProject`, `UAManagedCore`, `OpcUa`, `FTOptix.NetLogic`, `FTOptix.UI`, `FTOptix.Core`,
+  `FTOptix.Alarm`, `FTOptix.Recipe`) with `Project.Current.Get<T>`, `Owner.Get<T>`,
+  `LogicObject.GetVariable/GetAlias/SetAlias`, `InformationModel.MakeVariable<T>`, `IUAVariable` links and
+  the `VariableChange` pattern. Use it to get a `using` line and a type right before writing code.
+
 The repository states the snippets may use non-public APIs, may break a project and must not be used in
 production as-is. Quote the risk with the snippet, adapt it to the loaded project, and treat
 compilation and runtime behaviour as unverified until Studio compiles it.
@@ -303,6 +314,26 @@ searches `optix-navigation-patterns` (the window's loader owns navigation, not e
 `optix-widget-patterns` (composite before primitives) and `optix-design-resources` (which official sample
 project to open for a nav shell, gauge, alarm grid, style sheet or NetLogic snippet), and cite the page.
 
+## Ask this build what a type carries
+
+`optix_schema` answers from a catalog generated out of the installed Help, not from memory: 565 object
+types, 102 variable types and 110 enums for Studio 1.8.1.27, shipped with the plugin so it answers with no
+bridge and no Studio session. `{ action: "type", name: "AdvancedSVGImage" }` gives the super type, every
+property with its datatype and whether it is inherited, the methods with their arguments, the events, and
+the types it may contain; `{ action: "enum", name: "ImageFillModeEnum" }` lists the values; `{ action:
+"children", name: "PanelLoader" }` names what belongs inside; `{ action: "find", query: "width" }` searches
+types, enums and properties, and folds a property that dozens of types share into one row with an owner
+count. Read it before writing a property name: a refusal from `optix_edit` carries the closest matches, but
+the schema is the cheaper answer, and `optix_schema { action: "refresh" }` diffs the shipped catalog against
+the running bridge's own dump when the Studio version moved.
+
+The refresh is honest about what it can and cannot see. Studio's runtime dump carries one property per type
+with its CLR datatype, so the diff reports `added` (a type the Help does not document), `changed` (a
+property the Help does not document) and `datatype_drift` (the Help names the UA datatype, the runtime
+reports the CLR one — `Width` is `Size` in the reference and `Single` at runtime, which is expected and is
+not a defect). On Studio 1.8.1.27 the measured numbers are 2 added, 94 changed and 748 drifted.
+
+
 ## Draft a screen, then check it
 
 Decide first which layer of the standard you are applying: the operator's explicit instruction, the
@@ -340,6 +371,38 @@ Finish by looking. `optix_preview` and `optix_screenshot` are the only step that
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
 the rule-to-tool map are in `docs/reference/hmi-design.md`.
 
+`optix_design_check` also judges the four things a screen can get wrong on its own: `OPTIX-IMG-01` an
+`AdvancedSVGImage` with no element property bound (artwork that can never change), `OPTIX-STYLE-01` a control
+setting a colour that is not in the palette while the style sheet styles its type, `OPTIX-LAYOUT-01` a child
+drawn outside the box it belongs to, and `OPTIX-DATA-01` a label showing a model number that has a recorded
+unit but no formatter. Geometry is absolute on the canvas, so "outside its parent" is measured against the
+parent's rectangle, not against a local offset.
+
+## Draw part of the picture from SVG
+
+`optix_svg` is the one tool for artwork an operator reads as data. Start with
+`{ action: "inspect", source: "<path>" }`: it reports whether the drawing is controllable at all, and it
+refuses to pretend. FactoryTalk Optix can change an SVG element's colour, opacity, stroke width and dash
+array only when the file is SVG 1.2 Tiny, carries an `id` on the element, and declares that element's paint
+as a hexadecimal value in an attribute or inline CSS — anything else draws correctly and never animates.
+The inspection answers `conformant`, lists `controlable` elements with the properties each one really
+supports, and returns a `repairs` list naming the exact change (`fill="#30A46C"` for a `url(#…)`, a rename
+for two ids that would collide as property names) so the fix can be made in the source rather than worked
+around. Files with no `id`, gradients, filters, `foreignObject`, `script` or animation elements are
+reported, not silently accepted.
+
+`{ action: "add", screen, name, source }` puts the drawing into the project at `<project>/imgs/<name>.svg`,
+creates the `AdvancedSVGImage` on the screen, and writes `Path` as `%PROJECTDIR%/imgs/<name>.svg` — the
+resource URI the Web presentation engine requires, because it refuses any path outside the project folder.
+Then `{ action: "bind", node, id, property, value }` (a literal, or `source_path` for a dynamic link, or
+`bool_colours: { on, off }` for a boolean) creates the `AdvancedSVGImageElementProperty` under the image's
+`SVGElementProperties` collection — passed explicitly, because a create that the bridge would auto-route
+into a collection comes back as a warning and a strict batch refuses it — and writes `ID`, `Property` and
+`Value`. `{ action: "list", screen }` reads back which images exist and which parts each one drives. The
+element-property names are derived (`Conveyor` + `Color` → `Conveyor_Color`), so the bind appends rather
+than duplicating, and the node read-back shows the value the runtime will use.
+
+
 ## Lay out the model the way an OPC UA client expects
 
 A screen is only as good as the tree behind it. `optix_model` builds and judges that tree with one
@@ -356,12 +419,28 @@ equipment as instances of those types, and signal names PascalCase, forty charac
   signal with no `Description`, a name that breaks the convention, a folder holding more than twelve
   variables, and equipment folders with no `ObjectType` behind them.
 
-Two limits are measured, not guessed, and the tool says both in its report. Studio 1.8.1 writes only
-`DisplayName` as a node attribute, so units, range and description travel as child String variables
-(`EngineeringUnits`, `EURange`, `Description`) — not as UA properties; and a type's members are copied
-onto each instance, because the bridge writes members with `ModellingRule` None and a None member is not
-instantiated. Both are reported as `metadata` and `inheritance: "copied"` in the result, and the fix
-belongs in the bridge, not in a workaround. An existing flat model is reported by `check`, never rewritten.
+Three limits are measured, not guessed, and the tool says each in its report. Studio 1.8.1 writes only
+`DisplayName` as a node attribute, so units, range and description travel as child variables —
+`EngineeringUnits` as a `LocalizedText`, `Description` as a `String`, and the range as an empty `EURange`
+`Range` node with `EURangeLow` and `EURangeHigh` Floats beside it, because a `Range` value cannot be
+assigned through the bridge and a variable of `AnalogItemType` cannot be created at all (it takes a
+datatype, and a VariableType name is refused). A type's members are also copied onto each instance,
+because the bridge writes members with `ModellingRule` None and a None member is not instantiated. Both
+are reported as `metadata` and `inheritance: "copied"` in the result, and the fix belongs in the bridge,
+not in a workaround. An existing flat model is reported by `check`, never rewritten.
+
+### Variables on a component
+
+Any object can carry a variable, and that is how a screen keeps state: a setpoint on the faceplate that
+edits it, a lamp's current colour, a value an instance must not share. Studio offers four kinds — Variable,
+Analog variable, Node pointer, Alias — and `optix_edit` writes them on the object that owns the value:
+`{ op: "create_variable", parent, name, datatype }` for a plain value, plus `kind: "analog"` with `units`
+and `range: [low, high]` for a number an operator reads, `array` (a length) or `dims` for a shape,
+`display_name` for the operator's words (the `BrowseName` in the path never changes), and
+`create_alias`/`create_object` for parameterising one screen type across many panels. The `UI` folder
+itself cannot contain variables, so a value with no owner is a sign the composition is wrong. Rules and
+the four-kinds table: `optix-variables-and-properties`.
+
 
 ## Review the project before calling it released
 

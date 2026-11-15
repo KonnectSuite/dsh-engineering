@@ -227,3 +227,115 @@ test('the tool reads the model through the two calls that report it, and writes 
 	assert.match(designTool, /optix_preview/u)
 	assert.match(designTool, /optix_screenshot/u)
 })
+
+// --- The four rules added with the design-hardening batch. Each one is held to
+// the same bar: it fires on the planted defect and stays silent on the screen a
+// careful engineer draws.
+
+/** A screen with geometry, so a child can be judged against its parent's box. */
+function canvasScreen() {
+	return { path: 'UI/Screens/Overview', name: 'Overview', type: 'Screen', properties: box(0, 0, 1920, 1080), children: [] }
+}
+
+test('OPTIX-IMG-01: an Advanced SVG image with nothing to animate is reported', () => {
+	const result = designFindings({
+		nodes: [],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		images: [{ path: 'UI/Screens/Overview/Pump', name: 'Pump', elements: 0 }],
+	})
+	const found = result.findings.filter((finding) => finding.rule === 'OPTIX-IMG-01')
+	assert.equal(found.length, 1)
+	assert.equal(found[0].severity, 'info')
+	assert.equal(found[0].evidence.path, 'UI/Screens/Overview/Pump')
+	// Bound to at least one element property it has something to drive: silent.
+	const bound = designFindings({
+		nodes: [],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		images: [{ path: 'UI/Screens/Overview/Pump', name: 'Pump', elements: 2 }],
+	})
+	assert.equal(bound.findings.filter((finding) => finding.rule === 'OPTIX-IMG-01').length, 0)
+})
+
+test('OPTIX-STYLE-01: a literal colour outside the palette is reported, a palette one is not', () => {
+	const themed = node('Start', 'Button', [{ name: 'BackgroundColor', value: '#123456' }])
+	const house = node('Stop', 'Button', [{ name: 'BackgroundColor', value: '#143243' }])
+	const result = designFindings({
+		nodes: [themed, house],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		styled: ['Button'],
+		palette: ['#0E1A24', '#143243', '#FFFFFF'],
+	})
+	const found = result.findings.filter((finding) => finding.rule === 'OPTIX-STYLE-01')
+	assert.equal(found.length, 1)
+	assert.equal(found[0].evidence.path, 'UI/Screens/Overview/Start')
+	assert.deepEqual(found[0].evidence.literals, { BackgroundColor: '#123456' })
+	assert.equal(found[0].evidence.style_collection, 'ButtonStyle')
+	// A type the sheet does not style is nobody's business: silent.
+	const unstyled = designFindings({
+		nodes: [themed],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		styled: ['Label'],
+		palette: ['#143243'],
+	})
+	assert.equal(unstyled.findings.filter((finding) => finding.rule === 'OPTIX-STYLE-01').length, 0)
+})
+
+test('OPTIX-LAYOUT-01: a child drawn outside its parent is a warning, a label over a fill is not', () => {
+	const screenNode = canvasScreen()
+	const card = { ...node('Card', 'Panel', box(40, 120, 600, 400)), path: 'UI/Screens/Overview/Card' }
+	// Geometry is absolute on the canvas, so a child inside the card starts inside
+	// the card's own 40,120 600×400 box.
+	const inside = { ...node('Value', 'Label', box(60, 140, 200, 40)), path: 'UI/Screens/Overview/Card/Value' }
+	const outside = { ...node('Badge', 'Label', box(620, 140, 200, 40)), path: 'UI/Screens/Overview/Card/Badge' }
+	const result = designFindings({
+		nodes: [card, inside, outside],
+		screen: screenNode,
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+	})
+	const found = result.findings.filter((finding) => finding.rule === 'OPTIX-LAYOUT-01')
+	assert.equal(found.length, 1)
+	assert.equal(found[0].severity, 'warning')
+	assert.equal(found[0].evidence.path, 'UI/Screens/Overview/Card/Badge')
+	assert.equal(found[0].evidence.parent, 'UI/Screens/Overview/Card')
+	// Overlap between siblings is how text goes on a fill, so nothing is reported.
+	assert.equal(result.findings.filter((finding) => finding.rule === 'OPTIX-LAYOUT-01').length, 1)
+})
+
+test('OPTIX-DATA-01: a number shown without its unit is reported, a formatted one is not', () => {
+	const bare = node('Speed', 'Label', [{ name: 'Text', value: '/Objects/LineHMI/Model/Line1/Cutter/BeltSpeed' }])
+	const formatted = node('Speed2', 'Label', [
+		{ name: 'Text', value: '/Objects/LineHMI/Model/Line1/Cutter/BeltSpeed' },
+		{ name: 'Formatter', value: 'F1 m/min' },
+	])
+	const result = designFindings({
+		nodes: [bare, formatted],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		units: { 'Model/Line1/Cutter/BeltSpeed': 'm/min' },
+	})
+	const found = result.findings.filter((finding) => finding.rule === 'OPTIX-DATA-01')
+	assert.equal(found.length, 1)
+	assert.equal(found[0].evidence.path, 'UI/Screens/Overview/Speed')
+	assert.equal(found[0].evidence.target, 'Model/Line1/Cutter/BeltSpeed')
+	assert.equal(found[0].evidence.units, 'm/min')
+	assert.match(found[0].message, /m\/min/u)
+	// With no unit recorded in the model there is nothing to miss: silent.
+	const noUnits = designFindings({
+		nodes: [bare],
+		screen: canvasScreen(),
+		canvas: { width: 1920, height: 1080 },
+		siblings: [],
+		units: {},
+	})
+	assert.equal(noUnits.findings.filter((finding) => finding.rule === 'OPTIX-DATA-01').length, 0)
+})

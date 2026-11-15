@@ -57,8 +57,10 @@ test("the plan builds the plant hierarchy, the types folder first and typed inst
 	assert.equal(plan.counts.objects, 1);
 	// Two type tags, two members copied onto the instance, one tag of its own.
 	assert.equal(plan.counts.variables, 5);
-	// Speed gets units + range + description, Running gets description only, Count gets all three.
-	assert.equal(plan.counts.metadata, 10);
+	// Metadata is counted per write: units and both range bounds for each of the two
+	// Speed variables (six), the Count's units and its description, and one
+	// description write per tag - 3 + 3 + 1 + 5 = 12.
+	assert.equal(plan.counts.metadata, 12);
 	const firstFolder = plan.ops.findIndex((op) => op.op === "create_folder" && op.name === "Types");
 	const lastTypeOp = plan.ops.findLastIndex((op) => String(op.parent).startsWith(TYPES_FOLDER));
 	assert.ok(firstFolder >= 0 && lastTypeOp > firstFolder, "types must be declared before an instance names one");
@@ -100,19 +102,25 @@ test("a path that already exists is skipped, so a second run adds nothing", () =
 	assert.ok(second.skipped.length > 0, "every existing path is reported as skipped");
 });
 
-test("analog tags carry units and range, booleans carry only a description, and every tag names its metadata", () => {
+test("an analog tag carries its units and range in the create, and a boolean carries none", () => {
 	const plan = planModel(canonical);
-	const units = plan.ops.find((op) => op.op === "create_variable" && op.name === MODEL_METADATA.units.property);
-	assert.equal(units?.datatype, "String");
-	const speedRange = plan.ops.find((op) => op.op === "create_variable" && op.parent === "Model/Bottling/Packaging/LineA/Filler1/Speed" && op.name === MODEL_METADATA.range.property);
-	assert.equal(speedRange?.datatype, "String");
-	const runningUnits = plan.ops.find((op) => op.op === "create_variable" && op.parent === "Model/Bottling/Packaging/LineA/Filler1/Running" && op.name === MODEL_METADATA.units.property);
-	assert.equal(runningUnits, undefined, "a boolean has no engineering units");
-	const value = plan.ops.find((op) => op.op === "set_property" && op.name === "Value" && op.value === "bpm");
-	assert.ok(value !== void 0, "the units value travels as a Value write");
+	const speed = plan.ops.find((op) => op.op === "create_variable" && op.name === "Speed");
+	assert.ok(speed !== void 0, JSON.stringify(plan.ops.map((op) => op.op + ":" + (op.name ?? ""))));
+	// Measured on Studio 1.8.1: the bridge cannot create a variable of an analog
+	// VariableType and cannot assign a Range value, so the tag is created as a plain
+	// variable carrying the intent, and the expansion writes the typed children.
+	assert.equal(speed.kind, "analog");
+	assert.equal(speed.units, "bpm");
+	assert.deepEqual(speed.range, [0, 60]);
+	const running = plan.ops.find((op) => op.op === "create_variable" && op.name === "Running");
+	assert.equal(running?.kind, void 0, "a boolean is a plain variable");
+	assert.equal(running?.units, void 0, "a boolean has no engineering units");
+	assert.equal(MODEL_METADATA.units.datatype, "LocalizedText");
+	assert.equal(MODEL_METADATA.range.datatype, "Range");
 	assert.equal(MODEL_METADATA.emulated, true);
-	const euRange = plan.ops.find((op) => op.op === "set_property" && op.name === "Value" && String(op.value).includes(".."));
-	assert.equal(euRange?.value, "0..60");
+	assert.match(MODEL_METADATA.why, /Range value cannot be assigned/u);
+	const description = plan.ops.find((op) => op.op === "create_variable" && op.name === MODEL_METADATA.description.property);
+	assert.equal(description?.datatype, "String");
 });
 
 test("a conventional model reads as structured, a flat tag reads as needs-work", () => {

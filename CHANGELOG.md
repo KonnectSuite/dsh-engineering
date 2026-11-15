@@ -1,3 +1,29 @@
+## [Unreleased]
+
+- **Optix design hardening: the schema, the artwork, the variables, and four more checks.**
+  `optix_schema` answers from a catalog generated out of the installed Studio help
+  (`scripts/gen-optix-schema.mjs`; 565 object types, 102 variable types and 110 enums for 1.8.1.27)
+  and is shipped with the plugin, so a property name is checked before it is written;
+  `action: refresh` diffs that catalog against the live bridge dump and reports `added`,
+  `changed` and `datatype_drift` separately (measured: 2 / 94 / 748), because the help names the UA
+  datatype where the runtime reports the CLR one.
+  `optix_svg` inspects a drawing for the three conditions Optix actually needs before it can drive an
+  element (SVG 1.2 Tiny, an `id`, a hexadecimal paint), repairs what is repairable, refuses what is
+  not, places the file under `<project>/imgs/` with a `%PROJECTDIR%` resource URI, and binds
+  `AdvancedSVGImageElementProperty` nodes under the image's `SVGElementProperties` collection.
+  `optix_design_check` gained `OPTIX-IMG-01`, `OPTIX-STYLE-01`, `OPTIX-LAYOUT-01` and `OPTIX-DATA-01`.
+  `create_variable` now writes the variables a component owns: `kind: analog` with `units` and
+  `range`, `array`/`dims` for a shape, and `display_name` for the operator's words, so `optix_model`
+  no longer emulates a unit and a range as String children. Two limits are reported, not hidden: the
+  bridge cannot create a variable of `AnalogItemType`, and a `Range` value cannot be assigned, so the
+  limits live in `EURangeLow`/`EURangeHigh` beside an empty `EURange`.
+  Eleven corpus pages (style sheets, layout, panels, data presentation, images and SVG, alarms, users
+  and security, translations, recipes and retentivity, performance, variables) and two NetLogic pages
+  (a task index and the API namespaces) close the mechanics gap the skill had.
+  Three defects the live run found are fixed with it: `diffDump` assumed an array of types where the
+  bridge sends an object keyed by browse name, `optix_svg list` composed paths without the screen's
+  parent and read `name` where a node read answers `browse_name`, and `create_variable` declared
+  `array` as text so an array length was refused before it reached the bridge.
 ## [0.95.1] - 2026-11-14
 
 - **0.95.1 is 0.95.0, and both are live; take 0.95.1.** This package's registry writes become readable
