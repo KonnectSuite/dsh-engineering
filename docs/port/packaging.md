@@ -43,6 +43,22 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
 
+**0.94.3 release record (2026-11-14).** Built from the engagement-order policy
+(`feat(policy): a new build starts from the brief and the standards, not the host`, `5a083a5`) plus two doc
+commits (`dffd13f`, `db55630`) and the `Release 0.94.3` bump (`12e544b`), tagged `v0.94.3`. Release evidence:
+`pnpm docs:check` clean (`gen-tool-reference: reference is up to date.`, `docs/print.css` up to date); `pnpm test`
+**53 files passed** (29,132 ms, including the new `test/skill-engagement.spec.mjs` 7, and `test/resources.spec.mjs`
+12 / `test/optix-template.spec.mjs` 7 / `test/components.spec.mjs` 14); corpus **59 pages**, digest
+`200396dc4ae1`; `pnpm -r build` + `pnpm assemble` → 8 components into `vendor/`; `pnpm publish --no-git-checks` →
+`✅ Published package @aryacode/dsh-engineering@0.94.3`. The first `verify-release.mjs --wait 300` answered
+`registry latest is 0.94.2, this repository is 0.94.3` — the CDN edge again, not a failure — and the rerun
+answered `ok @aryacode/dsh-engineering@0.94.3`; the publish was **not** retried. The market
+`release-plugin.mjs` recorded the registry copy (`sha256 4bb4611ab4af…`, live catalogue `releases[0]` and npm
+`latest` both `0.94.3`) rather than this machine's pack (`108e79147378…`), per the immutability rule. Known gap
+shipped with it, recorded in `HANDOFF.md`: in the packaged app `engineering_reference` / `engineering_profile` do
+not reach an agent (the skill's resource block reports the provider unavailable in the agent's scope), so the
+standards-first step of `CRAFT-ORD-01` is instructable but not yet readable.
+
 **0.94.2 release record (2026-11-14).** Built from five feature commits plus the `Release 0.94.2` bump
 (`99f9e26`), tagged `v0.94.2`: the OPC UA information-model lane (`optix_model`, `1340987`), NetLogic
 authoring (`optix_script`, `cf4680f`), the NetLogic practice review and safe templates (`3acd674`), the
