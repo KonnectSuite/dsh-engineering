@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.94.3] - 2026-11-14
 
 - **A new build starts from the brief, our packaged templates and the published standards — the machine is read
   only when the operator points at it.** Measured on a real session (attached by the operator, 14 Nov 2026): asked
