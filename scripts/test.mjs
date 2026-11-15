@@ -39,6 +39,7 @@ const BUNDLE = [
   'test/optix-scaffold.spec.mjs',
   'test/optix-emulator.spec.mjs',
   'test/optix-bridge-copies.spec.mjs',
+  'test/optix-mount.spec.mjs',
   'test/optix-model.spec.mjs',
   'test/optix-netlogic.spec.mjs',
   'test/skill-engagement.spec.mjs',

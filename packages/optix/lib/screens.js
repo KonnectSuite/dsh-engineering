@@ -216,6 +216,66 @@ export function scaffoldOps(spec) {
  * @returns The operations, the free boxes, the object paths, and the expressions worth validating.
  * @throws Error when the description cannot fit the display.
  */
+/**
+ * The operations that make a finished screen visible, or nothing when there is nothing to do.
+ *
+ * A window renders only its own children, and both packaged starters ship a window with none, so a screen
+ * that nothing loads is a screen no render ever shows: measured live on 2026-11-14, a screen with 18
+ * objects was authored into a starter and the preview stayed a flat white 1920x1080 frame. This plans one
+ * PanelLoader in the start window, at the canvas origin and canvas size, with its `Panel` pointer written
+ * as a literal NodePath (the raw form, because the target is an ObjectType and a `DynamicLink` to a type is
+ * unresolvable at bind time - the bridge answers `source_not_variable`).
+ *
+ * That literal has to be the path the runtime resolves. Measured live: `UI/Screens/LineOverview` left the
+ * pointer red and unresolved in Studio, because a bare path is read relative to the loader's own parent;
+ * Studio writes project-absolute links (`/Objects/<project>/@BrowseName`), so the pointer is written that
+ * way whenever the project name is known, and falls back to a relative `../...` path when it is not.
+ * @param spec - `window`, `loader` name, `screen` path, `width`, `height`, the children already there, and
+ * the project browse name when the caller knows it.
+ * @returns {{ ops: object[], mounted: object } | undefined} the plan, or undefined when it cannot apply.
+ */
+export function mountOps(spec) {
+	if (!spec.window || !spec.screen || !spec.loader) return undefined;
+	if ((spec.children ?? []).includes(spec.loader)) return undefined;
+	const loaderPath = `${spec.window}/${spec.loader}`;
+	const width = size(spec.width ?? 1920);
+	const height = size(spec.height ?? 1080);
+	const target = spec.project ? `/Objects/${spec.project}/${spec.screen}` : relativeLink(spec.window, spec.screen);
+	return {
+		ops: [
+			{ op: "create_widget", screen: spec.window, name: spec.loader, widget_type: "PanelLoader" },
+			set(loaderPath, "LeftMargin", size(0)),
+			set(loaderPath, "TopMargin", size(0)),
+			set(loaderPath, "Width", width),
+			set(loaderPath, "Height", height),
+			{ op: "bind", path: loaderPath, name: "Panel", raw_path: target, mode: "ReadWrite" },
+		],
+		mounted: {
+			loader: loaderPath,
+			panel: spec.screen,
+			link: target,
+			canvas: { width: spec.width ?? 1920, height: spec.height ?? 1080 },
+		},
+	};
+}
+/**
+ * The form of a NodePath a DynamicLink resolves, from the node that owns it to another node.
+ *
+ * A DynamicLink value is read relative to the owner's parent, so a sibling folder needs one `..` per level
+ * below the shared ancestor. Used only when the project name is unknown: an absolute `/Objects/...` path is
+ * what Studio itself writes.
+ * @param from - Project-relative path of the node holding the link.
+ * @param target - Project-relative path of the node the link must reach.
+ * @returns The relative path, for example `../Screens/LineOverview`.
+ */
+function relativeLink(from, target) {
+	const source = from.split("/").filter((segment) => segment !== "");
+	const goal = target.split("/").filter((segment) => segment !== "");
+	let shared = 0;
+	while (shared < source.length && shared < goal.length && source[shared] === goal[shared]) shared += 1;
+	const up = source.length - shared;
+	return `${"../".repeat(up)}${goal.slice(shared).join("/")}`;
+}
 export function screenOps(spec) {
 	const scaffold = scaffoldOps(spec);
 	const { parent, slots, theme } = scaffold;

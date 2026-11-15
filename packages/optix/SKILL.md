@@ -49,9 +49,17 @@ reports success it does not have.
 
 - **The live model** — what `optix_read` sees and every `optix_edit` changes, inside Studio.
 - **The saved project** — what the runtime loads. This plugin cannot save: no tool, no bridge route
-  exists for it. `optix_status` counts the authoring calls made since the last save and reports
-  `needs_save`; `optix_screenshot` repeats it in one line. After the engineer saves and builds, call
-  `optix_status` with `saved: true` to clear the count.
+  exists for it, and `UAManagedCore` carries no save member at all (measured: not one `Save`, `IsDirty`
+  or `Persist` symbol in `UAManagedCore.dll`), so persistence is the engineer's action and nothing else.
+  `optix_status` counts the authoring calls made since the last save and reports `needs_save`;
+  `optix_screenshot` repeats it in one line. After the engineer saves and builds, call `optix_status`
+  with `saved: true` to clear the count — but clear it on evidence, not on a reply: `optix_emulator`
+  with `action: "status"` reports `disk` (the newest write under `Nodes/` and the project file) and
+  `saved_after_edit`, which is `false` while the newest file on disk is older than the first pending
+  bridge change. Measured on the reference machine: a bridge edit writes nothing, Studio's log showed
+  no save and no build, and a "saved" reply left every file at its pre-edit timestamp. When
+  `saved_after_edit` is `false`, say what you measured and ask for **File > Save** by name; do not
+  treat the reply as the save.
 - **The rendered screen** — what `optix_preview` and `optix_screenshot` see, which is the saved
   project as the Web presentation engine draws it, or nothing at all if no runtime serves its URL.
 
@@ -65,7 +73,10 @@ returns that log with a named diagnosis (`port_in_use`, `file_locked`, `licensin
 rather than a fault, the same calls return `notice` instead — `demo_mode` means the machine has no Optix
 entitlement, the runtime says so and closes itself after 120 minutes while the preview works normally. A
 notice is not a defect: name it once, then keep working. `action: stop` ends every runtime holding that
-project, including one started outside this plugin, and `force` also takes the one holding the port. The browser side needs no hand-holding: by default the
+project, including one started outside this plugin, and `force` also takes the one holding the port.
+`action: status` also answers the persistence question from the files themselves: `disk` carries the
+newest write under `Nodes/` with its path and the project file's size, and `saved_after_edit` says
+whether that write is newer than the first pending bridge change. The browser side needs no hand-holding: by default the
 plugin starts Chrome or Edge itself (`browser: launch`); `browser: attach` connects to one you started.
 `optix_status` answers the preview question rather than leaving you to guess: its `preview_chain`
 reports the switch, the browser mode and whether a browser is available, whether the emulator serves
@@ -85,7 +96,7 @@ it is how the engineer knows what you are doing and what is theirs.
 | **2 Open and arm** | nothing; the files are on disk | open the `.optix`, build, start the bridge |
 | **3 Connect** | `optix_status`, then `optix_read` once it answers | — |
 | **4 Author** | `optix_edit` / `optix_screen` / `optix_model` / `optix_script`, then the static checks | — |
-| **5 Persist** | read `needs_save` and ask | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
+| **5 Persist** | read `needs_save`, ask, then verify the save on disk | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
 | **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, prove the thing changed | — |
 | **7 Release** | `optix_production_check`, then state coverage | deploy in Studio's Deploy dialog |
 
@@ -98,6 +109,14 @@ fails on `MSB3061` (the runtime holds `bin/<project>.dll` open) and saves nothin
 phase 5 is fixed: stop the runtime if it is up, ask for save, ask for build, then start again. When
 `needs_save.pending` is zero, say so and skip the handoff; do not ask for a save that changes nothing.
 
+Verify the save instead of believing it. `optix_emulator { action: "status", project }` reports `disk`
+(newest write under `Nodes/`, its path, the project file's size) and `saved_after_edit`. If that is
+`false`, the save did not reach the files: nothing the runtime loads has changed, so a start now renders
+the old build. Say exactly that, with the timestamp you measured, and ask for **File > Save** by name
+rather than repeating Ctrl+S — a keystroke cannot be confirmed from here, a file timestamp can. Measured
+on the reference machine: after a bridge-authored screen and two "saved" replies, every file in the
+project still carried its pre-edit timestamp and Studio's own log recorded no save and no build.
+
 **Phase 6 is proof, not decoration.** A screenshot is evidence only when it shows the change you made:
 the caption you wrote, the value that moved, the screen the button reached. Say what you looked at and
 what it showed, and name anything the picture cannot settle — behaviour with no visible effect, an
@@ -105,10 +124,15 @@ alarm that never fired, a runtime event with no on-screen result.
 
 A freshly scaffolded starter screenshots as one flat colour, and that is the correct picture: the
 templates ship a window (`UI/MainWindow`, the canvas you asked for, caption linked to the project name)
-with no screen inside it. One colour means the runtime, the web engine and the browser all work and
-nothing has been drawn yet — it is not a broken preview, and it is not evidence that a screen exists.
-Content appears after phase 4 has drawn one; check the render for content only once something was built
-into it.
+with no screen inside it — a window shows only its own children. `optix_screen` therefore **mounts**
+what it draws: unless the window already holds a loader, one batch also creates a `PanelLoader` across
+the canvas and binds its `Panel` pointer to the new screen by literal `raw_path` (a screen is an
+`ObjectType`, not a variable, so `source_path` is refused — `source_not_variable`), which is why the
+screen can appear in the render at all. Pass `mount: false` only when something else already mounts it,
+and `mount_name` to name the loader. One colour means the runtime, the web engine and the browser all
+work and nothing has been drawn yet — it is not a broken preview, and it is not evidence that a screen
+exists. Content appears once a screen is drawn *and saved*; check the render for content only after
+`saved_after_edit` is `true`.
 
 ## What kind of request is this?
 

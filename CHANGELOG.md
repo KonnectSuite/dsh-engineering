@@ -1,5 +1,19 @@
 ## [Unreleased]
 
+- **Optix: a screen is mounted when it is drawn, and a save is proved from the files.** `optix_screen`
+  now ends its batch by creating a `PanelLoader` across the start window and binding its `Panel` pointer
+  to the new screen through a literal `raw_path` - the templates ship `UI/MainWindow` with no children,
+  so a screen nothing mounts could never appear in a render. `mount: false` opts out, `mount_name` names
+  the loader. `optix_emulator { action: "status" }` gained `disk` and `saved_after_edit`: the newest write
+  under the project's `Nodes/` folder compared with the first pending bridge change, because a bridge
+  edit only ever changes Studio's memory (`UAManagedCore.dll` carries no `Save`, `IsDirty` or `Persist`
+  symbol, so no design-time NetLogic can save either) and a keystroke cannot be confirmed from here.
+  Measured while proving the loop end to end: a bridge-authored screen, Ctrl+S, Ctrl+Shift+B and two
+  "saved" replies left every file in the project at its pre-edit timestamp, and Studio's own log recorded
+  no save and no build, so the skill and `docs/optix-workflow.md` now require the disk verdict before any
+  screenshot is called proof. `test/optix-emulator.spec.mjs` covers `diskState` (newest write, an empty
+  folder, and a bogus one), and `test/optix-runtime-e2e.mjs` mounts the row's tools and asserts every
+  result round-trips as lossless JSON.
 - **The Optix loop is now enforced, not just described: one way to run the emulator, and a signal for the one step no tool can do.**
   Measured on a stopped session: 1,644 `pwsh` calls, 41 desktop key presses and an `FTOptixRuntime.exe` launched by hand and killed with `Stop-Process`, against **zero** `optix_emulator` calls: the tool was registered, the row had `allowInvoke` on, and the agent still drove the IDE and the runtime from outside. The causes were visible in the code: `startEmulator` spawned the runtime with `stdio: "ignore"` and returned a bare pid, so nothing could tell whether it came up; `stopEmulator` could only kill a pid it had recorded in the same process; `optix_template` wrote a bridge whose NetLogic node declared a method (`ImportQueuedLibraryItem`) the 1.0.9 class does not implement; and the loop's save-and-build step had no tool, so it was closed with a desktop chord.
   - `packages/optix/lib/emulator.js` rewritten: the runtime's stdout and stderr go to a per-project log under `%LOCALAPPDATA%\AryaCode\OptixRuntime`, `start` returns only once the preview URL answers and otherwise returns that log's tail with a named diagnosis (`port_in_use`, `file_locked`, `licensing`, `exception`, `missing_file`) and a hint, `restart` is stop-then-start for a new saved build, `logs` reads the log back, `stop` ends every `FTOptixRuntime.exe` holding that project (including one started outside the plugin) and reports the preview cleared, and `status` names runtimes that belong to other projects.

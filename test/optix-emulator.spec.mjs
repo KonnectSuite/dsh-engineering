@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import http from 'node:http'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, rm, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, test } from 'node:test'
 import {
   classifyLog,
   classifyNotice,
+  diskState,
   emulatorLogs,
   emulatorStatus,
   logPath,
@@ -327,4 +328,33 @@ test('the process query parses one row, many rows and junk', () => {
   assert.equal(parseRuntimeProcesses(JSON.stringify([{ ProcessId: 1, CommandLine: 'a' }, { ProcessId: 2, CommandLine: 'b' }])).length, 2)
   assert.deepEqual(parseRuntimeProcesses(''), [])
   assert.deepEqual(parseRuntimeProcesses('not json'), [])
+})
+
+test('diskState reports the newest write under Nodes as the saved state', async () => {
+  const project = join(await scratch('disk'), 'Saved')
+  const ui = join(project, 'Nodes', 'UI', 'UI.yaml')
+  const screens = join(project, 'Nodes', 'UI', 'Screens', 'Screens.yaml')
+  await mkdir(join(project, 'Nodes', 'UI', 'Screens'), { recursive: true })
+  await writeFile(join(project, 'Saved.optix'), 'project')
+  await writeFile(ui, 'window')
+  await writeFile(screens, 'screen')
+  // The stamp is the whole point of the function, so it is set rather than raced.
+  const older = new Date('2026-01-01T00:00:00Z')
+  const newer = new Date('2026-02-01T00:00:00Z')
+  await utimes(ui, older, older)
+  await utimes(screens, newer, newer)
+  const state = await diskState(project)
+  assert.equal(state.files, 2)
+  assert.equal(state.newest_path, screens)
+  assert.equal(state.newest_write, newer.getTime())
+  assert.equal(state.newest_write_iso, newer.toISOString())
+  assert.ok(state.project_bytes > 0)
+})
+
+test('diskState on a folder that is not a project is empty, not an error', async () => {
+  const state = await diskState(join(await scratch('disk'), 'missing'))
+  assert.equal(state.files, 0)
+  assert.equal(state.newest_write, 0)
+  assert.equal(state.project_write, 0)
+  assert.equal(state.newest_write_iso, '')
 })

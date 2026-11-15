@@ -17,7 +17,7 @@ else runs through this bundle's tools.
 | **2 Open and arm** | nothing to do; the files are on disk | opens the `.optix`, builds, starts the bridge |
 | **3 Connect** | `optix_status`, then `optix_read` once the bridge answers | — |
 | **4 Author** | `optix_edit` / `optix_screen` / `optix_model` / `optix_script`, then the static checks | — |
-| **5 Persist** | reads `needs_save` and asks for the save | saves (Ctrl+S), builds (Ctrl+Shift+B), emulator stopped |
+| **5 Persist** | reads `needs_save`, asks for the save, then verifies it on disk | saves (Ctrl+S), builds (Ctrl+Shift+B), emulator stopped |
 | **6 Look** | `optix_emulator` start, `optix_preview` / `optix_screenshot`, proves the change | — |
 | **7 Release** | `optix_production_check`, then states coverage | deploys from Studio's Deploy dialog |
 
@@ -67,8 +67,16 @@ anything: a screenshot of the IDE is not a step in this workflow.
 
 `optix_status` counts the authoring calls made since the last save and reports `needs_save`;
 `optix_screenshot` repeats it in one line. After the engineer saves and builds, `optix_status` with
-`saved: true` clears the count. Nothing in this bundle can save the project: the bridge has no save
-route, and no Studio API for it is documented.
+`saved: true` clears the count — but a reply is not evidence, so the save is checked on disk instead:
+`optix_emulator { action: "status", project }` reports `disk` (the newest write under `Nodes/`, its path,
+the project file's size) and `saved_after_edit`, which stays `false` while every file on disk is older
+than the first pending bridge change. Nothing in this bundle can save the project: the bridge has no save
+route, and `UAManagedCore.dll` carries no `Save`, `IsDirty` or `Persist` symbol at all, so no design-time
+NetLogic can reach a save either. Measured on the reference machine — a bridge-authored screen, then
+Ctrl+S, then Ctrl+Shift+B, then two "saved" replies: every file kept its pre-edit timestamp and Studio's
+own log (`%LOCALAPPDATA%\Rockwell Automation\FactoryTalk Optix\FTOptixStudio\Log\`) recorded no save and
+no build for that project. When `saved_after_edit` is `false`, say what was measured and ask for
+**File > Save** by name.
 
 ## Phase 5 — the order that works
 
@@ -80,6 +88,14 @@ Measured failures, in the order they bite:
    assembly only reloads on a build; `optix_script { action: "run" }` answers `not-loaded` until then.
 3. **A screenshot taken before a save** shows the previous build. It is not evidence of the change you
    just made.
+4. **A bridge edit does not mark Studio dirty.** The classes call the node API directly, so the project
+   can hold a whole tree of changes that Studio's own dirty flag never noticed. That is why the save is
+   verified from the files rather than assumed from the keystroke.
+5. **A screen nothing mounts is a screen no render shows.** The templates ship `UI/MainWindow` with no
+   children, so `optix_screen` also creates a `PanelLoader` across the canvas and binds its `Panel`
+   pointer to the new screen by literal `raw_path` (a screen is an `ObjectType`, so `source_path` is
+   refused with `source_not_variable`). `mount: false` when something else already mounts it,
+   `mount_name` to name the loader.
 
 ## Phase 6 — proof, not decoration
 
@@ -138,7 +154,7 @@ completeness.
 | Scaffold | `optix_template` with `template`, `destination`, `name`, `width`, `height` |
 | Connect | `optix_status`, `optix_bridge_arm`, `optix_read`, `optix_validate_expression` |
 | Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check` |
-| Persist | `optix_status` (`needs_save`, `saved: true`) |
+| Persist | `optix_status` (`needs_save`, `saved: true`), `optix_emulator { action: "status" }` (`disk`, `saved_after_edit`) |
 | Look | `optix_emulator` (`status`, `start`, `restart`, `logs`, `stop`), `optix_preview`, `optix_screenshot`, `optix_ocr` |
 | Release | `optix_production_check` |
 

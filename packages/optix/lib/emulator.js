@@ -75,6 +75,64 @@ export async function projectFile(project) {
 	const matches = entries.filter((entry) => entry.endsWith(".optix")).sort();
 	return matches.length === 0 ? "" : join(project, matches[0]);
 }
+/**
+ * What the project on disk looks like, which is the state the runtime will load.
+ *
+ * A bridge write changes Studio's in-memory model and nothing else: `UAManagedCore` has no
+ * save member at all, so the files are the only evidence that an engineer's Save reached
+ * disk. Comparing the newest write under `Nodes/` with the time of the first pending bridge
+ * change answers "is what the runtime will load my work?" without trusting a keystroke.
+ * @param project - Folder holding the project's `.optix` file.
+ * @returns Newest write under `Nodes/`, the project file's own write, and the file count.
+ */
+export async function diskState(project) {
+	const state = {
+		root: project,
+		files: 0,
+		newest_write: 0,
+		newest_path: "",
+		project_write: 0,
+		project_bytes: 0
+	};
+	const file = await projectFile(project);
+	if (file !== "") {
+		try {
+			const info = await stat(file);
+			state.project_write = info.mtimeMs;
+			state.project_bytes = info.size;
+		} catch {}
+	}
+	const pending = [join(project, "Nodes")];
+	while (pending.length > 0) {
+		const directory = pending.pop();
+		let entries;
+		try {
+			entries = await readdir(directory, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			const path = join(directory, entry.name);
+			if (entry.isDirectory()) {
+				pending.push(path);
+				continue;
+			}
+			let info;
+			try {
+				info = await stat(path);
+			} catch {
+				continue;
+			}
+			state.files += 1;
+			if (info.mtimeMs > state.newest_write) {
+				state.newest_write = info.mtimeMs;
+				state.newest_path = path;
+			}
+		}
+	}
+	state.newest_write_iso = state.newest_write === 0 ? "" : new Date(state.newest_write).toISOString();
+	return state;
+}
 /** Folder holding the runtime logs this plugin writes; one file per project. */
 export function logDirectory() {
 	const base = typeof process.env.LOCALAPPDATA === "string" && process.env.LOCALAPPDATA !== "" ? process.env.LOCALAPPDATA : tmpdir();

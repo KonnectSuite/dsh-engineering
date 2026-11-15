@@ -12,9 +12,9 @@ import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge, bridgeVersion } from "./arm.js";
 import { scaffoldProject } from "./scaffold.js";
-import { emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
+import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
-import { MAX_CARDS, MAX_NAV, SCREEN_THEME, screenOps } from "./screens.js";
+import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
@@ -1446,11 +1446,25 @@ function applyEmulator(ctx, settings) {
 			if (!readsOnly && !settings.allowInvoke) throw new Error("Starting, restarting or stopping a process needs allowInvoke in the Optix row's plugin configuration; status and logs work without it.");
 			const origin = settings.bridgeUrls[0] ?? "";
 			const unsaved = pendingModelChanges(origin);
+			const disk = await diskState(args.project);
+			// Files are the only evidence a Save reached disk: nothing in UAManagedCore can
+			// save a project, so the newest write under Nodes/ is compared with the first
+			// pending bridge change instead of trusting that a keystroke landed.
+			const diskReport = {
+				newest_write: disk.newest_write_iso,
+				newest_path: disk.newest_path,
+				nodes_files: disk.files,
+				project_bytes: disk.project_bytes
+			};
+			const savedAfterEdit = unsaved.first === void 0 ? void 0 : Math.max(disk.newest_write, disk.project_write) >= unsaved.first;
+			const saveVerdict = savedAfterEdit === void 0 ? void 0 : savedAfterEdit ? "The saved project is newer than the first pending bridge change, so the save reached disk." : `No file in the project is newer than the first pending bridge change (${new Date(unsaved.first).toISOString()}); the newest write under Nodes/ is ${disk.newest_write_iso || "older than any bridge change"}. Studio has not written that change to disk yet, so the runtime cannot load it.`;
 			const withSaveState = (report) => {
 				if (unsaved.pending === 0) return report;
 				return {
 					...report,
 					unsaved_changes: unsaved.pending,
+					...(savedAfterEdit === void 0 ? {} : { saved_after_edit: savedAfterEdit }),
+					...(saveVerdict === void 0 ? {} : { save_verdict: saveVerdict }),
 					save_handoff: SAVE_HANDOFF
 				};
 			};
@@ -1487,7 +1501,11 @@ function applyEmulator(ctx, settings) {
 				previewUrl: settings.previewUrl
 			}, exec.signal);
 			if (!report.serving) report.next = report.project_file === "" ? "Point project at the folder holding the project's .optix file." : "Nothing serves the preview address: optix_emulator with action start launches the runtime and waits for it to answer.";
-			return withSaveState(report);
+			return {
+				...withSaveState(report),
+				disk: diskReport,
+				...(saveVerdict === void 0 ? {} : { save_verdict: saveVerdict })
+			};
 		}
 	})));
 }
@@ -2734,6 +2752,14 @@ function apply(ctx, config = {}) {
 				type: "string",
 				description: "Live PanelLoader path. Omitted: the single PanelLoader mounted in the start window, when there is exactly one. Without a loader navigation is reported rather than wired."
 			},
+			mount: {
+				type: "boolean",
+				description: "Mount the finished screen in the start window. A window shows only its own children, and a freshly scaffolded starter ships a window with none, so a screen nothing loads is a screen no render ever shows. On by default: when the window holds no PanelLoader the batch creates one at the canvas origin, sizes it to the screen and points its Panel at it. Pass false to author the screen alone."
+			},
+			mount_name: {
+				type: "string",
+				description: "Name for the PanelLoader this batch creates. Default MainLoader."
+			},
 			theme: {
 				type: "object",
 				additionalProperties: false,
@@ -2830,6 +2856,23 @@ function apply(ctx, config = {}) {
 					libraryPlan = planned.plan;
 				}
 				allowWrite(libraryPlan.length > 0 || isDestructive(layout.ops));
+				// A screen is not visible until something loads it: the start window renders only its own
+				// children, and a freshly scaffolded starter ships a window with none. Measured live: a screen
+				// with 18 objects was authored into a starter and the preview stayed a flat white 1920x1080
+				// frame, because nothing pointed at it. One loader, one pointer, appended to the same batch so
+				// the screen exists by the time the pointer is written.
+				const mountName = args.mount_name === void 0 || args.mount_name === "" ? "MainLoader" : args.mount_name;
+				const mountPlan = args.mount === false || host.window === void 0 || (host.panel_loaders ?? []).length > 0 ? void 0 : planMount({
+					window: host.window,
+					loader: mountName,
+					screen: layout.path,
+					project: selectedHealth.project,
+					width: spec.width,
+					height: spec.height,
+					children: host.window_children ?? []
+				});
+				const mounted = mountPlan?.mounted;
+				const batchOps = [...layout.ops, ...(mountPlan?.ops ?? [])];
 				const brief = {
 					screen: layout.path,
 					width: layout.width,
@@ -2847,10 +2890,11 @@ function apply(ctx, config = {}) {
 						...(host.width === void 0 || host.height === void 0 ? {} : { canvas: { width: host.width, height: host.height } }),
 						...(spec.panel_loader === void 0 ? {} : { panel_loader: spec.panel_loader }),
 						panel_loaders: host.panel_loaders ?? [],
-						nav_targets_missing: missingTargets
+						nav_targets_missing: missingTargets,
+						...(mounted === void 0 ? {} : { mounted })
 					}
 				};
-				const normalized = layout.ops.map((op) => op.prop_name === void 0 ? op : {
+				const normalized = batchOps.map((op) => op.prop_name === void 0 ? op : {
 					...op,
 					name: op.prop_name
 				});
@@ -2885,12 +2929,12 @@ function apply(ctx, config = {}) {
 				}));
 				const report = {
 					...brief,
-					...(args.include_ops === true ? { ops: layout.ops } : {}),
+					...(args.include_ops === true ? { ops: batchOps } : {}),
 					validation,
 					expressions,
 					pending_wiring: pendingWiring
 				};
-				if (!acceptedValidation(validation, layout.ops.length) || rejected.length > 0) return {
+				if (!acceptedValidation(validation, batchOps.length) || rejected.length > 0) return {
 					status: "refused",
 					applied: 0,
 					...report,
@@ -2907,7 +2951,7 @@ function apply(ctx, config = {}) {
 					next: pendingWiring.length === 0 ? `Apply with dry_run:false${libraryPlan.length === 0 ? "" : ` (it also imports and places ${libraryPlan.map((entry) => `${entry.library}/${entry.item}`).join(", ")})`}, then read the screen back with optix_read and run optix_design_check on it.` : missingTargets.length > 0 ? `Navigation stays pending: ${missingTargets.join(", ")} ${missingTargets.length === 1 ? "does" : "do"} not exist yet, and a button cannot be wired to a node that is not there. Create the missing screen(s), then apply the reported wire_event ops as one optix_edit batch - or draft this screen last.` : host.window === void 0 ? `No start window was read from the live model, so navigation is unverified: read UI, find the window, and name its PanelLoader.` : `${host.window} hosts ${host.panel_loaders.length === 0 ? "no PanelLoader" : `${host.panel_loaders.length} PanelLoaders`}, so navigation cannot be wired: create or name the loader (optix_edit create_widget widget_type PanelLoader under the window), then draft again.`
 				};
 				const results = [];
-				for (const [index, op] of layout.ops.entries()) {
+				for (const [index, op] of batchOps.entries()) {
 					let dispatched = false;
 					try {
 						const health = await bridge.request(origin, "health", exec.signal);
@@ -2933,7 +2977,7 @@ function apply(ctx, config = {}) {
 				// screen that already exists. Imports are not reversible, so a failure stops there and
 				// reports the step; the scaffold is already in place and is not replayed.
 				let pointerClearing = { cleared: 0, failed: [] };
-				if (layout.ops.some((op) => op.op === "wire_event" && op.object_raw !== void 0)) pointerClearing = await clearPointerValues(origin, layout.ops, exec.signal);
+				if (batchOps.some((op) => op.op === "wire_event" && op.object_raw !== void 0)) pointerClearing = await clearPointerValues(origin, batchOps, exec.signal);
 				let libraryApplied;
 				if (libraryPlan.length > 0) {
 					libraryApplied = await applyLibraryPlan(origin, layout.path, libraryPlan, exec.signal);
