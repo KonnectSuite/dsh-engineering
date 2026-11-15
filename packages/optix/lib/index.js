@@ -2795,8 +2795,16 @@ function apply(ctx, config = {}) {
 				// buttons are still built and their wiring is reported, so screens can be created in either
 				// order and one follow-up optix_edit batch (wire_event, shape reported here) completes them.
 				const requestedTargets = [...new Set((args.nav ?? []).map((entry) => entry.target))];
+				// The screen this batch creates is not a missing target. Probing it before it exists
+				// reported every self-navigating draft as unwireable, and one entry in `missingTargets`
+				// also drops the loader from the batch, so a second screen's own button was drawn and
+				// never wired (measured live 2026-11-14: Nav_LineDetail had no event until it was
+				// wired by hand, while Nav_LineOverview - created by the earlier draft - did).
+				const createdFolder = args.screens_folder === void 0 || args.screens_folder === "" ? "UI/Screens" : args.screens_folder;
+				const createdPath = `${createdFolder}/${args.name}`;
 				const missingTargets = [];
 				for (const target of requestedTargets) {
+					if (target === createdPath || target.endsWith(`/${createdPath}`)) continue;
 					const probe = await bridge.request(origin, "nodes", exec.signal, { path: target }).catch(() => void 0);
 					if (probe === void 0 || probe.path === void 0) missingTargets.push(target);
 				}

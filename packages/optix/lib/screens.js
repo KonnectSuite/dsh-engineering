@@ -400,12 +400,16 @@ export function screenOps(spec) {
 				return;
 			}
 			// NAV - 12 keeps the button at 44 px, the minimum the HMI target rule reports.
+			// The fill is set explicitly because a `Button` with no `BackgroundColor` takes the style
+			// sheet's own grey, and white text on it measures 1.4:1 - measured live 2026-11-14, where
+			// the shell bar rendered as white-on-pale-grey under the theme everywhere else.
 			const slot = { left: bar.left + (existingNav + index) * PITCH, top: bar.top + 6, width: buttonWidth, height: NAV - 12 };
 			ops.push(
 				{ op: "create_widget", screen: shell.window, name, widget_type: "Button" },
 				...box(path, slot),
 				set(path, "Text", entry.label),
-				set(path, "TextColor", theme.title),
+				set(path, "BackgroundColor", theme.footer),
+				set(path, "TextColor", theme.footerText),
 				set(path, "FontSize", size(13)),
 			);
 			objects.push({ path, kind: "Button" });

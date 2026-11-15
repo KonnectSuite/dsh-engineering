@@ -299,7 +299,13 @@ a button created inside a panel resolves its loader path to the design-time obje
 refuses the click — and each button is named for the panel it opens (`Nav_<target>`) so drafting a second
 screen adds its buttons to the shared bar instead of replacing the first screen's. Navigation is wired
 only when the live model names one loader; without it the tool reports the exact `wire_event` it left
-pending, with the relative pointer path and the absolute-value clearing the runtime needs.
+pending, with the relative pointer path and the absolute-value clearing the runtime needs. A button that
+navigates to the screen being drafted is wired in the same batch: that path is the batch's own output,
+so it is never probed as a missing target (measured live 2026-11-14, where a self-navigating second
+screen drew a `DETAIL` button that did nothing until it was wired by hand). Each bar button also carries
+its own `BackgroundColor` and `TextColor` from the palette: a `Button` with no fill takes the style
+sheet's grey and its white label measures 1.4:1 against it, which is what the shell bar was rendering
+before the draft wrote the fill.
 
 Then run `optix_design_check` on the screen. It reports touch targets under 44 px, controls with no text
 of their own, text below 4.5:1 against the object it actually sits on, a screen nothing navigates to, a

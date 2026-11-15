@@ -243,6 +243,14 @@ test('a navigation target that does not exist yet costs the wiring, not the whol
 	assert.match(plugin, /method_path: `\$\{namedLoader\}\/ChangePanel`/u)
 })
 
+test('the screen the batch creates is not a missing target, so a self-navigating button is wired', () => {
+	// Measured live 2026-11-14: drafting a second screen whose nav pointed at itself probed that path
+	// before it existed, saw it missing, and both left the button unwired and dropped the loader from
+	// the batch - the bar drew a DETAIL button that did nothing until it was wired by hand.
+	assert.match(plugin, /const createdPath = `\$\{createdFolder\}\/\$\{args\.name\}`/u)
+	assert.match(plugin, /target === createdPath \|\| target\.endsWith\(`\/\$\{createdPath\}`\)/u)
+})
+
 test('a space reaches the bridge as %20, not as a plus', () => {
 	// Live on Studio 1.8.1.27 (2026-11-14): every label written through the bridge came back
 	// reading "Plant+overview", and the Web presentation engine drew the plus signs, because
@@ -297,6 +305,12 @@ test('the folders a component needs are created before its type is imported', ()
 	assert.deepEqual(layout.pendingWiring, [], 'a shell draft wires its navigation in the same batch')
 	const width = layout.ops.find((op) => op.op === 'set_property' && op.path === 'UI/MainWindow/Nav_Overview' && op.name === 'Width')
 	assert.ok(Number.parseFloat(width.value) <= 360, `a single navigation button stretched to ${width.value} px`)
+	// A Button with no fill takes the style sheet's grey; the shell bar rendered white-on-pale-grey
+	// (1.4:1) until the draft started writing the palette explicitly (measured 2026-11-14).
+	const fill = layout.ops.find((op) => op.op === 'set_property' && op.path === 'UI/MainWindow/Nav_Overview' && op.name === 'BackgroundColor')
+	const ink = layout.ops.find((op) => op.op === 'set_property' && op.path === 'UI/MainWindow/Nav_Overview' && op.name === 'TextColor')
+	assert.equal(fill?.value, SCREEN_THEME.footer, 'a shell button carries the bar colour, not the style sheet grey')
+	assert.equal(ink?.value, SCREEN_THEME.footerText, 'its label is the colour that reads on that bar')
 })
 
 test('a second screen adds its own button to the shared shell bar instead of replacing the first', () => {

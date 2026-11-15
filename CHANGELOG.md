@@ -1,5 +1,13 @@
 ## [Unreleased]
 
+- **The shell navigation bar is wired and painted by the draft that draws it.** Measured live on
+  the LineHMI project: `optix_screen` probed the path of the screen it was about to create, reported
+  it as a missing navigation target, and the second screen's own button came out dead (and the
+  loader was kept out of the batch). A target equal to the batch's own screen path is now skipped,
+  so a self-navigating screen is wired in the same call. Every bar button also writes its
+  `BackgroundColor` and `TextColor` from the screen theme: with no fill a `Button` takes the style
+  sheet's grey and its white label measures 1.4:1, which is what the bar rendered until it did.
+
 - **The mount link, the save, and a screen that renders.** `optix_screen` now mounts what it draws with a project-absolute `/Objects/<Project>/UI/Screens/<Screen>` link: a bare `UI/Screens/...` resolves against the loader's own parent, shows red in Studio's property pane and renders blank, which cost this project two saved builds to find. `optix_emulator { action: "status" }` reports `disk` and `saved_after_edit` so a save is proved from the files instead of a reply (`UAManagedCore.dll` has no save, dirty or persist symbol at all, and neither Save nor Build has a route the bridge could call), and the skill records the one sanctioned desktop touch: two keystrokes, `Ctrl+S` then `Ctrl+Shift+B`, to the already-open Studio window when the engineer asks for them and never anything else. Proven on `LineHMI` (1920x1080, Studio 1.8.1.27, bridge 1.0.9): scaffold -> the engineer opens the project and runs StartBridge -> an OPC UA model of 21 ops -> an 18-object screen -> save and build -> `optix_emulator` start -> a rendered screen carrying the bound values. An offline probe against a saved project also measured that the bridge's `DynamicLink` form holding an absolute path renders identically to a resolved static value, so the link form was never the fault - the relative path was.
 - **Optix: a screen is mounted when it is drawn, and a save is proved from the files.** `optix_screen`
   now ends its batch by creating a `PanelLoader` across the start window and binding its `Panel` pointer

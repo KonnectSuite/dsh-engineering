@@ -145,6 +145,14 @@ created inside a panel resolves its loader path to the design-time object. Both 
 are handled by `optix_screen`, which draws the navigation bar in the start window, names buttons
 `Nav_<target>`, wires them relative and clears the absolute pointer.
 
+Two things about that bar were measured on the LineHMI project on 2026-11-14 and are now part of the
+draft. A button that navigates to the screen the same batch creates is wired in that batch: the path is
+the batch's own output, so probing it first found it "missing", which both left the button dead and
+dropped the loader from the batch — the second screen's `DETAIL` button drew and did nothing. And every
+bar button carries its own `BackgroundColor` and `TextColor`: a `Button` with no fill takes the style
+sheet's grey, and its white label measured 1.4:1 on it, so the shell bar was the one part of the screen
+that ignored the palette.
+
 ## Phase 7 — what a verdict means
 
 `optix_production_check` answers `ready`, `review` or `not_ready` from five rules: an event handler
