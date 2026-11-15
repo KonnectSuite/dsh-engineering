@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.95.0] - 2026-11-14
 
 - **The shell navigation bar is wired and painted by the draft that draws it.** Measured live on
   the LineHMI project: `optix_screen` probed the path of the screen it was about to create, reported
@@ -8,7 +8,6 @@
   `BackgroundColor` and `TextColor` from the screen theme: with no fill a `Button` takes the style
   sheet's grey and its white label measures 1.4:1, which is what the bar rendered until it did.
 
-- **The mount link, the save, and a screen that renders.** `optix_screen` now mounts what it draws with a project-absolute `/Objects/<Project>/UI/Screens/<Screen>` link: a bare `UI/Screens/...` resolves against the loader's own parent, shows red in Studio's property pane and renders blank, which cost this project two saved builds to find. `optix_emulator { action: "status" }` reports `disk` and `saved_after_edit` so a save is proved from the files instead of a reply (`UAManagedCore.dll` has no save, dirty or persist symbol at all, and neither Save nor Build has a route the bridge could call), and the skill records the one sanctioned desktop touch: two keystrokes, `Ctrl+S` then `Ctrl+Shift+B`, to the already-open Studio window when the engineer asks for them and never anything else. Proven on `LineHMI` (1920x1080, Studio 1.8.1.27, bridge 1.0.9): scaffold -> the engineer opens the project and runs StartBridge -> an OPC UA model of 21 ops -> an 18-object screen -> save and build -> `optix_emulator` start -> a rendered screen carrying the bound values. An offline probe against a saved project also measured that the bridge's `DynamicLink` form holding an absolute path renders identically to a resolved static value, so the link form was never the fault - the relative path was.
 - **Optix: a screen is mounted when it is drawn, and a save is proved from the files.** `optix_screen`
   now ends its batch by creating a `PanelLoader` across the start window and binding its `Panel` pointer
   to the new screen through a literal `raw_path` - the templates ship `UI/MainWindow` with no children,
@@ -22,7 +21,8 @@
   no save and no build, so the skill and `docs/optix-workflow.md` now require the disk verdict before any
   screenshot is called proof. `test/optix-emulator.spec.mjs` covers `diskState` (newest write, an empty
   folder, and a bogus one), and `test/optix-runtime-e2e.mjs` mounts the row's tools and asserts every
-  result round-trips as lossless JSON.
+  result round-trips as lossless JSON. Proven on the `LineHMI` project (1920x1080, Studio 1.8.1.27, bridge 1.0.9): scaffold, the engineer opens it and runs StartBridge, a 21-op OPC UA model, an 18-object screen, save and build, `optix_emulator` start, a rendered screen carrying the bound values, and a navigation button that switches the panel. An offline probe against a saved project also measured that the bridge's `DynamicLink` form holding an absolute path renders identically to a resolved static value, so the link form was never the fault - the relative path was.
+
 - **The Optix loop is now enforced, not just described: one way to run the emulator, and a signal for the one step no tool can do.**
   Measured on a stopped session: 1,644 `pwsh` calls, 41 desktop key presses and an `FTOptixRuntime.exe` launched by hand and killed with `Stop-Process`, against **zero** `optix_emulator` calls: the tool was registered, the row had `allowInvoke` on, and the agent still drove the IDE and the runtime from outside. The causes were visible in the code: `startEmulator` spawned the runtime with `stdio: "ignore"` and returned a bare pid, so nothing could tell whether it came up; `stopEmulator` could only kill a pid it had recorded in the same process; `optix_template` wrote a bridge whose NetLogic node declared a method (`ImportQueuedLibraryItem`) the 1.0.9 class does not implement; and the loop's save-and-build step had no tool, so it was closed with a desktop chord.
   - `packages/optix/lib/emulator.js` rewritten: the runtime's stdout and stderr go to a per-project log under `%LOCALAPPDATA%\AryaCode\OptixRuntime`, `start` returns only once the preview URL answers and otherwise returns that log's tail with a named diagnosis (`port_in_use`, `file_locked`, `licensing`, `exception`, `missing_file`) and a hint, `restart` is stop-then-start for a new saved build, `logs` reads the log back, `stop` ends every `FTOptixRuntime.exe` holding that project (including one started outside the plugin) and reports the preview cleared, and `status` names runtimes that belong to other projects.
