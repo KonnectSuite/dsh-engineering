@@ -9,7 +9,7 @@ content and keeps them identical on every screen, so the operator's eye does not
 | ShellHeader: brand, title, clock, user               |  64 px
 +--------+---------------------------------------------+
 | Shell  |                                             |
-| Rail   | ShellContent (the panel loader)             |  the rest
+| Rail   | ShellRail (native panel; hosts the screens)  |  the rest
 | 220 px |                                             |
 +--------+---------------------------------------------+
 | ShellFooter: communication status                    |  30 px
@@ -48,8 +48,7 @@ the previous one leaves:
 | ---------- | -------------------------------------------------------------------- | -------------------------------------------- |
 | `chrome`   | bands, rail object, content host, geometry, tokens                    | the window has to exist                      |
 | `rail`     | `RailItem1..n` inside `<rail>/Panels`, with their `Title`            | `Panels` exists only after the rail does     |
-| `attach`   | `<rail>` `AttachedPanelLoader` = the loader                           | materialises the pointer node (`ref` is empty until then) |
-| `pointers` | `<item>/Panel`, `<loader>/Panel`, `<rail>/AttachedPanelLoader` values | the pointer nodes exist only after `attach`  |
+| `pointers` | `<item>/Panel` values, each `UI/Screens/<Screen>`                    | after the rail's `Panels` collection exists |
 
 A second `apply` is a repair, not a duplicate: a band or rail item that already exists is not created
 again, its geometry and title are restated, and the pointers are rewritten.
@@ -59,9 +58,11 @@ again, its geometry and title are restated, and the pointers are rewritten.
 - A `NodeId` is written on the pointer node's `Value` child as `UI/<Path>`. The
   `/Objects/<Project>/…` form is refused by `validate_ops` with `bad_value: NodeId value must be a
   resolvable node path`, even for a node that exists.
-- The rail's `AttachedPanelLoader` is a settable `NodeId` on the panel with **no** pointer child in
-  the model. Writing it materialises `<rail>/AttachedPanelLoader`; the value then goes on that child.
-  Writing the property in the same batch as the value fails, which is why `attach` is its own phase.
+- The rail is a native `NavigationPanel` and it **hosts** the screens it switches. Rockwell's own
+  `Optix_Template_NavigationPanelDefaultTabs` has no `PanelLoader` and no `AttachedPanelLoader`
+  anywhere: the panel fills the content area, its `TabWidth` strip is the left column, and each
+  `NavigationPanelItem` points straight at a screen. A loader beside the panel switches its own
+  `Panel` and leaves the rail looking dead.
 - A literal colour is `#RRGGBB`; the `0xRRGGBBAA` spelling is refused.
 - A `Panel` has no background colour (measured): bands are `Rectangle` objects, panels are containers.
 

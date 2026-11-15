@@ -1,5 +1,16 @@
 ## [Unreleased]
 
+### Fixed
+
+- The shell is a native `NavigationPanel` that hosts the screens: the rail now switches the content,
+  and the `PanelLoader`/`AttachedPanelLoader` phases are gone (measured against the running runtime).
+- `optix_ui theme` keeps a stylesheet binding the bridge did not write, so applying a language no longer
+  repoints a project away from a working Studio-authored sheet.
+- A dialog opens with three typed `OpenDialog` arguments (project-relative `Dialog`, so it lands as a
+  `NodeId`), closes through its own `Close` method instead of the non-existent `CloseDialog` command,
+  carries a surface behind its text, and completes a partially built type instead of refusing.
+- `optix_ui dialog` places its trigger on the dialog's own screen canvas and repairs missing children.
+
 - **The Optix UI kit grades what it drew.** `optix_ui { action: "review" }` reads a screen through the bridge and scores it against the design rubric: a header band with a title, chip, clock and user; a native `NavigationPanel`; every control at least 44x44; no text below 11 px; one style sheet on both presentation engines; a vendor component or process drawing in the content; and the same shell across screens. A critical finding costs 40, a warning 10, `professional` needs 85 with no critical left, and `must_fix` names the node and the repair. The rules that need a runtime - does the confirm dialog open, does the active tab follow the screen, does the grid show values - are reported as `unverified` and never counted as a pass. Measured live on `AryaOptixTemplate` at 1280x800: the same screen went from `30 (entry-level)` with `VIEW-NAV-01` and `HMI-CONTRAST-01` critical to `90 (professional)` after `optix_ui action theme` bound one sheet on both engines and `action shell` drew the header, rail and status strip. The shell header also gained a status chip and a 25 px title, and `theme` is idempotent: a second apply restates the tokens and named styles instead of re-creating them (the bridge refuses `already_exists`).
 
 

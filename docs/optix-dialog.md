@@ -88,3 +88,25 @@ wiring, the trigger's `OpenDialog` arguments, the readable title, the restating 
 project and reads the type and the trigger back; `node test/optix-live-dialog.mjs apply` writes it. Then press
 Ctrl+S and Ctrl+Shift+B in Studio with the emulator stopped, start the runtime with
 `optix_emulator { action: "start" }`, and click the trigger — the dialog is the runtime's proof.
+
+## The measured open/close contract
+
+A confirmation is a `Dialog` object type opened by a button, and both halves are typed:
+
+- The button calls `/Objects/Commands/UICommands` `OpenDialog` with **three** arguments — `Dialog`,
+  `AliasNode`, `ParentItem`. Two arguments fail at runtime with
+  `Called method OpenDialog with an invalid number of arguments`; `ParentItem` stays a late-bound
+  `../../../../..@NodeId` link.
+- `Dialog` must be a **NodeId typed** argument. The bridge types an argument by trying to resolve its
+  value as a project-relative node, so the path passed to `wire_event` must be `UI/Dialogs/<Name>`, not
+  `/Objects/<Project>/UI/Dialogs/<Name>`; with the absolute form the argument lands as a String and the
+  runtime answers `Dialog argument ... is not a non-empty NodeId`.
+- A dialog closes through **its own `Close` method**, not through a UI command: `command: "CloseDialog"`
+  fails with `Method 'CloseDialog' not found on target object .../Commands/UICommands`. Both buttons are
+  wired with `method_path: "UI/Dialogs/<Name>/Close"`.
+- The dialog needs its own surface. A `Dialog` has no background, so without a `DlgSurface` rectangle
+  behind the texts the modal looks like text floating over the screen; children paint in creation order,
+  so the plan creates the surface first and emits a `reorder position: "back"` on every apply.
+- A partially built dialog is repaired, not refused: the plan takes the type's existing children and
+  creates only the ones that are missing (measured: a type kept from an earlier session had lost its
+  message label, and the first apply refused with six `unresolved_reference` errors).

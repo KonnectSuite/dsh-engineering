@@ -5550,11 +5550,15 @@ function apply(ctx, config = {}) {
 						triggerScreen,
 						triggerName,
 						project: selectedHealth.project,
+						// The canvas is the screen the trigger sits on, not the window: a trigger placed past the
+						// screen's own height is clipped away in the runtime, so a caller-supplied height wins.
+						canvas: { height: Number(args.canvas?.height) || Number.parseFloat(String((await liveScreenHost(origin, exec.signal)).height ?? "")) || 720 },
 						width: Number.isInteger(args.width) && args.width > 0 ? args.width : undefined,
 						height: Number.isInteger(args.height) && args.height > 0 ? args.height : undefined,
 						language: typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE,
 						folderExists: Boolean(folderReply),
 						typeExists: Boolean(typeReply),
+						existingChildren: (typeReply?.children ?? []).map((child) => String(child.browse_name ?? child.name ?? "")),
 						triggerExists: Boolean(triggerReply)
 					});
 					const validate = async (ops) => bridge.request(origin, "validate_ops", exec.signal, {}, "POST", { ops, strict: true });
@@ -5668,6 +5672,13 @@ function apply(ctx, config = {}) {
 					}
 				}
 				const plan = themePlan({ language, sheet: sheetName, project: selectedHealth.project, sheetPath, exists, existing: existingStyles, engines });
+				// A project that already points its engines at a sheet the bridge did not write (a Studio or vendor
+				// stylesheet, e.g. FriendlyLight) renders that sheet correctly while a bridge-written one is rejected
+				// by the runtime at first paint. Rebinding it silently would paint the project blank, so a binding is
+				// only rewritten when the caller names the sheet or when the engines already read the generated one.
+				const foreignBinding = Object.values(engineRefs).filter((ref) => typeof ref === "string" && ref !== "" && !ref.endsWith(`/${sheetName}`) && ref !== sheetPath);
+				const keepBinding = args.sheet === void 0 && foreignBinding.length > 0;
+				if (keepBinding) plan.pointer_ops = [];
 				const styleNames = plan.styles.map((style) => style.path);
 				const base = {
 					action,
@@ -5677,6 +5688,8 @@ function apply(ctx, config = {}) {
 					pointer: plan.pointer,
 					exists,
 					engine_refs: engineRefs,
+					kept_binding: keepBinding,
+					engine_refs_foreign: foreignBinding,
 					token_count: Object.keys(plan.tokens).length,
 					styles: styleNames
 				};

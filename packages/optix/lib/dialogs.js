@@ -104,7 +104,7 @@ function box(path, slot) {
  *   exists}`.
  * @throws {DialogError} when the name, kind or geometry cannot make a dialog.
  */
-export function dialogPlan({ name, kind = "confirm", parent = DIALOG_FOLDER, title = "", message = "", confirmLabel = "Confirm", cancelLabel = "Cancel", destructive = false, triggerScreen = "", triggerName = "", project = "", width = 460, height = 240, language = "modern", folderExists = false, typeExists = false, triggerExists = false } = {}) {
+export function dialogPlan({ name, kind = "confirm", parent = DIALOG_FOLDER, title = "", message = "", confirmLabel = "Confirm", cancelLabel = "Cancel", destructive = false, triggerScreen = "", triggerName = "", project = "", width = 460, height = 240, canvas = void 0, language = "modern", folderExists = false, typeExists = false, triggerExists = false, existingChildren = [] } = {}) {
 	const identifier = String(name ?? "").trim();
 	if (identifier === "") throw new DialogError("dialog_no_name", 'a dialog needs a name: the object type an operator opens, such as "ConfirmDelete"');
 	if (!/^[A-Za-z_][A-Za-z0-9_]*$/u.test(identifier)) throw new DialogError("dialog_bad_name", `"${identifier}" is not a Logix identifier: letters, digits and underscores, starting with a letter`);
@@ -137,15 +137,27 @@ export function dialogPlan({ name, kind = "confirm", parent = DIALOG_FOLDER, tit
 	const wire = [];
 	// A second apply must not create what the first one made: `create_widget` on an existing name is refused
 	// as `already_exists`, so an existing dialog is restated (text, boxes, geometry) and left unwired.
-	const createChildren = !typeExists;
+	const present = new Set(Array.isArray(existingChildren) ? existingChildren : []);
+	const createChildren = (name) => !typeExists || !present.has(name);
+	// A Dialog has no background of its own: without a surface the texts and buttons float
+	// over whatever is behind the modal and the result reads as broken rather than as a dialog.
+	const surfacePath = `${path}/DlgSurface`;
+	if (createChildren("DlgSurface")) content.push({ op: "create_widget", screen: path, name: "DlgSurface", widget_type: "Rectangle" });
+	// Children paint in creation order, so a surface added to an existing dialog lands on top of
+	// the text it is meant to sit behind. Push it to the back on every apply.
+	content.push({ op: "reorder", path: surfacePath, position: "back" });
+	content.push({ op: "set_property", path: surfacePath, name: "FillColor", value: "#FFFFFF" });
+	content.push({ op: "set_property", path: surfacePath, name: "BorderColor", value: "#B3B3B3" });
+	content.push({ op: "set_property", path: surfacePath, name: "BorderThickness", value: "1" });
+	content.push(...box(surfacePath, { left: 0, top: 0, width: dialogWidth, height: dialogHeight }));
 	const titlePath = `${path}/DlgTitle`;
-	if (createChildren) content.push({ op: "create_widget", screen: path, name: "DlgTitle", widget_type: "Label" });
+	if (createChildren("DlgTitle")) content.push({ op: "create_widget", screen: path, name: "DlgTitle", widget_type: "Label" });
 	content.push({ op: "set_property", path: titlePath, name: "Text", value: textOf(dialogTitle) });
 	content.push(...box(titlePath, { left: PAD, top: PAD, width: dialogWidth - 2 * PAD, height: TITLE_HEIGHT }));
 
 	const messagePath = `${path}/DlgMessage`;
 	if (dialogMessage !== "") {
-		if (createChildren) content.push({ op: "create_widget", screen: path, name: "DlgMessage", widget_type: "Label" });
+		if (createChildren("DlgMessage")) content.push({ op: "create_widget", screen: path, name: "DlgMessage", widget_type: "Label" });
 		content.push({ op: "set_property", path: messagePath, name: "Text", value: textOf(dialogMessage) });
 		content.push({ op: "set_property", path: messagePath, name: "WordWrap", value: "1" });
 		content.push(...box(messagePath, { left: PAD, top: PAD + TITLE_HEIGHT + 8, width: dialogWidth - 2 * PAD, height: dialogHeight - PAD * 2 - TITLE_HEIGHT - BUTTON_HEIGHT - 24 }));
@@ -156,24 +168,34 @@ export function dialogPlan({ name, kind = "confirm", parent = DIALOG_FOLDER, tit
 	labels.forEach((entry, index) => {
 		const left = dialogWidth - PAD - BUTTON_WIDTH * (labels.length - index);
 		buttons.push({ name: entry.key, label: entry.label, path: `${path}/${entry.key}`, confirm: entry.key === "DlgConfirm" });
-		if (createChildren) content.push({ op: "create_widget", screen: path, name: entry.key, widget_type: "Button" });
+		if (createChildren(entry.key)) content.push({ op: "create_widget", screen: path, name: entry.key, widget_type: "Button" });
 		content.push({ op: "set_property", path: `${path}/${entry.key}`, name: "Text", value: textOf(entry.label) });
 		content.push(...box(`${path}/${entry.key}`, { left, top: buttonTop, width: BUTTON_WIDTH, height: BUTTON_HEIGHT }));
-		// Studio's own UI command closes a dialog; no NetLogic and no absolute pointer is involved.
-		if (createChildren) wire.push({ op: "wire_event", path: `${path}/${entry.key}`, event_type: "MouseClickEvent", command: "CloseDialog" });
+		// A dialog closes through its own `Close` method. `command: "CloseDialog"` reads naturally but the
+		// runtime answers `Method 'CloseDialog' not found on target object .../Commands/UICommands` -- the
+		// builtin only carries OpenDialog/OpenKeyboard. `method_path` points at the dialog node's Close.
+		if (createChildren(entry.key)) wire.push({ op: "wire_event", path: `${path}/${entry.key}`, event_type: "MouseClickEvent", method_path: `${path}/Close` });
 	});
 
 	const triggerOps = [];
 	if (String(triggerScreen ?? "").trim() !== "" || String(triggerName ?? "").trim() !== "") {
 		const screen = String(triggerScreen ?? "").trim();
 		const trigger = String(triggerName ?? "").trim();
+	const canvasHeight = Number.isFinite(Number(canvas?.height)) && Number(canvas.height) > 120 ? Number(canvas.height) : 720;
 		if (screen === "" || trigger === "") throw new DialogError("dialog_incomplete_trigger", "a trigger needs both trigger_screen (where the button sits) and trigger_name (what the button is called)");
 		const projectName = String(project ?? "").trim();
 		if (projectName === "") throw new DialogError("dialog_no_project", "a trigger needs the project name: the OpenDialog argument names the dialog by its /Objects/<Project>/… path");
 		if (!triggerExists) {
 			triggerOps.push({ op: "create_widget", screen, name: trigger, widget_type: "Button" });
 			triggerOps.push({ op: "set_property", path: `${screen}/${trigger}`, name: "Text", value: textOf(dialogTitle) });
-			triggerOps.push({ op: "wire_event", path: `${screen}/${trigger}`, event_type: "MouseClickEvent", command: "OpenDialog", args: `Dialog=/Objects/${projectName}/${path};AliasNode=` });
+			// A button created with no geometry lands at the screen origin, over the chrome. Park it at the
+			// bottom-left of the screen the caller named (the screen's own canvas, not the window's).
+			triggerOps.push(...box(`${screen}/${trigger}`, { left: 24, top: Number(canvasHeight) - 44 - 24, width: 180, height: 44 }));
+			// The bridge types an argument by resolving its value as a project-relative node: a
+	// `/Objects/...` value does not resolve, so it would be written as a String and the
+	// runtime rejects the call ("Dialog argument ... is not a non-empty NodeId"). Pass
+	// the project-relative path so the bridge writes a typed node pointer.
+	triggerOps.push({ op: "wire_event", path: `${screen}/${trigger}`, event_type: "MouseClickEvent", command: "OpenDialog", args: `Dialog=${path};AliasNode=;ParentItem=` });
 		}
 	}
 

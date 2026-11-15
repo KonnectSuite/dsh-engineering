@@ -11,33 +11,32 @@ const screens = [
 
 const base = { window: "UI/MainWindow", width: 1280, height: 720, language: "modern", screens };
 
-test("shellPlan places four bands around the content on the window canvas", () => {
+test("shellPlan surrounds the native navigation panel with a header and a status strip", () => {
 	const plan = shellPlan(base);
 	assert.deepEqual(plan.header, { left: 0, top: 0, width: 1280, height: HEADER_HEIGHT });
-	assert.deepEqual(plan.rail, { left: 0, top: HEADER_HEIGHT, width: RAIL_WIDTH, height: 720 - HEADER_HEIGHT - FOOTER_HEIGHT });
+	// The native panel hosts the panels it switches, so the rail fills the content area and its tab strip is
+	// the left column; a separate loader beside it never got driven in the runtime.
+	assert.deepEqual(plan.rail, { left: 0, top: HEADER_HEIGHT, width: 1280, height: 720 - HEADER_HEIGHT - FOOTER_HEIGHT });
 	assert.deepEqual(plan.content, { left: RAIL_WIDTH, top: HEADER_HEIGHT, width: 1280 - RAIL_WIDTH, height: 720 - HEADER_HEIGHT - FOOTER_HEIGHT });
 	assert.deepEqual(plan.footer, { left: 0, top: 720 - FOOTER_HEIGHT, width: 1280, height: FOOTER_HEIGHT });
-	assert.equal(plan.loader, "UI/MainWindow/ShellContent");
-	assert.equal(plan.items.length, 3);
+	assert.equal(plan.loader, "");
 	assert.equal(plan.counts.items, 3);
 });
 
 test("shellPlan is phased so rail items validate against the rail the chrome created", () => {
 	const plan = shellPlan(base);
-	assert.deepEqual(plan.phases.map((phase) => phase.name), ["chrome", "rail", "attach", "pointers"]);
+	assert.deepEqual(plan.phases.map((phase) => phase.name), ["chrome", "rail", "pointers"]);
 	assert.equal(plan.counts.ops, plan.phases.reduce((total, phase) => total + phase.ops.length, 0));
 	// Every item is created inside the collection Studio makes with the panel.
 	for (const phase of plan.phases.filter((entry) => entry.name === "rail")) {
 		for (const op of phase.ops.filter((entry) => entry.op === "create_widget")) assert.match(op.screen, /ShellRail\/Panels$/u);
 	}
-	// The rail's loader property is materialised in its own batch, then its Value is written.
-	assert.deepEqual(plan.phases.find((phase) => phase.name === "attach").ops, [
-		{ op: "set_property", path: "UI/MainWindow/ShellRail", name: "AttachedPanelLoader", value: "UI/MainWindow/ShellContent" }
-	]);
-	// Pointers are written on the pointer's own Value child, in the project-relative spelling.
+	// The chrome creates no loader: the native panel is the content host.
+	assert.equal(plan.phases[0].ops.some((op) => op.op === "create_widget" && op.widget_type === "PanelLoader"), false);
+	// Pointers are written on the item's own Panel Value child, in the project-relative spelling.
 	for (const op of plan.phases.find((phase) => phase.name === "pointers").ops) {
 		assert.equal(op.name, "Value");
-		assert.match(String(op.path), /\/(Panel|AttachedPanelLoader)$/u);
+		assert.match(String(op.path), /\/Panel$/u);
 		assert.match(String(op.value), /^UI\//u);
 	}
 });
@@ -54,27 +53,27 @@ test("shellPlan restates the bands it did not create", () => {
 	assert.equal(plan.counts.created, creates.length);
 });
 
-test("shellPlan reuses a panel loader the window already has", () => {
+test("a loader argument changes no node: the native panel is the content host", () => {
 	const plan = shellPlan({ ...base, loader: "UI/MainWindow/MainLoader", existing: ["MainLoader"] });
+	// Reported back for compatibility, but nothing is created, placed or pointed at it.
 	assert.equal(plan.loader, "UI/MainWindow/MainLoader");
-	assert.equal(plan.phases[0].ops.some((op) => op.op === "create_widget" && op.name === SHELL_NAMES.content), false);
-	// The loader is still pointed at the first screen and attached to the rail.
-	assert.ok(plan.phases[3].ops.some((op) => op.path === "UI/MainWindow/MainLoader/Panel" && op.value === "UI/Screens/Home"));
-	assert.ok(plan.phases[3].ops.some((op) => op.path.endsWith("ShellRail/AttachedPanelLoader") && op.value === "UI/MainWindow/MainLoader"));
+	assert.equal(plan.phases[0].ops.some((op) => op.op === "create_widget" && op.name === "MainLoader"), false);
+	assert.equal(plan.ops.some((op) => String(op.path ?? "").includes("MainLoader")), false);
 });
 
-test("shellPlan reuses the content host it created last time", () => {
-	const plan = shellPlan({ ...base, existing: [SHELL_NAMES.header, SHELL_NAMES.rail, SHELL_NAMES.content, SHELL_NAMES.footer] });
-	assert.equal(plan.loader, `UI/MainWindow/${SHELL_NAMES.content}`);
-	assert.equal(plan.exists.content, true);
-	assert.equal(plan.phases[0].ops.some((op) => op.op === "create_widget" && op.name === SHELL_NAMES.content), false);
-	// A second apply still points the host and the rail at the model it just left behind.
-	assert.ok(plan.phases[3].ops.some((op) => op.path === `UI/MainWindow/${SHELL_NAMES.content}/Panel`));
+test("shellPlan reuses the rail and its items on a second apply", () => {
+	const first = shellPlan(base);
+	const second = shellPlan({ ...base, existing: [SHELL_NAMES.header, SHELL_NAMES.rail, SHELL_NAMES.footer], existingItems: first.items.map((item) => item.name) });
+	assert.equal(second.phases.find((phase) => phase.name === "rail").ops.filter((op) => op.op === "create_widget").length, 0);
+	// The items still point at their screens, so a second apply repairs a drifted pointer without a duplicate.
+	assert.equal(second.phases.find((phase) => phase.name === "pointers").ops.length, 3);
 });
 
-test("shellPlan clamps the rail width and caps the items", () => {
-	assert.equal(shellPlan({ ...base, railWidth: 100 }).rail.width, 160);
-	assert.equal(shellPlan({ ...base, railWidth: 400 }).rail.width, 280);
+test("shellPlan clamps the tab strip width and caps the items", () => {
+	// The tab strip is the left column of the native panel; the panel itself fills the content area.
+	assert.equal(shellPlan({ ...base, railWidth: 100 }).content.left, 160);
+	assert.equal(shellPlan({ ...base, railWidth: 400 }).content.left, 280);
+	assert.equal(shellPlan({ ...base, railWidth: 100 }).rail.width, 1280);
 	const many = shellPlan({ ...base, screens: [...screens, { screen: "UI/Screens/A" }, { screen: "UI/Screens/B" }, { screen: "UI/Screens/C" }, { screen: "UI/Screens/D" }] });
 	assert.equal(many.items.length, 6);
 	assert.equal(many.phases.find((phase) => phase.name === "rail").ops.filter((op) => op.op === "create_widget").length, 6);
@@ -102,22 +101,9 @@ test("shellAudit passes a shell that has all four bands", () => {
 test("shellAudit names what is missing", () => {
 	const missing = shellAudit({ window_children: [], rail_items: [], attached_loader: "", content_ref: "" });
 	assert.equal(missing.ok, false);
-	assert.deepEqual(missing.findings.map((entry) => entry.rule), ["SHELL-01", "SHELL-02", "SHELL-04"]);
+	assert.deepEqual(missing.findings.map((entry) => entry.rule), ["SHELL-01", "SHELL-02"]);
 	assert.match(missing.next, /shell/u);
-	const unattached = shellAudit({
-		window_children: [SHELL_NAMES.header, SHELL_NAMES.rail],
-		rail_items: ["RailItem1", "RailItem2"],
-		attached_loader: "",
-		content_ref: "UI/Screens/Home"
-	});
-	assert.equal(unattached.ok, false);
-	assert.equal(unattached.findings[0].rule, "SHELL-03");
-	const empty = shellAudit({
-		window_children: [SHELL_NAMES.header, SHELL_NAMES.rail],
-		rail_items: ["RailItem1", "RailItem2"],
-		attached_loader: "UI/MainWindow/ShellContent",
-		content_ref: ""
-	});
-	assert.equal(empty.ok, true);
-	assert.equal(empty.findings[0].severity, "warning");
+	const onlyBands = shellAudit({ window_children: [SHELL_NAMES.header, SHELL_NAMES.rail], rail_items: ["RailItem1", "RailItem2"], attached_loader: "", content_ref: "" });
+	assert.equal(onlyBands.ok, true);
+	assert.equal(onlyBands.findings.length, 0);
 });

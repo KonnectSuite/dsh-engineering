@@ -11,7 +11,7 @@ const base = {
 	cancelLabel: "Keep"
 };
 
-test("dialogPlan wires a confirm dialog through Studio's own OpenDialog and CloseDialog", () => {
+test("dialogPlan opens through UICommands.OpenDialog and closes through the dialog's own Close", () => {
 	const plan = dialogPlan({ ...base, project: "LineHMI" });
 	assert.deepEqual(plan.phases.map((phase) => phase.name), ["folder", "type", "content", "wire"]);
 	assert.deepEqual(plan.phases[0].ops, [{ op: "create_folder", parent: "UI", name: "Dialogs" }]);
@@ -25,7 +25,7 @@ test("dialogPlan wires a confirm dialog through Studio's own OpenDialog and Clos
 	for (const wire of wires) {
 		assert.equal(wire.op, "wire_event");
 		assert.equal(wire.event_type, "MouseClickEvent");
-		assert.equal(wire.command, "CloseDialog");
+		assert.equal(wire.method_path, "UI/Dialogs/ConfirmDelete/Close");
 		assert.match(wire.path, /Dlg(Cancel|Confirm)$/u);
 	}
 	assert.deepEqual(plan.buttons.map((button) => button.label), ["Keep", "Delete"]);
@@ -86,20 +86,29 @@ test("dialogPlan adds the trigger phase when a screen button opens the dialog", 
 	const wire = trigger.at(-1);
 	assert.equal(wire.op, "wire_event");
 	assert.equal(wire.command, "OpenDialog");
-	assert.equal(wire.args, "Dialog=/Objects/LineHMI/UI/Dialogs/ConfirmDelete;AliasNode=");
+	assert.equal(wire.args, "Dialog=UI/Dialogs/ConfirmDelete;AliasNode=;ParentItem=");
 });
 
 test("dialogPlan restates what an earlier apply left behind", () => {
-	const plan = dialogPlan({ ...base, project: "LineHMI", folderExists: true, typeExists: true, triggerScreen: "UI/Screens/Home", triggerName: "BtnOpen", triggerExists: true });
+	const plan = dialogPlan({ ...base, project: "LineHMI", folderExists: true, typeExists: true, existingChildren: ["DlgSurface", "DlgTitle", "DlgMessage", "DlgCancel", "DlgConfirm"], triggerScreen: "UI/Screens/Home", triggerName: "BtnOpen", triggerExists: true });
 	assert.deepEqual(plan.phases[0].ops, []);
 	assert.deepEqual(plan.phases[1].ops.filter((op) => op.op === "create_type"), []);
 	// A second apply restates text and geometry only: creating what the first apply made is `already_exists`.
 	assert.deepEqual(plan.phases[2].ops.filter((op) => op.op === "create_widget"), []);
 	assert.deepEqual(plan.phases[3].ops, []);
-	assert.ok(plan.phases[2].ops.every((op) => op.op === "set_property"));
+	// Restating also pushes the surface behind the text it belongs to, so a reorder is expected.
+	assert.ok(plan.phases[2].ops.every((op) => op.op === "set_property" || op.op === "reorder"));
 	assert.ok(plan.phases[2].ops.some((op) => op.name === "Text" && op.value.includes("Delete recipe?")));
 	// An existing trigger is neither created nor rewired a second time, so its phase is absent.
 	assert.equal(plan.phases.find((phase) => phase.name === "trigger"), void 0);
+});
+
+test("dialogPlan completes a dialog whose children are missing", () => {
+	// A type kept from an earlier session can have lost its children: the plan creates only the missing ones.
+	const plan = dialogPlan({ ...base, folderExists: true, typeExists: true, existingChildren: ["DlgTitle", "DlgCancel"] });
+	const creates = plan.phases[2].ops.filter((op) => op.op === "create_widget").map((op) => op.name);
+	assert.deepEqual(creates, ["DlgSurface", "DlgMessage", "DlgConfirm"]);
+	assert.deepEqual(plan.phases[3].ops.filter((op) => op.op === "wire_event").map((op) => op.path), ["UI/Dialogs/ConfirmDelete/DlgConfirm"]);
 });
 
 test("dialogPlan refuses a trigger it cannot address", () => {

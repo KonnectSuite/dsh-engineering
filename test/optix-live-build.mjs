@@ -79,8 +79,9 @@ line("theme", `${theme.status} applied=${theme.applied} styles=${theme.counts?.s
 const shell = await run("optix_ui", { action: "shell", mode: "apply", project: PROJECT, screens: NAMES.map((name) => `UI/Screens/${name}`) });
 line("shell", `${shell.status} applied=${shell.applied} buttons=${(shell.buttons ?? []).length}`);
 
-// 5. Panel pointers: validated writes on each pointer's own Value child.
-const ops = [{ op: "set_property", path: `${WINDOW}/ShellContent/Panel`, name: "Value", value: "UI/Screens/Overview" }];
+// 5. Panel pointers: validated writes on each pointer's own Value child. The native navigation panel is the
+// content host, so the items are the only pointers (there is no separate loader to point at a screen).
+const ops = [];
 NAMES.forEach((name, index) => {
 	ops.push({ op: "set_property", path: `${WINDOW}/ShellRail/Panels/RailItem${index + 1}/Panel`, name: "Value", value: `UI/Screens/${name}` });
 });

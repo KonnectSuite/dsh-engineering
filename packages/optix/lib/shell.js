@@ -109,7 +109,10 @@ export function shellPlan({ window, width, height, language = undefined, screens
 	const taken = new Set(existing);
 	const has = (name) => taken.has(name);
 	const header = rect(0, 0, width, HEADER_HEIGHT);
-	const railSlot = rect(0, HEADER_HEIGHT, rail, height - HEADER_HEIGHT - FOOTER_HEIGHT);
+	// A native NavigationPanel hosts the panels it switches between: the tab strip is its TabWidth column and
+	// the current item's panel fills the rest, so the rail and the content area are one node. A separate
+	// PanelLoader beside it never gets driven and the content stays on the first screen (measured in the runtime).
+	const railSlot = rect(0, HEADER_HEIGHT, width, height - HEADER_HEIGHT - FOOTER_HEIGHT);
 	const content = rect(rail, HEADER_HEIGHT, width - rail, railSlot.height);
 	const footer = rect(0, height - FOOTER_HEIGHT, width, FOOTER_HEIGHT);
 	const chrome = [];
@@ -155,13 +158,8 @@ export function shellPlan({ window, width, height, language = undefined, screens
 	// Chrome: the rail object and the content host, geometry before any item goes into the rail.
 	panel("NavigationPanel", SHELL_NAMES.rail);
 	place(chrome, `${window}/${SHELL_NAMES.rail}`, railSlot, { TabPosition: "2", TabWidth: size(rail), TabHeight: size(44) });
-	const loaderPath = typeof loader === "string" && loader.trim() !== "" ? loader : `${window}/${SHELL_NAMES.content}`;
-	exists.content = (typeof loader === "string" && loader.trim() !== "") || has(SHELL_NAMES.content);
-	if (!exists.content) {
-		chrome.push({ op: "create_widget", screen: window, name: SHELL_NAMES.content, widget_type: "PanelLoader" });
-		created.push(SHELL_NAMES.content);
-	}
-	place(chrome, loaderPath, content);
+	const loaderPath = typeof loader === "string" && loader.trim() !== "" ? loader : "";
+	exists.content = has(SHELL_NAMES.content);
 
 	// Chrome: the status strip.
 	panel("Rectangle", SHELL_NAMES.footer);
@@ -183,21 +181,12 @@ export function shellPlan({ window, width, height, language = undefined, screens
 		pointers.push({ op: "set_property", path: `${itemPath}/Panel`, name: "Value", value: entry.screen });
 	});
 
-	// Attach: the rail's own NodeId property has no pointer child until it is written,
-	// so it is materialised in this phase and its Value is written in `pointers`.
-	const attach = [
-		{ op: "set_property", path: `${window}/${SHELL_NAMES.rail}`, name: "AttachedPanelLoader", value: loaderPath }
-	];
-
-	// Pointers: what the rail switches, and what the loader hosts.
-	pointers.push({ op: "set_property", path: `${loaderPath}/Panel`, name: "Value", value: targets[0].screen });
-	pointers.push({ op: "set_property", path: `${window}/${SHELL_NAMES.rail}/AttachedPanelLoader`, name: "Value", value: loaderPath });
-
+	// The native panel hosts the current item's panel itself, so there is no loader to attach and no
+	// content-host pointer to write; every item's own Panel is the switch.
 	const phases = [
 		{ name: "chrome", ops: chrome },
 		{ name: "rail", ops: railOps, after_chrome: true },
-		{ name: "attach", ops: attach, after_rail: true },
-		{ name: "pointers", ops: pointers, after_attach: true }
+		{ name: "pointers", ops: pointers, after_rail: true }
 	];
 	return {
 		window,
@@ -213,8 +202,8 @@ export function shellPlan({ window, width, height, language = undefined, screens
 		items,
 		exists,
 		phases,
-		ops: [...chrome, ...railOps, ...attach, ...pointers],
-		counts: { ops: chrome.length + railOps.length + attach.length + pointers.length, chrome: chrome.length, rail: railOps.length, attach: attach.length, pointers: pointers.length, created: created.length, items: items.length }
+		ops: [...chrome, ...railOps, ...pointers],
+		counts: { ops: chrome.length + railOps.length + pointers.length, chrome: chrome.length, rail: railOps.length, pointers: pointers.length, created: created.length, items: items.length }
 	};
 }
 
@@ -234,12 +223,8 @@ export function shellAudit({ window_children = [], rail_items = [], loader_ref =
 	if (!names.has(SHELL_NAMES.rail) || rail_items.length < 2) {
 		miss("SHELL-02", "critical", names.has(SHELL_NAMES.rail) ? `the rail carries ${rail_items.length} item(s); an operator needs at least two` : "the window has no navigation rail", "name a screen per rail item and apply the shell");
 	}
-	if (names.has(SHELL_NAMES.rail) && String(attached_loader ?? "").trim() === "") {
-		miss("SHELL-03", "critical", "the rail is not attached to a panel loader, so a tab click cannot change the panel", "apply the shell again: it writes AttachedPanelLoader on the pointer's Value child");
-	}
-	if (String(content_ref ?? "").trim() === "" && String(loader_ref ?? "").trim() === "") {
-		miss("SHELL-04", "warning", "the content host shows no screen", "set the loader's Panel to the first screen");
-	}
+	// A native NavigationPanel hosts its items' panels itself, so there is no loader to attach and no content
+	// host to fill: the rail is the content host and every item's own Panel is the switch.
 	const critical = findings.filter((entry) => entry.severity === "critical").length;
 	return {
 		ok: critical === 0,

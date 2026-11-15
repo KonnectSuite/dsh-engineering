@@ -322,6 +322,20 @@ library Rockwell ships, and the generator reaches them as **adapters**:
 The adapters and the artwork are proved by `test/optix-adapters.spec.mjs` and `test/optix-assets.spec.mjs`;
 that a widget shows live data is proved only in the runtime, after Save and Build.
 
+## The shell is a native panel, and a dialog is a typed call
+
+The navigation panel **is** the content host: a `NavigationPanel` fills the content area and its items
+point at screens, so a `PanelLoader` beside it is never driven (measured: the rail changed its active
+tab while the panel stayed on the first screen). The shell draws header, rail, footer and nothing else,
+and the rail's items are the only pointers to wire.
+
+A `Dialog` opens through `/Objects/Commands/UICommands` `OpenDialog` with **three** arguments
+(`Dialog`, `AliasNode`, `ParentItem`), and the `Dialog` argument must arrive as a project-relative path
+so the bridge writes it as a `NodeId` (`/Objects/...` lands as a String and the runtime answers
+`is not a non-empty NodeId`). It closes through its own `Close` method: `command: "CloseDialog"` fails
+with `Method 'CloseDialog' not found on target object .../Commands/UICommands`. Give the dialog a
+surface rectangle and push it to the back, or the texts float over the screen.
+
 ## Navigation is a bar and a proof
 
 A screen that never changes when a button is clicked is the failure this skill exists to stop: the
