@@ -154,7 +154,7 @@ export function shellPlan({ window, width, height, language = undefined, screens
 
 	// Chrome: the rail object and the content host, geometry before any item goes into the rail.
 	panel("NavigationPanel", SHELL_NAMES.rail);
-	place(chrome, `${window}/${SHELL_NAMES.rail}`, railSlot, { TabPosition: "1", TabWidth: size(rail), TabHeight: size(HEADER_HEIGHT - 12) });
+	place(chrome, `${window}/${SHELL_NAMES.rail}`, railSlot, { TabPosition: "2", TabWidth: size(rail), TabHeight: size(44) });
 	const loaderPath = typeof loader === "string" && loader.trim() !== "" ? loader : `${window}/${SHELL_NAMES.content}`;
 	exists.content = (typeof loader === "string" && loader.trim() !== "") || has(SHELL_NAMES.content);
 	if (!exists.content) {
@@ -253,8 +253,9 @@ export function shellAudit({ window_children = [], rail_items = [], loader_ref =
  * The `LocalizedText` JSON Studio writes for a label.
  *
  * @param value - The text.
- * @returns The JSON string Studio persists.
+ * @returns The visible string. Studio stores a LocalizedText here, but the bridge takes the plain string and
+ * localises it itself; a JSON payload painted literally is the symptom of passing the structure in.
  */
 function textOf(value) {
-	return JSON.stringify({ LocaleId: "en-US", Text: String(value ?? "") });
+	return String(value ?? "");
 }

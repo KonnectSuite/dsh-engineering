@@ -385,12 +385,14 @@ export function chartComponent(parent, name, slot, spec, theme) {
 	const ops = [...card.ops];
 	const inner = `${parent}/${name}`;
 	const title = typeof spec?.title === "string" && spec.title !== "" ? spec.title : "Values";
-	ops.push(...text(inner, "Title", { left: slot.left + 14, top: slot.top + 10, width: Math.max(80, slot.width - 28), height: 22 }, title.toUpperCase(), theme, { fontSize: theme.type.subheading, colour: theme.colours.text, weight: "700" }).ops);
+	ops.push(...text(inner, "Title", { left: 14, top: 10, width: Math.max(80, slot.width - 28), height: 22 }, title.toUpperCase(), theme, { fontSize: theme.type.subheading, colour: theme.colours.text, weight: "700" }).ops);
 	const values = Array.isArray(spec?.values) ? spec.values.slice(0, 8).map((entry) => Number(entry ?? 0)).filter((entry) => Number.isFinite(entry)) : [];
 	if (values.length === 0) refuse("blueprint_chart_empty", `${name} needs at least one numeric value in chart.values`);
 	const labels = Array.isArray(spec?.labels) ? spec.labels : values.map((_value, index) => String(index + 1));
 	const threshold = Number.isInteger(spec?.threshold) ? spec.threshold : -1;
-	const plot = { left: slot.left + 20, top: slot.top + 44, width: slot.width - 40, height: slot.height - 96 };
+	// Children of the card are positioned relative to the card, not to the screen: an absolute slot here would
+	// be applied twice and paint the bars outside the card (measured in the runtime).
+	const plot = { left: 20, top: 44, width: slot.width - 40, height: slot.height - 96 };
 	if (plot.height < 40) refuse("layout_overflow", `${name} leaves ${plot.height.toFixed(0)}px to draw ${values.length} bar(s): give the chart more height or fewer values`);
 	const peak = Math.max(...values, 1);
 	const barGap = 10;

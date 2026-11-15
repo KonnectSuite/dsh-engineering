@@ -60,10 +60,11 @@ export class DialogError extends Error {
  * The `LocalizedText` JSON Studio writes for a label.
  *
  * @param value - The text.
- * @returns The JSON string Studio persists.
+ * @returns The visible string. Studio stores a LocalizedText here, but the bridge takes the plain string and
+ * localises it itself; a JSON payload painted literally is the symptom of passing the structure in.
  */
 function textOf(value) {
-	return JSON.stringify({ LocaleId: "en-US", Text: String(value ?? "") });
+	return String(value ?? "");
 }
 
 /**
