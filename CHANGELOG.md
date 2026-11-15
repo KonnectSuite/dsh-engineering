@@ -1,4 +1,10 @@
-## [0.95.0] - 2026-11-14
+## [0.95.1] - 2026-11-14
+
+- **0.95.1 is 0.95.0, published.** The npm registry accepted `0.95.0` into a staged state it will neither
+  publish nor name (`npm stage list` answers empty, the version document is a 404, and a re-publish is
+  refused with `Cannot publish over previously staged version "0.95.0"`). The same tree went out as
+  `0.95.1`; nothing in the package changed.
+
 
 - **The shell navigation bar is wired and painted by the draft that draws it.** Measured live on
   the LineHMI project: `optix_screen` probed the path of the screen it was about to create, reported
