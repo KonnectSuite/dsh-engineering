@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.97.0] - 2026-11-15
 
 - **A second authoring channel: the project files, behind gates.** `optix_project` reads and edits the
   project the way Studio stores it — the `.optix` document, its `- File:` registrations and the YAML
