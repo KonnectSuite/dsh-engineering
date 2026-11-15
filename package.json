@@ -65,6 +65,8 @@
     "docs:check": "tsx scripts/gen-tool-reference.ts --check && tsx scripts/gen-print-css.mts --check",
     "docs:figures": "node scripts/gen-doc-figures.mjs",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",
+    "optix:help": "node scripts/gen-optix-help.mjs",
+    "optix:template": "node scripts/gen-optix-template.mjs",
     "resources:build": "node scripts/resources.mjs",
     "resources:check": "node scripts/resources.mjs --check",
     "build:faces": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-ecad-face.mjs",
@@ -84,6 +86,7 @@
     "@mlightcad/data-model": "1.15.21",
     "fast-xml-parser": "5.11.1",
     "fast-xml-validator": "1.4.2",
+    "js-yaml": "^4.1.0",
     "playwright-core": "1.61.1",
     "st-ethernet-ip": "2.7.5"
   },
@@ -102,7 +105,6 @@
     "@deepseek-ai/dsh-typert-protocol": "0.2.2-alpha.3",
     "@deepseek-ai/dsh-util-values": "0.2.2-alpha.2",
     "@deepseek-ai/schemastery": "3.18.5",
-    "js-yaml": "^4.1.0",
     "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },

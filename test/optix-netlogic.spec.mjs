@@ -173,11 +173,39 @@ test("an observer template subscribes in Start and unsubscribes in Stop", () => 
 	assert.doesNotMatch(code, /PeriodicTask/u);
 });
 
+test("the nav template drives the owner PanelLoader through a project-relative screen path", () => {
+	const code = templateCode({ name: "NavLogic", kind: "runtime", template: "nav" });
+	assert.match(code, /using FTOptix\.UI;/u);
+	assert.match(code, /public class NavLogic : BaseNetLogic/u);
+	assert.match(code, /loader = Owner as PanelLoader;/u);
+	assert.match(code, /\[ExportMethod\]/u);
+	assert.match(code, /public void Open\(string screenPath\)/u);
+	assert.match(code, /Project\.Current\.Get<ScreenType>\(screenPath\)/u);
+	assert.match(code, /loader\.ChangePanel\(screen\);/u);
+	assert.match(code, /loader = null;/u);
+	assert.doesNotMatch(code, /"\/Objects\//u);
+	assert.equal(reviewNetLogic(code, { name: "NavLogic", kind: "runtime" }).counts.critical, 0);
+});
+
+test("the login template logs in through the Users alias without a hard-coded path", () => {
+	const code = templateCode({ name: "LoginLogic", kind: "runtime", template: "login" });
+	assert.match(code, /using FTOptix\.Core;/u);
+	assert.match(code, /\[ExportMethod\]/u);
+	assert.match(code, /public void PerformLogin\(string username, string password, out bool loginResult\)/u);
+	assert.match(code, /LogicObject\.GetAlias\("Users"\)/u);
+	assert.match(code, /user\.PasswordVariable\.RemoteRead\(\);/u);
+	assert.match(code, /loginResult = Session\.ChangeUser\(username, password\);/u);
+	assert.match(code, /loginResult = false;/u);
+	assert.doesNotMatch(code, /"\/Objects\//u);
+	assert.equal(reviewNetLogic(code, { name: "LoginLogic", kind: "runtime" }).counts.critical, 0);
+});
+
 test("a template has to be one this tool knows, and a design class cannot start background work", () => {
-	assert.deepEqual(TEMPLATES, ["blank", "periodic", "observer"]);
+	assert.deepEqual(TEMPLATES, ["blank", "periodic", "observer", "nav", "login"]);
 	assert.throws(() => templateCode({ name: "Probe", kind: "runtime", template: "timers" }), /template must be one of/u);
 	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "periodic" }), /design-time NetLogic/u);
 	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "observer" }), /design-time NetLogic/u);
+	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "nav" }), /design-time NetLogic/u);
 });
 
 test("the safe periodic template passes the review", () => {

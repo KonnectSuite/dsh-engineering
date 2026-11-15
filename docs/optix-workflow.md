@@ -135,10 +135,11 @@ no on-screen effect — is named as not proven rather than implied.
 
 **A fresh starter screenshots as one flat colour, and that is correct.** Both packaged templates ship a
 window — `UI/MainWindow`, canvas from the `width`/`height` you passed, `Caption` linked to the project
-`BrowseName` — and no screen inside it. A 1920×1080 white PNG with one distinct colour is the honest
+`BrowseName` — and four screens the operator shell opens on (`Home`, `Alarms`, `Diagnostics`, `Settings`)
+that nothing has mounted in the window yet. A 1920×1080 white PNG with one distinct colour is the honest
 render of that project; it means the runtime, the engine and the browser are all working. Content appears
-once phase 4 has drawn a screen. Do not report a blank render as a broken preview, and do not scaffold a
-starter and then claim a screen was built.
+once phase 4 has mounted a screen with `optix_screen` and planned the bar with `optix_nav`. Do not report a
+blank render as a broken preview, and do not scaffold a starter and then claim a screen was built.
 
 The runtime also resolves a `PanelLoader`'s `DynamicLink` before its `Panel` pointer, and a button
 created inside a panel resolves its loader path to the design-time object. Both were measured live and
@@ -200,12 +201,12 @@ formatter).
 | Phase | Tools |
 | --- | --- |
 | Brief | `engineering_reference`, `engineering_profile`, `optix_template {}` |
-| Scaffold | `optix_template` with `template`, `destination`, `name`, `width`, `height` |
+| Scaffold | `optix_template` with `template`, `destination`, `name`, `width`, `height`; `optix_project` and `optix_build` when a starter or a standard has to be written from files |
 | Connect | `optix_status`, `optix_bridge_arm`, `optix_read`, `optix_validate_expression` |
-| Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check`, `optix_schema`, `optix_svg` |
-| Persist | `optix_status` (`needs_save`, `saved: true`), `optix_emulator { action: "status" }` (`disk`, `saved_after_edit`) |
+| Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check`, `optix_schema`, `optix_svg`, `optix_project` (file channel), `optix_build` (references, solution, compile check) |
+| Persist | `optix_status` (`needs_save`, `saved: true`), `optix_emulator { action: "status" }` (`disk`, `saved_after_edit`), `optix_build { action: "status" }` |
 | Look | `optix_emulator` (`status`, `start`, `restart`, `logs`, `stop`), `optix_preview`, `optix_screenshot`, `optix_ocr` |
-| Release | `optix_production_check` |
+| Release | `optix_production_check`, `optix_project { action: "check" }`, `optix_build { action: "check" }` |
 
 ## What this workflow does not do
 
@@ -214,4 +215,6 @@ formatter).
   runtime, because it is the only thing that knows which runtime belongs to which project.
 - It never talks to the bridge by hand (`curl` against `/bridge/*`), and never imports the plugin's
   `lib/` to call a tool function directly.
+- It never edits a project file with a text editor, a shell one-liner or a script: the file channel is
+  `optix_project`, which refuses while Studio has the project open and keeps a backup of every apply.
 - It does not claim a build, a save or a deployment happened. Those are the engineer's, or Studio's.

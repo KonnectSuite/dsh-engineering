@@ -81,6 +81,21 @@ next      [ optix_validate_expression | optix_read | the Studio steps ]
 5. Writes `SOURCE.json` with the commit and `fetched_at`, so the shipped snapshot is always traceable.
 6. Fails when a page is empty or a slug collides.
 
+The same module also carries two hand-written starter templates in
+`packages/optix/lib/netlogic.js` (`TEMPLATES = ["blank", "periodic", "observer", "nav", "login"]`).
+They are not upstream pages: each one is the measured Rockwell idiom, reduced to the smallest class
+that still shows it.
+
+| Template | Shape | Source of the idiom |
+|---|---|---|
+| `nav` | runtime class bound **inside** a `PanelLoader`; caches `Owner as PanelLoader` in `Start()`, exports `Open(string screenPath)` which resolves `Project.Current.Get<ScreenType>(screenPath)` and calls `loader.ChangePanel(screen)` | `Optix_Sample_PanelLoaderChangePanelNetLogic`, `Optix_Template_NavigationButtons` |
+| `login` | runtime class exporting `PerformLogin(string username, string password, out bool loginResult)`; reads the `Users` alias, calls `user.PasswordVariable.RemoteRead()` then `Session.ChangeUser(username, password)` | `Optix_Template_NavigationButtons` `LoginButtonLogic.cs` |
+
+Both are `runtime` only (a design-time class is a set of `[ExportMethod]` helpers and does not own
+background work), both pass `optix_script review` with zero critical findings, and neither contains an
+absolute `/Objects/` path — the loader comes from `Owner`, the users from an alias, so a rename does
+not break them.
+
 The snapshot is committed, so the bundle never fetches at runtime. `pnpm netlogic:sync` refreshes it;
 the release notes record the commit.
 

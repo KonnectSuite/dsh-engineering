@@ -44,10 +44,10 @@
   ],
   "optixStudioVersion": "1.7.4.32-Stable",
   "sourceProjectName": "AryaNewHMIProject_IPC",
-  "contentHash": "57cabafdbffc9884e11c5f62f6caed3bd6f8e0a47cd45aa24651172751b9f6d6",
+  "contentHash": "5ed60ff3d0e06479770487bc1d86509e79b8b8529059de13605be0e84e8f749f",
   "bridgeSourceHash": "c8e1d441409e6bc02099ac07452d8c23e4143eb041c2f82fbb67912e4d4decc6",
   "fileCount": 34,
-  "totalBytes": 274225,
+  "totalBytes": 417134,
   "readOnly": true,
   "directories": [
     "ApplicationFiles",
@@ -91,116 +91,14 @@
   "files": [
     {
       "path": "AryaNewHMIProject_IPC.optix",
-      "size": 1707,
-      "sha256": "49673c013dd6dccc4dfec47c60f44067f9e52e91ac55599c656ffb959329d3a6",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/.vscode/launch.json",
-      "size": 377,
-      "sha256": "9c8b3adcff7e5e47ce5c7c13553b88b8afbc795b686410ea1429bcd133e3c600",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
-      "size": 242578,
-      "sha256": "c8e1d441409e6bc02099ac07452d8c23e4143eb041c2f82fbb67912e4d4decc6",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.sln",
-      "size": 1068,
-      "sha256": "23ee3567fb17e51ea8e3874deded999ae22482bfba1fc63ce876a136374ebb94",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.references",
-      "size": 11323,
-      "sha256": "ba4341af8520973ea3f7cb88a001f70e8e14439c2d155ffd5aba6e31479ed9ec",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.csproj",
-      "size": 834,
-      "sha256": "a208e29c5e15687803748d398179aab32dbd5c27150919bcd05ee10fd055decd",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.code-workspace",
-      "size": 114,
-      "sha256": "dadc86a4a1f7ec9b79721f4b4af3563949d18364e48ffafd00c0347aec64e986",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/UserDefinedModule.xml",
-      "size": 734,
-      "sha256": "deae06cab3c96b793faa97b0e1a66ebf7dbdbd57c3d6d5914eb744af079f7e8a",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/Screens/Screens.yaml",
-      "size": 44,
-      "sha256": "cb5621dd13cdd9efb73422c72f58ad1501557f5ed273b39267dc5e1f269b25b2",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/Keyboards/Keyboards.yaml",
-      "size": 48,
-      "sha256": "a8a4cb1b56175fab975ca8c38cb4cdea8e620ea7a800d897857ad44cf4499d7b",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/UI.yaml",
-      "size": 8078,
-      "sha256": "faad08d6a60fbbbc924979f35050e85c5c64a13564630ccb2557469d8e184fee",
-      "text": true
-    },
-    {
-      "path": "Nodes/Translations/Translations.yaml",
-      "size": 315,
-      "sha256": "f79c62c0b7be199275ef09efaed5f0bdd604a708c7f819f17c15f7e74ed5b9f4",
-      "text": true
-    },
-    {
-      "path": "Nodes/System/System.yaml",
-      "size": 42,
-      "sha256": "907b11402c87cc5fdb9c4c58339d56494307e1ccbd8a631725d64d1dde22ccb6",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Users/Users.yaml",
-      "size": 80,
-      "sha256": "06806437dd0e025939cdcc0683885692922863b4fcd9dfd4e63cf5cec34635c4",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Roles/Roles.yaml",
-      "size": 80,
-      "sha256": "3f11ead6e8dff5a6d66487f68b2fc154c22f31080f8d2cd3c81d774ca57df9d9",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Groups/Groups.yaml",
-      "size": 82,
-      "sha256": "ccb40fed3d62eb1f532350876fdfd7397d25dda74f46fb4302c33d8878166e3c",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Security.yaml",
-      "size": 177,
-      "sha256": "85f64f04c6c39eb3399dfdf5464d1ee0bfb5fbf2197e1c7305b3c41e04d2114a",
-      "text": true
-    },
-    {
-      "path": "Nodes/Retentivity/Retentivity.yaml",
-      "size": 1473,
-      "sha256": "59264f7f0929d9f60f14f202b6c95215f0322d56732b6562ce84373e32c58601",
+      "size": 1626,
+      "sha256": "ad3970d82d0bfba1671ab217437bbad566fbece59e3f11213591e163932302ab",
       "text": true
     },
     {
       "path": "AryaNewHMIProject_IPC.optix.design",
-      "size": 754,
-      "sha256": "98b173efd7f670fde03b2eedf43a5b985833b04849be4cdbba0fd114e0ac1559",
+      "size": 716,
+      "sha256": "0291093d32d9263614e80b35d7db38a35f52e746d514eacb9e3fa93a908c13de",
       "text": true
     },
     {
@@ -210,87 +108,189 @@
       "text": true
     },
     {
-      "path": "Nodes/AryaNewHMIProject_IPC.yaml",
-      "size": 1801,
-      "sha256": "0d77e3e20e1058a081da379fd9ede86c7a806107dd2a889d8abdb969facb1d61",
+      "path": "Nodes/Alarms/Alarms.yaml",
+      "size": 79,
+      "sha256": "c69808736c2182d984cf7ff782db50936b02e6bc0587af1dec9c9adfb8b7b903",
       "text": true
     },
     {
-      "path": "Nodes/Alarms/Alarms.yaml",
-      "size": 82,
-      "sha256": "c6f3fe8d0f126af36bd79cdd0ea5069c87ec1bff3f1d4d5c4a7b9f8864a579f9",
+      "path": "Nodes/AryaNewHMIProject_IPC.yaml",
+      "size": 1734,
+      "sha256": "e098d42721ce0475016222f8493253f6cf4b7e289b9165124339464565db7c8a",
       "text": true
     },
     {
       "path": "Nodes/CommDrivers/CommDrivers.yaml",
-      "size": 52,
-      "sha256": "9641581a4c8a3eabbbb6471c7e38cbcf50ac8aeba65e8ba492b1d59be8521d3a",
+      "size": 50,
+      "sha256": "1adb13bfff3e39a4e50ce60666c3253e97a18c5fb55eac138adea86c2695840d",
       "text": true
     },
     {
       "path": "Nodes/Converters/Converters.yaml",
-      "size": 50,
-      "sha256": "cba8b3baee310a508f1373d3ff10cbb0cd1c216b3fcdbb1f930f489b38985b2e",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/Private/TypeConstants.cs",
-      "size": 691,
-      "sha256": "3d6cca182c7a9df4ad98009f9664a9d86be1b6e0096be520270315ac812cb3b4",
+      "size": 48,
+      "sha256": "efe2b5ed0b24a2d32ef4046fdf6140c1db85f45a3665f2ec2c8a1f3a4c41d9b7",
       "text": true
     },
     {
       "path": "Nodes/DataStores/DataStores.yaml",
-      "size": 50,
-      "sha256": "fc01692c1cf1567bf09dad3143b4c572fdd81d498bf9c344c3b8fea64750eb56",
-      "text": true
-    },
-    {
-      "path": "Nodes/Model/Model.yaml",
-      "size": 40,
-      "sha256": "b5ccba96c15748c8c3089187132c483542c7a3fdd4c62b1004432ec158454711",
-      "text": true
-    },
-    {
-      "path": "Nodes/MQTT/MQTT.yaml",
-      "size": 38,
-      "sha256": "70bde6fab5c88f77ec1c265a0412874c8c016385d4f45cde0262df0ba31bcff2",
-      "text": true
-    },
-    {
-      "path": "Nodes/NetLogic/NetLogic.yaml",
-      "size": 996,
-      "sha256": "603799e9895c37f120ef3acc56515cba1c79604886f5b6da85c17f20a7f2cdc8",
-      "text": true
-    },
-    {
-      "path": "Nodes/OPC-UA/OPC-UA.yaml",
-      "size": 43,
-      "sha256": "ac1bf577c15d8172ed21b10d83e034a6954a96d8c41963056e1a5ff8acac3149",
-      "text": true
-    },
-    {
-      "path": "Nodes/Recipes/Recipes.yaml",
-      "size": 44,
-      "sha256": "591178462a3154796ce1a15d1b0c8f12010b6709952481cae5f5406095495e89",
-      "text": true
-    },
-    {
-      "path": "Nodes/Reports/Reports.yaml",
-      "size": 44,
-      "sha256": "1ec3965861a2368f9552b3c7b899341f3f874320725f7a63be855d5aa26b892e",
+      "size": 48,
+      "sha256": "a5e1ac8432f521e8cd46faf37e1e95b6825f3e1f79461b5bfb25288ac64c27a5",
       "text": true
     },
     {
       "path": "Nodes/Loggers/Loggers.yaml",
-      "size": 44,
-      "sha256": "61629d78ec411d8896a32cc036545749cf34386e1d4e045aa5b2bd61c905ccb6",
+      "size": 42,
+      "sha256": "5af106cc45752bec179a962c0a345abc116c3aa51dab8276dd7126c63ef5a10b",
+      "text": true
+    },
+    {
+      "path": "Nodes/MQTT/MQTT.yaml",
+      "size": 36,
+      "sha256": "19dca2b1895facca5977bef0d6adab5fc347e11d5a7a7b23e34e66067e519daa",
+      "text": true
+    },
+    {
+      "path": "Nodes/Model/Model.yaml",
+      "size": 38,
+      "sha256": "a0822047657869538ecfee6d893212773ccabc82e69c1f6a19f83c95694ed8e1",
+      "text": true
+    },
+    {
+      "path": "Nodes/NetLogic/NetLogic.yaml",
+      "size": 918,
+      "sha256": "c4b4c6cfb6139c861d4af1b79a621e889b5d0d545dd9a6a504b68a18c1d7e39b",
+      "text": true
+    },
+    {
+      "path": "Nodes/OPC-UA/OPC-UA.yaml",
+      "size": 41,
+      "sha256": "4708ead0a048dc75fca9003e1d3f4772cbae36d8663725dfc93c623a7ce198a5",
+      "text": true
+    },
+    {
+      "path": "Nodes/Recipes/Recipes.yaml",
+      "size": 42,
+      "sha256": "28e71477ec5bbe9893fac40d7426a418ef06153f09c46e4864eff18f4c7aa528",
+      "text": true
+    },
+    {
+      "path": "Nodes/Reports/Reports.yaml",
+      "size": 42,
+      "sha256": "1e021e2f04711525a023c8b9be04aa8476311453426772f29d267dac7bba7da7",
+      "text": true
+    },
+    {
+      "path": "Nodes/Retentivity/Retentivity.yaml",
+      "size": 1416,
+      "sha256": "09d49dbf0235dca81ed24281d5a4d39ec670b804eba1d31ddae9f2d30c49b075",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Groups/Groups.yaml",
+      "size": 79,
+      "sha256": "9d13e1f3bbed9137f357bb009bb31817adf340e7fd35493e3fe197227e7677f0",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Roles/Roles.yaml",
+      "size": 77,
+      "sha256": "63ed2ffcf2236af8dd29b5fa475072fe46b8b88ed8859c7938b187e9b1de2026",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Security.yaml",
+      "size": 170,
+      "sha256": "0dec3d5de9b9ccfc5082109165a25b79b815d1447ad0c3e7619f7f503a99b4e8",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Users/Users.yaml",
+      "size": 77,
+      "sha256": "2081a85f11dd0b5ba52fde976b88b107dabb507260244852768dafd8c1e3d279",
+      "text": true
+    },
+    {
+      "path": "Nodes/System/System.yaml",
+      "size": 40,
+      "sha256": "822b8426239ebf9b66a188087bd1aff31035ad2eb2f4896cf6a2b6a1f0bf728b",
+      "text": true
+    },
+    {
+      "path": "Nodes/Translations/Translations.yaml",
+      "size": 299,
+      "sha256": "363bfd0ff12c31a3b5186992f2b9c0c26a0c0ac3ded15f269c23dd43761337f5",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/Keyboards/Keyboards.yaml",
+      "size": 46,
+      "sha256": "792056b4d66bad25369ae62496123d085db2557a3a4f8df876ca904b00c7952f",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/Screens/Screens.yaml",
+      "size": 7223,
+      "sha256": "e41bfa978b17a6874e0749dcbf382bf9d732d77297d74bdd26dc373d9f0d95a3",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/UI.yaml",
+      "size": 7828,
+      "sha256": "e12f693da148e623c0bedece47f0829a8a41e31611389d7210d77bb3f4d3471e",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/.vscode/launch.json",
+      "size": 359,
+      "sha256": "69f8f2ed8311617253a99deb75b86ed302aee18de7699c3780e3be663e52fb7d",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.code-workspace",
+      "size": 105,
+      "sha256": "34ca295cec60e04b6d61f41a4f56d41157651327851d43116716e39bf329dca2",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.csproj",
+      "size": 815,
+      "sha256": "5aa1421287801a308d048dce03bafaff87ff655e3b76e2a03d603f3c0bfea314",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.references",
+      "size": 11151,
+      "sha256": "c636f58eb053568480d39d543d7b745e80a79e21bf92f03c8267b22a130b0c80",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_IPC.sln",
+      "size": 1047,
+      "sha256": "22d613e1830a9dc1c632f1754e3dc3bec78fff8c7960f6fec535dfed8da84fa3",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/Private/TypeConstants.cs",
+      "size": 671,
+      "sha256": "c32901f3c279503ad24d9f0649a731b2e5e0d955a84b7b9cd5f636dfd06f8d0e",
       "text": true
     },
     {
       "path": "ProjectFiles/NetSolution/Private/UITypeDefinitions.cs",
-      "size": 327,
-      "sha256": "9dde0be68063caa2ab2ede670b0f95d3166f5ad08fba1f034d3b335a8ed927e6",
+      "size": 316,
+      "sha256": "5c9a53ec0a4bf6740ae22152708d8b845e179e947c3b7776ca927c89bdec2983",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
+      "size": 379232,
+      "sha256": "818f8da082ea181c0a2584895decc24f34cb091d42e1c3bc778ebab140f3b2fb",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/UserDefinedModule.xml",
+      "size": 708,
+      "sha256": "4b5db0bad3b3fdb952ad1835bee77b786753d15e63438e3fd6d98d117b56ebc9",
       "text": true
     }
   ]

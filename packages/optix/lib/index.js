@@ -3,15 +3,18 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { connect } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { armBridge, bridgeVersion } from "./arm.js";
+import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls, writeReferences } from "./build.js";
+import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
 import { scaffoldProject } from "./scaffold.js";
+import { NAV_MAX_BUTTONS, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -20,6 +23,7 @@ import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
 import { MARKER, NETLOGIC_FOLDER, NETLOGIC_RULES, TEMPLATES, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, reviewNetLogic, templateCode, writeNetLogic } from "./netlogic.js";
 import { childrenOf, closest, diffDump, enumInfo, find as findSchema, isDataType, isObjectType, loadSchema, schemaVersion, typeInfo, typeNames } from "./schema.js";
+import { helpStatus, loadHelpIndex, pickInstall, readHelpPage, searchHelp } from "./help.js";
 import { elementPropertyName, inspectSvg, projectImgsDir, propertyClass, repairPlan } from "./svg.js";
 /** A "did you mean" tail for a name the catalog does not know. */
 function suggestSuffix(wrong, candidates) {
@@ -1698,6 +1702,43 @@ const jsonOutput = {
 	}]
 };
 /**
+* The type filter the file channel validates against: documented object types, variable types,
+* the OPC-UA base types the project uses for every variable and property, and library types
+* `project.js` treats as legitimately undocumented.
+* @param type - Type name as the project YAML writes it.
+*/
+function knownProjectType(type) {
+	return isObjectType(type) || isDataType(type);
+}
+/**
+* Resolve the project a file-channel tool was pointed at.
+*
+* `project` alone searches the places Studio projects live; `project_root` settles it. With
+* only a folder, the name comes from the one `<Project>.optix` in it.
+* @param args - Tool arguments carrying `project` and/or `project_root`.
+*/
+async function resolveProjectFolder(args) {
+	const named = typeof args.project === "string" ? args.project.trim() : "";
+	const folder = typeof args.project_root === "string" ? args.project_root.trim() : "";
+	if (named === "" && folder === "") {
+		throw new Error("give project (the project name, as optix_status reports it) or project_root (the folder that holds <Project>.optix)");
+	}
+	let project = named;
+	if (project === "") {
+		let entries;
+		try {
+			entries = await readdir(folder);
+		} catch {
+			throw new Error(`no folder ${folder} - point project_root at the Optix project folder`);
+		}
+		const hit = entries.find((entry) => entry.toLowerCase().endsWith(".optix") && !entry.toLowerCase().endsWith(".optix.design"));
+		if (hit === void 0) throw new Error(`no <Project>.optix in ${folder} - point project_root at the Optix project folder`);
+		project = basename(hit, ".optix");
+	}
+	const found = await findProjectRoot(project, folder === "" ? void 0 : folder);
+	return { project, ...found };
+}
+/**
 * Resolve defaults before constructing transport or registering tools.
 * @param config - Plugin configuration.
 * @returns Validated complete deployment settings.
@@ -1908,6 +1949,14 @@ function apply(ctx, config = {}) {
 			saved: {
 				type: "boolean",
 				description: "Set true only after the engineer confirms they saved and built the project. It clears the outstanding-change count, which nothing else can clear because no tool can save the project."
+			},
+			project: {
+				type: "string",
+				description: "Optional project name. With project or project_root, the answer also carries build_state: whether bin/<Project>.dll is newer than the newest .cs, and whether the references file resolves."
+			},
+			project_root: {
+				type: "string",
+				description: "Optional folder that holds <Project>.optix, for the build report."
 			}
 		},
 		output: jsonOutput,
@@ -1943,12 +1992,24 @@ function apply(ctx, config = {}) {
 			const outstanding = settings.bridgeUrls.reduce((total, origin) => total + pendingModelChanges(origin).pending, 0);
 			const saved = args?.saved === true;
 			const cleared = saved ? clearModelChanges(settings.bridgeUrls) : 0;
+			let buildStateReport;
+			const wantsBuild = (typeof args?.project === "string" && args.project.trim() !== "")
+				|| (typeof args?.project_root === "string" && args.project_root.trim() !== "");
+			if (wantsBuild) {
+				try {
+					const resolved = await resolveProjectFolder(args);
+					buildStateReport = await buildState(resolved.root);
+				} catch (error) {
+					buildStateReport = { error: error.message };
+				}
+			}
 			return {
 				endpoints,
 				authoring: settings.allowWrites,
 				destructive: settings.allowDestructive,
 				invoke: settings.allowInvoke,
 				preview_chain: await chainReport(settings, exec.signal),
+				...(buildStateReport === undefined ? {} : { build_state: buildStateReport }),
 				...(outstanding === 0 && !saved ? {} : {
 					needs_save: {
 						pending: saved ? 0 : outstanding,
@@ -2315,6 +2376,81 @@ function apply(ctx, config = {}) {
 			return {
 				...catalog,
 				type: info
+			};
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_docs",
+		description: "Search Rockwell's own Studio help, which is installed beside the IDE - 2,591 pages on 1.8.1.27 - without asking a model. action search ranks a shipped index (title, headings, snippet) so a question like \"how does ChangeUser work\" lands on Session.ChangeUser in one call; action read returns one page's text from the installed Help (the pages are read, not shipped: they are 266 MB of generated HTML); action status says whether the index matches the installed Studio. Use it before guessing an API name, a menu path or a property meaning, and treat what it returns as Rockwell documentation, not as a claim about this project's model - optix_read and optix_schema answer that. Navigation is the known gap: ChangePanel is not in the installed help at all, so optix_nav and docs/optix-nav.md are the source for it.",
+		parameters: {
+			action: {
+				type: "string",
+				required: true,
+				enum: [
+					"search",
+					"read",
+					"status"
+				],
+				description: "search ranks the index; read returns one page from the installed Help; status reports freshness and where pages are read from."
+			},
+			query: {
+				type: "string",
+				description: "Words to search for with action search: an API name (ChangeUser), a menu label or a topic."
+			},
+			id: {
+				type: "string",
+				description: "Exact page id from action search, for action read (for example Reference/FTOptix-UI/ObjectTypes/PanelLoader)."
+			},
+			section: {
+				type: "string",
+				description: "Optional path filter for search, for example Reference or creating-projects."
+			},
+			limit: {
+				type: "integer",
+				description: "Most hits for action search. Default 8."
+			}
+		},
+		output: jsonOutput,
+		presentCall: () => ({
+			card: "generic",
+			title: "Search the installed Studio help",
+			kind: "read"
+		}),
+		async execute(args) {
+			const index = await loadHelpIndex();
+			const base = {
+				action: args.action,
+				pages: index.pageCount,
+				studio_version: index.studioVersion
+			};
+			if (args.action === "status") {
+				const installs = await studioInstalls();
+				const status = await helpStatus(index, { installs });
+				return {
+					...base,
+					...status,
+					next: status.stale ? ["run node scripts/gen-optix-help.mjs after a Studio upgrade, so the index matches the help on disk"] : status.help_folder_present ? ["optix_docs action search with the API name or menu label"] : ["install FactoryTalk Optix Studio to read pages; search still works from the shipped index"]
+				};
+			}
+			if (args.action === "read") {
+				if (typeof args.id !== "string" || args.id.trim() === "") throw new Error("action read needs id: a page id from action search");
+				const install = pickInstall(await studioInstalls());
+				const page = await readHelpPage(index, args.id.trim(), { install });
+				return {
+					...base,
+					...page,
+					next: ["this is Rockwell documentation; optix_read or optix_schema answers what THIS project holds"]
+				};
+			}
+			if (typeof args.query !== "string" || args.query.trim() === "") throw new Error("action search needs query: words, an API name or a menu label");
+			const result = searchHelp(index, args.query, {
+				limit: args.limit === void 0 ? 8 : args.limit,
+				section: typeof args.section === "string" ? args.section : ""
+			});
+			return {
+				...base,
+				...result,
+				next: result.hits.length === 0 ? ["try fewer words or a section filter (Reference, creating-projects); optix_schema answers the object model"] : ["optix_docs action read with an id from hits"]
 			};
 		}
 	})));
@@ -4208,7 +4344,7 @@ function apply(ctx, config = {}) {
 			},
 			template: {
 				type: "string",
-				description: "For add with no code: blank, periodic (runtime class with a PeriodicTask, cached nodes, try/catch and dispose) or observer (runtime class subscribing to VariableChange and unsubscribing in Stop). Default blank."
+				description: "For add with no code: blank, periodic (runtime class with a PeriodicTask, cached nodes, try/catch and dispose), observer (runtime class subscribing to VariableChange and unsubscribing in Stop), nav (runtime class bound inside a PanelLoader, exposing Open(screenPath) through ChangePanel - the navigation template), or login (runtime class exposing PerformLogin(username, password, out bool) through the Users alias, PasswordVariable.RemoteRead() and Session.ChangeUser). Default blank."
 			},
 			code: {
 				type: "string",
@@ -4485,6 +4621,450 @@ function apply(ctx, config = {}) {
 				result,
 				next: "A design-time method runs against Project.Current the way right-click Execute does; a throwing method is reported in the result, and a runtime-only class has nothing to run here."
 			};
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_project",
+		description: "Read and edit a FactoryTalk Optix project as files, for what the bridge cannot do: a C# file, a new chapter, a rename, a repair, or a project Studio has closed. `check` validates every chapter (YAML, node names, references, absolute pointers) and reports the gates that would refuse a write; `census` counts files, nodes, types, NetLogic and screens; `node` reads one node by project path; `sources` lists chapters and backups; `stage` replays a batch of edits in memory and writes only a manifest; `apply` writes a staged batch from per-file backups with an all-or-nothing rollback; `diff` compares a backup with disk after Studio opened the project; `restore` puts a backup back. A write refuses while Studio has this project open or while the bridge holds unsaved changes, because Studio saves only on Ctrl+S and that save would overwrite the file edit: close the project (or use optix_edit) and stage again. Prefer optix_edit for the live model; use this for the files.",
+		parameters: {
+			action: {
+				type: "string",
+				required: true,
+				description: "check | census | node | sources | stage | apply | diff | restore"
+			},
+			project: {
+				type: "string",
+				description: "Project name as optix_status reports it. Give this or project_root."
+			},
+			project_root: {
+				type: "string",
+				description: "Folder that holds <Project>.optix. The only way to aim at a project Studio has never opened, and needed when the name alone matches several folders."
+			},
+			path: {
+				type: "string",
+				description: "For node: project path below the project folder, e.g. UI/MainWindow or Model/DshSpeed."
+			},
+			ops: {
+				type: "array",
+				items: { type: "json" },
+				description: "For stage: ordered edits. {op:'write_file', path, content, expect_sha256?}, {op:'replace_text', path, find, replace, count?}, {op:'insert_node', path, node_path, node:{Name, Type, ...}}, {op:'remove_node', path, node_path}, {op:'set_node_value', path, node_path, key, value}, {op:'set_project_name', name}. path is project-relative (Nodes/UI/UI.yaml); node_path is a node path inside that file, empty for the file root's children."
+			},
+			stage_id: {
+				type: "string",
+				description: "For apply: a stage id from stage, or latest (the default)."
+			},
+			backup_id: {
+				type: "string",
+				description: "For diff and restore: the backup id apply reported; empty means the newest."
+			},
+			force: {
+				type: "boolean",
+				description: "For apply: write even when a staged file changed on disk since staging. It never bypasses the Studio or unsaved-bridge gates. For restore: put the backup back even when the file changed after the apply."
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Optix project ${String(args?.action ?? "check")}`,
+			kind: /^(?:check|census|node|sources|diff)$/u.test(String(args?.action ?? "")) ? "read" : "write"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			const action = String(args?.action ?? "").trim();
+			const { project, root } = await resolveProjectFolder(args);
+			const info = await projectInfo(project, root);
+			const base = { action, project, project_root: info.root };
+			if (action === "node") {
+				const wanted = typeof args.path === "string" ? args.path.trim() : "";
+				if (wanted === "") throw new Error("node needs path: a project path such as UI/MainWindow");
+				return { ...base, node: await readNode(info, wanted) };
+			}
+			if (action === "sources") return { ...base, ...(await sources(info)), backups: await listBackups(info.root) };
+			if (action === "diff") {
+				const id = typeof args.backup_id === "string" ? args.backup_id.trim() : "";
+				return { ...base, ...(await diffBackup(info, id)) };
+			}
+			const processes = await studioProcesses().catch(() => []);
+			const bridgePending = settings.bridgeUrls.reduce((total, origin) => total + pendingModelChanges(origin).pending, 0);
+			const gates = await projectGates(info, { bridgePending, processes });
+			if (action === "check") {
+				const validation = await validateProject(info, { typeCheck: knownProjectType });
+				return {
+					...base,
+					validation,
+					gates,
+					next: validation.ok
+						? gates.can_write
+							? "The files are consistent and writable: stage the edits, then apply."
+							: `The files are consistent, but a write is gated: ${gates.next}`
+						: `Fix the ${validation.critical} critical finding${validation.critical === 1 ? "" : "s"} first: ${validation.findings.filter((finding) => finding.severity === "critical").slice(0, 3).map((finding) => finding.message).join("; ")}`
+				};
+			}
+			if (action === "census") return { ...base, census: await census(info), gates };
+			if (action === "stage") {
+				allowWrite();
+				if (!Array.isArray(args.ops) || args.ops.length === 0) throw new Error("stage needs ops: an ordered list of edits (see the parameter description)");
+				if (args.ops.some((op) => op !== null && typeof op === "object" && op.op === "remove_node")) allowWrite(true);
+				const staged = await stageOps(info, args.ops, { typeCheck: knownProjectType });
+				return {
+					...base,
+					...staged,
+					gates,
+					next: gates.can_write ? staged.next : `Staged, but a write is gated: ${gates.next}`
+				};
+			}
+			if (action === "apply") {
+				allowWrite();
+				const id = typeof args.stage_id === "string" ? args.stage_id.trim() : "";
+				const manifest = await readStage(info.root, id);
+				if (Array.isArray(manifest.ops) && manifest.ops.some((op) => op !== null && typeof op === "object" && op.op === "remove_node")) allowWrite(true);
+				const applied = await applyStage(info, id, { bridgePending, processes, force: args.force === true, typeCheck: knownProjectType });
+				return { ...base, ...applied };
+			}
+			if (action === "restore") {
+				allowWrite();
+				const id = typeof args.backup_id === "string" ? args.backup_id.trim() : "";
+				const restored = await restoreBackup(info, id, { force: args.force === true, processes });
+				return { ...base, ...restored };
+			}
+			throw new Error(`unknown action ${action || "(none)"}; use check, census, node, sources, stage, apply, diff or restore`);
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_build",
+		description: "Compile a FactoryTalk Optix project's NetLogic C# outside Studio and report whether the runtime DLL is current. `status` reads bin/<Project>.dll against the newest .cs and the references file; `check` copies ProjectFiles/NetSolution to a scratch folder and runs dotnet build there, so a compile error is found without writing bin/ or obj/ into the project; `build` runs dotnet build in place, which is the only way outside Studio to produce the DLL the runtime loads (stop the emulator first, or the build fails because the DLL is locked); `references` rewrites <Project>.references from the installed Studio (a project without it cannot compile); `init` writes the csproj, sln and references a project copied or generated outside Studio does not have. None of this saves or builds the Studio project itself: that is still the engineer's Ctrl+S then Ctrl+Shift+B, and optix_status says when it is owed.",
+		parameters: {
+			action: {
+				type: "string",
+				required: true,
+				description: "status | check | build | references | init"
+			},
+			project: {
+				type: "string",
+				description: "Project name as optix_status reports it. Give this or project_root."
+			},
+			project_root: {
+				type: "string",
+				description: "Folder that holds <Project>.optix."
+			},
+			force: {
+				type: "boolean",
+				description: "For references: rewrite a file whose paths already resolve. For init: rewrite an existing csproj and sln (existing .cs files are never touched)."
+			},
+			keep: {
+				type: "boolean",
+				description: "For check: keep the scratch folder and report its path, for reading a build log."
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Optix build ${String(args?.action ?? "status")}`,
+			kind: /^(?:status|check)$/u.test(String(args?.action ?? "")) ? "read" : "write"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			const action = String(args?.action ?? "").trim();
+			const { project, root } = await resolveProjectFolder(args);
+			const base = { action, project, project_root: root };
+			if (action === "status") {
+				let build;
+				try {
+					build = await buildState(root);
+				} catch (error) {
+					return {
+						...base,
+						build: null,
+						error: error.message,
+						next: "Run optix_build action init to write the csproj, sln and references this project is missing."
+					};
+				}
+				return { ...base, build, next: build.next };
+			}
+			if (action === "check") {
+				const checked = await checkBuild(root, { keep: args.keep === true });
+				return { ...base, ...checked };
+			}
+			const info = await projectInfo(project, root);
+			const processes = await studioProcesses().catch(() => []);
+			const bridgePending = settings.bridgeUrls.reduce((total, origin) => total + pendingModelChanges(origin).pending, 0);
+			const gates = await projectGates(info, { bridgePending, label: `build ${action}`, processes });
+			if (action === "references") {
+				allowWrite();
+				if (!gates.can_write) throw new Error(`${gates.blockers[0].message} ${gates.blockers[0].next}`);
+				const written = await writeReferences(root, { force: args.force === true });
+				return { ...base, gates, references: written, ...(written.written ? { build_state: await buildState(root).catch(() => null) } : {}) };
+			}
+			if (action === "init") {
+				allowWrite();
+				if (!gates.can_write) throw new Error(`${gates.blockers[0].message} ${gates.blockers[0].next}`);
+				const created = await initNetSolution(root, { dryRun: false, force: args.force === true });
+				return { ...base, gates, ...created };
+			}
+			if (action === "build") {
+				allowWrite();
+				if (!gates.can_write) throw new Error(`${gates.blockers[0].message} ${gates.blockers[0].next}`);
+				const built = await buildNetSolution(root, { timeoutMs: 240_000 });
+				return {
+					...base,
+					gates,
+					build: built,
+					build_state: await buildState(root).catch(() => null),
+					next: built.ok
+						? "The runtime DLL is written. optix_emulator action start serves it; Studio still owns the project's own build."
+						: built.locked
+							? "A file is locked: stop the runtime with optix_emulator action stop, then build again."
+							: "Fix the C# errors and build again; nothing in the project was saved by Studio."
+				};
+			}
+			throw new Error(`unknown action ${action || "(none)"}; use status, check, build, references or init`);
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_nav",
+		description: `Plan, apply, reconcile or prove the window-level navigation bar of an Optix project, up to ${NAV_MAX_BUTTONS} buttons in one row. plan reads the start window, its PanelLoader and the screen each button should open, then reports the bar rectangle, every button's slot and whether it already exists; nothing is written. apply validates the whole batch and then creates the missing buttons, restates geometry and colours, and wires each new button through the loader's ChangePanel. A button drawn inside a panel resolves its loader path against the design tree at run time and the runtime then answers that nothing handles ChangePanel, which is the measured cause of a screen that never changes; a button beside the loader resolves the same way in both trees, and Rockwell's own PanelLoader sample wires a window-level button the same way. Only buttons with no handler child are wired, so a second apply is a no-op rather than a second handler. reconcile reports targets whose screen is missing, buttons that carry no handler and Nav_ buttons the window holds that this bar does not name. verify is the proof: it opens a headless browser at the window's own size, clicks each button in the served preview and reads the loader's Panel back through the bridge, so a pass means the panel changed rather than that an operation was acknowledged. apply needs allowWrites; verify needs preview and allowPreviewInput and a running emulator. The runtime serves the saved project, so a bridge-authored bar is only clickable after Studio saves and builds.`,
+		parameters: {
+			action: {
+				type: "string",
+				required: true,
+				enum: ["plan", "apply", "reconcile", "verify"],
+				description: "plan reads and reports; apply creates and wires behind the write gate; reconcile reports missing screens, unhandled buttons and stale bar entries; verify clicks each button in the running project and reads the loader's Panel back."
+			},
+			project: projectParameter,
+			project_root: {
+				type: "string",
+				description: "Folder that holds <Project>.optix. verify probes the emulator for that project; the other actions read the live Studio model."
+			},
+			targets: {
+				type: "array",
+				items: { type: "json" },
+				description: `Buttons in bar order: [{ label, screen, name }]. screen is a project path such as UI/Screens/Home, or a bare name resolved under screens_folder; name defaults to Nav_<screen name> and must be unique. At most ${NAV_MAX_BUTTONS}.`
+			},
+			screens_folder: {
+				type: "string",
+				description: "Folder a bare screen name resolves under. Default UI/Screens."
+			},
+			window: {
+				type: "string",
+				description: "Window project path. Default: the start window the presentation engine points at."
+			},
+			loader: {
+				type: "string",
+				description: "PanelLoader project path that hosts the screens. Default: the window's single PanelLoader."
+			},
+			theme: {
+				type: "json",
+				description: "Palette overrides for the bar: footer (button fill) and footerText (caption), as #RRGGBB."
+			},
+			settle_ms: {
+				type: "integer",
+				description: "verify: how long the runtime gets to repaint after each click before the panel is read. Default 900."
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: args.action === "verify" ? "Prove Optix navigation" : args.action === "apply" ? "Wire Optix navigation" : "Plan Optix navigation",
+			kind: args.action === "apply" || args.action === "verify" ? "edit" : "read"
+		}),
+		async execute(args, exec) {
+			return exclusive(async () => {
+				const action = typeof args.action === "string" ? args.action : "";
+				const actions = ["plan", "apply", "reconcile", "verify"];
+				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
+				const noLoader = "no PanelLoader in the window: a screen is not visible and a button cannot change it. Create one with optix_edit create_widget widget_type PanelLoader under the window, then plan again.";
+				const origin = settings.bridgeUrls[0] ?? "";
+				const { health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				// The window and the loader come from the live model: a bar drawn into a project that
+				// renders a different window is the defect this tool exists to stop.
+				const host = await liveScreenHost(origin, exec.signal);
+				const windowPath = typeof args.window === "string" && args.window.trim() !== "" ? args.window.trim() : host.window ?? "";
+				if (windowPath === "") throw new Error("no start window in the live model: name one with window, or read UI with optix_read to see what the presentation engine points at");
+				const windowNodes = await bridge.request(origin, "nodes", exec.signal, { path: windowPath });
+				const measure = (name) => {
+					const property = (windowNodes?.properties ?? []).find((entry) => entry.name === name);
+					const hit = /^(\d+(?:\.\d+)?)/u.exec(String(property?.value ?? ""));
+					return hit === null ? void 0 : Math.round(Number(hit[1]));
+				};
+				const measuredWidth = measure("Width");
+				const measuredHeight = measure("Height");
+				const width = measuredWidth === void 0 ? host.width : measuredWidth;
+				const height = measuredHeight === void 0 ? host.height : measuredHeight;
+				if (width === void 0 || height === void 0) throw new Error(`could not read the canvas of ${windowPath}: its Width and Height properties were not reported, so a button slot cannot be placed`);
+				const loader = typeof args.loader === "string" && args.loader.trim() !== "" ? args.loader.trim() : host.panel_loader ?? "";
+				const children = (windowNodes?.children ?? []).map((entry) => String(entry.browse_name ?? ""));
+				const resolvedTargets = navTargets({ targets: args.targets, screensFolder: args.screens_folder });
+				// Only a button with no handler child is wired: a second wire_event would leave the
+				// button with two EventHandlers, and a second apply must be a no-op.
+				const existing = [];
+				const wired = new Set();
+				for (const target of resolvedTargets) {
+					if (!children.includes(target.name)) continue;
+					existing.push(target.name);
+					const probe = await bridge.request(origin, "nodes", exec.signal, { path: `${windowPath}/${target.name}` }).catch(() => void 0);
+					if (handlerChild(probe?.children) !== void 0) wired.add(target.name);
+				}
+				const plan = planBar({ window: windowPath, width, height, targets: resolvedTargets, existing, theme: args.theme ?? {} });
+				plan.buttons.forEach((button) => {
+					button.wired = wired.has(button.name);
+				});
+				let ops = [];
+				let wiring = [];
+				if (loader !== "") {
+					const planned = planOps(plan, { window: windowPath, loader, wired, theme: args.theme });
+					ops = planned.ops;
+					wiring = planned.wiring;
+				}
+				const base = {
+					action,
+					project: selectedHealth.project,
+					window: windowPath,
+					canvas: { width, height },
+					bar: plan.bar,
+					buttons: plan.buttons,
+					...(loader === "" ? { problem: noLoader } : { loader })
+				};
+				const missingScreens = [];
+				for (const target of resolvedTargets) {
+					const probe = await bridge.request(origin, "nodes", exec.signal, { path: target.screen }).catch(() => void 0);
+					if (probe?.path === void 0) missingScreens.push(target.screen);
+				}
+				const extras = children.filter((name) => name.startsWith("Nav_") && !plan.buttons.some((button) => button.name === name));
+				const unwiredButtons = plan.buttons.filter((button) => !wired.has(button.name)).map((button) => button.name);
+				if (action === "plan" || action === "reconcile") {
+					const status = loader === "" ? "blocked" : missingScreens.length > 0 || wiring.length > 0 ? "planned" : "ready";
+					const next = loader === "" ? noLoader : missingScreens.length > 0 ? `These screens do not exist yet: ${missingScreens.join(", ")}. A button cannot be wired to a node that is not there, so create them, then plan again.` : wiring.length > 0 ? `Run action apply with allowWrites: ${wiring.length} button(s) need ChangePanel wiring${extras.length === 0 ? "" : `, and the window holds ${extras.length} button(s) this bar does not name (${extras.join(", ")})`}.` : "Every button exists and carries a handler; nothing to write. Save and Build in Studio, start the emulator, then run action verify - a wired handler is not proof until a click is observed.";
+					return {
+						status,
+						...base,
+						wired: [...wired],
+						missing_screens: missingScreens,
+						unwired_buttons: unwiredButtons,
+						extra_buttons: extras,
+						op_count: ops.length,
+						pending_wiring: wiring,
+						next
+					};
+				}
+				if (action === "apply") {
+					if (loader === "") return {
+						status: "blocked",
+						...base,
+						next: noLoader
+					};
+					if (ops.length === 0) return {
+						status: "noop",
+						...base,
+						wired: [...wired],
+						applied: 0,
+						next: "Every button already exists and carries a handler: nothing to write. Run action verify for the proof."
+					};
+					allowWrite();
+					const validation = await bridge.request(origin, "validate_ops", exec.signal, {}, "POST", {
+						ops,
+						strict: true
+					});
+					if (!acceptedValidation(validation, ops.length)) return {
+						status: "refused",
+						applied: 0,
+						...base,
+						wired: [...wired],
+						validation,
+						next: "The bridge refused the batch before anything was written: read validation for the operation it would not resolve, then plan again."
+					};
+					const results = [];
+					for (const [index, op] of ops.entries()) {
+						let dispatched = false;
+						try {
+							const health = await bridge.request(origin, "health", exec.signal);
+							if (health.project !== selectedHealth.project || health.model_loaded !== true || health.pid !== selectedHealth.pid || health.project_path !== selectedHealth.project_path) throw new Error("Serving Studio project changed during the batch");
+							const request = operationRequest(op);
+							dispatched = true;
+							const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+							if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the authoring operation", true);
+							results.push(result);
+						} catch (error) {
+							return {
+								status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+								applied: results.length,
+								failed_index: index,
+								...base,
+								validation,
+								results,
+								error: String(error),
+								next: "Inspect the live model before retrying: the bar may hold some buttons and not others, so plan again and apply only what is missing."
+							};
+						}
+					}
+					// The runtime resolves the pointer's absolute design-time NodeId before the relative
+					// link this batch wrote, so clearing it is part of wiring, not an optional cleanup.
+					const pointerClearing = await clearPointerValues(origin, ops, exec.signal);
+					return {
+						status: "completed",
+						applied: results.length,
+						...base,
+						wired: [...wired, ...wiring.map((op) => op.path.split("/").filter((segment) => segment !== "").at(-1) ?? "")],
+						validation,
+						results,
+						...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
+						...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed }),
+						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then run optix_emulator action restart and optix_nav action verify. The bridge authored the model; only Studio writes the file the runtime loads."
+					};
+				}
+				if (!settings.preview) throw new Error("The navigation proof opens the served preview: set preview true in the Optix row's plugin configuration");
+				if (!settings.allowPreviewInput) throw new Error("Clicking a button in the running project is input: set allowPreviewInput true in the Optix row's plugin configuration");
+				if (loader === "") return {
+					status: "blocked",
+					...base,
+					next: noLoader
+				};
+				const folder = await resolveProjectFolder(args);
+				const leg = await emulatorStatus({ project: folder.root, previewUrl: settings.previewUrl }, exec.signal);
+				const emulator = {
+					url: leg.url,
+					serving: leg.serving,
+					status: leg.status,
+					...(leg.log_path === "" ? {} : { log_path: leg.log_path })
+				};
+				if (!leg.serving) return {
+					status: "blocked",
+					...base,
+					emulator,
+					...(leg.log_tail === void 0 ? {} : { log_tail: leg.log_tail }),
+					next: "The preview address does not answer, so there is nothing to click: save and build the project in Studio, run optix_emulator action start (or restart), then verify again."
+				};
+				const panel = async () => panelProperty(await bridge.request(origin, "nodes", exec.signal, { path: loader }));
+				const initialPanel = await panel();
+				const { browser, page } = await launchRuntimePage(settings, {
+					width,
+					height,
+					signal: exec.signal
+				});
+				let proof;
+				try {
+					proof = await verifyNavigation({
+						page,
+						buttons: plan.buttons,
+						panel,
+						settleMs: args.settle_ms === void 0 ? 900 : args.settle_ms,
+						signal: exec.signal
+					});
+				} finally {
+					await browser.close().catch(() => {});
+				}
+				return {
+					status: proof.status,
+					...base,
+					emulator,
+					initial_panel: initialPanel,
+					...(initialPanel === "" ? { panel_unreadable: "the bridge did not report the loader's Panel value, so a repaint is the only evidence available" } : {}),
+					results: proof.rows,
+					clicked: proof.clicked,
+					proven: proof.proven,
+					unverified: proof.unverified,
+					next: verifyNext(proof)
+				};
+			});
 		}
 	})));
 }

@@ -151,7 +151,7 @@ const HEADER = (name, kind, stamp) =>
 		? `// Studio does not fire Start() at design time: run these methods with right-click Execute,\n// or with optix_netlogic action "run" while the bridge is up.\n`
 		: `// Start()/Stop() run in the runtime when the node this class is bound to is loaded.\n`);
 
-export const TEMPLATES = ["blank", "periodic", "observer"];
+export const TEMPLATES = ["blank", "periodic", "observer", "nav", "login"];
 
 export function templateCode({ name, kind = "runtime", template = "blank", stamp = new Date().toISOString().slice(0, 10) }) {
 	checkName(name);
@@ -167,6 +167,8 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 		"using FTOptix.HMIProject;",
 		"using UAManagedCore;",
 		"using FTOptix.NetLogic;",
+		...(template === "nav" ? ["using FTOptix.UI;"] : []),
+		...(template === "login" ? ["using FTOptix.Core;"] : []),
 		"",
 	].join("\n");
 	if (kind === "design") {
@@ -223,6 +225,94 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			`        catch (Exception error)\n` +
 			`        {\n` +
 			`            Log.Error("${name}", "tick failed: " + error.Message);\n` +
+			`        }\n` +
+			`    }\n` +
+			`}\n`
+		);
+	}
+	if (template === "nav") {
+		return (
+			header +
+			"\n" +
+			usingBlock +
+			`public class ${name} : BaseNetLogic\n{\n` +
+			`    private PanelLoader loader;\n\n` +
+			`    public override void Start()\n` +
+			`    {\n` +
+			`        // Bind this class inside the PanelLoader it drives. The owner is the loader,\n` +
+			`        // and resolving it once keeps the per-click path free of a model walk.\n` +
+			`        loader = Owner as PanelLoader;\n` +
+			`        if (loader == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "bind this NetLogic inside a PanelLoader: the owner is not one");\n` +
+			`        }\n` +
+			`    }\n\n` +
+			`    public override void Stop()\n` +
+			`    {\n` +
+			`        loader = null;\n` +
+			`    }\n\n` +
+			`    [ExportMethod]\n` +
+			`    public void Open(string screenPath)\n` +
+			`    {\n` +
+			`        if (loader == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "no PanelLoader - nothing to change");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        try\n` +
+			`        {\n` +
+			`            // Project-relative, the same spelling a Panel property holds. A relative\n` +
+			`            // path also survives a project rename; an absolute /Objects/... one does not.\n` +
+			`            var screen = Project.Current.Get<ScreenType>(screenPath);\n` +
+			`            if (screen == null)\n` +
+			`            {\n` +
+			`                Log.Error("${name}", "no screen at " + screenPath);\n` +
+			`                return;\n` +
+			`            }\n` +
+			`            loader.ChangePanel(screen);\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "ChangePanel failed: " + error.Message);\n` +
+			`        }\n` +
+			`    }\n` +
+			`}\n`
+		);
+	}
+	if (template === "login") {
+		return (
+			header +
+			"\n" +
+			usingBlock +
+			`public class ${name} : BaseNetLogic\n{\n` +
+			`    [ExportMethod]\n` +
+			`    public void PerformLogin(string username, string password, out bool loginResult)\n` +
+			`    {\n` +
+			`        loginResult = false;\n` +
+			`        try\n` +
+			`        {\n` +
+			`            // The alias is the whole contract: without it this class cannot see the\n` +
+			`            // user folder, and a hard-coded path would break on the next rename.\n` +
+			`            var usersAlias = LogicObject.GetAlias("Users");\n` +
+			`            if (usersAlias == null || usersAlias.NodeId == NodeId.Empty)\n` +
+			`            {\n` +
+			`                Log.Error("${name}", "missing Users alias: point it at Security/Users");\n` +
+			`                return;\n` +
+			`            }\n` +
+			`            var user = usersAlias.Get<User>(username);\n` +
+			`            if (user == null)\n` +
+			`            {\n` +
+			`                Log.Info("${name}", "no such user: " + username);\n` +
+			`                return;\n` +
+			`            }\n` +
+			`            // RemoteRead is what Rockwell's own login sample does before ChangeUser:\n` +
+			`            // the password variable is read from the runtime, not assumed local.\n` +
+			`            user.PasswordVariable.RemoteRead();\n` +
+			`            loginResult = Session.ChangeUser(username, password);\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "login failed: " + error.Message);\n` +
 			`        }\n` +
 			`    }\n` +
 			`}\n`

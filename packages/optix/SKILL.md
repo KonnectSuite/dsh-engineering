@@ -23,8 +23,10 @@ says the host is not the source.
 3. `optix_template` with the answers writes the project; there is nothing to open yet.
 4. Hand the engineer three actions and wait: open the `.optix`, Build (`Ctrl+Shift+B`), then
    right-click `StudioMCPBridge` → StartBridge.
-5. When the bridge answers, draw the first screen in one `optix_screen` call, read it back with
-   `optix_design_check`, then save and look with `optix_emulator` and `optix_screenshot`.
+5. When the bridge answers, the starter already carries the operator shell's four screens (`Home`,
+   `Alarms`, `Diagnostics`, `Settings`). Mount the first one with `optix_screen`, plan the bar with
+   `optix_nav { action: "plan" }` and apply it, read the screen back with `optix_design_check`, then
+   save and look with `optix_emulator` and `optix_screenshot`.
 
 A build is a scaffold, one screen and a rendered look inside five minutes. If no screen exists yet and
 you have been reading files for a while, stop and say what blocked you.
@@ -62,8 +64,12 @@ the job done is out of bounds, however much faster it looks:
 - **No talking to the bridge by hand.** No `curl` or `Invoke-RestMethod` against `/bridge/*`, and no
   importing `lib/index.js` to call a tool function directly. Use the registered tool, or report that
   no tool does the job.
-- **No side doors into the project.** Do not edit `Nodes/*.yaml` or the `.optix` file to make something
-  appear in the live model: a project Studio has open belongs to the bridge.
+- **No editor and no shell on project files.** `optix_project` is the only way this skill writes the
+  project tree, and `optix_build` the only way it touches the solution. Never edit `Nodes/*.yaml` or the
+  `.optix` file with a text editor, a PowerShell one-liner or a script — not even with Studio closed.
+  Those writes skip the gate that proves the file an edit is based on is still the file on disk, the
+  backup that makes an apply undoable, and the validation that the result still loads. A project Studio
+  has open belongs to the bridge, and the file channel refuses it by name rather than racing it.
 
 A tool that cannot do what the task needs is a finding to report — "this needs X and no tool does X" —
 never a licence to improvise. Two things genuinely belong to the engineer: opening the project in
@@ -114,6 +120,40 @@ its URL, how many tabs match it, and whether the OCR executable and language dat
 its `next` names the one link to fix first. Read `next` and tell the engineer what is missing; do not
 retry a preview tool against a dead link.
 
+## The file channel, when the bridge is the wrong tool
+
+Two authoring channels, and they are alternatives rather than a pipeline:
+
+- `optix_edit` / `optix_action` — the live model inside Studio. Correct for anything the runtime must
+  show after one save. It is refused when the bridge is offline.
+- `optix_project` — the files themselves. Correct for scaffolding, renaming a project, adding a whole
+  subtree, editing NetLogic sources, or repairing a project whose Studio session cannot be reused.
+  `optix_build` is the same channel's build side: references, solution scaffold, an out-of-tree
+  compile check, and the artefact state.
+
+`optix_project` refuses while Studio has the project open (`project_open_in_studio`), while the bridge
+holds unflushed changes (`bridge_state_unflushed`), or while another write runs (`write_in_progress`).
+`force` clears a plan whose file changed on disk (`file_changed_on_disk`) and nothing else — losing a
+Studio session's work is not a trade this tool offers.
+
+Use it in this order and say which step you are in:
+
+1. `check` — the tree the `- File:` registrations describe, with findings. The four an edit breaks are
+   `file_missing`, `duplicate_name`, `reference_without_target` and `file_unregistered`.
+2. `stage` — replay the operations in memory and report `writable` and per-file hashes. Nothing is
+   written; a plan touching more than 400 files, or a file outside the writable set, is refused.
+3. `apply` — the gates run again, the previous bytes are copied to `ProjectFiles/.dsh-backups/<id>/`,
+   and every file is written or none is: an apply rolls itself back.
+4. `diff`, then `restore` — a backup is the undo of that apply, and only of that apply.
+5. `optix_build action check` — when the edit touched C#, compile a copy before asking for a save. It
+   never writes `bin/`, `obj/` or the project.
+
+A registration resolves relative to the directory of the chapter that names it, and the chapter's own
+root node is the node that registration becomes: never nest a `- File:` entry under a node, because it
+is then neither a node nor a registration and Studio silently never loads it. `set_project_name`
+rewrites the name in every place it appears, including the absolute `Authentication.DefaultUserFolder`
+pointer — that pointer is why a hand rename silently breaks login.
+
 ## The loop
 
 Every request that ends in a working screen walks the same seven phases. Say which phase you are in:
@@ -123,12 +163,12 @@ it is how the engineer knows what you are doing and what is theirs.
 | --- | --- | --- |
 | **0 Brief** | read the standards, then ask what a copy cannot undo: runtime target, canvas size, project name, destination, what it talks to | answers |
 | **1 Scaffold** | `optix_template` with those answers | — |
-| **2 Open and arm** | nothing; the files are on disk | open the `.optix`, build, start the bridge |
+| **2 Open and arm** | nothing; the files are on disk. `optix_build action init` first only when the scaffold has no solution. `optix_docs` when a name is unsure | open the `.optix`, build, start the bridge |
 | **3 Connect** | `optix_status`, then `optix_read` once it answers | — |
-| **4 Author** | `optix_edit` / `optix_screen` / `optix_model` / `optix_script`, then the static checks | — |
+| **4 Author** | `optix_edit` / `optix_screen` / `optix_nav` / `optix_model` / `optix_script`, then the static checks | — |
 | **5 Persist** | read `needs_save`, ask, then verify the save on disk | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
-| **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, prove the thing changed | — |
-| **7 Release** | `optix_production_check`, then state coverage | deploy in Studio's Deploy dialog |
+| **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, `optix_nav verify` for a bar, prove the thing changed | — |
+| **7 Release** | `optix_production_check`, `optix_nav reconcile`, then state coverage | deploy in Studio's Deploy dialog |
 
 An existing project starts at phase 3; a request for a template or a standard is workflow E, which
 writes the standard before it scaffolds anything. Phases 0–2 are workflows A, B and C below.
@@ -174,6 +214,33 @@ Save keeps the `DynamicLink` form in `Nodes/UI/UI.yaml` rather than flattening i
 One colour means the runtime, the web engine and the browser all work and nothing has been drawn yet —
 it is not a broken preview, and it is not evidence that a screen exists. Content appears once a screen is
 drawn, mounted *and saved*; check the render for content only after `saved_after_edit` is `true`.
+
+## Navigation is a bar and a proof
+
+A screen that never changes when a button is clicked is the failure this skill exists to stop: the
+button exists, its handler compiles, the design checks pass, and the runtime does nothing. The cause is
+where the button sits. A button **inside** a panel resolves its handler against the design tree, the
+runtime instantiates the UI per session, and the click answers `No behaviour or observer found that
+handles the method 'ChangePanel'`. A button **beside** the loader, as a child of the window, resolves
+the same way in both trees — which is what Rockwell's own navigation template does, with a *relative*
+`@NodeId` pointer rather than an absolute design-time one.
+
+Use `optix_nav`, never hand-drawn coordinates:
+
+1. `optix_nav { action: "plan", targets: [{ label, screen }] }` — the bar rectangle comes from the
+   window's own `Width`/`Height`, buttons sit at most six to a row at 44 px, and the answer names the
+   screens that do not exist yet and how many buttons need wiring.
+2. Create the missing screens with `optix_screen`, then plan again.
+3. `optix_nav { action: "apply" }` with writes allowed. It creates only what is missing, wires only
+   buttons with no handler, and clears the absolute pointer value the runtime would otherwise resolve
+   first (`OPTIX-PROD-01`). A second apply is a no-op, not a second handler.
+4. Save and Build in Studio, then `optix_emulator { action: "restart" }`.
+5. `optix_nav { action: "verify", project_root }` — it opens a headless browser at the window's size,
+   clicks every button in the served preview and reads the loader's `Panel` back. Only a panel that
+   changed is a pass; a repaint alone is reported as `repaint_only` and never counted.
+
+Never report navigation as working from operations alone. "Wired" means the model holds a handler;
+"works" means a click moved the panel, and only `verify` says that.
 
 ## What kind of request is this?
 
@@ -348,6 +415,23 @@ property the Help does not document) and `datatype_drift` (the Help names the UA
 reports the CLR one — `Width` is `Size` in the reference and `Single` at runtime, which is expected and is
 not a defect). On Studio 1.8.1.27 the measured numbers are 2 added, 94 changed and 748 drifted.
 
+## Look it up in the help Rockwell shipped
+
+The plugin carries an index of the documentation installed beside Studio — 2,591 pages on 1.8.1.27,
+one 1,354 KiB JSON, no service and no model. `optix_docs { action: "search", query: "Session" }` ranks
+pages by title, headings and snippet and returns a line-sized snippet each; `{ action: "read", id }`
+returns one page as text, straight from the install. Use it for an API name, a member list, a menu
+path or a property's stated meaning before asking the bridge or guessing: one search is cheaper than
+one wrong insert, and the page is evidence you can cite.
+
+It is evidence for documented behaviour, not for the project in front of you — the model, the bound
+tags and the live values come from `optix_read`, `optix_schema` and the bridge. Two gaps are worth
+knowing because they are measured: **`ChangePanel` is not in the installed help at all** (a search
+returns zero pages), which is exactly why navigation has `optix_nav` and the sample projects behind
+it, and template-library types such as `NavButton` are documented by the library that ships them, not
+by the Help folder. `{ action: "status" }` reports the Studio version the index was built from and
+says when an upgrade has made it stale; `node scripts/gen-optix-help.mjs` rebuilds it.
+
 
 ## Draft a screen, then check it
 
@@ -480,6 +564,28 @@ The order that survives the runtime — model, NetLogic class, screens, command 
 operator click, release review — is written down as `optix-application-recipe` in
 `engineering_reference`, with the measured failure each step avoids.
 
+## What "done" means here
+
+A change is done when the evidence exists, not when the operation returned `applied`. Before saying an
+application is ready, these five have to be true, and each one names the call that proves it:
+
+1. **The buttons work.** If the application has a navigation bar, `optix_nav { action: "verify" }` must
+   return `status: "verified"` — every button clicked, the loader's `Panel` read back as that button's
+   screen. A repaint is not a pass; a bar that was only planned is not wired.
+2. **The release review is clean.** `optix_production_check` returns `ready`, or every remaining finding
+   is stated with the node and why it is accepted. `optix_design_check` runs on each screen that changed.
+3. **The sources compile.** `optix_build { action: "check" }` exits 0. If the NetLogic classes changed,
+   `optix_build { action: "status" }` afterwards must not say `stale` once Studio has rebuilt.
+4. **A save was proven, not assumed.** `optix_status` reports no unflushed bridge changes, and the file
+   on disk carries the edit — the runtime shows the saved project, so a screenshot taken before the save
+   shows the previous build.
+5. **The claims are sourced.** An API name, a member or a menu path comes from `optix_docs` or
+   `optix_schema`, a runtime behaviour from a click or a log line, and a project fact from `optix_read`.
+   "Should work" is not evidence; name the call that showed it.
+
+When one of the five cannot be shown (no bridge, no preview, no SDK), report that as the gap and stop
+short of "ready". The rest of the work can still be correct — it is just not yet proven.
+
 ## Author and verify
 
 - `optix_edit` applies one typed batch; run it with `dry_run` first and read the validation result.
@@ -536,7 +642,10 @@ is already open and the engineer is available.
    are not optional - the tool refuses without them rather than guessing. The copy lands in
    `<destination>/<name>`, so the folder is named after the project and Studio does not warn that the
    project name and its folder disagree; a destination that already carries the name is used as the
-   project folder itself. Report the path the tool returned and the canvas it got.
+   project folder itself. Report the path the tool returned and the canvas it got. Both starters ship an
+   operator shell's four screens (`Home`, `Alarms`, `Diagnostics`, `Settings`) — the loader and the bar
+   are still created in phase 4 by `optix_screen` and `optix_nav`, because those are the calls that also
+   prove the buttons work.
 3. Hand the two Studio actions to the engineer in one short message and stop: which `.optix` file to
    open, that the build must succeed, and that the `StudioMCPBridge` NetLogic wants `StartBridge`.
    Name the one dialog they will meet: the first `StartBridge` raises Studio's NetLogic security

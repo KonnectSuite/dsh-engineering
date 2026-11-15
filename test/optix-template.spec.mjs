@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
@@ -111,4 +112,45 @@ test('no starter named answers with both manifests and their questions, writing 
   assert.match(execute, /return \{\s*starters,\s*instructions:/u)
   assert.doesNotMatch(execute, /scaffoldProject|writeFile|mkdir/u, 'the no-starter answer must not write anything')
   for (const id of templates) assert.ok(manifestOf(id).questions.length >= 4, `${id}: no questions to answer before a copy`)
+})
+
+
+/**
+ * A starter is also an operator shell. Both starters ship the four screens a line application opens
+ * on, so the first thing an agent drafts lands in a project that already has the pages the operator
+ * navigates — the loader and the bar are created and proven in phase 4 by `optix_screen` and
+ * `optix_nav`, never hand-written into the starter's YAML.
+ */
+test('both starters ship the four screens the operator shell opens on', () => {
+  const wanted = ['Home', 'Alarms', 'Diagnostics', 'Settings']
+  for (const id of templates) {
+    const yaml = readFileSync(
+      new URL(`../packages/optix/templates/${id}/project/Nodes/UI/Screens/Screens.yaml`, import.meta.url), 'utf8',
+    )
+    const names = [...yaml.matchAll(/^- Name: (.+)$/gmu)].map(match => match[1])
+    assert.deepEqual(names, wanted, `${id}: the shell screens are ${names.join(', ')}`)
+    assert.equal((yaml.match(/Supertype: Screen/gu) ?? []).length, wanted.length, `${id}: a screen is not a Screen supertype`)
+  }
+})
+
+/**
+ * The manifest is what `optix_template` reads before anything is copied, so it must describe the
+ * files that are actually on disk. Regenerate it with `node scripts/gen-optix-template.mjs` when a
+ * starter changes; this test is what makes a stale hash impossible to miss.
+ */
+test('every starter manifest matches the files it ships', () => {
+  for (const id of templates) {
+    const manifest = manifestOf(id)
+    assert.equal(manifest.fileCount, manifest.files.length, `${id}: fileCount does not match files[]`)
+    assert.equal(manifest.totalBytes, manifest.files.reduce((sum, file) => sum + file.size, 0), `${id}: totalBytes does not add up`)
+    const lines = []
+    for (const file of manifest.files) {
+      const bytes = readFileSync(new URL(`../packages/optix/templates/${id}/project/${file.path}`, import.meta.url))
+      assert.equal(bytes.length, file.size, `${id}: ${file.path} is ${bytes.length} bytes, the manifest says ${file.size}`)
+      const sha = createHash('sha256').update(bytes).digest('hex')
+      assert.equal(sha, file.sha256, `${id}: ${file.path} does not match its recorded sha256`)
+      lines.push(`${file.path}\n${sha}\n`)
+    }
+    assert.equal(manifest.contentHash, createHash('sha256').update(lines.join('')).digest('hex'), `${id}: contentHash does not follow from the files`)
+  }
 })

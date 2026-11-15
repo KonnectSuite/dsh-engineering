@@ -30,6 +30,8 @@ const NAV = 56;
 export const MAX_CARDS = 4;
 /** Most navigation buttons one row may hold. */
 export const MAX_NAV = 4;
+/** The fixed chrome measurements, so a navigation bar can place itself in the same body area. */
+export const SCREEN_METRICS = { PAD, HEADER, FOOTER, GAP, CARD_PAD, ROW, NAV };
 /** Default caption of the footer line, matching the FTView scaffold's. */
 export const DEFAULT_FOOTER = "AryaCode · FactoryTalk Optix";
 /**
@@ -99,7 +101,7 @@ export const SCREEN_THEME = {
  * @property {string} [panel_loader] - Live PanelLoader path; needed only when navigation is wired.
  */
 /** A `Size` value spelled the way the shipped YAML spells it. */
-function size(value) {
+export function size(value) {
 	return `${Math.round(value)}.0`;
 }
 /**
@@ -109,7 +111,7 @@ function size(value) {
  * expression evaluator silently no-ops on a `"#RRGGBB"` string, which is why `optix_validate_expression`
  * and the bridge both reject one (measured live against bridge 1.0.9, 2026-11-14).
  */
-function colorUint(hex) {
+export function colorUint(hex) {
 	const digits = String(hex).replace(/^#/, "");
 	return digits.length === 8 ? `0x${digits.toUpperCase()}` : `0xFF${digits.toUpperCase()}`;
 }
@@ -124,11 +126,11 @@ function lampExpression(theme) {
 	return `if({0}, ${colorUint(theme.lampOn)}, ${colorUint(theme.lampOff)})`;
 }
 /** One `set_property` operation. */
-function set(path, name, value) {
+export function set(path, name, value) {
 	return { op: "set_property", path, name, value };
 }
 /** Geometry every UI widget carries, as four operations. */
-function box(path, slot) {
+export function box(path, slot) {
 	return [
 		set(path, "LeftMargin", size(slot.left)),
 		set(path, "TopMargin", size(slot.top)),

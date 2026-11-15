@@ -39,10 +39,10 @@
   ],
   "optixStudioVersion": "1.7.4.32-Stable",
   "sourceProjectName": "AryaNewHMIProject_OptixPanel",
-  "contentHash": "06c8e5dfe2279ded81ab5c8036f0cc0f812ccb044ba19b7943426e61528c96a5",
+  "contentHash": "10c5d0d2ab7e33617f99ad4e8624212353d1ded2cbf819d38436595079bbdc10",
   "bridgeSourceHash": "c8e1d441409e6bc02099ac07452d8c23e4143eb041c2f82fbb67912e4d4decc6",
   "fileCount": 58,
-  "totalBytes": 603641,
+  "totalBytes": 736950,
   "readOnly": true,
   "directories": [
     "ApplicationFiles",
@@ -93,188 +93,14 @@
   "files": [
     {
       "path": "AryaNewHMIProject_OptixPanel.optix",
-      "size": 2084,
-      "sha256": "8c361638c3eeb347e2a6bd2b6ea739025b1908218d85bc0b378081faeaea5081",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/NetworkSettingsWidget/NetworkSettingsWidgetComponents/NetworkSettingsWidgetComponents.yaml",
-      "size": 18851,
-      "sha256": "274e58654f4d1be46a15c889cd114bcb6332a44644b4edbf10f74e352b91c59c",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/UserDefinedModule.xml",
-      "size": 4352,
-      "sha256": "772ad0563921017cf96fd9908841848e5fdbca691b78146d225a2a2524cbf45e",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/WarningIcon.svg",
-      "size": 770,
-      "sha256": "af1ead3c4f711a7ae45553e7299ee403b18bf53b6ea2d885b30320b59acd0c9c",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/ApplicationNameLogic.cs",
-      "size": 380,
-      "sha256": "487cbf1bf9cf6d8a3b27f6a25841b77ac3596147fd78bc41dadfc74e717d59b3",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.code-workspace",
-      "size": 114,
-      "sha256": "dadc86a4a1f7ec9b79721f4b4af3563949d18364e48ffafd00c0347aec64e986",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.csproj",
-      "size": 841,
-      "sha256": "acac449d568f43a1a31959cf6833b12b035a4922f433b46b462ed6cf76c2ebb6",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.references",
-      "size": 11323,
-      "sha256": "7d105b6f9af0eb1ca6a76249d9c6f2f395f37c78d2af0db5b73234561983aea1",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.sln",
-      "size": 1082,
-      "sha256": "39d426e1a837f12d47b0f66b9dfef2701e0b085775072f00de8fe7268a3d2ddd",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/ConnectionSwitchLogic.cs",
-      "size": 2711,
-      "sha256": "3bed1f564ba75043909d02b2b10a87f1eac9d24f89a650db06487dc365d77ff2",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/DateAndTimeWidgetLogic.cs",
-      "size": 31306,
-      "sha256": "88796627ec139e07a62a282e96ed7fa4f11f1b83dbf1baba47674e62ff8950e9",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/DeviceSettingsWidgetLogic.cs",
-      "size": 985,
-      "sha256": "7990a6fa60b01bbe71d194eb6cf7af3b846d16e52cb2cfea597205bff01a8821",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/FTOptixStudioVersionLogic.cs",
-      "size": 1531,
-      "sha256": "356ddeb012b7241778cc482b18d120f775f12013131429ee2f54eccf9b7c381d",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/FTRemoteAccessWidgetSetupLogic.cs",
-      "size": 7125,
-      "sha256": "e270534319a41f9ccfee0776efd0fb8c229b37c1b65a37b876343b1e2e0e25d9",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/IncomingConnectionApprovalLogic.cs",
-      "size": 4307,
-      "sha256": "2f22fb8d1728fb9dcaf7dd9fc0973e5a68db926452931ead8a5204c2524542b2",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/IncomingConnectionReceiverLogic.cs",
-      "size": 6231,
-      "sha256": "911d8868f6bb82ba04f944bcdc97d4f0e423b8b9526634d43a029aa7df2b129a",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/NetworkConfiguratorEditModelsLogic.cs",
-      "size": 2266,
-      "sha256": "c5751c04cc73e5af947aaab4593c6a3c248b240ef7946cff820498367d522d43",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/NetworkInterfaceLogic.cs",
-      "size": 5774,
-      "sha256": "5effb106307dc3e7796beb5e71c76aa367dfb14e9c7778dd44efef7e711c0af4",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/NetworkInterfacesEditModelReaderLogic.cs",
-      "size": 3266,
-      "sha256": "ca237eb2fc0b2ee108aa7221ee4dc24fbff1fb80507d6350f25c67ef01301b1f",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/NetworkInterfacesEditModelToSystemWriterLogic.cs",
-      "size": 6267,
-      "sha256": "3fe42fff3b3eef8ed4954cb9aba0e14ac9f89479e306fa0a79dc968cfa435bc5",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/NetworkSettingsLogic.cs",
-      "size": 6015,
-      "sha256": "db4b215956e8689bbb92d956ebaae8eb62be1a1623e7a5ff4a927fae58a3f6a9",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/RequestAssistanceSwitchLogic.cs",
-      "size": 3824,
-      "sha256": "09616d0d57743c3a04f8ad03e824f237543bd13f45e2ca02615bdcb81c7fd83b",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
-      "size": 242578,
-      "sha256": "c8e1d441409e6bc02099ac07452d8c23e4143eb041c2f82fbb67912e4d4decc6",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/SystemToNetworkInterfacesEditModelWriterLogic.cs",
-      "size": 3653,
-      "sha256": "3253363f2b8b2f0e868c3403ce87e2da9035fb0c053eec62ab17f15faedad340",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/.vscode/launch.json",
-      "size": 377,
-      "sha256": "9c8b3adcff7e5e47ce5c7c13553b88b8afbc795b686410ea1429bcd133e3c600",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/Private/FTRemoteAccessWidgetDataObject.cs",
-      "size": 2743,
-      "sha256": "cd9b328b8d3eb85a6750c3fe3d3cc9ca312f9eb57261e3533033f20183fe12f5",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/NetworkSettingsWidget/NetworkSettingsWidget.yaml",
-      "size": 15823,
-      "sha256": "62dd9ca21354359d99de2c27c6a44a336786a1b546fe849173629dae80805355",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/FactoryTalkRemoteAccessWidget/FTRemoteAccessWidgetComponents/FTRemoteAccessWidgetComponents.yaml",
-      "size": 82559,
-      "sha256": "5c358398c5a0e58b2e61728b3ae2027ed9aba8e73f344f6d0aa7c43988833623",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/FactoryTalkRemoteAccessWidget/FactoryTalkRemoteAccessWidget.yaml",
-      "size": 7687,
-      "sha256": "38b5baccd83841d1278576a8dcee0d0b937f55dda5404fb5c10dd1da0f9b72a8",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/DeviceSettingsWidget/DeviceSettingsWidgetComponents/DeviceSettingsWidgetComponents.yaml",
-      "size": 46837,
-      "sha256": "37217d13564357adc7ad8829efd1ebf1308cc30979a1e7053bcb398d421edbbc",
+      "size": 1987,
+      "sha256": "379c7e48f4d683ddc000fa5077e5cf95f6200af62a48930a0cf1c4fc769a87ee",
       "text": true
     },
     {
       "path": "AryaNewHMIProject_OptixPanel.optix.design",
-      "size": 775,
-      "sha256": "0491eba5cd3a50ec3594b78250dbbaae6ec0bea1f775f071bef7de92a55c5af5",
+      "size": 737,
+      "sha256": "11e0b33c6e7df9daa89a4ca59c9a006db3b5e06f1be795a00aef09e69d9ef13d",
       "text": true
     },
     {
@@ -284,159 +110,333 @@
       "text": true
     },
     {
-      "path": "Nodes/AryaNewHMIProject_OptixPanel.yaml",
-      "size": 1815,
-      "sha256": "571ee75cb8165f9a81207d68122ff67d4d191f66e651d00aa1aff9508c7d36c9",
+      "path": "Nodes/Alarms/Alarms.yaml",
+      "size": 79,
+      "sha256": "c69808736c2182d984cf7ff782db50936b02e6bc0587af1dec9c9adfb8b7b903",
       "text": true
     },
     {
-      "path": "Nodes/Alarms/Alarms.yaml",
-      "size": 82,
-      "sha256": "c6f3fe8d0f126af36bd79cdd0ea5069c87ec1bff3f1d4d5c4a7b9f8864a579f9",
+      "path": "Nodes/AryaNewHMIProject_OptixPanel.yaml",
+      "size": 1748,
+      "sha256": "1333159904ff61b60114d2d9ed82d3ab4d75843ad6f7df1a8f527ca461c3bcfb",
       "text": true
     },
     {
       "path": "Nodes/CommDrivers/CommDrivers.yaml",
-      "size": 52,
-      "sha256": "9641581a4c8a3eabbbb6471c7e38cbcf50ac8aeba65e8ba492b1d59be8521d3a",
+      "size": 50,
+      "sha256": "1adb13bfff3e39a4e50ce60666c3253e97a18c5fb55eac138adea86c2695840d",
       "text": true
     },
     {
       "path": "Nodes/Converters/Converters.yaml",
-      "size": 50,
-      "sha256": "cba8b3baee310a508f1373d3ff10cbb0cd1c216b3fcdbb1f930f489b38985b2e",
+      "size": 48,
+      "sha256": "efe2b5ed0b24a2d32ef4046fdf6140c1db85f45a3665f2ec2c8a1f3a4c41d9b7",
       "text": true
     },
     {
       "path": "Nodes/DataStores/DataStores.yaml",
-      "size": 50,
-      "sha256": "fc01692c1cf1567bf09dad3143b4c572fdd81d498bf9c344c3b8fea64750eb56",
+      "size": 48,
+      "sha256": "a5e1ac8432f521e8cd46faf37e1e95b6825f3e1f79461b5bfb25288ac64c27a5",
       "text": true
     },
     {
       "path": "Nodes/Loggers/Loggers.yaml",
-      "size": 44,
-      "sha256": "61629d78ec411d8896a32cc036545749cf34386e1d4e045aa5b2bd61c905ccb6",
-      "text": true
-    },
-    {
-      "path": "Nodes/Model/Model.yaml",
-      "size": 40,
-      "sha256": "b5ccba96c15748c8c3089187132c483542c7a3fdd4c62b1004432ec158454711",
+      "size": 42,
+      "sha256": "5af106cc45752bec179a962c0a345abc116c3aa51dab8276dd7126c63ef5a10b",
       "text": true
     },
     {
       "path": "Nodes/MQTT/MQTT.yaml",
+      "size": 36,
+      "sha256": "19dca2b1895facca5977bef0d6adab5fc347e11d5a7a7b23e34e66067e519daa",
+      "text": true
+    },
+    {
+      "path": "Nodes/Model/Model.yaml",
       "size": 38,
-      "sha256": "70bde6fab5c88f77ec1c265a0412874c8c016385d4f45cde0262df0ba31bcff2",
+      "sha256": "a0822047657869538ecfee6d893212773ccabc82e69c1f6a19f83c95694ed8e1",
       "text": true
     },
     {
       "path": "Nodes/NetLogic/NetLogic.yaml",
-      "size": 996,
-      "sha256": "603799e9895c37f120ef3acc56515cba1c79604886f5b6da85c17f20a7f2cdc8",
+      "size": 918,
+      "sha256": "c4b4c6cfb6139c861d4af1b79a621e889b5d0d545dd9a6a504b68a18c1d7e39b",
       "text": true
     },
     {
       "path": "Nodes/OPC-UA/OPC-UA.yaml",
-      "size": 43,
-      "sha256": "ac1bf577c15d8172ed21b10d83e034a6954a96d8c41963056e1a5ff8acac3149",
-      "text": true
-    },
-    {
-      "path": "ProjectFiles/NetSolution/Private/TypeConstants.cs",
-      "size": 3006,
-      "sha256": "5c12585d724ea9af1cd67ba704b4956ea3e3e89412d499c4e78f12c3eedf86ae",
+      "size": 41,
+      "sha256": "4708ead0a048dc75fca9003e1d3f4772cbae36d8663725dfc93c623a7ce198a5",
       "text": true
     },
     {
       "path": "Nodes/Recipes/Recipes.yaml",
-      "size": 44,
-      "sha256": "591178462a3154796ce1a15d1b0c8f12010b6709952481cae5f5406095495e89",
-      "text": true
-    },
-    {
-      "path": "Nodes/Retentivity/Retentivity.yaml",
-      "size": 1487,
-      "sha256": "044b35458b1f1a21695bec9007b1acc22fafc00b63dee4beb788fdc06bbcba6a",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Security.yaml",
-      "size": 177,
-      "sha256": "85f64f04c6c39eb3399dfdf5464d1ee0bfb5fbf2197e1c7305b3c41e04d2114a",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Groups/Groups.yaml",
-      "size": 82,
-      "sha256": "ccb40fed3d62eb1f532350876fdfd7397d25dda74f46fb4302c33d8878166e3c",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Roles/Roles.yaml",
-      "size": 80,
-      "sha256": "3f11ead6e8dff5a6d66487f68b2fc154c22f31080f8d2cd3c81d774ca57df9d9",
-      "text": true
-    },
-    {
-      "path": "Nodes/Security/Users/Users.yaml",
-      "size": 80,
-      "sha256": "06806437dd0e025939cdcc0683885692922863b4fcd9dfd4e63cf5cec34635c4",
-      "text": true
-    },
-    {
-      "path": "Nodes/System/System.yaml",
-      "size": 13620,
-      "sha256": "0a74a4416fbe83466ac4b8efc43e08865fc4b7aea0c29d208a751f775cfd5b06",
-      "text": true
-    },
-    {
-      "path": "Nodes/Translations/Translations.yaml",
-      "size": 3109,
-      "sha256": "a6c027ef7f436820864e3504ac00ac622e5b7e2e0c3f0c0720498d6853701681",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/UI.yaml",
-      "size": 8172,
-      "sha256": "8531f32f2ff3dca3f22e3e4384395230a1e70a57c53b1c06a16601c010ed43d5",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/Keyboards/Keyboards.yaml",
-      "size": 48,
-      "sha256": "a8a4cb1b56175fab975ca8c38cb4cdea8e620ea7a800d897857ad44cf4499d7b",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/Screens/Screens.yaml",
-      "size": 44,
-      "sha256": "cb5621dd13cdd9efb73422c72f58ad1501557f5ed273b39267dc5e1f269b25b2",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/SettingsWidgets.yaml",
-      "size": 37949,
-      "sha256": "e07899316d2cf611c27460430788b551efb48ec409d0004f3815bb347c613272",
-      "text": true
-    },
-    {
-      "path": "Nodes/UI/SettingsWidgets/DeviceSettingsWidget/DeviceSettingsWidget.yaml",
-      "size": 5119,
-      "sha256": "f5845957227b0a544d2bcf4e1d5d9965a92a6aa9a6f906e2829f63b08bca4e18",
+      "size": 42,
+      "sha256": "28e71477ec5bbe9893fac40d7426a418ef06153f09c46e4864eff18f4c7aa528",
       "text": true
     },
     {
       "path": "Nodes/Reports/Reports.yaml",
-      "size": 44,
-      "sha256": "1ec3965861a2368f9552b3c7b899341f3f874320725f7a63be855d5aa26b892e",
+      "size": 42,
+      "sha256": "1e021e2f04711525a023c8b9be04aa8476311453426772f29d267dac7bba7da7",
+      "text": true
+    },
+    {
+      "path": "Nodes/Retentivity/Retentivity.yaml",
+      "size": 1430,
+      "sha256": "c8924881586ed9368d7b59a2414dad3cb19222a63cb3cb913e70ba4f4c1857fd",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Groups/Groups.yaml",
+      "size": 79,
+      "sha256": "9d13e1f3bbed9137f357bb009bb31817adf340e7fd35493e3fe197227e7677f0",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Roles/Roles.yaml",
+      "size": 77,
+      "sha256": "63ed2ffcf2236af8dd29b5fa475072fe46b8b88ed8859c7938b187e9b1de2026",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Security.yaml",
+      "size": 170,
+      "sha256": "0dec3d5de9b9ccfc5082109165a25b79b815d1447ad0c3e7619f7f503a99b4e8",
+      "text": true
+    },
+    {
+      "path": "Nodes/Security/Users/Users.yaml",
+      "size": 77,
+      "sha256": "2081a85f11dd0b5ba52fde976b88b107dabb507260244852768dafd8c1e3d279",
+      "text": true
+    },
+    {
+      "path": "Nodes/System/System.yaml",
+      "size": 13176,
+      "sha256": "6f2e937f6cdbe29dd1e17edac8572bc955c262504a575697e842d102b1b16fe0",
+      "text": true
+    },
+    {
+      "path": "Nodes/Translations/Translations.yaml",
+      "size": 3028,
+      "sha256": "5468fb09737cfe345425ac283f596f96ed29af2fef14a6e8bf2bc3cc4d7c1dc4",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/Keyboards/Keyboards.yaml",
+      "size": 46,
+      "sha256": "792056b4d66bad25369ae62496123d085db2557a3a4f8df876ca904b00c7952f",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/Screens/Screens.yaml",
+      "size": 7223,
+      "sha256": "c41c4798a15c98a99b86e7074ed158b0fc813c306526e07365ed6e458ab6aef2",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/DeviceSettingsWidget/DeviceSettingsWidget.yaml",
+      "size": 4956,
+      "sha256": "acdd4b41ed7c44cf153497a6aec2b388ef468b48ee0a3b452015a8a66f72d6f5",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/DeviceSettingsWidget/DeviceSettingsWidgetComponents/DeviceSettingsWidgetComponents.yaml",
+      "size": 45174,
+      "sha256": "01ccfe0fa1c146ac83aba7b1294b960cc5501f3095a66ca7fca6abae244b67d9",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/FactoryTalkRemoteAccessWidget/FTRemoteAccessWidgetComponents/FTRemoteAccessWidgetComponents.yaml",
+      "size": 80088,
+      "sha256": "5545041d7cbb8ba74b6c54a13178dbb6ecc46852fc3fe49b88be24b0251b4c8b",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/FactoryTalkRemoteAccessWidget/FactoryTalkRemoteAccessWidget.yaml",
+      "size": 7469,
+      "sha256": "51c40f13d71e8f304975a3ccc07fdf9462975cde253a4f51eb12b5405b215720",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/NetworkSettingsWidget/NetworkSettingsWidget.yaml",
+      "size": 15299,
+      "sha256": "c3a7ede995ab829cc44d3b3e998ba3675fb5b92394598aa1f2edb8d01a7a96eb",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/NetworkSettingsWidget/NetworkSettingsWidgetComponents/NetworkSettingsWidgetComponents.yaml",
+      "size": 18161,
+      "sha256": "1aa1263a180c60fcd2da4cb1ac548dbd43d5e17d3140941d38f9617c33276a8b",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/SettingsWidgets/SettingsWidgets.yaml",
+      "size": 36684,
+      "sha256": "68cf94c9b72708c666602118cef2d33619b5837542d842370d8294acab681f0e",
+      "text": true
+    },
+    {
+      "path": "Nodes/UI/UI.yaml",
+      "size": 7920,
+      "sha256": "20ce2486707dac518c52ef0a52d92349eb93d817b8deab6d250a99437edf04ed",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/.vscode/launch.json",
+      "size": 359,
+      "sha256": "69f8f2ed8311617253a99deb75b86ed302aee18de7699c3780e3be663e52fb7d",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/ApplicationNameLogic.cs",
+      "size": 361,
+      "sha256": "613f5dce016a84f6821b0b97ccd5441499982bd0c01684264583b5b0e095fd05",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.code-workspace",
+      "size": 105,
+      "sha256": "34ca295cec60e04b6d61f41a4f56d41157651327851d43116716e39bf329dca2",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.csproj",
+      "size": 822,
+      "sha256": "e537e8c85da5c9027e9376c755e9fc5e14728e86640e99309de51124c237cbd1",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.references",
+      "size": 11151,
+      "sha256": "ef6563e08893475c975d8ed1382b8478f4f311cfd51a95d38bdab37399611d3f",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/AryaNewHMIProject_OptixPanel.sln",
+      "size": 1061,
+      "sha256": "c224b2de37e23d7dd5bfab75105cbe13ef196790eeca5d3599a345c3eb186427",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/ConnectionSwitchLogic.cs",
+      "size": 2637,
+      "sha256": "5e7966a1822342b54f0d91659c159ee6388ff086fae73c7bbc00d9f272fe1b95",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/DateAndTimeWidgetLogic.cs",
+      "size": 30886,
+      "sha256": "79da69b4e4564e227a8391f4d5b9bb4474a5e354d6276b176ca657b67a3424e5",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/DeviceSettingsWidgetLogic.cs",
+      "size": 951,
+      "sha256": "4e5e364763a041e29b6e855968c4ceca0fee8742deb3adf1f5067320c30a5618",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/FTOptixStudioVersionLogic.cs",
+      "size": 1484,
+      "sha256": "ef0c200a6832ca6b6498117e01cf743a52b85d2177fbf848b3bf58992507a397",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/FTRemoteAccessWidgetSetupLogic.cs",
+      "size": 6972,
+      "sha256": "a11e73b2fcdb639d54665fa49eb8f13cdc2409bd7c315e262df51a24f4c4d381",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/IncomingConnectionApprovalLogic.cs",
+      "size": 4189,
+      "sha256": "641ae00f3a932dc27470b827f430503861fda84c02a90a6bbb337b096ab80712",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/IncomingConnectionReceiverLogic.cs",
+      "size": 6065,
+      "sha256": "39f21ddb10e7e6b1ea3e86f563300e6e2d6497d4a983a9727a7fd8fc17c495cb",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/NetworkConfiguratorEditModelsLogic.cs",
+      "size": 2210,
+      "sha256": "33b1ee3a4d36a49a347025336826129178d97d844a6c369353e652375a273b6e",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/NetworkInterfaceLogic.cs",
+      "size": 5636,
+      "sha256": "6f7c1bf0cd27374b6cef814d895a63956e2db8d27c0fa1abd9575fb74b0c9ce0",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/NetworkInterfacesEditModelReaderLogic.cs",
+      "size": 3179,
+      "sha256": "544b7c9344599c5ff1a62a28ecc1ba5e8c113d5b00e0c7d47629c6027e19fbb5",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/NetworkInterfacesEditModelToSystemWriterLogic.cs",
+      "size": 6128,
+      "sha256": "fa5c606e0eeabbee4f0280e4076099bbd38e4f07a3a3c0559459390b5a02d836",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/NetworkSettingsLogic.cs",
+      "size": 5847,
+      "sha256": "d5ae2d26f6c6393e1ac5b0c1916088a7daade15c7aeed71e91d0f7a58debcc03",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/Private/FTRemoteAccessWidgetDataObject.cs",
+      "size": 2637,
+      "sha256": "96e47637ff04a3f0d71a1ede8cd7e384ae6cd6683eb89dfc2a1a885df3ae508d",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/Private/TypeConstants.cs",
+      "size": 2969,
+      "sha256": "711758b6e7a25a0498ca68a39263f520266b38b9af566a680c5700187f9f6ad6",
       "text": true
     },
     {
       "path": "ProjectFiles/NetSolution/Private/UITypeDefinitions.cs",
-      "size": 2918,
-      "sha256": "eceea0c1b972782c7a306d41bb37c0661463488827df6aa46ccd074fa8b414fb",
+      "size": 2827,
+      "sha256": "7f8242e5b312e83d21f4fc8163218da0c92440e5fd9bdeeca73c4776f02a7173",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/RequestAssistanceSwitchLogic.cs",
+      "size": 3731,
+      "sha256": "2560a736d8e5e1477884132c9abab0879280666a38c12906719f3d6b4de6459a",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
+      "size": 379232,
+      "sha256": "818f8da082ea181c0a2584895decc24f34cb091d42e1c3bc778ebab140f3b2fb",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/NetSolution/SystemToNetworkInterfacesEditModelWriterLogic.cs",
+      "size": 3576,
+      "sha256": "eee5082257ba4080ac56313a08008a96e0c1569113ed9bd89218f207cfea1f2d",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/UserDefinedModule.xml",
+      "size": 4241,
+      "sha256": "74c817b1e3724001bd221afb53946a040f9fd3573a5508a011d33344407fe8c7",
+      "text": true
+    },
+    {
+      "path": "ProjectFiles/WarningIcon.svg",
+      "size": 766,
+      "sha256": "08b9a6ffeb052d946b7917d85f85d50df4980658ee3a4c953737dca6710e66fa",
       "text": true
     }
   ]

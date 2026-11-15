@@ -1,3 +1,63 @@
+## [Unreleased]
+
+- **A second authoring channel: the project files, behind gates.** `optix_project` reads and edits the
+  project the way Studio stores it — the `.optix` document, its `- File:` registrations and the YAML
+  chapters under `Nodes/` — because the bridge cannot rename a project, add a whole subtree, or repair a
+  project whose Studio session cannot be reused. It refuses while Studio has that project open
+  (`project_open_in_studio`), while the bridge holds unflushed changes (`bridge_state_unflushed`) or while
+  another write runs (`write_in_progress`); `stage` replays the operations in memory and reports per-file
+  hashes, `apply` writes every file or none, keeps the previous bytes under
+  `ProjectFiles/.dsh-backups/<id>/`, and `diff`/`restore` undo exactly that apply. `force` clears a plan
+  whose file changed on disk and nothing else. The writable set is `Nodes/**/*.yaml`,
+  `ProjectFiles/NetSolution/*.{cs,csproj,sln,references}`, the `.optix` pair and `ProjectFiles/{imgs,res}`,
+  bounded at 400 files per plan.
+- **`optix_build` answers the build question without Studio.** `status` reports whether the DLL the
+  runtime loads carries the newest sources (`built`/`stale`/`never_built`, measured against `bin/` and the
+  newest `.cs`); `init` scaffolds a `net8.0` solution and its `.references` file in Studio's own shape;
+  `references` regenerates the 43 assembly references from the installed modules (41 module + 2 binding
+  assemblies, forward slashes, `<Private>False</Private>`) and reports `unchanged` or
+  `rewritten_after_upgrade`; `check` copies `ProjectFiles/NetSolution` to `%TEMP%` and runs `dotnet build`,
+  so a C# edit is proven before anyone presses a key in Studio. `optix_status` now also reports
+  `build_state` when given `project` or `project_root`.
+- **The rules that came out of the file format.** A `- File:` registration resolves relative to the
+  directory of the chapter that names it, and the chapter's own root node is the node that registration
+  becomes — a registration nested under a node is silently never loaded. `set_project_name` rewrites the
+  absolute `Authentication.DefaultUserFolder` pointer too, which is why a hand rename breaks login.
+  Validating a real 54-chapter project reports criticals only for a missing chapter, invalid YAML, a
+  reference without a target or a pointer naming another project root; Studio's own duplicate child names
+  and library types outside the help catalog are warnings and notes.
+- **Typed navigation, and a proof that the buttons work.** `optix_nav` plans the window-level bar from the
+  window canvas, creates only the buttons that are missing, wires each one through the loader's
+  `ChangePanel` with a relative `../<loader>` pointer (the design-time NodeId that `OPTIX-PROD-01` clears is
+  never written), and then clicks every button in the served preview and reads the loader's `Panel` back:
+  `verify` returns `verified` only when each click changed the panel to that button's screen. `plan`,
+  `apply` and `reconcile` are idempotent; a repaint is reported and never counted as a pass. It exists
+  because the installed help does not document `ChangePanel` at all — the sample projects are the source.
+- **Two NetLogic templates measured from Rockwell's own code.** `optix_script` gained `nav` (a runtime
+  class inside the `PanelLoader`, `Owner as PanelLoader`, one parameterless-per-target `Open(string
+  screenPath)` that resolves `Project.Current.Get<ScreenType>` and calls `ChangePanel`) and `login`
+  (`PerformLogin(string, string, out bool)`: the `Users` alias, `PasswordVariable.RemoteRead()`, then
+  `Session.ChangeUser`), matching `Optix_Sample_PanelLoaderChangePanelNetLogic` and the official
+  `LoginButtonLogic.cs`. Neither writes an absolute `/Objects/` path.
+- **Both starters ship the operator shell's screens.** `arya-optix-ipc` and `arya-optix-panel` now
+  carry `Home`, `Alarms`, `Diagnostics` and `Settings` as real `Screen` supertypes, so the first screen
+  an agent drafts lands in a project that already has the pages an operator navigates. The window itself
+  stays empty on purpose: the `PanelLoader` and the bar are created in phase 4 by `optix_screen` and
+  `optix_nav`, the two calls that also prove the buttons work, instead of a hand-written handler that
+  compiles and does nothing. The starter manifests are now generated (`node scripts/gen-optix-template.mjs`,
+  `--check` for drift) from the files on disk, and a spec fails when a manifest and its tree disagree.
+- **"Done" is a checklist, not a feeling.** The skill gained a release gate that names the call proving each
+  claim: `optix_nav verify` returning `verified` when there is a bar, a clean `optix_production_check`, a
+  zero exit from `optix_build action check`, a save proven on disk rather than assumed, and API/menu claims
+  sourced from `optix_docs` or `optix_schema`. When one cannot be shown, it is reported as the gap and the
+  application is not called ready.
+- **The installed help is searchable without a model or a service.** New `optix_docs` (`search`, `read`,
+  `status`) answers from a shipped index of Rockwell's own documentation — 2,591 pages in 1,354 KiB for
+  Studio 1.8.1.27, regenerated with `node scripts/gen-optix-help.mjs` (`--check` fails when stale). Ranking
+  puts the page named after the subject first; `read` returns one page as text, from the install. It is
+  evidence for documented behaviour, not for the live project, and it says so — `status` reports the Studio
+  version the index was built from and when an upgrade has made it stale.
+
 ## [0.96.0] - 2026-11-15
 
 - **A NetLogic request routes by the words the request uses.** `optix_netlogic { query: "alarm banner" }`

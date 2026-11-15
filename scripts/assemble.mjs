@@ -75,7 +75,7 @@ async function vendor(name) {
   // interpreter last ran in the checkout, it is not source, and a stale `.pyc`
   // beside an edited module is a trap the engine does not need. 0.4.21 shipped
   // three of them because a `py_compile` check ran before packing.
-  for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'locale', 'icon.svg']) {
+  for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'help', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'locale', 'icon.svg']) {
     await cp(join(from, entry), join(to, entry), {
       recursive: true,
       filter: s => !s.includes('__pycache__') && !s.endsWith('.pyc') && (!s.endsWith('.ts') || s.endsWith('.d.ts')),

@@ -11,6 +11,7 @@
     "templates/**/*",
     "netlogic/**/*",
     "schema/**/*",
+    "help/**/*",
     "locale/**/*",
     "icon.svg"
   ],
