@@ -215,6 +215,34 @@ One colour means the runtime, the web engine and the browser all work and nothin
 it is not a broken preview, and it is not evidence that a screen exists. Content appears once a screen is
 drawn, mounted *and saved*; check the render for content only after `saved_after_edit` is `true`.
 
+## The screen has a language before it has a layout
+
+Every colour, radius, border and font size on a screen should come from one place: the design language
+the project is built in. Optix provides the mechanism â€” a `StyleSheet` object bound on the presentation
+engine â€” and `optix_ui` authors it. The default is `modern`; `isa101`, `isa101-hc`, `modern-dark`,
+`material-dark`, `minimal-light` and `kiosk` are selected by name when a brief asks for them (a process
+HMI under ISA-101, a wall display, a gloved-hand panel).
+
+1. `optix_ui { action: "languages" }` when the brief names a standard, or when you need to know what a
+   language carries before choosing it.
+2. `optix_ui { action: "theme", mode: "plan", language }` â€” the answer names the sheet node, every
+   token and every named style, and how many engine pointer writes bind it. Nothing is written.
+3. `optix_ui { action: "theme", mode: "apply" }` with writes allowed. It validates strictly, dispatches
+   one operation at a time, and **reads both engines back**: `engine_refs_verified` is the only claim
+   that the runtime will draw with this language.
+4. Save and Build in Studio, restart the emulator, then `optix_ui { action: "audit" }`.
+
+A `NodeId` property is written on the pointer node's `Value` child, never by naming the property on the
+owning node: the engine's own `StyleSheet` property accepts the write and keeps the sheet it already had
+(measured on bridge 1.0.9). The value is spelled **project-relative** (`UI/<Sheet>`); the
+`/Objects/<Project>/UI/<Sheet>` spelling is refused by `validate_ops` with
+`bad_value: NodeId value must be a resolvable node path`, whether or not the sheet exists. A theme that
+reports `applied_unverified` has not landed, whatever the operations said.
+
+Screens built by `optix_screen` read the same language, so it is not a skin painted on at the end: the
+layout density, the type scale and the target sizes come from it, and `isa101` is judged by ISA-101
+rules rather than by `modern` ones. Switching a finished project is one apply call, not a rebuild.
+
 ## Navigation is a bar and a proof
 
 A screen that never changes when a button is clicked is the failure this skill exists to stop: the

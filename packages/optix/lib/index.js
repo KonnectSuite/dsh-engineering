@@ -15,6 +15,8 @@ import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls
 import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
 import { scaffoldProject } from "./scaffold.js";
 import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
+import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.js";
+import { THEME_ENGINES, auditTheme, themePlan } from "./theme.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -5080,6 +5082,221 @@ function apply(ctx, config = {}) {
 					proven: proof.proven,
 					unverified: proof.unverified,
 					next: verifyNext(proof)
+				};
+			});
+		}
+	})));
+	/**
+	 * The design-language channel: list the languages the kit authors, project one onto a native
+	 * `StyleSheet` and bind the presentation engines, or audit what the model actually carries.
+	 *
+	 * Every pointer write goes on the pointer node's `Value` child and is read back before the answer
+	 * claims it landed: on bridge 1.0.9 the engine's own `StyleSheet` property answers `ok` while the
+	 * engine keeps the sheet it already had. A theme is also the one part of a screen the runtime reads
+	 * before it draws anything, so a wrong sheet is not a cosmetic defect - it is the whole palette.
+	 */
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_ui",
+		description: `Design languages for Optix screens: ${languageNames.join(", ")}. action languages lists what the kit can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet (tokens plus named button, label, screen, chart and navigation styles) and binds both presentation engines; action audit judges what the model reports against the language that was asked for. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
+		parameters: {
+			project: {
+				type: "string",
+				description: "Exact loaded project BrowseName from optix_status. Required for theme and audit."
+			},
+			action: {
+				type: "string",
+				required: true,
+				description: "languages lists the catalogue; theme plans or applies one; audit judges the model.",
+				enum: ["languages", "theme", "audit"]
+			},
+			mode: {
+				type: "string",
+				description: "theme: plan (default) reports the operations without writing; apply writes behind allowWrites.",
+				enum: ["plan", "apply"]
+			},
+			language: {
+				type: "string",
+				description: `Design language; default ${DEFAULT_LANGUAGE}. One of ${languageNames.join(", ")}.`
+			},
+			sheet: {
+				type: "string",
+				description: "StyleSheet node name; default Sheet_<language>. Reuse an existing sheet by naming it."
+			},
+			sheet_path: {
+				type: "string",
+				description: "Project path of the sheet; default UI/<sheet>. audit needs it when no sheet is named."
+			},
+			engines: {
+				type: "array",
+				items: { type: "json" },
+				description: `Presentation engine paths to bind; default both ${THEME_ENGINES.join(" and ")}.`
+			}
+		},
+		output: jsonOutput,
+		presentCall: (args) => ({
+			card: "generic",
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			kind: args.action === "theme" && args.mode === "apply" ? "edit" : "read"
+		}),
+		async execute(args, exec) {
+			return exclusive(async () => {
+				const action = typeof args.action === "string" ? args.action : "";
+				const actions = ["languages", "theme", "audit"];
+				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
+				if (action === "languages") return {
+					languages: languageCatalogue(),
+					default: DEFAULT_LANGUAGE,
+					next: "Pick a language and run action theme with mode plan: the plan names the sheet node, every token and every named style before anything is written."
+				};
+				if (typeof args.project !== "string" || args.project.trim() === "") throw new Error("theme and audit read the live model: give project (the project name optix_status reports)");
+				const origin = settings.bridgeUrls[0] ?? "";
+				const { health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				const childrenOf = (reply) => reply?.map?.children ?? reply?.children ?? [];
+				const nameOf = (entry) => String(entry?.browse_name ?? entry?.name ?? "");
+				const language = typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE;
+				const sheetName = typeof args.sheet === "string" && args.sheet.trim() !== "" ? args.sheet.trim() : `Sheet_${language}`;
+				const sheetPath = typeof args.sheet_path === "string" && args.sheet_path.trim() !== "" ? args.sheet_path.trim() : `UI/${sheetName}`;
+				const engines = Array.isArray(args.engines) && args.engines.length > 0
+					? args.engines.map((entry) => String(typeof entry === "object" && entry !== null ? entry.path ?? "" : entry)).filter((entry) => entry !== "")
+					: [...THEME_ENGINES];
+				const ui = await bridge.request(origin, "map", exec.signal, { path: "UI", depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+				const uiChildren = childrenOf(ui).map(nameOf);
+				const readEngineRefs = async () => {
+					const refs = {};
+					for (const engine of engines) {
+						const engineMap = await bridge.request(origin, "map", exec.signal, { path: engine, depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+						const pointer = childrenOf(engineMap).find((entry) => nameOf(entry) === "StyleSheet");
+						refs[engine] = typeof pointer?.ref === "string" ? pointer.ref : "";
+					}
+					return refs;
+				};
+				const engineRefs = await readEngineRefs();
+				const exists = uiChildren.includes(sheetName) || Object.values(engineRefs).includes(sheetPath);
+				const plan = themePlan({ language, sheet: sheetName, project: selectedHealth.project, sheetPath, exists, engines });
+				const styleNames = plan.styles.map((style) => style.path);
+				const base = {
+					action,
+					language: plan.language,
+					sheet: plan.sheet,
+					sheet_path: plan.sheet_path,
+					pointer: plan.pointer,
+					exists,
+					engine_refs: engineRefs,
+					token_count: Object.keys(plan.tokens).length,
+					styles: styleNames
+				};
+				if (action === "theme") {
+					const mode = args.mode === "apply" ? "apply" : "plan";
+					// Two phases, because Studio creates a sheet's 17 style collections when the sheet
+					// object appears - a batch that creates the sheet and then puts a style in one of
+					// those collections cannot validate. Phase 1 is the sheet and its tokens; phase 2
+					// is the named styles and the engine pointers, validated only once the sheet exists.
+					const phases = [
+						{ name: "sheet", ops: plan.sheet_ops },
+						{ name: "styles", ops: plan.style_ops, after_sheet: true },
+						{ name: "engines", ops: plan.pointer_ops, after_sheet: true }
+					];
+					const validate = async (ops) => bridge.request(origin, "validate_ops", exec.signal, {}, "POST", { ops, strict: true });
+					const accepted = (validation) => validation?.ok === true && (validation.errors ?? []).length === 0;
+					const sheetValidation = await validate(plan.sheet_ops);
+					const sheetOk = accepted(sheetValidation);
+					const opCount = plan.counts.ops;
+					if (mode === "plan") {
+						// Phase 2 is validated lazily: its parents are the collections Studio will create,
+						// so a refusal here would be about the model's current shape, not the plan.
+						return {
+							status: sheetOk ? "planned" : "refused",
+							...base,
+							mode,
+							op_count: opCount,
+							phases: phases.map((phase) => ({ name: phase.name, ops: phase.ops.length, validated: phase.name === "sheet" ? sheetOk : false })),
+							validation: sheetValidation,
+							next: sheetOk
+								? `Apply is two passes: ${plan.sheet_ops.length} operation(s) create the sheet and its tokens, then ${plan.style_ops.length} named styles and ${plan.pointer_ops.length} engine pointer write(s) validate against the sheet Studio has just created. Run action theme with mode apply and allowWrites.`
+								: "The bridge refused the sheet phase before anything was written: read validation for the operation it would not resolve."
+						};
+					}
+					if (!sheetOk) return { status: "refused", ...base, mode, op_count: opCount, validation: sheetValidation, next: "Nothing was written. Read validation, then plan again." };
+					allowWrite();
+					const results = [];
+					const report = [];
+					for (const phase of phases) {
+						if (phase.ops.length === 0) {
+							report.push({ name: phase.name, ops: 0, status: "skipped" });
+							continue;
+						}
+						const validation = phase.name === "sheet" ? sheetValidation : await validate(phase.ops);
+						if (!accepted(validation)) return {
+							status: "refused_phase",
+							...base,
+							mode,
+							phase: phase.name,
+							applied: results.length,
+							validation,
+							phases: report,
+							next: `The ${phase.name} phase was refused before anything in it was written. The sheet is on the model now; read validation and plan again - a second apply restates what is missing.`
+						};
+						for (const [index, op] of phase.ops.entries()) {
+							let dispatched = false;
+							try {
+								const now = await bridge.request(origin, "health", exec.signal);
+								if (now.project !== selectedHealth.project || now.model_loaded !== true || now.pid !== selectedHealth.pid || now.project_path !== selectedHealth.project_path) throw new Error("Serving Studio project changed during the theme batch");
+								const request = operationRequest(op);
+								dispatched = true;
+								const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+								if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge the theme operation", true);
+								results.push(result);
+							} catch (error) {
+								return {
+									status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+									...base,
+									mode,
+									phase: phase.name,
+									applied: results.length,
+									failed_index: index,
+									phases: report,
+									error: String(error),
+									next: "Inspect the sheet before retrying: a half-applied theme still reads as a sheet, so plan again and apply only what is missing."
+								};
+							}
+						}
+						report.push({ name: phase.name, ops: phase.ops.length, status: "applied" });
+					}
+					// Read the engines back: the write that matters is the pointer's Value, and only the
+					// read-back says whether it took. ok is not proof.
+					const after = await readEngineRefs();
+					const verified = engines.every((engine) => after[engine] === plan.sheet_path);
+					return {
+						status: verified ? "applied" : "applied_unverified",
+						...base,
+						mode,
+						applied: results.length,
+						phases: report,
+						engine_refs_after: after,
+						engine_refs_verified: verified,
+						next: verified
+							? "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator: the runtime draws with this sheet on its next load. Run action audit after the save to prove the file carries it."
+							: `The sheet was written but ${engines.filter((engine) => after[engine] !== plan.sheet_path).join(", ")} does not point at it: write the pointer's Value child again, or name the sheet_path the engine already reads.`
+					};
+				}
+				const sheetMap = await bridge.request(origin, "map", exec.signal, { path: plan.sheet_path, depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+				const observedTokens = childrenOf(sheetMap).map(nameOf).filter((name) => Object.hasOwn(plan.tokens, name));
+				const observedStyles = [];
+				for (const collection of plan.collections) {
+					const collectionMap = await bridge.request(origin, "map", exec.signal, { path: `${plan.sheet_path}/${collection}`, depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+					for (const entry of childrenOf(collectionMap)) observedStyles.push(`${plan.sheet_path}/${collection}/${nameOf(entry)}`);
+				}
+				const audit = auditTheme({ language, sheet_path: plan.sheet_path, engine_refs: engineRefs, observed_tokens: observedTokens, observed_styles: observedStyles });
+				return {
+					action,
+					...audit,
+					sheet: plan.sheet,
+					sheet_path: plan.sheet_path,
+					exists,
+					engine_refs: engineRefs,
+					observed_tokens: observedTokens.length,
+					observed_styles: observedStyles.length,
+					expected: { tokens: plan.counts.tokens, styles: plan.counts.styles }
 				};
 			});
 		}

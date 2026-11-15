@@ -1,3 +1,21 @@
+## [Unreleased]
+
+- **`optix_ui`: a screen is designed by a language, not by colours picked per widget.** Seven design
+  languages ship in `packages/optix/lib/languages.js` — `modern` (default), `modern-dark`, `isa101`,
+  `isa101-hc`, `material-dark`, `minimal-light`, `kiosk` — each with its `StyleSheet` tokens, its named
+  button/label/screen/navigation/chart styles and its design-check profile. `action theme` plans the
+  whole sheet before writing (`plan`), then applies it behind `allowWrites`: it validates strictly,
+  dispatches one operation at a time and **reads both presentation engines back**, because the engine's
+  own `StyleSheet` property accepts a write while the engine keeps the sheet it had (measured on bridge
+  1.0.9). Every pointer write goes on the pointer node's `Value` child, in the **project-relative**
+  spelling (`UI/<Sheet>`): the `/Objects/<Project>/…` form is refused by `validate_ops` with
+  `bad_value: NodeId value must be a resolvable node path`, whether or not the sheet exists. `action
+  audit` scores what the model actually carries (`THEME-01`…`THEME-04`: an engine still on
+  another sheet is critical; missing tokens or named styles are warnings) and `action languages` lists the
+  catalogue. Re-applying is safe and repairs a sheet someone edited by hand. Proved live on
+  `AryaOptixTemplate` (bridge 1.0.9): 78 operations in three phases, `engine_refs_verified: true`,
+  `audit` `ok: true, score: 100`, with `test/optix-live-theme.mjs` restoring the project afterwards.
+
 ## [0.97.0] - 2026-11-15
 
 - **A second authoring channel: the project files, behind gates.** `optix_project` reads and edits the

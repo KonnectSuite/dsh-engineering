@@ -1,9 +1,9 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 163,
+    "defaultOnTools": 164,
     "defaultOnSchemaCharacters": 127423,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-15 after optix_nav landed: l5x 54 + ftview 51 + mwi 24 + optix 24 (19 vendored engine tools plus optix_netlogic, which entries/netlogic.js registers, plus optix_script, optix_project, optix_build, optix_nav and optix_docs) + engineering-resources 2 + migration 7 = 163 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-15 after optix_ui landed: l5x 54 + ftview 51 + mwi 24 + optix 25 (19 vendored engine tools plus optix_netlogic, which entries/netlogic.js registers, plus optix_script, optix_project, optix_build, optix_nav, optix_docs and optix_ui) + engineering-resources 2 + migration 7 = 164 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -197,7 +197,7 @@
       "vendored": true,
       "tools": {
         "product": "FactoryTalk Optix",
-        "count": 25,
+        "count": 26,
         "inReference": false
       },
       "skill": {
@@ -230,6 +230,7 @@
           "optix_build",
           "optix_nav",
           "optix_docs",
+          "optix_ui",
           "dry_run"
         ]
       },
@@ -245,7 +246,8 @@
         "docs/optix-project.md",
         "docs/optix-build.md",
         "docs/optix-docs.md",
-        "docs/optix-nav.md"
+        "docs/optix-nav.md",
+        "docs/optix-theme.md"
       ],
       "vendor": true
     },
