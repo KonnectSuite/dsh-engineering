@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- **A NetLogic request routes by the words the request uses.** `optix_netlogic { query: "alarm banner" }`
+  found nothing: the cheat sheets are written in their own vocabulary and none of them says "banner". The
+  router page now carries the phrases requests actually use (alarm banner, poll a tag, who is logged in,
+  colour changes, heartbeat ...) as links to the page that answers each, and a query falls back to whole-word
+  term matching with s/ing/ed forms, so a task-shaped request lands in one call. A symbol still outranks
+  prose: `PeriodicTask` answers `netlogic-lifecycle`.
 - **A NetLogic request routes in one call, and an API call can be checked before it compiles.** Added the
   ten-behaviour routing table to the skill (alarm, trend, tag, session, recipe, dialog, grid, animation,
   query, timer), a curated `schema/netlogic-types.json` of 59 types so `optix_schema { action: "type" }`

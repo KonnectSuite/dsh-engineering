@@ -108,15 +108,72 @@ function scoreOf(row, query) {
   return 0
 }
 
-/** Rank pages by metadata, then by body text for the remainder. */
+/** The words of a request that carry meaning, so "an alarm banner" is two terms. */
+const STOP_WORDS = new Set([
+  'a', 'an', 'and', 'the', 'to', 'of', 'for', 'in', 'on', 'at', 'is', 'it', 'my', 'that', 'this', 'with', 'from',
+])
+
+function termsOf(query) {
+  return [...new Set(
+    query
+      .toLowerCase()
+      .split(/[^a-z0-9]+/u)
+      .filter(term => term.length >= 3 && !STOP_WORDS.has(term))
+  )]
+}
+
+/**
+ * The forms of one term worth matching, so "polls" finds "polling" and "alarms"
+ * finds "alarm" - the pages are written in their own voice, not the request's.
+ */
+function termForms(term) {
+  const forms = new Set([term])
+  if (term.length >= 5) {
+    forms.add(term.replace(/(?:ing|ed)$/u, ''))
+    forms.add(term.replace(/(?:es|s)$/u, ''))
+  }
+  return [...forms].filter(form => form.length >= 3)
+}
+
+/**
+ * Score the page text for a request that names a behaviour rather than an API.
+ *
+ * A page is only a hit when *every* meaningful term appears in it, so "alarm
+ * banner" does not rank a page that happens to say "alarm" once about something
+ * else. The score is the number of matches plus one, and a term in the title or
+ * a heading counts double.
+ */
+function termScoreOf(row, terms) {
+  if (terms.length === 0) return 0
+  const body = pageOf(row.slug).toLowerCase()
+  const head = `${row.title} ${row.section} ${row.topics.join(' ')}`.toLowerCase()
+  let hits = 0
+  for (const term of terms) {
+    const forms = termForms(term)
+    const pattern = new RegExp(`\\b(?:${forms.map(form => form.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')).join('|')})`, 'u')
+    if (pattern.test(head)) hits += 2
+    else if (pattern.test(body)) hits += 1
+    else return 0
+  }
+  return 5 + hits
+}
+
+/** Rank pages by metadata, then by the page text for the remainder. */
 export function search(index, query, limit = 8) {
   const scored = index.map(row => ({ row, score: scoreOf(row, query) })).filter(hit => hit.score > 0)
   if (scored.length < limit) {
     const seen = new Set(scored.map(hit => hit.row.slug))
+    const needle = query.toLowerCase()
+    const terms = termsOf(query)
     for (const row of index) {
       if (seen.has(row.slug)) continue
-      const body = pageOf(row.slug)
-      if (body.toLowerCase().includes(query.toLowerCase())) scored.push({ row, score: 20 })
+      const body = pageOf(row.slug).toLowerCase()
+      if (body.includes(needle)) {
+        scored.push({ row, score: 20 })
+        continue
+      }
+      const termScore = termScoreOf(row, terms)
+      if (termScore > 0) scored.push({ row, score: termScore })
     }
   }
   return scored

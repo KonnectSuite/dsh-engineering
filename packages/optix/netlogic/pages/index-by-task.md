@@ -2,6 +2,21 @@
 
 Find the page by the task in the request, not by guessing a slug. Every page in this directory appears twice below: once under the task that needs it, once in the index at the end.
 
+## The phrases requests actually use
+
+The pages below are written in their own vocabulary; a request rarely uses it. When the words in the request are not on the page, this list is the translation:
+
+- "alarm banner", "alarm list", "acknowledge an alarm", "shelve an alarm" -> [Alarms](./alarming.md)
+- "trend", "history", "log a value over time" -> [Trends](./trends.md)
+- "read a tag", "write a tag", "poll a tag", "watch a tag" -> [Field tags](./plc-tags.md)
+- "log in", "log out", "who is logged in", "idle timeout", "session" -> [Sessions](./sessions.md), [Users, groups and roles](./users-groups.md)
+- "save a recipe", "load a recipe", "recipe values" -> [Recipes](./recipes.md)
+- "popup", "dialog", "confirm a command" -> [Dialog boxes](./dialog-boxes.md)
+- "grid", "table of values", "list of rows" -> [Data grids](./datagrids.md)
+- "colour changes", "lamp turns red", "animate", "blink" -> [UI animations](./ui-animations.md), [Advanced SVG](./advanced-svg.md)
+- "walk the model", "find a node", "query nodes" -> [Queries](./queries.md)
+- "heartbeat", "poll every second", "background job", "timer" -> [Asynchronous tasks](./async-tasks.md), [Threading](./threading.md)
+
 ## Start here: lifecycle and conventions
 
 - Decide whether a snippet belongs in a page NetLogic or a global one — [NetLogic overview](./netlogic-overview.md)

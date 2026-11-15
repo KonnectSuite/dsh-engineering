@@ -52,6 +52,20 @@ test('a query with no match says so and suggests the contents', () => {
   assert.ok(result.data.suggestion)
 })
 
+test('a request worded as a task routes to the page that answers it', () => {
+  // The pages speak their own vocabulary ("Alarms"), so the router page carries the
+  // phrases a request actually uses; without this the query would find nothing.
+  const alarm = answer({ query: 'alarm banner' })
+  assert.equal(alarm.data.hits[0].slug, 'index-by-task', 'the router page should answer a task-shaped request')
+  assert.match(answer({ slug: 'index-by-task' }).data.markdown, /alarming\.md/u)
+
+  const poll = answer({ query: 'a timer that polls' })
+  assert.ok(poll.data.hits.some((hit) => ['threading', 'async-tasks', 'netlogic-lifecycle', 'index-by-task'].includes(hit.slug)))
+
+  // A symbol still outranks prose: the honest answer for an API question is the page about that API.
+  assert.equal(answer({ query: 'PeriodicTask' }).data.hits[0].slug, 'netlogic-lifecycle')
+})
+
 test('one page comes back verbatim, with its risk, commit and disclaimer', () => {
   const result = answer({ slug: 'netlogic-lifecycle' })
   assert.equal(result.data.slug, 'netlogic-lifecycle')
