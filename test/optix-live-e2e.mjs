@@ -170,6 +170,25 @@ try {
 		value: '#2FA8E0'
 	})
 	assert.equal(rebound.status, 'completed', JSON.stringify(rebound.validation ?? rebound))
+	// A boolean choosing between two colours is an expression, not a plain link: binding Bool straight to a
+	// Color is what an "is there a source" test order gave before, so the shape is asserted here.
+	await call('optix_edit', {
+		project,
+		dry_run: false,
+		ops: [{ op: 'create_variable', parent: 'Model', name: 'ProbeFlag', datatype: 'Boolean' }]
+	})
+	const flagged = await call('optix_svg', {
+		project,
+		action: 'bind',
+		node: 'UI/ProbeHardening/Art',
+		id: 'Lamp',
+		property: 'Color',
+		source_path: 'Model/ProbeFlag',
+		bool_colours: { on: '#30A46C', off: '#E5484D' }
+	})
+	const expression = (flagged.results ?? []).find((row) => row.expression !== undefined)?.expression
+	console.log(`boolean colour expression: ${expression}`)
+	assert.match(expression ?? '', /^if\(\{0\}, 0xFF[0-9A-F]{6}, 0xFF[0-9A-F]{6}\)$/u, JSON.stringify(flagged))
 	const listed = await call('optix_svg', { project, action: 'list', screen: 'UI/ProbeHardening' })
 	console.log(`list: ${JSON.stringify(listed.images)}`)
 	assert.equal(listed.images.length, 1)
@@ -217,7 +236,7 @@ try {
 	}
 
 	step('clean up the probe nodes')
-	for (const path of ['UI/ProbeHardening', 'Model/ProbeHardening']) {
+	for (const path of ['UI/ProbeHardening', 'Model/ProbeHardening', 'Model/ProbeFlag']) {
 		const deleted = await call('optix_edit', { project, dry_run: false, ops: [{ op: 'delete', path }] })
 		console.log(`deleted ${path}: ${JSON.stringify(deleted.results?.[0] ?? deleted)}`)
 	}

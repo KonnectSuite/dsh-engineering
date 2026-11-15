@@ -1,5 +1,11 @@
 ## [Unreleased]
 
+- **A boolean chooses the colour, and it is an expression.** `optix_svg` tested "is there a source"
+  before "is there a bool_colours", and bool_colours needs a source, so the first branch always won and a
+  Bool was linked straight to a Color while the two colours were dropped. The colour form is now
+  `if({0}, 0xFF<on>, 0xFF<off>)` - ARGB integers, what the evaluator yields for a colour - and the live E2E
+  asserts that shape. Proven on a rendered screen: boolean false drew the lamp red, setting it true and
+  saving again drew it green.
 - **The SVG image renders, and a second bind updates instead of refusing.** Two defects the visual probe
   found on a live Studio 1.8.1.27 project: `optix_svg add` wrote the drawing to `<project>/imgs`, but the Web
   presentation engine fetches `/projectfiles/imgs/<name>.svg` - the `ProjectFiles` folder - answered 404 and

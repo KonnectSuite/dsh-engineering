@@ -42,3 +42,4 @@ __pycache__/
 
 # Session scratch: exported-session extracts, live-verification logs and probe output.
 .scratch/
+.tmp-visual*.png

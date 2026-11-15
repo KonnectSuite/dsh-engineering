@@ -2480,26 +2480,29 @@ function apply(ctx, config = {}) {
 						value: klass
 					});
 				}
-				if (args.source_path !== void 0) {
+				// bool_colours is tested first: it also carries source_path (the boolean that chooses), so a
+				// plain "is there a source" test would bind the boolean straight to a colour and drop the two
+				// colours on the floor (measured 2026-11-15, where the probe bound a Bool to a Color).
+				if (args.bool_colours !== void 0) {
+					const on = hexColour(args.bool_colours.on, "bool_colours.on");
+					const off = hexColour(args.bool_colours.off, "bool_colours.off");
+					if (args.source_path === void 0) throw new Error("bool_colours needs source_path: the boolean tag that chooses between the two colours");
+					// The element property's Value is BaseDataType and the engine takes the colour as an ARGB
+					// integer, which is what the ExpressionEvaluator's hex literal produces.
+					ops.push({
+						op: "attach_expression",
+						path: target,
+						prop_name: "Value",
+						expression: `if({0}, 0xFF${on.slice(1)}, 0xFF${off.slice(1)})`,
+						sources: args.source_path
+					});
+				} else if (args.source_path !== void 0) {
 					ops.push({
 						op: "bind",
 						path: target,
 						name: "Value",
 						source_path: args.source_path,
 						mode: "Read"
-					});
-				} else if (args.bool_colours !== void 0) {
-					// A boolean drives a colour through an expression: the element property's
-					// Value is BaseDataType, so a conditional yields the colour string itself.
-					const on = hexColour(args.bool_colours.on, "bool_colours.on");
-					const off = hexColour(args.bool_colours.off, "bool_colours.off");
-					if (args.source_path === void 0) throw new Error("bool_colours needs source_path: the boolean tag that chooses between the two colours");
-					ops.push({
-						op: "attach_expression",
-						path: target,
-						prop_name: "Value",
-						expression: `if({0}, "${on}", "${off}")`,
-						sources: args.source_path
 					});
 				} else {
 					ops.push({

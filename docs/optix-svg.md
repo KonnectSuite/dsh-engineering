@@ -69,6 +69,15 @@ the element-property node is named from the id and the property (`Conveyor` + `C
 5. `optix_design_check { screen }` — `OPTIX-IMG-01` fires while an image has nothing bound, and clears
    once a part is bound.
 
+## What a boolean colour becomes
+
+`bool_colours` is an expression, not a link: the tool writes
+`if({0}, 0xFF30A46C, 0xFFE5484D)` - ARGB integers, because that is what the expression evaluator for a
+colour yields - with `source_path` as its source, and the element property keeps a dynamic link to that
+evaluator. Measured end to end on 2026-11-15: the boolean false rendered the drawing red, setting it true
+and saving again rendered it green. Binding the boolean straight to `Value` instead would type-mismatch a
+Bool against a Color, which is why the order of the checks in the tool matters.
+
 ## Limits worth knowing
 
 - **No gradients or filters.** `linearGradient`, `radialGradient`, `pattern`, `filter`, `clipPath`,

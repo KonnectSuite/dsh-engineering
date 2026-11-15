@@ -398,7 +398,9 @@ any path outside the project folder. The file goes under `ProjectFiles` because 
 serves as `/projectfiles/imgs/...`; a copy in `<project>/imgs` answers 404 and the image renders blank
 (measured 2026-11-15, which is why `add` writes there).
 Then `{ action: "bind", node, id, property, value }` (a literal, or `source_path` for a dynamic link, or
-`bool_colours: { on, off }` for a boolean) creates the `AdvancedSVGImageElementProperty` under the image's
+`bool_colours: { on, off }` for a boolean, which becomes the expression `if({0}, 0xFF<on>, 0xFF<off>)` with
+the tag as its source - the ARGB form a colour needs, proven red-to-green on a live render) creates the
+`AdvancedSVGImageElementProperty` under the image's
 `SVGElementProperties` collection — passed explicitly, because a create that the bridge would auto-route
 into a collection comes back as a warning and a strict batch refuses it — and writes `ID`, `Property` and
 `Value`. `{ action: "list", screen }` reads back which images exist and which parts each one drives. The

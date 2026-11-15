@@ -124,6 +124,51 @@ try {
 		})
 		console.log('bind red:', bound.written ?? bound.error, 'read back:', JSON.stringify(bound.read_back ?? null))
 		console.log('NEXT: save and build in Studio, then: node test/optix-visual.mjs shot red')
+	} else if (phase === 'boolprepare') {
+		const variable = await call('optix_edit', {
+			project: 'OptixStandard',
+			dry_run: false,
+			ops: [{ op: 'create_variable', parent: 'Model', name: 'ProbeLamp', datatype: 'Boolean' }],
+		})
+		console.log('variable:', variable.status, variable.applied)
+		const screen = await call('optix_screen', {
+			project: 'OptixStandard',
+			name: SCREEN,
+			title: 'SVG BOOLEAN PROBE',
+			subtitle: 'a boolean chooses the colour',
+			cards: [{ title: 'PROBE', rows: [{ kind: 'value', label: 'Lamp', tag: 'Model/ProbeLamp' }] }],
+			dry_run: false,
+		})
+		console.log('screen:', screen.status, JSON.stringify(screen.host?.mounted ?? null))
+		const added = await call('optix_svg', {
+			project: 'OptixStandard',
+			action: 'add',
+			screen: `UI/Screens/${SCREEN}`,
+			name: IMAGE,
+			inline: SVG,
+			box: { left: 120, top: 240, width: 400, height: 200 },
+		})
+		console.log('add:', added.status, added.node ?? '')
+		const bound = await call('optix_svg', {
+			project: 'OptixStandard',
+			action: 'bind',
+			node: added.node,
+			id: 'Lamp',
+			property: 'Color',
+			source_path: 'Model/ProbeLamp',
+			bool_colours: { on: '#30A46C', off: '#E5484D' },
+		})
+		console.log('bind bool:', JSON.stringify(bound).slice(0, 900))
+		console.log('NEXT: save and build, then: node test/optix-visual.mjs shot boolOff')
+	} else if (phase === 'boolset') {
+		const value = process.argv[3] === 'true'
+		const written = await call('optix_edit', {
+			project: 'OptixStandard',
+			dry_run: false,
+			ops: [{ op: 'set_property', path: 'Model/ProbeLamp', name: 'Value', value: String(value) }],
+		})
+		console.log('set ProbeLamp', value, ':', JSON.stringify(written).slice(0, 500))
+		console.log('NEXT: save and build, then take the shot')
 	} else if (phase === 'colour') {
 		const value = process.argv[3]
 		const listed = await call('optix_svg', { project: 'OptixStandard', action: 'list', screen: `UI/Screens/${SCREEN}` })
@@ -147,7 +192,20 @@ try {
 			copyFileSync(last, path)
 			console.log('wrote', path)
 		}
-	} else if (phase === 'cleanup') {
+	} else if (phase === 'wipe') {
+		// Probing leaves nodes behind when a phase refuses, and a duplicate name poisons every later
+		// assertion, so the harness deletes by exact path rather than trying to discover them.
+		const candidates = [`UI/Screens/${SCREEN}`, 'UI/MainWindow/MainLoader', 'Model/ProbeSpeed', 'Model/ProbeLamp']
+		const found = []
+		for (const path of candidates) {
+			const read = await call('optix_read', { project: 'OptixStandard', request: { action: 'node', path } }).catch(() => void 0)
+			if (read?.response !== void 0 || read?.node_class !== void 0) found.push(path)
+		}
+		console.log('probes:', JSON.stringify(found))
+		if (found.length > 0) {
+			const removed = await call('optix_edit', { project: 'OptixStandard', dry_run: false, ops: found.map((path) => ({ op: 'delete', path })) })
+			console.log('delete:', JSON.stringify(removed.results ?? removed.error ?? removed.validation?.errors))
+		}	} else if (phase === 'cleanup') {
 		const removed = await call('optix_edit', {
 			project: 'OptixStandard',
 			dry_run: false,
@@ -168,5 +226,8 @@ try {
 } finally {
 	await disposeChild()
 	await mounted.dispose()
+	// The preview browser the row launched keeps the event loop alive; a probe run is done when its
+	// screenshot is on disk, so the process ends here instead of waiting for the browser to be closed.
+	process.exit(process.exitCode ?? 0)
 }
 
