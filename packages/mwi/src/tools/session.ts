@@ -49,7 +49,7 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
   return [
     tool({
       name: 'mw_project_find',
-      description: 'Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything.',
+      description: 'Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything. This is for joining a project that is already here; a new build starts from the brief and the published patterns, not from what happens to be on disk (CRAFT-ORD-01).',
       parameters: object({
         filter: string('Optional case-insensitive substring matched against the project name or path.'),
         limit: integer('Most projects to return. Defaults to 20.', { minimum: 1, maximum: 100 }),

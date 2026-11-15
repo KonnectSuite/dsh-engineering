@@ -4,7 +4,7 @@
 
 The engineering bundle registers **158 tools** for L5X and Migration and PLC-5 and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 158 definitions total **139608 characters** of model-visible JSON — name, description and
+Those 158 definitions total **139961 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -1229,7 +1229,7 @@ No parameters.
 
 #### `ftview_apps`
 
-List the FactoryTalk View ME applications installed on this host, through the vendor export server. Requires FactoryTalk View ME on the machine.
+List the FactoryTalk View ME applications installed on this host, through the vendor export server. Requires FactoryTalk View ME on the machine. This is for joining an application that already exists; a new build starts from the brief, the published patterns and the standards, not from what happens to be installed (CRAFT-ORD-01).
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
@@ -1581,7 +1581,7 @@ Find and stage a workspace project, then start, inspect and close the IDE.
 
 #### `mw_project_find`
 
-Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything.
+Find MotionWorks IEC projects inside the calling workspace. Returns each .mwt, its expanded directory, whether a staged copy exists and whether a pre-edit backup exists. Call this before opening anything. This is for joining a project that is already here; a new build starts from the brief and the published patterns, not from what happens to be on disk (CRAFT-ORD-01).
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|

@@ -376,7 +376,7 @@
         "ftview_apps",
         "ftview_export"
       ],
-      "contextChars": 17372
+      "contextChars": 17559
     },
     {
       "product": "FactoryTalk View",
@@ -432,7 +432,7 @@
         "mw_worksheet_open",
         "mw_project_close"
       ],
-      "contextChars": 3819
+      "contextChars": 3985
     },
     {
       "product": "MotionWorks IEC",
@@ -474,15 +474,15 @@
     }
   ],
   "context": {
-    "characters": 139608,
+    "characters": 139961,
     "byProduct": {
       "L5X": 50984,
       "Migration": 9025,
       "PLC-5": 5144,
       "Engineering resources": 1454,
       "ECAD": 11942,
-      "FactoryTalk View": 43073,
-      "MotionWorks IEC": 17986
+      "FactoryTalk View": 43260,
+      "MotionWorks IEC": 18152
     }
   }
 }

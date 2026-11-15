@@ -43,7 +43,7 @@ interface RowContext {
   get?: (name: string) => unknown
   provide?: (name: string, value: unknown) => void
   plugin?: (plugin: unknown) => void
-  logger?: { warn?(message: string): void }
+  logger?: { warn?(message: string): void; error?(message: string): void }
 }
 
 /**
@@ -55,11 +55,30 @@ interface RowContext {
 export function apply(ctx: RowContext, config: Config = {}): void {
   // A reference row must never be able to stop the application from booting:
   // in 0.9.0 a row id that collided with a harness service did exactly that.
-  // Anything that goes wrong here is reported and skipped.
+  // A refused tool is reported at error level and the remaining work continues —
+  // 0.94.3 swallowed a contract error here and every agent ran without the
+  // standards tools while the row reported nothing.
+  const report = (message: string): void => {
+    try {
+      const logger = ctx.logger
+      if (typeof logger?.error === 'function') logger.error(message)
+      else logger?.warn?.(message)
+    } catch {
+      // Nothing left to report to.
+    }
+  }
   try {
     const getService = (service: string): unknown => (typeof ctx.get === 'function' ? ctx.get(service) : undefined)
     if (config.reference !== false) {
-      for (const definition of resourceTools(getService)) ctx.tools.register(definition)
+      const refused: string[] = []
+      for (const definition of resourceTools(getService)) {
+        try {
+          ctx.tools.register(definition)
+        } catch (error) {
+          refused.push(`${(definition as { name?: string }).name ?? '?'}: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      if (refused.length > 0) report(`engineering-resources: ${refused.length} tool(s) refused by the harness: ${refused.join('; ')}`)
     }
     ctx.provide?.(PROFILES_SERVICE, { get: getProfile } satisfies ProfilesService)
     // Mount the skill as its own plugin: it declares `inject: ['skills']`, so the
@@ -71,11 +90,7 @@ export function apply(ctx: RowContext, config: Config = {}): void {
       if (skills !== undefined) skill.registerSkill(skills)
     }
   } catch (error) {
-    try {
-      ctx.logger?.warn?.(`engineering-resources: the row did not mount: ${error instanceof Error ? error.message : String(error)}`)
-    } catch {
-      // Nothing left to report to.
-    }
+    report(`engineering-resources: the row did not mount: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 

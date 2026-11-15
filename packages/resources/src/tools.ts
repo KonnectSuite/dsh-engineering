@@ -56,6 +56,19 @@ interface ProfilingService {
   styleProfile?(id: string | undefined, exec: unknown): Promise<StyleProfile>
 }
 
+/**
+ * Present a JSON result as text.
+ *
+ * The harness tool contract requires `output.render`; a definition without it is
+ * refused outright (`tool "…" must declare output { schema, render, presentationMeta? }`).
+ * 0.94.3 shipped without the callback, so both resource tools failed to register
+ * inside a row that swallowed the error and every agent ran without them.
+ */
+const renderJson = (_args: unknown, value: unknown): Array<{ type: 'text'; text: string }> => [{
+  type: 'text',
+  text: typeof value === 'string' ? value : JSON.stringify(value, null, 2),
+}]
+
 /** The reference tool definition. */
 export const referenceTool = {
   name: 'engineering_reference',
@@ -71,7 +84,7 @@ export const referenceTool = {
     additionalProperties: false,
     required: [],
   },
-  output: { schema: { type: 'object', additionalProperties: true } },
+  output: { schema: { type: 'object', additionalProperties: true }, render: renderJson },
   async execute(args: Readonly<Record<string, unknown>> = {}) {
     try {
       const id = typeof args.id === 'string' && args.id.trim() !== '' ? args.id.trim() : undefined
@@ -143,7 +156,7 @@ export function profileTool(getService: (name: string) => unknown) {
       additionalProperties: false,
       required: [],
     },
-    output: { schema: { type: 'object', additionalProperties: true } },
+    output: { schema: { type: 'object', additionalProperties: true }, render: renderJson },
     async execute(args: Readonly<Record<string, unknown>> = {}, exec?: unknown) {
       try {
         const projectId = typeof args.project_id === 'string' && args.project_id !== '' ? args.project_id : undefined

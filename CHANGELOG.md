@@ -1,3 +1,23 @@
+## [0.94.4] - 2026-11-14
+
+- **The standards tools now register in the real app, and a refused tool is reported instead of swallowed.**
+  0.94.3 shipped with `engineering_reference` and `engineering_profile` refused by the harness tool contract
+  (`tool "engineering_reference" must declare output { schema, render, presentationMeta? }`): both definitions
+  declared `output.schema` but no `render` callback. The resources row caught the throw in one outer `try`, so the
+  row mounted with **zero tools** and no message anywhere - and every agent that followed the new "read the
+  standards first" step found no such tool. Measured on the operator's session: after the skill told the agent to
+  read `engineering_reference`, it searched, then read `app.asar` bytes looking for a tool that was never
+  registered. Fixed at the three levels that let it through:
+  - both resource tools declare `output: { schema, render }`, where `render` returns the JSON result as text
+    (`packages/resources/src/tools.ts`);
+  - the resources row registers each tool on its own, keeps the tools that work, and reports every refusal at
+    error level with the tool name and the harness message (`packages/resources/src/index.ts`);
+  - new `test/entry-tool-contract.spec.mjs` mounts all eight entries against a stub that applies the harness's own
+    precondition, so a definition without `output.render` fails in CI rather than in a shipped bundle - the
+    module-level proof that let 0.94.3 through accepted whatever the real registry rejects.
+  Also restored the two product-tool description clauses (`ftview_apps`, `mw_project_find`) in their TypeScript
+  sources: 0.94.3 edited the built `lib` copies, and the release build regenerated them from source, so the
+  published descriptions lacked the `CRAFT-ORD-01` sentence the tests looked for.
 ## [0.94.3] - 2026-11-14
 
 - **A new build starts from the brief, our packaged templates and the published standards — the machine is read

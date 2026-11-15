@@ -51,7 +51,7 @@ export function vendorTools(fs: FsService, session?: ViewSession): readonly Tool
   return [
     tool({
       name: 'ftview_apps',
-      description: 'List the FactoryTalk View ME applications installed on this host, through the vendor export server. Requires FactoryTalk View ME on the machine.',
+      description: 'List the FactoryTalk View ME applications installed on this host, through the vendor export server. Requires FactoryTalk View ME on the machine. This is for joining an application that already exists; a new build starts from the brief, the published patterns and the standards, not from what happens to be installed (CRAFT-ORD-01).',
       parameters: object({
         filter: string('Case-insensitive substring matched against the application name.'),
       }, []),
