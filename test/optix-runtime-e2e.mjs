@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The end-to-end run that needs no human and no desktop automation: walk the shipped Optix row through
  * phases 1, 2, 6 and 7 of the loop - scaffold a starter, start the runtime, look at the rendered screen in
  * a headless browser, read the runtime's own log, stop the runtime - by calling the tools the way an agent
@@ -39,7 +39,7 @@ const step = (message) => console.log(`\n== ${message}`)
  * Mount the shipped row the way the harness does, keeping the tool definitions so they can be called.
  * @returns {Promise<{ tools: Map<string, any>, saveImage: Function, images: Buffer[] }>} the mounted row.
  */
-async function mount() {
+async function mount(overrides = {}) {
   const module = await import(pathToFileURL(join(root, 'entries/optix.js')).href)
   const tools = new Map()
   const images = []
@@ -91,6 +91,7 @@ async function mount() {
     previewWidth: width,
     previewHeight: height,
     requestTimeoutMs: 60000,
+    ...overrides,
   }))
   return {
     tools,
@@ -166,7 +167,35 @@ function pngColours(bytes) {
 step('mount the shipped row')
 const row = await mount()
 const { tools, images } = row
-const call = (name, args) => tools.get(name).execute(args, { signal })
+/**
+ * The host refuses a tool result it cannot carry as lossless JSON: an object with an explicit
+ * `undefined` property makes the whole call fail with "value is not lossless JSON" *after* the batch
+ * already ran (that is how a shipped `optix_screen` once applied a screen and still reported an error).
+ * Assert the round trip on every result so the defect is caught here instead of in a session.
+ */
+const lossless = (name, value) => {
+  const text = JSON.stringify(value)
+  assert.notEqual(text, undefined, `${name} returned no JSON`)
+  assert.deepEqual(JSON.parse(text), value, `${name} returned a value JSON cannot carry losslessly`)
+  return value
+}
+const call = async (name, args) => lossless(name, await tools.get(name).execute(args, { signal }))
+
+/**
+ * A failing assertion must not leave a runtime holding the preview port for the next run to trip over.
+ * The run only owns a project after its own start, so the handler stops that one and then fails the run.
+ */
+let owned = ''
+const fail = async (error) => {
+  console.error(`\nFAILED: ${error?.message ?? error}`)
+  try {
+    if (owned !== '')
+      await tools.get('optix_emulator').execute({ action: 'stop', project: owned, force: true }, { signal: AbortSignal.timeout(30000) })
+  } catch {}
+  process.exit(1)
+}
+process.on('uncaughtException', fail)
+process.on('unhandledRejection', fail)
 console.log(`${tools.size} tools mounted: ${[...tools.keys()].sort().join(', ')}`)
 for (const needed of ['optix_template', 'optix_emulator', 'optix_status', 'optix_screenshot'])
   assert.ok(tools.has(needed), `${needed} must be mounted`)
@@ -175,6 +204,7 @@ step('phase 1: optix_template scaffolds a starter')
 await mkdir(scratch, { recursive: true })
 const scaffolded = await call('optix_template', { template: 'arya-optix-ipc', destination: scratch, name: 'E2ELine', width, height })
 const project = scaffolded.project_root ?? join(scratch, 'E2ELine')
+owned = project
 console.log(JSON.stringify({
   project,
   bridge_version: scaffolded.bridge_version,
@@ -214,21 +244,44 @@ if (started.serving !== true) {
 assert.equal(started.started, true)
 assert.ok(started.pid > 0, 'a start that serves must name the process it started')
 
-step('phase 3 without Studio: optix_status explains the bridge that is not there')
+step('phase 3: optix_status explains the bridge - the ranked diagnosis when nothing answers, the live model when Studio is open')
 const status = await call('optix_status', {})
 const endpoint = status.endpoints[0]
 console.log(JSON.stringify({
   available: endpoint.available,
+  project: endpoint.health?.project,
+  bridge_version: endpoint.health?.bridge_version,
   error: endpoint.error,
   diagnosis: endpoint.diagnosis,
   needs_save: endpoint.needs_save?.pending,
   emulator_listening: status.preview_chain?.emulator?.listening,
 }, null, 2))
-assert.equal(endpoint.available, false, 'with no Studio open the bridge must not read as available')
-assert.equal(endpoint.error, 'Bridge unavailable', 'with no Studio open the status call must say what is missing')
-assert.ok(Array.isArray(endpoint.diagnosis?.causes) && endpoint.diagnosis.causes.length > 0, 'the diagnosis must rank the causes')
-assert.match(endpoint.diagnosis.next, /Studio/u)
+// This leg used to assert "no bridge", which quietly made the test depend on Studio being closed on the
+// machine. Both states are correct answers; which one is expected comes from the environment.
+if (endpoint.available) {
+  assert.equal(typeof endpoint.health?.project, 'string', 'an available bridge must name its project')
+  assert.equal(typeof endpoint.health?.bridge_version, 'string', 'an available bridge must name its version')
+  assert.equal(typeof endpoint.health?.template_library, 'boolean', 'the health answer carries the library gate')
+} else {
+  assert.equal(endpoint.error, 'Bridge unavailable', 'a status call with no bridge must say what is missing')
+  assert.ok(Array.isArray(endpoint.diagnosis?.causes) && endpoint.diagnosis.causes.length > 0, 'the diagnosis must rank the causes')
+  assert.match(endpoint.diagnosis.next, /Studio/u)
+}
 assert.equal(status.preview_chain?.emulator?.listening, true, 'the status call must see the runtime this plugin started')
+
+step('phase 3b: a bridge nothing answers on is a ranked diagnosis, whatever this machine has open')
+// A second mount pointed at a port nothing can be listening on, so the ranked diagnosis is proven in every
+// environment instead of only where Studio happens to be closed.
+const silentRow = await mount({ bridgeUrls: ['http://127.0.0.1:9/'] })
+const silent = await silentRow.tools.get('optix_status').execute({}, { signal })
+const silentEndpoint = silent.endpoints[0]
+console.log(JSON.stringify({ error: silentEndpoint.error, diagnosis: silentEndpoint.diagnosis, needs_save: silentEndpoint.needs_save }, null, 2))
+assert.equal(silentEndpoint.available, false, 'nothing listens on port 9, so the endpoint cannot be available')
+assert.equal(silentEndpoint.error, 'Bridge unavailable')
+assert.deepEqual(silentEndpoint.diagnosis.causes.length > 0, true, 'the diagnosis must always rank at least one cause')
+assert.match(silentEndpoint.diagnosis.next, /Studio/u)
+assert.equal(typeof silentEndpoint.diagnosis.port_listening, 'boolean', 'the diagnosis reports what it measured')
+await silentRow.dispose()
 
 step('phase 6: optix_screenshot renders the served project in a headless browser')
 const shot = await call('optix_screenshot', {})
@@ -272,6 +325,7 @@ if (!existsSync(join(drawn, 'Nodes'))) console.log(`skipped: no saved project at
 else {
   await call('optix_emulator', { action: 'stop', project, force: true })
   const first = await call('optix_emulator', { action: 'start', project: drawn, wait_ms: 90000 })
+  owned = drawn
   console.log(JSON.stringify({ project: drawn, started: first.started, serving: first.serving, waited_ms: first.waited_ms, notice: first.notice?.kind }, null, 2))
   assert.equal(first.serving, true, `${drawn} must serve its preview`)
   const drawnShot = await call('optix_screenshot', {})

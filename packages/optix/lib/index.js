@@ -1324,7 +1324,7 @@ function applyTemplates(ctx, maxBytes) {
  * works on the project directory, and the two steps that need Studio stay in its report.
  * @param ctx - Harness tool runtime context.
  */
-function applyBridgeArm(ctx) {
+function applyBridgeArm(ctx, bridge) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_bridge_arm",
 		description: "Report, and on confirmation write, the Studio bridge an existing Optix project needs so it can be read and authored at all. Works on the project directory, not through a bridge: it checks ProjectFiles/NetSolution, keeps whatever the project already holds under ProjectFiles/.dsh-backups, writes the bridge this bundle ships, and adds the StudioMCPBridge NetLogic node to Nodes/NetLogic/NetLogic.yaml when the project has none (a hand-built project usually does not, and StartBridge is unreachable without it; an existing node is left exactly as it is). With confirm false nothing is written. Studio still compiles the class and the engineer still runs StartBridge; no tool can do either from outside Studio.",
@@ -1724,18 +1724,20 @@ function applyOcrSetup(ctx, settings) {
 */
 function apply(ctx, config = {}) {
 	const settings = resolve(config);
-	applyTemplates(ctx, settings.maxResponseBytes);
-	applyBridgeArm(ctx);
-	applyEmulator(ctx, settings);
-	applyOcrSetup(ctx, settings);
-	if (settings.preview) ctx.inject(["attachments"], (scope) => {
-		applyPreview(scope, settings);
-	});
+	// The gateway is built before the authoring faces so a face that only probes the bridge
+	// (arming, which reads whether Studio already has the project open) shares the one transport.
 	const disposed = new AbortController();
 	const bridge = new OptixBridgeGateway(settings, disposed.signal);
 	ctx.effect(() => async () => {
 		disposed.abort();
 		await bridge.drain();
+	});
+	applyTemplates(ctx, settings.maxResponseBytes);
+	applyBridgeArm(ctx, bridge);
+	applyEmulator(ctx, settings);
+	applyOcrSetup(ctx, settings);
+	if (settings.preview) ctx.inject(["attachments"], (scope) => {
+		applyPreview(scope, settings);
 	});
 	let editing = false;
 	/** One process-local authoring owner prevents interleaved batches. */
@@ -2837,11 +2839,14 @@ function apply(ctx, config = {}) {
 					slots: layout.slots,
 					theme: layout.theme,
 					...(libraryPlan.length === 0 ? {} : { library: libraryPlan }),
-					host: {
-						window: host.window,
-						canvas: host.width === void 0 || host.height === void 0 ? void 0 : { width: host.width, height: host.height },
-						panel_loader: spec.panel_loader,
-						panel_loaders: host.panel_loaders,
+					// Every key here has to hold a real JSON value: an explicit undefined makes the whole result
+				// unrepresentable ("value is not lossless JSON"), and the host harness refuses the call even
+				// though the batch already ran. Omit the keys that have nothing to say instead.
+				host: {
+						...(host.window === void 0 ? {} : { window: host.window }),
+						...(host.width === void 0 || host.height === void 0 ? {} : { canvas: { width: host.width, height: host.height } }),
+						...(spec.panel_loader === void 0 ? {} : { panel_loader: spec.panel_loader }),
+						panel_loaders: host.panel_loaders ?? [],
 						nav_targets_missing: missingTargets
 					}
 				};
