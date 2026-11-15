@@ -235,7 +235,9 @@
         "why": "an authoring call is only accepted once the live model reads back the change"
       },
       "docs": [
-        "docs/optix-netlogic.md"
+        "docs/optix-netlogic.md",
+        "docs/optix-design.md",
+        "docs/optix-svg.md"
       ],
       "vendor": true
     },

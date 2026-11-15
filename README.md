@@ -356,6 +356,8 @@ even when the implementation behind a row is replaced.
 | [Cross-referencing HMI against PLC](docs/reference/ftview-cross.md) | Join an export's tags to a Studio 5000 L5X: device addresses, display usage, logic usage, one-sided tags |
 | [Optix NetLogic](docs/optix-netlogic.md) | The pinned NetLogic cheat-sheet snapshot: what it covers, its risk flags, and how one page is read |
 | [Optix workflow](docs/optix-workflow.md) | The seven-phase loop from brief to release: the two actions that stay with the engineer, the three states of a project, and what each phase may claim |
+| [Optix design rules](docs/optix-design.md) | The rule catalogue behind `optix_design_check`, `optix_model` and `optix_production_check`: what each rule family means and what satisfies it |
+| [Optix Advanced SVG](docs/optix-svg.md) | `AdvancedSVGImage`: the object, the three conformance conditions, the inspect/add/bind workflow and its limits |
 | [HMI design](docs/reference/hmi-design.md) | The screen grammar both HMI products draft with, the palette they share and where they diverge, and which tool reports which design rule in each product |
 | [Standards checks](docs/reference/standards-checks.md) | Every PLC and HMI rule a review reports, its severity, the corpus rule behind it and what a clean result does not prove |
 | [Architecture](docs/architecture.md) | Composition, row model, configuration, client faces, packaging |
