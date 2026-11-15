@@ -54,6 +54,7 @@ export const SHELL_NAMES = Object.freeze({
 	title: "ShellHeaderTitle",
 	brand: "ShellHeaderBrand",
 	clock: "ShellHeaderClock",
+	chip: "ShellHeaderChip",
 	user: "ShellHeaderUser",
 	rail: "ShellRail",
 	content: "ShellContent",
@@ -143,7 +144,9 @@ export function shellPlan({ window, width, height, language = undefined, screens
 	panel("Rectangle", SHELL_NAMES.brand);
 	place(chrome, `${window}/${SHELL_NAMES.brand}`, rect(0, 0, 4, HEADER_HEIGHT), { FillColor: theme.colours.accent });
 	text(SHELL_NAMES.title, "AryaCode");
-	place(chrome, `${window}/${SHELL_NAMES.title}`, rect(INSET, 16, Math.max(200, width - 520), 32), { FontSize: size(theme.type.heading) });
+	place(chrome, `${window}/${SHELL_NAMES.title}`, rect(INSET, 12, Math.max(200, width - 620), 40), { FontSize: size(theme.type.title) });
+	text(SHELL_NAMES.chip, "Ready");
+	place(chrome, `${window}/${SHELL_NAMES.chip}`, rect(width - 560, 22, 120, 24), { FontSize: size(theme.type.small), TextColor: theme.colours.accent });
 	text(SHELL_NAMES.clock, "--:--");
 	place(chrome, `${window}/${SHELL_NAMES.clock}`, rect(width - 420, 18, 150, 28));
 	text(SHELL_NAMES.user, "Operator");

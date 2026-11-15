@@ -22,6 +22,7 @@ import { adapterCatalogue } from "./adapters.js";
 import { writeAssets } from "./assets.js";
 import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
 import { DIALOG_KINDS, dialogPlan } from "./dialogs.js";
+import { describeScreen, rubricCatalogue, scoreScreen } from "./rubric.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -1118,7 +1119,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}Ã—${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}Ãƒâ€”${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -3904,7 +3905,7 @@ function apply(ctx, config = {}) {
 					units
 				});
 				const unchecked = [...report.unchecked, ...canvasNotes];
-				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", â€¦" : ""}`);
+				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", Ã¢â‚¬Â¦" : ""}`);
 				if (screen.descendants !== void 0 && screen.descendants > described.length) unchecked.push(`${screen.name} holds ${screen.descendants} descendants; only ${described.length} were read`);
 				const warnings = report.findings.filter((finding) => finding.severity === "warning");
 				return {
@@ -5112,7 +5113,7 @@ function apply(ctx, config = {}) {
 				type: "string",
 				required: true,
 				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit and the vendor adapters; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen; dialog writes a confirm/message/faceplate type and can wire a button that opens it; assets writes the authored icons and process drawings into ProjectFiles/imgs.",
-				enum: ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets"]
+				enum: ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets", "review"]
 			},
 			mode: {
 				type: "string",
@@ -5225,13 +5226,15 @@ function apply(ctx, config = {}) {
 		output: jsonOutput,
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "dialog" ? (args.mode === "apply" ? "Write an Optix dialog" : "Plan an Optix dialog") : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "assets" ? (args.mode === "apply" ? "Write Optix artwork" : "Plan Optix artwork") : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "review" ? "Grade an Optix screen" : args.action === "dialog" ? (args.mode === "apply" ? "Write an Optix dialog" : "Plan an Optix dialog") : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "assets" ? (args.mode === "apply" ? "Write Optix artwork" : "Plan Optix artwork") : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
 			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell" || args.action === "dialog" || args.action === "assets") && args.mode === "apply" ? "edit" : "read"
 		}),
 		async execute(args, exec) {
 			return exclusive(async () => {
 				const action = typeof args.action === "string" ? args.action : "";
-				const actions = ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets"];
+				const actions = ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets", "review"];
+				const kidsOf = (value) => value?.map?.children ?? value?.children ?? [];
+				const childName = (entry) => String(entry?.browse_name ?? entry?.name ?? "");
 				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
 				if (action === "languages") return {
 					languages: languageCatalogue(),
@@ -5244,7 +5247,8 @@ function apply(ctx, config = {}) {
 						action,
 						...kitCatalogue(picked),
 						adapters: adapterCatalogue(),
-						next: "Describe the screen as a blueprint and run action screen with mode plan: the plan names every component and its slot before anything is written. A vendor component (adapters[].kind) needs its library item imported first, and type_path names the imported type."
+						rubric: rubricCatalogue(),
+						next: "Describe the screen as a blueprint and run action screen with mode plan: the plan names every component and its slot before anything is written. A vendor component (adapters[].kind) needs its library item imported first, and type_path names the imported type. Action review grades a screen against rubric.rules after it exists."
 					};
 				}
 				if (action === "assets") {
@@ -5266,6 +5270,75 @@ function apply(ctx, config = {}) {
 				if (typeof args.project !== "string" || args.project.trim() === "") throw new Error("theme and audit read the live model: give project (the project name optix_status reports)");
 				const origin = settings.bridgeUrls[0] ?? "";
 				const { health: selectedHealth } = await bridge.select(args.project, exec.signal);
+				if (action === "review") {
+					const screenPath = typeof args.screen === "string" && args.screen.trim() !== "" ? args.screen.trim() : "";
+					if (screenPath === "") throw new Error("review needs screen: a project path such as UI/Screens/Home");
+					const host = await liveScreenHost(origin, exec.signal);
+					const measure = (value) => {
+						const parsed = Number.parseFloat(String(value ?? ""));
+						return Number.isFinite(parsed) ? Math.round(parsed) : 0;
+					};
+					const canvas = { width: measure(host.width), height: measure(host.height) };
+					const reply = await bridge.request(origin, "map", exec.signal, { path: screenPath, depth: "6", max: String(settings.maxMapNodes), mode: "detail" });
+					const pickedLanguage = typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE;
+					const screen = describeScreen(reply);
+					// `map` reports the tree but not the property values, and every rule in the rubric is geometry or a
+					// font size, so each node is read once through `nodes` and its values merged in. Bounded so a huge
+					// screen cannot turn a review into a crawl.
+					const hydrate = async (descriptor, base) => {
+						const rootName = descriptor.nodes[0]?.name ?? "";
+						const projectPath = (node) => (node.path === rootName ? base : `${base}${node.path.slice(rootName.length)}`);
+						const wanted = descriptor.nodes.filter((node) => node !== descriptor.nodes[0]).slice(0, 400);
+						for (let index = 0; index < wanted.length; index += 8) {
+							await Promise.all(wanted.slice(index, index + 8).map(async (node) => {
+								const detail = await bridge.request(origin, "nodes", exec.signal, { path: projectPath(node) }).catch(() => void 0);
+								const values = new Map((detail?.properties ?? []).map((entry) => [String(entry.name ?? ""), String(entry.value ?? "")]));
+								const read = (key) => {
+									const parsed = Number.parseFloat(values.get(key) ?? "");
+									return Number.isFinite(parsed) ? parsed : null;
+								};
+								node.left = read("LeftMargin") ?? node.left;
+								node.top = read("TopMargin") ?? node.top;
+								node.width = read("Width") ?? node.width;
+								node.height = read("Height") ?? node.height;
+								node.font_size = read("FontSize") ?? node.font_size;
+							}));
+						}
+						return descriptor;
+					};
+					await hydrate(screen, screenPath);
+					const engineRefs = {};
+					for (const engine of THEME_ENGINES) {
+						const engineMap = await bridge.request(origin, "map", exec.signal, { path: engine, depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+						const pointer = kidsOf(engineMap).find((entry) => childName(entry) === "StyleSheet");
+						engineRefs[engine] = typeof pointer?.ref === "string" ? pointer.ref : "";
+					}
+					const windowMap = await bridge.request(origin, "map", exec.signal, { path: host.window, depth: "3", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+					const windowScreen = windowMap === void 0 ? void 0 : describeScreen(windowMap);
+					const siblings = [];
+					const siblingsReply = await bridge.request(origin, "map", exec.signal, { path: "UI/Screens", depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+					for (const entry of kidsOf(siblingsReply)) {
+						const name = childName(entry);
+						const path = `UI/Screens/${name}`;
+						if (name === "" || path === screenPath || siblings.length >= 3) continue;
+						const siblingMap = await bridge.request(origin, "map", exec.signal, { path, depth: "4", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
+						if (siblingMap !== void 0) siblings.push(describeScreen(siblingMap));
+					}
+					if (windowScreen !== void 0) await hydrate(windowScreen, host.window);
+					const reviewed = scoreScreen({ screen, window: windowScreen, language: pickedLanguage, canvas, engine_refs: engineRefs, siblings: screenPath === host.window ? [] : siblings });
+					return {
+						status: "reviewed",
+						action,
+						project: selectedHealth.project,
+						screen: screenPath,
+						canvas,
+						nodes: screen.nodes.length,
+						...reviewed,
+						next: reviewed.grade === "professional"
+							? "The design holds up on the model. Save and Build, then prove the parts the rubric cannot: run optix_nav verify for the navigation and click a destructive command for its dialog."
+							: `Repair the must_fix list, then run review again: ${reviewed.must_fix.length} critical finding(s) and a score of ${reviewed.score} put this screen at ${reviewed.grade}.`
+					};
+				}
 				if (action === "screen") {
 					const mode = args.mode === "apply" ? "apply" : "plan";
 					const blueprint = args.blueprint;
@@ -5577,14 +5650,24 @@ function apply(ctx, config = {}) {
 					const refs = {};
 					for (const engine of engines) {
 						const engineMap = await bridge.request(origin, "map", exec.signal, { path: engine, depth: "1", max: String(settings.maxMapNodes), mode: "detail" }).catch(() => void 0);
-						const pointer = childrenOf(engineMap).find((entry) => nameOf(entry) === "StyleSheet");
+						const pointer = kidsOf(engineMap).find((entry) => childName(entry) === "StyleSheet");
 						refs[engine] = typeof pointer?.ref === "string" ? pointer.ref : "";
 					}
 					return refs;
 				};
 				const engineRefs = await readEngineRefs();
 				const exists = uiChildren.includes(sheetName) || Object.values(engineRefs).includes(sheetPath);
-				const plan = themePlan({ language, sheet: sheetName, project: selectedHealth.project, sheetPath, exists, engines });
+				// A sheet that already exists keeps whichever named styles an earlier apply wrote: read them so the
+				// second apply restates tokens instead of re-creating nodes (which the bridge refuses as already_exists).
+				const existingStyles = [];
+				if (exists) {
+					const probe = themePlan({ language, sheet: sheetName, project: selectedHealth.project, sheetPath, exists, engines });
+					for (const collection of [...new Set(probe.styles.map((style) => style.collection))]) {
+						const reply = await bridge.request(origin, "nodes", exec.signal, { path: `${sheetPath}/${collection}` }).catch(() => void 0);
+						for (const child of reply?.children ?? []) existingStyles.push(`${sheetPath}/${collection}/${String(child.browse_name ?? child.name ?? "")}`);
+					}
+				}
+				const plan = themePlan({ language, sheet: sheetName, project: selectedHealth.project, sheetPath, exists, existing: existingStyles, engines });
 				const styleNames = plan.styles.map((style) => style.path);
 				const base = {
 					action,

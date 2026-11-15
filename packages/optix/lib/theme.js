@@ -107,6 +107,7 @@ export function themePlan({
 	project,
 	sheetPath,
 	exists = false,
+	existing = [],
 	engines = THEME_ENGINES,
 } = {}) {
 	if (typeof project !== "string" || project.trim() === "") throw new Error("theme plans need project (the project name optix_status reports)");
@@ -130,9 +131,12 @@ export function themePlan({
 		path: `${path}/${style.collection}/${style.name}`,
 		properties: { ...style.properties },
 	}));
+	// A style that is already in the sheet is restated, never created twice: a second apply is a no-op that
+	// reasserts the tokens, which is what makes the theme callable after a language change.
+	const already = new Set((existing ?? []).map((entry) => String(entry)));
 	const styleOps = [];
 	for (const style of styles) {
-		styleOps.push({ op: "create_object", parent: `${path}/${style.collection}`, name: style.name, object_type: style.type });
+		if (!already.has(style.path)) styleOps.push({ op: "create_object", parent: `${path}/${style.collection}`, name: style.name, object_type: style.type });
 		for (const [property, value] of Object.entries(style.properties)) styleOps.push(set(style.path, property, value));
 	}
 
@@ -155,7 +159,8 @@ export function themePlan({
 		style_ops: styleOps,
 		ops: [...sheetOps, ...styleOps],
 		pointer_ops: pointerOps,
-		counts: { tokens: Object.keys(tokens).length, styles: styles.length, sheet_ops: sheetOps.length, style_ops: styleOps.length, ops: sheetOps.length + styleOps.length + pointerOps.length },
+		existing_styles: styles.filter((style) => already.has(style.path)).map((style) => style.path),
+		counts: { tokens: Object.keys(tokens).length, styles: styles.length, created_styles: styles.filter((style) => !already.has(style.path)).length, sheet_ops: sheetOps.length, style_ops: styleOps.length, ops: sheetOps.length + styleOps.length + pointerOps.length },
 	};
 }
 

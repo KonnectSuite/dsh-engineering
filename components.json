@@ -251,7 +251,8 @@
         "docs/optix-kit.md",
         "docs/optix-shell.md",
         "docs/optix-dialog.md",
-        "docs/optix-adapters.md"
+        "docs/optix-adapters.md",
+							"docs/optix-rubric.md"
       ],
       "vendor": true
     },

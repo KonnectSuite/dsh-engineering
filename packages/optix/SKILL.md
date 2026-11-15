@@ -675,6 +675,15 @@ operator click, release review — is written down as `optix-application-recipe`
 
 ## What "done" means here
 
+Before the runtime proof, grade what you drew: `optix_ui { action: "review", screen }`. It reads the screen
+through the bridge and scores it against the design rubric - a header band with a title, a status chip, a
+clock and a user; a native `NavigationPanel`; controls at least 44x44; no text under 11 px; one theme on both
+presentation engines; a vendor component or a process drawing; one shell across screens. `professional` means
+85 or more with no critical finding left, and `must_fix` names the node and the repair. Repair, run it again,
+and only then save and prove the runtime-only rules (a nav click, a confirm dialog, a live data component):
+the rubric never counts an unproven rule as a pass.
+
+
 A change is done when the evidence exists, not when the operation returned `applied`. Before saying an
 application is ready, these five have to be true, and each one names the call that proves it:
 

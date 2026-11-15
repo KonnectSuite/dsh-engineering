@@ -1,5 +1,8 @@
 ## [Unreleased]
 
+- **The Optix UI kit grades what it drew.** `optix_ui { action: "review" }` reads a screen through the bridge and scores it against the design rubric: a header band with a title, chip, clock and user; a native `NavigationPanel`; every control at least 44x44; no text below 11 px; one style sheet on both presentation engines; a vendor component or process drawing in the content; and the same shell across screens. A critical finding costs 40, a warning 10, `professional` needs 85 with no critical left, and `must_fix` names the node and the repair. The rules that need a runtime - does the confirm dialog open, does the active tab follow the screen, does the grid show values - are reported as `unverified` and never counted as a pass. Measured live on `AryaOptixTemplate` at 1280x800: the same screen went from `30 (entry-level)` with `VIEW-NAV-01` and `HMI-CONTRAST-01` critical to `90 (professional)` after `optix_ui action theme` bound one sheet on both engines and `action shell` drew the header, rail and status strip. The shell header also gained a status chip and a 25 px title, and `theme` is idempotent: a second apply restates the tokens and named styles instead of re-creating them (the bridge refuses `already_exists`).
+
+
 - **`optix_ui`: a screen is designed by a language, not by colours picked per widget.** Seven design
   languages ship in `packages/optix/lib/languages.js` — `modern` (default), `modern-dark`, `isa101`,
   `isa101-hc`, `material-dark`, `minimal-light`, `kiosk` — each with its `StyleSheet` tokens, its named

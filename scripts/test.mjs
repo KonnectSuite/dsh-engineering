@@ -49,6 +49,7 @@ const BUNDLE = [
   'test/optix-help.spec.mjs',
   'test/optix-nav.spec.mjs',
   'test/optix-theme.spec.mjs',
+  'test/optix-rubric.spec.mjs',
   'test/optix-kit.spec.mjs',
   'test/optix-shell.spec.mjs',
   'test/optix-adapters.spec.mjs',
