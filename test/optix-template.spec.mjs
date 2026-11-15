@@ -9,7 +9,7 @@ import { test } from 'node:test'
  * carries the questions so `optix_template` returns them and the agent asks instead of guessing.
  */
 
-const templates = ['arya-optix-ipc', 'arya-optix-panel']
+const templates = ['arya-optix-ipc', 'arya-optix-panel', 'arya-optix-app']
 
 /** @param id - Template folder. */
 const manifestOf = id => JSON.parse(readFileSync(
@@ -58,14 +58,18 @@ test('the size question states the box the project actually ships', () => {
   }
 })
 
-test('the two starters point at different runtimes and say so to each other', () => {
+test('the starters declare their runtime and name the ones they are not', () => {
   const ipc = manifestOf('arya-optix-ipc')
   const panel = manifestOf('arya-optix-panel')
+  const app = manifestOf('arya-optix-app')
   assert.notEqual(ipc.target, panel.target)
+  assert.equal(app.target, ipc.target, 'the branded starter runs on the same runtime as the IPC one')
   const ipcTarget = ipc.questions.find(question => question.id === 'target')
   const panelTarget = panel.questions.find(question => question.id === 'target')
+  const appTarget = app.questions.find(question => question.id === 'target')
   assert.ok(ipcTarget.why.includes('arya-optix-panel'), 'the IPC target question does not name the other template')
   assert.ok(panelTarget.why.includes('arya-optix-ipc'), 'the panel target question does not name the other template')
+  assert.ok(appTarget.why.includes('arya-optix-panel'), 'the branded target question does not say which starter a panel target uses')
 })
 
 /**
@@ -102,12 +106,12 @@ test('no starter named answers with both manifests and their questions, writing 
   const source = readFileSync(new URL('../packages/optix/lib/index.js', import.meta.url), 'utf8')
   const tool = source.slice(source.indexOf('name: "optix_template"'), source.indexOf('name: "optix_template"') + 3000)
   assert.match(tool, /chosen between, not surveyed/u, 'the description still invites a survey')
-  assert.match(tool, /With no arguments it answers with both manifests and their `questions` and writes nothing/u)
+  assert.match(tool, /With no arguments it answers with every manifest and its `questions` and writes nothing/u)
   const template = tool.slice(tool.indexOf('template: {'), tool.indexOf('path: {'))
-  assert.match(template, /Omit to receive both manifests and their questions, writing nothing\./u)
+  assert.match(template, /Omit to receive every manifest and its questions, writing nothing\./u)
   assert.ok(!template.includes('required: true'), 'the template parameter is still required')
   const execute = source.slice(source.indexOf('if (args.template === void 0) {'), source.indexOf('if (args.template === void 0) {') + 1600)
-  assert.match(execute, /for \(const id of ids\)/u, 'the no-starter answer does not read both starters')
+  assert.match(execute, /for \(const id of ids\)/u, 'the no-starter answer does not read every starter')
   assert.match(execute, /starters\.push\(\{/u)
   assert.match(execute, /return \{\s*starters,\s*instructions:/u)
   assert.doesNotMatch(execute, /scaffoldProject|writeFile|mkdir/u, 'the no-starter answer must not write anything')
@@ -116,21 +120,38 @@ test('no starter named answers with both manifests and their questions, writing 
 
 
 /**
- * A starter is also an operator shell. Both starters ship the four screens a line application opens
- * on, so the first thing an agent drafts lands in a project that already has the pages the operator
- * navigates — the loader and the bar are created and proven in phase 4 by `optix_screen` and
- * `optix_nav`, never hand-written into the starter's YAML.
+ * A starter is also an operator shell. The two blank starters ship the four screens a line
+ * application opens on and leave the loader and the bar to phase 4 (`optix_screen`, `optix_nav`).
+ * The branded starter is the opposite bet: it ships the built shell, its native rail, three designed
+ * screens and a bound vendor stylesheet, so a team starts from a painted application.
  */
-test('both starters ship the four screens the operator shell opens on', () => {
-  const wanted = ['Home', 'Alarms', 'Diagnostics', 'Settings']
+const screensByStarter = {
+  'arya-optix-ipc': ['Home', 'Alarms', 'Diagnostics', 'Settings'],
+  'arya-optix-panel': ['Home', 'Alarms', 'Diagnostics', 'Settings'],
+  'arya-optix-app': ['Overview', 'Alarms', 'Diagnostics'],
+}
+
+test('every starter ships the screens it claims, and the branded one ships a built shell', () => {
   for (const id of templates) {
-    const yaml = readFileSync(
-      new URL(`../packages/optix/templates/${id}/project/Nodes/UI/Screens/Screens.yaml`, import.meta.url), 'utf8',
-    )
+    const wanted = screensByStarter[id]
+    const root = new URL(`../packages/optix/templates/${id}/project/Nodes/UI/`, import.meta.url)
+    const yaml = readFileSync(new URL('Screens/Screens.yaml', root), 'utf8')
     const names = [...yaml.matchAll(/^- Name: (.+)$/gmu)].map(match => match[1])
     assert.deepEqual(names, wanted, `${id}: the shell screens are ${names.join(', ')}`)
     assert.equal((yaml.match(/Supertype: Screen/gu) ?? []).length, wanted.length, `${id}: a screen is not a Screen supertype`)
   }
+  const appRoot = new URL('../packages/optix/templates/arya-optix-app/project/Nodes/UI/', import.meta.url)
+  const ui = readFileSync(new URL('UI.yaml', appRoot), 'utf8')
+  for (const node of ['ShellHeader', 'ShellHeaderBrand', 'ShellHeaderTitle', 'ShellHeaderChip', 'ShellRail', 'ShellFooter', 'ShellFooterStatus', 'RailItem1', 'RailItem2', 'RailItem3']) {
+    assert.ok(ui.includes(`- Name: ${node}`), `the branded starter has no ${node}`)
+  }
+  const sheets = readFileSync(new URL('StyleSheets/StyleSheets.yaml', appRoot), 'utf8')
+  assert.match(sheets, /- Name: FriendlyLight1/u, 'the branded starter ships no vendor stylesheet')
+  const bound = [...ui.matchAll(/Name: StyleSheet\r?\n\s+Type: NodePointer\r?\n\s+DataType: NodeId\r?\n\s+Value: "([^"]+)"/gu)].map(match => match[1])
+  assert.equal(bound.length, 2, 'both presentation engines must name a stylesheet')
+  for (const ref of bound) assert.match(ref, /\/UI\/StyleSheets\/FriendlyLight1$/u, `an engine is bound to ${ref}`)
+  const dialogs = readFileSync(new URL('Dialogs/Dialogs.yaml', appRoot), 'utf8')
+  assert.match(dialogs, /- Name: ConfirmResetLine/u, 'the branded starter ships no confirm dialog')
 })
 
 /**

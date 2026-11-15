@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+
+- **A branded application starter, `arya-optix-app`**, alongside the two blank ones. It ships what the build loop used to create: a 1280x800 window with the header band (brand, title, status chip, clock, user), a native `NavigationPanel` rail hosting three designed screens (`Overview`, `Alarms`, `Diagnostics`), a `ConfirmResetLine` dialog wired through `OpenDialog` and closed by the dialog's own `Close`, the vendor `FriendlyLight` stylesheet bound on both presentation engines, and the bridge compiled in. `optix_template` now offers three starters with their questions; the manifest carries 74 files, 2,281,125 bytes and a content hash, and a scaffolded copy was validated through the file channel (`ok:true, critical:0`) with the project name rewritten in all 7 name-carrying files and no stale `AryaOptixApp` reference.
+
 ### Fixed
 
 - The shell is a native `NavigationPanel` that hosts the screens: the rail now switches the content,

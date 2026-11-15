@@ -17,7 +17,7 @@ this repository, do not grep for prior attempts, do not survey the machine, and 
 before the brief exists: the tools carry the procedure and the standards corpus, and `CRAFT-ORD-01`
 says the host is not the source.
 
-1. `optix_template {}` returns both starters and the five questions.
+1. `optix_template {}` returns every starter and its questions.
 2. Ask all five in one `ask_user_question`: runtime target, canvas in pixels, project name, destination
    folder, what the line talks to.
 3. `optix_template` with the answers writes the project; there is nothing to open yet.
@@ -372,7 +372,7 @@ machine before it starts on the design.
 
 | The request | The first move | The host |
 | --- | --- | --- |
-| A new build, template or standard, nothing named | `engineering_reference` pages (tool calls, one `id` each), then `optix_template {}` (our two starters and their questions), then the brief | not read |
+| A new build, template or standard, nothing named | `engineering_reference` pages (tool calls, one `id` each), then `optix_template {}` (our starters and their questions), then the brief | not read |
 | "Match what we already have", "use our project", or a project is named | `engineering_profile`, then `optix_status` | read, bounded to that project |
 | Work inside a known project — a screen, a tag, a NetLogic | `optix_status`, then `optix_read` | read, that project only |
 | A real host fact — is Studio installed, does a runtime exist | ask, or one bounded check with the reason stated | one command, never a sweep |
@@ -738,7 +738,7 @@ short of "ready". The rest of the work can still be correct — it is just not y
   `install: true` installs it through winget. It never installs a Python service or an OCR daemon. If
   Tesseract is already present it says so and names the path to put in `ocrExecutable`, which is a
   config change, not an install. Ask before running the install: it downloads software.
-- `optix_template` is our two packaged starters (Optix IPC and OptixPanel), chosen between rather than
+- `optix_template` is our three packaged starters (Optix IPC, OptixPanel and the branded Arya Optix Application Starter), chosen between rather than
   surveyed. With no `template` it returns both manifests and their `questions` and writes nothing — that
   is the call a new template request opens with. With `destination` it scaffolds the starter you name:
   copies it into a new or empty directory, renames it, writes the screen box you pass as `width`/`height`,
@@ -762,7 +762,7 @@ is already open and the engineer is available.
 
 ### A. New project, no Studio open yet
 
-1. `optix_template {}` — with no `template` it answers with both starters and their `questions`; ask those
+1. `optix_template {}` — with no `template` it answers with every starter and its `questions`; ask those
    answers **before** scaffolding.
    Each answer is baked into files that are painful to re-edit later: **runtime** (OptixPanel device or
    a PC in a browser - it picks the template), **screen size** (the operator's real box in pixels; a
@@ -774,10 +774,12 @@ is already open and the engineer is available.
    are not optional - the tool refuses without them rather than guessing. The copy lands in
    `<destination>/<name>`, so the folder is named after the project and Studio does not warn that the
    project name and its folder disagree; a destination that already carries the name is used as the
-   project folder itself. Report the path the tool returned and the canvas it got. Both starters ship an
+   project folder itself. Report the path the tool returned and the canvas it got. The two blank starters ship an
    operator shell's four screens (`Home`, `Alarms`, `Diagnostics`, `Settings`) — the loader and the bar
    are still created in phase 4 by `optix_screen` and `optix_nav`, because those are the calls that also
-   prove the buttons work.
+   prove the buttons work. `arya-optix-app` is the branded one: its header band, native navigation rail,
+   three designed screens, confirm dialog and vendor stylesheet binding are already built, so the work
+   starts at tags, PLC connection and the screens a team actually needs.
 3. Hand the two Studio actions to the engineer in one short message and stop: which `.optix` file to
    open, that the build must succeed, and that the `StudioMCPBridge` NetLogic wants `StartBridge`.
    Name the one dialog they will meet: the first `StartBridge` raises Studio's NetLogic security
@@ -836,7 +838,7 @@ deliverable, not a reason to look at the machine.
    per `id`, never a file to look for: `hmi-isa101-baseline`, `hmi-screen-architecture`,
    `hmi-standards-precedence`, `hmi-rockwell-process-style-guide`, `optix-application-recipe`,
    `optix-navigation-patterns`, `optix-widget-patterns`, `optix-design-resources`.
-2. `optix_template {}` — our two starters and their questions, nothing written. The starters are the
+2. `optix_template {}` — our three starters and their questions, nothing written. The starters are the
    shell; the standard is what goes inside and on top of them.
 3. Ask the template brief: runtime target(s) and canvas(es), display levels and the navigation shell,
    palette and style sheet, tag and model naming and hierarchy (`optix_model`), alarm strategy, NetLogic

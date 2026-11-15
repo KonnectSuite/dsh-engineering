@@ -30,7 +30,7 @@ A new build starts from the brief, the packaged starters and the published stand
 installed, open or on disk (`CRAFT-ORD-01`). The agent reads the standards pages from
 `engineering_reference` (`hmi-isa101-baseline`, `hmi-screen-architecture`, `hmi-standards-precedence`,
 `hmi-rockwell-process-style-guide`, `optix-application-recipe`, `optix-navigation-patterns`,
-`optix-widget-patterns`, `optix-design-resources`), then `optix_template {}` for the two starters and
+`optix-widget-patterns`, `optix-design-resources`), then `optix_template {}` for the three starters and
 their questions. Five answers are baked into files and are painful to change later:
 
 | Question | Why it cannot be guessed |

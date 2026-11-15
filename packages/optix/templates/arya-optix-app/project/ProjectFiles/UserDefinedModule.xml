@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Module version="1">
+    <Name>AryaOptixAppUserDefinedModule</Name>
+    <Company></Company>
+    <Version>0.0.0</Version>
+    <MinUpgradableVersion>0.0.0</MinUpgradableVersion>
+    <Binding name="Net" />
+
+    <Namespaces/>
+
+    <Dependencies>
+        <Core version="0.0.0" />
+        <Binding version="0.0.0" />
+        <Module name="FTOptix.HMIProject.Net" version="0.0.0" />
+    </Dependencies>
+
+    <Nodes/>
+
+    <TypeMappings>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="343e9a553a1648e3de95b91f6d877b43" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="01a7e8933afd7c95fe894b0859308138" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="ba060dabe3223c9b73ecd35e8a6579f1" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="93cbf19dd68a72c543a41f03c3c2b7a1" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="41382c57dc616862c1af276ff6942abc" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="41f433c486aa6dfdb14c2c47570eea1a" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="d17d8ab3d7f8047c35a02cbe0b7248c6" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="77122192dcccfaa39d1e78d7bd27e222" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="9cf154c923572624320f16c16fa657a3" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="548a589cc1532b072d9d24316f7b6090" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="07b10933e4ee4d4cbf84518e190ea9be" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="e348b14dbc7035688714c7ced8a72128" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="c05a81edcb91fa074772f19543ea1b38" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="d8a8bb0d6c0490587ebdf9c1eb42375e" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="dc2c41b238ed9ce9aa4f98d28d04b528" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="f0afd51b3f49febd40b32153974e81b8" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="323ecbd80fe0dccc66307959b261f54a" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="5776d2e044f64026b5a01133cb7f25b6" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="f35a0d2c3b3748d1acdedfbf4137603b" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="4288a9cacf7f4bf89e37211edf478872" />
+            </TargetType>
+        </TypeMapping>
+        <TypeMapping>
+            <TargetType>
+                <NodeId namespaceUri="AryaOptixApp" guid="84359bd7f4a84151b0051bc8f2d745cd" />
+            </TargetType>
+        </TypeMapping>
+    </TypeMappings>
+</Module>

@@ -1288,7 +1288,7 @@ function applyPreview(ctx, config) {
 //#endregion
 //#region lib/types/templates.js
 /** Immutable user-supplied Optix starters and NetLogic acquisition. @module dsh-tool-ft-optix/templates */
-const ids = ["arya-optix-ipc", "arya-optix-panel"];
+const ids = ["arya-optix-ipc", "arya-optix-panel", "arya-optix-app"];
 /**
 * Parse the shipped manifest before exposing project file access.
 * @param text - Manifest JSON acquired from the package assets.
@@ -1312,12 +1312,12 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(defineTool({
 		name: "optix_template",
-		description: "Our two packaged starters, Arya Optix IPC and OptixPanel - chosen between, not surveyed. With no arguments it answers with both manifests and their `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
+		description: "Our three packaged starters — Arya Optix IPC and OptixPanel, both blank, and the branded application starter whose operator shell, screens and dialog are already built — chosen between, not surveyed. With no arguments it answers with every manifest and its `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
 				enum: ids,
-				description: "Which starter: `arya-optix-ipc` or `arya-optix-panel`. Omit to receive both manifests and their questions, writing nothing."
+				description: "Which starter: `arya-optix-ipc` and `arya-optix-panel` are blank, `arya-optix-app` is the branded application starter with the shell already built. Omit to receive every manifest and its questions, writing nothing."
 			},
 			path: {
 				type: "string",
@@ -1356,7 +1356,7 @@ function applyTemplates(ctx, maxBytes) {
 			exec.signal.throwIfAborted();
 			if (args.template === void 0) {
 				/**
-				 * A template or standard request opens here: both starters and the questions they need
+				 * A template or standard request opens here: every starter and the questions it needs
 				 * answered, with nothing written. This is the cheap first call that keeps an agent from
 				 * surveying the machine to work out what our own templates are.
 				 */
@@ -1385,7 +1385,7 @@ function applyTemplates(ctx, maxBytes) {
 				exec.signal.throwIfAborted();
 				return {
 					starters,
-					instructions: "These are our two starters - the shell a team starts from. Ask their questions before copying anything: which runtime, the screen box in pixels, the project name and the destination. Then choose one and pass `template`, `destination`, `name`, `width` and `height`. A house standard (levels, palette, naming, alarm strategy) is decided from `engineering_reference` and applied on top of the copy; nothing here creates an empty project."
+					instructions: "These are our three starters - two blank projects and one branded application whose shell, rail, screens, dialog and stylesheet binding are already built - the shell a team starts from. Ask their questions before copying anything: which runtime, the screen box in pixels, the project name and the destination. Then choose one and pass `template`, `destination`, `name`, `width` and `height`. A house standard (levels, palette, naming, alarm strategy) is decided from `engineering_reference` and applied on top of the copy; nothing here creates an empty project. The branded starter is the fast path when a team wants to begin from a designed application rather than a bare project."
 				};
 			}
 			const root = new URL(`../templates/${args.template}/`, import.meta.url);
