@@ -289,6 +289,20 @@ the panel's `AttachedPanelLoader` pointing at the content host.
 Optional `screens` (defaults to every `Screen` under `UI/Screens`), `loader` (reuse an existing panel
 loader), `rail_width` (160-280 px), `language`.
 
+## Destructive commands ask first
+
+A dialog is a `Dialog` object type opened by Studio's own `UICommands.OpenDialog` and closed by
+`UICommands.CloseDialog` - no NetLogic, no absolute pointer in a property. `optix_ui { action: "dialog" }`
+writes it in five phases (`folder`, `type`, `content`, `wire`, `trigger`), and a second apply restates the
+wording and the boxes instead of creating a second button.
+
+1. `optix_ui { action: "dialog", project, mode: "plan", name: "ConfirmDelete", title: "...", message: "...",
+   confirm_label: "Delete", cancel_label: "Keep", destructive: true, trigger_screen, trigger_name }`.
+2. The same call with `mode: "apply"`. The trigger button's `OpenDialog` argument is the
+   **`/Objects/<Project>/…`** path; that is the one place a dialog is named that way.
+3. Save and Build in Studio, restart the emulator, click the trigger. Do not report a dialog as working
+   from the operations that wrote it.
+
 ## Navigation is a bar and a proof
 
 A screen that never changes when a button is clicked is the failure this skill exists to stop: the

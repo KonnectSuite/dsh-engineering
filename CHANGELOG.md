@@ -42,6 +42,19 @@
   (bridge 1.0.9): `planned` 59-69 operations across four phases, then `applied` with every phase written,
   and all four pointer values read back (`RailItem1.Panel = UI/Screens/Settings`,
   `ShellContent.Panel = UI/Screens/Settings`, `ShellRail.AttachedPanelLoader = UI/MainWindow/ShellContent`).
+- **Dialogs for the commands that cannot be undone (`optix_ui action dialog`).** `packages/optix/lib/dialogs.js`
+  plans a `Dialog` object type under `UI/Dialogs` — title, message, a `Confirm`/`Cancel` pair boxed bottom-right,
+  `Modal 1` — and wires both buttons through Studio's own `UICommands.CloseDialog`; an optional trigger button on
+  a screen wires `UICommands.OpenDialog` with the dialog named as `/Objects/<Project>/UI/Dialogs/<Name>`
+  (`plan` writes nothing, `apply` is behind `allowWrites`). It is written in five phases (`folder`, `type`,
+  `content`, `wire`, `trigger`) because a `Dialog` type's children only exist once the type does, and each phase
+  is validated against the model the previous one left. A second `apply` **restates** the wording and the boxes
+  instead of creating a second button or a second handler, because `create_widget` on an existing name is refused
+  as `already_exists`. Measured live on `AryaOptixTemplate` (bridge 1.0.9): first apply `applied 35` with phases
+  `1 / 4 / 25 / 2 / 3`, second apply `applied 24` with `folder 0 skipped, type 3 applied, content 21 applied,
+  wire 0 skipped` and no trigger phase; the type reads back with `Width, Height, Modal, DlgTitle, DlgMessage,
+  DlgCancel, DlgConfirm` and the trigger opens it. Optional `destructive: true` marks the dialog for
+  `optix_design_check`'s `VIEW-DLG-01`.
 
 ## [0.97.0] - 2026-11-15
 

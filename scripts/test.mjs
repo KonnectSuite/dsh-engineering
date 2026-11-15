@@ -51,6 +51,7 @@ const BUNDLE = [
   'test/optix-theme.spec.mjs',
   'test/optix-kit.spec.mjs',
   'test/optix-shell.spec.mjs',
+  'test/optix-dialogs.spec.mjs',
   'test/skill-engagement.spec.mjs',
   'test/entry-tool-contract.spec.mjs',
   'test/resources.spec.mjs',

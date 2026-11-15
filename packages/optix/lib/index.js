@@ -19,6 +19,7 @@ import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.
 import { THEME_ENGINES, auditTheme, themePlan } from "./theme.js";
 import { PATTERNS, compileBlueprint, kitCatalogue } from "./kit.js";
 import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
+import { DIALOG_KINDS, dialogPlan } from "./dialogs.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
@@ -5108,8 +5109,8 @@ function apply(ctx, config = {}) {
 			action: {
 				type: "string",
 				required: true,
-				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen.",
-				enum: ["languages", "theme", "audit", "components", "shell", "screen"]
+				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen; dialog writes a confirm/message/faceplate type and can wire a button that opens it.",
+				enum: ["languages", "theme", "audit", "components", "shell", "screen", "dialog"]
 			},
 			mode: {
 				type: "string",
@@ -5171,18 +5172,59 @@ function apply(ctx, config = {}) {
 			rail_width: {
 				type: "integer",
 				description: `shell: rail width in pixels, ${160} to ${280}; default ${RAIL_WIDTH}.`
+			},
+			kind: {
+				type: "string",
+				description: `dialog: the dialog shape; default confirm. One of ${DIALOG_KINDS.join(", ")}.`,
+				enum: [...DIALOG_KINDS]
+			},
+			name: {
+				type: "string",
+				description: "dialog: the object type name an operator opens, such as ConfirmDelete."
+			},
+			title: {
+				type: "string",
+				description: "dialog: the heading shown at the top of the dialog."
+			},
+			message: {
+				type: "string",
+				description: "dialog: the sentence inside the dialog, such as the consequence of the destructive command."
+			},
+			confirm_label: {
+				type: "string",
+				description: "dialog: the confirm button's text; default Confirm (a message dialog closes with Close unless this is named)."
+			},
+			cancel_label: {
+				type: "string",
+				description: "dialog: the cancel button's text; default Cancel."
+			},
+			destructive: {
+				type: "boolean",
+				description: "dialog: mark the confirm button as destructive so the design review expects it before a delete."
+			},
+			parent: {
+				type: "string",
+				description: "dialog: the folder the dialog type lives in; default UI/Dialogs, created when missing."
+			},
+			trigger_screen: {
+				type: "string",
+				description: "dialog: a screen that gets a button opening this dialog, such as UI/Screens/Alarms."
+			},
+			trigger_name: {
+				type: "string",
+				description: "dialog: the name of that button, such as BtnDeleteRecipe."
 			}
 		},
 		output: jsonOutput,
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
-			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell") && args.mode === "apply" ? "edit" : "read"
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "dialog" ? (args.mode === "apply" ? "Write an Optix dialog" : "Plan an Optix dialog") : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell" || args.action === "dialog") && args.mode === "apply" ? "edit" : "read"
 		}),
 		async execute(args, exec) {
 			return exclusive(async () => {
 				const action = typeof args.action === "string" ? args.action : "";
-				const actions = ["languages", "theme", "audit", "components", "shell", "screen"];
+				const actions = ["languages", "theme", "audit", "components", "shell", "screen", "dialog"];
 				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
 				if (action === "languages") return {
 					languages: languageCatalogue(),
@@ -5384,6 +5426,117 @@ function apply(ctx, config = {}) {
 						applied: results.length,
 						phases: report,
 						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator. The rail switches the loader through ChangePanel; a tab that compiles is not a tab that works until a click is seen in the runtime."
+					};
+				}
+				if (action === "dialog") {
+					const mode = args.mode === "apply" ? "apply" : "plan";
+					const folder = typeof args.parent === "string" && args.parent.trim() !== "" ? args.parent.trim().replace(/\/+$/u, "") : "UI/Dialogs";
+					const identifier = typeof args.name === "string" ? args.name.trim() : "";
+					const kind = typeof args.kind === "string" && args.kind.trim() !== "" ? args.kind.trim() : "confirm";
+					const triggerScreen = typeof args.trigger_screen === "string" ? args.trigger_screen.trim() : "";
+					const triggerName = typeof args.trigger_name === "string" ? args.trigger_name.trim() : "";
+					// Three reads, because the plan must not recreate what the earlier apply left behind.
+					const folderReply = await bridge.request(origin, "nodes", exec.signal, { path: folder }).catch(() => void 0);
+					const typeReply = identifier === "" ? void 0 : await bridge.request(origin, "nodes", exec.signal, { path: `${folder}/${identifier}` }).catch(() => void 0);
+					const triggerReply = triggerScreen !== "" && triggerName !== ""
+						? await bridge.request(origin, "nodes", exec.signal, { path: `${triggerScreen}/${triggerName}` }).catch(() => void 0)
+						: void 0;
+					const planned = dialogPlan({
+						name: identifier,
+						kind,
+						parent: folder,
+						title: typeof args.title === "string" ? args.title : "",
+						message: typeof args.message === "string" ? args.message : "",
+						confirmLabel: typeof args.confirm_label === "string" && args.confirm_label.trim() !== "" ? args.confirm_label.trim() : undefined,
+						cancelLabel: typeof args.cancel_label === "string" && args.cancel_label.trim() !== "" ? args.cancel_label.trim() : undefined,
+						destructive: args.destructive === true,
+						triggerScreen,
+						triggerName,
+						project: selectedHealth.project,
+						width: Number.isInteger(args.width) && args.width > 0 ? args.width : undefined,
+						height: Number.isInteger(args.height) && args.height > 0 ? args.height : undefined,
+						language: typeof args.language === "string" && args.language.trim() !== "" ? args.language.trim() : DEFAULT_LANGUAGE,
+						folderExists: Boolean(folderReply),
+						typeExists: Boolean(typeReply),
+						triggerExists: Boolean(triggerReply)
+					});
+					const validate = async (ops) => bridge.request(origin, "validate_ops", exec.signal, {}, "POST", { ops, strict: true });
+					const accepted = (validation) => validation?.ok === true && (validation.errors ?? []).length === 0;
+					// The folder (and the type after it) has to exist before its children validate, so the
+					// first phase is the only one a plan can prove against the model as it stands.
+					const first = planned.phases[0];
+					const firstValidation = await validate(first.ops);
+					const base = {
+						action,
+						mode,
+						project: selectedHealth.project,
+						dialog: planned.path,
+						kind: planned.kind,
+						title: planned.title,
+						message: planned.message,
+						buttons: planned.buttons.map((button) => ({ name: button.name, label: button.label })),
+						exists: planned.exists,
+						counts: planned.counts,
+						op_count: planned.ops.length,
+						phases: planned.phases.map((phase) => ({ name: phase.name, ops: phase.ops.length, validated: phase === first ? accepted(firstValidation) : false }))
+					};
+					if (mode === "plan") return {
+						status: accepted(firstValidation) ? "planned" : "refused",
+						...base,
+						validation: firstValidation,
+						next: accepted(firstValidation)
+							? "Run the same call with mode apply: it creates the folder and the dialog type, then fills it, then wires the buttons that close it (and the trigger that opens it), validating each phase against the model the previous one left."
+							: "The bridge refused the first phase before anything was written: read validation for the folder it would not create."
+					};
+					allowWrite();
+					const results = [];
+					const report = [];
+					for (const phase of planned.phases) {
+						if (phase.ops.length === 0) {
+							report.push({ name: phase.name, ops: 0, status: "skipped" });
+							continue;
+						}
+						const phaseValidation = phase === first ? firstValidation : await validate(phase.ops);
+						if (!accepted(phaseValidation)) return {
+							status: "refused_phase",
+							...base,
+							phase: phase.name,
+							applied: results.length,
+							validation: phaseValidation,
+							phases: report,
+							next: `The ${phase.name} phase was refused before anything in it was written. The earlier phases are on the model; plan again - a second apply restates what is missing.`
+						};
+						for (const [index, op] of phase.ops.entries()) {
+							let dispatched = false;
+							try {
+								const now = await bridge.request(origin, "health", exec.signal);
+								if (now.project !== selectedHealth.project || now.model_loaded !== true || now.pid !== selectedHealth.pid) throw new Error("Serving Studio project changed during the dialog batch");
+								const request = operationRequest(op);
+								dispatched = true;
+								const result = await bridge.request(origin, request.route, exec.signal, request.query, "POST");
+								if (result.ok !== true) throw new BridgeError("Bridge did not acknowledge a dialog operation", true);
+								results.push(result);
+							} catch (error) {
+								return {
+									status: !dispatched || error instanceof BridgeError && !error.mayHaveApplied ? "partial" : "indeterminate",
+									...base,
+									phase: phase.name,
+									applied: results.length,
+									failed_index: index,
+									phases: report,
+									error: String(error),
+									next: "Inspect the dialog node before retrying: a half-applied dialog still exists as a type, so plan again and apply only what is missing."
+								};
+							}
+						}
+						report.push({ name: phase.name, ops: phase.ops.length, status: "applied" });
+					}
+					return {
+						status: "applied",
+						...base,
+						applied: results.length,
+						phases: report,
+						next: "Save and Build in Studio, then click the trigger (or open the dialog from a NetLogic). A dialog whose buttons close it is still a dialog nobody saw until a click in the runtime shows it."
 					};
 				}
 				const childrenOf = (reply) => reply?.map?.children ?? reply?.children ?? [];

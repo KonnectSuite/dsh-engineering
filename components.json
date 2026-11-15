@@ -249,7 +249,8 @@
         "docs/optix-nav.md",
         "docs/optix-theme.md",
         "docs/optix-kit.md",
-        "docs/optix-shell.md"
+        "docs/optix-shell.md",
+        "docs/optix-dialog.md"
       ],
       "vendor": true
     },
