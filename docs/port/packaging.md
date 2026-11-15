@@ -325,3 +325,21 @@ Recorded from the pre-0.3.0 multi-tarball layout:
   `dsh.profile.bundles` and `dsh --dump-config` composes every engineering row
   under `# == dsh-engineering`.
 - `product-plugins.spec.ts` and `profile.spec.ts` pass in AryaCode (53 tests).
+
+**0.94.4 release record (2026-11-14).** Built from `343150e` (the tool-contract fix) and `b3a3b97` (the version
+commit). The reason for it is the only thing worth recording: 0.94.3 shipped `engineering_reference` and
+`engineering_profile` refused by the harness tool contract (`output.render` missing), the resources row swallowed
+the throw, and every agent that followed the new standards-first step found no such tool — measured on the
+operator's session as the agent reading `app.asar` bytes in search of it. The fix declares `output { schema, render }`,
+registers each tool separately so one refusal cannot empty the row, reports refusals at error level, and adds
+`test/entry-tool-contract.spec.mjs`, which mounts all eight entries against the harness precondition instead of a
+stub that accepts anything. Release evidence: `pnpm test` **54 file(s) passed (26,640 ms)**; `pnpm docs:check`
+up to date; `pnpm -r build` + `pnpm assemble` (8 components) clean; `pnpm publish` published 0.94.4;
+`verify-release.mjs --wait 300` first answered the usual CDN-edge `FAIL registry latest is 0.94.3` and then
+`ok @aryacode/dsh-engineering@0.94.4`; catalogue recorded the registry copy sha256 `7034f1ba632f…`; tag `v0.94.4`.
+Installed from the registry into `%LOCALAPPDATA%\AryaCode-dev\home\profiles\optix-live` and proved in the packaged
+app: `engineering_reference {id: hmi-isa101-baseline}` returned `HMI-101-01 … HMI-101-06` in 11 s
+(`docs/port/optix-live-proof/20-engineering-reference-live.png`), and the same template prompt that started this
+(`I would like to build a Optix Template…`) then read **eight standards pages first, with zero `pwsh`/`glob`/`grep`
+calls**, called `optix_template {}` afterwards, and asked the runtime/deploy brief
+(`docs/port/optix-live-proof/21-engagement-replay-a2-standards-first.png`).
