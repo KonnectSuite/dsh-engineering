@@ -24,9 +24,11 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const signal = AbortSignal.timeout(300_000);
 const apply = (process.argv[2] ?? "").toLowerCase() === "apply";
 const mountScreen = (process.argv[2] ?? "").toLowerCase() === "mount";
+const assetsOnly = (process.argv[2] ?? "").toLowerCase() === "assets";
 const PROJECT = process.env.OPTIX_PROJECT ?? "AryaOptixTemplate";
 const SCREEN = process.env.OPTIX_SCREEN ?? "UI/Screens/Settings";
 const BRIDGE = process.env.OPTIX_BRIDGE_URL ?? "http://127.0.0.1:8768";
+const PROJECT_ROOT = process.env.OPTIX_PROJECT_ROOT ?? join(process.env.USERPROFILE || "", "Desktop", "myWorkspaces", "Optix Demo", PROJECT);
 
 const BLUEPRINT = {
 	name: "Settings",
@@ -99,8 +101,25 @@ const harness = await mount();
 try {
 	const catalogue = await run("optix_ui", harness.tools, { action: "components" });
 	line("kit components", catalogue.components.map((entry) => entry.name).join(", "));
+	line("adapters", catalogue.adapters?.adapters?.map((adapter) => adapter.kind).join(", ") ?? "(none)");
 	assert.ok(catalogue.components.length >= 8);
 	assert.ok(catalogue.patterns.includes("overview"));
+	assert.ok((catalogue.adapters?.count ?? 0) >= 8);
+
+	if (assetsOnly) {
+		// Artwork is written into the project folder itself, not through the bridge: the runtime serves
+		// ProjectFiles/imgs and nothing else works.
+		const plannedAssets = await run("optix_ui", harness.tools, { action: "assets", project: PROJECT, project_root: PROJECT_ROOT, only: ["home", "alarms", "conveyor"] });
+		line("asset plan", `${plannedAssets.count} file(s), written ${plannedAssets.written}`);
+		assert.equal(plannedAssets.mode, "plan");
+		assert.equal(plannedAssets.written, 0);
+		const written = await run("optix_ui", harness.tools, { action: "assets", project: PROJECT, project_root: PROJECT_ROOT, mode: "apply", only: ["home", "alarms", "conveyor"] });
+		line("asset apply", `${written.written} written into ${written.dir_relative}`);
+		assert.equal(written.mode, "apply");
+		assert.ok(written.written >= 3);
+		console.log("live art ok");
+		process.exit(0);
+	}
 
 	// The blueprint draws into a screen that must exist: optix_screen creates and mounts it, and this
 	// harness only does that when asked, so a run against someone else's project stays read-only.

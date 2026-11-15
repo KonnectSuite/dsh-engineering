@@ -18,6 +18,8 @@ import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChil
 import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.js";
 import { THEME_ENGINES, auditTheme, themePlan } from "./theme.js";
 import { PATTERNS, compileBlueprint, kitCatalogue } from "./kit.js";
+import { adapterCatalogue } from "./adapters.js";
+import { writeAssets } from "./assets.js";
 import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
 import { DIALOG_KINDS, dialogPlan } from "./dialogs.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
@@ -5109,8 +5111,8 @@ function apply(ctx, config = {}) {
 			action: {
 				type: "string",
 				required: true,
-				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen; dialog writes a confirm/message/faceplate type and can wire a button that opens it.",
-				enum: ["languages", "theme", "audit", "components", "shell", "screen", "dialog"]
+				description: "languages lists the catalogue; theme plans or applies one; audit judges the model; components lists the kit and the vendor adapters; shell draws the window chrome and its navigation rail; screen compiles a blueprint into a designed screen; dialog writes a confirm/message/faceplate type and can wire a button that opens it; assets writes the authored icons and process drawings into ProjectFiles/imgs.",
+				enum: ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets"]
 			},
 			mode: {
 				type: "string",
@@ -5213,18 +5215,23 @@ function apply(ctx, config = {}) {
 			trigger_name: {
 				type: "string",
 				description: "dialog: the name of that button, such as BtnDeleteRecipe."
+			},
+			only: {
+				type: "array",
+				items: { type: "string" },
+				description: "assets: the icon or drawing names to write, such as [\"home\", \"alarms\"]; default the whole set."
 			}
 		},
 		output: jsonOutput,
 		presentCall: (args) => ({
 			card: "generic",
-			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "dialog" ? (args.mode === "apply" ? "Write an Optix dialog" : "Plan an Optix dialog") : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
-			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell" || args.action === "dialog") && args.mode === "apply" ? "edit" : "read"
+			title: args.action === "audit" ? "Audit an Optix design language" : args.action === "dialog" ? (args.mode === "apply" ? "Write an Optix dialog" : "Plan an Optix dialog") : args.action === "shell" ? (args.mode === "apply" ? "Draw the Optix window shell" : "Plan the Optix window shell") : args.action === "screen" ? (args.mode === "apply" ? "Draw a designed Optix screen" : "Plan a designed Optix screen") : args.action === "components" ? "The Optix UI kit" : args.action === "assets" ? (args.mode === "apply" ? "Write Optix artwork" : "Plan Optix artwork") : args.action === "theme" && args.mode === "apply" ? "Apply an Optix design language" : "Optix design languages",
+			kind: (args.action === "theme" || args.action === "screen" || args.action === "shell" || args.action === "dialog" || args.action === "assets") && args.mode === "apply" ? "edit" : "read"
 		}),
 		async execute(args, exec) {
 			return exclusive(async () => {
 				const action = typeof args.action === "string" ? args.action : "";
-				const actions = ["languages", "theme", "audit", "components", "shell", "screen", "dialog"];
+				const actions = ["languages", "theme", "audit", "components", "shell", "screen", "dialog", "assets"];
 				if (!actions.includes(action)) throw new Error(`unknown action ${action || "(none)"}; use ${actions.join(", ")}`);
 				if (action === "languages") return {
 					languages: languageCatalogue(),
@@ -5236,7 +5243,24 @@ function apply(ctx, config = {}) {
 					return {
 						action,
 						...kitCatalogue(picked),
-						next: "Describe the screen as a blueprint and run action screen with mode plan: the plan names every component and its slot before anything is written."
+						adapters: adapterCatalogue(),
+						next: "Describe the screen as a blueprint and run action screen with mode plan: the plan names every component and its slot before anything is written. A vendor component (adapters[].kind) needs its library item imported first, and type_path names the imported type."
+					};
+				}
+				if (action === "assets") {
+					const folder = await resolveProjectFolder(args);
+					const write = args.mode === "apply";
+					if (write) allowWrite();
+					const only = Array.isArray(args.only) && args.only.length > 0 ? args.only.map((name) => String(name).trim()).filter((name) => name !== "") : void 0;
+					const written = await writeAssets(folder.root, { only, dryRun: !write });
+					return {
+						action,
+						mode: write ? "apply" : "plan",
+						project: folder.project,
+						...written,
+						next: write
+							? `Start the runtime with optix_emulator action start; an Image's Path is %PROJECTDIR%/imgs/<name>.svg and the Web Presentation Engine serves ${written.dir_relative}.`
+							: "Run the same call with mode apply to write these files into ProjectFiles/imgs, or name only: [\"home\", \"alarms\"] for a subset."
 					};
 				}
 				if (typeof args.project !== "string" || args.project.trim() === "") throw new Error("theme and audit read the live model: give project (the project name optix_status reports)");

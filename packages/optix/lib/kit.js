@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The UI kit: the components a designed screen is made of, and the blueprint that composes them.
  *
  * The old scaffold drew a header, two cards and a button row, which is why every generated project
@@ -29,6 +29,7 @@ import {
 } from "./layout.js";
 import { box, set, size } from "./screens.js";
 import { DEFAULT_LANGUAGE, getLanguage } from "./languages.js";
+import { adapterOps } from "./adapters.js";
 
 /** The blueprints a blueprint's `pattern` may name, in the order the kit documents them. */
 export const PATTERNS = ["overview", "blank"];
@@ -173,7 +174,7 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 	const band = chrome === "screen" ? HEADER : 0;
 	const foot = chrome === "screen" ? FOOTER : 0;
 	const content = region({ width, height, header: band, footer: foot });
-	const slots = { header: null, kpis: [], cards: [], chart: null, messages: null, status: null };
+	const slots = { header: null, kpis: [], cards: [], chart: null, messages: null, status: null, adapters: [] };
 
 	if (chrome === "screen") {
 		const header = { left: 0, top: 0, width, height: HEADER };
@@ -237,6 +238,10 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 	if (bodyHeight < 160) refuse("layout_overflow", `a ${height}px canvas leaves ${bodyHeight.toFixed(0)}px for the body once the header, the KPI strip, the feed and the status strip are placed`);
 	let top = content.top;
 	const body = rect(content.left, content.top + kpiHeight + (hasKpis ? gap : 0), content.width, bodyHeight);
+	// Vendor-backed components get their own column, because an alarm grid or a trend needs the height and
+	// cannot be squeezed under a chart. Without them the whole body belongs to the drawn components.
+	const adapterSpecs = Array.isArray(blueprint.adapters) ? blueprint.adapters.slice(0, 2) : [];
+	const [bodyArea, adapterArea] = adapterSpecs.length === 0 ? [body, null] : columns(body, [2, 1], { minWidth: 320 });
 	if (hasKpis) {
 		const kpiArea = rect(content.left, top, content.width, kpiHeight);
 		top += kpiHeight + gap;
@@ -252,9 +257,9 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 	const feedArea = hasFeed ? rect(content.left, content.top + content.height - feedHeight, content.width, feedHeight) : null;
 	const cards = Array.isArray(blueprint.cards) ? blueprint.cards.slice(0, 3) : [];
 	const wantsChart = blueprint.chart !== null && typeof blueprint.chart === "object";
-	if (cards.length === 0 && !wantsChart) refuse("blueprint_empty_body", "a screen needs at least one card or a chart: give cards[] or chart{}");
+	if (cards.length === 0 && !wantsChart && adapterSpecs.length === 0) refuse("blueprint_empty_body", "a screen needs at least one card, a chart or an adapter: give cards[], chart{} or adapters[]");
 	if (cards.length > 0 && wantsChart && kind !== "compact") {
-		const [cardArea, chartArea] = columns(body, [2, 1], { minWidth: 300 });
+		const [cardArea, chartArea] = columns(bodyArea, [2, 1], { minWidth: 300 });
 		if (cards.length === 1) {
 			const card = cardComponent(path, "DataCard1", cardArea, cards[0], theme);
 			ops.push(...card.ops);
@@ -274,7 +279,7 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 		nodes.push(chart.path);
 		slots.chart = chartArea;
 	} else if (cards.length > 0) {
-		const cardRows = cards.length === 1 ? [body] : stack(body, cards.map(() => 1), { minHeight: 140 });
+		const cardRows = cards.length === 1 ? [bodyArea] : stack(bodyArea, cards.map(() => 1), { minHeight: 140 });
 		for (const [index, spec] of cards.entries()) {
 			const card = cardComponent(path, `DataCard${index + 1}`, cardRows[index], spec, theme);
 			ops.push(...card.ops);
@@ -285,11 +290,20 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 			// A compact canvas stacks the chart under the cards rather than squeezing both side by side.
 			refuse("layout_too_narrow", `a ${width}px canvas cannot carry ${cards.length} card(s) and a chart side by side: drop the chart or the cards for the compact width class`);
 		}
-	} else {
-		const chart = chartComponent(path, "Chart1", body, blueprint.chart, theme);
+	} else if (wantsChart) {
+		const chart = chartComponent(path, "Chart1", bodyArea, blueprint.chart, theme);
 		ops.push(...chart.ops);
 		nodes.push(chart.path);
-		slots.chart = body;
+		slots.chart = bodyArea;
+	}
+	if (adapterArea !== null) {
+		const rows = adapterSpecs.length === 1 ? [adapterArea] : stack(adapterArea, adapterSpecs.map(() => 1), { minHeight: 160 });
+		for (const [index, spec] of adapterSpecs.entries()) {
+			const placed = adapterOps({ kind: spec.kind, screen: path, name: spec.name ?? `Adapter${index + 1}`, slot: rows[index], typePath: spec.type_path ?? spec.typePath ?? "", bindings: spec.bindings ?? {} });
+			ops.push(...placed.ops);
+			nodes.push(placed.placed.path);
+			slots.adapters.push({ path: placed.placed.path, kind: spec.kind, bound: placed.bound, unbound: placed.unbound });
+		}
 	}
 	if (hasFeed) {
 		const messages = blueprint.messages.slice(0, MAX_MESSAGES);

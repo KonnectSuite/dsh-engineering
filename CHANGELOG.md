@@ -42,6 +42,19 @@
   (bridge 1.0.9): `planned` 59-69 operations across four phases, then `applied` with every phase written,
   and all four pointer values read back (`RailItem1.Panel = UI/Screens/Settings`,
   `ShellContent.Panel = UI/Screens/Settings`, `ShellRail.AttachedPanelLoader = UI/MainWindow/ShellContent`).
+- **Vendor components and artwork (`optix_ui action components|assets`).** `packages/optix/lib/adapters.js` places
+  the widgets the template library ships instead of drawing a lookalike: `alarmBanner`, `alarmGrid`,
+  `alarmHistoryGrid`, `trend` (`AdvancedTrend`), `recipeEditor`, `loginForm`, `userEditor`, `gauge`,
+  `stationStatus`, and the builtin `dataGrid`, `histogram` and `trendNative`. A blueprint names them in
+  `adapters[]` with `kind`, `name`, `type_path` and `bindings`; a library-backed adapter with no `type_path`
+  refuses `adapter_not_imported` and names the `optix_library` import, and anything it could not bind is reported
+  in `unbound` rather than guessed. `packages/optix/lib/assets.js` authors 16 icons (24×24, SVG 1.2 Tiny, hex
+  fills) and 2 process drawings (`conveyor`, `tank`, every movable part carrying an `@id` for `optix_svg bind`)
+  and writes them into `<Project>/ProjectFiles/imgs`, the only folder `%PROJECTDIR%` serves — `<Project>/imgs` is a
+  404 at runtime. `action "assets"` plans and writes them (`mode: "apply"`, optional `only[]`). Measured live on
+  `AryaOptixTemplate` (bridge 1.0.9): `action components` answered 9 drawn components plus 12 adapters, the asset
+  plan wrote nothing, and `mode: "apply"` with `only: ["home","alarms","conveyor"]` wrote 3 files into
+  `ProjectFiles/imgs`.
 - **Dialogs for the commands that cannot be undone (`optix_ui action dialog`).** `packages/optix/lib/dialogs.js`
   plans a `Dialog` object type under `UI/Dialogs` — title, message, a `Confirm`/`Cancel` pair boxed bottom-right,
   `Modal 1` — and wires both buttons through Studio's own `UICommands.CloseDialog`; an optional trigger button on

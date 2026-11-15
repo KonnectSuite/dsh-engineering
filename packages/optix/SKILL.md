@@ -303,6 +303,25 @@ wording and the boxes instead of creating a second button.
 3. Save and Build in Studio, restart the emulator, click the trigger. Do not report a dialog as working
    from the operations that wrote it.
 
+## A drawn screen is not a production screen
+
+A grid, a label and a rectangle are a mock-up. The components an operator recognises come from the template
+library Rockwell ships, and the generator reaches them as **adapters**:
+
+1. `optix_ui { action: "components" }` lists the drawn kit *and* `adapters` — alarm banner, alarm grid,
+   alarm history, advanced trend, recipe editor, login form, user editor, gauge, station status, and the
+   builtin data grid, histogram and trend. Each names its library item and what it requires.
+2. `optix_library { action: "import" }` imports the item. An adapter **never** imports: an import writes
+   hundreds of nodes and is a step of its own. With no `type_path` an adapter refuses
+   `adapter_not_imported` and names the item to import.
+3. Name the adapter in the blueprint's `adapters[]` with `kind`, `name`, `type_path` and `bindings`. What it
+   cannot bind is reported in `unbound`; never invent a variable to make the report clean.
+4. `optix_ui { action: "assets", mode: "apply" }` writes the authored icons and process drawings into
+   `ProjectFiles/imgs` — the only folder the runtime serves (`%PROJECTDIR%`). `<Project>/imgs` is a 404.
+
+The adapters and the artwork are proved by `test/optix-adapters.spec.mjs` and `test/optix-assets.spec.mjs`;
+that a widget shows live data is proved only in the runtime, after Save and Build.
+
 ## Navigation is a bar and a proof
 
 A screen that never changes when a button is clicked is the failure this skill exists to stop: the

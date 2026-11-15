@@ -250,7 +250,8 @@
         "docs/optix-theme.md",
         "docs/optix-kit.md",
         "docs/optix-shell.md",
-        "docs/optix-dialog.md"
+        "docs/optix-dialog.md",
+        "docs/optix-adapters.md"
       ],
       "vendor": true
     },
