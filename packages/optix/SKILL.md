@@ -10,6 +10,29 @@ A new build starts from the brief, our packaged templates and `engineering_refer
 installed, open or on disk; the host is read only when the operator points at it, or when the work is
 inside an existing project (`CRAFT-ORD-01`).
 
+## Start here — a new build, a template, or a standard
+
+The first tool call is `optix_template {}` and the first thing you produce is the brief. Do not read
+this repository, do not grep for prior attempts, do not survey the machine, and do not write a plan
+before the brief exists: the tools carry the procedure and the standards corpus, and `CRAFT-ORD-01`
+says the host is not the source.
+
+1. `optix_template {}` returns both starters and the five questions.
+2. Ask all five in one `ask_user_question`: runtime target, canvas in pixels, project name, destination
+   folder, what the line talks to.
+3. `optix_template` with the answers writes the project; there is nothing to open yet.
+4. Hand the engineer three actions and wait: open the `.optix`, Build (`Ctrl+Shift+B`), then
+   right-click `StudioMCPBridge` → StartBridge.
+5. When the bridge answers, draw the first screen in one `optix_screen` call, read it back with
+   `optix_design_check`, then save and look with `optix_emulator` and `optix_screenshot`.
+
+A build is a scaffold, one screen and a rendered look inside five minutes. If no screen exists yet and
+you have been reading files for a while, stop and say what blocked you.
+
+If the `optix_*` tools are not in your tool list at all, the Optix row is switched off in this profile:
+say that in one line and stop. Never rebuild the tools by importing the plugin's `lib/` from Node, and
+never drive Studio to fake the surface.
+
 ## Boundary
 
 The project lives in FactoryTalk Optix Studio. `optix_status` finds the Studio bridge; the bridge runs
