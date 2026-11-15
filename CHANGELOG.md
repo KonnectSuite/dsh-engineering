@@ -1,4 +1,4 @@
-## [Unreleased]
+## [0.96.0] - 2026-11-15
 
 - **A NetLogic request routes by the words the request uses.** `optix_netlogic { query: "alarm banner" }`
   found nothing: the cheat sheets are written in their own vocabulary and none of them says "banner". The
