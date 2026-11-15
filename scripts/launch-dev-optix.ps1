@@ -27,12 +27,20 @@ if (-not (Test-Path (Join-Path $devHome ("profiles\" + $profileName)))) {
   throw "profile '$profileName' not found under $devHome - recreate it (see HANDOFF.md, 'Use it in AryaCode today')."
 }
 
-$tarball = Get-ChildItem (Join-Path $repo 'artifacts') -Filter 'aryacode-dsh-engineering-*.tgz' -ErrorAction SilentlyContinue |
-  Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($tarball) {
-  Write-Host ("engineering bundle: " + $tarball.Name + " (" + $tarball.LastWriteTime + ")")
+# Report the bundle this boot will actually load, read from the profile's installed
+# copy - not the newest tarball in artifacts\, which nothing here installs.
+$installedPkg = Join-Path $devHome ("profiles\" + $profileName + "\node_modules\@aryacode\dsh-engineering\package.json")
+if (Test-Path $installedPkg) {
+  $installedVersion = (Get-Content $installedPkg -Raw | ConvertFrom-Json).version
+  $requested = 'unknown'
+  $profilePkg = Join-Path $devHome ("profiles\" + $profileName + "\package.json")
+  if (Test-Path $profilePkg) {
+    $deps = (Get-Content $profilePkg -Raw | ConvertFrom-Json).dependencies
+    if ($deps.'@aryacode/dsh-engineering') { $requested = $deps.'@aryacode/dsh-engineering' }
+  }
+  Write-Host ("engineering bundle: installed " + $installedVersion + " (profile asks for " + $requested + ")")
 } else {
-  Write-Host 'engineering bundle: no tarball in artifacts\ - the profile keeps whatever it already installed.'
+  Write-Host 'engineering bundle: not installed in this profile - run pnpm install in the profile first.'
 }
 
 $env:DSH_HOME = $devHome

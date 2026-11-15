@@ -66,6 +66,27 @@ Pass `project_root` when the project lives anywhere else.
 
 Every class this tool writes starts with `// aria-netlogic: kind=… name=… created=…`. `delete` refuses a file without that marker unless `force: true`, because the NetSolution also holds the logic of imported template-library composites (`AlarmBannerLogic`, `AlarmGridLogic`, …) and those belong to their composite. A node under `UI/Components/` is refused outright: delete the composite instead.
 
+## From a file to a class the runtime is running
+
+Four states, and the tool can only prove the first two:
+
+| State | What proves it | What it does not prove |
+|---|---|---|
+| the class exists | `add`/`list` report the file at `ProjectFiles\NetSolution\<Name>.cs` | the C# compiles |
+| the C# compiles | `compile.ok: true` from `dotnet build` | Studio loaded it |
+| Studio loaded it | an engineer's Studio build (Build > Build Solution) with the runtime stopped; `run` stops answering `not-loaded` | it does anything useful |
+| the runtime is running it | a bound value on a screen changes, seen in `optix_screenshot` | correct behaviour beyond that value |
+
+A runtime NetLogic belongs under `UI/NetLogic` or beside the screen it serves, not in the root `NetLogic`
+folder, which holds the bridge; an engineer looking for "the script" in `NetLogic` finds only the bridge.
+Bridge-side writes are persisted by the Studio build, not by Ctrl+S, and the build refuses while the emulator
+holds the assembly (`MSB3061`) — stop the runtime, build, start it again, then look at the screen.
+
+A loader's `Panel` pointer can carry a `DynamicLink`, which the runtime resolves **before** the pointer value:
+clear that link's value before pointing `Panel` at another screen, or the screen never changes. Code that
+switches panels must call `loader.ChangePanel(screen.NodeId, NodeId.Empty)` with both nodes resolved by name;
+an absolute design-time path resolves to nothing at runtime, because a panel is instantiated inside the loader.
+
 ## What it will not do
 
 - **Build inside Studio.** There is no bridge route for it. `dotnet build` proves the C# compiles; Studio still has its own copy loaded until an engineer builds the solution there (Build > Build Solution, or Ctrl+Shift+K/T). `action: "run"` reports `not-loaded` in exactly that case, with the file path, instead of a raw bridge exception.

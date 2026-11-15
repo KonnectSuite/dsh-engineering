@@ -103,6 +103,34 @@ A NetLogic is two writes that must agree: a node whose BrowseName equals the cla
 Three practices the rules encode, and why they matter: a periodic tick that throws stops ticking for the session while the screen keeps its last value (the "looks right, frozen" failure); a node resolved inside the tick walks the model on the timer thread; an observer that is not unsubscribed keeps firing after the page is gone. Prove the class at runtime - a bound value changing on screen is the only evidence it is loaded and running.
 
 Read `engineering_reference` page `netlogic-cheatsheet` when you need a Studio API you have not used. Say plainly that the class is only live after Studio builds it - `dotnet build` proves the C# compiles, not that Studio loaded it.
+
+### Where runtime code goes, and the loop that proves it runs
+
+A runtime NetLogic belongs under `UI/NetLogic` (or beside the screen it serves), never in the root
+`NetLogic` folder - that folder holds the bridge itself, and an engineer looking for "the script" under
+`NetLogic` will not find one there. The class file is always
+`ProjectFiles\NetSolution\<Name>.cs`; the node is the thing the project tree shows.
+
+Measured loop, in this order, because each step depends on the previous one:
+
+1. `optix_script { action: "add", name, parent: "UI/NetLogic", kind: "runtime" }` - node and class, reviewed
+   and compiled by `dotnet build`.
+2. An engineer builds in Studio (**Build > Build Solution**, Ctrl+Shift+B) with the runtime stopped. This is
+   what persists bridge-side edits and loads the class; Ctrl+S alone does not, because Studio never marked the
+   project dirty. With the emulator running the build fails on `MSB3061` (the DLL is locked) and nothing saves.
+3. `optix_emulator { action: "start" }`, then `optix_screenshot`.
+4. Prove it: a bound value on the screen changes because the class wrote it. `optix_script { action: "run" }`
+   answers `not-loaded` until step 2 happened, which is a fact about Studio, not about your C#.
+
+Two runtime facts that cost a whole demo to learn:
+
+- **A `PanelLoader`'s `Panel` pointer can carry a `DynamicLink`, and the runtime resolves the link before the
+  pointer value.** Writing `Panel` then sees no change because the link still names the old screen; clear the
+  `DynamicLink` value (empty string) before pointing `Panel` at another screen, then build as in step 2.
+- **Code that switches panels must name the loader and the screen explicitly**
+  (`loader.ChangePanel(screen.NodeId, NodeId.Empty)`) and must not rely on an absolute design-time path: a panel
+  is instantiated inside the loader, so a path that resolves in the designer resolves to nothing at runtime.
+
 ## Build a screen from what Studio ships
 
 Before composing a screen out of builtin widget types, ask the library. `optix_library { action: "list" }`

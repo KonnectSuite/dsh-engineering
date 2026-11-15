@@ -1,3 +1,17 @@
+## [Unreleased]
+
+- **The Optix skill now carries the loop that takes a NetLogic from a file to a class the runtime is running.**
+  Written from the demo that took a wrong turn: a runtime NetLogic created under `UI/NetLogic` was invisible to an
+  engineer looking in the root `NetLogic` folder (that folder holds the bridge), the class compiled but Studio had
+  not loaded it, and the start screen never changed because the loader's `Panel` pointer carried a `DynamicLink`
+  that the runtime resolves before the pointer's value. The skill gained *Where runtime code goes, and the loop that
+  proves it runs* (node under `UI/NetLogic`, class at `ProjectFiles\NetSolution\<Name>.cs`, Studio build with the
+  runtime stopped because Ctrl+S does not persist bridge-side writes and the emulator locks the assembly, then
+  `optix_emulator` + `optix_screenshot`, and a changing bound value as the only proof) and the two runtime facts
+  (`DynamicLink` beats `Panel`; `ChangePanel` must name loader and screen, never an absolute path).
+  `docs/reference/optix-netlogic.md` gained the same loop as a four-state table: exists, compiles, loaded, running —
+  with what each state proves and what it does not.
+
 ## [0.94.4] - 2026-11-14
 
 - **The standards tools now register in the real app, and a refused tool is reported instead of swallowed.**
