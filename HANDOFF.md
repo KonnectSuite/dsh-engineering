@@ -409,6 +409,16 @@ dotnet build BridgeCompile.csproj -nologo -v q
 
 ## Traps, and what is still unverified
 
+- **`engineering_reference` / `engineering_profile` do not reach an agent in the packaged app.** The
+  resources row mounts on paper (`entries/resources.js` → `vendor/resources/lib/index.js`, both tools
+  returned by `resourceTools()` and `apply()` registering them against a stub context), yet a session in
+  the dev profile answers "no engineering_reference tool" and the skill's own resource block reports
+  `MCP resource server "@aryacode/dsh-engineering" is unavailable in this agent's scope`. Until that is
+  fixed, the standards-first step of `CRAFT-ORD-01` cannot be *read* by an agent — it can only be
+  promised — so the next session's first job is to register the bundled resources provider (or expose
+  the two tools some other way) and re-run replay A. Evidence: `.tmp-e2e/replay-a.jsonl` notes, the
+  `No engineering_reference tool` answer at 19:19 in the dev app, and the trajectory row for
+  `skill{factorytalk-optix}` in the same session.
 - **The DSH Windows sandbox blocks subprocess pipes**: `pnpm test` and `pnpm docs:check` die with
   `spawn EPERM` (`tsx`/node test runner spawn children with piped stdio). That is the sandbox, not a
   defect. In-sandbox workarounds that were verified: `node test/docs.spec.mjs` and
