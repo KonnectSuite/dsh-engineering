@@ -5557,10 +5557,17 @@ public class StudioMCPBridge : BaseNetLogic
     }
 
     // Every tag symbol the station currently holds, as dotted BrowseName paths below the station.
+    // The station node also carries structural children (Route, StationStatusVariables, Types,
+    // TagImporter, ...) that are not tags; an import never removes those, so when the station has
+    // a Tags folder the census starts there.
     private static List<string> CollectTagSymbols(IUANode station)
     {
         var outList = new List<string>();
-        CollectTagSymbolsWalk(station, "", outList, 0);
+        if (station == null) return outList;
+        IUANode tagRoot = null;
+        foreach (var child in station.Children)
+            if (string.Equals(child.BrowseName, "Tags", StringComparison.Ordinal)) { tagRoot = child; break; }
+        CollectTagSymbolsWalk(tagRoot ?? station, "", outList, 0);
         return outList;
     }
 
@@ -5605,10 +5612,13 @@ public class StudioMCPBridge : BaseNetLogic
         return symbols;
     }
 
-    // ResourceUri.FromAbsoluteFilePath via reflection: the type lives in UAManagedCore, but a
-    // direct call would bind this file to a studio assembly at compile time.
+    // ResourceUri.FromAbsoluteFilePath. The direct call is the one that works: reflection over
+    // AppDomain assemblies misses the type when only UAManagedCore's front assembly is loaded,
+    // so it is kept only as a last resort for a build where the typed API moved.
     private static object BuildResourceUri(string absolutePath)
     {
+        try { return FTOptix.Core.ResourceUri.FromAbsoluteFilePath(absolutePath); }
+        catch { }
         try
         {
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
@@ -8199,7 +8209,28 @@ public class StudioMCPBridge : BaseNetLogic
     private static string Bool(bool b) { return b ? "true" : "false"; }
 
     // Type + message for an exception, the payload of every write handler's catch.
-    private static string ExcMsg(Exception ex) { return ex.GetType().Name + ": " + ex.Message; }
+    // Reflection (PropertyInfo.GetValue / MethodInfo.Invoke) and tasks both wrap the real
+    // failure, so the wrapper alone tells the caller nothing - unwrap and keep the chain.
+    private static string ExcMsg(Exception ex)
+    {
+        if (ex == null) return "unknown error";
+        var text = new System.Text.StringBuilder();
+        Exception e = ex;
+        int depth = 0;
+        while (e != null && depth < 5)
+        {
+            if (text.Length > 0) text.Append(" <- ");
+            text.Append(e.GetType().Name).Append(": ").Append(e.Message);
+            if ((e is TargetInvocationException || e is AggregateException) && e.InnerException != null)
+            {
+                e = e.InnerException;
+                depth++;
+                continue;
+            }
+            break;
+        }
+        return text.ToString();
+    }
 
     private static string JsonEscape(string s)
     {

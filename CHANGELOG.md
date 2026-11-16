@@ -11,10 +11,11 @@
   the documented dot-boundary rule (the symbol, its children, its parents); `replace=false` never removes a
   station tag and refuses up front with `would_remove_tags` plus `removed_would_be`, so a merge cannot
   silently drop a tag; `dry_run` answers `would_add`/`would_remove` without touching the importer; the result
-  reports `added`, `removed`, `already_present`, `not_found`, `skipped` and `elapsed_ms`. Verified live: an
-  RA EtherNet/IP station created on the demo project, a generated L5X imported, and a screen label bound to
-  an imported tag then showing its value. Documented in
-  [`docs/reference/optix-model.md`](docs/reference/optix-model.md).
+  reports `added`, `removed`, `already_present`, `not_found`, `skipped` and `elapsed_ms`. Exercised on the
+  demo project: the route, the filter, every refusal code, `FilePath`/`Mode` on the real importer, and the
+  prerequisite that a station must carry a `TagImporter` child. The end-to-end import is **not** yet proven
+  there — the offline `Import()` against a bridge-created station did not finish inside the timeout — and
+  the docs say so. Documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md).
 
 - **The Optix bridge can put a dynamic link on a variable, not only on a property.**
   `POST /bridge/node/set-link?path=&source=&mode=Read|Write|ReadWrite` links the variable at `path` to the
@@ -51,6 +52,29 @@
   `NetSolution` (0 warnings, 0 errors) and shipped byte-identically in the bridge and all three template
   copies; documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md), including the gap
   that no plugin tool maps the structured route yet.
+
+### Fixed
+
+- **Every bridge refusal now carries the failure that actually happened.** `ExcMsg` reported only the
+  outermost exception, so a property getter or a task that threw through reflection read as
+  `TargetInvocationException: Exception has been thrown by the target of an invocation.` — the same string no
+  matter what broke. It now unwraps `TargetInvocationException`/`AggregateException` up to five levels and
+  keeps the chain, which is how `import_tags` came to name its real cause: `ArgumentException: Station node
+  ... does not contain a TagImporter object.`
+
+- **`import_tags` counts only tags when it decides what a merge would remove.** The station census walked the
+  whole station subtree, so `replace=false` refused every import with `would_remove_tags` listing `Route`,
+  `StationStatusVariables.*`, `Types.*` and `TagImporter.*` — 31 structural children that are not tags. The
+  census now starts at the station's `Tags` folder (falling back to the station when it has none), so a merge
+  reports the tags it would really drop.
+
+- **The PLC file path is built with the `ResourceUri` this build actually exposes.** `import_tags` reached the
+  importer and then answered `invalid_import_file` because `UAManagedCore.ResourceUri` does not exist in
+  1.8.1.27 (`CS0234`), and the AppDomain reflection fallback did not find it either. The route now calls
+  `FTOptix.Core.ResourceUri.FromAbsoluteFilePath` directly, with the reflection kept as a fallback.
+
+- The shell rail's own spec asserted a 6-item cap while `SHELL_MAX_RAIL` had been raised to 12; the spec now
+  imports the constant, so a cap change is a one-line change again.
 
 ## [0.98.0] - 2026-11-15
 

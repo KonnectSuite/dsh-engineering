@@ -157,9 +157,29 @@ default) nothing is removed and the call refuses up front with `would_remove_tag
 `dry_run=true` answers `would_add`/`would_remove` from the file and the station without touching the
 importer.
 
-Verified live on the demo project: an RA EtherNet/IP station imported from a generated L5X, `added`
-listing the source symbols and `already_present` counting the repeats, and a screen label bound to an
-imported tag then showing its value.
+Verified against Studio 1.8.1.27 on the demo project, part by part:
+
+- The route, the op, the validation and the error codes are exercised: a missing station answers
+  `station_not_found`, a station without a `TagImporter` child answers `not_a_tag_station` with the node it
+  looked at, a non-L5X/TPY file answers `invalid_import_file`, and a name filter is applied to the file and
+  the station as documented.
+- The importer object itself is reached: `FilePath` is written with `FTOptix.Core.ResourceUri` (see below)
+  and `Mode` with `FetchMode.Offline`.
+- **Not yet proven end to end.** On the demo project the offline `Import()` against a station the bridge had
+  created did not complete inside the timeout and added no tags, so treat `added`/`already_present` as
+  unverified until a run against a station created in Studio (Add Station, then configure the driver) is
+  recorded. The likely cause is that a `create_object` station is a bare `Station` node: the IDE's Add Station
+  flow also builds the driver-side wiring the importer expects.
+
+Two facts worth knowing before using it:
+
+- `ResourceUri` is **not** in `UAManagedCore` in this build. The documented sample writes
+  `ResourceUri.FromAbsoluteFilePath(...)` under `using UAManagedCore;`, but the type the compiler resolves here
+  is `FTOptix.Core.ResourceUri`; a bridge written against `UAManagedCore.ResourceUri` fails with
+  `CS0234: The type or namespace name 'ResourceUri' does not exist in the namespace 'UAManagedCore'`.
+- A station created by `create_object` carries no `TagImporter` child, and the property getter throws
+  `ArgumentException: Station node ... does not contain a TagImporter object`. Create the child first
+  (`create_object` with `object_type: "TagImporter"` under the station) or add the station in Studio.
 
 ## What it will not do
 
