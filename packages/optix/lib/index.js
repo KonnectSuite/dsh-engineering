@@ -24,6 +24,8 @@ import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
 import { DIALOG_KINDS, dialogPlan } from "./dialogs.js";
 import { describeScreen, rubricCatalogue, scoreScreen } from "./rubric.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
+import { saveProject, saveStamp, studioWindow } from "./save.js";
+import { listSkills, readSkill } from "./skills.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
@@ -1846,6 +1848,134 @@ function acceptedValidation(value, count) {
 /** An OCR install is a package-manager download, so it gets far longer than a request. */
 const OCR_INSTALL_TIMEOUT_MS = 300000;
 /**
+ * The plugin's own topic playbooks: one page per capability, each written from a live measurement.
+ *
+ * `SKILL.md` is the entry point and carries the rules that apply everywhere; these pages are the deep end
+ * (the exact op, the exact API name, the trap that cost an afternoon). Two tools, because a session should
+ * list first and read one page instead of loading every trap up front.
+ * @param ctx - Cordis context with the harness tool runtime.
+ */
+function applySkills(ctx) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_list_skills",
+		description: "List the plugin's own Optix topic playbooks - one page per capability (authoring loop, bindings and expressions, runtime C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag import). Each row reports the topic name, its title, a one-line summary and its size, so a session can pick the page it needs and read only that one with optix_get_skill. Read-only.",
+		parameters: {
+			query: {
+				type: "string",
+				description: "Optional case-insensitive filter over the topic name, title and summary."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "List the Optix topic playbooks",
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			const rows = await listSkills();
+			const query = typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
+			const filtered = query === "" ? rows : rows.filter(row => `${row.name} ${row.title} ${row.summary}`.toLowerCase().includes(query));
+			return {
+				count: filtered.length,
+				topics: filtered,
+				total_bytes: filtered.reduce((sum, row) => sum + row.bytes, 0),
+				next: filtered.length > 0 ? `optix_get_skill name="${filtered[0].name}" for the full page` : "No topic matched that filter."
+			};
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_get_skill",
+		description: "Read one Optix topic playbook in full, by the name optix_list_skills reported. Each page is written from a measurement on a live project: the exact tool calls and property names, plus the traps that make a feature report success while rendering nothing. Use it before authoring a feature that has a page - the page is cheaper than rediscovering the trap. Read-only.",
+		parameters: {
+			name: {
+				type: "string",
+				required: true,
+				description: "Topic name from optix_list_skills, for example \"alarms\" or \"data-logger-trend-sql\"."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Read the Optix playbook: ${typeof args?.name === "string" ? args.name : "topic"}`,
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			return await readSkill(args.name);
+		}
+	})));
+}
+/**
+ * Save the project by sending Studio its own Ctrl+S until the design model on disk moves.
+ *
+ * Nothing in UAManagedCore can save a project, so every authoring call in this plugin ends with the
+ * operator pressing Ctrl+S - which is why a round of checks used to stop at "ask the engineer". This
+ * tool performs that keystroke itself: it raises the Studio window (the foreground lock is the whole
+ * difficulty), sends Ctrl+S only once the foreground is confirmed, and then proves the write by
+ * watching the newest mtime under `Nodes/` and `ProjectFiles/NetSolution/bin`. `ok` is never true on
+ * a keystroke alone.
+ *
+ * It is a write path, so it needs `allowWrites`; it starts no process and edits no file.
+ * @param ctx - Cordis context with the harness tool runtime.
+ * @param settings - Resolved deployment settings.
+ */
+function applySave(ctx, settings) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_save",
+		description: "Save the open Optix project through Studio and prove the write landed. Studio exposes no save API to a NetLogic bridge, so this raises the Studio window, sends Ctrl+S, and retries until a file under Nodes/ or ProjectFiles/NetSolution/bin is newer than it was before the first keystroke; it reports attempts, how many keystrokes were delivered, whether the foreground was confirmed, and the latency. ok is true only when the design model on disk actually moved - a keystroke that went to another window is reported as foreground_refused, and a delivered Ctrl+S that changed nothing is no_write. Saving rebuilds the .NET solution; a NetLogic or bridge change additionally needs a Studio restart before the new class answers. Requires allowWrites.",
+		parameters: {
+			project: {
+				type: "string",
+				required: true,
+				description: "Absolute path of the project directory holding the .optix file."
+			},
+			timeout_s: {
+				type: "integer",
+				description: "How long to keep retrying. Default 60, at most 600."
+			},
+			interval_s: {
+				type: "integer",
+				description: "Pause between attempts after a delivered keystroke. Default 4, at most 30."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "Save the Optix project",
+			kind: "invoke"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			if (!settings.allowWrites) throw new Error("Saving writes the project to disk, so it needs allowWrites in the Optix row's plugin configuration.");
+			return await saveProject({
+				projectRoot: args.project,
+				timeoutMs: args.timeout_s === void 0 ? void 0 : args.timeout_s * 1000,
+				intervalMs: args.interval_s === void 0 ? void 0 : args.interval_s * 1000
+			});
+		}
+	})));
+}
+
+/**
  * How long a preview frame is allowed to settle after the canvas first reports a size.
  * Measured on Studio 1.8.1 (2026-11-14): the Web presentation engine creates its canvas at
  * load and paints a frame or two later, so an immediate screenshot is a blank page.
@@ -1963,6 +2093,8 @@ function apply(ctx, config = {}) {
 	applyTemplates(ctx, settings.maxResponseBytes);
 	applyBridgeArm(ctx, bridge);
 	applyEmulator(ctx, settings);
+	applySave(ctx, settings);
+	applySkills(ctx);
 	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);

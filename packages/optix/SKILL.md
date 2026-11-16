@@ -945,3 +945,24 @@ Everything below was proved on a live project on 2026-11-16, not read from help.
 **Users and login.** `Session.ChangePassword(userName, newPassword, oldPassword)` — the third argument is the OLD password, and passing an empty one fails `WrongOldPassword` for a user that has none. `LogicObject.GetAlias("Users")` THROWS on a NetLogic the tools created (it does not return null), so wrap it and fall back to `Project.Current.Get("Security/Users")`. A Screen created through `create_object` serialises as `Type: Screen` instead of `Supertype: Screen` and renders blank when mounted — build sign-in UI as children of the window and toggle their `Visible`.
 
 **SQL.** `Project.Current.Get("DataStores/Store") as Store` (namespace `FTOptix.Store`), then `store.Query(sql, out string[] header, out object[,] rows)` — it returns void, so the count is `rows.GetLength(0)`. Put the result in a String tag and bind a Label to it: that is the shortest path to "SQL results on a screen".
+
+
+## Topic playbooks: `optix_list_skills` and `optix_get_skill`
+
+This page is the entry point; the deep end lives in nine topic playbooks shipped beside it in
+`packages/optix/skills/`, each written from a live measurement rather than from help text:
+
+| Topic | Read it before |
+| --- | --- |
+| `authoring-loop` | any authoring session: save, restart, prove, and the batch rules that refuse things |
+| `bindings-expressions` | wiring a value to a widget (`bind`, `set_link`, expression, formatter) |
+| `runtime-csharp` | anything the bridge cannot make work because it needs behaviour (`optix_script`) |
+| `alarms` | a real alarm system: DigitalAlarm objects plus the shipped AlarmGrid and its Model retarget |
+| `data-logger-trend-sql` | history: store, logger sampling mode, the typed VariablesToLog, AdvancedTrend, SQL |
+| `dialogs-and-login` | overlays: a Dialog as a window child, and a sign-in card plus real Users |
+| `screens-and-layout` | laying out a screen: ARGB colours, paint order, the shell's slots |
+| `tags-import` | `import_tags`: the file kinds, the filter rule, and the station prerequisite |
+| `verify-and-release` | judging whether work is actually done, and what makes a green result meaningless |
+
+Call `optix_list_skills` for the one-line summary of each, then `optix_get_skill name="<topic>"` for the page
+you need. Reading one page costs less than rediscovering its trap.

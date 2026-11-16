@@ -1,5 +1,26 @@
 ## [Unreleased]
 
+### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
+- **`optix_save` — save the project from the agent, and prove the write landed.** Studio exposes no save
+  API to a NetLogic bridge, so every authoring round used to end with "ask the engineer for Ctrl+S". The new
+  tool raises the Studio window (attaching to the foreground thread's input queue first, because a plain
+  `SetForegroundWindow` is refused while another process owns the foreground), sends Ctrl+S only once the
+  foreground is confirmed, and retries until a file under `Nodes/` or `ProjectFiles/NetSolution/bin` is newer
+  than the snapshot taken before the first keystroke. It reports `attempts`, `keystrokes_sent`,
+  `foreground_confirmed`, `latency_s` and `saved_at`, and names the failure instead of guessing:
+  `foreground_refused` when another window keeps the foreground (a Windows Security prompt is the usual
+  culprit) and `no_write` when Ctrl+S was delivered but Studio wrote nothing (typically a modal dialog).
+  `ok` is never true on a keystroke alone. Documented in
+  [`docs/reference/optix-save.md`](docs/reference/optix-save.md).
+
 ### Fixed
 
 - **`attach_formatter` wrote a StringFormatter whose sources could never resolve, so the bound label
@@ -13,6 +34,13 @@
   cannot do.
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **The Optix plugin can import PLC tags into a station, which it previously could not.** The new bridge
   route `POST /bridge/station/import-tags?station=&mode=offline|online&file=&tags=&replace=&timeout_s=&dry_run=`
@@ -98,6 +126,13 @@
 ## [0.98.0] - 2026-11-15
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **A branded application starter, `arya-optix-app`**, alongside the two blank ones. It ships what the build loop used to create: a 1280x800 window with the header band (brand, title, status chip, clock, user), a native `NavigationPanel` rail hosting three designed screens (`Overview`, `Alarms`, `Diagnostics`), a `ConfirmResetLine` dialog wired through `OpenDialog` and closed by the dialog's own `Close`, the vendor `FriendlyLight` stylesheet bound on both presentation engines, and the bridge compiled in. `optix_template` now offers three starters with their questions; the manifest carries 74 files, 2,281,125 bytes and a content hash, and a scaffolded copy was validated through the file channel (`ok:true, critical:0`) with the project name rewritten in all 7 name-carrying files and no stale `AryaOptixApp` reference.
 
@@ -2965,6 +3000,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **A composed rung matches the instruction spelling its project already reads.** Logix Designer 36 renamed
   sixteen ladder instructions — `EQU` became `EQ`, `SQR` became `SQRT`, `MOV` became `MOVE`, `TRN` became
   `TRUNC`, and twelve more — so one project can legitimately carry either spelling. The new
@@ -3246,6 +3288,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **A tag row drills into what is under it.** The tag organizer now expands an array into its elements, a
   user-defined type into its members, and an add-on instruction instance into its own parameters — typed,
   indented, searchable, and each child carrying the value the export recorded for it. The add-on instruction
@@ -3335,6 +3384,13 @@
 ## [0.72.0] - 2026-10-31
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **The migration row carries its own answers.** `packages/migration/src/knowledge/instructions.ts` maps 58 legacy
   mnemonics to their Logix candidate, operand shape, work class and a citation (1747-RM001, 1785-6.1, 1756-RM003, or
@@ -3427,6 +3483,13 @@
 ## [0.71.0] - 2026-10-30
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_document`** writes a handover bundle for an opened export — `overview.md`, `displays.csv`,
   `tags.csv` and `bindings.csv` — stating object counts per display, which tags each display reads, and
@@ -3569,6 +3632,13 @@
   and the `ftview_render` description still said images were drawn as placeholders. A model reading the
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 - **Verification never guesses.** When the vendor export cannot run, `ftview_verify_import`
   fails with `NO_IMPORT_PROOF` and asks for a folder exported after the import, instead of
   reporting a comparison it did not make; a successful run names what it compared against.
@@ -3642,6 +3712,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_apply` takes `package: "delta" | "full"`.** A delta (default) lists only the displays
   the draft changed, which is what an application that already holds the screens needs. A full
   package lists every display in the export and copies the artwork those untouched displays name,
@@ -3661,6 +3738,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_verify_import` compares staged objects, not just display files.** The round-trip check
   now also reports, per display, staged objects the import dropped and fields whose landed value
   differs from the value the draft set (geometry, face colours, caption). That is the difference
@@ -3668,6 +3752,13 @@
 ## [0.65.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_draft_screen` accepts a palette.** `theme_json` overrides the scaffold slots used for
   that screen (backdrop, header, surface, footer, title and footer text), so a customer palette does
@@ -3677,6 +3768,13 @@
 ## [0.64.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_studio_preflight` carries an engineering gate.** Alongside parse state and name
   restrictions it now reports critical check findings and house-theme conformance for the edited
@@ -3690,6 +3788,13 @@
 ## [0.63.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_theme_audit` measures house-theme conformance.** Every display is checked for the
   theme backdrop, a header band, a footer band and the share of its colours already in the palette,
@@ -3709,6 +3814,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_draft_restyle` repaints an existing display in the house palette.** It walks a display the
   way a person would on a restyle job: backdrop and panel surfaces become the deep theme, text the
   bright colour, and field and button shells the accent, while geometry, objects and captions stay put.
@@ -3718,6 +3830,13 @@
 ## [0.60.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_check` reports navigation into a display this export does not have.** A `gotoButton`
   (or any object with a `Display` connection) that names a missing display is `GOTO_TARGET_MISSING`,
@@ -3734,6 +3853,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_check` reports a binding the tag CSV cannot satisfy.** Every connection on a named object
   is resolved to its root tag; when the CSV is present and does not declare that root, the finding is
   `TAG_NOT_BOUND` with the display, object, connection and expression. A misspelled tag used to look
@@ -3741,6 +3867,13 @@
 ## [0.57.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_draft_popup` builds a modal popup in one call.** Title, a message that survives a vendor
   import (line breaks are written as `&#xA;`), and one to three buttons that close the popup or open a
@@ -3764,6 +3897,13 @@
 ## [0.55.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_draft_screen` stages the screen's tags in the same draft.** The new `tags_json` argument
   takes the HMI tags the screen reads; they land beside the objects, so one apply writes the screen and
@@ -3791,6 +3931,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_bulk_set` applies one change to every matching object.** Match on type, a name glob or
   existing attribute values, over every display or a named list; `dry_run` reports the selection
   without staging. The field sessions patched display XML by script for exactly this, so the change
@@ -3806,6 +3953,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`l5x_diagram` pages a large project.** `routine` restricts the page to one routine and
   `start_rung` continues from where the last page stopped; the result carries `start_rung` and
   `next_start`, and the summary says which offset to page from next. A 799-rung commissioning project
@@ -3814,6 +3968,13 @@
 ## [0.51.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_draft_ops` and `ftview_draft_drop`.** A staged change can now be listed with its index,
   kind and target, and dropped on its own. Before this, one wrong object move meant discarding every
@@ -3828,6 +3989,13 @@
 ## [0.50.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_studio_import_prepare` says whether anyone looked at the screens.** Every display this
   chat drew is remembered, and the package reports the displays that were never rendered — with a
@@ -3862,6 +4030,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - `l5x_diagram` draws every ladder rung of the open project on one page (routine headings, rung numbers,
   comments and instruction chains), with `program` and `max_rungs` to bound the page. Reviewing an
   unfamiliar controller no longer takes one `l5x_routine_diagram` call per routine — the field session
@@ -3873,6 +4048,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - `ftview_render` takes `displays_json` and draws up to eight displays in one call, returning a `screens`
   entry per display (file, size, problems) and one merged `problems` list. Checking a twelve-screen set is
   now one or two calls instead of twelve, which is where review time went in the field.
@@ -3880,6 +4062,13 @@
 ## [0.46.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `ftview_render` now reports layout problems alongside the drawing: every object whose box leaves the
   canvas or whose caption or text cannot fit its box is returned in `problems` with the object name, the
@@ -3895,6 +4084,13 @@
 ## [0.45.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `l5x_routine_diagram` draws the rungs of a routine that already exists in the open project. Pass `program` and `routine`; it numbers the rungs, lists the instructions it found, and writes a PNG beside the SVG when Chrome or Edge is installed. A missing routine is refused with the program's routines as candidates, and a Structured Text routine is refused because there is no ladder to draw.
 
@@ -3913,6 +4109,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - `ftview_compare` reports what changed **inside** each display, not only which files differ: per display,
   the objects added, removed, and changed with the fields that moved (`left`, `caption`, `connections`, ...).
   After a Studio import this is the proof that a specific object landed, where a file hash only says the
@@ -3928,12 +4131,26 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - The package refuses a display that does not parse as XML, instead of letting the wizard answer only
   "Unable to load the XML file".
 
 ## [0.41.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `DisplayObject.connections` carries the expressions an object is wired to (`Value`, `Indicator`,
   `Display`), read from both the flat and the `<connections>`-wrapped ME shapes.
@@ -3948,6 +4165,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - Frames read their caption from the face a screen shows at rest (`stateId="0"`), so a button drawn in a
   render says START or YES instead of its object name.
 - Character references in captions (`&#xA;`, `&amp;`) are decoded, and a multi-line caption is drawn as one
@@ -3957,12 +4181,26 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - `ftview_draft_display_attrs` stages many attribute changes on a display or one of its objects in a
   single call, instead of one `ftview_draft_display_set` per attribute.
 
 ## [0.38.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `ftview_render` draws vendor polylines, trend grids and bar-graph tracks, so separators and charts read
   as the screen does rather than as labelled boxes.
@@ -3975,6 +4213,13 @@
 ## [0.37.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `ftview_apply` ends with a `ftview_render` step for the first changed display, so the screen can be
   looked at before anyone imports it.
@@ -3994,6 +4239,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_draft_tags` stages a batch of HMI tags in one call.** Each entry changes a row description, a type, or appends a new row; up to 500 per call. The field session made thirteen single-tag calls to describe one screen's tags.
 
 ### Changed
@@ -4002,6 +4254,13 @@
 ## [0.34.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`compose_batch` writes many validated rungs in one call.** Up to 200 rung descriptions — composition trees or named patterns — are checked against the export and against the tags the same draft stages, then staged at consecutive rung numbers. The field session wrote 29 one-off scripts to add rungs one at a time; a batch that composes 20 rungs is now one call.
 
@@ -4012,6 +4271,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_draft_screen` lays out a whole screen from one description.** Cards of label/value and label/lamp rows plus a navigation row are positioned on the scaffold slots, wired to tags, and staged in a single call. The field session hand-placed every object through PowerShell scripts and XML edits; a screen of nine rows and three buttons is now one description, and every rectangle comes back so the next placement is never guessed.
 
 ### Changed
@@ -4021,6 +4287,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`compose_rung` sees the tags the same draft stages.** A rung written against a tag that `draft_tag` just added used to fail with `TAG_NOT_FOUND`, so the workflow either declared tags in a separate draft or fell back to hand-written NeutralText. Composition now resolves staged declarations, and the type check still runs: a `REAL` tag used where a `BOOL` contact belongs is refused exactly as before.
 
 ### Changed
@@ -4028,6 +4301,13 @@
 - Staged declarations are visible to composition only. `run_checks`, `draft_validate` and the export on disk still describe the project as it is, so nothing claims a tag exists before it is written.## [0.31.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`draft_list` and `draft_remove_op`.** A staged operation can now be inspected by index and dropped on its own. Before this, one wrong rung meant discarding every staged edit or hand-editing the L5X outside the plugin — the field session chose the hand edit, with 29 one-off PowerShell scripts as the price.
 
@@ -4038,6 +4318,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **A re-apply no longer needs a new folder name.** `ftview_apply` accepts `overwrite: "yes"` for a folder this chat already wrote, so fixing one attribute and re-writing the export stops littering `Final 2`, `Final 3` folders. An unknown folder is still refused with `OUTPUT_NOT_TRACKED` — applying there would merge into somebody else's files — and the `OUTPUT_EXISTS` message now names the option that works.
 
 ### Changed
@@ -4046,6 +4333,13 @@
 ## [0.29.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **A stale view can be refreshed.** `ftview_reload` re-reads one opened export folder in place and keeps its `view_id`, so a re-export, a script or a Studio import is visible without opening a second view and re-deriving every path. It reports the display count and which displays appeared or disappeared.
 - **A draft can be abandoned.** `ftview_draft_discard` throws away the staged operations, so edits that went the wrong way no longer force the model to finish them or to work around the plugin with scripts. The export on disk is untouched; `draft_discard` does the same for L5X drafts.
@@ -4058,17 +4352,38 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Ladder answers now carry a diagram.** `l5x_rung_preview` draws the validated rungs as an SVG and, when Chrome or Edge is installed, rasterises it to a PNG beside the preview document, so a chat answer shows ladder logic instead of NeutralText. Instruction boxes carry their operands, branches stack inside a bracket, and every rung is numbered. `diagram: "no"` skips the image work; a host without a browser still gets the SVG, and the result says why no PNG appeared.
 - The diagram is explicitly a schematic: it is drawn from the parsed rungs, not rendered by Studio, and the coverage list says so.
 ## [0.27.0] - 2026-10-29
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **A render inlines the display's real artwork.** `ftview_render` reads the rasters a display references from the export's `Images` folder and embeds them in the SVG, so a screen shows its actual images instead of a labelled placeholder. An image the export mentions but does not ship is still drawn as a placeholder, and the result now says so, because many ME exports ship an empty `Images` folder.
 
 ## [0.26.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_render` can draw the staged draft, not just the export.** Pass `source: "draft"` and the render reflects everything staged but not yet applied, so a screen can be looked at before `ftview_apply` and before anyone imports it. A draft that does not touch the display is refused with `NOT_FOUND` instead of silently drawing the committed file.
 
@@ -4083,10 +4398,24 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **ftview_render shows the screen before anyone imports it.** The tool draws one display of the open export as an SVG file and, when Chrome or Edge is installed, rasterises it to PNG with a headless screenshot, so the image can be attached to the answer. Panels, text, buttons, indicators and lines are drawn from the geometry the export declares; animations, images, global objects and vendor widgets appear as labelled placeholders. The result says which browser produced the PNG, or that only the SVG exists because none was found.
 ## [0.24.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_cross_reference` joins an HMI export to a Studio 5000 project.** Pass the FTView view and one L5X; the tool resolves every HMI tag through the tag CSV data source to a PLC tag, then reports which displays use it, which rungs read or write it, and the tags that exist on only one side. Rows carry `linked`, `memory` (HMI internal), `unlinked` or `unsupported` (indirect address such as `[Tag]` or a data-table address), and findings use `HMI_TAG_NOT_IN_PLC` / `PLC_TAG_NOT_IN_HMI`, so one call answers whether the HMI tags the PLC actually reads.
 - **`ftview_draft_display_scaffold` starts a display from known slots.** One call stages a backdrop, header, title, optional subtitle, content surface, footer bar and footer text at the display's own size, and returns the free rectangle inside the body plus the header, footer, title and subtitle rectangles. The model places objects into a slot instead of inventing coordinates.
@@ -4102,6 +4431,13 @@
 ## [0.23.0] - 2026-10-29
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_validate` reports an object this draft places partly over a neighbour.** The new `DRAFT_OVERLAP` warning names both objects, the display and the overlap area. It stays quiet for whole-display backdrops and for panels that contain their controls, because those are layering rather than mistakes, so the finding is only about collisions the draft itself introduced. The author sees the collision before apply instead of after import.
 
@@ -4129,6 +4465,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_alarm_snapshot`: alarm XML without Studio.** The tool reads `M_Alarms/MachineAlarms.mal` straight from the application store. The stream is an OLE2 compound file: header counts and next ids come from the trailer, then one 102-byte trigger record and one 30-byte message record each, with `FF <len>`-prefixed UTF-16 strings (`FF FE`/`FF 00` for absent or empty). `LS<length><locale>` outranks the base stream because it carries the localized `triggerLabel` and `messageText`. Output is byte-identical to the vendor wizard's `Alarms.xml` on `AryaFTV_CarpenterPilot_20261007` (33 triggers), `Carpenter_EPS_Laminator001` (23) and `CC019_Main` (64); ids above the encoded limit are reported as notes rather than invented.
 - **`ftview_export` fills alarms from the application database.** When `M_Alarms/MachineAlarms.mal` is present the export decodes it into `Alarms/Alarms.xml` and reports `alarms: "fresh"` instead of copying an absent or stale snapshot.
 
@@ -4138,6 +4481,13 @@
 ## [0.21.0] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_tag_snapshot`: the tag CSV without Studio or the wizard.** The tool copies `TAG/<application>.MDF` to a temp folder, attaches the copy to the local SQL Server Express instance (`MSSQLSERVER`, `SQLEXPRESS`, ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦), reads `dbo.AllTagsView` and renders the rows with the vendor wizard's exact quoting, ordering, CRLF endings and UTF-8 BOM. The application database is only read; the attach is dropped and the copy removed. Verified byte-identical against the wizard snapshots for `AryaFTV_CarpenterPilot_20261007` (101 tags), `CC019_Main` (121 tags) and `Carpenter_EPS_Laminator001` (378 tags).
 - **A SQL-aware capability status.** `ftview_capabilities` reports `tags: "available"` when local SQL tools exist even without `DatabaseConverter.exe`, and its notes say which path is in use.
@@ -4149,6 +4499,13 @@
 ## [0.20.2] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Smart artifact detection in the file preview.** Opening an alarm export, tag CSV or batch import file no longer shows "not a FactoryTalk View display": `detectArtifact` recognises `<alarms>`, the tag CSV header, `<gfxImport>` and displays, and the preview renders a summary card with the counts (alarm definitions, tag rows, import entries) while displays still render. Unknown XML reports the root element.
 
@@ -4168,6 +4525,13 @@
 ## [0.20.0] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_capabilities`** reports what the host can actually do: Studio and tag-wizard paths, installed `Gfx-ME*` schema versions, application count, and status for tags (`available`), alarms and import (`requires-studio`), backup and live (`unverified`), with one line per fact an agent must not guess.
 - **Objects can be added to a display created in the same draft.** `ftview_draft_object_add`, `_set`, `_delete` and `_order` resolve a display that the draft's `display_create` or `display_add` just made, instead of failing with ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“No display is named ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â. Display settings on a draft-added display are accepted too.
@@ -4203,10 +4567,24 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`docs/reference/ftview-any-app.md`** ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ draft ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ validate ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ apply ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ import ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ verify loop.
 ## [0.18.4] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
 ## [0.18.3] - 2026-10-28
@@ -4228,6 +4606,13 @@
 ## [0.18.0] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_draft_object_add` writes button and indicator faces.** A new `states_json` argument produces `<states><state stateId="0"><caption ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦/></state>ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦</states>`, so `momentaryButton`, `maintainButton`, `latchedButton`, `multistateButton`, `rampButton` and `multistateIndicator` get real captions, colours and per-value states instead of a `caption` attribute the vendor schema rejects. Buttons accept states 0, 1 and Error; an indicator accepts numbered states with `value`.
 - **`animations_json` writes visibility animation.** `{"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}` produces `<animations><animateVisibility ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦/></animations>`.
@@ -4252,6 +4637,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_studio_import_prepare`** packages displays from an applied export for Studio's Graphics Import Export Wizard: it copies the selected `<gfx>` display XML files, writes the `gfxImport` batch file, and returns the wizard steps. Non-`<gfx>` files are refused.
 - **Verified end to end on this host**: the wizard (right-click Displays > Import and Export) imported `Arya Proof.xml`; Studio created `GFX\Arya Proof.gfx` (104,960 bytes), listed **Arya Proof** in the Displays tree, and opened it in the editor. A pre-import backup of the application is kept under `backups/ftview/Carpenter_EPS_Laminator001/pre-proof-import-20261028T050943Z`.
 ## [0.16.1] - 2026-10-28
@@ -4268,6 +4660,13 @@
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Alarm export is now a prepared path.** The Alarm Import Export Wizard is hosted by Studio (it runs inside `VStudio.exe`); `ftview_studio_export_prepare { kind: "alarms" }` returns the exact Studio steps, the store folder and the `Alarms.xml` it must produce. `ftview_studio_export_accept { kind: "alarms" }` validates the `<alarms>` XML and copies it.
 - Verified on this host: export alarm configuration -> Next -> Finish wrote `Carpenter_EPS_Laminator001\Alarms.xml`, 34,559 bytes, root `<alarms version="1.0">`.
 ## [0.14.1] - 2026-10-28
@@ -4279,6 +4678,13 @@
 ## [0.14.0] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_studio_export_prepare`** resolves an application's `.med`, verifies Rockwell's Tag Import and Export Wizard is installed, and returns the exact steps and destination file. It does not click anything.
 - **`ftview_studio_export_accept`** validates what the wizard produced ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â tag CSV header and row count, or an `<alarms>` XML ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â and copies it into an export folder. Empty or wrong-shaped files are refused, so a failed run cannot become a silent stale asset.
@@ -4299,6 +4705,13 @@
 ## [0.13.0] - 2026-10-28
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **The object contract is now teachable.** `TYPE_GUIDE` documents all 34 drawable types with required attributes,
   allowed children and a construction note; `ftview_object_types all="true"` returns it alongside what the export uses.
@@ -4327,6 +4740,13 @@ draws the logo, triangles and round lamps. 66 FTView tests, 12 renderer tests, 6
 ## [0.12.0] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Every drawable element type is a drafting target.** `ELEMENT_TYPES` is the 33-type contract behind
   `ftview_draft_object_add`; an unknown type is refused with the candidate list, and geometry defaults (`left`, `top`,
@@ -4363,6 +4783,13 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Global Objects load in the preview.** The face fetches `/engineering/ftview/globals` and resolves every
   `isReferenceObject` against its base, so the header, footer and navigation highlight appear in the app instead of
   empty placements. This was the largest visual regression against Studio.
@@ -4392,6 +4819,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Compare view.** The previewÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s **Compare** action loads the same display from a second export folder through the
   display route and shows both renders side by side with their labels, so an edit can be judged before it is applied.
   The second folder is asked for by name, nothing is written, and the button toggles the pane off.
@@ -4402,6 +4836,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.7] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Interactive preview.** Every rendered object now carries its type and name, so a click opens an inspector with the
   objectÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¾ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢s attributes, its connections, its state count and, for a `gotoButton`, an **Open display** action.
@@ -4417,6 +4858,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **`ftview_object_types`.** Catalogs the object types the open export actually uses: how many of each, every attribute
   seen with its usage count and up to three example values, and example names. Ask for one `type` to get its attribute
   table ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â the answer an agent needs before authoring, instead of guessing attribute names until the XSD refuses.
@@ -4430,6 +4878,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.5] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Live values in the preview.** `GET /engineering/ftview/live?root=<export>&ip=<controller>&slot=<n>&tags=A,B` maps each
   requested HMI tag through the export's own `Address` column and reads the controller tags over EtherNet/IP with the
@@ -4448,6 +4903,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Animations evaluate.** `animateVisibility` expressions (`{Current_Screen} = 6`) are evaluated against known tag values;
   an unknown tag leaves the object in its base state instead of hiding it. The expression reader covers tag references,
   numbers, strings, the six comparisons and `AND`/`OR`.
@@ -4464,6 +4926,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.3] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Graphs and selectors draw their data.** `barGraph` fills in proportion to its `Value` connection between `minValue`
   and `maxValue`, honours `fillDirection` (all four directions) and draws each threshold as a red mark. The Laminator
@@ -4498,11 +4967,25 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â which is why the old preview showed blank navigation buttons.
 - The renderer is not wired into the client face yet; the artifact still serves the panel. Known gap, stated rather than implied.
 ## [0.10.0] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_live_map`.** Maps every HMI tag in the export to the controller tag named in the CSV `Address`
   column (`::[topic]tag`), and reports coverage. It answers the question a live viewer depends on without
@@ -4558,6 +5041,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **Model-agnostic engineering resources: a local standards corpus.** 34 authored pages across six domains
   (IEC 61131-3, Rockwell, Yaskawa, FactoryTalk View/HMI, Optix, craft) with front-matter provenance and 100+
   rule IDs (`CRAFT-NAME-01`, `VIEW-HPM-02`, ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦). `engineering_reference` lists the contents, ranks pages for a
@@ -4584,6 +5074,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.8.4] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **`ftview_export` now brings the alarm setup and the tag database.** The vendor export server covers
   displays, global objects and project settings; alarms and tags live beside the application in the
@@ -4630,6 +5127,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **FactoryTalk View ME authoring.** The surface no longer only edits an export someone handed over:
   - `ftview_apps` lists the ME applications installed on the host through the vendor export server
     (74 applications were listed on the commissioning host).
@@ -4654,6 +5158,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.7.0] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **Ladder generation that cannot emit invalid NeutralText.** Three pieces:
   - `list_instructions` ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â the instruction catalog the composer validates: mnemonic, category, summary
@@ -4686,6 +5197,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.6.0] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **FactoryTalk Optix NetLogic reference.** The bundle vendors a pinned snapshot of Rockwell's
   [NetLogic cheat sheet](https://github.com/FactoryTalk-Optix/NetLogic_CheatSheet) (51 pages, commit
@@ -4886,6 +5404,13 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **FactoryTalk Optix OCR is configurable from Plugins.** The `optix` row now
   carries `ocrExecutable`, `ocrLanguage` and `ocrTessdataDirectory`. A configured
   executable registers `optix_ocr`; an empty path keeps OCR off. An empty tessdata
@@ -4915,6 +5440,13 @@ Verified on both Laminator projects through the shipped engine: attach into
 ## [0.4.14] - 2026-10-27
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **FactoryTalk Optix has a Configure page.** The `optix` row now mounts through
   `entries/optix.js`, which owns a volatile config schema and hands the prebuilt
@@ -5018,6 +5550,13 @@ Verified on both Laminator projects through the shipped engine: attach into
 ## [0.4.6] - 2026-10-25
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 The EtherNet/IP surface now uses the driver rather than one corner of it. Five new tools, all under the
 L5X product row's `live` switch:
@@ -5142,6 +5681,13 @@ upgrades.
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - `scripts/build-client.mjs` builds `lib/client.js` from the two committed face bundles. The face bodies are copied verbatim, each in its own closure, and the merged plugin exports the union of both faces' services. `pnpm build:client` regenerates the artifact; `pnpm pack` runs it first.
 - `test/client-face.spec.mjs` holds the three properties that would otherwise fail silently in the app: the registration id equals the package name, the factory materializes with both faces and merges their services, and `apply` mounts both previews. It also fails when `lib/client.js` is stale against its faces.
 
@@ -5149,12 +5695,26 @@ upgrades.
 
 ### Added
 
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
+
 - **FactoryTalk Optix as a bundle component:** the `optix` row mounts `@aryacode/dsh-tool-ft-optix` (Studio discovery, live authoring, validation, templates, preview and OCR) from a released component tarball. The standalone tool plugin is no longer a product entry or an installer dependency.
 - The bundle now registers 79 tools: the 73 generated reference tools plus six Optix tools. Optix stays unlinked to a skill until one exists.
 
 ## [0.2.0] - 2026-10-23
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - **MotionWorks IEC rows:** `mwi-session` (find, stage, open, start, status, worksheet, close), `mwi-read` (overview, list, get, search, references, review, help), `mwi-verify` (compile, diagnostics, saved-source baselines) and `mwi-edit` (code, declarations, structure, block insertion, POU packages, validation, apply), plus the `mwi-read-skill` guidance.
 - The redesigned surface is 24 tools over the proven 32-bit COM bridge and the Python saved-model engine. It is verified live against MotionWorks IEC 3 Pro 1.19: stage, start, worksheet, close, saved-project reads, compile diagnostics, code replacement, declaration add, POU create/delete, block insertion and a POU package export/delete/import round trip.
@@ -5176,6 +5736,13 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Correct the `factorytalk-view` guidance: the editing and Studio entries now exist and are enabled, so the skill no longer calls those operations out of scope.
 
 ### Added
+
+- **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
+  `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
+  C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
+  import). `optix_list_skills` reports name/title/summary/bytes per topic; `optix_get_skill` returns one page
+  in full so a session reads only what it needs. `SKILL.md` gained a table pointing at them.
+
 
 - `docs/reference/tools.md` and `tools.json`: a generated reference for all 49 tools, with a test that fails when the committed reference or the policy coverage drifts from the registered definitions.
 - `docs/examples.md`: end-to-end sessions for reading, staged edits, SDK verification, supervised controller access, live reads and FactoryTalk View.
