@@ -2,6 +2,20 @@
 
 ### Added
 
+- **The Optix bridge can put a dynamic link on a variable, not only on a property.**
+  `POST /bridge/node/set-link?path=&source=&mode=Read|Write|ReadWrite` links the variable at `path` to the
+  variable at `source` with the same `SetDynamicLink(source, mode)` call `bind` uses, so the relative form
+  is produced automatically inside an `ObjectType`. This is the case `bind` cannot reach: a module-typed
+  variable (`VariableToLog`, `StoreColumn`, `TrendPen`, `EventFieldPath`) has no property for its own value,
+  so a `DataLogger`'s logged variables could be created — after the module-datatype change below — but never
+  pointed at a tag, and the logger silently wrote null columns. A non-variable target, a source that is not
+  a variable and a source that does not resolve are each refused with their own code, and `mode` is
+  validated rather than defaulted. Verified live on the demo project: four `VariableToLog` elements linked
+  to `Model/Smt/{OEE,UPH,CycleTime,BoardsOut}`, the links present in `Nodes/Loggers/Loggers.yaml` after a
+  Studio save, and the DataLogger's table then created with those columns. Documented in
+  [`docs/reference/optix-model.md`](docs/reference/optix-model.md); the tool layer still has no op for it,
+  which is recorded there alongside `set-structured`.
+
 - **The Optix bridge can author module-typed children, and the route for a structured property.**
   `POST /bridge/model/variable` now accepts an FTOptix module type BrowseName as `datatype` alongside the 18
   builtins — `VariableToLog`, `StoreColumn`, `EventFieldPath`, `EventFieldToLog`, `TrendPen` — and makes it

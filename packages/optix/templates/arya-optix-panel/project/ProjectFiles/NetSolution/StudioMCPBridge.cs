@@ -849,6 +849,17 @@ public class StudioMCPBridge : BaseNetLogic
                     body = SetStructuredInline(firstLine, ReadRequestBody(stream, buf, n, req));
                     status = "200 OK";
                 }
+                else if (firstLine.StartsWith("POST /bridge/node/set-link"))
+                {
+                    // DYNAMIC LINK on ANY variable. bind can only reach a DECLARED
+                    // property of an object; a module-typed variable (VariableToLog,
+                    // StoreColumn, TrendPen, EventFieldPath) has no such property for
+                    // its own value, so the only way to point it at a tag is to link
+                    // the variable itself. Relative links are produced automatically
+                    // when target and source live under the same ObjectType.
+                    body = SetLinkInline(firstLine);
+                    status = "200 OK";
+                }
                 else if (firstLine.StartsWith("POST /bridge/node/bind"))
                 {
                     // Bind a property -> model variable (DynamicLink). Node-model op.
@@ -939,7 +950,7 @@ public class StudioMCPBridge : BaseNetLogic
         "POST /bridge/model/", "POST /bridge/ui/widget",
         "POST /bridge/i18n/translation", "POST /bridge/setup/web-engine",
         "POST /bridge/node/property", "POST /bridge/node/set-structured",
-        "POST /bridge/node/bind",
+        "POST /bridge/node/bind", "POST /bridge/node/set-link",
         "POST /bridge/node/alias", "POST /bridge/node/move",
         "POST /bridge/node/convert-to-type", "POST /bridge/node/reorder",
         "POST /bridge/node/delete", "POST /bridge/node/event",
@@ -5302,6 +5313,64 @@ public class StudioMCPBridge : BaseNetLogic
                    + cleared + "}";
         }
         catch (Exception ex) { return "{\"ok\":false,\"error\":\"" + JsonEscape(ExcMsg(ex)) + "\"}"; }
+    }
+
+    // DYNAMIC LINK WRITE: POST /bridge/node/set-link?path=<variable>&source=<node>&mode=Read
+    //
+    // The gap bind leaves open. `bind` writes a DynamicLink onto a NAMED PROPERTY of an
+    // object (propVar = object.GetVariable(name)); a module-typed VARIABLE such as
+    // DataLogger's VariableToLog has no property for its own value - the variable IS the
+    // value - so nothing could point it at a tag and the logger wrote null columns.
+    //
+    // Target = the variable node itself. Source must resolve to a variable; a source that
+    // is not resolvable is refused rather than stored as a literal (raw= belongs to bind,
+    // where an alias/template path is the point).
+    private string SetLinkInline(string firstLine)
+    {
+        string path = QueryParam(firstLine, "path");
+        string source = QueryParam(firstLine, "source");
+        string modeStr = QueryParam(firstLine, "mode") ?? "Read";
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(source))
+            return ErrorJson("bad_query", "required query params: path, source");
+        try
+        {
+            DynamicLinkMode mode;
+            switch (modeStr)
+            {
+                case "Write": mode = DynamicLinkMode.Write; break;
+                case "ReadWrite": mode = DynamicLinkMode.ReadWrite; break;
+                case "Read": mode = DynamicLinkMode.Read; break;
+                default:
+                    return ErrorJson("bad_mode", "mode must be Read, Write or ReadWrite, got: " + modeStr);
+            }
+            var node = ResolveNode(path);
+            if (node == null)
+                return ErrorJson("node_not_found", "no node at: " + path);
+            var target = node as IUAVariable;
+            if (target == null)
+                return ErrorJson("not_a_variable",
+                    path + " is a " + node.GetType().Name + ", not a variable - set-link writes a link ON a " +
+                    "variable; use bind to reach a property of an object");
+            var sourceNode = ResolveNode(source);
+            if (sourceNode == null)
+                return ErrorJson("source_not_found", "no node at: " + source);
+            var sourceVar = sourceNode as IUAVariable;
+            if (sourceVar == null)
+                return ErrorJson("source_not_variable",
+                    source + " is a " + sourceNode.GetType().Name + ", not a variable");
+            target.SetDynamicLink(sourceVar, mode);
+            var dl = target.Refs.GetVariable(FTOptix.CoreBase.ReferenceTypes.HasDynamicLink);
+            if (dl == null)
+                return ErrorJson("link_materialize_failed",
+                    "SetDynamicLink did not materialize a DynamicLink child on " + path);
+            Log.Info("StudioBridge", "SETLINK " + path + " -> " + source + " (" + modeStr + ")");
+            return "{\"ok\":true,\"path\":\"" + JsonEscape(path) +
+                   "\",\"source\":\"" + JsonEscape(source) +
+                   "\",\"mode\":\"" + JsonEscape(modeStr) +
+                   "\",\"via\":\"dynamiclink\"" +
+                   ",\"link\":\"" + JsonEscape(dl.Value.ToString()) + "\"}";
+        }
+        catch (Exception ex) { return ErrorJson("set_link_failed", ExcMsg(ex)); }
     }
 
     private string CreateAliasInline(string firstLine)

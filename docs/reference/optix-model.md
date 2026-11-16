@@ -109,6 +109,28 @@ vocabulary has `set_property`, not a structured write, so the route is reachable
 and by a future op; until then a logger's `VariablesToLog`, a table's `Columns` and a trend's `Pens` are
 authorable only that way.
 
+`POST /bridge/node/set-link?path=<variable>&source=<variable>&mode=Read|Write|ReadWrite` writes a
+dynamic link **on the variable itself**, which is the one thing `bind` cannot do: `bind` reaches a
+*property* of an object, and a module-typed variable such as `VariableToLog` has no property for its own
+value, so nothing could point a logged variable at a tag and the logger wrote null columns.
+
+    POST /bridge/node/set-link?path=Loggers/LineDataLogger/VariablesToLog/OEE&source=Model/Smt/OEE&mode=Read
+
+    {"ok":true,"path":"Loggers/LineDataLogger/VariablesToLog/OEE","source":"Model/Smt/OEE",
+     "mode":"Read","via":"dynamiclink","link":"../../../../Model/Smt/OEE (String)"}
+
+The target must be a variable (`IUAVariable`) and the source must resolve to a variable; a source that
+does not resolve is refused rather than stored as a literal, because a literal path is `bind`'s `raw=`
+form where an alias or template path is the point. The link is created with the same
+`SetDynamicLink(source, mode)` call `bind` uses, so a relative path is produced automatically when target
+and source live under the same `ObjectType` (an absolute link reads the type's value for every instance).
+Verified live on the demo project: four `VariableToLog` elements linked to their model tags, links present
+in `Nodes/Loggers/Loggers.yaml` after a Studio save, and the DataLogger's table then carries the columns.
+
+The remaining known limit for a logger's table: it is created on first sample, so a `DataGrid` or `Trend`
+bound to it renders empty until rows exist; author the link first, then look at the widget.
+
+
 ## What it will not do
 
 - It does not rewrite an existing flat model. `check` reports it; the operator decides whether to move
