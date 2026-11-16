@@ -576,6 +576,21 @@ const operations = {
 			dims: optionalText
 		},
 		destructive: true
+	},
+	import_tags: {
+		route: "station/import-tags",
+		fields: {
+			station: text$1,
+			mode: {
+				type: "string",
+				enum: ["offline", "online"]
+			},
+			file: optionalText,
+			tags: optionalText,
+			replace: { type: "boolean" },
+			timeout_s: { type: "number" },
+			dry_run: { type: "boolean" }
+		}
 	}
 };
 /** Exact-one operation schema for the native tool registry. */
@@ -620,6 +635,10 @@ function checkOperations(ops) {
 		if (op.op === "attach_string_formatter") {
 			const count = typeof op.sources === "string" ? op.sources.split(",").filter((source) => source.trim()).length : 0;
 			if ([...String(op.format).replaceAll("{{", "").replaceAll("}}", "").matchAll(/\{(\d+)\s*(?:,[^{}:]*)?(?::[^{}]*)?\}/g)].some((match) => Number(match[1]) >= count)) throw new Error("unbound_placeholder: every formatter placeholder needs a source");
+		}
+		if (op.op === "import_tags") {
+			if ((op.mode ?? "offline") === "offline" && !op.file) throw new Error(`${op.station}: an offline import needs file=<absolute path to a .L5X or .TPY>`);
+			if (op.dry_run === true && (op.mode ?? "offline") === "online") throw new Error("import_tags: dry_run previews an offline file; it cannot preview an online fetch");
 		}
 	}
 }

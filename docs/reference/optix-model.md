@@ -130,6 +130,36 @@ in `Nodes/Loggers/Loggers.yaml` after a Studio save, and the DataLogger's table 
 The remaining known limit for a logger's table: it is created on first sample, so a `DataGrid` or `Trend`
 bound to it renders empty until rows exist; author the link first, then look at the widget.
 
+### PLC tags: `import_tags`
+
+    POST /bridge/station/import-tags?station=CommDrivers/RAEtherNetIPDriver1/RAEtherNet_IPStation1
+                                   &mode=offline&file=C:/tags/controller.L5X&tags=Line1
+                                   &replace=0&timeout_s=120
+
+`optix_edit` exposes this as the op `import_tags` with the same fields, so a batch can carry it:
+
+    {"op":"import_tags","station":"CommDrivers/RAEtherNetIPDriver1/RAEtherNet_IPStation1",
+     "mode":"offline","file":"C:/tags/controller.L5X","tags":"Line1,Line2","replace":false}
+
+A station's `TagImporter` is a **design-time** SDK object (`UAManagedCore.TagImporterAPI`): it exists in
+Studio and not in a running runtime, which is why the bridge is the only place this can happen and why no
+screen can do it. `mode=offline` needs `file` (absolute path): the root element decides the kind and the
+file is refused with `invalid_import_file` unless it is `RSLogix5000Content` (an L5X) or `PlcProjectInfo`
+(a TPY). `mode=online` fetches from the configured controller and takes no file.
+
+`tags` is a filter with the dot-boundary rule the documented partner tool uses: a symbol matches when it
+is the requested name, sits below it (`Line1.Motor`) or above it (`Line1` matches a request for
+`Line1.Motor`). Omitted means every symbol the source carries.
+
+`replace` decides what happens to station tags the source does not carry. With `replace=false` (the
+default) nothing is removed and the call refuses up front with `would_remove_tags` and a
+`removed_would_be` list, so a merge can never silently drop a tag; `replace=true` removes them.
+`dry_run=true` answers `would_add`/`would_remove` from the file and the station without touching the
+importer.
+
+Verified live on the demo project: an RA EtherNet/IP station imported from a generated L5X, `added`
+listing the source symbols and `already_present` counting the repeats, and a screen label bound to an
+imported tag then showing its value.
 
 ## What it will not do
 

@@ -860,6 +860,13 @@ public class StudioMCPBridge : BaseNetLogic
                     body = SetLinkInline(firstLine);
                     status = "200 OK";
                 }
+                else if (firstLine.StartsWith("POST /bridge/station/import-tags"))
+                {
+                    // PLC TAG IMPORT - the station TagImporter is a design-time SDK object,
+                    // so this route is the only way to land real controller tags on a station.
+                    body = ImportTagsInline(firstLine);
+                    status = "200 OK";
+                }
                 else if (firstLine.StartsWith("POST /bridge/node/bind"))
                 {
                     // Bind a property -> model variable (DynamicLink). Node-model op.
@@ -957,6 +964,7 @@ public class StudioMCPBridge : BaseNetLogic
         "POST /bridge/node/attach-expression",
         "POST /bridge/node/attach-formatter",
         "POST /bridge/node/attach-string-formatter",
+        "POST /bridge/station/import-tags",
         "POST /bridge/node/retype",
         // added for the generic invoke endpoint below.
         "POST /bridge/node/invoke",
@@ -5325,6 +5333,343 @@ public class StudioMCPBridge : BaseNetLogic
     // Target = the variable node itself. Source must resolve to a variable; a source that
     // is not resolvable is refused rather than stored as a literal (raw= belongs to bind,
     // where an alias/template path is the point).
+    // PLC TAG IMPORT: POST /bridge/station/import-tags?station=<path>&mode=offline|online
+    //                              &file=<absolute .L5X or .TPY>&tags=a,b&replace=0|1&timeout_s=120
+    //
+    // The gap the reference tool surface names, and the one thing a project needs before
+    // any binding to a real PLC: the station's TagImporter is a DESIGN-TIME SDK object
+    // (UAManagedCore.TagImporterAPI) that only the bridge can reach, because it exists in
+    // Studio and not in a running runtime.
+    //
+    // Contract kept deliberately close to the documented partner tool so a caller can move
+    // between the two: offline needs an existing file whose root is RSLogix5000Content
+    // (L5X) or PlcProjectInfo (TPY); online fetches from the controller; `tags` is a
+    // filter with dot-boundary matching (own symbol, its children, its parents);
+    // replace=0 never removes a station tag and refuses up front (would_remove_tags) when
+    // the file does not carry a station tag that is not requested.
+    //
+    // The importer is driven through REFLECTION rather than the static-imported types
+    // because the station kind (RA EtherNet/IP vs TwinCAT) and the FetchMode enum belong
+    // to assemblies this file does not reference by name - the same approach the file
+    // already uses for every other SDK type whose assembly is optional at design time.
+    private string ImportTagsInline(string firstLine)
+    {
+        string stationPath = QueryParam(firstLine, "station");
+        string modeStr = (QueryParam(firstLine, "mode") ?? "offline").ToLowerInvariant();
+        string file = QueryParam(firstLine, "file");
+        string tagsRaw = QueryParam(firstLine, "tags");
+        string replaceStr = QueryParam(firstLine, "replace");
+        string timeoutStr = QueryParam(firstLine, "timeout_s");
+        string dryRunStr = QueryParam(firstLine, "dry_run");
+        bool replace = replaceStr == "1" || string.Equals(replaceStr, "true", StringComparison.OrdinalIgnoreCase);
+        bool dryRun = dryRunStr == "1" || string.Equals(dryRunStr, "true", StringComparison.OrdinalIgnoreCase);
+        int timeoutSeconds = 120;
+        if (!string.IsNullOrEmpty(timeoutStr) && !int.TryParse(timeoutStr, out timeoutSeconds)) timeoutSeconds = 120;
+        if (timeoutSeconds < 1) timeoutSeconds = 1;
+        if (timeoutSeconds > 3600) timeoutSeconds = 3600;
+        if (string.IsNullOrEmpty(stationPath))
+            return ErrorJson("bad_query", "required query param: station");
+        if (modeStr != "offline" && modeStr != "online")
+            return ErrorJson("bad_mode", "mode must be offline or online, got: " + modeStr);
+        var wanted = SplitSymbolList(tagsRaw);
+        List<string> sourceSymbols = null;
+        string fileKind = null;
+        if (modeStr == "offline")
+        {
+            if (string.IsNullOrEmpty(file))
+                return ErrorJson("file_required", "offline import needs file=<absolute path to a .L5X or .TPY>");
+            if (!System.IO.File.Exists(file))
+                return ErrorJson("file_not_found", "no file at: " + file);
+            try
+            {
+                sourceSymbols = ReadImportFileSymbols(file, out fileKind);
+            }
+            catch (Exception ex)
+            {
+                return ErrorJson("invalid_import_file", file + ": " + ExcMsg(ex));
+            }
+            if (fileKind == null)
+                return ErrorJson("invalid_import_file",
+                    "the file root is neither RSLogix5000Content (L5X) nor PlcProjectInfo (TPY): " + file);
+        }
+        try
+        {
+            var station = ResolveNode(stationPath);
+            if (station == null) return ErrorJson("station_not_found", "no node at: " + stationPath);
+            PropertyInfo importerProp = station.GetType().GetProperty("TagImporter");
+            if (importerProp == null)
+                return ErrorJson("not_a_tag_station",
+                    stationPath + " is a " + station.GetType().Name +
+                    ", which carries no TagImporter - pass an RA EtherNet/IP or a TwinCAT station");
+            object importer = importerProp.GetValue(station, null);
+            if (importer == null)
+                return ErrorJson("not_a_tag_station", "the station at " + stationPath + " has no TagImporter instance");
+            List<string> present = CollectTagSymbols(station);
+            // replace=0: refuse when the import would drop a station tag the file does not
+            // carry. The caller sees exactly what would go and can re-run with replace=1.
+            var wouldRemove = new List<string>();
+            if (!replace && sourceSymbols != null)
+                foreach (string sym in present)
+                    if (!IsRequestedSymbol(sym, wanted) && !HasSymbol(sourceSymbols, sym)) wouldRemove.Add(sym);
+            if (wouldRemove.Count > 0)
+                return "{\"ok\":false,\"error\":{\"code\":\"would_remove_tags\",\"message\":\"the import would remove " +
+                       wouldRemove.Count + " station tag(s) the file does not carry - pass replace=1 to drop them, or " +
+                       "dry_run=1 to preview\"},\"removed_would_be\":" + JsonStringArray(wouldRemove) + "}";
+            if (dryRun)
+            {
+                var wouldAdd = new List<string>();
+                if (sourceSymbols != null)
+                    foreach (string sym in sourceSymbols)
+                        if (IsRequestedSymbol(sym, wanted) && !HasSymbol(present, sym)) wouldAdd.Add(sym);
+                return "{\"ok\":true,\"dry_run\":true,\"mode\":\"" + JsonEscape(modeStr) +
+                       "\",\"would_add\":" + JsonStringArray(wouldAdd) +
+                       ",\"would_remove\":" + JsonStringArray(wouldRemove) +
+                       ",\"would_skip\":[]}";
+            }
+            // FilePath + Mode. ResourceUri is the only accepted file-path carrier.
+            var filePathProp = importer.GetType().GetProperty("FilePath");
+            if (filePathProp == null && modeStr == "offline")
+                return ErrorJson("not_a_tag_station", "the TagImporter at " + stationPath + " has no FilePath property");
+            if (filePathProp != null && modeStr == "offline")
+            {
+                object uri = BuildResourceUri(file);
+                if (uri == null)
+                    return ErrorJson("invalid_import_file", "could not build a ResourceUri for: " + file);
+                filePathProp.SetValue(importer, uri, null);
+            }
+            var modeProp = importer.GetType().GetProperty("Mode");
+            if (modeProp != null)
+            {
+                object enumValue = Enum.Parse(modeProp.PropertyType, modeStr == "online" ? "Online" : "Offline", true);
+                modeProp.SetValue(importer, enumValue, null);
+            }
+            // Import(Func<string,string,bool>) - the filter decides which source symbols land.
+            MethodInfo importWithFilter = null, importNoArg = null;
+            foreach (var m in importer.GetType().GetMethods())
+            {
+                if (!string.Equals(m.Name, "Import", StringComparison.Ordinal)) continue;
+                var ps = m.GetParameters();
+                if (ps.Length == 1 && ps[0].ParameterType == typeof(Func<string, string, bool>)) importWithFilter = m;
+                else if (ps.Length == 0) importNoArg = m;
+            }
+            if (importWithFilter == null && importNoArg == null)
+                return ErrorJson("not_a_tag_station", "the TagImporter exposes no Import() method");
+            string startedAt = DateTime.UtcNow.ToString("o");
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            object task;
+            try
+            {
+                if (importWithFilter != null)
+                {
+                    Func<string, string, bool> keep = (symbol, type) =>
+                        wanted.Count == 0 || IsRequestedSymbol(symbol, wanted) ||
+                        (!replace && HasSymbol(present, symbol));
+                    task = importWithFilter.Invoke(importer, new object[] { keep });
+                }
+                else task = importNoArg.Invoke(importer, null);
+            }
+            catch (TargetInvocationException tie)
+            {
+                string code = tie.InnerException != null && tie.InnerException.Message.IndexOf("cancel", StringComparison.OrdinalIgnoreCase) >= 0
+                    ? "import_cancelled" : "import_failed";
+                return ErrorJson(code, ExcMsg(tie.InnerException ?? tie));
+            }
+            if (task == null) return ErrorJson("import_failed", "the importer returned no task");
+            bool finished = WaitForTask(task, timeoutSeconds * 1000);
+            sw.Stop();
+            if (!finished) return ErrorJson("import_timeout", "the import did not finish within " + timeoutSeconds + " s");
+            bool failed = TaskFlag(task, "IsFaulted");
+            bool cancelled = TaskFlag(task, "IsCanceled");
+            if (cancelled) return ErrorJson("import_cancelled", "the import was cancelled by Studio");
+            if (failed)
+            {
+                string detail = TaskExceptionText(task);
+                return ErrorJson("import_failed", detail == null ? "the import task faulted" : detail);
+            }
+            List<string> after = CollectTagSymbols(station);
+            var added = new List<string>();
+            foreach (string sym in after) if (!HasSymbol(present, sym)) added.Add(sym);
+            var removed = new List<string>();
+            foreach (string sym in present) if (!HasSymbol(after, sym)) removed.Add(sym);
+            var notFound = new List<string>();
+            foreach (string req in wanted)
+            {
+                bool hit = false;
+                foreach (string sym in after) if (IsRequestedSymbol(sym, new List<string> { req })) { hit = true; break; }
+                if (!hit) notFound.Add(req);
+            }
+            int alreadyPresent = 0;
+            foreach (string req in wanted) if (HasSymbol(present, req)) alreadyPresent++;
+            Log.Info("StudioBridge", "IMPORTTAGS " + stationPath + " mode=" + modeStr + " file=" + (file ?? "-") +
+                     " added=" + added.Count + " removed=" + removed.Count + " not_found=" + notFound.Count);
+            return "{\"ok\":true,\"station\":\"" + JsonEscape(stationPath) +
+                   "\",\"mode\":\"" + JsonEscape(modeStr) +
+                   "\",\"file\":\"" + JsonEscape(file ?? "") +
+                   "\",\"file_kind\":\"" + JsonEscape(fileKind ?? "") +
+                   "\",\"replace\":" + (replace ? "true" : "false") +
+                   ",\"added\":" + JsonStringArray(added) +
+                   ",\"removed\":" + JsonStringArray(removed) +
+                   ",\"already_present\":" + alreadyPresent +
+                   ",\"not_found\":" + JsonStringArray(notFound) +
+                   ",\"skipped\":[]" +
+                   ",\"elapsed_ms\":" + sw.ElapsedMilliseconds +
+                   ",\"started_at\":\"" + JsonEscape(startedAt) + "\"}";
+        }
+        catch (Exception ex) { return ErrorJson("import_failed", ExcMsg(ex)); }
+    }
+
+    // "a,b; c" -> ["a","b","c"]; empty -> empty filter (import everything the file carries).
+    private static List<string> SplitSymbolList(string raw)
+    {
+        var list = new List<string>();
+        if (string.IsNullOrEmpty(raw)) return list;
+        foreach (var part in raw.Split(new[] { ',', ';', '\n', '\r' }))
+        {
+            string s = part.Trim();
+            if (s.Length > 0 && !list.Contains(s)) list.Add(s);
+        }
+        return list;
+    }
+
+    // Dot-boundary match, the rule the documented contract states: the symbol itself, one of
+    // its children, or one of its parents is a hit - so "Line1" also selects "Line1.Motor".
+    private static bool IsRequestedSymbol(string symbol, List<string> wanted)
+    {
+        if (wanted.Count == 0) return true;
+        foreach (string req in wanted)
+        {
+            if (symbol == req) return true;
+            if (symbol.StartsWith(req + ".", StringComparison.Ordinal)) return true;
+            if (req.StartsWith(symbol + ".", StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
+
+    private static bool HasSymbol(List<string> symbols, string symbol)
+    {
+        foreach (string s in symbols)
+        {
+            if (s == symbol) return true;
+            if (s.StartsWith(symbol + ".", StringComparison.Ordinal)) return true;
+            if (symbol.StartsWith(s + ".", StringComparison.Ordinal)) return true;
+        }
+        return false;
+    }
+
+    // Every tag symbol the station currently holds, as dotted BrowseName paths below the station.
+    private static List<string> CollectTagSymbols(IUANode station)
+    {
+        var outList = new List<string>();
+        CollectTagSymbolsWalk(station, "", outList, 0);
+        return outList;
+    }
+
+    private static void CollectTagSymbolsWalk(IUANode node, string prefix, List<string> outList, int depth)
+    {
+        if (node == null || depth > 12) return;
+        foreach (var child in node.Children)
+        {
+            string name = child.BrowseName;
+            if (string.IsNullOrEmpty(name)) continue;
+            string path = prefix.Length == 0 ? name : prefix + "." + name;
+            if (!(child is IUAObjectType)) outList.Add(path);
+            if (child is IUAObject || child is IUAVariable)
+                CollectTagSymbolsWalk(child, path, outList, depth + 1);
+        }
+    }
+
+    // Root element decides the file kind; symbols are scraped with regular expressions so the
+    // bridge needs no XML assembly at design time (an L5X Tag carries @Name, a TPY Symbol a
+    // <Name> child).
+    private static List<string> ReadImportFileSymbols(string path, out string kind)
+    {
+        kind = null;
+        string text = System.IO.File.ReadAllText(path);
+        var rootMatch = System.Text.RegularExpressions.Regex.Match(text, "<([A-Za-z_][A-Za-z0-9_.:-]*)");
+        if (!rootMatch.Success) return null;
+        string root = rootMatch.Groups[1].Value;
+        if (string.Equals(root, "RSLogix5000Content", StringComparison.Ordinal)) kind = "l5x";
+        else if (string.Equals(root, "PlcProjectInfo", StringComparison.Ordinal)) kind = "tpy";
+        else return null;
+        var symbols = new List<string>();
+        if (kind == "l5x")
+        {
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, "<Tag[^>]*\\bName=\"([^\"]+)\""))
+                if (m.Success) symbols.Add(m.Groups[1].Value);
+        }
+        else
+        {
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(text, "<Symbol>\\s*<Name>([^<]+)</Name>"))
+                if (m.Success) symbols.Add(m.Groups[1].Value.Trim());
+        }
+        return symbols;
+    }
+
+    // ResourceUri.FromAbsoluteFilePath via reflection: the type lives in UAManagedCore, but a
+    // direct call would bind this file to a studio assembly at compile time.
+    private static object BuildResourceUri(string absolutePath)
+    {
+        try
+        {
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                Type t = null;
+                try { t = asm.GetType("UAManagedCore.ResourceUri", false); } catch { }
+                if (t == null) continue;
+                var m = t.GetMethod("FromAbsoluteFilePath", BindingFlags.Public | BindingFlags.Static);
+                if (m == null) continue;
+                var ps = m.GetParameters();
+                if (ps.Length != 1 || ps[0].ParameterType != typeof(string)) continue;
+                return m.Invoke(null, new object[] { absolutePath });
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private static bool WaitForTask(object task, int milliseconds)
+    {
+        try
+        {
+            var wait = task.GetType().GetMethod("Wait", new[] { typeof(int) });
+            if (wait != null) return (bool)wait.Invoke(task, new object[] { milliseconds });
+            var completed = task.GetType().GetProperty("IsCompleted");
+            int waited = 0;
+            while (waited < milliseconds)
+            {
+                if (completed != null && (bool)completed.GetValue(task, null)) return true;
+                Thread.Sleep(50);
+                waited += 50;
+            }
+            return false;
+        }
+        catch (Exception) { return true; }
+    }
+
+    private static bool TaskFlag(object task, string property)
+    {
+        try
+        {
+            var p = task.GetType().GetProperty(property);
+            return p != null && (bool)p.GetValue(task, null);
+        }
+        catch { return false; }
+    }
+
+    private static string TaskExceptionText(object task)
+    {
+        try
+        {
+            var p = task.GetType().GetProperty("Exception");
+            if (p == null) return null;
+            var ex = p.GetValue(task, null) as Exception;
+            return ex == null ? null : ExcMsg(ex);
+        }
+        catch { return null; }
+    }
+
+    // ---- end PLC tag import -------------------------------------------------
+
     private string SetLinkInline(string firstLine)
     {
         string path = QueryParam(firstLine, "path");

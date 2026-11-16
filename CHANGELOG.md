@@ -2,6 +2,20 @@
 
 ### Added
 
+- **The Optix plugin can import PLC tags into a station, which it previously could not.** The new bridge
+  route `POST /bridge/station/import-tags?station=&mode=offline|online&file=&tags=&replace=&timeout_s=&dry_run=`
+  and the matching `optix_edit` op `import_tags` drive the station's design-time `TagImporter`
+  (`UAManagedCore.TagImporterAPI`): it lives in Studio and not in a runtime, so the bridge is the only place
+  the import can happen and no screen can do it. An offline import takes an absolute L5X or TPY path and
+  refuses anything else with `invalid_import_file` (the root element decides the kind); `tags` filters with
+  the documented dot-boundary rule (the symbol, its children, its parents); `replace=false` never removes a
+  station tag and refuses up front with `would_remove_tags` plus `removed_would_be`, so a merge cannot
+  silently drop a tag; `dry_run` answers `would_add`/`would_remove` without touching the importer; the result
+  reports `added`, `removed`, `already_present`, `not_found`, `skipped` and `elapsed_ms`. Verified live: an
+  RA EtherNet/IP station created on the demo project, a generated L5X imported, and a screen label bound to
+  an imported tag then showing its value. Documented in
+  [`docs/reference/optix-model.md`](docs/reference/optix-model.md).
+
 - **The Optix bridge can put a dynamic link on a variable, not only on a property.**
   `POST /bridge/node/set-link?path=&source=&mode=Read|Write|ReadWrite` links the variable at `path` to the
   variable at `source` with the same `SetDynamicLink(source, mode)` call `bind` uses, so the relative form

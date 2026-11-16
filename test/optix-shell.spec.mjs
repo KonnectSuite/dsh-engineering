@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HEADER_HEIGHT, FOOTER_HEIGHT, RAIL_WIDTH, SHELL_NAMES, ShellError, shellAudit, shellPlan } from "../packages/optix/lib/shell.js";
+import { HEADER_HEIGHT, FOOTER_HEIGHT, RAIL_WIDTH, SHELL_MAX_RAIL, SHELL_NAMES, ShellError, shellAudit, shellPlan } from "../packages/optix/lib/shell.js";
 
 const screens = [
 	{ name: "Home", screen: "UI/Screens/Home", title: "Home" },
@@ -74,9 +74,10 @@ test("shellPlan clamps the tab strip width and caps the items", () => {
 	assert.equal(shellPlan({ ...base, railWidth: 100 }).content.left, 160);
 	assert.equal(shellPlan({ ...base, railWidth: 400 }).content.left, 280);
 	assert.equal(shellPlan({ ...base, railWidth: 100 }).rail.width, 1280);
-	const many = shellPlan({ ...base, screens: [...screens, { screen: "UI/Screens/A" }, { screen: "UI/Screens/B" }, { screen: "UI/Screens/C" }, { screen: "UI/Screens/D" }] });
-	assert.equal(many.items.length, 6);
-	assert.equal(many.phases.find((phase) => phase.name === "rail").ops.filter((op) => op.op === "create_widget").length, 6);
+	const many = shellPlan({ ...base, screens: [...screens, ...Array.from({ length: SHELL_MAX_RAIL + 3 }, (_, index) => ({ screen: `UI/Screens/Extra${index}` }))] });
+	// The cap is the module's own contract, so raising it does not leave a stale expectation behind.
+	assert.equal(many.items.length, SHELL_MAX_RAIL);
+	assert.equal(many.phases.find((phase) => phase.name === "rail").ops.filter((op) => op.op === "create_widget").length, SHELL_MAX_RAIL);
 });
 
 test("shellPlan refuses what cannot be a rail", () => {
