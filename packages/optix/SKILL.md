@@ -322,6 +322,73 @@ library Rockwell ships, and the generator reaches them as **adapters**:
 The adapters and the artwork are proved by `test/optix-adapters.spec.mjs` and `test/optix-assets.spec.mjs`;
 that a widget shows live data is proved only in the runtime, after Save and Build.
 
+## Production rows: logging, trend, SQL, alarms and users
+
+These are the rows a demo is judged on, and each has one shape that works. All of it was measured on a live
+project in Studio 1.8.1.27; the durable detail is in `docs/reference/optix-model.md`.
+
+**A DataLogger logs nothing until two separate writes exist.** The store is an ordinary object
+(`create_object` with `SQLiteStore`, `InMemory=false`, `Filename="smtline.db"`), and `DataLogger.Store` takes
+the store's node path. The logged variables are `VariableToLog` elements inside the logger's `VariablesToLog`
+collection — a module datatype, so `create_variable` cannot make one and `set_structured` is the route that
+appends them:
+
+    POST /bridge/node/set-structured?path=Loggers/LineDataLogger&name=VariablesToLog&effect=append
+    [{"Name":"OEE"},{"Name":"UPH"},{"Name":"CycleTime"}]
+
+Each element is then pointed at its tag with **`set_link`**, never `bind`: a `VariableToLog` has no settable
+`Value` (`bind` answers "has no settable property 'Value'"), and `set_link` writes the dynamic link on the
+variable itself:
+
+    {"op":"set_link","path":"Loggers/LineDataLogger/VariablesToLog/OEE","source":"Model/Smt/OEE","mode":"Read"}
+
+Durations here are **ticks**, not ISO text: `SamplingPeriod` and `DataGrid.AutoRefreshTime` take `10000000`
+for one second, and `PT1S` or `0000:00:01.000` are refused with `Condition '!localeId.empty()' failed`. The
+table appears on the first sample, so an empty grid proves nothing until the logger has run once, and the
+column names are the ones the logger wrote.
+
+**A Trend is Model + Query + Pens.** `Model` is the **store** (NodeId, accepts a node path), `Query` is SQL
+over the table, and the series come from `Pens` — a structured collection, so `set_structured` with
+`[{"Name":"Pen_OEE","Value":"OEE","Color":"#0FAFFF","Thickness":3}]`. A `Pens` entry whose `Value` is a
+dynamic link instead of a column name renders nothing.
+
+**SQL goes three ways**: the `DataGrid` (`Model` = store, `Query` = SQL, `AutoRefreshTime` in ticks), the
+`Trend` query, and C# — `Project.Current.Get<Store>("DataStores/LineHistory")` then
+`store.Query(sql, out header, out object[,] rows)`. `Scripts/GenericTableExporter` and
+`Scripts/DataLoggerExporter` export the same table to CSV with their own `Query` property.
+
+**A real alarm is a behaviour type, so `create_object` cannot make one.** `FTOptix.Alarm.DigitalAlarm` fails
+`type_not_found`, and the bare BrowseName `OffNormalAlarmController` creates a `BaseObject` **shell** with the
+right property names and no behaviour — it never reaches `/Objects/RetainedAlarms`, so the shipped
+`Widgets/AlarmGrid` stays empty however many shells exist. Make the alarm in design-time C# instead:
+
+    var alarm = InformationModel.MakeObject<FTOptix.Alarm.DigitalAlarm>("Alm_StationFault");
+    folder.Children.Add(alarm);
+    alarm.Severity = 750; alarm.LatchingEnabled = true; alarm.AutoAcknowledge = false; alarm.Enabled = true;
+    alarm.Message = "Station fault latched";
+    alarm.InputValueVariable.SetDynamicLink(source, DynamicLinkMode.Read);
+
+Deploy that as `optix_script { action: "add", kind: "design", name: "AlarmSetup" }`, write the class over the
+generated file, `optix_script { action: "review", build: true }`, restart Studio so the new assembly loads,
+then `optix_script { action: "run", method: "SetupAlarms" }`. Acks are method calls (`Acknowledge`/`Confirm`)
+or the grid's own buttons; no authoring op invokes a method on a runtime node.
+
+**Users, session and the shell.** Users are `FTOptix.Core.User` under `Security/Users`, and a password is
+written with `Session.ChangePassword(user, password, "")` — never as a property. Identity is shown by binding
+the header label with a literal path, not a node path:
+
+    {"op":"bind","path":"UI/MainWindow/ShellHeaderUser","name":"Text","raw_path":"{Session}/User@BrowseName","mode":"Read"}
+
+Sign-in needs `Session.ChangeUser(user, password)`. A button cannot pass two strings through `wire_event`
+(a value that names a node becomes a `NodeId` argument), so the working shape is tags: bind the text boxes to
+`Model/.../LoginUser` and `LoginPass`, let a NetLogic watch a `CmdLogin` bit and call `ChangeUser`, and wire
+the button as `command: "SetVariable"` on that bit.
+
+**Two limits worth saying out loud.** A `NetLogic` node created with `create_object` never binds its class —
+`optix_script add` is the only supported path, and a new or changed class is only loaded after Studio
+rebuilds and restarts. And nothing in this toolchain can save a project: the runtime loads what is on disk, so
+every authoring step ends with a Studio save (and for C#, a build) or the runtime shows the previous build.
+
 ## The shell is a native panel, and a dialog is a typed call
 
 The navigation panel **is** the content host: a `NavigationPanel` fills the content area and its items
