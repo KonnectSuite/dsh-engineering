@@ -38,6 +38,9 @@ import { set, size } from "./screens.js";
 
 /** Height of the header band in pixels. */
 export const HEADER_HEIGHT = 64;
+
+/** Most rail items the shell draws: an operator reads a vertical rail by position, so the cap is generous but finite. */
+export const SHELL_MAX_RAIL = 12;
 /** Height of the status strip in pixels. */
 export const FOOTER_HEIGHT = 30;
 /** Width of the left navigation rail in pixels. */
@@ -170,7 +173,7 @@ export function shellPlan({ window, width, height, language = undefined, screens
 	// Rail: one item per screen, inside the collection Studio created with the panel.
 	const items = [];
 	const takenItems = new Set(existingItems);
-	targets.slice(0, 6).forEach((entry, index) => {
+	targets.slice(0, SHELL_MAX_RAIL).forEach((entry, index) => {
 		const itemName = `RailItem${index + 1}`;
 		const itemPath = `${window}/${SHELL_NAMES.rail}/Panels/${itemName}`;
 		const title = entry.title ?? entry.name ?? entry.screen.split("/").at(-1);
