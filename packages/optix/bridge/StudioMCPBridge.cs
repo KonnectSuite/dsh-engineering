@@ -1857,27 +1857,35 @@ public class StudioMCPBridge : BaseNetLogic
                     FTOptix.CoreBase.ReferenceTypes.HasSource, src);
                 srcHolders.Add(src);
             }
-            newDynamicLink.Mode = mode;
-            newDynamicLink.Refs.AddReference(
-                FTOptix.CoreBase.ReferenceTypes.HasConverter, newStringFormatter);
-            newStringFormatter.SetModellingRuleRecursive();
-            targetVariable.Refs.AddReference(
-                FTOptix.CoreBase.ReferenceTypes.HasDynamicLink, newDynamicLink);
-            newDynamicLink.SetModellingRuleRecursive();
-            // The hand-assembled link above is what the vendor sample does, and it
-            // reads back correctly - but on 2026-11-16 it rendered NOTHING on a
-            // Label.Text, while the documented SetConverter entry point (an
-            // extension on IUAVariable) rendered the format immediately. Set the
-            // converter as well, so the target ends up with the shape that actually
-            // paints; a target that already resolves the manual form is unaffected.
+            // MEASURED 2026-11-16 (demo project, Label.Text): the hand-assembled
+            // link below reads back perfectly in describe_node and renders
+            // NOTHING, while the documented entry point - SetConverter on the
+            // target variable - rendered the format on the first try. The C#
+            // that worked built the formatter DETACHED and then called
+            // SetConverter; calling SetConverter afterwards, on a formatter that
+            // already hangs off a DynamicLink, did nothing. So try the documented
+            // route FIRST and keep the vendor-sample assembly as the fallback.
+            bool viaConverter = false;
             try
             {
-                if (targetVariable is IUAVariable)
-                    ConverterExtensions.SetConverter(targetVariable, newStringFormatter);
+                ConverterExtensions.SetConverter(targetVariable, newStringFormatter);
+                viaConverter = true;
+                Log.Info("StudioBridge", "FMT: attached through SetConverter");
             }
             catch (Exception convEx)
             {
-                Log.Warning("StudioBridge", "FMT: SetConverter skipped: " + ExcMsg(convEx));
+                Log.Warning("StudioBridge",
+                    "FMT: SetConverter refused, falling back to the manual link: " + ExcMsg(convEx));
+            }
+            if (!viaConverter)
+            {
+                newDynamicLink.Mode = mode;
+                newDynamicLink.Refs.AddReference(
+                    FTOptix.CoreBase.ReferenceTypes.HasConverter, newStringFormatter);
+                newStringFormatter.SetModellingRuleRecursive();
+                targetVariable.Refs.AddReference(
+                    FTOptix.CoreBase.ReferenceTypes.HasDynamicLink, newDynamicLink);
+                newDynamicLink.SetModellingRuleRecursive();
             }
             // ONLY NOW is each Source variable in the tree (formatter -> link ->
             // target), so only now can its absolute link be re-pointed at the
