@@ -1,3 +1,29 @@
+## [Unreleased]
+
+### Added
+
+- **The Optix bridge can author module-typed children, and the route for a structured property.**
+  `POST /bridge/model/variable` now accepts an FTOptix module type BrowseName as `datatype` alongside the 18
+  builtins — `VariableToLog`, `StoreColumn`, `EventFieldPath`, `EventFieldToLog`, `TrendPen` — and makes it
+  the variable's *variable type* through `MakeVariable(name, BaseDataType, moduleTypeId, null)`, reported as
+  `variable_type`; a bare name takes the first module catalog that carries it and `FTOptix.Module.Type` pins
+  one, because each module keeps its own types in `ObjectTypes` and its children's types in `VariableTypes`
+  (the resolver scanned only `ObjectTypes`, so `DataLogger.VariablesToLog`, a store table's `Columns` and
+  `EventLogger.EventFieldPaths` were unreachable and with them data logging, trending and SQL history). The
+  builtin path is unchanged and a name that resolves to neither still fails with the builtin list plus how to
+  qualify a module type. The same route takes an optional `display_name`, so one call can create and label.
+  `POST /bridge/node/set-structured?path=&name=&effect=append|replace` is new: a JSON array body writes the
+  element objects of one placeholder child collection (a pen, a store column, a logged variable, an event
+  field path), resolving the property from the node's type and requiring `IsPlaceholderColl`, so it never
+  fabricates an undeclared variable — the crash the `set_property` array guard exists to prevent. Every item
+  is validated before the model changes (unknown field with the valid list, non-collection with the
+  collections the node has, read-only by name, blank/non-array body, more than 200 items, duplicate name),
+  each field is coerced by the same code `set_property` uses, a failed batch rolls back what it created and
+  `effect=replace` says it cannot restore what it removed. Compile-verified offline against the demo
+  `NetSolution` (0 warnings, 0 errors) and shipped byte-identically in the bridge and all three template
+  copies; documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md), including the gap
+  that no plugin tool maps the structured route yet.
+
 ## [0.98.0] - 2026-11-15
 
 ### Added

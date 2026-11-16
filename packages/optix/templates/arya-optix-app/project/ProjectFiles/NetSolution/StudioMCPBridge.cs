@@ -108,6 +108,12 @@ public class StudioMCPBridge : BaseNetLogic
     private static string StopEventNameFor(int port) => "Local\\StudioMCPBridge_Stop_p" + port;
 
     private const int MaxItems = 500;
+    // Cap on the items one POST /bridge/node/set-structured call may create. Each
+    // item becomes a real model node (and possibly a per-field write) on the
+    // request thread, so an unbounded array is an unbounded amount of live-model
+    // mutation between two bridge responses. 200 is far above any real pen/column/
+    // event-field list and small enough that a runaway request stays recoverable.
+    private const int MaxStructuredItems = 200;
     // unlike the bridge's own TCP port (self-assigned per instance,
     // see BasePort/PortRangeSize above), the Web presentation engine port is a
     // PROJECT setting, persisted into the project's own model by SetupProject -
@@ -832,6 +838,17 @@ public class StudioMCPBridge : BaseNetLogic
                     body = SetPropertyInline(firstLine);
                     status = "200 OK";
                 }
+                else if (firstLine.StartsWith("POST /bridge/node/set-structured"))
+                {
+                    // STRUCTURED property write: the element OBJECTS of a placeholder
+                    // child collection (Trend.Pens, Table.Columns,
+                    // DataLogger.VariablesToLog, EventLogger.EventFieldPaths). Its
+                    // items come in the request BODY as a JSON array, so this is one
+                    // of the few routes that reads the body (like validate_ops) -
+                    // hundreds of elements do not belong in a query string.
+                    body = SetStructuredInline(firstLine, ReadRequestBody(stream, buf, n, req));
+                    status = "200 OK";
+                }
                 else if (firstLine.StartsWith("POST /bridge/node/bind"))
                 {
                     // Bind a property -> model variable (DynamicLink). Node-model op.
@@ -914,14 +931,15 @@ public class StudioMCPBridge : BaseNetLogic
 
     // Routes that MUTATE the model -- the only ones that log. Keep in sync with
     // the POST branches in the dispatcher (model/*, ui/widget, i18n/translation,
-    // setup/web-engine, library/import, and node/{property,bind,alias,move,
-    // convert-to-type,reorder,delete,event,attach-expression}). Read routes are
-    // deliberately absent, and so is POST /bridge/expr/validate -- a POST by shape
-    // but a pure read (it validates, mutates nothing).
+    // setup/web-engine, library/import, and node/{property,set-structured,bind,
+    // alias,move,convert-to-type,reorder,delete,event,attach-expression}). Read
+    // routes are deliberately absent, and so is POST /bridge/expr/validate -- a POST
+    // by shape but a pure read (it validates, mutates nothing).
     private static readonly string[] _MutationRoutes = {
         "POST /bridge/model/", "POST /bridge/ui/widget",
         "POST /bridge/i18n/translation", "POST /bridge/setup/web-engine",
-        "POST /bridge/node/property", "POST /bridge/node/bind",
+        "POST /bridge/node/property", "POST /bridge/node/set-structured",
+        "POST /bridge/node/bind",
         "POST /bridge/node/alias", "POST /bridge/node/move",
         "POST /bridge/node/convert-to-type", "POST /bridge/node/reorder",
         "POST /bridge/node/delete", "POST /bridge/node/event",
@@ -2139,16 +2157,30 @@ public class StudioMCPBridge : BaseNetLogic
     // ---- live-model write endpoints (inline mutation from the HTTP thread) ----
     //
     // POST /bridge/model/variable?name=X&parent=Model&datatype=Boolean
+    //   [&display_name=Line%20speed][&locale=en-US]
     // Creates a variable via InformationModel.MakeVariable + parent.Add, INLINE
     // on this background socket thread. The result reports ok/error so we learn
     // whether off-thread design-time mutation is safe (success) or needs
     // main-thread marshaling (exception / instability). Params via query string
     // to avoid body parsing.
+    //
+    // datatype takes a builtin name (Boolean, Double, Int32, ...) OR a MODULE type
+    // BrowseName - see ResolveDataType. That second form is what makes the children
+    // of a DataLogger / EventLogger / Store table / Recipe schema / Trend creatable:
+    // they are typed by the module's own VariableTypes (VariableToLog, StoreColumn,
+    // EventFieldPath, TrendPen), and a variable OF such a type is made through
+    // MakeVariable's (datatype, variableType) overload - the module type id belongs
+    // in the variableType slot, with BaseDataType as the datatype, exactly like a
+    // hand-authored node in Studio. Handing it the datatype slot instead would
+    // declare a variable whose DataType is a type node, which is not a data type.
+    // An ObjectType resolution (Table, EventConfiguration) is refused: those are
+    // objects, not variables - POST /bridge/model/object is the route for them.
     private string WriteVariableInline(string firstLine)
     {
         string name = QueryParam(firstLine, "name");
         string parent = QueryParam(firstLine, "parent") ?? "Model";
         string dtName = QueryParam(firstLine, "datatype") ?? "Boolean";
+        string displayName = QueryParam(firstLine, "display_name");
         if (string.IsNullOrEmpty(name))
             return ErrorJson("bad_query", "missing required query param: name");
         try
@@ -2156,11 +2188,58 @@ public class StudioMCPBridge : BaseNetLogic
             var parentNode = ResolveNode(parent);
             if (parentNode == null)
                 return ErrorJson("node_not_found", "no parent node at: " + parent);
-            var v = InformationModel.MakeVariable(name, ResolveDataType(dtName));
+            NodeId dtId = ResolveDataType(dtName);
+            // ResolveDataType also answers module type ids, so ask the model what
+            // that node IS before choosing the MakeVariable shape. A datatype is the
+            // default (every builtin lands here) so an unresolvable lookup cannot
+            // turn a plain create into a variable-type create.
+            NodeClass dtClass = NodeClass.DataType;
+            try
+            {
+                var dtNode = InformationModel.Get(dtId);
+                if (dtNode != null)
+                    dtClass = dtNode.NodeClass;
+            }
+            catch (Exception)
+            {
+            }
+            if (dtClass == NodeClass.ObjectType)
+                return ErrorJson("bad_datatype", "datatype '" + dtName + "' names an object " +
+                    "type, not a variable type - a variable cannot be of an object type; " +
+                    "create the object instead with POST /bridge/model/object?type=" + dtName);
+            IUAVariable v = dtClass == NodeClass.VariableType
+                ? InformationModel.MakeVariable(name, OpcUa.DataTypes.BaseDataType, dtId, null)
+                : InformationModel.MakeVariable(name, dtId);
             parentNode.Add(v);
-            return "{\"ok\":true,\"created_path\":\"" + JsonEscape(parent + "/" + name) +
-                   "\",\"datatype\":\"" + JsonEscape(dtName) +
-                   "\",\"mode\":\"inline\",\"thread\":\"http-bg\"}";
+            // Optional DisplayName (the plugin's create_variable op documents this
+            // field; Studio shows it in the node list, so an authored variable should
+            // carry it from creation rather than needing a second set_display_name
+            // call). Set AFTER Add, like the displayname route does, and in its own
+            // try/catch: the create already happened, so a rejected attribute write
+            // is reported beside the success instead of throwing the create away.
+            string dnError = "";
+            if (!string.IsNullOrEmpty(displayName))
+            {
+                try
+                {
+                    v.DisplayName = new LocalizedText(displayName,
+                        QueryParam(firstLine, "locale") ?? "en-US");
+                }
+                catch (Exception dnEx)
+                {
+                    dnError = ",\"display_name_error\":\"" + JsonEscape(ExcMsg(dnEx)) + "\"";
+                }
+            }
+            var sb = new StringBuilder();
+            sb.Append("{\"ok\":true,\"created_path\":\"" + JsonEscape(parent + "/" + name) + "\"");
+            sb.Append(",\"datatype\":\"" + JsonEscape(dtName) + "\"");
+            if (dtClass == NodeClass.VariableType)
+                sb.Append(",\"variable_type\":\"" + JsonEscape(dtName) + "\"");
+            if (!string.IsNullOrEmpty(displayName))
+                sb.Append(",\"display_name\":\"" + JsonEscape(displayName) + "\"");
+            sb.Append(dnError);
+            sb.Append(",\"mode\":\"inline\",\"thread\":\"http-bg\"}");
+            return sb.ToString();
         }
         catch (Exception ex)
         {
@@ -2405,11 +2484,27 @@ public class StudioMCPBridge : BaseNetLogic
                 // both reported clean with zero errors). Fail loud instead -
                 // list exactly what IS supported so the caller can fix the
                 // request, rather than silently handing back the wrong type.
+                //
+                // A MODULE TYPE BrowseName is the other legitimate answer, and the
+                // reason this fallback exists: the child objects a DataLogger,
+                // EventLogger, Store table, Recipe schema or Trend is made of are
+                // typed by the module's OWN catalog (VariableToLog, StoreColumn,
+                // EventFieldPath, TrendPen) and are not builtin datatypes at all.
+                // Without this they cannot be created through the bridge, so data
+                // logging, trending and SQL history are not expressible. The
+                // module-qualified form pins which catalog is meant when two
+                // modules carry the same BrowseName: FTOptix.DataLogger.VariableToLog.
+                NodeId moduleTypeId = ResolveModuleTypeId(name);
+                if (moduleTypeId != null)
+                    return moduleTypeId;
                 throw new ArgumentException(
-                    "unsupported datatype '" + name + "' - expected one of: " +
-                    "Boolean, Byte, SByte, Int16, Int32, Int64, UInt16, UInt32, " +
-                    "UInt64, Float, Double, String, DateTime, NodeId, " +
-                    "LocalizedText, Range, Color, ResourceUri");
+                    "unsupported datatype '" + name + "' - expected a builtin (Boolean, " +
+                    "Byte, SByte, Int16, Int32, Int64, UInt16, UInt32, UInt64, Float, " +
+                    "Double, String, DateTime, NodeId, LocalizedText, Range, Color, " +
+                    "ResourceUri) or a module type BrowseName such as VariableToLog, " +
+                    "StoreColumn, EventFieldPath or TrendPen - qualify it as Module.Type " +
+                    "(e.g. FTOptix.DataLogger.VariableToLog) when two modules share the " +
+                    "BrowseName");
         }
     }
 
@@ -3320,6 +3415,519 @@ public class StudioMCPBridge : BaseNetLogic
             return "{\"ok\":false,\"error\":\"" +
                    JsonEscape(ExcMsg(ex)) + "\"}";
         }
+    }
+
+    // STRUCTURED property write: POST /bridge/node/set-structured
+    //   ?path=<node>&name=<placeholder-collection>[&effect=append|replace][&locale=en-US]
+    // body: [{"Name":"Oee","DataType":"Double"},{"Name":"Speed","DataType":"Float"}]
+    //
+    // The write set_property structurally cannot do. A structured property
+    // (Trend.Pens, Table.Columns, DataLogger.VariablesToLog,
+    // EventLogger.EventFieldPaths) is a PLACEHOLDER CHILD COLLECTION: its elements
+    // are UA NODES (TrendPen, StoreColumn, VariableToLog, EventFieldPath), not a
+    // JSON blob and not an array VALUE. So nothing here assigns the collection - it
+    // creates one NODE per JSON object, adds it to the live collection and writes
+    // each field on that element. A scalar write into an array/collection UA
+    // variable is the class of write that has terminated Studio (see
+    // ArrayWriteError); this route has no form of it at all.
+    //
+    // Per item:
+    //   Name / BrowseName  the element's browse name (default <Type><n>)
+    //   DisplayName        the node's DisplayName attribute (locale= applies)
+    //   Description        the node's Description attribute
+    //   DataType           VARIABLE-typed elements only (StoreColumn, VariableToLog,
+    //                      EventFieldPath, TrendPen): a datatype name, exactly as
+    //                      create_variable takes it
+    //   Value              VARIABLE-typed elements only: the element's own value
+    //   <declared field>   any property the element type declares
+    //                      (TrendPen.Color/.Thickness/.Enabled/.Title,
+    //                      VariableToLog.DeadBandMode/.DeadBandValue). The value
+    //                      goes onto that field's own variable through CoerceAssign,
+    //                      so enum names, Color hex, LocalizedText and NodeId paths
+    //                      behave exactly as they do on set_property: the coercion is
+    //                      SHARED with set_property, not reimplemented beside it.
+    //
+    // Everything checkable is checked BEFORE the model is touched: the node, that the
+    // property is declared on the node's generated CLR proxy, that its CLR type is a
+    // placeholder collection of one element type, that the collection is writable, the
+    // JSON shape, the item cap, every field name against the element type's valid set,
+    // the element names, and name collisions. A failure DURING the mutation rolls back
+    // the elements this call created and reports how far it got; effect=replace cannot
+    // restore what it has already removed and says so instead of pretending.
+    private string SetStructuredInline(string firstLine, string requestBody)
+    {
+        string path = QueryParam(firstLine, "path");
+        string name = QueryParam(firstLine, "name");
+        string effect = QueryParam(firstLine, "effect") ?? "append";
+        string locale = QueryParam(firstLine, "locale") ?? "en-US";
+        if (string.IsNullOrEmpty(path) || string.IsNullOrEmpty(name))
+            return ErrorJson("bad_query", "required query params: path, name");
+        if (effect != "append" && effect != "replace")
+            return ErrorJson("bad_effect", "effect must be 'append' or 'replace', got: " + effect);
+        if (string.IsNullOrWhiteSpace(requestBody))
+            return ErrorJson("empty_body",
+                "expected a JSON array body, e.g. [{\"Name\":\"Oee\",\"DataType\":\"Double\"}]");
+        try
+        {
+            var node = ResolveNode(path);
+            if (node == null)
+                return ErrorJson("node_not_found", "no node at: " + path);
+
+            // DECLARED-PROPERTY GATE. The property must exist on the node's generated
+            // CLR proxy (inheritance-aware, exactly like DeclaredPropertyGuard) and its
+            // CLR type must be a placeholder child collection. GetOrCreate* is never
+            // used here: fabricating a collection the type does not declare is the
+            // orphan that makes the engine access-violate (see SetPropertyInline).
+            var prop = node.GetType().GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null)
+                return UnknownStructuredPropertyJson(node, name);
+            if (IsPlaceholderRoColl(prop.PropertyType))
+            {
+                Type roElem = PlaceholderElementType(prop.PropertyType);
+                return ErrorJson("read_only_collection",
+                    "'" + name + "' on " + node.GetType().Name + " is a read-only placeholder " +
+                    "collection (" + prop.PropertyType.Name + "<" +
+                    (roElem == null ? "?" : roElem.Name) + ">) - the engine owns its elements, so " +
+                    "they cannot be added or replaced through the bridge; author them in Studio");
+            }
+            if (!IsPlaceholderColl(prop.PropertyType))
+                return NotStructuredJson(node, name);
+            Type elemClr = PlaceholderElementType(prop.PropertyType);
+            if (elemClr == null)
+                return NotStructuredJson(node, name);
+
+            // ---- JSON shape: parsed and validated whole, before anything is created ----
+            var items = new List<System.Text.Json.JsonElement>();
+            try
+            {
+                using (var doc = System.Text.Json.JsonDocument.Parse(requestBody))
+                {
+                    var root = doc.RootElement;
+                    if (root.ValueKind != System.Text.Json.JsonValueKind.Array)
+                        return ErrorJson("bad_body",
+                            "the body must be a JSON array of objects, one object per element");
+                    foreach (var item in root.EnumerateArray())
+                    {
+                        if (item.ValueKind != System.Text.Json.JsonValueKind.Object)
+                            return ErrorJson("bad_body",
+                                "item " + (items.Count + 1) + " is not a JSON object");
+                        // Clone: the document is disposed long before the model is touched.
+                        items.Add(item.Clone());
+                    }
+                }
+            }
+            catch (System.Text.Json.JsonException jx)
+            {
+                return ErrorJson("bad_body", "invalid JSON body: " + jx.Message);
+            }
+            if (items.Count == 0)
+                return ErrorJson("empty_body", "the body array is empty - nothing to add");
+            if (items.Count > MaxStructuredItems)
+                return ErrorJson("too_many_items",
+                    "at most " + MaxStructuredItems + " items per call, got " + items.Count);
+
+            // Field names and element names up front: a typo or a collision is a
+            // rejected request, never 40 created nodes followed by an error.
+            var validFields = StructuredFieldNames(elemClr);
+            var plannedNames = new List<string>();
+            for (int i = 0; i < items.Count; i++)
+            {
+                foreach (var f in items[i].EnumerateObject())
+                    if (!validFields.Contains(f.Name))
+                        return UnknownStructuredFieldJson(elemClr, index: i + 1, field: f.Name,
+                                                          valid: validFields);
+                string elemName = JsonStr(items[i], "Name");
+                if (string.IsNullOrEmpty(elemName))
+                    elemName = JsonStr(items[i], "BrowseName");
+                if (string.IsNullOrEmpty(elemName))
+                    elemName = elemClr.Name + (i + 1);
+                if (elemName.IndexOf('/') >= 0)
+                    return ErrorJson("bad_body", "item " + (i + 1) +
+                        ": element name must not contain '/': " + elemName);
+                if (plannedNames.Contains(elemName))
+                    return ErrorJson("duplicate_name", "item " + (i + 1) + ": '" + elemName +
+                        "' appears twice in this request");
+                plannedNames.Add(elemName);
+            }
+
+            var existing = LiveCollectionChildren(prop, node);
+            if (effect == "append")
+                foreach (var planned in plannedNames)
+                    foreach (var old in existing)
+                        if (old.BrowseName == planned)
+                            return ErrorJson("name_exists", "'" + planned + "' already exists in " +
+                                name + " on " + path);
+
+            // ---- MUTATION: one element at a time, with the created set tracked ----
+            var created = new List<IUANode>();
+            var writtenFields = new List<string>();
+            int removed = 0;
+            try
+            {
+                if (effect == "replace")
+                {
+                    foreach (var old in existing)
+                    {
+                        RemoveFromCollection(prop, node, old);
+                        removed++;
+                    }
+                }
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var elem = CreateStructuredElement(elemClr, plannedNames[i]);
+                    if (elem == null)
+                        return StructuredFailJson(effect, created, removed, i + 1,
+                            "could not instantiate " + elemClr.FullName +
+                            " - InformationModel.Make has no factory for it");
+                    created.Add(elem);
+                    AddToCollection(prop, node, elem);
+                    string fieldErr = ApplyStructuredFields(elem, items[i], firstLine, locale,
+                                                            writtenFields);
+                    if (fieldErr != null)
+                        return StructuredFailJson(effect, created, removed, i + 1, fieldErr);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Off-thread against a live model: an exception must become a reported,
+                // rolled-back failure, never an escape onto the socket thread.
+                return StructuredFailJson(effect, created, removed, 0, ExcMsg(ex));
+            }
+
+            var sb = new StringBuilder();
+            sb.Append("{\"ok\":true,\"path\":\"" + JsonEscape(path) + "\"");
+            sb.Append(",\"name\":\"" + JsonEscape(name) + "\"");
+            sb.Append(",\"element_type\":\"" + JsonEscape(elemClr.Name) + "\"");
+            sb.Append(",\"effect\":\"" + JsonEscape(effect) + "\"");
+            sb.Append(",\"added\":" + created.Count);
+            if (effect == "replace")
+                sb.Append(",\"removed\":" + removed);
+            sb.Append(",\"total\":" + LiveCollectionChildren(prop, node).Count);
+            sb.Append(",\"fields\":[" + JsonStringArray(writtenFields) + "]");
+            sb.Append(",\"element_names\":[" + JsonStringArray(plannedNames) + "]");
+            sb.Append(",\"mode\":\"inline\",\"thread\":\"http-bg\"}");
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            return "{\"ok\":false,\"mode\":\"inline\",\"error\":\"" +
+                   JsonEscape(ExcMsg(ex)) + "\"}";
+        }
+    }
+
+    // Field vocabulary of one element type: the node attributes every element has,
+    // plus every scalar property the FTOptix type declares. The filters are the ones
+    // the schema dump already trusts (IsLegendProp's rules): the *Variable accessor
+    // twins are not fields, node-valued properties (Children, a nested axis, a
+    // placeholder collection) are not scalar fields, and passing one here would only
+    // ever reach a write that cannot work. DataType/Value are added for the elements
+    // that ARE variables (StoreColumn, VariableToLog, EventFieldPath, TrendPen).
+    private static List<string> StructuredFieldNames(Type elemClr)
+    {
+        var names = new List<string> { "Name", "BrowseName", "DisplayName", "Description" };
+        foreach (var pi in elemClr.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            try
+            {
+                if (!pi.CanRead || pi.GetIndexParameters().Length != 0) continue;
+                if (pi.DeclaringType == null || pi.DeclaringType.Namespace == null) continue;
+                if (!pi.DeclaringType.Namespace.StartsWith("FTOptix")) continue;
+                if (pi.Name.EndsWith("Variable")) continue;
+                if (pi.Name == "Children" || pi.Name == "GridLayoutProperties") continue;
+                if (typeof(IUANode).IsAssignableFrom(pi.PropertyType)) continue;
+                if (IsPlaceholderColl(pi.PropertyType) || IsPlaceholderRoColl(pi.PropertyType))
+                    continue;
+                if (!names.Contains(pi.Name)) names.Add(pi.Name);
+            }
+            catch (Exception)
+            {
+            }
+        }
+        if (typeof(IUAVariable).IsAssignableFrom(elemClr))
+        {
+            if (!names.Contains("DataType")) names.Add("DataType");
+            if (!names.Contains("Value")) names.Add("Value");
+        }
+        names.Sort(StringComparer.Ordinal);
+        return names;
+    }
+
+    // Every placeholder collection the node's proxy type declares - the set this
+    // route can write, handed back so a wrong `name` can be corrected without a
+    // schema dump.
+    private static List<string> PlaceholderPropertyNames(Type nodeType)
+    {
+        var names = new List<string>();
+        foreach (var pi in nodeType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!IsPlaceholderColl(pi.PropertyType) && !IsPlaceholderRoColl(pi.PropertyType))
+                continue;
+            if (!names.Contains(pi.Name)) names.Add(pi.Name);
+        }
+        names.Sort(StringComparer.Ordinal);
+        return names;
+    }
+
+    // The live element nodes of one placeholder collection. Read-only over the model
+    // (no Add, no write); an unreadable collection is an empty set, not an exception
+    // on the socket thread.
+    private static List<IUANode> LiveCollectionChildren(PropertyInfo prop, IUANode node)
+    {
+        var list = new List<IUANode>();
+        try
+        {
+            var coll = prop.GetValue(node) as System.Collections.IEnumerable;
+            if (coll == null) return list;
+            foreach (var o in coll)
+            {
+                var n = o as IUANode;
+                if (n != null) list.Add(n);
+            }
+        }
+        catch (Exception)
+        {
+        }
+        return list;
+    }
+
+    // Instantiate one element of a collection whose CLR type is only known at
+    // runtime. InformationModel.Make<T>(browseName) is the vendor-documented factory
+    // for exactly this (its own snippets do it for a TrendPen and a StoreColumn:
+    // "InformationModel.Make<TrendPen>(name)" then "trend.Pens.Add(pen)"). A bare
+    // Activator.CreateInstance would produce a detached proxy that is not a model
+    // node, which is the opposite of what a collection holds.
+    private static IUANode CreateStructuredElement(Type elemClr, string browseName)
+    {
+        var make = typeof(InformationModel)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(m => m.Name == "Make" && m.IsGenericMethodDefinition &&
+                                 m.GetParameters().Length == 1 &&
+                                 m.GetParameters()[0].ParameterType == typeof(QualifiedName));
+        if (make == null) return null;
+        object qn;
+        var conv = typeof(QualifiedName)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(m => m.Name == "op_Implicit" && m.ReturnType == typeof(QualifiedName) &&
+                                 m.GetParameters().Length == 1 &&
+                                 m.GetParameters()[0].ParameterType == typeof(string));
+        if (conv != null)
+            qn = conv.Invoke(null, new object[] { browseName });
+        else
+            qn = new QualifiedName(browseName);
+        return make.MakeGenericMethod(elemClr).Invoke(null, new[] { qn }) as IUANode;
+    }
+
+    // Add/remove through the live collection object's own typed Add(TElement) /
+    // Remove(TElement). Placed here (not a compile-time call) because the element
+    // type is runtime-only; the method is still the collection's own, so the engine
+    // sees exactly the call its own snippets make.
+    private static void AddToCollection(PropertyInfo prop, IUANode node, IUANode elem)
+    {
+        var coll = prop.GetValue(node);
+        if (coll == null)
+            throw new InvalidOperationException("collection '" + prop.Name + "' is null on " +
+                                                node.GetType().Name);
+        var add = coll.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "Add" && m.GetParameters().Length == 1 &&
+                                 m.GetParameters()[0].ParameterType.IsInstanceOfType(elem));
+        if (add == null)
+            throw new InvalidOperationException("collection '" + prop.Name + "' (" +
+                coll.GetType().Name + ") has no Add(" + elem.GetType().Name + ")");
+        add.Invoke(coll, new object[] { elem });
+    }
+
+    private static void RemoveFromCollection(PropertyInfo prop, IUANode node, IUANode elem)
+    {
+        var coll = prop.GetValue(node);
+        var remove = coll == null ? null : coll.GetType()
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(m => m.Name == "Remove" && m.GetParameters().Length == 1 &&
+                                 m.GetParameters()[0].ParameterType.IsInstanceOfType(elem));
+        if (remove != null)
+            remove.Invoke(coll, new object[] { elem });
+        // Removing from a placeholder collection detaches; delete as well so a
+        // replace does not leave the old element orphaned in the project.
+        try { elem.Delete(); }
+        catch (Exception) { }
+    }
+
+    // Write one item's fields onto a live element node. Every write targets a VALUE
+    // (never a collection) and every conversion is CoerceAssign's, so an element
+    // field behaves exactly like set_property on the same field. Returns null on
+    // success, or the reason the item was refused (the caller rolls the batch back).
+    // firstLine is passed through only so CoerceAssign reads locale= exactly as
+    // set_property would.
+    private string ApplyStructuredFields(IUANode elem, System.Text.Json.JsonElement item,
+                                        string firstLine, string locale, List<string> writtenFields)
+    {
+        foreach (var f in item.EnumerateObject())
+        {
+            string field = f.Name;
+            string raw = JsonStr(item, field);
+            if (raw == null)
+                return "field '" + field + "' must be a scalar (string, number or boolean)";
+            if (field == "Name" || field == "BrowseName")
+                continue;                       // consumed when the element was created
+            if (field == "DisplayName")
+            {
+                elem.DisplayName = new LocalizedText(raw, locale);
+            }
+            else if (field == "Description")
+            {
+                elem.Description = new LocalizedText(raw, locale);
+            }
+            else if (field == "DataType")
+            {
+                var varElem = elem as IUAVariable;
+                if (varElem == null)
+                    return "'DataType' applies only to a variable-typed element, and " +
+                           elem.GetType().Name + " is not one";
+                NodeId dtId = ResolveDataType(raw);
+                NodeClass dtClass = NodeClass.DataType;
+                try
+                {
+                    var dtNode = InformationModel.Get(dtId);
+                    if (dtNode != null) dtClass = dtNode.NodeClass;
+                }
+                catch (Exception)
+                {
+                }
+                if (dtClass != NodeClass.DataType)
+                    return "'DataType' on " + elem.GetType().Name + " must name a datatype " +
+                           "(Double, Int32, String, ...), got: " + raw;
+                varElem.DataType = dtId;
+            }
+            else if (field == "Value")
+            {
+                var varElem = elem as IUAVariable;
+                if (varElem == null)
+                    return "'Value' applies only to a variable-typed element, and " +
+                           elem.GetType().Name + " is not one";
+                if (IsArrayVariable(varElem))
+                    return "'Value' on " + elem.GetType().Name + " is array-typed; array values " +
+                           "are not supported (see set_property)";
+                string verr = CoerceAssign(varElem, raw, firstLine);
+                if (verr != null) return "field 'Value': " + verr;
+            }
+            else
+            {
+                IUAVariable fv = elem.GetVariable(field);
+                if (fv == null) fv = VariableTwin(elem, field);
+                if (fv == null)
+                    return "field '" + field + "' is declared on " + elem.GetType().Name +
+                           " but has no settable variable on this element - set it in Studio";
+                if (IsArrayVariable(fv))
+                    return "field '" + field + "' is array-typed (" + DataTypeName(fv) +
+                           "[]); array element values are not supported (see set_property)";
+                string ferr = CoerceAssign(fv, raw, firstLine);
+                if (ferr != null) return "field '" + field + "': " + ferr;
+            }
+            if (!writtenFields.Contains(field)) writtenFields.Add(field);
+        }
+        return null;
+    }
+
+    // The accessor the Optix proxy generates beside a scalar property: P declares its
+    // child variable as PVariable (Color -> ColorVariable, Thickness ->
+    // ThicknessVariable). The vendor snippets set values through that accessor
+    // ("yAxis.MinValueVariable.Value = -10"), so it is a supported write target when
+    // GetVariable(P) does not resolve the property as a child.
+    private static IUAVariable VariableTwin(IUANode elem, string field)
+    {
+        try
+        {
+            var twin = elem.GetType().GetProperty(field + "Variable",
+                                                  BindingFlags.Public | BindingFlags.Instance);
+            if (twin == null) return null;
+            return twin.GetValue(elem) as IUAVariable;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    // The node's proxy type declares no such property: hand back the placeholder
+    // collections it DOES have, because that is the set this route can write.
+    private static string UnknownStructuredPropertyJson(IUANode node, string name)
+    {
+        var colls = PlaceholderPropertyNames(node.GetType());
+        return "{\"error\":{\"code\":\"unknown_property\",\"message\":\"" +
+               JsonEscape(node.GetType().Name + " has no declared property '" + name +
+                   "' - set_structured writes the element objects of a placeholder child " +
+                   "collection" + (colls.Count > 0
+                       ? "; this node has: " + string.Join(", ", colls.ToArray())
+                       : "; this node has no placeholder collection at all")) +
+               "\",\"valid_collections\":[" + JsonStringArray(colls) + "]}}";
+    }
+
+    // A declared property that is not a placeholder collection of one element type:
+    // name the collections the node does have so the caller can redirect.
+    private static string NotStructuredJson(IUANode node, string name)
+    {
+        var colls = PlaceholderPropertyNames(node.GetType());
+        return "{\"error\":{\"code\":\"not_structured\",\"message\":\"" +
+               JsonEscape("'" + name + "' on " + node.GetType().Name + " is not a placeholder " +
+                   "child collection, which is all set_structured writes" +
+                   (colls.Count > 0
+                       ? "; this node has: " + string.Join(", ", colls.ToArray())
+                       : "; this node has none")) +
+               "\",\"valid_collections\":[" + JsonStringArray(colls) + "]}}";
+    }
+
+    private static string UnknownStructuredFieldJson(Type elemClr, int index, string field,
+                                                     List<string> valid)
+    {
+        return "{\"error\":{\"code\":\"unknown_field\",\"message\":\"" +
+               JsonEscape("item " + index + ": " + elemClr.Name + " has no field '" + field +
+                          "' - valid fields: " + string.Join(", ", valid.ToArray())) +
+               "\",\"valid_fields\":[" + JsonStringArray(valid) + "]}}";
+    }
+
+    // A mutation that failed part-way: report how far it got and undo the elements
+    // this call created. effect=replace cannot put back what it already removed, so
+    // that case says so instead of pretending the collection is untouched.
+    private static string StructuredFailJson(string effect, List<IUANode> created, int removed,
+                                             int failedItem, string error)
+    {
+        int rolledBack = 0;
+        for (int i = created.Count - 1; i >= 0; i--)
+        {
+            try
+            {
+                created[i].Delete();
+                rolledBack++;
+            }
+            catch (Exception)
+            {
+            }
+        }
+        var sb = new StringBuilder();
+        sb.Append("{\"ok\":false");
+        if (failedItem > 0) sb.Append(",\"failed_item\":" + failedItem);
+        sb.Append(",\"added\":0,\"rolled_back\":" + rolledBack);
+        if (effect == "replace")
+            sb.Append(",\"removed\":" + removed + ",\"warning\":\"effect=replace had already " +
+                      "removed the existing elements and they are not restored\"");
+        sb.Append(",\"mode\":\"inline\"");
+        sb.Append(",\"error\":\"" + JsonEscape(error) + "\"}");
+        return sb.ToString();
+    }
+
+    private static string JsonStringArray(List<string> values)
+    {
+        var sb = new StringBuilder();
+        sb.Append("[");
+        for (int i = 0; i < values.Count; i++)
+        {
+            if (i > 0) sb.Append(",");
+            sb.Append("\"");
+            sb.Append(JsonEscape(values[i]));
+            sb.Append("\"");
+        }
+        sb.Append("]");
+        return sb.ToString();
     }
 
     // ARRAY-WRITE GUARD (crash-safety). Array-typed UA variables (String[] like
@@ -6560,11 +7168,22 @@ public class StudioMCPBridge : BaseNetLogic
         return null;
     }
 
-    // Step (a2) worker for ResolveUiTypeId: a public static NodeId field named
-    // `name` on any loaded FTOptix.<Module>.ObjectTypes class (FTOptix.UI is
-    // step (a)'s job and is skipped here), BrowseName-verified like step (a).
+    // A public static NodeId field named `name` on any loaded
+    // FTOptix.<Module>.ObjectTypes OR .VariableTypes class (FTOptix.UI is step
+    // (a)'s job and is skipped here), type-class verified.
     // Accepts "FTOptix.Alarm.DigitalAlarm" to pin the module; a bare name takes
     // the first catalog that carries it.
+    //
+    // BOTH catalogs matter, and the VariableTypes half is what makes module-typed
+    // CHILDREN creatable at all. A module keeps its own type in ObjectTypes
+    // (DataLogger, Table, Trend, EventLogger) and the types of its child objects in
+    // VariableTypes: VariableToLog is FTOptix.DataLogger.VariableTypes, StoreColumn
+    // is FTOptix.Store.VariableTypes, EventFieldPath/EventFieldToLog are
+    // FTOptix.EventLogger.VariableTypes, TrendPen is FTOptix.UI.VariableTypes.
+    // Scanning only ObjectTypes therefore resolved every container and none of its
+    // contents, which is why a DataLogger's VariablesToLog, a Store table's Columns
+    // and an EventLogger's EventFieldPaths were impossible to author (and with them
+    // data logging, trending and SQL history).
     private static NodeId ResolveModuleTypeId(string name)
     {
         if (string.IsNullOrEmpty(name)) return null;
@@ -6580,9 +7199,16 @@ public class StudioMCPBridge : BaseNetLogic
             if (types == null) continue;
             foreach (var t in types)
             {
-                if (t == null || t.Name != "ObjectTypes" || t.Namespace == null ||
-                    !t.Namespace.StartsWith("FTOptix.") || t == typeof(FTOptix.UI.ObjectTypes))
+                if (t == null || t.Namespace == null || !t.Namespace.StartsWith("FTOptix."))
                     continue;
+                // A module keeps TWO catalogs: ObjectTypes for the things it IS
+                // (DataLogger, Table, Trend) and VariableTypes for the CHILDREN it
+                // contains (VariableToLog, StoreColumn, EventFieldPath, TrendPen).
+                if (t.Name != "ObjectTypes" && t.Name != "VariableTypes") continue;
+                // The UI catalogs are step (a)'s job (its constants carry a
+                // misaligned history that step (a) is strict about). Skipped by
+                // namespace, not by typeof, so this stays a pure-name scan.
+                if (t.Namespace == "FTOptix.UI") continue;
                 if (ns != null && t.Namespace != ns) continue;
                 FieldInfo f;
                 try { f = t.GetField(field, BindingFlags.Public | BindingFlags.Static); }

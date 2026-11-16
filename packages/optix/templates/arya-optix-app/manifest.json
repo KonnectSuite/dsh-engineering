@@ -44,10 +44,10 @@
   ],
   "optixStudioVersion": "1.8.1.27-Stable",
   "sourceProjectName": "AryaOptixApp",
-  "contentHash": "4fb4496926528b72e17b7a3396c3f0bd2bd9f79bf75a4b17306e292d7b0ff4f7",
+  "contentHash": "1854d876776297b77cc555dee1ec2e6a5a1d7b8ce385b842a5a9a071f1c18908",
   "bridgeSourceHash": "3927af063f3fb68856b969ff024448d2524a113e0037ed136d22e81bd6106c80",
   "fileCount": 74,
-  "totalBytes": 2281125,
+  "totalBytes": 2314853,
   "readOnly": true,
   "directories": [
     "ApplicationFiles",
@@ -499,8 +499,8 @@
     },
     {
       "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
-      "size": 379232,
-      "sha256": "818f8da082ea181c0a2584895decc24f34cb091d42e1c3bc778ebab140f3b2fb",
+      "size": 412960,
+      "sha256": "f1897b2451a1ed4d0d6ececa2a832bf4f14eb03411d9fc3c1042f6cf08c3cf53",
       "text": true
     },
     {
