@@ -104,10 +104,10 @@ rules as `create_variable`, and every other field is coerced by the same code `s
 field behaves like the property of the same name. `effect=replace` removes the existing elements first and
 says so if a later item fails; a failed batch rolls back the elements it created.
 
-One gap is recorded rather than implied: no plugin tool maps `set-structured` yet. `optix_edit`'s op
-vocabulary has `set_property`, not a structured write, so the route is reachable through an armed bridge
-and by a future op; until then a logger's `VariablesToLog`, a table's `Columns` and a trend's `Pens` are
-authorable only that way.
+One gap is recorded rather than implied: no plugin tool maps the whole of `set-structured` yet. `optix_edit`
+carries `set_link` (below) because a dynamic link is a query-parameter write, but a structured write needs a
+JSON body, which the batch sender does not send yet — so a logger's `VariablesToLog`, a table's `Columns` and
+a trend's `Pens` are authorable through an armed bridge and not yet from a batch op.
 
 `POST /bridge/node/set-link?path=<variable>&source=<variable>&mode=Read|Write|ReadWrite` writes a
 dynamic link **on the variable itself**, which is the one thing `bind` cannot do: `bind` reaches a
@@ -126,6 +126,13 @@ form where an alias or template path is the point. The link is created with the 
 and source live under the same `ObjectType` (an absolute link reads the type's value for every instance).
 Verified live on the demo project: four `VariableToLog` elements linked to their model tags, links present
 in `Nodes/Loggers/Loggers.yaml` after a Studio save, and the DataLogger's table then carries the columns.
+
+From a batch it is one operation, and it is the op that makes a logger log anything:
+
+    {"op":"set_link","path":"Loggers/LineDataLogger/VariablesToLog/OEE","source":"Model/Smt/OEE","mode":"Read"}
+
+`mode` is `Read` unless the link must also write back. A link to the target itself is refused, because that
+is a circular link rather than a binding.
 
 The remaining known limit for a logger's table: it is created on first sample, so a `DataGrid` or `Trend`
 bound to it renders empty until rows exist; author the link first, then look at the widget.

@@ -431,6 +431,19 @@ const operations = {
 		},
 		aliases: { widget_type: "type" }
 	},
+	// A dynamic link is not a property write: `bind` reaches a node's NAMED property, while a
+	// module-typed variable (a DataLogger's VariableToLog, an alarm's InputValue) only accepts
+	// the link on the variable itself. Measured live 2026-11-15: `bind` on
+	// Loggers/LineDataLogger/VariablesToLog/OEE name=Value answers "VariableToLog has no settable
+	// property 'Value'", and the set-link route is the one that lands.
+	set_link: {
+		route: "node/set-link",
+		fields: {
+			path: text$1,
+			source: text$1,
+			mode
+		}
+	},
 	create_variable: {
 		route: "model/variable",
 		fields: {
@@ -620,6 +633,7 @@ function checkOperations(ops) {
 	for (const op of ops) {
 		for (const [key, value] of Object.entries(op)) if (typeof value === "string" && value.length === 0 && key !== "value") throw new Error(`${op.op}: ${key} must be non-empty`);
 		if (op.op === "bind" && Boolean(op.source_path) === Boolean(op.raw_path)) throw new Error("bind requires exactly one of source_path or raw_path");
+		if (op.op === "set_link" && op.path === op.source) throw new Error(`${op.path}: a variable cannot be linked to itself`);
 		if (op.op === "reorder" && (op.position !== void 0 === (op.index !== void 0) || typeof op.index === "number" && op.index < 0)) throw new Error("reorder requires position or a non-negative index");
 		if (op.op === "wire_event") {
 			if (Boolean(op.command) === Boolean(op.method_path)) throw new Error("wire_event requires exactly one of command or method_path");

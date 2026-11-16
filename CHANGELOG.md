@@ -53,6 +53,13 @@
   copies; documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md), including the gap
   that no plugin tool maps the structured route yet.
 
+- **`optix_edit` can write a dynamic link onto a variable: the `set_link` op.** The `set-link` route existed
+  and was proven live — it is what points a DataLogger's `VariableToLog` elements at their tags — but nothing
+  in the batch vocabulary reached it, so a logger authored through the plugin still logged null columns. The
+  op is `{"op":"set_link","path","source","mode"}`, `mode` defaults to `Read`, and a link to the target
+  itself is refused. The structured-collection route is still bridge-only: it needs a JSON body, which the
+  batch sender does not send yet, and `docs/reference/optix-model.md` says so rather than implying parity.
+
 ### Fixed
 
 - **Every bridge refusal now carries the failure that actually happened.** `ExcMsg` reported only the
