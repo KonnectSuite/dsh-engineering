@@ -2,6 +2,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -34,6 +39,11 @@
   cannot do.
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -126,6 +136,11 @@
 ## [0.98.0] - 2026-11-15
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3000,6 +3015,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3288,6 +3308,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3384,6 +3409,11 @@
 ## [0.72.0] - 2026-10-31
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3483,6 +3513,11 @@
 ## [0.71.0] - 2026-10-30
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3633,6 +3668,11 @@
   description could reasonably skip rendering a screen on the assumption its artwork would not appear.
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3712,6 +3752,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3738,6 +3783,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3752,6 +3802,11 @@
 ## [0.65.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3768,6 +3823,11 @@
 ## [0.64.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3788,6 +3848,11 @@
 ## [0.63.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3814,6 +3879,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3830,6 +3900,11 @@
 ## [0.60.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3853,6 +3928,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3867,6 +3947,11 @@
 ## [0.57.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3897,6 +3982,11 @@
 ## [0.55.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3931,6 +4021,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3953,6 +4048,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -3968,6 +4068,11 @@
 ## [0.51.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -3989,6 +4094,11 @@
 ## [0.50.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4030,6 +4140,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4048,6 +4163,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4062,6 +4182,11 @@
 ## [0.46.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4084,6 +4209,11 @@
 ## [0.45.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4109,6 +4239,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4131,6 +4266,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4144,6 +4284,11 @@
 ## [0.41.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4165,6 +4310,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4181,6 +4331,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4194,6 +4349,11 @@
 ## [0.38.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4213,6 +4373,11 @@
 ## [0.37.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4239,6 +4404,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4254,6 +4424,11 @@
 ## [0.34.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4271,6 +4446,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4287,6 +4467,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4301,6 +4486,11 @@
 - Staged declarations are visible to composition only. `run_checks`, `draft_validate` and the export on disk still describe the project as it is, so nothing claims a tag exists before it is written.## [0.31.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4318,6 +4508,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4333,6 +4528,11 @@
 ## [0.29.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4352,6 +4552,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4365,6 +4570,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4377,6 +4587,11 @@
 ## [0.26.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4398,6 +4613,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4409,6 +4629,11 @@
 ## [0.24.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4431,6 +4656,11 @@
 ## [0.23.0] - 2026-10-29
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4465,6 +4695,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4481,6 +4716,11 @@
 ## [0.21.0] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4499,6 +4739,11 @@
 ## [0.20.2] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4525,6 +4770,11 @@
 ## [0.20.0] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4567,6 +4817,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4578,6 +4833,11 @@
 ## [0.18.4] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4606,6 +4866,11 @@
 ## [0.18.0] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4637,6 +4902,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4660,6 +4930,11 @@
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4678,6 +4953,11 @@
 ## [0.14.0] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4705,6 +4985,11 @@
 ## [0.13.0] - 2026-10-28
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4740,6 +5025,11 @@ draws the logo, triangles and round lamps. 66 FTView tests, 12 renderer tests, 6
 ## [0.12.0] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4783,6 +5073,11 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4819,6 +5114,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4836,6 +5136,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.7] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4858,6 +5163,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4878,6 +5188,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.5] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4903,6 +5218,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4926,6 +5246,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.3] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -4967,6 +5292,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -4979,6 +5309,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.10.0] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5041,6 +5376,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -5074,6 +5414,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.8.4] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5127,6 +5472,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -5158,6 +5508,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.7.0] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5197,6 +5552,11 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ## [0.6.0] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5404,6 +5764,11 @@ Verified on both Laminator projects through the shipped engine: attach into
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -5440,6 +5805,11 @@ Verified on both Laminator projects through the shipped engine: attach into
 ## [0.4.14] - 2026-10-27
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5550,6 +5920,11 @@ Verified on both Laminator projects through the shipped engine: attach into
 ## [0.4.6] - 2026-10-25
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5681,6 +6056,11 @@ upgrades.
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -5695,6 +6075,11 @@ upgrades.
 
 ### Added
 
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
+
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
   C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag
@@ -5708,6 +6093,11 @@ upgrades.
 ## [0.2.0] - 2026-10-23
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime
@@ -5736,6 +6126,11 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Correct the `factorytalk-view` guidance: the editing and Studio entries now exist and are enabled, so the skill no longer calls those operations out of scope.
 
 ### Added
+
+- **`optix_logs`** — read the tail of the Optix runtime log (chosen per project by name, not "newest") or of the
+  bridge/Studio log, with a `filter` so a session can ask "what did the formatter say". This is the tool that
+  turns "the label is blank" into the one line that explains it. Read-only.
+
 
 - **`optix_list_skills` and `optix_get_skill`** — the plugin's own Optix topic playbooks: nine pages under
   `packages/optix/skills/` written from live measurements (authoring loop, bindings and expressions, runtime

@@ -61,3 +61,19 @@ not exist, driving Studio's menu by automation is the same keystroke with more s
 that rewrites `Nodes/**` by hand is refused while Studio has the project open (Studio's next save would
 overwrite it). The keystroke is the vendor's own path, so this tool makes it reliable and observable
 rather than avoiding it.
+
+## Reading the logs: `optix_logs`
+
+`optix_save` proves the write; `optix_logs` explains a screen that renders nothing. Two logs matter:
+
+| `which` | File | What it carries |
+| --- | --- | --- |
+| `runtime` (default) | `%LOCALAPPDATA%\AryaCode\OptixRuntime\<Project>-<hash>.log` | the project under test: NetLogic `Log.Info` lines, binder warnings ("Missing source variable 'Source0'"), store lines, method lookups |
+| `bridge` | `%LOCALAPPDATA%\Rockwell Automation\FactoryTalk Optix\FTOptixStudio\Log\FTOptixStudio.0.log` | the bridge's own `Log.Info("StudioBridge", …)` lines and the vendor error text it turned into a JSON error |
+
+Parameters: `which`, `project` (absolute folder, so the right runtime log is chosen rather than the newest),
+`lines` (1..2000, default 80) and `filter` (case-insensitive substring). Both are read-only.
+
+Worked example: a formatted label showed nothing while `attach_formatter` answered `applied: true`. Filtering
+the runtime log to the NetLogic's own name named the failure immediately, and the fix (attach the formatter
+through `SetConverter` before wiring the manual dynamic link) came from that line, not from the model.

@@ -26,6 +26,7 @@ import { describeScreen, rubricCatalogue, scoreScreen } from "./rubric.js";
 import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { saveProject, saveStamp, studioWindow } from "./save.js";
 import { listSkills, readSkill } from "./skills.js";
+import { bridgeLog, runtimeLog } from "./logs.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
@@ -1919,6 +1920,58 @@ function applySkills(ctx) {
 	})));
 }
 /**
+ * The runtime log and the bridge log: the only place a silent failure shows up.
+ *
+ * A blank chart, a label with no text, an alarm that never fires - the model looks right in every case, and
+ * the reason is one line in a log ("No behaviour or observer found", "Missing source variable 'Source0'",
+ * "Unable to resolve Store object"). Both are plain files on the host; this tool reads their tails.
+ * @param ctx - Cordis context with the harness tool runtime.
+ */
+function applyLogs(ctx) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_logs",
+		description: "Read the tail of the Optix runtime log (the latest run of the project, per project) or the bridge plugin's log, optionally filtered to lines containing a word such as \"error\", \"store\", \"formatter\" or \"behaviour\". This is where a silent failure is explained: a component that refused a dynamic link, a method that is not a behaviour, a store that never opened. Read-only; it never starts or stops anything.",
+		parameters: {
+			which: {
+				type: "string",
+				description: "Which log to read: runtime (default) or bridge.",
+				enum: ["runtime", "bridge"]
+			},
+			project: {
+				type: "string",
+				description: "Absolute project folder, used to pick the runtime log that belongs to it. Omit for the newest runtime log."
+			},
+			lines: {
+				type: "number",
+				description: "How many trailing lines to return, 1 to 2000. Defaults to 80."
+			},
+			filter: {
+				type: "string",
+				description: "Optional case-insensitive substring; only lines containing it are returned."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Read the ${typeof args?.which === "string" ? args.which : "runtime"} log`,
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			exec.signal.throwIfAborted();
+			const count = typeof args.lines === "number" && Number.isFinite(args.lines) ? Math.min(2000, Math.max(1, Math.trunc(args.lines))) : 80;
+			const filter = typeof args.filter === "string" ? args.filter : "";
+			const which = typeof args.which === "string" ? args.which : "runtime";
+			return which === "bridge" ? await bridgeLog(count, filter) : await runtimeLog(args.project, count, filter);
+		}
+	})));
+}
+/**
  * Save the project by sending Studio its own Ctrl+S until the design model on disk moves.
  *
  * Nothing in UAManagedCore can save a project, so every authoring call in this plugin ends with the
@@ -2095,6 +2148,7 @@ function apply(ctx, config = {}) {
 	applyEmulator(ctx, settings);
 	applySave(ctx, settings);
 	applySkills(ctx);
+	applyLogs(ctx);
 	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);
