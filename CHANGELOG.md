@@ -1,5 +1,17 @@
 ## [Unreleased]
 
+### Fixed
+
+- **`attach_formatter` wrote a StringFormatter whose sources could never resolve, so the bound label
+  stayed empty.** The converter named its source children after the caller's labels (`Sourceoee`,
+  `Sourceuph`) while Optix resolves a placeholder `{0}` from a child named exactly `Source0` and `{1}`
+  from `Source1`; the runtime reported `Missing source variable 'Source0'` once per session and drew
+  nothing (found live on `UI/Screens/Diagnostics/OeeFmtLabel` in the demo project, 2026-11-16). The
+  bridge now names them by placeholder index, which is the contract the vendor cheat sheet documents
+  (`netlogic/pages/dynamic-links.md:393`). Verified by compiling the mirrored bridge into the demo
+  project's NetSolution (0 warnings, 0 errors); the render check needs a Studio build, which the bridge
+  cannot do.
+
 ### Added
 
 - **The Optix plugin can import PLC tags into a station, which it previously could not.** The new bridge

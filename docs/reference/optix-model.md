@@ -197,3 +197,24 @@ Two facts worth knowing before using it:
   caller that means them.
 - It is not a certified UA companion specification. The hierarchy is the engineering convention this
   bundle teaches, with rule ids that are the bundle's opinion, not a clause from a standard.
+
+### `attach_formatter`: the source children are index-named
+
+A `StringFormatter` resolved from a DynamicLink must carry child variables named exactly `Source0`,
+`Source1`, … where the number is the placeholder index in `Format` (`{0}` → `Source0`), each wired with
+`Refs.AddReference(FTOptix.CoreBase.ReferenceTypes.HasSource, src)`. The child's own BrowseName is what the
+runtime looks up, so a converter whose sources are named after the caller's labels compiles, reads back
+correctly in `describe_node`, and still logs `Missing source variable 'Source0'` at runtime with an empty
+target (measured 2026-11-16 on `UI/Screens/Diagnostics/OeeFmtLabel`).
+
+The op signature is unchanged — `sources` is `name=path` pairs separated by **semicolons**
+(`oee=Model/Smt/OEE;uph=Model/Smt/UPH`); the names are only labels in the reply, the ORDER is what decides
+which becomes `Source0`, `Source1`, …:
+
+```json
+{"op":"attach_formatter","path":"UI/Screens/Diagnostics/OeeFmtLabel","prop_name":"Text",
+ "format":"OEE {0} % · UPH {1} boards/h","sources":"oee=Model/Smt/OEE;uph=Model/Smt/UPH","mode":"Read"}
+```
+
+Numeric text composition belongs here, not in `attach_expression`: that evaluator's `+` is numeric-only and
+refuses a number joined to text (`bad_expression`).

@@ -1843,8 +1843,15 @@ public class StudioMCPBridge : BaseNetLogic
             var srcHolders = new List<IUAVariable>();
             for (int i = 0; i < srcNames.Count; i++)
             {
+                // The StringFormatter contract is INDEX based: a placeholder {0}
+                // is resolved from a child variable named exactly "Source0",
+                // {1} from "Source1" (netlogic/pages/dynamic-links.md:393).
+                // Naming them after the caller's label ("Sourceoee") reads fine
+                // in describe_node and then logs "Missing source variable
+                // 'Source0'" at runtime with an empty label - found live
+                // 2026-11-16 on UI/Screens/Diagnostics/OeeFmtLabel.
                 var src = InformationModel.MakeVariable(
-                    "Source" + srcNames[i], OpcUa.DataTypes.BaseDataType);
+                    "Source" + i, OpcUa.DataTypes.BaseDataType);
                 src.SetDynamicLink(srcVars[i]);
                 newStringFormatter.Refs.AddReference(
                     FTOptix.CoreBase.ReferenceTypes.HasSource, src);
