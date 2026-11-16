@@ -1920,6 +1920,65 @@ function applySkills(ctx) {
 	})));
 }
 /**
+ * Call a method on a node that owns behaviour - the one thing a model write cannot do.
+ *
+ * Acknowledge an alarm, Confirm it, close a dialog, run a logger's `Log`, or execute a NetLogic's
+ * `[ExportMethod]`. Only nodes whose C# class is loaded answer: a node the bridge created as a plain object
+ * has no behaviour, and the bridge says so (`No behaviour or observer found that handles the method …`),
+ * which is an honest answer about the node rather than a broken call. It runs in Studio, so it needs
+ * `allowInvoke`.
+ * @param ctx - Cordis context with the harness tool runtime.
+ * @param settings - The Optix row's settings.
+ */
+function applyInvoke(ctx, settings) {
+	ctx.effect(() => ctx.tools.register(defineTool({
+		name: "optix_invoke",
+		description: "Call a method on a live node in Studio - acknowledge or confirm an alarm, close a dialog, run a DataLogger's Log, or execute a NetLogic's [ExportMethod]. This is the only way to exercise behaviour: a model write cannot do it, and a node the bridge created as a plain object has no behaviour at all, which the bridge reports as \"No behaviour or observer found that handles the method\". Argument syntax follows the bridge: name=value pairs separated by semicolons. Needs allowInvoke.",
+		parameters: {
+			project: projectParameter,
+			path: {
+				type: "string",
+				required: true,
+				description: "Node path that owns the method, for example \"Alarms/Alm_Quality\" or \"NetLogic/LoggerSetupLogic\"."
+			},
+			method: {
+				type: "string",
+				required: true,
+				description: "Method name as the node exposes it, for example \"Acknowledge\" or \"Log\"."
+			},
+			args: {
+				type: "string",
+				description: "Optional arguments as name=value pairs separated by semicolons, in the declaration order of the method."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => [{
+				type: "text",
+				text: JSON.stringify(value, null, 2)
+			}]
+		},
+		presentCall: (args) => ({
+			card: "generic",
+			title: `Invoke ${typeof args?.method === "string" ? args.method : "method"} on ${typeof args?.path === "string" ? args.path : "a node"}`,
+			kind: "invoke"
+		}),
+		async execute(args, exec) {
+			if (!settings.allowInvoke) throw new Error("Calling a method changes the running project, so it needs allowInvoke in the Optix row's plugin configuration.");
+			const query = { path: args.path, method: args.method };
+			if (typeof args.args === "string" && args.args.trim() !== "") query.args = args.args.trim();
+			const { origin } = await bridge.select(args.project, exec.signal);
+			return {
+				project: args.project,
+				origin,
+				path: args.path,
+				method: args.method,
+				response: await bridge.request(origin, "node/invoke", exec.signal, query, "POST")
+			};
+		}
+	})));
+}
+/**
  * The runtime log and the bridge log: the only place a silent failure shows up.
  *
  * A blank chart, a label with no text, an alarm that never fires - the model looks right in every case, and
@@ -2149,6 +2208,7 @@ function apply(ctx, config = {}) {
 	applySave(ctx, settings);
 	applySkills(ctx);
 	applyLogs(ctx);
+	applyInvoke(ctx, settings);
 	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);

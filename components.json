@@ -1,7 +1,7 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 168,
+    "defaultOnTools": 169,
     "defaultOnSchemaCharacters": 127423,
     "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-16 after optix_save landed: l5x 54 + ftview 51 + mwi 24 + optix 26 (19 vendored engine tools plus optix_netlogic, optix_script, optix_project, optix_build, optix_nav, optix_docs, optix_ui and optix_save) + engineering-resources 2 + migration 7 = 165 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
   },
@@ -197,7 +197,7 @@
       "vendored": true,
       "tools": {
         "product": "FactoryTalk Optix",
-        "count": 30,
+        "count": 31,
         "inReference": false
       },
       "skill": {
@@ -222,6 +222,7 @@
                                 "optix_list_skills",
                                 "optix_get_skill",
                                 "optix_logs",
+                                "optix_invoke",
           "optix_template",
           "optix_library",
           "optix_screen",

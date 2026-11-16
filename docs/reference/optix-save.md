@@ -77,3 +77,20 @@ Parameters: `which`, `project` (absolute folder, so the right runtime log is cho
 Worked example: a formatted label showed nothing while `attach_formatter` answered `applied: true`. Filtering
 the runtime log to the NetLogic's own name named the failure immediately, and the fix (attach the formatter
 through `SetConverter` before wiring the manual dynamic link) came from that line, not from the model.
+## Calling behaviour: `optix_invoke`
+
+Some things are behaviour, not data: acknowledging an alarm, closing a dialog, asking a logger to sample,
+running a NetLogic `[ExportMethod]`. `optix_invoke` posts `POST /bridge/node/invoke?path=<node>&method=<name>`
+and returns the bridge's answer - and that answer is worth reading, because it distinguishes two very
+different situations:
+
+| Answer | Means |
+| --- | --- |
+| `{"ok":true,…}` | the node's C# class ran the method |
+| `execution_failed: No behaviour or observer found that handles the method '…'` | the node is a **plain object**, not a behaviour: a node the bridge created (`create_object`, `create_variable`, a widget) has no class behind it, so its methods do not exist to call |
+
+That second case is not a broken tool - it is the reason the playbooks keep saying *"create the behaviour in
+C#"*: an alarm made by `create_object` will never acknowledge, while one made by
+`InformationModel.MakeObject<FTOptix.Alarm.DigitalAlarm>` in a runtime NetLogic does.
+
+Needs `allowInvoke`. Arguments follow the bridge's own syntax (`name=value` pairs, semicolons between them).
