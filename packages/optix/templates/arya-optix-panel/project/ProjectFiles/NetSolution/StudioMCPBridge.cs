@@ -1864,6 +1864,21 @@ public class StudioMCPBridge : BaseNetLogic
             targetVariable.Refs.AddReference(
                 FTOptix.CoreBase.ReferenceTypes.HasDynamicLink, newDynamicLink);
             newDynamicLink.SetModellingRuleRecursive();
+            // The hand-assembled link above is what the vendor sample does, and it
+            // reads back correctly - but on 2026-11-16 it rendered NOTHING on a
+            // Label.Text, while the documented SetConverter entry point (an
+            // extension on IUAVariable) rendered the format immediately. Set the
+            // converter as well, so the target ends up with the shape that actually
+            // paints; a target that already resolves the manual form is unaffected.
+            try
+            {
+                if (targetVariable is IUAVariable)
+                    ConverterExtensions.SetConverter(targetVariable, newStringFormatter);
+            }
+            catch (Exception convEx)
+            {
+                Log.Warning("StudioBridge", "FMT: SetConverter skipped: " + ExcMsg(convEx));
+            }
             // ONLY NOW is each Source variable in the tree (formatter -> link ->
             // target), so only now can its absolute link be re-pointed at the
             // relative form. Same reason as attach_expression: an absolute source

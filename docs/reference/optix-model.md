@@ -218,3 +218,18 @@ which becomes `Source0`, `Source1`, …:
 
 Numeric text composition belongs here, not in `attach_expression`: that evaluator's `+` is numeric-only and
 refuses a number joined to text (`bad_expression`).
+
+#### Why `attach_formatter` also calls `SetConverter`
+
+Building a `StringFormatter` and then hand-assembling its DynamicLink (`MakeVariable<DynamicLink>` +
+`HasConverter` + `HasDynamicLink` + `SetModellingRuleRecursive`) produces a structure that reads back
+correctly in `describe_node` and — measured on a Label `Text` in the demo project, 2026-11-16 — renders
+**nothing**. The documented entry point does render:
+
+```csharp
+label.TextVariable.SetConverter(stringFormatter);   // ConverterExtensions, receiver is IUAVariable
+```
+
+so the bridge now does both: the vendor-sample structure first (unchanged, for targets that already resolve
+it), then `SetConverter` on the target variable. Both paths write `Format` through the `HasParameter` child,
+never through the `Format` property setter (which has killed Studio from the bridge thread before).
