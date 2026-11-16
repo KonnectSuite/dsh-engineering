@@ -39,10 +39,10 @@
   ],
   "optixStudioVersion": "1.7.4.32-Stable",
   "sourceProjectName": "AryaNewHMIProject_OptixPanel",
-  "contentHash": "e0457f03cfe8e62738b10cc00f9074443baaadd0440e9dd9c70203746974701c",
+  "contentHash": "306fcb4aa148988393020a877cff4f3c1c7430aba9187585f726b0cd4771a4a2",
   "bridgeSourceHash": "c8e1d441409e6bc02099ac07452d8c23e4143eb041c2f82fbb67912e4d4decc6",
   "fileCount": 58,
-  "totalBytes": 793736,
+  "totalBytes": 795478,
   "readOnly": true,
   "directories": [
     "ApplicationFiles",
@@ -417,8 +417,8 @@
     },
     {
       "path": "ProjectFiles/NetSolution/StudioMCPBridge.cs",
-      "size": 436018,
-      "sha256": "292c98bb92bfc4b9c0166e742a32296b7f2670d058a867225d1349ef7c257d94",
+      "size": 437760,
+      "sha256": "8e293bf888b6f16d0f92875f735ef3d99cf5623b71d2c6c844d9cdb4e916d7f7",
       "text": true
     },
     {
