@@ -395,9 +395,11 @@ over the table, and the series come from `Pens` — a structured collection, so 
 dynamic link instead of a column name renders nothing.
 
 **SQL goes three ways**: the `DataGrid` (`Model` = store, `Query` = SQL, `AutoRefreshTime` in ticks), the
-`Trend` query, and C# — `Project.Current.Get<Store>("DataStores/LineHistory")` then
-`store.Query(sql, out header, out object[,] rows)`. `Scripts/GenericTableExporter` and
-`Scripts/DataLoggerExporter` export the same table to CSV with their own `Query` property.
+`Trend` query, and C# — resolve a `NodeId` pointer to the store
+(`InformationModel.Get((NodeId)LogicObject.GetVariable("HistoryStore").Value) as Store`, the pointer authored
+by `optix_script pointers=[…]`) then `store.Query(sql, out header, out object[,] rows)`.
+`Scripts/GenericTableExporter` and `Scripts/DataLoggerExporter` export the same table to CSV with their own
+`Query` property.
 
 **A real alarm is a behaviour type, so `create_object` cannot make one.** `FTOptix.Alarm.DigitalAlarm` fails
 `type_not_found`, and the bare BrowseName `OffNormalAlarmController` creates a `BaseObject` **shell** with the
@@ -1005,7 +1007,11 @@ Everything below was proved on a live project on 2026-11-16, not read from help.
 
 **Users and login.** `Session.ChangePassword(userName, newPassword, oldPassword)` — the third argument is the OLD password, and passing an empty one fails `WrongOldPassword` for a user that has none. `LogicObject.GetAlias("Users")` THROWS on a NetLogic the tools created (it does not return null), so wrap it and fall back to `Project.Current.Get("Security/Users")`. A Screen created through `create_object` serialises as `Type: Screen` instead of `Supertype: Screen` and renders blank when mounted — build sign-in UI as children of the window and toggle their `Visible`.
 
-**SQL.** `Project.Current.Get("DataStores/Store") as Store` (namespace `FTOptix.Store`), then `store.Query(sql, out string[] header, out object[,] rows)` — it returns void, so the count is `rows.GetLength(0)`. Put the result in a String tag and bind a Label to it: that is the shortest path to "SQL results on a screen".
+**SQL.** Reach the store through a `NodeId` pointer on the logic node, not a path literal in the class:
+`Store store = InformationModel.Get((NodeId)LogicObject.GetVariable("HistoryStore").Value) as Store`
+(namespace `FTOptix.Store`), then `store.Query(sql, out string[] header, out object[,] rows)` — it returns
+void, so the count is `rows.GetLength(0)`. Put the result in a String tag and bind a Label to it: that is the
+shortest path to "SQL results on a screen".
 
 
 ## Topic playbooks: `optix_list_skills` and `optix_get_skill`

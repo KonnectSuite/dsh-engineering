@@ -20,17 +20,38 @@ A real alarm system is three things the bridge cannot fake: alarm objects of a b
 2. Create the alarm objects **in C#**, from a runtime NetLogic's `Start()`:
 
 ```csharp
-var folder = Project.Current.Get("Alarms");
-var alarm = InformationModel.MakeObject<FTOptix.Alarm.DigitalAlarm>("Alm_Quality");
-folder.Children.Add(alarm);
-alarm.Severity = 250;
-alarm.LatchingEnabled = true;
-alarm.AutoAcknowledge = false;
-alarm.Enabled = true;
-alarm.NormalStateValue = 0.0;
-alarm.Message = "Quality: rejected board rate high";
-alarm.InputValueVariable.SetDynamicLink(Project.Current.Get("Model/Smt/Alarm3") as IUAVariable, DynamicLinkMode.Read);
+private IUAVariable folderPointer;
+private IUAVariable tagPointer;
+private Folder alarmsFolder;
+
+public void Start() {
+    folderPointer = LogicObject.GetVariable("AlarmFolder");
+    tagPointer = LogicObject.GetVariable("QualityTag");
+    if (folderPointer == null || tagPointer == null) { Log.Warning("alarm pointers are missing on the logic node"); return; }
+    try {
+        alarmsFolder = InformationModel.Get((NodeId)folderPointer.Value) as Folder;
+    } catch (Exception ex) { Log.Error($"AlarmFolder pointer: {ex.Message}"); return; }
+    if (alarmsFolder == null) { Log.Warning("AlarmFolder resolves to nothing; check the pointer"); return; }
+    var alarm = InformationModel.MakeObject<FTOptix.Alarm.DigitalAlarm>("Alm_Quality");
+    alarmsFolder.Children.Add(alarm);
+    alarm.Severity = 250;
+    alarm.LatchingEnabled = true;
+    alarm.AutoAcknowledge = false;
+    alarm.Enabled = true;
+    alarm.NormalStateValue = 0.0;
+    alarm.Message = "Quality: rejected board rate high";
+    alarm.InputValueVariable.SetDynamicLink(InformationModel.GetVariable((NodeId)tagPointer.Value), DynamicLinkMode.Read);
+}
 ```
+
+The pointers are authored by the tool, not by the class:
+
+```
+optix_script action="add" name="AlarmSetup" kind="runtime" pointers=[{"name":"AlarmFolder","target":"Alarms"},{"name":"QualityTag","target":"Model/Smt/AlarmQuality"}]
+```
+
+No `"Alarms"` or `"Model/Smt/..."` literal appears in the source: `OPTIX-NL-12` is the review rule that refuses
+a class which still carries one, and moving the folder becomes a project edit rather than a code edit.
 
 A Boolean tag can drive the Double `InputValue` through that link; the engine converts.
 
