@@ -122,6 +122,49 @@ test("a panel target that is not a screen is the dead navigation button", () => 
 	assert.equal(report.findings.some((finding) => finding.rule === "OPTIX-PROD-02" && /Gone/u.test(finding.message)), true);
 });
 
+test("a NavigationPanel mounts its screens through NodePointers, and reachability reads them", () => {
+	// The rebuilt SMT demo has no PanelLoader at all: its `NavigationPanel` rail points at each screen through
+	// the item's `Panel` NodePointer. Reading only a PanelLoader reported the application as having no
+	// navigation to check (measured 2026-11-17), so the tool hands the rail's targets in as `mountedPanels`.
+	const rail = productionFindings({
+		projectName: "AryaSMTLineDemo",
+		screensFolder: "UI/Screens",
+		screens: [
+			{ path: "UI/Screens/LineStatus", name: "LineStatus" },
+			{ path: "UI/Screens/StationHealth", name: "StationHealth" },
+			{ path: "UI/Screens/AlarmSummary", name: "AlarmSummary" }
+		],
+		handlers: [],
+		engines: [{ path: "UI/WebPresentationEngine", startingUser: "UI/Users/Operator" }],
+		startTarget: "UI/Screens/LineStatus",
+		mountedPanels: ["UI/Screens/LineStatus", "UI/Screens/StationHealth", "UI/Screens/AlarmSummary"],
+		shellPath: "UI/MainWindow",
+		hasApplicationStyleSheet: true
+	});
+	assert.equal(rail.verdict, "ready");
+	assert.ok(rail.coverage.some((line) => /offers 3 screen\(s\) on every panel/u.test(line)), rail.coverage.join(" | "));
+
+	// A screen the rail does not name is still dead weight, and the finding names the rail target it is
+	// measured from.
+	const orphan = productionFindings({
+		projectName: "AryaSMTLineDemo",
+		screensFolder: "UI/Screens",
+		screens: [
+			{ path: "UI/Screens/LineStatus", name: "LineStatus" },
+			{ path: "UI/Screens/Hidden", name: "Hidden" }
+		],
+		handlers: [],
+		engines: [],
+		startTarget: "UI/Screens/LineStatus",
+		mountedPanels: ["UI/Screens/LineStatus"],
+		shellPath: "UI/MainWindow",
+		hasApplicationStyleSheet: true
+	});
+	assert.equal(orphan.verdict, "review");
+	assert.equal(orphan.findings.filter((finding) => finding.rule === "OPTIX-PROD-03").length, 1);
+	assert.match(orphan.findings[0].message, /Hidden cannot be reach/u);
+});
+
 test("an engine on the built-in starting user is a release warning, not a silent default", () => {
 	const report = productionFindings({
 		projectName: "AryaNewHMIProject_IPC",

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 
-import { CONTRAST_MINIMUM, TOUCH_MINIMUM, colour, contrastRatio, designFindings } from '../packages/optix/lib/design.js'
+import { CONTRAST_MINIMUM, MIN_FONT_SIZE, TOUCH_MINIMUM, colour, contrastRatio, designFindings } from '../packages/optix/lib/design.js'
 
 /**
  * The Optix half of the design checks `packages/ftview/src/design.ts` runs over a View export. Optix
@@ -175,6 +175,97 @@ test('VIEW-LAYOUT-02 measures the screen against the canvas the project declares
 	const blind = designFindings({ nodes: [], screen, canvas: undefined, siblings: [] })
 	assert.ok(blind.unchecked.some((entry) => /no window canvas reported/u.test(entry)))
 	assert.ok(blind.unchecked.some((entry) => /the screen node itself was not described/u.test(entry)))
+})
+
+test('a NavigationPanel wires its screens through NodePointers, and that counts as navigation', () => {
+	// The rebuilt SMT demo navigates through a `NavigationPanel` rail: its items carry a `Panel` NodePointer
+	// and no EventHandler at all. Counting only handlers reported an application whose rail mounted all three
+	// screens as having no navigation (measured live 2026-11-17).
+	const readout = () => node('Readout', 'Label', box(10, 10, 200, 30))
+	const rail = { path: 'UI/MainWindow', controls: 0, wired: 0, navigation_panels: 1 }
+	const withRail = designFindings({ nodes: [readout()], screen, canvas: undefined, siblings: [], shell: rail })
+	assert.deepEqual(withRail.findings.map((finding) => finding.rule), [], 'a NodePointer-wired rail left the screen reported as unreachable')
+	const noRail = designFindings({ nodes: [readout()], screen, canvas: undefined, siblings: [], shell: { path: 'UI/MainWindow', controls: 0, wired: 0, navigation_panels: 0 } })
+	assert.deepEqual(noRail.findings.map((finding) => finding.rule), ['VIEW-NAV-01'], 'a window with neither wired buttons nor a NavigationPanel must still read as having no way out')
+})
+
+test('HMI-CONTRAST-01 judges layout-placed text against the fill of its container', () => {
+	// Text placed by a layout reports no LeftMargin/Width/Height of its own: on the rebuilt SMT screens 20 of
+	// 42 described objects were labels and the rule ran on none of them. A card is a Rectangle, its Body is a
+	// ColumnLayout, and the value readout sits inside that, so the card's fill is what the text competes with.
+	const card = {
+		path: 'UI/Screens/Overview/Card1',
+		name: 'Card1',
+		type: 'Rectangle',
+		properties: [...box(24, 112, 506, 266), { name: 'FillColor', value: '#13232F' }],
+		children: [{ name: 'Body', type: 'ColumnLayout' }],
+	}
+	const body = { path: 'UI/Screens/Overview/Card1/Body', name: 'Body', type: 'ColumnLayout', properties: [], children: [{ name: 'Value', type: 'Label' }] }
+	const value = { path: 'UI/Screens/Overview/Card1/Body/Value', name: 'Value', type: 'Label', properties: [{ name: 'TextColor', value: '#6B7C88' }], children: [] }
+	const result = designFindings({ nodes: [card, body, value], screen, canvas: undefined, siblings: [] })
+	const contrast = result.findings.filter((finding) => finding.rule === 'HMI-CONTRAST-01')
+	assert.equal(contrast.length, 1, 'text with no geometry of its own was left unchecked')
+	assert.equal(contrast[0].evidence.background_object, 'Card1')
+	assert.equal(contrast[0].evidence.measured_from, 'the fill on its container')
+	assert.ok(contrast[0].evidence.ratio < CONTRAST_MINIMUM)
+
+	// A label with no fill anywhere above it is still not invented: the gap is reported.
+	const loose = { path: 'UI/Screens/Overview/Orphan/Body/Value', name: 'Value', type: 'Label', properties: [{ name: 'TextColor', value: '#6B7C88' }], children: [] }
+	const orphan = designFindings({ nodes: [loose], screen, canvas: undefined, siblings: [] })
+	assert.ok(orphan.unchecked.some((entry) => /no geometry reported and no container fill to compare against/u.test(entry)))
+
+	// A header label sits in a layout that carries no colour, so what it actually competes with is the screen's
+	// own backdrop. That is a different claim from the card comparison, and the evidence says which one it is.
+	const backdrop = node('Backdrop', 'Rectangle', [...box(0, 0, 1060, 706), { name: 'FillColor', value: '#0E1A24' }])
+	const header = { path: 'UI/Screens/Overview/Layout/Header/Title', name: 'Title', type: 'Label', properties: [{ name: 'TextColor', value: '#6B7C88' }], children: [] }
+	const onBackdrop = designFindings({ nodes: [backdrop, header], screen, canvas: undefined, siblings: [] })
+	const back = onBackdrop.findings.filter((finding) => finding.rule === 'HMI-CONTRAST-01')
+	assert.equal(back.length, 1)
+	assert.equal(back[0].evidence.background_object, 'Backdrop')
+	assert.equal(back[0].evidence.measured_from, 'the largest fill in the screen')
+})
+
+test('VIEW-TYPE-02: text below the readable floor is reported, and a size the model did not report is not invented', () => {
+	// The offline rubric has held the 11 px floor since the View side; the live check can run it because
+	// FontSize is reported on a Label whether or not the label has geometry.
+	const small = node('Fine', 'Label', [...box(10, 10, 200, 20), { name: 'TextColor', value: '#ffffff' }, { name: 'FontSize', value: '9.0' }])
+	const legible = node('Readout', 'Label', [...box(10, 40, 200, 30), { name: 'TextColor', value: '#ffffff' }, { name: 'FontSize', value: '28.0' }])
+	const unstated = node('Styled', 'Label', [...box(10, 80, 200, 30), { name: 'TextColor', value: '#ffffff' }])
+	const result = designFindings({ nodes: [small, legible, unstated], screen, canvas: undefined, siblings: [] })
+	const type = result.findings.filter((finding) => finding.rule === 'VIEW-TYPE-02')
+	assert.equal(type.length, 1)
+	assert.deepEqual(type[0].evidence, { path: small.path, type: 'Label', font_size: 9, minimum: MIN_FONT_SIZE })
+	assert.ok(result.unchecked.some((entry) => /1 text object\(s\) report no FontSize \(Styled\)/u.test(entry)), 'a label whose size a style sheet may decide was not reported as unchecked')
+	assert.equal(MIN_FONT_SIZE, 11)
+})
+
+test('VIEW-LAYOUT-02 compares with the box the mounting panel gives the screen, not with the window', () => {
+	// The demo's screens are 1060×706 on purpose: the window is 1280×800 and its rail takes a 220 px tab
+	// strip. Compared with the window, three deliberately-sized screens read as a layout defect.
+	const own = { ...screen, properties: box(0, 0, 1060, 706) }
+	const host = { path: 'UI/MainWindow/ShellRail', width: 1060, height: 736 }
+	const againstHost = designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, host, siblings: [] })
+	const layout = againstHost.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02')
+	assert.equal(layout.length, 1)
+	assert.deepEqual(layout[0].evidence, {
+		path: own.path,
+		width: 1060,
+		height: 706,
+		canvas: '1060x736',
+		host: host.path,
+	})
+	assert.ok(/ShellRail gives it 1060×736/u.test(layout[0].message))
+
+	const exact = { ...screen, properties: box(0, 0, 1060, 736) }
+	assert.deepEqual(designFindings({ nodes: [exact], screen: exact, canvas: { width: 1280, height: 800 }, host, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02'), [])
+
+	// With no host resolved the window is still the only figure available, and the evidence stays exactly the
+	// shape it had before the host existed.
+	const windowOnly = designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, siblings: [] })
+	const windowLayout = windowOnly.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02')
+	assert.deepEqual(windowLayout[0].evidence, { path: own.path, width: 1060, height: 706, canvas: '1280x800' })
+	assert.ok(!('host' in windowLayout[0].evidence))
 })
 
 test('OPTIX-UI-01: the same hand-built children on two screens is a type with instances', () => {

@@ -136,7 +136,9 @@ function projectPath(ref) {
  *   `screens` (paths and names), `handlers` (`{ path, owner, screen, pointer,
  *   method, target }` where `pointer` comes from {@link pointerFacts}),
  *   `engines` (`{ path, styleSheet, startingUser }`), `startTarget` (the path the
- *   `PanelLoader` shows at start) and `hasApplicationStyleSheet`.
+ *   window's mounter shows at start — a `PanelLoader`'s `Panel` or the first item of a
+ *   `NavigationPanel`), `mountedPanels` (project-relative screen paths the shell mounts
+ *   through NodePointers rather than handlers) and `hasApplicationStyleSheet`.
  * @returns `{ verdict, counts, findings, coverage }`.
  */
 export function productionFindings(input) {
@@ -201,17 +203,23 @@ export function productionFindings(input) {
 
 	// OPTIX-PROD-03: a screen the operator cannot reach.
 	const start = projectPath(input.startTarget);
-	if (start === undefined) coverage.push("the start window's PanelLoader reports no start panel, so reachability was not checked");
+	if (start === undefined) coverage.push("the start window reports no start panel, so reachability was not checked");
 	else {
 		const edges = new Map();
 		for (const [from, to] of navigationEdges) edges.set(from, [...to]);
 		const shellPrefix = input.shellPath === void 0 ? void 0 : `${input.shellPath}/`;
-		const shared = shellPrefix === void 0 ? [] : [...new Set((input.handlers ?? [])
+		// Two shapes carry a shell's navigation and both count. Buttons wired by an event handler are read
+		// from the handler list. A native NavigationPanel wires its items with a `Panel` NodePointer and no
+		// handler at all, so the tool hands those targets in as `mountedPanels`; without them an application
+		// navigated by a NavigationPanel reported every screen its rail opens as dead weight (measured
+		// 2026-11-17 on the rebuilt SMT demo, whose rail mounts three screens and has no PanelLoader).
+		const fromHandlers = shellPrefix === void 0 ? [] : (input.handlers ?? [])
 			.filter((handler) => handler.owner.startsWith(shellPrefix) && isScreenPath(projectPath(handler.target)))
-			.map((handler) => projectPath(handler.target))
-			.filter((path) => path !== undefined && screens.has(path)))];
+			.map((handler) => projectPath(handler.target));
+		const shared = [...new Set([...fromHandlers, ...(input.mountedPanels ?? [])])]
+			.filter((path) => path !== undefined && screens.has(path));
 		const reached = reachableScreens(start, edges, shared);
-		if (shared.length > 0) coverage.push(`the shell bar in ${input.shellPath} offers ${shared.length} screen(s) on every panel`);
+		if (shared.length > 0) coverage.push(`the shell in ${input.shellPath ?? "the start window"} offers ${shared.length} screen(s) on every panel`);
 		for (const screen of screens.values()) {
 			if (reached.has(screen.path)) continue;
 			findings.push({

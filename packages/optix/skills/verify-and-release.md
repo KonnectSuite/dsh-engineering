@@ -28,6 +28,9 @@
 ## Release review
 
 `optix_production_check` names the release blockers it can see: handlers pointing at absolute design-time
-paths, a screen the panel cannot reach, presentation engines left on engineering defaults, screens outside
-the screens folder. `optix_ui action="review"` grades the look; `optix_design_check` the touch and contrast
-rules. Fix the critical findings, re-run, then save and restart before saying it is released.
+paths, a screen the panel cannot reach — from a `PanelLoader`'s start panel or from the items of a
+`NavigationPanel` rail, whose `Panel` NodePointers are resolved through the ids the bridge reports for
+`ids=1` — presentation engines left on engineering defaults, screens outside the screens folder.
+`optix_ui action="review"` grades the look; `optix_design_check` the touch, caption-size and contrast rules,
+against the box the host gives the screen rather than the window. Fix the critical findings, re-run, then
+save and restart before saying it is released.

@@ -11,8 +11,10 @@
  * (`OPTIX-UI-01`) and behaviour living inside a composition (`OPTIX-UI-02`),
  * an Advanced SVG image with nothing to animate (`OPTIX-IMG-01`), a literal
  * colour beside a style sheet that already decides it (`OPTIX-STYLE-01`), a
- * child drawn outside its parent (`OPTIX-LAYOUT-01`) and a measurement shown
- * without the unit the model records (`OPTIX-DATA-01`).
+ * child drawn outside its parent (`OPTIX-LAYOUT-01`), a measurement shown
+ * without the unit the model records (`OPTIX-DATA-01`) and text below the
+ * readable floor (`VIEW-TYPE-02`, the same 11 px floor the offline rubric
+ * applies).
  * The rule ids are the corpus ids, so a finding can be cited by
  * `engineering_reference`. The thresholds themselves come from the `hmi` domain
  * pages: 44 px and 4.5:1.
@@ -29,6 +31,9 @@ export const TOUCH_MINIMUM = 44;
 
 /** Contrast ratio small text needs to be legible. */
 export const CONTRAST_MINIMUM = 4.5;
+
+/** The floor a FontSize has to clear, the same figure `rubric.js` holds the View export to. */
+export const MIN_FONT_SIZE = 11;
 
 /** Controls an operator presses, so the touch minimum applies to them. */
 export const INTERACTIVE_TYPES = new Set([
@@ -205,13 +210,16 @@ function literalsOf(node) {
 /**
  * Run the design checks over one screen.
  *
- * @param input - `{ nodes, screen, canvas, siblings, images, styled, palette, units }`:
+ * @param input - `{ nodes, screen, canvas, host, siblings, images, styled, palette, units, shell }`:
  *   the described nodes of the screen (each `{ path, name, type, properties }`),
- *   the screen node itself, the canvas the project's Window declares, the other
+ *   the screen node itself, the canvas the project's Window declares, the box the
+ *   object that mounts this screen gives it as `{ path, width, height }` (which
+ *   replaces the window for the layout rule when it is known), the other
  *   screens' `{ name, children }` for the reuse rule, each `AdvancedSVGImage` as
  *   `{ path, name, elements }` (how many element properties it binds), the widget
  *   types the project's `DefaultStyleSheet` styles, the palette the house theme
- *   uses, and `units` as `{ nodePath: "bar" }` for modelled signals.
+ *   uses, `units` as `{ nodePath: "bar" }` for modelled signals, and the start
+ *   window's own navigation as `{ path, controls, wired, navigation_panels }`.
  * @returns `{ findings, unchecked, described }`: findings in rule order, the
  *   checks the model could not support, and how many objects were examined.
  */
@@ -280,6 +288,34 @@ export function designFindings(input) {
 		}))
 		.filter((entry) => entry.rect !== undefined && entry.fill !== undefined)
 		.sort((left, right) => area(left.rect) - area(right.rect));
+	// A fill that reports a colour but no box still paints what it holds, because a container sizes its
+	// children and the child sits on that surface. Text placed by a layout reports no geometry of its own:
+	// measured live 2026-11-17 on the rebuilt SMT screens, 20 of 42 described objects were labels reading
+	// "no geometry reported" and the rule never ran on a single one of them. The ancestor chain is the
+	// fallback holder, so a value readout is judged against the card it is drawn on.
+	const fillByPath = new Map();
+	for (const node of nodes) {
+		if (!FILL_TYPES.has(node.type)) continue;
+		const fill = colour(property(node, "FillColor") ?? property(node, "Color"));
+		if (fill !== undefined) fillByPath.set(node.path, { node, fill });
+	}
+	const ancestorFill = (path) => {
+		const cut = path.lastIndexOf("/");
+		if (cut === -1) return undefined;
+		let parent = path.slice(0, cut);
+		while (parent !== "") {
+			const found = fillByPath.get(parent);
+			if (found !== undefined) return found;
+			const up = parent.lastIndexOf("/");
+			if (up === -1) return undefined;
+			parent = parent.slice(0, up);
+		}
+		return undefined;
+	};
+	// A label with no fill on any ancestor still paints on something: a container that carries no colour of
+	// its own shows the screen's backdrop through it, and that is the last figure available before the check
+	// gives up. `fills` is sorted smallest-first, so the last entry is the largest surface on the screen.
+	const backdrop = fills.length > 0 ? fills[fills.length - 1] : undefined;
 	for (const node of nodes) {
 		if (!TEXT_TYPES.has(node.type)) continue;
 		const fore = colour(property(node, "TextColor") ?? property(node, "ForegroundColor"));
@@ -288,13 +324,14 @@ export function designFindings(input) {
 			continue;
 		}
 		const own = geometry.get(node.path);
-		if (own === undefined) {
-			unchecked.push(`${node.type} ${node.name}: no geometry reported`);
-			continue;
-		}
-		const holder = fills.find((entry) => entry.node.path !== node.path && contains(entry.rect, own));
+		const ancestor = own === undefined ? ancestorFill(node.path) : undefined;
+		const holder = own === undefined
+			? ancestor ?? backdrop
+			: fills.find((entry) => entry.node.path !== node.path && contains(entry.rect, own));
 		if (holder === undefined) {
-			unchecked.push(`${node.type} ${node.name}: no fill behind it to compare against`);
+			unchecked.push(own === undefined
+				? `${node.type} ${node.name}: no geometry reported and no container fill to compare against`
+				: `${node.type} ${node.name}: no fill behind it to compare against`);
 			continue;
 		}
 		const ratio = contrastRatio(fore, holder.fill);
@@ -308,17 +345,50 @@ export function designFindings(input) {
 				foreground: fore,
 				background: holder.fill,
 				background_object: holder.node.name,
-				ratio: Number(ratio.toFixed(2))
+				ratio: Number(ratio.toFixed(2)),
+				...(own === undefined ? { measured_from: ancestor === undefined ? "the largest fill in the screen" : "the fill on its container" } : {})
 			}
 		});
 	}
+
+	// VIEW-TYPE-02: text has to be readable at the operator's distance. The offline rubric has carried this
+	// rule since the View side (rubric.js), and the live check can run it too because FontSize is reported
+	// on a Label whether or not the label has geometry — which is exactly the case the contrast rule used
+	// to skip. A text object that reports no FontSize is not passed silently: a style sheet may be deciding
+	// its size, and that is said once instead of claimed for every node.
+	const unreportedFont = [];
+	for (const node of nodes) {
+		if (!TEXT_TYPES.has(node.type)) continue;
+		const size = numberValue(property(node, "FontSize"));
+		if (size === undefined) {
+			unreportedFont.push(node.name);
+			continue;
+		}
+		if (size > 0 && size < MIN_FONT_SIZE) findings.push({
+			rule: "VIEW-TYPE-02",
+			severity: "warning",
+			message: `${node.type} ${node.name} sets FontSize ${size}; text below ${MIN_FONT_SIZE}px is not readable at an operator's distance.`,
+			evidence: {
+				path: node.path,
+				type: node.type,
+				font_size: size,
+				minimum: MIN_FONT_SIZE
+			}
+		});
+	}
+	if (unreportedFont.length > 0) unchecked.push(
+		`${unreportedFont.length} text object(s) report no FontSize (${unreportedFont.slice(0, 6).join(", ")}${unreportedFont.length > 6 ? ", …" : ""}): a style sheet may decide their size`
+	);
 
 	// VIEW-NAV-01 and VIEW-NAV-02: the screen has a way in and a way out. Navigation drawn in the SHELL
 	// counts for every screen: the bar sits beside the PanelLoader in the start window, which is where
 	// Rockwell's own samples put it, because a button created inside a panel resolves its loader path
 	// against the design tree and the runtime then calls the design-time loader (measured 2026-11-14).
+	// A native NavigationPanel counts the same way: its items are wired by a `Panel` NodePointer, not by an
+	// event handler, so counting only handlers reported the rebuilt SMT application as having no navigation
+	// at all while its rail mounted all three screens (measured 2026-11-17).
 	const shell = input.shell;
-	const shellNavigation = shell !== void 0 && shell.wired > 0 ? shell : void 0;
+	const shellNavigation = shell !== void 0 && (shell.wired > 0 || (shell.navigation_panels ?? 0) > 0) ? shell : void 0;
 	const controls = nodes.filter((node) => INTERACTIVE_TYPES.has(node.type));
 	const wired = controls.filter((node) => node.children?.some((child) => child.type === "EventHandler" || child.type === "MouseClickEvent") === true);
 	if (controls.length === 0) {
@@ -342,8 +412,15 @@ export function designFindings(input) {
 		}
 	});
 
-	// VIEW-LAYOUT-02: the screen is the size the panel actually is.
-	if (input.canvas !== undefined) {
+	// VIEW-LAYOUT-02: the screen is the size the panel actually is. The box to compare with is the one the
+	// mounting object gives the screen, not the window it is drawn inside: a screen sized for the content
+	// area of a NavigationPanel (a 1280-wide window with a 220-wide tab strip leaves 1060) is not a mismatch
+	// with the window, and comparing it with the window reported three deliberately-sized SMT screens as a
+	// defect (measured 2026-11-17). With no host resolved the window canvas is still the only figure
+	// available, and the finding says that is what it used.
+	const host = input.host;
+	const canvas = host ?? input.canvas;
+	if (canvas !== undefined) {
 		const own = geometry.get(screen.path);
 		const backdrop = nodes
 			.filter((node) => node.path !== screen.path && FILL_TYPES.has(node.type))
@@ -352,15 +429,16 @@ export function designFindings(input) {
 			.sort((left, right) => area(right) - area(left))[0];
 		const rect = own ?? backdrop;
 		if (rect === undefined) unchecked.push(`${screen.name}: neither the screen nor a full-bleed fill reports a Width/Height`);
-		else if (rect.width !== input.canvas.width || rect.height !== input.canvas.height) findings.push({
+		else if (rect.width !== canvas.width || rect.height !== canvas.height) findings.push({
 			rule: "VIEW-LAYOUT-02",
 			severity: "info",
-			message: `${screen.name} is ${rect.width}×${rect.height} while the window canvas is ${input.canvas.width}×${input.canvas.height}; a different canvas scales or letterboxes on the same panel.`,
+			message: `${screen.name} is ${rect.width}×${rect.height} while ${host === undefined ? `the window canvas is ${canvas.width}×${canvas.height}` : `${host.path} gives it ${canvas.width}×${canvas.height}`}; a different canvas scales or letterboxes on the same panel.`,
 			evidence: {
 				path: screen.path,
 				width: rect.width,
 				height: rect.height,
-				canvas: `${input.canvas.width}x${input.canvas.height}`,
+				canvas: `${canvas.width}x${canvas.height}`,
+				...(host === undefined ? {} : { host: host.path }),
 				...(own === undefined ? { measured_from: "the largest fill inside the screen" } : {})
 			}
 		});

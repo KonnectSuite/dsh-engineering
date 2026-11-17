@@ -693,9 +693,16 @@ sheet's grey and its white label measures 1.4:1 against it, which is what the sh
 before the draft wrote the fill.
 
 Then run `optix_design_check` on the screen. It reports touch targets under 44 px, controls with no text
-of their own, text below 4.5:1 against the object it actually sits on, a screen nothing navigates to, a
-screen whose controls carry no event handler, a screen whose size is not the window's canvas, sibling
-screens built from the same hand-made child set, and behaviour living inside the composition. Read its
+of their own, text set below 11 px, text below 4.5:1 against the object it actually sits on — the fill on
+its container when a layout placed the text, the screen's largest surface when nothing behind it carries a
+colour — a screen nothing navigates to (a `NavigationPanel` rail counts, whether its items are wired by a
+`Panel` NodePointer or by a handler), a screen whose controls carry no event handler, a screen whose size is
+not the box its host gives it, sibling screens built from the same hand-made child set, and behaviour living
+inside the composition. The canvas is resolved rather than assumed: the tool reads the window's mounters,
+resolves each `Panel` NodeId against the ids the bridge reports for `ids=1`, subtracts the tab strip
+(`TabWidth` for a left or right strip, `TabHeight` for a top or bottom one), clamps the box to the window,
+and names it in `mounted_in`. That is why a 1060×706 screen under a 1280×800 window with a 220 px rail
+measures against 1060×736 and reads as a 30 px shortfall, not as a 94 px mismatch with the window. Read its
 `unchecked` list as part of the answer: a colour the bridge did not report is not a passing colour.
 
 Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;

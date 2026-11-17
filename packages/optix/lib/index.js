@@ -1157,7 +1157,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -1350,7 +1350,7 @@ function parseTemplateManifest(text) {
 function applyTemplates(ctx, maxBytes) {
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_template",
-		description: "Our three packaged starters Ã¢â‚¬â€ Arya Optix IPC and OptixPanel, both blank, and the branded application starter whose operator shell, screens and dialog are already built Ã¢â‚¬â€ chosen between, not surveyed. With no arguments it answers with every manifest and its `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
+		description: "Our three packaged starters — Arya Optix IPC and OptixPanel, both blank, and the branded application starter whose operator shell, screens and dialog are already built — chosen between, not surveyed. With no arguments it answers with every manifest and its `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1932,7 +1932,7 @@ function applySkills(ctx) {
  *
  * Acknowledge an alarm, Confirm it, close a dialog, run a logger's `Log`, or execute a NetLogic's
  * `[ExportMethod]`. Only nodes whose C# class is loaded answer: a node the bridge created as a plain object
- * has no behaviour, and the bridge says so (`No behaviour or observer found that handles the method Ã¢â‚¬Â¦`),
+ * has no behaviour, and the bridge says so (`No behaviour or observer found that handles the method …`),
  * which is an honest answer about the node rather than a broken call. It runs in Studio, so it needs
  * `allowInvoke`.
  * @param ctx - Cordis context with the harness tool runtime.
@@ -4077,7 +4077,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_design_check",
-		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text whose colour does not stand out from the fill it sits on, a screen with no navigation area, a screen whose controls carry no event handler, a screen whose size is not the window canvas, the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
+		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text below the readable font floor (VIEW-TYPE-02, the same 11 px floor the offline rubric holds), text whose colour does not stand out from the fill it sits on - its own container when a layout placed it, otherwise the largest surface in the screen, reported as measured_from - a screen with no navigation area (a NavigationPanel rail counts as navigation even when its items are wired by NodePointers and carry no handler), a screen whose controls carry no event handler, a screen whose size is not the box its host gives it (the PanelLoader or NavigationPanel that mounts it is read through its NodeId pointers and its tab strip subtracted; the window canvas is the fallback and is named in mounted_in), the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
 		parameters: {
 			project: projectParameter,
 			screen: {
@@ -4087,7 +4087,7 @@ function apply(ctx, config = {}) {
 			},
 			window: {
 				type: "string",
-				description: "Window whose Width and Height are the canvas. Default UI/MainWindow."
+				description: "Window whose Width and Height are the canvas when nothing in it reports a Panel pointing at this screen. Default UI/MainWindow."
 			},
 			screens_folder: {
 				type: "string",
@@ -4119,7 +4119,12 @@ function apply(ctx, config = {}) {
 					path: args.screen,
 					mode: "detail",
 					depth,
-					max: 400
+					max: 400,
+					// The id is what matches a screen to the pointer that mounts it: a NavigationPanelItem or
+					// a PanelLoader carries its target as a NodeId, and the only way to tell which screen a
+					// NodeId names is the guid the bridge reports for `ids=1` (measured 2026-11-17: the
+					// RailItem1 Panel guid equals the LineStatus map id exactly).
+					ids: 1
 				});
 				if (tree.map === void 0) return {
 					status: "failed",
@@ -4205,24 +4210,130 @@ function apply(ctx, config = {}) {
 				} catch (error) {
 					canvasNotes.push(`${screensFolder}: ${String(error)}`);
 				}
-				// The shell's navigation bar counts for every screen in it: the buttons live beside the
-				// PanelLoader in the start window, so a screen with no controls of its own is not
-				// unreachable when the shell carries wired buttons.
+				// The shell's navigation counts for every screen in it: the bar lives beside the PanelLoader in
+				// the start window, so a screen with no controls of its own is not unreachable when the shell
+				// carries the way in. Two shapes carry that navigation and both are read here: buttons wired by
+				// an event handler, and a native NavigationPanel whose items are wired by a `Panel` NodePointer
+				// (counting only handlers reported the rebuilt SMT application as having no navigation at all).
+				// The same read answers a second question: which object gives this screen its box.
 				let shell;
+				let host;
+				const hostNotes = [];
 				try {
 					const shellMap = await bridge.request(origin, "map", exec.signal, {
 						path: window,
 						mode: "detail",
-						depth: 2,
-						max: 200
+						depth: 4,
+						max: 300,
+						ids: 1
 					});
-					const shellControls = (shellMap.map?.children ?? []).filter((entry) => INTERACTIVE_TYPES.has(entry.type ?? entry.coll ?? ""));
+					const guid = (value) => /(\d+\/[0-9a-f-]{36})/u.exec(String(value ?? ""))?.[1];
+					const byId = new Map();
+					const mounters = [];
+					const direct = [];
+					const collect = (entry, path, parentPath) => {
+						if (entry.id !== void 0) byId.set(String(entry.id), path);
+						const node = {
+							path,
+							name: entry.name,
+							type: entry.type ?? entry.coll ?? "",
+							children: entry.children ?? []
+						};
+						if (parentPath === window) direct.push(node);
+						if (node.type === "PanelLoader" || node.type === "NavigationPanel") mounters.push(node);
+						for (const child of entry.children ?? []) {
+							if ((child.type ?? "") === "UAVariable") continue;
+							collect(child, `${path}/${child.name}`, path);
+						}
+					};
+					collect(shellMap.map, window, "");
+					// The screens are not under the window, so the guid that names the screen has to come from
+					// the screen read itself: without it a rail item's NodeId resolves to nothing.
+					if (tree.map?.id !== void 0) byId.set(String(tree.map.id), args.screen);
 					shell = {
 						path: window,
-						controls: shellControls.length,
-						wired: shellControls.filter((entry) => (entry.children ?? []).some((child) => child.type === "EventHandler" || child.type === "MouseClickEvent")).length
+						controls: direct.filter((node) => INTERACTIVE_TYPES.has(node.type)).length,
+						wired: direct.filter((node) => INTERACTIVE_TYPES.has(node.type)
+							&& node.children.some((child) => (child.type ?? child.coll ?? "") === "EventHandler"
+								|| (child.type ?? child.coll ?? "") === "MouseClickEvent")).length,
+						navigation_panels: 0
 					};
 					if (shellMap.map?.more !== void 0) canvasNotes.push(`${window} holds more children than the map reported`);
+					// Resolve each mounter: a PanelLoader names its panel in its own `Panel` property, and a
+					// NavigationPanel names each screen on one of its items. Whichever one points at this screen
+					// is the object whose box the screen has to match, so the box is measured from it.
+					for (const mounter of mounters.slice(0, 6)) {
+						let properties = [];
+						try {
+							properties = (await bridge.request(origin, "nodes", exec.signal, { path: mounter.path })).properties ?? [];
+						} catch (error) {
+							hostNotes.push(`${mounter.path}: ${String(error)}`);
+							continue;
+						}
+						const valueOf = (name) => properties.find((entry) => entry.name === name)?.value;
+						const number = (name) => Number.parseFloat(valueOf(name) ?? "");
+						// A NavigationPanel holds its items under a collection named `Panels`, and the bridge resolves
+						// a path through that segment: dropping it asks for UI/MainWindow/ShellRail/RailItem1, which
+						// is not a node (measured 2026-11-17, when every item read failed). The collection itself is
+						// reported with `coll` and no `type`, so only a child that reports the type is an item.
+						const items = [];
+						for (const child of mounter.children) {
+							if ((child.type ?? "") === "UAVariable") continue;
+							if (child.type === "NavigationPanelItem") {
+								items.push({ name: child.name, path: `${mounter.path}/${child.name}` });
+								continue;
+							}
+							for (const item of child.children ?? []) {
+								if (item.type === "NavigationPanelItem") {
+									items.push({ name: item.name, path: `${mounter.path}/${child.name}/${item.name}` });
+								}
+							}
+						}
+						if (mounter.type === "NavigationPanel") shell.navigation_panels += 1;
+						const targets = [];
+						if (mounter.type === "PanelLoader") {
+							const id = guid(valueOf("Panel"));
+							if (id !== void 0) targets.push(byId.get(id) ?? `#${id}`);
+						} else {
+							for (const item of items.slice(0, 8)) {
+								try {
+									const itemProperties = (await bridge.request(origin, "nodes", exec.signal, { path: item.path })).properties ?? [];
+									const id = guid(itemProperties.find((entry) => entry.name === "Panel")?.value);
+									if (id !== void 0) targets.push(byId.get(id) ?? `#${id}`);
+								} catch (error) {
+									hostNotes.push(`${item.path}: ${String(error)}`);
+								}
+							}
+						}
+						if (!targets.includes(args.screen)) continue;
+						const width = number("Width");
+						const height = number("Height");
+						if (!Number.isFinite(width) || !Number.isFinite(height)) {
+							hostNotes.push(`${mounter.path} mounts ${args.screen} but reports no Width/Height`);
+							continue;
+						}
+						// A tab strip eats part of its own box before the panel it shows gets it:
+						// NavigationPanelTabPositionEnum is 0 Top, 1 Bottom, 2 Left, 3 Right, 4 Hidden, and a
+						// left or right strip takes `TabWidth`, a top or bottom strip `TabHeight`.
+						const tabPosition = Number.parseInt(valueOf("TabPosition") ?? "4", 10);
+						const tabWidth = number("TabWidth");
+						const tabHeight = number("TabHeight");
+						const sideStrip = tabPosition === 2 || tabPosition === 3;
+						const endStrip = tabPosition === 0 || tabPosition === 1;
+						// A mounter that reaches past the window edge only has the room the window leaves it. The SMT
+						// rail is declared Height 800 at TopMargin 64 inside an 800 px window, and the fit factor a
+						// probe measured on that panel (min(1060/1280, 736/800) = 0.828) proves the box a screen
+						// actually gets there is 1060×736, not the 800 the node names.
+						const room = (value, offset, limit) => (Number.isFinite(limit) ? Math.min(value, limit - offset) : value);
+						host = {
+							path: mounter.path,
+							width: room(sideStrip && Number.isFinite(tabWidth) ? width - tabWidth : width, number("LeftMargin") ?? 0, canvas?.width),
+							height: room(endStrip && Number.isFinite(tabHeight) ? height - tabHeight : height, number("TopMargin") ?? 0, canvas?.height),
+							...(sideStrip || endStrip ? { tab_position: tabPosition } : {})
+						};
+						break;
+					}
+					if (host === void 0) hostNotes.push(`no PanelLoader or NavigationPanel under ${window} reports a Panel pointing at ${args.screen}`);
 				} catch (error) {
 					canvasNotes.push(`${window} navigation: ${String(error)}`);
 				}
@@ -4290,6 +4401,7 @@ function apply(ctx, config = {}) {
 					nodes: described,
 					screen,
 					canvas,
+					...(host === void 0 ? {} : { host }),
 					siblings,
 					...(shell === void 0 ? {} : { shell }),
 					...(images.length === 0 ? {} : { images }),
@@ -4297,8 +4409,8 @@ function apply(ctx, config = {}) {
 					palette: Object.values(SCREEN_THEME),
 					units
 				});
-				const unchecked = [...report.unchecked, ...canvasNotes];
-				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" : ""}`);
+				const unchecked = [...report.unchecked, ...canvasNotes, ...hostNotes];
+				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? "…" : ""}`);
 				if (screen.descendants !== void 0 && screen.descendants > described.length) unchecked.push(`${screen.name} holds ${screen.descendants} descendants; only ${described.length} were read`);
 				const warnings = report.findings.filter((finding) => finding.severity === "warning");
 				return {
@@ -4307,6 +4419,8 @@ function apply(ctx, config = {}) {
 					...(canvas === void 0 ? {} : { canvas }),
 					objects: described.length,
 					screens_compared: siblings.length,
+					...(host === void 0 ? {} : { mounted_in: host }),
+					...(shell === void 0 ? {} : { shell_navigation: shell }),
 					findings: report.findings,
 					summary: {
 						findings: report.findings.length,
@@ -4322,7 +4436,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_production_check",
-		description: "Review the whole project the way a commissioning engineer does before release, in one pass: event handlers that still name an absolute design-time object (the runtime instantiates UI per session, so those buttons are dead even though they exist - OPTIX-PROD-01), handlers that point at a screen which is not there (OPTIX-PROD-02), screens the operator cannot reach from the panel the loader starts on (OPTIX-PROD-03), presentation engines left on engineering defaults such as an anonymous starting user or the stock style sheet (OPTIX-PROD-04) and screens that live outside the screen folder (OPTIX-PROD-05). Returns a release verdict with per-rule findings, each naming the node and the fix. repair:true clears the absolute pointer value of every handler OPTIX-PROD-01 reports, which is exactly the measured cause of a navigation button that clicks but never switches; it needs allowWrites and writes only that value.",
+		description: "Review the whole project the way a commissioning engineer does before release, in one pass: event handlers that still name an absolute design-time object (the runtime instantiates UI per session, so those buttons are dead even though they exist - OPTIX-PROD-01), handlers that point at a screen which is not there (OPTIX-PROD-02), screens the operator cannot reach from the panel the loader starts on, or from the items of a NavigationPanel rail (OPTIX-PROD-03), presentation engines left on engineering defaults such as an anonymous starting user or the stock style sheet (OPTIX-PROD-04) and screens that live outside the screen folder (OPTIX-PROD-05). Returns a release verdict with per-rule findings, each naming the node and the fix. repair:true clears the absolute pointer value of every handler OPTIX-PROD-01 reports, which is exactly the measured cause of a navigation button that clicks but never switches; it needs allowWrites and writes only that value.",
 		parameters: {
 			project: projectParameter,
 			window: {
@@ -4449,9 +4563,8 @@ function apply(ctx, config = {}) {
 					}
 				}
 				let startTarget;
+				let mountedPanels = [];
 				const loader = nodes.find((node) => `${node.entry.type ?? ""}` === "PanelLoader" && node.path.startsWith(`${window}/`));
-				if (loader === void 0) coverage.push(`no PanelLoader under ${window}, so reachability was not checked`);
-				else startTarget = void 0;
 				if (loader !== void 0) try {
 					const detail = await bridge.request(origin, "nodes", exec.signal, { path: loader.path });
 					const panelValue = propertyValue(detail.properties, "Panel");
@@ -4459,6 +4572,45 @@ function apply(ctx, config = {}) {
 					if (startTarget === void 0) coverage.push(`${loader.path}: the start panel value read ${JSON.stringify(panelValue)} and did not resolve to a screen`);
 				} catch {
 					coverage.push(`${loader.path}: Panel could not be read`);
+				}
+				// A native NavigationPanel is a second way a window mounts its screens, and it carries no
+				// EventHandler at all: each item points at its screen through a `Panel` NodePointer. Reading
+				// only PanelLoader reported the rebuilt SMT demo as having no navigation to check, while its
+				// rail opened all three screens (measured 2026-11-17).
+				if (loader === void 0) {
+					const rails = nodes.filter((node) => `${node.entry.type ?? node.entry.coll ?? ""}` === "NavigationPanel" && node.path.startsWith(`${window}/`));
+					if (rails.length === 0) coverage.push(`no PanelLoader or NavigationPanel under ${window}, so reachability was not checked`);
+					for (const rail of rails.slice(0, 4)) {
+						// Same collection segment as the design check: the items live under `Panels`, the bridge only
+						// resolves a path that names it, and the collection reports `coll` rather than a `type`.
+						const items = [];
+						for (const child of rail.entry.children ?? []) {
+							if (child.type === "NavigationPanelItem") {
+								items.push({ name: child.name, path: `${rail.path}/${child.name}` });
+								continue;
+							}
+							for (const item of child.children ?? []) {
+								if (item.type === "NavigationPanelItem") {
+									items.push({ name: item.name, path: `${rail.path}/${child.name}/${item.name}` });
+								}
+							}
+						}
+						for (const item of items.slice(0, 8)) {
+							try {
+								const detail = await bridge.request(origin, "nodes", exec.signal, { path: item.path });
+								const target = pathOf(propertyValue(detail.properties, "Panel"));
+								if (target === void 0) {
+									coverage.push(`${item.path}: its Panel pointer did not resolve to a screen`);
+									continue;
+								}
+								mountedPanels.push(target);
+								startTarget ??= target;
+							} catch {
+								coverage.push(`${item.path}: Panel could not be read`);
+							}
+						}
+					}
+					if (mountedPanels.length > 0) coverage.push(`${rails.length} NavigationPanel(s) under ${window} mount ${new Set(mountedPanels).size} screen(s) through their items' NodePointers`);
 				}
 				const hasApplicationStyleSheet = nodes.some((node) => `${node.entry.type ?? ""}`.includes("StyleSheet") && !/\/DefaultStyleSheet$/u.test(node.path) && !/DefaultStyleSheet\//u.test(node.path));
 				const report = productionFindings({
@@ -4468,8 +4620,9 @@ function apply(ctx, config = {}) {
 					handlers,
 					engines,
 					startTarget,
-							shellPath: window,
-							hasApplicationStyleSheet
+					...(mountedPanels.length === 0 ? {} : { mountedPanels: [...new Set(mountedPanels)] }),
+					shellPath: window,
+					hasApplicationStyleSheet
 				});
 				let repaired = [];
 				let unrepaired = [];

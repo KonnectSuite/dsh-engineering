@@ -2,6 +2,41 @@
 
 ### Fixed
 
+- **`optix_design_check` and `optix_production_check` reported four blind spots as facts about a screen that
+  was fine.** Measured live 2026-11-17 on the rebuilt SMT demo (`AryaSMTLineDemo`, three container screens):
+  (1) at the default `depth 3` the check described 10 of a 294-node screen, and at `depth 8, max_nodes 400` it
+  listed 20 labels as `no geometry reported` — text placed by a layout carries no `LeftMargin`/`Width`, so
+  `HMI-CONTRAST-01` never ran on a single one of them; it now falls back to the fill on the text's container
+  and, when no ancestor carries a colour, to the screen's largest surface, naming which in `measured_from`.
+  (2) The live check had **no text-size rule at all** while the offline rubric held `VIEW-TYPE-02` at 11 px;
+  `MIN_FONT_SIZE` is now exported from `packages/optix/lib/design.js` and the rule runs live (the demo's labels
+  all clear it, so the finding count stayed at zero and the blind spot is closed rather than fed).
+  (3) `VIEW-LAYOUT-02` compared a screen with the **window** canvas and called a deliberately 1060×706 screen a
+  finding; the check now resolves the mounter that points at the screen — a `PanelLoader`'s `Panel` or a
+  `NavigationPanel`'s items — through the guid the bridge reports only for `ids=1`, subtracts the tab strip
+  (`NavigationPanelTabPositionEnum` 2/3 is a side strip, so `TabWidth` comes off the width; 0/1 is an end strip,
+  so `TabHeight` comes off the height), clamps the box to the window, and reports it as `mounted_in`
+  (`UI/MainWindow/ShellRail` → 1060×736, which matches the measured fit factor `min(1060/1280, 736/800)`).
+  (4) `VIEW-NAV-01` fired on a screen mounted by a rail because the shell was only counted when its controls
+  had handlers, and `optix_production_check` answered `no PanelLoader under UI/MainWindow, so reachability was
+  not checked` although the rail mounted all three screens; a `NavigationPanel` now counts as shell navigation,
+  its items' `Panel` NodePointers are resolved to screens, and those screens are fed to `reachableScreens` as
+  shared targets (`mountedPanels` in `packages/optix/lib/production.js`). Both handlers also had to learn that
+  a `NavigationPanel` holds its items under a **collection** named `Panels` — the collection is reported with
+  `coll: "NavigationPanelItem"` and no `type`, an item with `type` and no `coll`, and matching on
+  `type ?? coll` silently drops every item. After the fixes the demo reports one honest info finding per screen
+  and a `review` verdict whose only findings are the two real `OPTIX-PROD-04` anonymous-starting-user warnings.
+
+- **Four user-visible strings in `packages/optix/lib/index.js` were mojibake.** The `optix_screenshot` preview
+  line, the `optix_template` description (two places), a comment quoting the bridge's "No behaviour or observer
+  found that handles the method", and the `optix_design_check` truncation marker held UTF-8 that had been read
+  as CP1252 and re-saved two to four times (`Ã¢â‚¬â€` where an em dash belongs). `git show HEAD` proves it was
+  committed, not introduced by this session, and a scan over `git ls-files` shows this file was the only one in
+  `packages`/`docs` carrying it. Repaired by applying the same forward corruption to the intended character and
+  replacing the computed run verbatim — a character-class regex was tried first and split one run into pieces,
+  leaving fragments in the middle of a tool's output string. The file now holds six non-ASCII characters, all
+  intended, where HEAD held 74, all corruption.
+
 - **A fill size without its Stretch alignment rendered at the content size, so a container screen drew as a
   stack of small cards.** `surface()` in `packages/optix/lib/screens.js` and `cellSurface()` in
   `packages/optix/lib/kit.js` wrote `Width`/`Height` `-1.0` and never wrote `HorizontalAlignment`/
