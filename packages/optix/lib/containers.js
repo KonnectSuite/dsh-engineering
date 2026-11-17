@@ -352,6 +352,13 @@ export function arrayWriteRefusal(op) {
  * Callers place an item into `rowPaths[row]`. An unequal track has no `fr` spelling the bridge will write, so
  * it is an explicit pixel width on the item - the width the geometry library already computed for it.
  *
+ * Two behaviours measured on a live 2026-11-17 probe, because they decide what a caller may pass:
+ * rows left at `FILL` **split the column equally** (two `Height -1` rows in a 608 px column with a 10 px gap
+ * both rendered 299 px, so `(608 - 10) / 2`), and a fixed size on a row or an item is never shrunk to make
+ * room - a child declared 900 wide inside an 800 px design track rendered 1192.5 px and starved its
+ * `Width -1` sibling to zero width. `VIEW-LAYOUT-03` in `design.js` is the check that catches that before a
+ * screen is saved. Gaps are not scaled by a parent `ScaleLayout`, so a gap is a real cost at any zoom.
+ *
  * @param {string} parent - Owner path.
  * @param {string} name - BrowseName of the column that owns the rows.
  * @param {object} [options] - `layout()` options, plus `columns` and `rows` as COUNTS (a `fr` array is

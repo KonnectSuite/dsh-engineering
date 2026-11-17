@@ -6,8 +6,9 @@
  * label of its own (`HMI-TARGET-02`), text whose colour does not stand out from
  * the fill it sits on (`HMI-CONTRAST-01`), a screen with no navigation area
  * (`VIEW-NAV-01`), a screen nothing leaves from (`VIEW-NAV-02`), a screen whose
- * size is not the canvas the project declares (`VIEW-LAYOUT-02`), a hand-built
- * copy repeated across screens instead of a type with instances
+ * size is not the box its mounting panel gives it (`VIEW-LAYOUT-02`), a layout
+ * whose fixed children leave nothing for the sibling that fills (`VIEW-LAYOUT-03`),
+ * a hand-built copy repeated across screens instead of a type with instances
  * (`OPTIX-UI-01`) and behaviour living inside a composition (`OPTIX-UI-02`),
  * an Advanced SVG image with nothing to animate (`OPTIX-IMG-01`), a literal
  * colour beside a style sheet that already decides it (`OPTIX-STYLE-01`), a
@@ -146,13 +147,18 @@ function property(node, name) {
 	return node.properties.find((entry) => entry.name === name)?.value;
 }
 
-/** Geometry of a node, or undefined when it does not report all four. */
+/** Geometry of a node, or undefined when it does not report a real box. */
 function rectOf(node) {
 	const left = numberValue(property(node, "LeftMargin"));
 	const top = numberValue(property(node, "TopMargin"));
 	const width = numberValue(property(node, "Width"));
 	const height = numberValue(property(node, "Height"));
 	if (left === undefined || top === undefined || width === undefined || height === undefined) return undefined;
+	// A size of -1 is `Fill`, a request for the parent's room rather than a dimension. Read as a number it is a
+	// box with negative area, which made HMI-TARGET-01 report a fill-sized control as "-1×-1, below the 44px
+	// minimum" and let OPTIX-LAYOUT-01 call any child of a fill container outside its parent. A node that names
+	// no positive size reports no geometry, and the rules say so instead of measuring an invention.
+	if (!(width > 0) || !(height > 0)) return undefined;
 	return { left, top, width, height };
 }
 
@@ -420,14 +426,17 @@ export function designFindings(input) {
 	// available, and the finding says that is what it used.
 	const host = input.host;
 	const canvas = host ?? input.canvas;
+	// The screen's own box: what the screen node reports, or the largest surface inside it when it reports no
+	// Width/Height of its own. Both layout rules need this one figure, so it is computed once.
+	const ownRect = geometry.get(screen.path);
+	const largestFill = nodes
+		.filter((node) => node.path !== screen.path && FILL_TYPES.has(node.type))
+		.map((node) => geometry.get(node.path))
+		.filter((rect) => rect !== undefined)
+		.sort((left, right) => area(right) - area(left))[0];
+	const screenRect = ownRect ?? largestFill;
 	if (canvas !== undefined) {
-		const own = geometry.get(screen.path);
-		const backdrop = nodes
-			.filter((node) => node.path !== screen.path && FILL_TYPES.has(node.type))
-			.map((node) => geometry.get(node.path))
-			.filter((rect) => rect !== undefined)
-			.sort((left, right) => area(right) - area(left))[0];
-		const rect = own ?? backdrop;
+		const rect = screenRect;
 		if (rect === undefined) unchecked.push(`${screen.name}: neither the screen nor a full-bleed fill reports a Width/Height`);
 		else if (rect.width !== canvas.width || rect.height !== canvas.height) findings.push({
 			rule: "VIEW-LAYOUT-02",
@@ -439,10 +448,160 @@ export function designFindings(input) {
 				height: rect.height,
 				canvas: `${canvas.width}x${canvas.height}`,
 				...(host === undefined ? {} : { host: host.path }),
-				...(own === undefined ? { measured_from: "the largest fill inside the screen" } : {})
+				...(ownRect === undefined ? { measured_from: "the largest fill inside the screen" } : {})
 			}
 		});
 	} else unchecked.push("no window canvas reported");
+
+	// VIEW-LAYOUT-03: a layout track is eaten by the children that name a size. Measured 2026-11-17 on a probe
+	// screen: a `RowLayout` holding a child declared 900 wide and a sibling at `Width -1` across a 20 px gap
+	// rendered the sibling at **w=0** - the fixed child had already taken 1192.5 px because a `ScaleLayout`
+	// above it stretched it by 1.325, and a layout neither shrinks nor clips a child to make room for its
+	// neighbours. The comparison has to happen in the space the numbers are written in: the children of a
+	// `ScaleLayout` are declared in its design box (`OriginalWidth`/`OriginalHeight`), so that box is the track,
+	// and the rendered overflow is that same shortfall times the fit factor.
+	//
+	// A track is resolved from the top down, because that is the only way the model states it. A `ScaleLayout`
+	// resets the space to its design box; a layout that splits along an axis leaves its filling children
+	// whatever its own track minus what its other children named on that axis; a layout that splits along the
+	// other axis passes its own track straight through. With nothing above naming a size the screen's own box is
+	// the seed - a screen node usually reports no `Width`/`Height` of its own, and its full-bleed fill does.
+	const LAYOUT_AXES = new Map([["RowLayout", "Width"], ["ColumnLayout", "Height"], ["GridLayout", "Width"]]);
+	const isVariableType = (type) => type === "UAVariable" || /(?:Variable|Property)Type$/u.test(type);
+	const childNodes = new Map();
+	for (const node of nodes) {
+		const cut = node.path.lastIndexOf("/");
+		if (cut === -1) continue;
+		const parent = node.path.slice(0, cut);
+		const list = childNodes.get(parent);
+		if (list === undefined) childNodes.set(parent, [node]);
+		else list.push(node);
+	}
+	const parentOf = (node) => {
+		const cut = node.path.lastIndexOf("/");
+		if (cut === -1) return undefined;
+		return nodes.find((entry) => entry.path === node.path.slice(0, cut));
+	};
+	const childrenOf = (node) => childNodes.get(node.path) ?? [];
+	const gapOf = (node, key) => numberValue(property(node, key === "Width" ? "HorizontalGap" : "VerticalGap")) ?? 0;
+	// The box one node hands the next on a single axis: `size` in the coordinate space that node's own children
+	// declare in, `rendered` in the pixels it draws at, and `x`/`y` for the factor between them when a
+	// `ScaleLayout` is what set the space. FillMode 1 (Stretch) scales the two axes independently (measured
+	// 1.325 × 1.6); any other mode is the uniform fit factor.
+	const boxOf = (node, key, seen = new Set()) => {
+		if (seen.has(node.path)) return undefined;
+		seen.add(node.path);
+		const own = numberValue(property(node, key));
+		if (own > 0) return { size: own, rendered: own };
+		const parent = parentOf(node);
+		if (parent === undefined) {
+			const seed = key === "Width" ? screenRect?.width : screenRect?.height;
+			return seed === undefined ? undefined : { size: seed, rendered: seed, from: "the screen box" };
+		}
+		const designWidth = numberValue(property(parent, "OriginalWidth"));
+		const designHeight = numberValue(property(parent, "OriginalHeight"));
+		if (parent.type === "ScaleLayout" && designWidth > 0 && designHeight > 0) {
+			const wide = boxOf(parent, "Width", new Set(seen));
+			const tall = boxOf(parent, "Height", new Set(seen));
+			if (wide === undefined || tall === undefined) return undefined;
+			// Without both rendered axes there is no factor to report, but the design box is still the track the
+			// children declare in, so the design-space comparison stands on its own.
+			const known = Number.isFinite(wide.rendered) && Number.isFinite(tall.rendered);
+			const fit = numberValue(property(parent, "FillMode")) === 1
+				? undefined
+				: known ? Math.min(wide.rendered / designWidth, tall.rendered / designHeight) : 1;
+			const x = fit ?? (known ? wide.rendered / designWidth : 1);
+			const y = fit ?? (known ? tall.rendered / designHeight : 1);
+			// What the design box actually draws at: the design size times the factor, which for a Fit mode is
+			// the uniform one and so leaves the leftover of the host box as centring margin, not as track.
+			return {
+				size: key === "Width" ? designWidth : designHeight,
+				rendered: known ? key === "Width" ? designWidth * x : designHeight * y : undefined,
+				x,
+				y,
+				from: `${parent.name} design box`
+			};
+		}
+		const inherited = boxOf(parent, key, seen);
+		if (inherited === undefined) return undefined;
+		// A layout only spends its track on the axis it splits along. Children of a `RowLayout` sit side by side,
+		// so their heights do not eat the vertical track; the row's own height passes through to them.
+		if (LAYOUT_AXES.get(parent.type) !== key) return inherited;
+		const siblings = childrenOf(parent).filter((child) => !isVariableType(child.type));
+		const taken = siblings.reduce((total, child) => {
+			if (child.path === node.path) return total;
+			const size = numberValue(property(child, key));
+			return total + (size > 0 ? size : 0);
+		}, 0);
+		const gaps = gapOf(parent, key) * Math.max(siblings.length - 1, 0);
+		const leftover = inherited.size - taken - gaps;
+		const scale = (key === "Width" ? inherited.x : inherited.y) ?? 1;
+		return {
+			size: leftover,
+			rendered: inherited.rendered === undefined ? undefined : inherited.rendered - taken * scale - gaps,
+			...(inherited.x === undefined ? {} : { x: inherited.x, y: inherited.y }),
+			from: `${parent.name} leftover`
+		};
+	};
+	for (const node of nodes) {
+		const key = LAYOUT_AXES.get(node.type);
+		if (key === undefined) continue;
+		const kids = childrenOf(node).filter((child) => !isVariableType(child.type));
+		if (kids.length < 2) continue;
+		const track = boxOf(node, key);
+		if (track === undefined) {
+			unchecked.push(`${node.type} ${node.name}: no ancestor names a size on ${key}, so its track cannot be compared with its children`);
+			continue;
+		}
+		const gap = numberValue(property(node, key === "Width" ? "HorizontalGap" : "VerticalGap")) ?? 0;
+		const fixed = [];
+		const filling = [];
+		const unknown = [];
+		for (const kid of kids) {
+			const size = numberValue(property(kid, key));
+			if (size === undefined) {
+				unknown.push(kid.name);
+				continue;
+			}
+			if (size < 0) filling.push(kid);
+			else fixed.push({ kid, size });
+		}
+		if (unknown.length > 0) unchecked.push(`${node.type} ${node.name}: ${unknown.length} child(ren) report no ${unknown.length === 1 ? key : `${key}s`} (${unknown.slice(0, 6).join(", ")}${unknown.length > 6 ? ", …" : ""}), so they count as nothing against its ${track.size} px track`);
+		const used = fixed.reduce((total, entry) => total + entry.size, 0) + gap * Math.max(kids.length - 1, 0);
+		// A child at -1 needs the track to be strictly bigger than what the named sizes already took; a layout
+		// whose children all name a size is only short when they add up to more than the track.
+		const short = filling.length > 0 ? used >= track.size : used > track.size;
+		if (!short) continue;
+		// The factor belongs to the ScaleLayout that set this track, which boxOf already carried down it.
+		const factor = (key === "Width" ? track.x : track.y) ?? 1;
+		// A ScaleLayout scales the sizes its children declare but not the gaps between them (measured 2026-11-17:
+		// a 20 px row gap and a 10 px column gap stayed exact through a 1.325 × 1.6 stretch), so the rendered
+		// figure is the scaled fixed sizes plus the exact gaps.
+		const rendered = Math.round(fixed.reduce((total, entry) => total + entry.size * factor, 0) + gap * Math.max(kids.length - 1, 0));
+		const over = track.rendered === undefined ? 0 : rendered - track.rendered;
+		const axisWord = key === "Width" ? "width" : "height";
+		const trackNoun = key === "Width" ? "widths" : "heights";
+		findings.push({
+			rule: "VIEW-LAYOUT-03",
+			severity: "warning",
+			message: filling.length > 0
+				? `${node.type} ${node.name} has a ${track.size} px ${axisWord} track, and its ${fixed.length} fixed ${trackNoun} plus ${kids.length - 1} ${gap} px gap${kids.length - 1 === 1 ? "" : "s"} already take ${used} px: ${filling.map((kid) => `${kid.name} at ${key} -1`).join(", ")} render at zero - a layout neither shrinks nor clips a child to make room for its neighbours.`
+				: `${node.type} ${node.name} has a ${track.size} px ${axisWord} track and its ${fixed.length} fixed children take ${used} px, so they are drawn past it rather than shrunk to fit.`,
+			evidence: {
+				path: node.path,
+				type: node.type,
+				track: track.size,
+				...(track.from === undefined ? {} : { track_from: track.from }),
+				axis: key,
+				fixed: fixed.map((entry) => `${entry.kid.name}: ${entry.size}`),
+				gap,
+				used,
+				...(filling.length === 0 ? {} : { fill_siblings: filling.map((kid) => kid.name) }),
+				...(factor === 1 ? {} : { scaled_by: factor, rendered: rendered }),
+				...(over > 0 ? { past_the_box: over } : {})
+			}
+		});
+	}
 
 	// OPTIX-UI-01: a repeated composition should be a type with instances.
 	const shapes = new Map();

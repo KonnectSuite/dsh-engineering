@@ -289,8 +289,10 @@ letterboxed picture. There is no coordinate to get wrong: a body that cannot fit
 (`layout_overflow`, `layout_too_narrow`) rather than drawn overlapping, and `chrome: "none"` leaves the header
 and footer to a window shell. Studio's own `GridLayout` is never emitted — its `Columns`/`Rows` are `String[]`
 the bridge refuses, and its per-cell child preceded a native Studio crash — so an unequal pair is two pixel
-widths, not an `fr` template. The stretched canvas and the row-of-cards body are both proven in a rendered
-preview; what a live session still owes is listed in the `screens-and-layout` playbook.
+widths, not an `fr` template. The stretched canvas, the row-of-cards body, the equal split of several filling
+rows inside one column, what `ContentAlignment` does and does not do, and how a `ScaleLayout` scales (a STRETCH
+canvas non-uniformly, a nested FIT canvas from its own rendered box) are all measured in a rendered preview;
+the numbers are in the `screens-and-layout` playbook.
 
 1. `optix_ui { action: "components", language }` - and, if the brief is a real design, read
    [`docs/optix-kit.md`](../../docs/optix-kit.md) for the blueprint shape before writing one.
@@ -697,13 +699,23 @@ of their own, text set below 11 px, text below 4.5:1 against the object it actua
 its container when a layout placed the text, the screen's largest surface when nothing behind it carries a
 colour — a screen nothing navigates to (a `NavigationPanel` rail counts, whether its items are wired by a
 `Panel` NodePointer or by a handler), a screen whose controls carry no event handler, a screen whose size is
-not the box its host gives it, sibling screens built from the same hand-made child set, and behaviour living
-inside the composition. The canvas is resolved rather than assumed: the tool reads the window's mounters,
-resolves each `Panel` NodeId against the ids the bridge reports for `ids=1`, subtracts the tab strip
-(`TabWidth` for a left or right strip, `TabHeight` for a top or bottom one), clamps the box to the window,
-and names it in `mounted_in`. That is why a 1060×706 screen under a 1280×800 window with a 220 px rail
-measures against 1060×736 and reads as a 30 px shortfall, not as a 94 px mismatch with the window. Read its
-`unchecked` list as part of the answer: a colour the bridge did not report is not a passing colour.
+not the box its host gives it, a `RowLayout` or `ColumnLayout` whose fixed children plus their gaps leave
+nothing for the sibling at `Width`/`Height -1`, sibling screens built from the same hand-made child set, and
+behaviour living inside the composition. The canvas is resolved rather than assumed: the tool reads the
+window's mounters, resolves each `Panel` NodeId against the ids the bridge reports for `ids=1`, subtracts the
+tab strip (`TabWidth` for a left or right strip, `TabHeight` for a top or bottom one) and names the result in
+`mounted_in`. It reports the box the mounter **declares** and does not clamp it to the window, because the
+runtime does not either: a rail sized `Height 800` under a 1280×800 window with a 64 px header hands its screen
+1060×800 and the window clips the last 64 px, which the check says out loud rather than hiding behind a
+smaller number. A 1060×706 screen under the starter's rail (`TopMargin 64`, `Height 706`, `TabWidth 220`) is
+therefore exact, and a screen that reads as a shortfall is a mounter that needs sizing. Read its `unchecked`
+list as part of the answer: a colour the bridge did not report is not a passing colour.
+
+The `−1` rule is worth naming on its own because a layout never fixes it for you. Measured on a probe screen:
+a child declared 900 wide inside an 800 px design track rendered 1192.5 px and its `Width −1` sibling rendered
+at zero width, drawn past the window edge. A layout neither shrinks nor clips a child to make room for its
+neighbours, gaps are not scaled by a parent `ScaleLayout`, and `VIEW-LAYOUT-03` reports the track, whose design
+box it is, the px the fixed children took, and how far past the rendered box they landed.
 
 Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and

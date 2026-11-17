@@ -56,28 +56,41 @@ alignment pair the fill rule adds is about five operations a card) against `maxS
 whole batch must be validated in one call, so one card too many is a refusal with a name, never a half-built
 screen. The three live SMT screens applied 276 / 340 / 240 operations at 1060×706.
 
-## What a live session still has to prove
+## What a live session proved (2026-11-17, `UI/Screens/ProbeContainers`, since deleted)
 
-The tree above is now measured against a rendered screen for its two load-bearing shapes: the stretched
-`ScaleLayout` and the `ColumnLayout`-of-`RowLayout`s body (screenshot paths in the bullets). What is still
-owed, in this order:
+The tree above is measured against a rendered screen. The probe was authored through `optix_edit` in four
+dependency-ordered batches (24/23/30/30 ops) because the installed plugin emits no containers, and measured
+through the DOM: the runtime's element ids are **not** the bridge's node guids, so `getElementById` fails for
+every guid the map reports — measure structurally with `[data-type="scaleLayout|columnLayout|rowLayout|rectangle"]`,
+`getBoundingClientRect()` and the computed `placeSelf` / `gridTemplateRows` / `gridTemplateColumns`.
 
-1. **several stretched rows splitting one `ColumnLayout` equally.** Settled in shape, not in spelling: the live
-   SMT screens place two `RowLayout`s, each carrying the height the geometry computed (`rowHeights`), inside one
-   content `ColumnLayout`, and both rendered as equal bands with the gap between them
-   (`optix-proof/smt/shots/demo-stretch-alarms-full.png`). Two `Height -1` rows inside one column is still
-   unmeasured, which is why the emitters keep naming the height;
-2. **clipping versus push.** A card whose rows are taller than its reserved row either clips or grows the row,
-   and which one happens decides whether the emitters keep their minimum heights or can stop reserving them.
-   The demo cards never exceeded their row, so this is still open;
-3. **`ContentAlignment` on a `RowLayout`.** `ContentAlignment 1` on an 88 px header row placed the group at
-   475→920 inside a 215→1275 row: near-centred, not exactly (exact centring would start near 522), so the
-   enum's meaning is still not pinned;
-4. **the kit's STRETCH `ScaleLayout`** (a progress bar's 100 px design canvas, `FillMode 1`) scaling to the
-   width of its row — the Fit canvas is proven, the Stretch one is not;
-5. **a container screen in a window larger than the design box.** The fit factor was measured in a 1060×736
-   content area of a 1280×800 window; the 1920×1080 case that motivated the change has only been reasoned
-   about, not opened.
+1. **several stretched rows splitting one `ColumnLayout` equally — settled.** Two `Height -1` rows with
+   `VerticalAlignment 3` in a 608 px column with a 10 px gap both rendered **299 px**: `(608 - 10) / 2`. A row
+   left at `FILL` splits the column, so `rowHeights` is for a band the design *must* pin (a 44 px touch floor,
+   a reserved footer), not for making rows equal;
+2. **clipping versus push — it pushes.** A child declared 900 wide inside an 800 px design track rendered
+   **1192.5 px** and its `Width -1` sibling rendered at **w=0 at x=1433**, past the window edge. A layout
+   neither shrinks nor clips a child to make room for its neighbours, and the overflow is drawn rather than
+   cut. `VIEW-LAYOUT-03` in `design.js` is the check that names it before the screen is saved (evidence: the
+   track, whose design box it is when the layout fills a `ScaleLayout`, the px the fixed children take, and
+   how far past the rendered box they land);
+3. **`ContentAlignment` on a `RowLayout` — pinned.** It is `ContentHorizontalAlignment` with members
+   `0 Left`, `1 Center`, `2 Right` and **no Stretch member**, so it positions natural-sized children only: the
+   three probe cells put their label at x **220 / 430 / 657**. A child at `Width -1` with
+   `HorizontalAlignment 3` ignores it. `ColumnLayout`'s twin is `ContentVerticalAlignment`, and `1` centred a
+   pair vertically while the horizontal axis stayed left. The earlier "near-centred, not exactly" reading was
+   the group being centred as a group, not a bug;
+4. **the kit's STRETCH `ScaleLayout` (`FillMode 1`) — proven, and it scales non-uniformly.** A design box of
+   800×500 in a 1060×800 host rendered at **1.325 × 1.6**, so a 100 px progress bar drawn on a 100 px canvas
+   stretches with the row. A nested `ScaleLayout` on `Fit` computes its uniform factor from **its own rendered
+   box** (265×160 ÷ 100×50 → **2.65**) and centres that scaled design box when the aspects differ;
+5. **gaps are not scaled by a `ScaleLayout`.** A 20 px row gap and a 10 px column gap stayed exact through the
+   1.325 × 1.6 stretch. A gap is a real cost at any zoom, which is what makes the equal-split arithmetic in
+   item 1 worth writing down.
+
+The one case still not opened is a window genuinely larger than the design box (the 1920×1080 panel). The
+mechanism is proven both ways — a fit factor computed from the rendered box, up-scaling included — but the
+bigger-window number has been reasoned about, not measured.
 
 Two authoring mechanics the same session measured, worth keeping beside those proofs:
 
@@ -88,16 +101,21 @@ Two authoring mechanics the same session measured, worth keeping beside those pr
 - `set_link` is not validated by bridge 1.0.9 (`unknown_op: it will be applied unchecked`), so a pointer is
   written with `set_property` on the NodeId variable, which echoes the resolved `NodeId` back.
 
-Until 1, 2 and 5 are seen on a screen, report a container screen as authored and partly unverified, exactly as
-the binding rules report an unwired link. Studio Save and Ctrl+Shift+B are still required before the runtime
-loads a bridge-authored batch, and Studio's own write lands several seconds after the `Ctrl+S` keystroke: a
-runtime restarted inside that window serves the **pre-save** design, so restart it again rather than trusting
-the first render.
+Studio Save and Ctrl+Shift+B are still required before the runtime loads a bridge-authored batch, and Studio's
+own write lands several seconds after the `Ctrl+S` keystroke: a runtime restarted inside that window serves the
+**pre-save** design, so restart it again rather than trusting the first render.
 
 ## Facts that decide the design
 
 - `UI/MainWindow` is `1280 x 800` in this template; a screen's own `(0,0)` starts at the content area, so a
   screen node at `LeftMargin 24` sits 24 px inside the panel, not 24 px from the window edge.
+- **A screen is handed the box its mounter declares, not the window's.** The starter's `ShellRail` is
+  `TopMargin 64`, `Width 1280`, `Height 706`, `TabWidth 220` (`packages/optix/templates/arya-optix-app/project/Nodes/UI/UI.yaml`),
+  so the content area is **1060×706** and `ShellFooter` starts at `TopMargin 770` with `Height 30`. When the
+  live demo's rail had drifted to `Height 800`, the mounted screen rendered 1060×**800** and the window clipped
+  the last 64 px — it did not squeeze the screen to fit. Size the mounter, then design to what it declares;
+  `optix_design_check` reports that box as `mounted_in` and names a mounter that reaches past the window
+  instead of inventing a smaller one.
 - A Label has no background, no border and no padding. Every card, pill, band and divider is a Rectangle
   behind the text. Children paint in creation order, so a label must be created **after** the shape it sits on,
   and the bridge cannot reorder children afterwards (`reorder` answers `reorder_index_unreached`).

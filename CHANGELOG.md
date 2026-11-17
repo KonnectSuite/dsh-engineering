@@ -2,6 +2,14 @@
 
 ### Fixed
 
+- **A size of `-1` was read as a rectangle, so two rules invented geometry about it.** `rectOf` in
+  `packages/optix/lib/design.js` took the four values a node reports and multiplied them: a control placed by a
+  layout — `Width -1` meaning Fill — came out as a box with negative area, `HMI-TARGET-01` reported it as
+  `-1×-1; the target minimum is 44px`, and `OPTIX-LAYOUT-01` called every child of a fill-sized container
+  outside its parent. A non-positive `Width`/`Height` is now refused the way a missing one is, and the control is
+  reported as `no geometry reported` instead of measured wrong. Found while writing `VIEW-LAYOUT-03`, which had
+  to tell a fill size from a real one.
+
 - **`optix_design_check` and `optix_production_check` reported four blind spots as facts about a screen that
   was fine.** Measured live 2026-11-17 on the rebuilt SMT demo (`AryaSMTLineDemo`, three container screens):
   (1) at the default `depth 3` the check described 10 of a 294-node screen, and at `depth 8, max_nodes 400` it
@@ -15,8 +23,13 @@
   finding; the check now resolves the mounter that points at the screen — a `PanelLoader`'s `Panel` or a
   `NavigationPanel`'s items — through the guid the bridge reports only for `ids=1`, subtracts the tab strip
   (`NavigationPanelTabPositionEnum` 2/3 is a side strip, so `TabWidth` comes off the width; 0/1 is an end strip,
-  so `TabHeight` comes off the height), clamps the box to the window, and reports it as `mounted_in`
-  (`UI/MainWindow/ShellRail` → 1060×736, which matches the measured fit factor `min(1060/1280, 736/800)`).
+  so `TabHeight` comes off the height), and reports it as `mounted_in`. It reports the box the mounter
+  **declares** and does not clamp it to the window: the first version clamped to 1060×736, and the probe in the
+  Added entry below measured that the runtime hands a screen the declared box and clips the overflow itself — a
+  rail left at `Height 800` under a 1280×800 window with a 64 px header rendered its screen 1060×**800**, 64 px
+  past the bottom. The demo's rail had drifted from the starter's `Height 706` (`…/templates/arya-optix-app/
+  project/Nodes/UI/UI.yaml`: `TopMargin 64` + `Height 706` = 770, where `ShellFooter` starts) and was repaired,
+  so the screens now measure exactly.
   (4) `VIEW-NAV-01` fired on a screen mounted by a rail because the shell was only counted when its controls
   had handlers, and `optix_production_check` answered `no PanelLoader under UI/MainWindow, so reachability was
   not checked` although the rail mounted all three screens; a `NavigationPanel` now counts as shell navigation,
@@ -100,6 +113,31 @@
   0 warnings) and rated clean by the package's own review.
 
 ### Added
+
+- **`VIEW-LAYOUT-03`: a layout that leaves nothing for the child meant to fill is now reported.** Measured on a
+  probe screen authored through `optix_edit` and deleted after it was read (`UI/Screens/ProbeContainers`,
+  2026-11-17): a child declared 900 px wide inside an 800 px design track rendered **1192.5 px** and its
+  `Width -1` sibling rendered at **w=0**, drawn past the window edge — a layout neither shrinks nor clips a
+  child to make room for its neighbours. The rule reads a `RowLayout`'s or `ColumnLayout`'s children on its
+  filling axis, resolves the track from the layout's own size, else from the design box of the `ScaleLayout` it
+  fills (`track_from`), else from the nearest ancestor naming a size, and reports the px the fixed children take
+  plus the gaps, `scaled_by` and `past_the_box` for the rendered overflow. Gaps are added **unscaled**, because
+  the same probe measured a 20 px row gap and a 10 px column gap staying exact through a 1.325 × 1.6 stretch. A
+  child at `-1` needs the track strictly bigger than what the named sizes took; children that fill the track
+  exactly are not a finding. Children that report no size on the axis are named once per layout as an `unchecked`
+  line rather than counted as zero.
+- **The container behaviours the emitters were guessing at are measured.** Same probe, four questions the
+  `screens-and-layout` playbook used to list as owed: two `Height -1` rows in one `ColumnLayout` **split it
+  equally** (299 px each out of 608 px with a 10 px gap, so `rowHeights` is for a band the design must pin, not
+  for making rows equal); `ContentAlignment` is `ContentHorizontalAlignment` `0 Left / 1 Center / 2 Right` with
+  **no Stretch member** and positions natural-sized children only (labels at x 220 / 430 / 657), so a child at
+  `Width -1` + `HorizontalAlignment 3` ignores it; a STRETCH `ScaleLayout` scales **non-uniformly** (800×500
+  design in a 1060×800 host → 1.325 × 1.6) while a nested `ScaleLayout` on Fit computes its uniform factor from
+  **its own rendered box** (265×160 ÷ 100×50 → 2.65) and centres that box when the aspects differ; and the
+  runtime hands a screen the box its mounter **declares**, not the window's. The measurement route is recorded
+  too: the runtime's DOM ids are not the bridge's node guids (`getElementById` fails for every guid a map
+  returns), so a rendered layout is read structurally through `[data-type="…Layout|rectangle"]`,
+  `getBoundingClientRect()` and the computed `placeSelf` / `gridTemplate*`.
 
 - **Screens and shells are built from layout containers, not from absolute coordinates.** Every scaffolded
   screen now has one direct child — a full-canvas `ScaleLayout` (`FillMode` Fit, `OriginalWidth`/

@@ -241,24 +241,28 @@ test('VIEW-TYPE-02: text below the readable floor is reported, and a size the mo
 
 test('VIEW-LAYOUT-02 compares with the box the mounting panel gives the screen, not with the window', () => {
 	// The demo's screens are 1060×706 on purpose: the window is 1280×800 and its rail takes a 220 px tab
-	// strip. Compared with the window, three deliberately-sized screens read as a layout defect.
+	// strip. Compared with the window, three deliberately-sized screens read as a layout defect. The host box
+	// is the mounter's DECLARED box, measured live 2026-11-17: the starter's own rail (TopMargin 64, Height
+	// 706) handed the screen a rendered 1060×706, and a rail drifted to Height 800 handed it 1060×800. The
+	// runtime clips what hangs off the window instead of shrinking the box, so the declared figure is the only
+	// honest one, and `optix_design_check` names the overhang in its notes rather than clamping it away.
 	const own = { ...screen, properties: box(0, 0, 1060, 706) }
-	const host = { path: 'UI/MainWindow/ShellRail', width: 1060, height: 736 }
-	const againstHost = designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, host, siblings: [] })
-	const layout = againstHost.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02')
+	const host = { path: 'UI/MainWindow/ShellRail', width: 1060, height: 706 }
+	assert.deepEqual(designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, host, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02'), [], 'a screen sized to its panel was reported as a mismatch with the window')
+
+	const drifted = { ...host, height: 800 }
+	const layout = designFindings({ nodes: [own], screen: own, canvas: { width: 1280, height: 800 }, host: drifted, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02')
 	assert.equal(layout.length, 1)
 	assert.deepEqual(layout[0].evidence, {
 		path: own.path,
 		width: 1060,
 		height: 706,
-		canvas: '1060x736',
-		host: host.path,
+		canvas: '1060x800',
+		host: drifted.path,
 	})
-	assert.ok(/ShellRail gives it 1060×736/u.test(layout[0].message))
-
-	const exact = { ...screen, properties: box(0, 0, 1060, 736) }
-	assert.deepEqual(designFindings({ nodes: [exact], screen: exact, canvas: { width: 1280, height: 800 }, host, siblings: [] })
-		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02'), [])
+	assert.ok(/ShellRail gives it 1060×800/u.test(layout[0].message))
 
 	// With no host resolved the window is still the only figure available, and the evidence stays exactly the
 	// shape it had before the host existed.
@@ -266,6 +270,88 @@ test('VIEW-LAYOUT-02 compares with the box the mounting panel gives the screen, 
 	const windowLayout = windowOnly.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-02')
 	assert.deepEqual(windowLayout[0].evidence, { path: own.path, width: 1060, height: 706, canvas: '1280x800' })
 	assert.ok(!('host' in windowLayout[0].evidence))
+})
+
+test('VIEW-LAYOUT-03: a fixed child eats the track its fill sibling needed', () => {
+	// Measured live 2026-11-17 on a probe screen: a ScaleLayout designed 800×500 stretched into a 1060×800 host
+	// (x 1.325, y 1.6) held a RowLayout whose children were a Rectangle declared 900 wide and a sibling at
+	// Width -1 across a 20 px gap. The fixed child rendered 1192.5 px and the fill sibling rendered at w=0 at
+	// x=1433 - a layout neither shrinks nor clips a child. The check has to catch it in the space the numbers
+	// are written in (900 + 20 against an 800 px design track) and report the rendered overflow as well.
+	const canvas = {
+		path: 'UI/Screens/Probe/Canvas', name: 'Canvas', type: 'ScaleLayout',
+		properties: [...box(0, 0, 1060, 800), { name: 'OriginalWidth', value: '800.0' }, { name: 'OriginalHeight', value: '500.0' }, { name: 'FillMode', value: '1 (FillModeEnum)' }],
+		children: [{ name: 'Content', type: 'ColumnLayout' }],
+	}
+	const content = { path: `${canvas.path}/Content`, name: 'Content', type: 'ColumnLayout', properties: box(0, 0, -1, -1), children: [{ name: 'Row1', type: 'RowLayout' }] }
+	const row = { path: `${content.path}/Row1`, name: 'Row1', type: 'RowLayout', properties: [...box(0, 0, -1, -1), { name: 'HorizontalGap', value: '20.0' }], children: [{ name: 'Wide', type: 'Rectangle' }, { name: 'Narrow', type: 'Rectangle' }] }
+	const wide = { path: `${row.path}/Wide`, name: 'Wide', type: 'Rectangle', properties: box(0, 0, 900, 60), children: [] }
+	const narrow = { path: `${row.path}/Narrow`, name: 'Narrow', type: 'Rectangle', properties: box(920, 0, -1, 60), children: [] }
+	const probeScreen = { ...screen, properties: box(0, 0, 1060, 800) }
+	const run = (nodes) => designFindings({ nodes, screen: probeScreen, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-03')
+
+	const starved = run([canvas, content, row, wide, narrow])
+	assert.equal(starved.length, 1, 'a 900 px child in an 800 px design track left its -1 sibling unreported')
+	assert.deepEqual(starved[0].evidence, {
+		path: row.path,
+		type: 'RowLayout',
+		track: 800,
+		track_from: 'Canvas design box',
+		axis: 'Width',
+		fixed: ['Wide: 900'],
+		gap: 20,
+		used: 920,
+		fill_siblings: ['Narrow'],
+		scaled_by: 1.325,
+		rendered: 1213,
+		past_the_box: 153,
+	})
+	assert.ok(/render at zero/u.test(starved[0].message))
+
+	// Room left over is not a finding, and children that fill the track exactly are not either: the gap counts,
+	// and a layout with no -1 child is short only when its sizes add up to more than the track.
+	assert.deepEqual(run([canvas, content, row, { ...wide, properties: box(0, 0, 700, 60) }, narrow]), [])
+	const exactPair = { ...narrow, properties: box(700, 0, 100, 60) }
+	assert.deepEqual(run([canvas, content, row, { ...wide, properties: box(0, 0, 680, 60) }, exactPair]), [], 'children that fill the track exactly were reported as overflow')
+	const overflow = run([canvas, content, row, { ...wide, properties: box(0, 0, 780, 60) }, exactPair])
+	assert.equal(overflow.length, 1)
+	assert.ok(/drawn past it rather than shrunk/u.test(overflow[0].message))
+	assert.equal(overflow[0].evidence.used, 900)
+	assert.equal(overflow[0].evidence.past_the_box, 126)
+	assert.equal(overflow[0].evidence.scaled_by, 1.325)
+	assert.ok(!('fill_siblings' in overflow[0].evidence), 'a row with no -1 child has no sibling left without room')
+
+	// The vertical axis resolves its track from the nearest ancestor that names a height, with no ScaleLayout
+	// in the way, and reports the shortfall without a factor.
+	const hostScreen = { ...screen, properties: box(0, 0, 1060, 706) }
+	const stack = { path: 'UI/Screens/Overview/Stack', name: 'Stack', type: 'ColumnLayout', properties: [...box(0, 0, -1, -1), { name: 'VerticalGap', value: '20.0' }], children: [{ name: 'Header', type: 'Rectangle' }, { name: 'Body', type: 'Rectangle' }] }
+	const header = { path: `${stack.path}/Header`, name: 'Header', type: 'Rectangle', properties: box(0, 0, 1060, 700), children: [] }
+	const body = { path: `${stack.path}/Body`, name: 'Body', type: 'Rectangle', properties: box(0, 720, 1060, -1), children: [] }
+	const vertical = designFindings({ nodes: [hostScreen, stack, header, body], screen: hostScreen, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-03')
+	assert.equal(vertical.length, 1)
+	assert.deepEqual(vertical[0].evidence, {
+		path: stack.path,
+		type: 'ColumnLayout',
+		track: 706,
+		axis: 'Height',
+		fixed: ['Header: 700'],
+		gap: 20,
+		used: 720,
+		fill_siblings: ['Body'],
+		past_the_box: 14,
+	})
+})
+
+test('a size of -1 is Fill, not a box, so no rule measures it as one', () => {
+	// Read as a number, -1 is a rectangle with negative area. Before this was refused, HMI-TARGET-01 reported a
+	// control placed by a layout as "-1×-1; the target minimum is 44px" and OPTIX-LAYOUT-01 called every child
+	// of a fill-sized container outside its parent. The gap is reported instead of measured.
+	const stretchButton = node('StretchButton', 'Button', box(0, 0, -1, -1), [{ name: 'Text', type: 'LocalizedText' }])
+	const result = designFindings({ nodes: [stretchButton], screen, canvas: undefined, siblings: [] })
+	assert.deepEqual(result.findings.filter((finding) => finding.rule === 'HMI-TARGET-01'), [], 'a fill-sized control was reported with invented geometry')
+	assert.ok(result.unchecked.some((entry) => /Button StretchButton: no geometry reported/u.test(entry)))
 })
 
 test('OPTIX-UI-01: the same hand-built children on two screens is a type with instances', () => {

@@ -4077,7 +4077,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_design_check",
-		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text below the readable font floor (VIEW-TYPE-02, the same 11 px floor the offline rubric holds), text whose colour does not stand out from the fill it sits on - its own container when a layout placed it, otherwise the largest surface in the screen, reported as measured_from - a screen with no navigation area (a NavigationPanel rail counts as navigation even when its items are wired by NodePointers and carry no handler), a screen whose controls carry no event handler, a screen whose size is not the box its host gives it (the PanelLoader or NavigationPanel that mounts it is read through its NodeId pointers and its tab strip subtracted; the window canvas is the fallback and is named in mounted_in), the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
+		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text below the readable font floor (VIEW-TYPE-02, the same 11 px floor the offline rubric holds), text whose colour does not stand out from the fill it sits on - its own container when a layout placed it, otherwise the largest surface in the screen, reported as measured_from - a screen with no navigation area (a NavigationPanel rail counts as navigation even when its items are wired by NodePointers and carry no handler), a screen whose controls carry no event handler, a screen whose size is not the box its host gives it (the PanelLoader or NavigationPanel that mounts it is read through its NodeId pointers and its tab strip subtracted; the window canvas is the fallback and is named in mounted_in; a mounter sized past the window is named rather than clamped, because the runtime clips there instead of shrinking the screen), a RowLayout or ColumnLayout whose fixed children plus their gaps already take the whole track so a sibling at Width or Height -1 renders at zero (VIEW-LAYOUT-03 - a layout neither shrinks nor clips a child, measured live; the evidence names the track, whose design box it is when the layout fills a ScaleLayout, the px the fixed children take, and how far past the rendered box they are drawn), the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
 		parameters: {
 			project: projectParameter,
 			screen: {
@@ -4320,15 +4320,22 @@ function apply(ctx, config = {}) {
 						const tabHeight = number("TabHeight");
 						const sideStrip = tabPosition === 2 || tabPosition === 3;
 						const endStrip = tabPosition === 0 || tabPosition === 1;
-						// A mounter that reaches past the window edge only has the room the window leaves it. The SMT
-						// rail is declared Height 800 at TopMargin 64 inside an 800 px window, and the fit factor a
-						// probe measured on that panel (min(1060/1280, 736/800) = 0.828) proves the box a screen
-						// actually gets there is 1060×736, not the 800 the node names.
-						const room = (value, offset, limit) => (Number.isFinite(limit) ? Math.min(value, limit - offset) : value);
+						// The box a screen gets is the box its mounter declares, not the room the window leaves it.
+						// A probe measured both halves of that: with the rail declared Height 800 inside an 800 px
+						// window the rendered ScaleLayout was 1060×800 - 64 px past the bottom edge, clipped rather
+						// than squeezed - and with the starter's own Height 706 it was exactly the designed 1060×706.
+						const innerWidth = sideStrip && Number.isFinite(tabWidth) ? width - tabWidth : width;
+						const innerHeight = endStrip && Number.isFinite(tabHeight) ? height - tabHeight : height;
+						// So a mis-sized mounter is named, not corrected: the runtime clips it and the screen sits on
+						// a box that hangs off the canvas. Clamping here would invent a host the runtime never hands out.
+						const past = [];
+						if (Number.isFinite(canvas?.width) && (number("LeftMargin") ?? 0) + width > canvas.width) past.push(`${Math.round((number("LeftMargin") ?? 0) + width - canvas.width)} px past its right edge`);
+						if (Number.isFinite(canvas?.height) && (number("TopMargin") ?? 0) + height > canvas.height) past.push(`${Math.round((number("TopMargin") ?? 0) + height - canvas.height)} px past its bottom edge`);
+						if (past.length > 0) hostNotes.push(`${mounter.path} declares ${width}×${height} at (${number("LeftMargin") ?? 0}, ${number("TopMargin") ?? 0}), reaching ${past.join(" and ")} of the ${canvas?.width}×${canvas?.height} window - the runtime clips there instead of shrinking it, so a screen mounted here is drawn on a box that hangs off the canvas.`);
 						host = {
 							path: mounter.path,
-							width: room(sideStrip && Number.isFinite(tabWidth) ? width - tabWidth : width, number("LeftMargin") ?? 0, canvas?.width),
-							height: room(endStrip && Number.isFinite(tabHeight) ? height - tabHeight : height, number("TopMargin") ?? 0, canvas?.height),
+							width: innerWidth,
+							height: innerHeight,
 							...(sideStrip || endStrip ? { tab_position: tabPosition } : {})
 						};
 						break;
