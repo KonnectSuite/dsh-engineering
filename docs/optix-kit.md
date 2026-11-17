@@ -64,7 +64,7 @@ Only `pattern: "overview"` and `"blank"` exist today; `blank` writes nothing (it
 
 1. reads the start window from the running model for the canvas (`liveScreenHost`), so a designed screen matches the window it is shown in;
 2. refuses a screen that does not exist (`no screen at <path>: create and mount it with optix_screen first`);
-3. compiles the blueprint into `create_widget` and `set_property` operations;
+3. compiles the blueprint into `create_widget` and `set_property` operations — a container tree, not pinned rectangles: a stretched `ScaleLayout` canvas, a chrome `ColumnLayout` (88 px header row, fill body, 56 px footer row), a content `ColumnLayout` holding one `RowLayout` per row of cards, and a nested `ColumnLayout` inside each card, so the same blueprint fits a panel of another size; every fill in that tree carries its Stretch alignment, because `layout()` derives `HorizontalAlignment`/`VerticalAlignment` `3` from a `FILL` size and a `-1` on its own renders at the content size (measured 2026-11-17 on the first live SMT render);
 4. validates the whole batch with `validate_ops strict: true` - nothing is written when one operation is refused;
 5. in `mode: "apply"` (behind the write gate) dispatches one operation at a time with a health re-check, and reports `partial`/`indeterminate` honestly instead of "done".
 

@@ -26,7 +26,10 @@ import {
  * changes, no apply of a plan whose files moved underneath it, one write at a time, and an apply
  * that is all or nothing. They also prove the read side against a real YAML shape: the chapter
  * registration graph, the `/Objects/<name>/` pointers Studio writes absolutely, and the duplicate
- * node name Studio itself saves.
+ * node name Studio itself saves. The binding specs below are the file-level half of the same
+ * question: a `DynamicLink` into this project must name a node that exists, a relative or aliased
+ * one must resolve or be reported as unverifiable, a NetLogic must not aim at a UI object, and a
+ * screen must not be fixed to the size it was drawn at.
  */
 
 /** Scratch project folders this spec makes, so a failed run leaves nothing behind. */
@@ -53,6 +56,7 @@ const fixture = async () => {
   const root = await scratch()
   await mkdir(join(root, 'Nodes', 'UI'), { recursive: true })
   await mkdir(join(root, 'Nodes', 'Model'), { recursive: true })
+  await mkdir(join(root, 'Nodes', 'Security'), { recursive: true })
   await writeFile(
     join(root, `${PROJECT}.optix`),
     `Project:
@@ -74,8 +78,18 @@ Children:
   - Name: DefaultUserFolder
     Type: NodePointer
     Value: "/Objects/${PROJECT}/Security/Users"
+- File: Security/Security.yaml
 - File: UI/UI.yaml
 - File: Model/Model.yaml
+`,
+  )
+  await writeFile(
+    join(root, 'Nodes', 'Security', 'Security.yaml'),
+    `Name: Security
+Type: SecurityCategoryFolder
+Children:
+- Name: Users
+  Type: SecurityUsersCategoryFolder
 `,
   )
   await writeFile(
@@ -109,13 +123,13 @@ test('census and sources describe the project without writing it', async () => {
   const root = await fixture()
   const project = await projectInfo(PROJECT, root)
   const counted = await census(project)
-  assert.equal(counted.files, 3)
-  assert.ok(counted.nodes >= 7, `counts every node, got ${counted.nodes}`)
+  assert.equal(counted.files, 4)
+  assert.ok(counted.nodes >= 9, `counts every node, got ${counted.nodes}`)
   const listed = await sources(project)
   assert.deepEqual(listed.problems, [])
   assert.deepEqual(
     listed.files.map((file) => file.path).sort(),
-    ['Nodes/Fixture.yaml', 'Nodes/Model/Model.yaml', 'Nodes/UI/UI.yaml'],
+    ['Nodes/Fixture.yaml', 'Nodes/Model/Model.yaml', 'Nodes/Security/Security.yaml', 'Nodes/UI/UI.yaml'],
   )
 })
 
@@ -175,6 +189,253 @@ Children:
   )
   const foreign = await validateProject(pointed)
   assert.ok(foreign.findings.some((finding) => finding.code === 'absolute_pointer_foreign_root' && finding.severity === 'warning'))
+})
+
+/**
+ * The project a session hand-wrote while Studio was closed (2026-11-16): a Model chapter, a UI
+ * chapter whose DynamicLinks mix one good absolute path, one indexed path, one link at the
+ * project root, one relative link, one dead absolute link, one dead relative link, an alias link
+ * and a template-parameter link, a screen drawn only with absolute margins, and a NetLogic that
+ * points at a UI object.
+ */
+const bindingsFixture = async () => {
+  const root = await scratch()
+  for (const folder of ['Model', 'UI', 'UI/Screens', 'NetLogic']) await mkdir(join(root, 'Nodes', folder), { recursive: true })
+  await writeFile(
+    join(root, 'Proj.optix'),
+    `Project:
+  Name: Proj
+  GUID: 22222222-2222-2222-2222-222222222222
+  FormatVersion: 1
+  Nodes:
+  - File: Nodes/Proj.yaml
+`,
+  )
+  await writeFile(
+    join(root, 'Nodes', 'Proj.yaml'),
+    `Name: Proj
+Type: ProjectFolder
+Children:
+- File: Model/Model.yaml
+- File: UI/UI.yaml
+- File: NetLogic/NetLogic.yaml
+`,
+  )
+  await writeFile(
+    join(root, 'Nodes', 'Model', 'Model.yaml'),
+    `Name: Model
+Type: Folder
+Children:
+- Name: Smt
+  Type: Folder
+  Children:
+  - Name: LineSpeed
+    Type: BaseDataVariableType
+    DataType: Float
+- Name: Speed
+  Type: BaseDataVariableType
+  DataType: Float
+`,
+  )
+  await writeFile(join(root, 'Nodes', 'NetLogic', 'NetLogic.yaml'), netlogicChapter())
+  await writeFile(join(root, 'Nodes', 'UI', 'UI.yaml'), uiChapter())
+  await writeFile(
+    join(root, 'Nodes', 'UI', 'Screens', 'Screens.yaml'),
+    `Name: Screens
+Type: ScreensCategoryFolder
+Children:
+- Name: Flat
+  Id: g=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  Supertype: Screen
+  ReferenceType: HasComponent
+  Children:
+  - Name: Kpi
+    Type: Rectangle
+    Children:
+    - Name: LeftMargin
+      Type: BaseVariableType
+      DataType: Size
+      ModellingRule: Optional
+      Value: 24.0
+    - Name: TopMargin
+      Type: BaseVariableType
+      DataType: Size
+      ModellingRule: Optional
+      Value: 24.0
+    - Name: Width
+      Type: BaseVariableType
+      DataType: Size
+      ModellingRule: Optional
+      Value: 320.0
+    - Name: Height
+      Type: BaseVariableType
+      DataType: Size
+      ModellingRule: Optional
+      Value: 120.0
+- Name: Scaled
+  Id: g=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  Supertype: Screen
+  ReferenceType: HasComponent
+  Children:
+  - Name: Body
+    Type: ScaleLayout
+`,
+  )
+  return root
+}
+
+/** A NetLogic chapter whose pointer aims at a UI object, which exists only inside a session. */
+function netlogicChapter() {
+  return `Name: NetLogic
+Type: NetLogicCategoryFolder
+Children:
+- Name: NavLogic
+  Type: NetLogic
+  Children:
+  - Name: WindowPointer
+    Type: NodePointer
+    DataType: NodeId
+    Value: "/Objects/Proj/UI/MainWindow"
+`
+}
+
+/** The UI chapter: three links that must resolve, two dead ones, one pointer and two aliases. */
+const uiChapter = (dead = true) => `Name: UI
+Type: UICategoryFolder
+Children:
+- Name: MainWindow
+  Type: Window
+  Children:
+  - Name: MainLoader
+    Type: PanelLoader
+- Name: Data
+  Type: Folder
+  Children:
+  - Name: Metrics
+    Type: NodePointer
+    DataType: NodeId
+    Value: "/Objects/Proj/Model"
+- Name: Widget
+  Type: Folder
+  Children:
+  - Name: GoodText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "/Objects/Proj/Model/Smt/LineSpeed"
+  - Name: IndexedText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "/Objects/Proj/Model/Smt/LineSpeed[0]"
+  - Name: RootText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "/Objects/Proj@BrowseName"
+  - Name: RelativeGood
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "../GoodText"
+  - Name: DeadText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "${dead ? '/Objects/Proj/Model/Missing' : '/Objects/Proj/Model/Smt/LineSpeed'}"
+  - Name: RelativeDead
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "${dead ? '../NoSuchSibling' : '../GoodText'}"
+  - Name: DeadPointer
+    Type: NodePointer
+    DataType: NodeId
+    Value: "${dead ? '/Objects/Proj/Model/MissingPointer' : '/Objects/Proj/Model'}"
+  - Name: ItemText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "{Item}@Value"
+  - Name: AliasText
+    Type: BaseDataVariableType
+    DataType: String
+    Children:
+    - Name: DynamicLink
+      Type: DynamicLink
+      DataType: NodePath
+      Value: "{Metrics}/Speed"
+- File: Screens/Screens.yaml
+`
+
+test('validation names the dead bindings, the UI pointer and the flat screens a hand-written chapter leaves', async () => {
+  const root = await bindingsFixture()
+  const project = await projectInfo('Proj', root)
+  const report = await validateProject(project)
+  const codes = report.findings.map((finding) => finding.code)
+  assert.equal(report.ok, false)
+  assert.equal(report.critical, 3, JSON.stringify(report.findings.filter((finding) => finding.severity === 'critical')))
+  assert.equal(report.warnings, 3, JSON.stringify(report.findings.filter((finding) => finding.severity === 'warning')))
+  assert.equal(report.findings.filter((finding) => finding.severity === 'info').length, 1)
+  for (const code of ['unresolved_dynamic_link', 'unresolved_pointer', 'pointer_to_ui_object', 'VIEW-LAYOUT-01', 'VIEW-SCALE-01', 'binding_unverified']) {
+    assert.ok(codes.includes(code), `expected ${code} in ${codes.join(', ')}`)
+  }
+
+  // Three links resolve and must stay silent: an absolute path, an indexed path and the project root.
+  const dead = report.findings.filter((finding) => finding.severity !== 'info')
+  for (const finding of dead) {
+    assert.ok(!String(finding.value ?? '').includes('Smt/LineSpeed'), `reported a resolving link: ${JSON.stringify(finding)}`)
+    assert.ok(!String(finding.value ?? '').startsWith('/Objects/Proj@'), `reported the project root: ${JSON.stringify(finding)}`)
+    assert.notEqual(finding.value, '{Metrics}/Speed', `reported a bound alias: ${JSON.stringify(finding)}`)
+  }
+
+  // A dead absolute link names the file, the owning node and the segment that is missing.
+  const deadAbsolute = dead.find((finding) => finding.code === 'unresolved_dynamic_link' && finding.value === '/Objects/Proj/Model/Missing')
+  assert.ok(deadAbsolute !== undefined, JSON.stringify(dead))
+  assert.match(deadAbsolute.path, /^Proj\/UI\/Widget\/DeadText/u)
+  assert.match(deadAbsolute.message, /Missing/u)
+  // Every new finding carries a sentence an author can act on.
+  for (const finding of report.findings.filter((entry) => ['unresolved_dynamic_link', 'unresolved_pointer', 'pointer_to_ui_object', 'VIEW-LAYOUT-01', 'VIEW-SCALE-01', 'binding_unverified'].includes(entry.code))) {
+    assert.ok(typeof finding.fix === 'string' && finding.fix.length > 20, `no fix on ${JSON.stringify(finding)}`)
+  }
+
+  // A dead binding is a project invariant, so staging any edit refuses until it is fixed.
+  const staged = await stageOps(project, [
+    { op: 'insert_node', path: 'Nodes/Model/Model.yaml', node_path: '', node: { Name: 'DshProbe', Type: 'Folder' } },
+  ])
+  assert.equal(staged.writable, false)
+  // The refusal says whose dead link it is: this plan introduces none, so it must not claim to break anything.
+  assert.equal(staged.introduced_criticals, 0, JSON.stringify(staged.next))
+  assert.ok(staged.inherited_criticals >= 1, JSON.stringify(staged.next))
+  assert.match(staged.next, /already carries/u)
+  assert.doesNotMatch(staged.next, /The plan introduces/u)
+
+  // Fixing the dead values is the whole repair: the same project then validates.
+  await writeFile(join(root, 'Nodes', 'UI', 'UI.yaml'), uiChapter(false))
+  const repaired = await validateProject(await projectInfo('Proj', root))
+  assert.equal(repaired.critical, 0, JSON.stringify(repaired.findings.filter((finding) => finding.severity === 'critical')))
+  assert.equal(repaired.ok, true)
 })
 
 test('the write gate refuses an open Studio and unflushed bridge changes', async () => {

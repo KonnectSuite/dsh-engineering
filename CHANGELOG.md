@@ -1,5 +1,126 @@
 ## [Unreleased]
 
+### Fixed
+
+- **A fill size without its Stretch alignment rendered at the content size, so a container screen drew as a
+  stack of small cards.** `surface()` in `packages/optix/lib/screens.js` and `cellSurface()` in
+  `packages/optix/lib/kit.js` wrote `Width`/`Height` `-1.0` and never wrote `HorizontalAlignment`/
+  `VerticalAlignment`, and `layout()` in `packages/optix/lib/containers.js` wrote an alignment only when the
+  caller passed one — so card rectangles and their `Body` columns kept the default. The first live render of the
+  SMT demo showed four cards hugging their text at ~95 px inside a 1060 px row, each short inside its row
+  (`optix-proof/smt/shots/demo-linestatus.png`, 2026-11-17), while the probe that proved the row split had
+  always written the pair (`Width -1` **and** `HorizontalAlignment 3` → 530 + 20 gap + 514). `layout()` now
+  derives the alignment from the size — `FILL` implies `ALIGN.STRETCH`, a pinned pixel size gets none — and both
+  leaf emitters emit `stretch`/`stretchVertical`. The live screens were repaired in place with 48
+  `set_property` operations and re-rendered as two equal rows splitting the row 50/50 with every card filling it
+  (`optix-proof/smt/shots/demo-stretch-linestatus.png`, `…-alarms-full.png`).
+
+- **`optix_logs` returned invalid output and killed the whole call.** `tailFile` put a `Date` object in
+  `mtime`, which the structured tool-result contract rejects as "value is not lossless JSON", so the tool
+  failed with no log at all — in the middle of a session whose blank label needed exactly that log
+  (measured 2026-11-16, session f7c609cb). Every registered tool now returns through one `jsonSafe`
+  sanitiser (`packages/optix/lib/json.js`): dates become ISO strings, `NaN`/`Infinity` become null,
+  bigints and `Map`/`Set`/`Error` are converted, and a cycle becomes null rather than an exception.
+
+- **A project folder passed as `project` was rejected as a project name.** `optix_emulator`,
+  `optix_save` and `optix_logs` required `project` and then looked for `<project>.optix`, so
+  `project: "C:\\…\\MyProject"` failed with `missing required property "project"` or a folder that held
+  nothing (session f7c609cb, 2026-11-16). One resolver (`packages/optix/lib/refs.js`) now accepts a
+  name, a `project_root`, or the folder itself as `project`, and derives the name from it.
+
+- **A batch naming an array-valued property validated, applied half, and stopped `indeterminate`.** The
+  bridge's `validate_ops` cannot see that a property is array-typed when the node it names is created later in
+  the same batch — its catalogue declares `GridLayout.Columns` as `String` while array-ness lives in
+  `ArrayDimensions` and the CLR proxy type — so a 35-op batch answered `ok`, the eleventh op (`Columns`) came
+  back `unsupported_array_write`, and eleven operations were already in the model (measured live 2026-11-16 on
+  `AryaSMTLineDemo`). `runValidatedBatch` now refuses the whole batch before a byte is sent
+  (`arrayWriteRefusal` in `packages/optix/lib/containers.js`, keyed on `ARRAY_VALUED_PROPERTIES`:
+  `Columns`/`Rows` as `String[]`, `AliasNodeArray` as `NodeId[]`), naming the fix rather than only the refusal.
+  This matters beyond tidiness: the bridge's own guard comment records that a scalar write reaching the assign
+  path of an array variable has terminated Studio outright.
+
+- **A script pointer created as `NodePointer` made the runtime kill the node at boot.** `optix_script`
+  `pointers` created the variable with `datatype: "NodePointer"`, which resolves to a VariableType, so the
+  bridge takes its `MakeVariable(name, BaseDataType, dtId)` route (`StudioMCPBridge.cs:2240-2261`) and the
+  variable lands as `Type: NodePointer` with `DataType: BaseDataType`. The Value coercion dispatches on that
+  DataType name, misses its `NodeId` arm (`:4090-4110`), and stores the authored path as a plain String;
+  Studio saves it as `{"Type":12,"Body":"Model/..."}`; the runtime hands that String to
+  `(NodeId)pointer.Value` and the node dies with `[code=df0003] … InvalidCastException …
+  UAValue.op_Implicit` — `Start()` is not retried and the class never runs. `retype` cannot repair it: it
+  refuses every datatype outside its ten scalar names (`:2320-2330`). Pointers are now created with
+  **`datatype: "NodeId"`**, which lands as `BaseDataVariableType` + `DataType: NodeId` + a path Value — the
+  shape Rockwell's own `SystemNode` pointers carry. Measured end to end on `AryaSMTLineDemo` 2026-11-17: a
+  bridge-created `NodeId` pointer on a bridge-created NetLogic node resolved in the runtime and a
+  `PeriodicTask` wrote through it (`Target resolved to ProbeCount 9/232dc5fd-…`, then
+  `wrote through the pointer: ProbeCount = 10 / 20 / 30`, one second apart, no `df0003`).
+
+- **The templates' pointer read could not compile, and its cast could not work.** The `periodic` template
+  wrote `value.Value = Convert.ToInt32(value.Value) + 1;`, and `IUAVariable.Value` is `dynamic`, so the call
+  is ambiguous between `Convert.ToInt32(bool)` and `Convert.ToInt32(DateTime)` and does not compile against
+  Studio 1.8.1.27 (`error CS0121`, measured on the first live `ProbeTickLogic` build). It now reads through
+  an `int`. The read of the pointer itself is now `targetId = (NodeId)target.Value;` inside a `try/catch`:
+  `IUAVariable.Value` hands back a `UAManagedCore.UAValue` wrapper, so a `raw is NodeId` type test is always
+  false and the conversion is the only thing that can succeed — and it is exactly what throws when the
+  variable is not a NodeId. All five emitted templates were then compiled against Studio 1.8.1.27 (0 errors,
+  0 warnings) and rated clean by the package's own review.
+
+### Added
+
+- **Screens and shells are built from layout containers, not from absolute coordinates.** Every scaffolded
+  screen now has one direct child — a full-canvas `ScaleLayout` (`FillMode` Fit, `OriginalWidth`/
+  `OriginalHeight` at the design box) — and inside it a `ColumnLayout` chrome whose header band, content
+  `ColumnLayout` and footer `RowLayout` place their children; the content column holds one `RowLayout` per
+  row of cards, the cards are items of that row, and each card's rows sit in a `ColumnLayout` of its own. The
+  shell gained header and footer `RowLayout`s over the same measured bands. New module
+  `packages/optix/lib/containers.js` holds the one spelling of each container and its enum values (`Width`
+  `-1.0` + `HorizontalAlignment` `3` is fill/stretch, as the shipped starter YAML writes it). A screen
+  authored at 1280×800 therefore reflows into a larger window instead of sitting in it letterboxed at its
+  drawn coordinates, which is what the previous generators produced: measured in the runtime preview, a 400×200
+  rectangle designed at (100,100) rendered 330×165 in a 1060×736 content area (fit factor 0.828, exactly
+  `min(1060/1280, 736/800)`) with its 28 px label unscaled, and two cards at `Width -1` + `HorizontalAlignment
+  3` split a 1060 px row as 530 + 20 gap + 514 (`optix-proof/smt/shots/probe-scale4.png`,
+  `optix-proof/smt/shots/probe-rc.png`). Studio's own `GridLayout` is never emitted: its `Columns`/`Rows` are
+  `String[]` and the bridge refuses a scalar write to them (`unsupported_array_write`) — after `validate_ops`
+  passed the batch, because the catalogue declares `Columns` as `String` and array-ness lives in
+  `ArrayDimensions` — and its per-cell `GridLayoutProperties` child was the last thing written before Studio
+  died with a native `invalid unordered_map<K, T> key` in `HMISolution` (2026-11-16), which cost every unsaved
+  edit of that session; `layout()` refuses both node types before a batch is built, and an unequal track pair
+  is two explicit pixel widths because no `fr` template is writable. `maxScreenOps` default rose 240 → 400
+  because a container tree costs more operations than the flat one it replaced (130/176/228/274 for 1–4 cards,
+  153/199/252/298 with a navigation row), and `optix_screen` `library_items` now instantiate inside the design
+  canvas so a stamped composite scales with the screen. The `NavigationPanel` rail and the `PanelLoader` were
+  deliberately left where they are: a navigation button moved inside a panel resolves the design-time loader
+  under the runtime tree and the runtime answers that nothing handles `ChangePanel` (measured 2026-11-14). What
+  a live session still owes is listed in `packages/optix/skills/screens-and-layout.md`.
+
+- **`optix_script pointers` — a NetLogic reads its target through a `NodePointer` variable instead of a
+  node path in the source.** `pointers: [{name: "Target", target: "Model/Smt/LineSpeed"}]` creates the
+  `NodePointer` variable under the logic node and points it; the `periodic` and `observer` templates now
+  read `LogicObject.GetVariable("Target")`, check `NodeId.Empty`, and resolve once in `Start()` with
+  `InformationModel.GetVariable`. A path string compiles and then breaks silently when the object moves
+  — no build sees it — while the pointer is updated by the move itself. The review gained
+  `OPTIX-NL-14` (a pointer cast with no empty check, warning) and `OPTIX-NL-12` now rates a hard-coded
+  `"Model/…"` literal a warning with the pointer fix named, comments excluded so a generator cannot flag
+  its own output.
+
+- **The Optix skill tells the agent what to do when the bridge is down.** `SKILL.md` gained "The bridge
+  is down": ask once for Studio + StartBridge, treat an empty `ask_user_question` answer as *nobody is at
+  the console* rather than as permission, name what the file channel may still do with Studio closed,
+  forbid hand-written bindings called bound, and stop after two failed attempts at the same fact. Written
+  from session f7c609cb (2026-11-16), where a run read `studio_running: false`, hand-wrote UI YAML for an
+  hour and produced a screen whose every `DynamicLink` was dead.
+
+- **`optix_project check` resolves bindings instead of only parsing chapters.** A hand-written UI chapter
+  could report `ok: true, critical: 0` while every `DynamicLink` in it pointed at nothing — exactly what
+  session f7c609cb believed for thirty steps and six emulator rebuilds. The check now reports
+  `unresolved_dynamic_link` and `unresolved_pointer` (critical) for a value naming a node the project does
+  not declare, `pointer_to_ui_object` (warning) for a NetLogic pointing at a per-session UI object,
+  `binding_unverified` (info) for a spelling files cannot prove, and `VIEW-LAYOUT-01` / `VIEW-SCALE-01`
+  (warning) for a screen that is pinned rectangles with no `ScaleLayout`. Measured on the shipped starter:
+  128 judgeable links, 121 resolve, 7 info — and on the customer template in `KphungFROMM`, 2 criticals
+  that are genuine dead links. Staging keeps the gate (an edit on top of a dead reference would hide it)
+  but now says whether the dead link is the plan's own or inherited, so the reader looks in the right file.
+
 ## [0.99.0] - 2026-11-16
 
 ### Fixed

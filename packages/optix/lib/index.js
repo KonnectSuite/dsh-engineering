@@ -1,6 +1,7 @@
 import z from "@deepseek-ai/schemastery";
-import { defineTool } from "@deepseek-ai/dsh-tools";
 import { assertNever, isJsonValue } from "@deepseek-ai/dsh-util-values";
+import { jsonSafe, jsonTool } from "./json.js";
+import { looksLikePath, projectNameFromRoot, projectRef } from "./refs.js";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -10,6 +11,7 @@ import { basename, dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
+import { arrayWriteRefusal } from "./containers.js";
 import { armBridge, bridgeVersion } from "./arm.js";
 import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls, writeReferences } from "./build.js";
 import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
@@ -1035,7 +1037,7 @@ function applyPreview(ctx, config) {
 		};
 	}
 	const ocr = config.ocr;
-	if (ocr) ctx.effect(() => ctx.tools.register(defineTool({
+	if (ocr) ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_ocr",
 		description: "Read rendered Optix canvas text by capturing the configured Chromium preview and invoking the configured host Tesseract executable directly, without MCP or Python. Returns word boxes in screenshot pixels, confidence fractions, and the durable source image reference. OCR can misread values; inspect optix_screenshot and verify against the live model before acting.",
 		parameters: { psm: {
@@ -1086,7 +1088,7 @@ function applyPreview(ctx, config) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_screenshot",
 		description: "Capture the configured Optix emulator browser viewport through direct CDP and return a durable image. Use after live authoring and emulator rebuild to verify rendering. Requires preview enabled, an attachment provider, and exactly one already-open preview tab.",
 		parameters: {},
@@ -1155,7 +1157,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}Ãƒâ€”${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -1186,7 +1188,7 @@ function applyPreview(ctx, config) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_preview",
 		description: "Inspect browser text or interact with the explicitly configured Optix emulator preview through direct CDP. Canvas controls may have no DOM text; inspect optix_screenshot and use viewport CSS-pixel coordinates. Input requires allowPreviewInput and may change runtime values.",
 		parameters: { request: {
@@ -1346,9 +1348,9 @@ function parseTemplateManifest(text) {
 * @param maxBytes - Maximum bytes returned by a file acquisition.
 */
 function applyTemplates(ctx, maxBytes) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_template",
-		description: "Our three packaged starters — Arya Optix IPC and OptixPanel, both blank, and the branded application starter whose operator shell, screens and dialog are already built — chosen between, not surveyed. With no arguments it answers with every manifest and its `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
+		description: "Our three packaged starters Ã¢â‚¬â€ Arya Optix IPC and OptixPanel, both blank, and the branded application starter whose operator shell, screens and dialog are already built Ã¢â‚¬â€ chosen between, not surveyed. With no arguments it answers with every manifest and its `questions` and writes nothing, which is how a template or standard request opens; with `template` it reads that starter's NetLogic and project files, or with `destination` scaffolds it into a project folder of its own. With `destination`, the starter is copied into `<destination>/<name>` (or into the destination itself when that folder already carries the project name, because Studio warns when the project name and its folder disagree), renamed, sized to the canvas you pass, and given ProjectFiles/NetSolution with the bridge this bundle ships; nothing is overwritten and no Studio connection is required. `width` and `height` are required with `destination`: ask the operator for the real screen box before scaffolding, because every screen drafted afterwards inherits that canvas. The manifest carries `questions` to ask before a copy, because the runtime target, the screen box, the project name and the destination are not recoverable by an edit afterwards. Studio still compiles the class and an engineer still runs StartBridge - those two are the only steps this cannot do.",
 		parameters: {
 			template: {
 				type: "string",
@@ -1501,7 +1503,7 @@ function applyTemplates(ctx, maxBytes) {
  * @param ctx - Harness tool runtime context.
  */
 function applyBridgeArm(ctx, bridge) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_bridge_arm",
 		description: "Report, and on confirmation write, the Studio bridge an existing Optix project needs so it can be read and authored at all. Works on the project directory, not through a bridge: it checks ProjectFiles/NetSolution, keeps whatever the project already holds under ProjectFiles/.dsh-backups, writes the bridge this bundle ships, and adds the StudioMCPBridge NetLogic node to Nodes/NetLogic/NetLogic.yaml when the project has none (a hand-built project usually does not, and StartBridge is unreachable without it; an existing node is left exactly as it is). With confirm false nothing is written. Studio still compiles the class and the engineer still runs StartBridge; no tool can do either from outside Studio.",
 		parameters: {
@@ -1572,7 +1574,7 @@ function applyBridgeArm(ctx, bridge) {
  * @param settings - Resolved deployment settings, for the preview address to probe.
  */
 function applyEmulator(ctx, settings) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_emulator",
 		description: "Read, start, restart, stop or read the log of the Optix runtime that serves a project's web preview. This is the only sanctioned way to run the project: never launch FTOptixRuntime.exe yourself, never stop it with Stop-Process, and never use desktop automation on Studio's toolbar. It finds FTOptixRuntime.exe under the Studio install, loads the project's .optix file, and only reports `started` once the preview address actually answers; when it does not, it returns the runtime's own log tail and a named diagnosis. stop ends the runtime for that project even when this plugin did not start it, which is what a rebuild needs. The runtime loads the project as saved, so changes made through the bridge need the engineer's Save and Build first.",
 		parameters: {
@@ -1584,8 +1586,11 @@ function applyEmulator(ctx, settings) {
 			},
 			project: {
 				type: "string",
-				required: true,
-				description: "Absolute path of the project directory holding the .optix file."
+				description: "Absolute path of the project directory holding the .optix file. project_root is accepted too, so either spelling works."
+			},
+			project_root: {
+				type: "string",
+				description: "The same project folder under its other name; either spelling is accepted."
 			},
 			runtime: {
 				type: "string",
@@ -1621,8 +1626,13 @@ function applyEmulator(ctx, settings) {
 			const readsOnly = args.action === "status" || args.action === "logs";
 			if (!readsOnly && !settings.allowInvoke) throw new Error("Starting, restarting or stopping a process needs allowInvoke in the Optix row's plugin configuration; status and logs work without it.");
 			const origin = settings.bridgeUrls[0] ?? "";
+			// Either spelling of the folder is accepted: `project` and `project_root` name the same directory, and
+			// a session that reaches for the wrong one should not lose a step to it (session f7c609cb, 2026-11-16).
+			const ref = projectRef(args);
+			const projectDir = ref.root || (looksLikePath(ref.project) ? ref.project : "");
+			if (projectDir === "") throw new Error("optix_emulator needs the project folder: pass project (or project_root) as the directory that holds the .optix file.");
 			const unsaved = pendingModelChanges(origin);
-			const disk = await diskState(args.project);
+			const disk = await diskState(projectDir);
 			// Files are the only evidence a Save reached disk: nothing in UAManagedCore can
 			// save a project, so the newest write under Nodes/ is compared with the first
 			// pending bridge change instead of trusting that a keystroke landed.
@@ -1645,7 +1655,7 @@ function applyEmulator(ctx, settings) {
 				};
 			};
 			if (args.action === "start") return withSaveState(await startEmulator({
-				project: args.project,
+				project: projectDir,
 				runtime: args.runtime ?? "",
 				previewUrl: settings.previewUrl,
 				waitMs: args.wait_ms,
@@ -1653,7 +1663,7 @@ function applyEmulator(ctx, settings) {
 				signal: exec.signal
 			}));
 			if (args.action === "restart") return withSaveState(await restartEmulator({
-				project: args.project,
+				project: projectDir,
 				runtime: args.runtime ?? "",
 				previewUrl: settings.previewUrl,
 				waitMs: args.wait_ms,
@@ -1661,19 +1671,19 @@ function applyEmulator(ctx, settings) {
 				signal: exec.signal
 			}));
 			if (args.action === "stop") return await stopEmulator({
-				project: args.project,
+				project: projectDir,
 				project_file: "",
 				force: args.force === true,
 				previewUrl: settings.previewUrl,
 				signal: exec.signal
 			});
 			if (args.action === "logs") return await emulatorLogs({
-				project: args.project,
+				project: projectDir,
 				project_file: "",
 				lines: args.lines
 			});
 			const report = await emulatorStatus({
-				project: args.project,
+				project: projectDir,
 				previewUrl: settings.previewUrl
 			}, exec.signal);
 			if (!report.serving) report.next = report.project_file === "" ? "Point project at the folder holding the project's .optix file." : "Nothing serves the preview address: optix_emulator with action start launches the runtime and waits for it to answer.";
@@ -1702,7 +1712,7 @@ const Config = z.object({
 	requestTimeoutMs: z.natural().min(1).max(2147483647).default(2e4),
 	maxResponseBytes: z.natural().min(1).default(2e6),
 	maxBatchOps: z.natural().min(1).default(40),
-	maxScreenOps: z.natural().min(1).default(240),
+	maxScreenOps: z.natural().min(1).default(400),
 	maxMapNodes: z.natural().min(1).default(800),
 	maxMapDepth: z.natural().min(1).default(8),
 	preview: z.boolean().default(false),
@@ -1757,17 +1767,15 @@ function knownProjectType(type) {
 /**
 * Resolve the project a file-channel tool was pointed at.
 *
-* `project` alone searches the places Studio projects live; `project_root` settles it. With
-* only a folder, the name comes from the one `<Project>.optix` in it.
+* Either argument may be the name or the folder: `project` alone searches the places Studio projects
+* live, `project_root` settles it, and a folder passed as `project` is read as the folder it is.
 * @param args - Tool arguments carrying `project` and/or `project_root`.
 */
 async function resolveProjectFolder(args) {
-	const named = typeof args.project === "string" ? args.project.trim() : "";
-	const folder = typeof args.project_root === "string" ? args.project_root.trim() : "";
-	if (named === "" && folder === "") {
-		throw new Error("give project (the project name, as optix_status reports it) or project_root (the folder that holds <Project>.optix)");
-	}
-	let project = named;
+	const ref = projectRef(args);
+	if (!ref.provided) throw new Error("give project (the project name, as optix_status reports it) or project_root (the folder that holds <Project>.optix)");
+	let project = ref.project;
+	const folder = ref.root;
 	if (project === "") {
 		let entries;
 		try {
@@ -1797,7 +1805,7 @@ function resolve(config) {
 		requestTimeoutMs: config.requestTimeoutMs ?? 2e4,
 		maxResponseBytes: config.maxResponseBytes ?? 2e6,
 		maxBatchOps: config.maxBatchOps ?? 40,
-		maxScreenOps: config.maxScreenOps ?? 240,
+		maxScreenOps: config.maxScreenOps ?? 400,
 		maxMapNodes: config.maxMapNodes ?? 800,
 		maxMapDepth: config.maxMapDepth ?? 8,
 		preview: config.preview ?? false,
@@ -1857,7 +1865,7 @@ const OCR_INSTALL_TIMEOUT_MS = 300000;
  * @param ctx - Cordis context with the harness tool runtime.
  */
 function applySkills(ctx) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_list_skills",
 		description: "List the plugin's own Optix topic playbooks - one page per capability (authoring loop, bindings and expressions, runtime C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag import). Each row reports the topic name, its title, a one-line summary and its size, so a session can pick the page it needs and read only that one with optix_get_skill. Read-only.",
 		parameters: {
@@ -1891,7 +1899,7 @@ function applySkills(ctx) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_get_skill",
 		description: "Read one Optix topic playbook in full, by the name optix_list_skills reported. Each page is written from a measurement on a live project: the exact tool calls and property names, plus the traps that make a feature report success while rendering nothing. Use it before authoring a feature that has a page - the page is cheaper than rediscovering the trap. Read-only.",
 		parameters: {
@@ -1924,14 +1932,14 @@ function applySkills(ctx) {
  *
  * Acknowledge an alarm, Confirm it, close a dialog, run a logger's `Log`, or execute a NetLogic's
  * `[ExportMethod]`. Only nodes whose C# class is loaded answer: a node the bridge created as a plain object
- * has no behaviour, and the bridge says so (`No behaviour or observer found that handles the method …`),
+ * has no behaviour, and the bridge says so (`No behaviour or observer found that handles the method Ã¢â‚¬Â¦`),
  * which is an honest answer about the node rather than a broken call. It runs in Studio, so it needs
  * `allowInvoke`.
  * @param ctx - Cordis context with the harness tool runtime.
  * @param settings - The Optix row's settings.
  */
 function applyInvoke(ctx, settings) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_invoke",
 		description: "Call a method on a live node in Studio - acknowledge or confirm an alarm, close a dialog, run a DataLogger's Log, or execute a NetLogic's [ExportMethod]. This is the only way to exercise behaviour: a model write cannot do it, and a node the bridge created as a plain object has no behaviour at all, which the bridge reports as \"No behaviour or observer found that handles the method\". Argument syntax follows the bridge: name=value pairs separated by semicolons. Needs allowInvoke.",
 		parameters: {
@@ -1987,7 +1995,7 @@ function applyInvoke(ctx, settings) {
  * @param ctx - Cordis context with the harness tool runtime.
  */
 function applyLogs(ctx) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_logs",
 		description: "Read the tail of the Optix runtime log (the latest run of the project, per project) or the bridge plugin's log, optionally filtered to lines containing a word such as \"error\", \"store\", \"formatter\" or \"behaviour\". This is where a silent failure is explained: a component that refused a dynamic link, a method that is not a behaviour, a store that never opened. Read-only; it never starts or stops anything.",
 		parameters: {
@@ -1999,6 +2007,10 @@ function applyLogs(ctx) {
 			project: {
 				type: "string",
 				description: "Absolute project folder, used to pick the runtime log that belongs to it. Omit for the newest runtime log."
+			},
+			project_root: {
+				type: "string",
+				description: "The same project folder under its other name; either spelling is accepted."
 			},
 			lines: {
 				type: "number",
@@ -2026,7 +2038,8 @@ function applyLogs(ctx) {
 			const count = typeof args.lines === "number" && Number.isFinite(args.lines) ? Math.min(2000, Math.max(1, Math.trunc(args.lines))) : 80;
 			const filter = typeof args.filter === "string" ? args.filter : "";
 			const which = typeof args.which === "string" ? args.which : "runtime";
-			return which === "bridge" ? await bridgeLog(count, filter) : await runtimeLog(args.project, count, filter);
+			const ref = projectRef(args);
+			return which === "bridge" ? await bridgeLog(count, filter) : await runtimeLog(ref.root || ref.project, count, filter);
 		}
 	})));
 }
@@ -2045,14 +2058,17 @@ function applyLogs(ctx) {
  * @param settings - Resolved deployment settings.
  */
 function applySave(ctx, settings) {
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_save",
 		description: "Save the open Optix project through Studio and prove the write landed. Studio exposes no save API to a NetLogic bridge, so this raises the Studio window, sends Ctrl+S, and retries until a file under Nodes/ or ProjectFiles/NetSolution/bin is newer than it was before the first keystroke; it reports attempts, how many keystrokes were delivered, whether the foreground was confirmed, and the latency. ok is true only when the design model on disk actually moved - a keystroke that went to another window is reported as foreground_refused, and a delivered Ctrl+S that changed nothing is no_write. Saving rebuilds the .NET solution; a NetLogic or bridge change additionally needs a Studio restart before the new class answers. Requires allowWrites.",
 		parameters: {
 			project: {
 				type: "string",
-				required: true,
-				description: "Absolute path of the project directory holding the .optix file."
+				description: "Absolute path of the project directory holding the .optix file (or pass project_root)."
+			},
+			project_root: {
+				type: "string",
+				description: "The same project folder under its other name; either spelling is accepted."
 			},
 			timeout_s: {
 				type: "integer",
@@ -2078,8 +2094,11 @@ function applySave(ctx, settings) {
 		async execute(args, exec) {
 			exec.signal.throwIfAborted();
 			if (!settings.allowWrites) throw new Error("Saving writes the project to disk, so it needs allowWrites in the Optix row's plugin configuration.");
+			const ref = projectRef(args);
+			const root = ref.root || (looksLikePath(ref.project) ? ref.project : "");
+			if (root === "") throw new Error("optix_save needs the project folder: pass project (or project_root) as the directory that holds the .optix file.");
 			return await saveProject({
-				projectRoot: args.project,
+				projectRoot: root,
 				timeoutMs: args.timeout_s === void 0 ? void 0 : args.timeout_s * 1000,
 				intervalMs: args.interval_s === void 0 ? void 0 : args.interval_s * 1000
 			});
@@ -2123,7 +2142,7 @@ function applyOcrSetup(ctx, settings) {
 		});
 		return completed.promise;
 	}
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_ocr_setup",
 		description: "Report the host Tesseract install that optix_ocr reads canvas text with, and with install set to true install it through the Windows package manager. Detection names the executable, whether it is on this machine, and whether the language data is present; the install is idempotent and never installs a Python service or an OCR daemon. Run this before telling an engineer that canvas text cannot be read.",
 		parameters: {
@@ -2229,7 +2248,7 @@ function apply(ctx, config = {}) {
 		if (!settings.allowWrites) throw new Error("Optix live authoring is disabled; set allowWrites in the plugin configuration");
 		if (destructive && !settings.allowDestructive) throw new Error("This operation requires allowDestructive in the plugin configuration");
 	}
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_status",
 		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, the preview, emulator and OCR chain with the first missing link named, and whether the live project has authoring changes the engineer still has to save. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, after authoring, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required.",
 		parameters: {
@@ -2309,7 +2328,7 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_read",
 		description: "Read the live Optix model, screens, widget types, schemas, variable members, or CLR diagnostics. Start with map, inspect declared properties with type_schema, then author. Disk files may be stale while Studio is open.",
 		parameters: {
@@ -2482,6 +2501,15 @@ function apply(ctx, config = {}) {
 			...op,
 			name: op.prop_name
 		});
+		// An array-valued property passes the bridge's own validation when the node it names does not exist
+		// yet, so the refusal lands mid-batch and leaves the model half built (measured 2026-11-16: 35 ops
+		// validated ok, the eleventh refused, eleven written). Refuse the whole batch before anything is sent.
+		const arrayOp = normalized.map((op) => arrayWriteRefusal(op)).find((reason) => reason !== undefined);
+		if (arrayOp !== undefined) return {
+			status: "refused",
+			applied: 0,
+			validation: { ok: false, errors: [arrayOp] }
+		};
 		const validation = await bridge.request(origin, "validate_ops", signal, {}, "POST", {
 			ops: normalized,
 			strict: true
@@ -2534,7 +2562,89 @@ function apply(ctx, config = {}) {
 			...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed })
 		};
 	}
-	ctx.effect(() => ctx.tools.register(defineTool({
+	/**
+	 * Check a `pointers` argument before anything is written.
+	 *
+	 * The pointer convention replaces a node path written in C#: the class reads
+	 * `LogicObject.GetVariable("Target")`, and the path lives in the project, where
+	 * moving the object updates it - nothing recompiles. Validation runs first so a
+	 * bad pointer list cannot leave a node and a class behind it.
+	 * @param pointers - The raw argument: absent, or a list of `{name, target}`.
+	 * @returns The normalised list (empty when the argument is absent).
+	 */
+	function normalizePointers(pointers) {
+		if (pointers === void 0 || pointers === null) return [];
+		if (!Array.isArray(pointers)) throw new Error("pointers must be an array of {name, target}");
+		if (pointers.length > 12) throw new Error("pointers must name at most 12 variables");
+		return pointers.map((entry, index) => {
+			const name = typeof entry?.name === "string" ? entry.name.trim() : "";
+			const target = typeof entry?.target === "string" ? entry.target.trim() : "";
+			if (!/^[A-Za-z_][A-Za-z0-9_]{0,63}$/u.test(name)) throw new Error(`pointers[${index}].name "${name}" is not a variable name: a letter or underscore, then letters, digits or underscores, at most 64 characters`);
+			if (target === "") throw new Error(`pointers[${index}].target is empty - name the variable the pointer should reference, project-relative (for example "Model/Smt/LineSpeed")`);
+			return { name, target };
+		});
+	}
+	/**
+	 * Create the pointer variables a NetLogic reads, and point them.
+	 *
+	 * Measured on Studio 1.8.1.27 with bridge 1.0.9 (AryaSMTLineDemo, 2026-11-17): the
+	 * pointer is created with `datatype: "NodeId"`. `datatype: "NodePointer"` resolves to a
+	 * VariableType, so the bridge takes its `MakeVariable(name, BaseDataType, dtId)` route
+	 * (`StudioMCPBridge.cs:2240-2261`) and the variable comes back `Type: NodePointer` with
+	 * `DataType: BaseDataType`; the Value coercion then dispatches on that DataType name,
+	 * misses its `case "NodeId"` arm (`:4090-4110`), and stores the path as a plain String.
+	 * Studio saves it as `{"Type":12,"Body":"Model/..."}`, the runtime hands that String to
+	 * `(NodeId)pointer.Value`, and the node dies at boot with `[code=df0003] ...
+	 * InvalidCastException ... UAValue.op_Implicit` - the class never runs and Start() is
+	 * never retried. With DataType NodeId the same two writes land as `BaseDataVariableType`
+	 * + `DataType: NodeId` + a path Value, which is the shape Rockwell's own `SystemNode`
+	 * pointers carry, and the class resolves it. `retype` cannot repair the wrong one: it
+	 * refuses every datatype outside its ten scalar names (`:2320-2330`).
+	 * @returns The pointer report, or the batch failure - never a silent success.
+	 */
+	async function applyPointers({ origin, project, health: selectedHealth, nodePath, pointers, signal }) {
+		if (pointers.length === 0) return void 0;
+		const ops = [];
+		for (const pointer of pointers) {
+			ops.push({
+				op: "create_variable",
+				parent: nodePath,
+				name: pointer.name,
+				datatype: "NodeId"
+			}, {
+				op: "set_property",
+				path: `${nodePath}/${pointer.name}`,
+				name: "Value",
+				value: pointer.target
+			});
+		}
+		const report = await runValidatedBatch({
+			origin,
+			project,
+			ops,
+			health: selectedHealth,
+			signal
+		});
+		if (report.status !== "completed") {
+			return {
+				status: report.status,
+				error: report.error ?? "the bridge refused the pointer batch",
+				failed_index: report.failed_index,
+				pointers: pointers.map((pointer) => pointer.name),
+				next: `The node and its class exist, but the pointers do not: ${report.status} at pointer ${pointers[report.failed_index ?? 0]?.name ?? "?"}. Create them with optix_edit (create_variable datatype "NodeId", then set_property Value to the target path), or re-run with pointers once the cause is clear.`
+			};
+		}
+		return {
+			status: "completed",
+			pointers: pointers.map((pointer) => ({
+				name: pointer.name,
+				target: pointer.target,
+				node: `${nodePath}/${pointer.name}`
+			})),
+			applied: report.applied
+		};
+	}
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_edit",
 		description: "Strictly validate then sequentially apply a typed Optix authoring batch. dry_run defaults to true. Live writes require allowWrites; destructive operations also require allowDestructive. Stops on first failure; reports partial or indeterminate outcomes. No automatic retry or batch rollback. Re-read the model before retrying an indeterminate operation.",
 		parameters: {
@@ -2580,7 +2690,7 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_schema",
 		description: "Read the Optix object model of the installed Studio: one object type with its properties (data types and inheritance), methods, events and allowed child types; one enum with its members; or a search across types by name or by property. Generated from the installed Studio help, so it names this build rather than a remembered one. Ask it before writing a property, choosing a widget type or picking an enum value - a wrong property name or enum member is the commonest reason the bridge refuses a batch. A curated type also answers `clrType` (the C# type a NetLogic class should name, e.g. FTOptix.UI.PanelLoader) and `netlogic_page` (the cheat-sheet page to read first). action refresh compares the shipped catalog with the running Studio's own type dump and reports what a Studio upgrade added, removed or changed.",
 		parameters: {
@@ -2666,7 +2776,7 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_docs",
 		description: "Search Rockwell's own Studio help, which is installed beside the IDE - 2,591 pages on 1.8.1.27 - without asking a model. action search ranks a shipped index (title, headings, snippet) so a question like \"how does ChangeUser work\" lands on Session.ChangeUser in one call; action read returns one page's text from the installed Help (the pages are read, not shipped: they are 266 MB of generated HTML); action status says whether the index matches the installed Studio. Use it before guessing an API name, a menu path or a property meaning, and treat what it returns as Rockwell documentation, not as a claim about this project's model - optix_read and optix_schema answer that. Navigation is the known gap: ChangePanel is not in the installed help at all, so optix_nav and docs/optix-nav.md are the source for it.",
 		parameters: {
@@ -2741,7 +2851,7 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_svg",
 		description: "Work with SVG artwork the way an Advanced SVG image needs it. action inspect checks a drawing BEFORE it is placed: Optix can only drive a part that carries an id and whose fill or stroke is a hexadecimal colour on that part, and a drawing that breaks that rule renders correctly while silently refusing every property. action add copies the file into <project>/ProjectFiles/imgs (the folder the Web presentation engine serves as /projectfiles) and sets the image Path to %PROJECTDIR%/imgs/<name>.svg, creates the AdvancedSVGImage and sets its Path to %PROJECTDIR%/imgs/<name>.svg (the Web presentation engine cannot read an absolute path). action bind creates the SVG element property that drives one part - a literal colour, a bound tag, or a boolean with two colours - and reports the node it wrote. action list shows the images on a screen and what each one animates. Nothing here edits your artwork: a repair is a suggestion.",
 		parameters: {
@@ -3043,7 +3153,7 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_validate_expression",
 		description: "Validate an Optix ExpressionEvaluator formula without attaching it or changing the model. Sources are comma-separated node paths in placeholder order.",
 		parameters: {
@@ -3065,7 +3175,7 @@ function apply(ctx, config = {}) {
 			}, "POST");
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_action",
 		description: "Apply one bridge-validated Optix action outside the batch validator: create NetLogic, ensure a web engine, add a translation, convert an instance to a type, or invoke an exported method. Invocation requires allowInvoke and a session-safe bridge; conversion requires allowDestructive. No retries. A successful model change does not save Studio or prove runtime rendering.",
 		parameters: {
@@ -3199,7 +3309,7 @@ function apply(ctx, config = {}) {
 	 * The shipped catalog is disk state, so it is read again per call rather than cached: a Studio
 	 * install updated between calls must not answer from the older catalog.
 	 */
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_library",
 		description: "Reach the template library FactoryTalk Optix ships instead of building only from builtin widget types. action list reads the installed Studio catalog from disk (Widgets, GraphicElements, StyleSheets, Keyboards, Misc, Scripts) with no bridge and no Studio session, naming each item with the display name and usage text the library ships. action import pulls one item and the types it depends on into the loaded project through the bridge: it needs allowWrites, the project open in Studio with the bridge started, and a 1.0.9 bridge that advertises template_library in optix_status. An imported component belongs at the root of UI in a structural folder named for its library - UI/Components/Widgets/AlarmBanner, UI/Components/StyleSheets/FriendlyDark - so it never lands loose beside the project's screens; dest defaults to that folder and the folders are created when missing. An import is not batch-reversible, so read the model back with optix_read before any retry. Use it to pick a named component for a design already decided, not to survey what the machine happens to ship: a new build starts from the brief and the published standards (CRAFT-ORD-01).",
 		parameters: {
@@ -3451,9 +3561,11 @@ function apply(ctx, config = {}) {
 	 * @param catalog - Shipped catalog from readCatalog.
 	 * @param slots - Scaffold slots, for the default card-sized rect.
 	 * @param signal - Abort signal.
+	 * @param canvasPath - The screen's design canvas (`layout.canvas.canvas`), when the scaffold made one.
+	 *   A composite created beside that canvas does not scale with the screen; created inside it, it does.
 	 * @returns The plan, per-item, with what already exists and what has to be written.
 	 */
-	async function planLibraryItems(origin, screenPath, items, catalog, slots, signal) {
+	async function planLibraryItems(origin, screenPath, items, catalog, slots, signal, canvasPath) {
 		const plan = [];
 		for (const [index, item] of items.entries()) {
 			const found = findEntry(catalog, item.library, item.item);
@@ -3480,7 +3592,8 @@ function apply(ctx, config = {}) {
 				? { left: item.left, top: item.top, width: item.width, height: item.height }
 				: slots.cards?.[index] ?? slots.body;
 			const typePath = `${libraryComponentFolder(found.library.library)}/${found.item.name}`;
-			const instancePath = `${screenPath}/${name}`;
+			const parent = typeof canvasPath === "string" && canvasPath !== "" ? canvasPath : screenPath;
+			const instancePath = `${parent}/${name}`;
 			const typeProbe = await bridge.request(origin, "nodes", signal, { path: typePath }).catch(() => void 0);
 			const instanceProbe = await bridge.request(origin, "nodes", signal, { path: instancePath }).catch(() => void 0);
 			plan.push({
@@ -3488,6 +3601,7 @@ function apply(ctx, config = {}) {
 				item: found.item.name,
 				display: found.item.display ?? found.item.name,
 				name,
+				parent,
 				type_path: typePath,
 				instance_path: instancePath,
 				rect,
@@ -3527,11 +3641,11 @@ function apply(ctx, config = {}) {
 				}
 				if (entry.instance_present !== true) {
 					const created = await bridge.request(origin, "model/object", signal, {
-						parent: screenPath,
+						parent: entry.parent ?? screenPath,
 						name: entry.name,
 						type: entry.type_path
 					}, "POST");
-					if (created.ok !== true) throw new BridgeError(`Bridge did not instantiate ${entry.type_path} under ${screenPath}`, true);
+					if (created.ok !== true) throw new BridgeError(`Bridge did not instantiate ${entry.type_path} under ${entry.parent ?? screenPath}`, true);
 					step.instantiated = created.created_path ?? entry.instance_path;
 				}
 				const properties = {
@@ -3591,7 +3705,7 @@ function apply(ctx, config = {}) {
 		}
 		return { cleared, failed };
 	}
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_screen",
 		description: `Draft or apply a whole Optix screen as one ordered operation batch: backdrop, header band, title, content surface, up to ${MAX_CARDS} data cards with value and lamp rows, and a row of up to ${MAX_NAV} navigation buttons. The slot math, the refusals and the palette are the ones the FactoryTalk View scaffold uses, so one design brief lays out both products. dry_run defaults to true: the batch is validated against the live model and nothing is written. Applying requires allowWrites. The screen is created as a ScreenType because a bare Screen instance does not load at runtime. Navigation is wired only when a PanelLoader is available, because a UI object is instantiated per session and an absolute design-time path does not resolve at runtime: the tool reads the start window and uses its single mounted PanelLoader unless panel_loader names one; without a loader the buttons are created and the wiring each one needs is reported instead. The canvas defaults to the start window's own size. The batch is validated in one call and applied operation by operation, so a failure names the operation that stopped and the batch is never replayed automatically. Composites named in library_items are stamped in as the shipped library's own types - imported once at the root of UI under a structural folder per library (UI/Components/Widgets, UI/Components/StyleSheets), instantiated under this screen, then placed - so a screen can be built from the components Rockwell ships instead of from hand-drawn panels.`,
 		parameters: {
@@ -3804,7 +3918,7 @@ function apply(ctx, config = {}) {
 					const roots = await libraryRoots();
 					if (roots.length === 0) return noStudioInstall();
 					const catalog = await readCatalog(roots.at(-1).libraries, exec.signal);
-					const planned = await planLibraryItems(origin, layout.path, requestedLibrary, catalog, layout.slots, exec.signal);
+					const planned = await planLibraryItems(origin, layout.path, requestedLibrary, catalog, layout.slots, exec.signal, layout.canvas?.canvas);
 					if (planned.error !== void 0) return {
 						status: "refused",
 						...planned.error
@@ -3961,7 +4075,7 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_design_check",
 		description: "Run the HMI design rules against a screen in the live model: a control smaller than the touch minimum, a control with no text of its own, text whose colour does not stand out from the fill it sits on, a screen with no navigation area, a screen whose controls carry no event handler, a screen whose size is not the window canvas, the same hand-built composition repeated across screens, behaviour living inside a composition, an Advanced SVG image with nothing to animate, a literal colour beside a style sheet that already decides it, a child drawn outside its parent, and a measurement shown without the unit the model records. Rule ids are the corpus ids, so a finding is citable with engineering_reference. Read-only: nothing is written. Each finding is a statement about the model the bridge reports, not about how the screen renders.",
 		parameters: {
@@ -4184,7 +4298,7 @@ function apply(ctx, config = {}) {
 					units
 				});
 				const unchecked = [...report.unchecked, ...canvasNotes];
-				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", Ã¢â‚¬Â¦" : ""}`);
+				if (notDescribed.length > 0) unchecked.push(`${notDescribed.length} object(s) were not described: ${notDescribed.slice(0, 5).join(", ")}${notDescribed.length > 5 ? ", ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦" : ""}`);
 				if (screen.descendants !== void 0 && screen.descendants > described.length) unchecked.push(`${screen.name} holds ${screen.descendants} descendants; only ${described.length} were read`);
 				const warnings = report.findings.filter((finding) => finding.severity === "warning");
 				return {
@@ -4206,7 +4320,7 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_production_check",
 		description: "Review the whole project the way a commissioning engineer does before release, in one pass: event handlers that still name an absolute design-time object (the runtime instantiates UI per session, so those buttons are dead even though they exist - OPTIX-PROD-01), handlers that point at a screen which is not there (OPTIX-PROD-02), screens the operator cannot reach from the panel the loader starts on (OPTIX-PROD-03), presentation engines left on engineering defaults such as an anonymous starting user or the stock style sheet (OPTIX-PROD-04) and screens that live outside the screen folder (OPTIX-PROD-05). Returns a release verdict with per-rule findings, each naming the node and the fix. repair:true clears the absolute pointer value of every handler OPTIX-PROD-01 reports, which is exactly the measured cause of a navigation button that clicks but never switches; it needs allowWrites and writes only that value.",
 		parameters: {
@@ -4392,7 +4506,7 @@ function apply(ctx, config = {}) {
 			});
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_model",
 		description: "Scaffold or review the OPC UA information model under Model, the way a structured Optix project is laid out: one folder level per plant, area and line, equipment as ObjectTypes under Model/Types, signals as variables on the type, equipment instances of those types, and the metadata a tag can carry (DisplayName through the attribute route, EngineeringUnits/EURange/Description as child variables). action plan answers with the ordered operations and the folder tree without writing; action apply submits them through the same strictly validated batch optix_edit uses; action check reads the live Model tree and reports OPTIX-MDL-01..06 with a structured/needs-work verdict. Two measured limits are reported honestly: Optix variables cannot take a UA Description attribute or typed properties yet, so units/range/description are child String variables, and a type's members are COPIED onto its instances because the bridge writes them with ModellingRule None (so they would not instantiate on their own). An existing flat model is reported, never rewritten.",
 		parameters: {
@@ -4604,14 +4718,14 @@ function apply(ctx, config = {}) {
 		}
 	})));
 
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_script",
-		description: "Add, read, review, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; review checks the source against the lifecycle, threading, observer, logging and naming rules (OPTIX-NL-03..12) and can compile it; add creates the node and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. add and edit refuse code with a critical finding unless force is true, so a class that breaks the documented lifecycle does not reach the project. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
+		description: "Add, read, review, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; review checks the source against the lifecycle, threading, observer, logging and naming rules (OPTIX-NL-03..14) and can compile it; add creates the node, points its `pointers` variables and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. add and edit refuse code with a critical finding unless force is true, so a class that breaks the documented lifecycle does not reach the project. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
 		parameters: {
 			project: projectParameter,
 			action: {
 				type: "string",
-				description: "list (default) sends no writes; read returns a class; review checks a class against OPTIX-NL-03..12 and optionally compiles it; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
+				description: "list (default) sends no writes; read returns a class; review checks a class against OPTIX-NL-03..14 and optionally compiles it; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
 			},
 			project_root: {
 				type: "string",
@@ -4636,6 +4750,30 @@ function apply(ctx, config = {}) {
 			code: {
 				type: "string",
 				description: "Full C# source for add or edit. The class it declares must equal name; for edit pass the whole file, not a fragment."
+			},
+			pointers: {
+				type: "array",
+				// Requiredness is declared per property: the tool DSL compiles `required` only on a
+				// property node, and an array's items node is compiled with allowRequired false, so a
+				// `required: [...]` list on items throws UNSUPPORTED_SCHEMA at registration and the
+				// whole optix_script tool is missing from the booted plugin.
+				items: {
+					type: "object",
+					additionalProperties: false,
+					properties: {
+						name: {
+							type: "string",
+							required: true,
+							description: "Variable name on the NetLogic node, for example Target - the class reads it with LogicObject.GetVariable(\"Target\")."
+						},
+						target: {
+							type: "string",
+							required: true,
+							description: "Project-relative node path the pointer references, for example Model/Smt/LineSpeed. Not an absolute /Objects/... path and not a node id."
+						}
+					}
+				},
+				description: "For add and edit: create NodeId-typed pointer variables on the NetLogic node and point them at these project nodes, so the class holds no node path in its source. This is what the periodic and observer templates expect (a variable named Target). The datatype must be NodeId: a pointer created as NodePointer keeps DataType BaseDataType, stores the path as a String, and the runtime kills the node at boot with an InvalidCastException in Start(). A pointer that fails is reported in the result rather than silently skipped."
 			},
 			expect_sha256: {
 				type: "string",
@@ -4674,7 +4812,7 @@ function apply(ctx, config = {}) {
 			if (!allowed.includes(action)) throw new Error(`action must be one of ${allowed.join(", ")} (got ${String(action)})`);
 			if (action === "add" || action === "edit" || action === "delete") allowWrite(true);
 			if (action === "run" && settings.allowInvoke !== true) throw new Error("Running a NetLogic method needs allowInvoke on the Optix row");
-			const resolved = await findProjectRoot(args.project, args.project_root);
+			const resolved = await resolveProjectFolder(args);
 			const root = resolved.root;
 			const wanted = args.name === void 0 || String(args.name).trim() === "" ? void 0 : String(args.name).trim();
 			if (action !== "list" && action !== "build" && wanted === void 0) throw new Error(`action ${action} needs name`);
@@ -4694,9 +4832,19 @@ function apply(ctx, config = {}) {
 			const liveNodes = async () => {
 				try {
 					const selected = await bridge.select(args.project, exec.signal);
-					return { origin: selected.origin, nodes: await liveNetLogicNodes(await requester(selected.origin), exec.signal) };
+					return {
+						origin: selected.origin,
+						health: selected.health,
+						project: selected.health?.project ?? args.project,
+						nodes: await liveNetLogicNodes(await requester(selected.origin), exec.signal)
+					};
 				} catch {
-					return { origin: void 0, nodes: [] };
+					return {
+						origin: void 0,
+						health: void 0,
+						project: args.project,
+						nodes: []
+					};
 				}
 			};
 			if (action === "list") {
@@ -4777,6 +4925,10 @@ function apply(ctx, config = {}) {
 				if (kind !== "runtime" && kind !== "design") throw new Error("kind must be runtime or design");
 				const template = args.template ?? "blank";
 				if (!TEMPLATES.includes(template)) throw new Error(`template must be one of ${TEMPLATES.join(", ")}`);
+				// Checked before the node exists: a refused pointer list must not leave a
+				// node and a class behind it.
+				const pointers = normalizePointers(args.pointers);
+				const nodePath = `${args.parent ?? NETLOGIC_FOLDER}/${wanted}`;
 				const file = fileFor(root, wanted);
 				if (existsSync(file) && (args.code === void 0 || String(args.code).trim() === "")) throw new Error(`${wanted}.cs already exists - use action edit, or pass code to replace it`);
 				const code = args.code === void 0 || String(args.code).trim() === "" ? templateCode({
@@ -4804,6 +4956,14 @@ function apply(ctx, config = {}) {
 					else throw error;
 				}
 				const stored = await writeNetLogic(root, wanted, code);
+				const pointerReport = await applyPointers({
+					origin: created.origin,
+					project: created.project,
+					health: created.health,
+					nodePath,
+					pointers,
+					signal: exec.signal
+				});
 				const compile = args.build === false ? void 0 : await buildNetSolution(root);
 				return {
 					...netLogicReport(resolved, stored, {
@@ -4812,6 +4972,7 @@ function apply(ctx, config = {}) {
 						node_result: nodeResult,
 						kind,
 						...(review === void 0 ? {} : { review }),
+						...(pointerReport === void 0 ? {} : { pointers: pointerReport }),
 						...(compile === void 0 ? {} : { compile }),
 						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, add again (or build), then start it." : "The class does not compile yet - fix the diagnostics before asking for a Studio build.") : "Ask the engineer to build the solution in Studio (or restart the bridge) so the compiled class is loaded; then a runtime NetLogic runs with its parent's runtime, and a design-time one is exercisable with action run."
 					})
@@ -4819,6 +4980,7 @@ function apply(ctx, config = {}) {
 			}
 			if (action === "edit") {
 				if (args.code === void 0 || String(args.code).trim() === "") throw new Error("edit needs code (the whole class)");
+				const pointers = normalizePointers(args.pointers);
 				const review = args.lint === false ? void 0 : reviewNetLogic(args.code, { name: wanted, kind: args.kind ?? "runtime" });
 				if (review !== void 0 && review.verdict === "block" && args.force !== true) {
 					const critical = review.findings.filter((finding) => finding.severity === "critical").map((finding) => `${finding.rule} line ${finding.line}: ${finding.message}`);
@@ -4827,12 +4989,36 @@ function apply(ctx, config = {}) {
 				const stored = await writeNetLogic(root, wanted, args.code, {
 					expectSha256: args.expect_sha256
 				});
+				let pointerReport;
+				if (pointers.length > 0) {
+					const live = await liveNodes();
+					const target = live.nodes.find((candidate) => candidate.name === wanted);
+					pointerReport = live.origin === void 0 ? {
+						status: "skipped",
+						error: "the bridge is not answering",
+						pointers: pointers.map((pointer) => pointer.name),
+						next: "The class was written. Create the pointers once the engineer has the project open and the bridge started: optix_edit create_variable datatype \"NodeId\", then set_property Value to the target."
+					} : target === void 0 ? {
+						status: "skipped",
+						error: `no NetLogic node named ${wanted} in the open project`,
+						pointers: pointers.map((pointer) => pointer.name),
+						next: "The class exists without its node, so there is nowhere to put a pointer. Create the node first (action add) or fix the name, then edit with pointers again."
+					} : await applyPointers({
+						origin: live.origin,
+						project: live.project,
+						health: live.health,
+						nodePath: target.path,
+						pointers,
+						signal: exec.signal
+					});
+				}
 				const compile = args.build === false ? void 0 : await buildNetSolution(root);
 				return {
 					...netLogicReport(resolved, stored, {
 						status: "completed",
 						action,
 						...(review === void 0 ? {} : { review }),
+						...(pointerReport === void 0 ? {} : { pointers: pointerReport }),
 						...(compile === void 0 ? {} : { compile }),
 						next: compile !== void 0 && !compile.ok ? (compile.locked ? "The C# compiled but the Optix runtime holds bin/&lt;project&gt;.dll open, so the copy failed. Stop the emulator, then build." : "Fix the diagnostics, then edit again - Studio still runs the previous build.") : "Ask the engineer to build in Studio so this code becomes the loaded class."
 					})
@@ -4910,7 +5096,7 @@ function apply(ctx, config = {}) {
 			};
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_project",
 		description: "Read and edit a FactoryTalk Optix project as files, for what the bridge cannot do: a C# file, a new chapter, a rename, a repair, or a project Studio has closed. `check` validates every chapter (YAML, node names, references, absolute pointers) and reports the gates that would refuse a write; `census` counts files, nodes, types, NetLogic and screens; `node` reads one node by project path; `sources` lists chapters and backups; `stage` replays a batch of edits in memory and writes only a manifest; `apply` writes a staged batch from per-file backups with an all-or-nothing rollback; `diff` compares a backup with disk after Studio opened the project; `restore` puts a backup back. A write refuses while Studio has this project open or while the bridge holds unsaved changes, because Studio saves only on Ctrl+S and that save would overwrite the file edit: close the project (or use optix_edit) and stage again. Prefer optix_edit for the live model; use this for the files.",
 		parameters: {
@@ -5017,7 +5203,7 @@ function apply(ctx, config = {}) {
 			throw new Error(`unknown action ${action || "(none)"}; use check, census, node, sources, stage, apply, diff or restore`);
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_build",
 		description: "Compile a FactoryTalk Optix project's NetLogic C# outside Studio and report whether the runtime DLL is current. `status` reads bin/<Project>.dll against the newest .cs and the references file; `check` copies ProjectFiles/NetSolution to a scratch folder and runs dotnet build there, so a compile error is found without writing bin/ or obj/ into the project; `build` runs dotnet build in place, which is the only way outside Studio to produce the DLL the runtime loads (stop the emulator first, or the build fails because the DLL is locked); `references` rewrites <Project>.references from the installed Studio (a project without it cannot compile); `init` writes the csproj, sln and references a project copied or generated outside Studio does not have. None of this saves or builds the Studio project itself: that is still the engineer's Ctrl+S then Ctrl+Shift+B, and optix_status says when it is owed.",
 		parameters: {
@@ -5107,7 +5293,7 @@ function apply(ctx, config = {}) {
 			throw new Error(`unknown action ${action || "(none)"}; use status, check, build, references or init`);
 		}
 	})));
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_nav",
 		description: `Plan, apply, reconcile or prove the window-level navigation bar of an Optix project, up to ${NAV_MAX_BUTTONS} buttons in one row. plan reads the start window, its PanelLoader and the screen each button should open, then reports the bar rectangle, every button's slot and whether it already exists; nothing is written. apply validates the whole batch and then creates the missing buttons, restates geometry and colours, and wires each new button through the loader's ChangePanel. A button drawn inside a panel resolves its loader path against the design tree at run time and the runtime then answers that nothing handles ChangePanel, which is the measured cause of a screen that never changes; a button beside the loader resolves the same way in both trees, and Rockwell's own PanelLoader sample wires a window-level button the same way. Only buttons with no handler child are wired, so a second apply is a no-op rather than a second handler. reconcile reports targets whose screen is missing, buttons that carry no handler and Nav_ buttons the window holds that this bar does not name. verify is the proof: it opens a headless browser at the window's own size, clicks each button in the served preview and reads the loader's Panel back through the bridge, so a pass means the panel changed rather than that an operation was acknowledged. apply needs allowWrites; verify needs preview and allowPreviewInput and a running emulator. The runtime serves the saved project, so a bridge-authored bar is only clickable after Studio saves and builds.`,
 		parameters: {
@@ -5380,7 +5566,7 @@ function apply(ctx, config = {}) {
 	 * engine keeps the sheet it already had. A theme is also the one part of a screen the runtime reads
 	 * before it draws anything, so a wrong sheet is not a cosmetic defect - it is the whole palette.
 	 */
-	ctx.effect(() => ctx.tools.register(defineTool({
+	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_ui",
 		description: `Design languages for Optix screens, and the kit that draws them: ${languageNames.join(", ")}. action languages lists what the theme can author (default ${DEFAULT_LANGUAGE}); action theme plans or applies a language as a native StyleSheet and binds both presentation engines; action audit judges what the model reports against the language that was asked for; action components lists the kit's components and the grid; action shell draws the window chrome - a header band, a native navigation rail with one item per screen, the content host and the status strip - around the screens; action screen compiles a blueprint into a designed screen - header band with chips, clock, language and user, KPI tiles, cards with rows, lamps and progress bars, a bar chart, a message feed and a status strip - placed by a 12-column grid, never by guessed coordinates, and refuses what cannot fit. A NodeId pointer is written on the pointer's own Value child and read back, because the engine's StyleSheet property accepts a write and keeps the old sheet. Nothing is written until mode apply behind allowWrites.`,
 		parameters: {

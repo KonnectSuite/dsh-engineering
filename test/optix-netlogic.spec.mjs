@@ -208,13 +208,96 @@ test("a template has to be one this tool knows, and a design class cannot start 
 	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "nav" }), /design-time NetLogic/u);
 });
 
-test("the safe periodic template passes the review", () => {
-	const review = reviewNetLogic(templateCode({ name: "LineClock", kind: "runtime", template: "periodic" }), { name: "LineClock", kind: "runtime" });
+test("the safe periodic template passes the review and holds no node path in its source", () => {
+	const code = templateCode({ name: "LineClock", kind: "runtime", template: "periodic" });
+	const review = reviewNetLogic(code, { name: "LineClock", kind: "runtime" });
 	assert.equal(review.verdict, "clean");
-	assert.equal(review.counts.critical, 0);
-	assert.equal(review.counts.warning, 0);
-	assert.deepEqual(review.findings.map((finding) => finding.rule), ["OPTIX-NL-12"]);
-	assert.match(review.findings[0].fix, /constant|LogicObject|Owner/u);
+	assert.deepEqual(review.counts, { critical: 0, warning: 0, info: 0 });
+	assert.deepEqual(review.findings, []);
+	// The convention the demo is built on: the path lives in the project as a pointer,
+	// not in the class, so a move in the project tree cannot break the class silently.
+	assert.match(code, /IUAVariable target = LogicObject\.GetVariable\("Target"\);/u);
+	// The conversion is the read: IUAVariable.Value is a UAValue wrapper, so a `raw is
+	// NodeId` test is always false and the cast is what throws when the variable is not
+	// DataType NodeId. Measured live 2026-11-17 on AryaSMTLineDemo: a pointer kept as
+	// BaseDataType holds a String and the runtime reports it only as a failed Start().
+	assert.match(code, /NodeId targetId;\n\s*try\n\s*\{\n\s*targetId = \(NodeId\)target\.Value;/u);
+	assert.match(code, /catch \(Exception error\)/u);
+	assert.match(code, /create it with DataType NodeId/u);
+	assert.match(code, /targetId == null \|\| targetId == NodeId\.Empty/u);
+	assert.match(code, /value = InformationModel\.GetVariable\(targetId\);/u);
+	// IUAVariable.Value is dynamic: Convert.ToInt32(value.Value) is ambiguous between its
+	// bool and DateTime overloads and does not compile (CS0121, Studio 1.8.1.27). The
+	// assertion names the statement, not the comment that explains it.
+	assert.match(code, /int current = value\.Value;\n\s*value\.Value = current \+ 1;/u);
+	assert.doesNotMatch(code, /value\.Value = Convert\.ToInt32/u);
+	assert.doesNotMatch(code, /Project\.Current/u);
+	assert.equal(review.findings.filter((finding) => finding.rule === "OPTIX-NL-12").length, 0);
+});
+
+test("the observer template reads its target through a pointer too", () => {
+	const code = templateCode({ name: "LineWatch", kind: "runtime", template: "observer" });
+	assert.match(code, /watched = InformationModel\.GetVariable\(targetId\);/u);
+	assert.doesNotMatch(code, /Project\.Current/u);
+	assert.equal(reviewNetLogic(code, { name: "LineWatch", kind: "runtime" }).counts.warning, 0);
+});
+
+test("a pointer read with no empty check is named, and a clean read is not", () => {
+	const unchecked = `using UAManagedCore;
+using FTOptix.NetLogic;
+public class Writes : BaseNetLogic
+{
+    public override void Start()
+    {
+        Log.Info("Writes", "starting");
+        var pointer = LogicObject.GetVariable("Target");
+        var targetId = (NodeId)pointer.Value;
+        var value = InformationModel.GetVariable(targetId);
+        value.Value = 42;
+    }
+}
+`;
+	const flagged = reviewNetLogic(unchecked, { name: "Writes", kind: "runtime" });
+	const finding = flagged.findings.find((entry) => entry.rule === "OPTIX-NL-14");
+	assert.ok(finding !== undefined, "OPTIX-NL-14 should fire on a cast with no empty check");
+	assert.equal(finding.severity, "warning");
+	assert.match(finding.fix, /NodeId\.Empty/u);
+
+	const checked = `using UAManagedCore;
+using FTOptix.NetLogic;
+public class Writes : BaseNetLogic
+{
+    public override void Start()
+    {
+        Log.Info("Writes", "starting");
+        var pointer = LogicObject.GetVariable("Target");
+        var targetId = (NodeId)pointer.Value;
+        if (targetId == null || targetId == NodeId.Empty)
+        {
+            Log.Error("Writes", "the Target pointer is empty");
+            return;
+        }
+        var value = InformationModel.GetVariable(targetId);
+        value.Value = 42;
+    }
+}
+`;
+	assert.ok(!reviewNetLogic(checked, { name: "Writes", kind: "runtime" }).findings.some((entry) => entry.rule === "OPTIX-NL-14"));
+});
+
+test("a path quoted in a comment is not a path in the code", () => {
+	const commented = `using UAManagedCore;
+using FTOptix.NetLogic;
+public class Quiet : BaseNetLogic
+{
+    // deliberately NOT written this way: Project.Current.GetVariable("Model/Smt/Line")
+    public override void Start()
+    {
+        Log.Info("Quiet", "ready");
+    }
+}
+`;
+	assert.ok(!reviewNetLogic(commented, { name: "Quiet", kind: "runtime" }).findings.some((entry) => entry.rule === "OPTIX-NL-12"));
 });
 
 test("the review names every practice the runtime punishes", () => {
@@ -242,7 +325,7 @@ public class BadLogic : BaseNetLogic
 	const review = reviewNetLogic(code, { name: "WrongName", kind: "runtime" });
 	assert.equal(review.verdict, "block");
 	assert.equal(review.counts.critical, 3);
-	assert.equal(review.counts.warning, 4);
+	assert.equal(review.counts.warning, 5);
 	const rules = review.findings.map((finding) => finding.rule);
 	for (const rule of ["OPTIX-NL-03", "OPTIX-NL-04", "OPTIX-NL-05", "OPTIX-NL-06", "OPTIX-NL-07", "OPTIX-NL-08", "OPTIX-NL-10", "OPTIX-NL-11", "OPTIX-NL-12"]) {
 		assert.ok(rules.includes(rule), `${rule} should fire`);
@@ -302,7 +385,7 @@ public class Helper : BaseNetLogic
 
 test("every review rule names its severity, fix and cheat-sheet page", () => {
 	const ids = Object.keys(NETLOGIC_RULES);
-	assert.equal(ids.length, 11);
+	assert.equal(ids.length, 12);
 	for (const id of ids) {
 		assert.match(id, /^OPTIX-NL-\d{2}$/u);
 		const rule = NETLOGIC_RULES[id];

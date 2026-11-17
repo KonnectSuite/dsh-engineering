@@ -191,16 +191,45 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			"\n" +
 			usingBlock +
 			`public class ${name} : BaseNetLogic\n{\n` +
-			`    private PeriodicTask task;\n` +
-			`    private IUAVariable value;\n\n` +
+			`    private IUAVariable value;\n` +
+			`    private PeriodicTask task;\n\n` +
 			`    public override void Start()\n` +
 			`    {\n` +
-			`        // Resolve every node once, here: a per-tick lookup walks the model on\n` +
-			`        // the timer thread and is the hot path the threading guide warns about.\n` +
-			`        value = Project.Current.GetVariable("Model/Value");\n` +
+			`        // The node this class writes is a pointer variable on the logic node, not a\n` +
+			`        // path in the source. A path string compiles and then breaks silently when the\n` +
+			`        // object moves in the project - no build catches that. optix_script add\n` +
+			`        // pointers:[{name: "Target", target: "Model/..."}] creates and points it.\n` +
+			`        IUAVariable target = LogicObject.GetVariable("Target");\n` +
+			`        if (target == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "missing Target pointer - add a NodeId variable named Target");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        // IUAVariable.Value hands back a UAValue wrapper, so the conversion is the read.\n` +
+			`        // It throws when the variable is not DataType NodeId - a pointer created as\n` +
+			`        // NodePointer keeps DataType BaseDataType and holds the authored path as a String -\n` +
+			`        // and the runtime would report that only as a failed Start() ([code=df0003]).\n` +
+			`        NodeId targetId;\n` +
+			`        try\n` +
+			`        {\n` +
+			`            targetId = (NodeId)target.Value;\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "the Target pointer is not a NodeId: " + error.Message + " - create it with DataType NodeId");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        if (targetId == null || targetId == NodeId.Empty)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "the Target pointer is empty - point it at the variable to write");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        // Resolve once, here: a per-tick lookup walks the model on the timer thread\n` +
+			`        // and is the hot path the threading guide warns about.\n` +
+			`        value = InformationModel.GetVariable(targetId);\n` +
 			`        if (value == null)\n` +
 			`        {\n` +
-			`            Log.Error("${name}", "Model/Value not found - nothing to write");\n` +
+			`            Log.Error("${name}", "the Target pointer does not resolve to a variable");\n` +
 			`            return;\n` +
 			`        }\n` +
 			`        task = new PeriodicTask(Tick, 1000, LogicObject);\n` +
@@ -220,7 +249,11 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			`        {\n` +
 			`            // One step of machine behaviour. An exception that escapes a tick\n` +
 			`            // stops the timer for the rest of the session, so it is caught here.\n` +
-			`            value.Value = Convert.ToInt32(value.Value) + 1;\n` +
+			`            // IUAVariable.Value is dynamic: Convert.ToInt32(value.Value) is ambiguous\n` +
+			`            // between its bool and DateTime overloads and does not compile (measured\n` +
+			`            // against Studio 1.8.1.27 - CS0121).\n` +
+			`            int current = value.Value;\n` +
+			`            value.Value = current + 1;\n` +
 			`        }\n` +
 			`        catch (Exception error)\n` +
 			`        {\n` +
@@ -327,10 +360,35 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			`    private IUAVariable watched;\n\n` +
 			`    public override void Start()\n` +
 			`    {\n` +
-			`        watched = Project.Current.GetVariable("Model/Value");\n` +
+			`        // A pointer variable on the logic node, not a path in the source: the\n` +
+			`        // pointer survives a move in the project tree and a rename, the string does not.\n` +
+			`        IUAVariable target = LogicObject.GetVariable("Target");\n` +
+			`        if (target == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "missing Target pointer - add a NodeId variable named Target");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        // The conversion is the read: IUAVariable.Value is a UAValue wrapper, and it\n` +
+			`        // throws when the variable is not DataType NodeId (see the periodic template).\n` +
+			`        NodeId targetId;\n` +
+			`        try\n` +
+			`        {\n` +
+			`            targetId = (NodeId)target.Value;\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "the Target pointer is not a NodeId: " + error.Message + " - create it with DataType NodeId");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        if (targetId == null || targetId == NodeId.Empty)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "the Target pointer is empty - point it at the variable to observe");\n` +
+			`            return;\n` +
+			`        }\n` +
+			`        watched = InformationModel.GetVariable(targetId);\n` +
 			`        if (watched == null)\n` +
 			`        {\n` +
-			`            Log.Error("${name}", "Model/Value not found - not observing anything");\n` +
+			`            Log.Error("${name}", "the Target pointer does not resolve to a variable");\n` +
 			`            return;\n` +
 			`        }\n` +
 			`        watched.VariableChange += OnValueChange;\n` +
@@ -666,16 +724,22 @@ export const NETLOGIC_RULES = {
 		source: "log-output"
 	},
 	"OPTIX-NL-12": {
-		severity: "info",
+		severity: "warning",
 		title: "Node path is hard-coded in the source",
-		fix: "Keep the path in one constant, or read through LogicObject/Owner, so a move in the project does not silently break the class.",
-		source: "good-practices"
+		fix: "Use a pointer variable on the logic node instead - optix_script add pointers:[{name: \"Target\", target: \"Model/...\"}] creates it (DataType NodeId) and points it - then read it with LogicObject.GetVariable(\"Target\") and resolve it with InformationModel.GetVariable((NodeId)pointer.Value). A path string compiles and breaks silently the moment the object moves. The pointer's DataType must be NodeId: one created as NodePointer keeps DataType BaseDataType, stores the path as a String, and the runtime kills the node at boot with an InvalidCastException in Start().",
+		source: "accessing-project-nodes"
 	},
 	"OPTIX-NL-13": {
 		severity: "warning",
 		title: "SetImageContent is called where it cannot work yet",
 		fix: "The cheat sheet records that SetImageContent does nothing at design time, and that it needs the drawing loaded - so an export method cannot use it and Start() may run before the presentation engine has the image. Move it to a runtime observer, or drive the SVG element properties instead - see advanced-svg.md and element-access.md.",
 		source: "advanced-svg"
+	},
+	"OPTIX-NL-14": {
+		severity: "warning",
+		title: "Pointer value is cast to NodeId with no empty check",
+		fix: "Cast inside a try/catch and test the value against null and NodeId.Empty before using it: IUAVariable.Value is a UAValue wrapper, so the cast is the read and it throws when the variable is not DataType NodeId, and an unset pointer resolves to nothing - Start() succeeds and the class then does nothing at all, the quietest failure this model has.",
+		source: "accessing-project-nodes"
 	}
 };
 
@@ -683,6 +747,19 @@ const RULE_ORDER = Object.keys(NETLOGIC_RULES);
 
 function lineAt(text, index) {
 	return text.slice(0, Math.max(0, index)).split("\n").length;
+}
+
+/**
+ * The same source with comments blanked out, same length, same newlines.
+ *
+ * The path check below is about code, and every template's comment quotes the path
+ * spelling it tells the reader to use - so a comment would otherwise make the
+ * generator flag its own output (measured 2026-11-16 on the pointer templates).
+ */
+function stripComments(text) {
+	return text
+		.replace(/\/\*[\s\S]*?\*\//gu, (match) => match.replace(/[^\n]/gu, " "))
+		.replace(/\/\/[^\n]*/gu, (match) => " ".repeat(match.length));
 }
 
 /** Method headers with their brace-matched bodies, enough to reason about a class. */
@@ -778,8 +855,16 @@ export function reviewNetLogic(code, { name = "", kind = "runtime" } = {}) {
 		add("OPTIX-NL-11", 0, "no Log call: the runtime and emulator output stay silent about this class");
 	}
 
-	const hardPath = /"(?:Model|UI)\//u.exec(text);
+	const hardPath = /"(?:Model|UI)\//u.exec(stripComments(text));
 	if (hardPath !== null) add("OPTIX-NL-12", hardPath.index, "node path is a string literal");
+
+	// The pointer pattern is the right one; a pointer read with no empty check is the
+	// same silent failure in a different coat - an unset pointer resolves to nothing,
+	// Start() succeeds, and the class never does anything again.
+	const pointerRead = /\(\s*NodeId\s*\)\s*[A-Za-z_][A-Za-z0-9_.]*\s*\.\s*Value/u.exec(text);
+	if (pointerRead !== null && !/NodeId\s*\.\s*Empty/u.test(text)) {
+		add("OPTIX-NL-14", pointerRead.index, "a NodePointer value is cast to NodeId with no null/NodeId.Empty check");
+	}
 
 	// The cheat sheet records SetImageContent as working only once the drawing is
 	// loaded, and not at design time at all - so a design-time class and a Start()

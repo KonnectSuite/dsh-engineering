@@ -49,19 +49,24 @@ async function newestFile(folder) {
 
 /**
  * The last `lines` lines of a file, plus the file's size and mtime.
+ *
+ * `mtime` is an ISO string and `mtimeMs` a number: a `Date` is not lossless JSON, and a result carrying one
+ * makes the whole host call fail (measured on a live session, 2026-11-16).
  * @param path - Absolute path to a text log.
  * @param lines - How many trailing lines to return (1..2000).
- * @returns `{ path, name, bytes, mtime, lines, text, matched }`.
+ * @returns `{ path, name, bytes, mtime, mtimeMs, lines, text, matched }`.
  */
 export async function tailFile(path, lines) {
 	const body = await readFile(path, "utf8");
 	const all = body.split(/\r?\n/u);
 	const keep = all.slice(Math.max(0, all.length - lines));
+	const info = await stat(path);
 	return {
 		path,
 		name: path.split(/[\\/]/u).pop(),
 		bytes: Buffer.byteLength(body, "utf8"),
-		mtime: (await stat(path)).mtime,
+		mtime: info.mtime.toISOString(),
+		mtimeMs: info.mtimeMs,
 		lines: keep.length,
 		text: keep.join("\n"),
 		matched: all.length

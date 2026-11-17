@@ -388,6 +388,14 @@ export async function validateProject(rootInfo, { planned = new Map(), typeCheck
 			scanPointers(child.doc, child.file, path, projectName, warning, seenPointers);
 		}
 	});
+	// A binding can only be judged against a complete tree: when a chapter is missing or does not
+	// parse, every path into it reads as dead and buries the one cause. The findings above already
+	// name that cause.
+	if (!problems.some((problem) => problem.severity === "critical")) {
+		const index = indexTree(tree, projectName);
+		checkBindings(index, { critical, warning, note });
+		checkViews(index, { warning });
+	}
 	return {
 		project: projectName,
 		project_root: rootInfo.root,
@@ -396,8 +404,8 @@ export async function validateProject(rootInfo, { planned = new Map(), typeCheck
 		warnings: findings.filter((finding) => finding.severity === "warning").length,
 		findings,
 		next: findings.length === 0
-			? "Every chapter resolves, sibling names are unique and absolute pointers name this project."
-			: "Fix the critical findings first: Studio would open this project with a missing chapter, a duplicate name or a pointer at another project."
+			? "Every chapter resolves, every binding names a node this project declares, and no screen is fixed to its design size."
+			: "Fix the critical findings first: a missing chapter, a duplicate name, a dead DynamicLink or NodePointer, or a pointer at another project keeps the runtime from resolving it."
 	};
 }
 
@@ -431,6 +439,360 @@ function scanPointers(doc, file, path, projectName, warn, seen) {
 	for (const [key, value] of Object.entries(doc)) {
 		if (key === "Children") continue;
 		visit(value, `${path}/${key}`);
+	}
+}
+
+/**
+ * Node types whose children are declared in the chapter file itself.
+ *
+ * Measured 2026-11-16 against the shipped starter (`templates/arya-optix-app/project`) and a
+ * customer project (54 chapters): every relative link that failed under one of these named a
+ * child no chapter writes, so nothing can bind it; every failure under a variable or a
+ * template-library type named a member the type provides and Studio does not persist
+ * (`../CountText` under a `StringFormatter`, `PLCAddress` under the System `DateAndTime`
+ * `PropertyGroup`), which this file-level reader cannot see and must not call broken.
+ */
+const STRUCTURAL_TYPES = new Set(["Folder", "FolderType", "ProjectFolder", "Object", "BaseObjectType", "ObjectType"]);
+
+/** Layout containers that place their own children, so a screen using one is not fixed-size. */
+const CONTAINER_TYPES = new Set(["ScaleLayout", "GridLayout", "RowLayout", "ColumnLayout", "ScrollView", "Panel"]);
+
+/** Absolute roots that name a type or a library object, never a node of this project. */
+const NON_NODE_ROOTS = ["/Types/", "/Aliases/", "/Server/"];
+
+/**
+ * Distinct unresolved spellings reported before the rest are summarized.
+ *
+ * A customer project measured 375 link values that no file tree can prove (template parameters,
+ * library-type members, `{Item}` loop variables): one finding each would bury the one dead link
+ * that matters, so the first 25 are listed by value and the rest are counted.
+ */
+const MAX_UNVERIFIED = 25;
+
+/**
+ * Index the resolved tree with parent links and project paths.
+ *
+ * The tree from {@link resolveTree} has no parent link, and a link value is resolved from the node
+ * that owns it (`..` pops from the property node), so the walk needs both directions.
+ * @param tree - The resolved tree roots.
+ * @param projectName - `Project.Name`, which is the root segment absolute paths name.
+ */
+function indexTree(tree, projectName) {
+	const records = [];
+	const byName = new Map();
+	const walk = (nodes, parent, prefix) => {
+		for (const node of nodes) {
+			const name = typeof node.name === "string" ? node.name : "";
+			const path = prefix === "" ? name : `${prefix}/${name}`;
+			const record = { node, name, path, doc: node.doc, type: node.type, class: node.class, file: node.file, parent, children: [] };
+			records.push(record);
+			if (!byName.has(name)) byName.set(name, []);
+			byName.get(name).push(record);
+			if (parent !== null) parent.children.push(record);
+			walk(node.children, record, path);
+		}
+	};
+	walk(tree, null, "");
+	return { records, byName, root: records[0] ?? null, projectName };
+}
+
+/** A node name without Studio's `ns=<index>;` property prefix. */
+function bareName(value) {
+	const index = value.indexOf(";");
+	return index < 0 ? value : value.slice(index + 1);
+}
+
+/** Does a node name satisfy a link segment, either spelling? */
+function namesNode(name, segment) {
+	if (typeof name !== "string" || name === "") return false;
+	return name === segment || bareName(name) === bareName(segment);
+}
+
+/**
+ * Split one link value into the parts this reader resolves.
+ *
+ * Studio's own spellings, measured on both real projects: `/Objects/<Project>/…` absolute,
+ * `../../<Node>/@Property` relative, `{Alias}/child` and `{Alias}@NodeId` bound at the instance,
+ * `[0]` array indexes on a variable name, and `ns=3;Source0` property-node names. The `@…` tail
+ * names a property of the target node, not a child to look for, so it is stripped; an `=` prefix
+ * is an expression, which no file tree can resolve.
+ */
+function parseLinkValue(value) {
+	let rest = String(value ?? "").trim();
+	if (rest === "") return null;
+	if (rest.startsWith("=")) return { expression: true, alias: null, absolute: false, segments: [] };
+	let alias = null;
+	const braced = /^\{([^}]+)\}([\s\S]*)$/u.exec(rest);
+	if (braced !== null) {
+		alias = braced[1];
+		rest = braced[2];
+	}
+	const at = rest.lastIndexOf("@");
+	if (at > rest.lastIndexOf("/")) rest = rest.slice(0, at);
+	const absolute = alias === null && rest.startsWith("/");
+	const segments = rest.split("/").filter((segment) => segment !== "" && segment !== ".").map((segment) => segment.replace(/\[\d+\]$/u, ""));
+	return { expression: false, alias, absolute, segments };
+}
+
+/** The node a pointer or an aliased variable stands for, or undefined when this reader cannot see it. */
+function linkTarget(record, index, depth) {
+	if (record === null || record === undefined || depth > 8) return undefined;
+	const followable = record.type === "NodePointer" || record.type === "Alias" || record.doc?.DataType === "NodeId";
+	if (!followable) return undefined;
+	const value = typeof record.doc?.Value === "string" ? record.doc.Value : undefined;
+	if (value !== undefined) {
+		const resolved = resolveLinkValue(value, record.parent ?? null, index, depth + 1);
+		return resolved.ok === true ? resolved.node : undefined;
+	}
+	// `Alias` and an `AliasNode` (BaseDataVariableType + NodeId) carry no value: a DynamicLink
+	// child names the pointer the instance binds, e.g. `../../../../SystemNode@NodeId`.
+	const link = record.children.find((child) => child.type === "DynamicLink" && typeof child.doc?.Value === "string");
+	if (link === undefined) return undefined;
+	const resolved = resolveLinkValue(link.doc.Value, record, index, depth + 1);
+	return resolved.ok === true ? resolved.node : undefined;
+}
+
+/**
+ * What an `{Alias}` names, and whether this reader can prove the binding.
+ *
+ * Three bindings were measured on 2026-11-16: an instance alias carries `Kind.Value` as an
+ * absolute `/Objects/<Project>/…` path to the node it stands for; a pointer or `AliasNode`
+ * carries a `Value`/`DynamicLink`; and a template parameter (`{Equipment}`, `{Item}`) names a
+ * node by plain name only, so the remainder is walked from it but the binding itself is unproven.
+ */
+function aliasTarget(candidate, index, depth) {
+	const kind = candidate.children.find((child) => child.name === "Kind" && typeof child.doc?.Value === "string");
+	if (kind !== undefined && kind.doc.Value.startsWith("/Objects/")) {
+		const resolved = resolveLinkValue(kind.doc.Value, candidate.parent ?? null, index, depth + 1);
+		if (resolved.ok === true) return { node: resolved.node, proven: true };
+	}
+	const pointed = linkTarget(candidate, index, depth);
+	if (pointed !== undefined) return { node: pointed, proven: true };
+	return { node: candidate, proven: false };
+}
+
+/** Walk path segments from a node, following a pointer when a segment is not a child. */
+function walkLink(from, segments, index, depth, meta) {
+	let current = from;
+	for (let cursor = 0; cursor < segments.length; cursor += 1) {
+		const segment = segments[cursor];
+		const child = current === null ? undefined : current.children.find((candidate) => namesNode(candidate.name, segment));
+		if (child !== undefined) {
+			current = child;
+			continue;
+		}
+		const target = linkTarget(current, index, depth);
+		if (target === undefined || target === current) return { ok: false, reason: "missing", missing: segment, at: current, ...meta };
+		current = target;
+		cursor -= 1;
+		depth += 1;
+	}
+	return { ok: true, node: current, ...meta };
+}
+
+/** Nodes that could bind an alias: the owner's ancestors first, then a project-wide match. */
+function aliasCandidates(name, base, index) {
+	const out = [];
+	for (let ancestor = base; ancestor !== null && ancestor !== undefined; ancestor = ancestor.parent) {
+		for (const child of ancestor.children) if (child.name === name) out.push(child);
+	}
+	for (const record of index.byName.get(name) ?? []) {
+		if (out.length >= 50) break;
+		if (!out.includes(record)) out.push(record);
+	}
+	return out;
+}
+
+/** Is a candidate declared inside the owner's own chapter subtree? */
+function inScope(candidate, base) {
+	for (let ancestor = base; ancestor !== null && ancestor !== undefined; ancestor = ancestor.parent) {
+		if (ancestor === candidate.parent) return true;
+	}
+	return false;
+}
+
+/**
+ * Resolve one DynamicLink or pointer value against the project tree.
+ *
+ * Returns `{skip}` for a value this reader must not judge (a foreign library root, a `/Types/`
+ * reference — the former is already an `absolute_pointer_foreign_root` warning), `{ok: true,
+ * node}` for a resolved target, and `{ok: false, reason, …}` for a dead one, where `reason` is
+ * `missing` (a child name that no node has), `alias_unknown`/`alias_unbound`/`alias_self` (an
+ * `{Alias}` no node binds, or one bound only by a plain name), `above_root` (more `..` than the
+ * tree has parents) or `expression` (`=…`).
+ */
+function resolveLinkValue(value, base, index, depth) {
+	const parsed = parseLinkValue(value);
+	if (parsed === null) return { skip: "empty" };
+	if (parsed.expression) return { ok: false, reason: "expression", at: base, absolute: false };
+	if (NON_NODE_ROOTS.some((root) => String(value ?? "").trim().startsWith(root))) return { skip: "type_root" };
+	if (parsed.alias !== null) {
+		if (depth > 8) return { ok: false, reason: "alias_depth", alias: parsed.alias, at: base, absolute: false };
+		const candidates = aliasCandidates(parsed.alias, base, index);
+		if (candidates.length === 0) return { ok: false, reason: "alias_unknown", alias: parsed.alias, at: base, absolute: false };
+		let failure;
+		let provenFailure;
+		let unproven;
+		for (const candidate of candidates) {
+			const target = aliasTarget(candidate, index, depth + 1);
+			const walked = parsed.segments.length === 0
+				? { ok: true, node: target.node }
+				: walkLink(target.node, parsed.segments, index, depth + 1, { absolute: false });
+			const aliasFallback = !inScope(candidate, base);
+			if (walked.ok === true) {
+				if (target.proven) return { ...walked, alias: parsed.alias, aliasFallback };
+				// A template parameter (`{Item}@Value`) names a node by plain name only, so walking
+				// nowhere is not proof the link works: report it, and keep looking for a proven binding.
+				if (unproven === undefined) unproven = { ok: false, reason: "alias_self", alias: parsed.alias, at: candidate, absolute: false, aliasFallback };
+				continue;
+			}
+			const found = { ...walked, alias: parsed.alias, aliasFallback };
+			if (target.proven && provenFailure === undefined) provenFailure = found;
+			if (failure === undefined) failure = found;
+		}
+		return provenFailure ?? unproven ?? failure ?? { ok: false, reason: "alias_unbound", alias: parsed.alias, at: base, absolute: false };
+	}
+	if (parsed.absolute) {
+		const [objects, root, ...rest] = parsed.segments;
+		// `/Objects/Proj@BrowseName` parses to `Objects/Proj`, which names the project root itself.
+		if (objects !== "Objects" || index.root === null || typeof root !== "string") return { skip: "unknown_root" };
+		if (root !== index.projectName) return { skip: "foreign_root" };
+		if (rest.length === 0) return { ok: true, node: index.root, absolute: true };
+		return walkLink(index.root, rest, index, 0, { absolute: true });
+	}
+	let current = base;
+	let cursor = 0;
+	while (cursor < parsed.segments.length && parsed.segments[cursor] === "..") {
+		current = current === null ? null : current.parent;
+		cursor += 1;
+		if (current === null) return { ok: false, reason: "above_root", at: base, absolute: false };
+	}
+	return walkLink(current, parsed.segments.slice(cursor), index, 0, { absolute: false });
+}
+
+/**
+ * Is an unresolved link provable from the files, or only the runtime can tell?
+ *
+ * Measured 2026-11-16: an absolute `/Objects/<this project>/…` path names a concrete node, so a
+ * failure there is the hand-written-YAML signature and is critical; a relative path inside a
+ * template chapter can bind at the instance that mounts it, so it is critical only when the
+ * failing parent is a structural folder that writes its own children and the missing name exists
+ * nowhere in the project — everything else is `binding_unverified`, so silence is never read as
+ * success.
+ */
+function unresolvedSeverity(resolved, index) {
+	if (resolved.absolute === true) return "critical";
+	if (resolved.reason !== "missing" || resolved.aliasFallback === true) return "info";
+	const at = resolved.at;
+	if (at === null || at === undefined) return "info";
+	if (typeof at.doc?.DataType === "string") return "info";
+	if (!STRUCTURAL_TYPES.has(at.type ?? at.doc?.Supertype ?? "")) return "info";
+	return (index.byName.get(resolved.missing) ?? []).length > 0 ? "info" : "critical";
+}
+
+/** One sentence naming why a link did not resolve. */
+function describeFailure(resolved) {
+	if (resolved.reason === "missing") {
+		const parent = resolved.at === null || resolved.at === undefined ? "a node this reader cannot place" : `${resolved.at.path} (${resolved.at.type ?? "no Type"})`;
+		return `${parent} has no child named ${resolved.missing}`;
+	}
+	if (resolved.reason === "alias_unknown") return `no node in this project is named ${resolved.alias}, which {${resolved.alias}} would need`;
+	if (resolved.reason === "alias_unbound") return `{${resolved.alias}} is declared but no node named ${resolved.alias} binds it to a target`;
+	if (resolved.reason === "alias_self") return `{${resolved.alias}} names a node by plain name only; nothing in the file tree binds it to the target it gets at run time`;
+	if (resolved.reason === "above_root") return "it walks above the project root";
+	if (resolved.reason === "expression") return "it is an expression, not a node path";
+	return `it did not resolve (${resolved.reason ?? "unknown"})`;
+}
+
+/**
+ * Report the DynamicLinks and NodePointers that cannot resolve against the file tree.
+ *
+ * This is the failure a hand-written chapter produces: Studio binds a `DynamicLink` by path and
+ * never validates the path on load, so a widget drawn while Studio is closed shows an empty value
+ * and gives no error. The spec that caught this (session f7c609cb, 2026-11-16, six emulator
+ * rebuilds) needed `check` to refuse what the runtime silently refuses.
+ */
+function checkBindings(index, report) {
+	const seen = new Set();
+	const unverified = [];
+	const add = (severity, code, message, where) => {
+		const key = `${code}|${where.value ?? ""}|${where.file ?? ""}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+		if (severity === "critical") report.critical(code, message, where);
+		else if (severity === "warning") report.warning(code, message, where);
+		else report.note(code, message, where);
+	};
+	const check = (record, kind) => {
+		const value = record.doc?.Value;
+		if (typeof value !== "string" || value.trim() === "") return;
+		const resolved = resolveLinkValue(value, record.parent ?? null, index, 0);
+		if (resolved.skip !== undefined) return;
+		const where = { file: record.file, path: record.path, value };
+		if (resolved.ok === true) {
+			// A UI node is instantiated per session, so a design-time path at one names nothing in
+			// the session that runs the NetLogic (measured: NetLogic chapters hold model pointers).
+			const target = resolved.node?.path ?? "";
+			// Record paths start at the project root (`Proj/UI/…`); the UI folder is judged relative to it.
+			const relativeTarget = target.startsWith(`${index.projectName}/`) ? target.slice(index.projectName.length + 1) : target;
+			if (/(^|\/)NetLogic\//u.test(record.path) && (relativeTarget === "UI" || relativeTarget.startsWith("UI/"))) {
+				add("warning", "pointer_to_ui_object", `${record.file}: ${record.path} points at ${target}, a UI object; Studio creates UI per session, so a NetLogic that dereferences it at design time finds nothing`, { ...where, fix: "Point the NetLogic at a Model, System or NetLogic node instead: a UI object exists only inside a running session, so a design-time pointer at UI/… cannot resolve there." });
+			}
+			return;
+		}
+		const severity = unresolvedSeverity(resolved, index);
+		const reason = describeFailure(resolved);
+		const target = kind === "dynamic" ? "DynamicLink" : "pointer";
+		if (severity === "critical") {
+			add("critical", kind === "dynamic" ? "unresolved_dynamic_link" : "unresolved_pointer", `${record.file}: the ${target} on ${record.path} names ${JSON.stringify(value)}, which does not resolve: ${reason}. Studio loads the file and renders an empty value with no error.`, { ...where, fix: kind === "dynamic" ? "Bind the property to a node this project declares (Studio: right-click the property, Bind) or remove the DynamicLink; a dead DynamicLink is silent at runtime." : "Set Value to a node path this project declares, or clear it; a NodePointer that names nothing cannot be dereferenced at runtime." });
+			return;
+		}
+		unverified.push({ severity: "info", code: "binding_unverified", message: `${record.file}: ${record.path} binds ${JSON.stringify(value)} through ${reason}; this reader cannot prove that binding from the files, so verify it in the running project`, ...where, fix: "Run the project in the emulator or a session and check the value arrives; if it is empty, bind the property to a node this project declares." });
+	};
+	for (const record of index.records) {
+		if (record.type === "DynamicLink") {
+			if (typeof record.doc?.DataType === "string" && record.doc.DataType !== "NodePath") continue;
+			check(record, "dynamic");
+			continue;
+		}
+		if (typeof record.doc?.Value === "string" && (record.type === "NodePointer" || record.doc?.DataType === "NodeId")) check(record, "pointer");
+	}
+	for (const finding of unverified.slice(0, MAX_UNVERIFIED)) add("info", finding.code, finding.message, finding);
+	if (unverified.length > MAX_UNVERIFIED) {
+		report.note("binding_unverified", `${unverified.length - MAX_UNVERIFIED} more unresolved bindings are not listed; each names a node only the runtime can resolve`, { fix: "Resolve the listed ones first, then re-run check; the remainder are template parameters and library-type members unless a listed one shares their path." });
+	}
+}
+
+/** Does a node place itself with the four absolute margins Studio writes? */
+function isAbsolutelyPlaced(record) {
+	const numeric = (name) => record.children.some((child) => child.name === name && (typeof child.doc?.Value === "number" || /^-?\d+(\.\d+)?$/u.test(String(child.doc?.Value ?? ""))));
+	return ["LeftMargin", "TopMargin", "Width", "Height"].every((name) => numeric(name));
+}
+
+/**
+ * Report screens laid out only with absolute margins and screens with no `ScaleLayout`.
+ *
+ * Both are the measured file-level signature of a screen that looks right in Studio at the size
+ * it was drawn and clips or overlaps everywhere else — the design module already reports the
+ * rendered version (`VIEW-LAYOUT-02` over the live model); this one catches it before the project
+ * is ever opened.
+ */
+function checkViews(index, report) {
+	for (const record of index.records) {
+		const doc = record.doc;
+		if (!isPlainObject(doc)) continue;
+		const supertype = typeof doc.Supertype === "string" ? doc.Supertype : "";
+		const type = typeof record.type === "string" ? record.type : supertype;
+		if (type !== "Screen" && type !== "ScreenType" && supertype !== "Screen") continue;
+		const typeOf = (child) => (typeof child.type === "string" ? child.type : String(child.doc?.Supertype ?? ""));
+		const containers = record.children.filter((child) => CONTAINER_TYPES.has(typeOf(child)));
+		const placed = record.children.filter((child) => isAbsolutelyPlaced(child));
+		if (containers.length === 0 && placed.length > 0) {
+			report.warning("VIEW-LAYOUT-01", `${record.file}: screen ${record.path} places ${placed.length} child node${placed.length === 1 ? "" : "s"} (${placed.slice(0, 3).map((child) => child.name).join(", ")}) only with absolute margins and holds no layout container`, { file: record.file, path: record.path, fix: "Move these children into a ScaleLayout, RowLayout or ColumnLayout (or anchor them by percentage); absolute LeftMargin/TopMargin only land correctly at the size the screen was drawn." });
+		}
+		if (!record.children.some((child) => typeOf(child) === "ScaleLayout")) {
+			report.warning("VIEW-SCALE-01", `${record.file}: screen ${record.path} has no ScaleLayout child, so the runtime draws it at its design size and clips or letterboxes it on a different window`, { file: record.file, path: record.path, fix: "Add a ScaleLayout as the screen's first child and place the content inside it; a screen without one does not scale to the operator's window or panel size." });
+		}
 	}
 }
 
@@ -786,6 +1148,46 @@ function stageFile(root, id) {
 	return join(root, WORK_DIR, "stages", `${id}.json`);
 }
 
+/** One finding's identity, so a plan's findings can be compared with the ones the project already had. */
+function findingKey(finding) {
+	return [finding.code, finding.file ?? "", finding.path ?? "", finding.value ?? "", finding.message].join("\u0000");
+}
+
+/**
+ * Split the critical findings of a planned state into the ones the plan introduces and the ones it inherits.
+ *
+ * A stale `DynamicLink` anywhere in a project blocks every staged edit — which is the correct gate (an
+ * edit lands on top of a project the runtime cannot resolve) but a useless sentence when the dead link
+ * has nothing to do with the plan. Measured on the customer template in `KphungFROMM\OptixStandardTemplate`
+ * (2026-11-16): two dead style links make an unrelated screen edit refuse, and the old message said "the
+ * plan breaks a project invariant", which sent the reader looking in the wrong file. The gate stays; only
+ * the sentence and the counts tell the truth.
+ *
+ * @param rootInfo - Result of {@link projectInfo}.
+ * @param validation - The planned validation result.
+ * @param options - `typeCheck`, forwarded to the disk-state validation.
+ * @returns {Promise<{introduced: object[], inherited: object[]}>} The criticals, split.
+ */
+async function splitCriticals(rootInfo, validation, options = {}) {
+	const criticals = validation.findings.filter((finding) => finding.severity === "critical");
+	if (criticals.length === 0) return { introduced: [], inherited: [] };
+	const baseline = await validateProject(rootInfo, { typeCheck: options.typeCheck });
+	const before = new Set(baseline.findings.filter((finding) => finding.severity === "critical").map(findingKey));
+	return {
+		introduced: criticals.filter((finding) => !before.has(findingKey(finding))),
+		inherited: criticals.filter((finding) => before.has(findingKey(finding)))
+	};
+}
+
+/** The message for a staged plan that failed validation, naming which criticals are the plan's own. */
+function stageRefusal({ introduced, inherited }) {
+	const name = (finding) => `${finding.file ?? "?"}: ${finding.message}`;
+	if (introduced.length > 0) {
+		return `The plan introduces ${introduced.length} critical finding${introduced.length === 1 ? "" : "s"}: ${introduced.slice(0, 3).map(name).join("; ")}${introduced.length > 3 ? "; …" : ""}. Nothing was written; fix the plan and stage again.`;
+	}
+	return `The project already carries ${inherited.length} critical finding${inherited.length === 1 ? "" : "s"} this plan does not touch: ${inherited.slice(0, 3).map(name).join("; ")}${inherited.length > 3 ? "; …" : ""}. Nothing was written, because an edit staged on top of a dead reference would hide it. Fix those first (optix_project action "check" lists them all), then stage again.`;
+}
+
 /**
  * Stage a plan: compute every file's next text, validate the result, write nothing.
  *
@@ -819,6 +1221,7 @@ export async function stageOps(rootInfo, ops, { typeCheck } = {}) {
 		});
 	}
 	const validation = await validateProject(rootInfo, { planned: working, typeCheck });
+	const criticals = validation.ok ? { introduced: [], inherited: [] } : await splitCriticals(rootInfo, validation, { typeCheck });
 	const id = `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 	const manifest = {
 		id,
@@ -841,9 +1244,11 @@ export async function stageOps(rootInfo, ops, { typeCheck } = {}) {
 		files,
 		validation,
 		writable: validation.ok,
+		introduced_criticals: criticals.introduced.length,
+		inherited_criticals: criticals.inherited.length,
 		next: validation.ok
 			? `Nothing was written. Close Studio on this project if it is open, then optix_project { action: "apply", stage_id: "${id}" }.`
-			: "The plan breaks a project invariant; nothing was written. Fix the findings and stage again."
+			: stageRefusal(criticals)
 	};
 }
 
@@ -908,7 +1313,10 @@ export async function applyStage(rootInfo, id, { bridgePending = 0, processes, f
 	const texts = new Map(Object.entries(manifest.texts));
 	const validation = await validateProject(rootInfo, { planned: texts, typeCheck });
 	if (!validation.ok) {
-		const error = new Error(`the plan no longer validates: ${validation.findings.filter((finding) => finding.severity === "critical").map((finding) => finding.message).join("; ")}`);
+		const criticals = await splitCriticals(rootInfo, validation, { typeCheck });
+		const lead = criticals.introduced.length > 0 ? "the plan introduces" : "the project carries";
+		const named = [...criticals.introduced, ...criticals.inherited].slice(0, 3).map((finding) => `${finding.file ?? "?"}: ${finding.message}`).join("; ");
+		const error = new Error(`the plan no longer validates: ${lead} ${criticals.introduced.length + criticals.inherited.length} critical finding${criticals.introduced.length + criticals.inherited.length === 1 ? "" : "s"} (${named})`);
 		error.code = "invalid_project_yaml";
 		error.findings = validation.findings;
 		throw error;

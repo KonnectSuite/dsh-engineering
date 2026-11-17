@@ -59,9 +59,11 @@ export const SHELL_NAMES = Object.freeze({
 	clock: "ShellHeaderClock",
 	chip: "ShellHeaderChip",
 	user: "ShellHeaderUser",
+	headerRow: "ShellHeaderRow",
 	rail: "ShellRail",
 	content: "ShellContent",
 	footer: "ShellFooter",
+	footerRow: "ShellFooterRow",
 	status: "ShellFooterStatus"
 });
 
@@ -130,33 +132,50 @@ export function shellPlan({ window, width, height, language = undefined, screens
 			created.push(name);
 		}
 	};
-	const text = (name, value) => {
+	const container = (parent, name, type, slot, extra = {}) => {
 		exists[name] = has(name);
+		const path = `${parent}/${name}`;
 		if (!exists[name]) {
-			chrome.push({ op: "create_widget", screen: window, name, widget_type: "Label" });
+			chrome.push({ op: "create_widget", screen: parent, name, widget_type: type });
 			created.push(name);
 		}
-		chrome.push({ op: "set_property", path: `${window}/${name}`, name: "Text", value: textOf(value) });
-		chrome.push({ op: "set_property", path: `${window}/${name}`, name: "TextColor", value: theme.colours.text });
+		place(chrome, path, slot, extra);
+		return path;
+	};
+	const labelIn = (parent, name, value, { width = size(-1), height = 24, verticalAlignment = 2, margins = undefined, fontSize = undefined, colour = theme.colours.text } = {}) => {
+		exists[name] = has(name);
+		const path = `${parent}/${name}`;
+		if (!exists[name]) {
+			chrome.push({ op: "create_widget", screen: parent, name, widget_type: "Label" });
+			created.push(name);
+		}
+		chrome.push(set(path, "Width", String(width)), set(path, "Height", String(height)), set(path, "Text", textOf(value)), set(path, "TextColor", colour));
+		if (margins !== undefined) {
+			for (const [edge, amount] of Object.entries({ LeftMargin: margins.left, TopMargin: margins.top, RightMargin: margins.right, BottomMargin: margins.bottom })) {
+				if (amount !== undefined) chrome.push(set(path, edge, size(amount)));
+			}
+		}
+		if (verticalAlignment !== undefined) chrome.push(set(path, "VerticalAlignment", String(verticalAlignment)));
+		if (fontSize !== undefined) chrome.push(set(path, "FontSize", String(fontSize)));
 	};
 	const place = (list, path, slot, extra = {}) => {
 		for (const [name, value] of Object.entries({ LeftMargin: slot.left, TopMargin: slot.top, Width: slot.width, Height: slot.height })) list.push(set(path, name, size(value)));
 		for (const [name, value] of Object.entries(extra)) list.push({ op: "set_property", path, name, value });
 	};
 
-	// Chrome: the header band, its accent bar and its three texts.
+	// Chrome: the header band, its accent bar, and the row of texts across the band. The band itself is a
+	// Rectangle because a layout container has no fill - the bridge refuses `FillColor` on a RowLayout with
+	// `unknown_property` (measured 2026-11-16) - and the RowLayout over the same rectangle is what keeps the
+	// title and the right-hand readouts together when the window is not the width they were drawn at.
 	panel("Rectangle", SHELL_NAMES.header);
 	place(chrome, `${window}/${SHELL_NAMES.header}`, header, { FillColor: theme.colours.surface });
 	panel("Rectangle", SHELL_NAMES.brand);
 	place(chrome, `${window}/${SHELL_NAMES.brand}`, rect(0, 0, 4, HEADER_HEIGHT), { FillColor: theme.colours.accent });
-	text(SHELL_NAMES.title, "AryaCode");
-	place(chrome, `${window}/${SHELL_NAMES.title}`, rect(INSET, 12, Math.max(200, width - 620), 40), { FontSize: size(theme.type.title) });
-	text(SHELL_NAMES.chip, "Ready");
-	place(chrome, `${window}/${SHELL_NAMES.chip}`, rect(width - 560, 22, 120, 24), { FontSize: size(theme.type.small), TextColor: theme.colours.accent });
-	text(SHELL_NAMES.clock, "--:--");
-	place(chrome, `${window}/${SHELL_NAMES.clock}`, rect(width - 420, 18, 150, 28));
-	text(SHELL_NAMES.user, "Operator");
-	place(chrome, `${window}/${SHELL_NAMES.user}`, rect(width - 250, 18, 230, 28));
+	const headerRow = container(window, SHELL_NAMES.headerRow, "RowLayout", header, { ContentAlignment: "0", HorizontalGap: size(8) });
+	labelIn(headerRow, SHELL_NAMES.title, "AryaCode", { height: 40, fontSize: theme.type.title, margins: { left: INSET } });
+	labelIn(headerRow, SHELL_NAMES.chip, "Ready", { width: size(120), height: 24, fontSize: theme.type.small, colour: theme.colours.accent });
+	labelIn(headerRow, SHELL_NAMES.clock, "--:--", { width: size(150), height: 28 });
+	labelIn(headerRow, SHELL_NAMES.user, "Operator", { width: size(230), height: 28 });
 
 	// Chrome: the rail object and the content host, geometry before any item goes into the rail.
 	panel("NavigationPanel", SHELL_NAMES.rail);
@@ -164,11 +183,12 @@ export function shellPlan({ window, width, height, language = undefined, screens
 	const loaderPath = typeof loader === "string" && loader.trim() !== "" ? loader : "";
 	exists.content = has(SHELL_NAMES.content);
 
-	// Chrome: the status strip.
+	// Chrome: the status strip. The paint is a Rectangle; the line of status sits in a RowLayout over it,
+	// so a wider window widens the strip instead of stranding the text at a drawn coordinate.
 	panel("Rectangle", SHELL_NAMES.footer);
 	place(chrome, `${window}/${SHELL_NAMES.footer}`, footer, { FillColor: theme.colours.surfaceAlt });
-	text(SHELL_NAMES.status, "Comm. Driver - communication established");
-	place(chrome, `${window}/${SHELL_NAMES.status}`, rect(INSET, footer.top + 6, width - 2 * INSET, FOOTER_HEIGHT - 12), { FontSize: size(theme.type.small) });
+	const footerRow = container(window, SHELL_NAMES.footerRow, "RowLayout", footer, { ContentAlignment: "0", HorizontalGap: size(8) });
+	labelIn(footerRow, SHELL_NAMES.status, "Comm. Driver - communication established", { width: size(-1), height: 24, fontSize: theme.type.small, margins: { left: INSET, right: INSET } });
 
 	// Rail: one item per screen, inside the collection Studio created with the panel.
 	const items = [];

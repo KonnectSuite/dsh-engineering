@@ -98,6 +98,32 @@ reformats every line of the file and turns a one-node edit into an unreviewable 
   therefore never shows.
 - `unknown_type` (info) — a type the Studio Help catalog does not document. OPC UA base types and
   every template-library type land here, so it is a note, not a finding.
+- `unresolved_dynamic_link` (critical) — a `DynamicLink` whose value names a node this project's
+  chapter tree does not have. `..` is walked from the property that carries the link, a trailing
+  `@Property` is a property of the target (never a child to find), `[n]` is an index, and a leading
+  `{Alias}` is proven through the alias's own pointer. This is the finding a hand-written UI chapter
+  fails: the file parses, the property exists, and the value never resolves at runtime.
+- `unresolved_pointer` (critical) — the same resolution for a `NodePointer` / `DataType: NodeId` value.
+- `pointer_to_ui_object` (warning) — a pointer or link owned by `NetLogic/` whose target lives under
+  `UI/`. UI objects exist per session, so a design-time path to one is dead at runtime; the live twin
+  is `OPTIX-PROD-01`.
+- `binding_unverified` (info) — a value spelled in a form files cannot prove: a template parameter
+  such as `{Item}@Value`, a library-type member, an alias with no binding in any chapter, an
+  expression, or an `ns=3;…` chain. Listed so silence is never mistaken for success; capped at 25
+  values plus one summary line.
+- `VIEW-LAYOUT-01` (warning) — a screen whose children are placed only by absolute
+  `LeftMargin`/`TopMargin` and which holds no layout container, so it cannot reorganise.
+- `VIEW-SCALE-01` (warning) — a screen with no `ScaleLayout` among its direct children, so it cannot
+  scale to a panel of another size.
 
-A clean `check` proves the tree is loadable and self-consistent. It does not prove Studio will
-accept the result: Studio is still the one that loads it.
+A clean `check` proves the tree is loadable, self-consistent **and that its bindings resolve against
+nodes the project actually declares**. It still does not prove Studio will render it, and a
+`binding_unverified` value is exactly the case where only the runtime can answer. Measured on the
+shipped starter (`packages/optix/templates/arya-optix-app/project`): 128 judgeable links, 121
+resolve, 7 are info. Measured on a customer template (`KphungFROMM\OptixStandardTemplate`): 2
+criticals, both genuine dead links to a `UI/Stylesheets/MyStylesheet` that the project does not have.
+
+Staging is gated on the same rule: a plan that leaves a critical finding unwritten refuses, because
+an edit staged on top of a dead reference hides it. The refusal says whether the dead link is the
+plan's own (`introduced_criticals`) or one the project already carried (`inherited_criticals`), so
+the reader looks in the right file.

@@ -30,10 +30,11 @@ a native `NavigationPanel` with one item per screen, and points everything at th
 { "action": "shell", "project": "LineHMI", "mode": "apply" }
 ```
 
-`plan` reports the canvas, the four band rectangles, the rail targets it found under `UI/Screens`, the
-phases and their operation counts, and validates the first phase only. `apply` validates each phase
-against the model the previous phase left behind and dispatch operations one at a time with a health
-re-check, so a refused phase names itself and nothing after it is written.
+`plan` reports the canvas, the four band rectangles with the header and footer `RowLayout`s that arrange
+their text, the rail targets it found under `UI/Screens`, the phases and their operation counts, and
+validates the first phase only. `apply` validates each phase against the model the previous phase left
+behind and dispatch operations one at a time with a health re-check, so a refused phase names itself and
+nothing after it is written.
 
 Options: `screens` (`[{ screen, title }]`, otherwise every `Screen` under `UI/Screens`), `loader` (an
 existing panel loader to reuse), `rail_width` (clamped to 160–280 px), `language`.

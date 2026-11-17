@@ -76,6 +76,35 @@ never a licence to improvise. Two things genuinely belong to the engineer: openi
 Studio, and right-clicking `StudioMCPBridge` → StartBridge after a build. Ask for them and wait for
 the answer.
 
+### The bridge is down
+
+`optix_status` first, before anything else, and read its `next` rather than guessing. When it answers
+`studio_running: false` or `port_listening: false`, the live model does not exist: there is no
+`optix_edit`, no `optix_screen`, no `optix_design_check`, and no proof that anything renders.
+
+Say it once, in one sentence, and ask for the one thing that fixes it: "FactoryTalk Optix Studio is not
+running (or the bridge is not started). Open the project in Studio, right-click StudioMCPBridge, choose
+StartBridge, and say when it answers." Then wait.
+
+- **An empty answer is not permission.** When `ask_user_question` comes back with nothing, no one is at
+  the console. That is exactly the state in which a run invents its own green light: it reads
+  `studio_running: false`, decides the IDE is unavailable, and spends the next hour hand-writing YAML.
+  Do not fill the time that way. Either stop and report, or do only the file-channel work that is
+  genuinely independent of the screen (see the next two bullets) and label every screen it touches
+  unrendered.
+- **What the file channel may still do** with Studio closed: `optix_project` scaffolds a new project,
+  renames one, adds a whole model subtree, writes NetLogic `.cs`, and repairs a project whose session
+  is gone. It is the only sanctioned writer of those files and it refuses while Studio has the project
+  open. Everything it writes stays unrendered until a build and a runtime say otherwise.
+- **What no channel may do** (measured 2026-11-16, session f7c609cb): a screen hand-written while the
+  bridge was down had every `DynamicLink` in it dead — the label rendered a literal sentinel, not the
+  tag — and six emulator rebuilds never changed that, because the link never resolved. Do not hand-write
+  a binding and call it bound: a binding is proven by a value that changes on the screen, nothing less.
+- **Two strikes, then report.** Two attempts at the same fact — the same link spelling, the same
+  property name, the same type — and it still does not resolve: stop and report what you measured (the
+  path, the answer, the log line). A third spelling is not a third chance; it is time the engineer could
+  have spent answering.
+
 ### Which state you are looking at
 
 Three different things are called "the project", and confusing them is the most common way a run
@@ -139,7 +168,12 @@ Studio session's work is not a trade this tool offers.
 Use it in this order and say which step you are in:
 
 1. `check` — the tree the `- File:` registrations describe, with findings. The four an edit breaks are
-   `file_missing`, `duplicate_name`, `reference_without_target` and `file_unregistered`.
+   `file_missing`, `duplicate_name`, `reference_without_target` and `file_unregistered`; the two that
+   catch a hand-written binding are `unresolved_dynamic_link` and `unresolved_pointer` (critical — the
+   value names a node this project does not have), with `pointer_to_ui_object` and `binding_unverified`
+   beside them, and `VIEW-LAYOUT-01`/`VIEW-SCALE-01` for a screen that is pinned rectangles only. A
+   staged edit refuses while any critical stands, and `introduced_criticals` tells you whether the
+   dead link is the plan's own or one the project already carried.
 2. `stage` — replay the operations in memory and report `writable` and per-file hashes. Nothing is
    written; a plan touching more than 400 files, or a file outside the writable set, is refused.
 3. `apply` — the gates run again, the previous bytes are copied to `ProjectFiles/.dsh-backups/<id>/`,
@@ -248,9 +282,15 @@ rules rather than by `modern` ones. Switching a finished project is one apply ca
 Where a screen is not a scaffold but a design, describe it and let the kit place it. `optix_ui` owns
 this: `action: "components"` answers with the components the active language draws with, and
 `action: "screen"` compiles a `pattern` plus its regions into validated operations on a 12-column grid.
-There is no coordinate to get wrong: a body that cannot fit is refused (`layout_overflow`,
-`layout_too_narrow`) rather than drawn overlapping, and `chrome: "none"` leaves the header and footer to
-a window shell.
+What lands in the model is a container tree, not pinned rectangles: a stretched `ScaleLayout` canvas, a
+chrome `ColumnLayout`, a content `ColumnLayout` holding one `RowLayout` per row of cards, and nested
+`ColumnLayout`s inside each card, so the same screen fits another panel size instead of showing as a
+letterboxed picture. There is no coordinate to get wrong: a body that cannot fit is refused
+(`layout_overflow`, `layout_too_narrow`) rather than drawn overlapping, and `chrome: "none"` leaves the header
+and footer to a window shell. Studio's own `GridLayout` is never emitted — its `Columns`/`Rows` are `String[]`
+the bridge refuses, and its per-cell child preceded a native Studio crash — so an unequal pair is two pixel
+widths, not an `fr` template. The stretched canvas and the row-of-cards body are both proven in a rendered
+preview; what a live session still owes is listed in the `screens-and-layout` playbook.
 
 1. `optix_ui { action: "components", language }` - and, if the brief is a real design, read
    [`docs/optix-kit.md`](../../docs/optix-kit.md) for the blueprint shape before writing one.
@@ -635,9 +675,11 @@ over the baseline; record the waiver instead of bending the screen quietly.
 `optix_screen` builds a whole screen as one `optix_edit` batch — header band, title, content surface,
 footer, up to four cards with labelled rows, up to four navigation buttons — from the same scaffold the
 View side uses, and it refuses rather than squeezes: a display too small for the scaffold, a body with
-no room under the header and footer, or a card too small to read are refusals, not warnings. Leave
-`dry_run` on: the draft is validated against the live model in one call, including each lamp expression,
-before anything is written. The navigation bar is drawn in the start window, beside the `PanelLoader` —
+no room under the header and footer, or a card too small to read are refusals, not warnings. The screen
+is emitted as a container tree (a stretched `ScaleLayout` canvas, a chrome `ColumnLayout`, a content
+`ColumnLayout` holding one `RowLayout` per row of cards, a `ColumnLayout` per card), so it scales to
+another panel instead of being pinned to the canvas it was drafted on. Leave `dry_run` on: the draft is validated against the live model in one call, including
+each lamp expression, before anything is written. The navigation bar is drawn in the start window, beside the `PanelLoader` —
 a button created inside a panel resolves its loader path to the design-time object and the runtime then
 refuses the click — and each button is named for the panel it opens (`Nav_<target>`) so drafting a second
 screen adds its buttons to the shared bar instead of replacing the first screen's. Navigation is wired
@@ -960,7 +1002,7 @@ This page is the entry point; the deep end lives in nine topic playbooks shipped
 | `alarms` | a real alarm system: DigitalAlarm objects plus the shipped AlarmGrid and its Model retarget |
 | `data-logger-trend-sql` | history: store, logger sampling mode, the typed VariablesToLog, AdvancedTrend, SQL |
 | `dialogs-and-login` | overlays: a Dialog as a window child, and a sign-in card plus real Users |
-| `screens-and-layout` | laying out a screen: ARGB colours, paint order, the shell's slots |
+| `screens-and-layout` | laying out a screen: the container tree the generators emit, ARGB colours, paint order, the shell's slots, and what a live session still owes |
 | `tags-import` | `import_tags`: the file kinds, the filter rule, and the station prerequisite |
 | `verify-and-release` | judging whether work is actually done, and what makes a green result meaningless |
 

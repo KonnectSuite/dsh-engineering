@@ -48,6 +48,25 @@ The three ways a widget shows a value, and the one that always works.
   structure to a target that already owns a converter paints nothing. If a formatted label stays blank,
   that ordering is the first thing to check.
 
+## A link written into the file is not a link
+
+`bind` is the only spelling of a dynamic link this toolchain has proven: it goes through the bridge, which
+calls `SetDynamicLink` on the live variable. A `DynamicLink` typed into a chapter by hand is a different
+thing — measured on 2026-11-16 (session f7c609cb), while Studio was closed:
+
+- an absolute `/Objects/Proj/Model/Smt/LineSpeed` value, a `{Alias}/B2` relative value and an `ns=3;Source0`
+  prefix were each written into `Nodes/UI/Screens/Screens.yaml` and each rendered a literal sentinel;
+- `Mode 2`, an `Expression` and a `Format` with `ReferenceType: HasParameter` changed nothing;
+- six emulator rebuilds never altered the rendered text, because the value never resolved in the first place.
+
+So: with Studio up, use `bind`. With Studio closed, write the structure, and report the binding as
+**unverified** — never as done. `optix_project action="check"` is the guard: `unresolved_dynamic_link` and
+`unresolved_pointer` are critical, and `binding_unverified` is info precisely so that silence is never
+mistaken for success.
+
+For a NetLogic, the same lesson points the other way: the class reads a `NodePointer` variable, not a node
+path — see `runtime-csharp.md` and its `## Pointers, not paths`.
+
 ## What "renders" means
 
 A converter can be complete in the model, report `applied: true`, and paint nothing. Check with
