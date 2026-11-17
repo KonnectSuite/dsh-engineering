@@ -2,6 +2,29 @@
 
 ### Added
 
+- **A project type named after a built-in type is refused, and the shadowing is reported from Studio's own
+  generated file.** Studio generates one **global-namespace** C# class per project Screen, Panel, Window, Dialog
+  or Popup into `ProjectFiles/NetSolution/Private/UITypeDefinitions.cs`, so a project type whose BrowseName
+  equals a built-in type name shadows that type for every NetLogic in the project. Measured on
+  `AryaSMTLineDemo` (Studio 1.8.1.27): a screen drafted as `UI/Screens/Trend` generated
+  `public class Trend : FTOptix.UI.Screen`, and the shipped `Widgets/AdvancedTrend` had brought
+  `TrendPensLogic.cs`, which declares `private Trend myTrend;` unqualified under `using FTOptix.UI;` — the
+  solution failed with `error CS0029: Cannot implicitly convert type 'FTOptix.UI.Trend' to 'Trend'` plus four
+  `error CS1061: 'Trend' does not contain a definition for 'Pens'`, `bin/AryaSMTLineDemo.dll` was removed and
+  never rewritten, and the project's own NetLogic stopped compiling alongside the library's. Renaming the screen
+  to `TrendView` cleared all five errors and Studio's own build produced a 248 832-byte assembly. Neither
+  `optix_library import` nor the screen emitters had checked the name. `packages/optix/lib/names.js` (new)
+  carries `TYPE_BEARING_WIDGETS` (the kinds Studio generates a class for), `typeBearingCreateRefusal(op)`,
+  `parseGeneratedTypes(text)` and `typeCollisions(generated)`; the batch runner in `packages/optix/lib/index.js`
+  refuses such an op before a byte is sent (live: `status "refused", applied 0`, *"…it would shadow
+  FTOptix.UI.Trend in every NetLogic in the project…"*, nothing reached the bridge, while the same op as
+  `TrendProbe` validated `ok`); `optix_build status` carries `type_collisions` (`null` when clean) and
+  `optix_build check` names the collision in its `next` when the build fails — on the live project it read
+  `generated: 32, collisions: [], duplicates: []`. An **instance** named `Trend` is not refused: it generates no
+  class and shadows nothing. A screen cannot be renamed by a `move` (`not_an_object: … is ObjectType - move
+  handles Object instances`), so the route is create the new screen, repoint what mounts it, then delete the old
+  one. `test/optix-names.spec.mjs` (new, 8 tests) pins all of it.
+
 - **`VIEW-LAYOUT-04`: a size the runtime throws away is now reported.** Four states of one node measured on
   `UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3`, one variable at a time, each saved and re-measured in a
   fresh runtime: `Height 300` + `VerticalAlignment 3` rendered **158** (the leftover fill); the same 300 with
@@ -251,6 +274,34 @@
   128 judgeable links, 121 resolve, 7 info — and on the customer template in `KphungFROMM`, 2 criticals
   that are genuine dead links. Staging keeps the gate (an edit on top of a dead reference would hide it)
   but now says whether the dead link is the plan's own or inherited, so the reader looks in the right file.
+
+### Documentation
+
+- **Two playbooks said a thing that was not true, and both were corrected by doing the thing.** Written from
+  the 2026-11-17 SMT demo session (`AryaSMTLineDemo`, Studio 1.8.1.27). `packages/optix/skills/alarms.md` told
+  the reader that a rendered `AlarmGrid` gives a preview test no row hook, so an acknowledge could only be
+  screenshotted — it was wrong: each state column is a `<div data-column-index="4|5|6">` wrapping an `<img>`
+  whose `src` names the state (`RadiobuttonDarkEmpty.svg`/`RadiobuttonDark.svg` for Active,
+  `ApplyDark.png` ✓ / `CloseDark.png` ✗ for Acked and Confirmed), `[data-type="dataGrid"] [data-index="0"]`
+  selects a row, and one click on the widget's own `Acknowledge` flipped Acked ✗→✓ in 1.2 s. The playbook now
+  names the two conditions that had made it look impossible: the shipped `AlarmGridLogic` must be in
+  `bin/<project>.dll` (an import copies the `.cs` but does not rebuild, and until it did the runtime logged
+  `ERROR (FTOptix.NetLogic) [code=df0009]: User-defined logic type 'AlarmGridLogic' is missing in the .NET
+  assembly` — only in sessions that opened the alarm screen, because a NetLogic loads when its panel is
+  instantiated), and an acknowledge does not persist against the next re-raise of an `InputValue`-linked
+  controller (the row's timestamp advanced every ~12 s, faster than the 30 s logic write).
+  `packages/optix/skills/data-logger-trend-sql.md` told the reader the `VariablesToLog` children could not be
+  authored through the bridge and that AdvancedTrend's pens arrive disabled — both wrong. `VariableToLog` is a
+  variable kind, so `create_variable datatype:"VariableToLog"` + `set_link` works and the runtime built the
+  table from those children (`CREATE TABLE "SmtTrend" ("Timestamp" DATETIME,"LocalTimestamp" DATETIME,"OEE"
+  REAL,"UPH" INTEGER,"CycleTime" REAL,"TotalUnits" INTEGER, "Id" INTEGER)`, 360 rows in 162 s); the pens in the
+  measured instance all arrived **enabled**. That playbook now also carries what a store actually is on disk
+  (`ApplicationFiles/<store guid without dashes>.sqlite`, and WAL mode leaving the main file at 4 096 B while
+  its `-wal` reached 4 144 752 B), the three refused logger properties (`LogVariableTimestamp` and
+  `LogVariableOperationCode` are `unknown_property` although the bridge's own `valid_properties` names them;
+  `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*), the record-limit warning every session
+  logs and the fact that no tool sets `Table.RecordLimit`, and the `Widgets/AdvancedTrend` import's real shape
+  (a **Folder** of 12 types, not one PanelType) with `Logger` as a **`NodeId`**.
 
 ## [0.99.0] - 2026-11-16
 

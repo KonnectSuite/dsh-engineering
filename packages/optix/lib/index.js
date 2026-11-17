@@ -12,6 +12,7 @@ import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
 import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
 import { arrayWriteRefusal } from "./containers.js";
+import { typeBearingCreateRefusal } from "./names.js";
 import { armBridge, bridgeVersion } from "./arm.js";
 import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls, writeReferences } from "./build.js";
 import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
@@ -2532,6 +2533,17 @@ function apply(ctx, config = {}) {
 			status: "refused",
 			applied: 0,
 			validation: { ok: false, errors: [arrayOp] }
+		};
+		// A project type named after a built-in type generates a global-namespace class that shadows it for
+		// every NetLogic in the project (measured 2026-11-17: a screen named `Trend` broke the shipped
+		// AdvancedTrend's own logic with CS0029 + four CS1061, and the whole solution stopped compiling).
+		// Refuse before a byte is sent, because the failure surfaces later as a compile error nobody links
+		// back to the screen name.
+		const shadowOp = normalized.map((op) => typeBearingCreateRefusal(op)).find((reason) => reason !== undefined);
+		if (shadowOp !== undefined) return {
+			status: "refused",
+			applied: 0,
+			validation: { ok: false, errors: [shadowOp] }
 		};
 		const validation = await bridge.request(origin, "validate_ops", signal, {}, "POST", {
 			ops: normalized,

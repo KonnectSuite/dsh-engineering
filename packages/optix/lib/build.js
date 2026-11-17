@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, relative } from "node:path";
 import { studioRoots } from "./emulator.js";
 import { findCsproj, netSolutionDir } from "./netlogic.js";
+import { parseGeneratedTypes, typeCollisions } from "./names.js";
 /**
  * Compile a FactoryTalk Optix project's NetLogic solution from outside Studio.
  *
@@ -437,6 +438,28 @@ async function buildTarget(root) {
  * @param root - Project folder.
  * @param options - `keep` leaves the scratch copy for inspection; `dotnet` overrides the SDK probe.
  */
+/**
+ * Which project types Studio has generated, and which of them shadow a built-in type.
+ *
+ * `Private/UITypeDefinitions.cs` is the file Studio regenerates on every save, and it is the only place
+ * the whole collision surface is written down: one global-namespace class per project Screen, Panel,
+ * Window, Dialog or Popup, including the ones a template-library import brought in. Reading it explains a
+ * compile failure that names no project file (measured 2026-11-17: `error CS0029: Cannot implicitly
+ * convert type 'FTOptix.UI.Trend' to 'Trend'` in the shipped `TrendPensLogic.cs`, caused by a screen
+ * named `Trend`).
+ * @param root - Project folder.
+ */
+export async function generatedTypeCollisions(root) {
+	const file = join(netSolutionDir(root), "Private", "UITypeDefinitions.cs");
+	let text;
+	try {
+		text = await readFile(file, "utf8");
+	} catch {
+		return { file, present: false, generated: 0, collisions: [], duplicates: [] };
+	}
+	return { file, present: true, ...typeCollisions(parseGeneratedTypes(text)) };
+}
+
 export async function checkBuild(root, { keep = false, refreshSdk = false } = {}) {
 	const sdk = await dotnetSdk({ refresh: refreshSdk });
 	if (!sdk.available) {
@@ -452,6 +475,8 @@ export async function checkBuild(root, { keep = false, refreshSdk = false } = {}
 		await copySolution(source, copied);
 		const relativeTarget = join(copied, relative(dirname(csproj), target));
 		const result = await runDotnet(relativeTarget, scratch);
+		const collisions = await generatedTypeCollisions(root);
+		const shadowing = collisions.collisions.length > 0 || collisions.duplicates.length > 0;
 		return {
 			mode: "check",
 			isolated: true,
@@ -460,9 +485,14 @@ export async function checkBuild(root, { keep = false, refreshSdk = false } = {}
 			sdk: sdk.sdks.at(-1),
 			...result,
 			ok: result.ok && result.errors.length === 0,
+			type_collisions: collisions,
 			next: result.ok && result.errors.length === 0
-				? "The solution compiles. Studio still has to build it to produce the runtime DLL."
-				: "Fix the errors, then run the check again. Nothing was written to the project."
+				? shadowing
+					? `The solution compiles, but ${collisions.collisions.map((entry) => `${entry.name} (shadows ${entry.shadows})`).join(", ")} ${collisions.collisions.length === 1 ? "is" : "are"} a project type named after a built-in type, and Studio generates a global-namespace class for it: rename ${collisions.collisions.map((entry) => entry.name).join(", ")} before a library NetLogic that uses that name unqualified turns it into a compile error.`
+					: "The solution compiles. Studio still has to build it to produce the runtime DLL."
+				: shadowing
+					? `Fix the errors, then run the check again. ${collisions.collisions.map((entry) => `${entry.name} shadows ${entry.shadows}`).join(", ")} ${collisions.collisions.length === 1 ? "is" : "are"} generated as global-namespace classes in ${collisions.file}, which is how a project type named after a built-in type breaks NetLogic that names the built-in unqualified (CS0029 / CS1061). Rename the project type: a screen cannot be renamed by a move, so create the new one, repoint what mounts it, then delete the old one.`
+					: "Fix the errors, then run the check again. Nothing was written to the project."
 		};
 	} finally {
 		if (!keep) await rm(scratch, { recursive: true, force: true });
@@ -518,6 +548,7 @@ export async function buildState(root) {
 	const state = artifact === undefined
 		? "never_built"
 		: newestSource !== undefined && artifact.mtime < newestSource.modified ? "stale" : "built";
+	const collisions = await generatedTypeCollisions(root);
 	return {
 		project: root,
 		net_solution: dir,
@@ -534,6 +565,9 @@ export async function buildState(root) {
 		},
 		state,
 		proven: state === "built",
+		type_collisions: collisions.collisions.length === 0 && collisions.duplicates.length === 0
+			? null
+			: collisions,
 		next: state === "built"
 			? "Studio's build is on disk. Start the runtime with optix_emulator to serve it."
 			: state === "stale"

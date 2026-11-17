@@ -2,8 +2,8 @@
 
 A real alarm system is three things: alarm objects of a behaviour type, a grid bound to where the raised
 alarms live, and an acknowledge path that goes through the alarm engine. Measured end to end on
-`AryaSMTLineDemo` on 2026-11-17 against Studio 1.8.1.27: the first two are authorable through the tools, the
-third is not.
+`AryaSMTLineDemo` on 2026-11-17 against Studio 1.8.1.27: all three work, but the third works through the
+shipped grid's own button and only after the assembly is rebuilt — not through a tool call.
 
 ## What works
 
@@ -77,16 +77,40 @@ third is not.
   `AlarmController`, `AlarmsCategoryFolder`, `AlarmObjectBase` and `AlarmSet` all answer `type_not_found`. The
   CLR diagnostic route does not expose `FTOptix.Alarm`. Use `optix_schema` (the offline catalog) instead.
 
-- **The grid's rows are not addressable in the preview DOM.** A rendered `AlarmGrid` exposes no
-  `dataGridRow`, no `dataGridCell`, no `role="row"` and no `tr` — its body is one styled div
-  (`sc-ec00d451-0`), and Active/Acked/Confirmed are icons, not text. So a preview-driven test can read the row
-  through the grid's `innerText` (Timestamp, Name, Source Variable, Message, Severity come through; the three
-  state columns do not), but it cannot click a row or prove an acknowledge changed state. Proving acknowledge
-  needs a screenshot diff, or a model read of the alarm node's `AckedState`.
+## Acknowledge: it works, through the grid, and the DOM is readable
+
+The earlier claim in this playbook — that a preview test cannot prove an acknowledge — was wrong, and the
+retest found the acknowledge does land.
+
+1. **The shipped grid's own logic must be in the assembly.** The first attempts did nothing and the runtime
+   said why: `ERROR (FTOptix.NetLogic) [code=df0009]: User-defined logic type 'AlarmGridLogic' is missing in
+   the .NET assembly.` `optix_library import` copies `ProjectFiles/NetSolution/AlarmGridLogic.cs` into the
+   project, but the runtime loads `ProjectFiles/NetSolution/bin/<Project>.dll`, and that DLL predated the
+   import. After a build the error is gone from the log and the buttons work. **A library import is not
+   finished until the assembly is rebuilt** (stop the runtime first, or the build fails on a locked DLL).
+   The error appears only in sessions where a browser actually opened the alarm screen: a NetLogic loads when
+   its panel is instantiated, not at startup, so a clean-looking startup log proves nothing about it.
+2. **The state columns are readable, as icons with names.** Each state cell is a `<div data-column-index="4|5|6">`
+   wrapping an `<img>` whose `src` names the state: Active is `RadiobuttonDarkEmpty.svg` / `RadiobuttonDark.svg`,
+   and Acked and Confirmed are `ApplyDark.png` (✓) or `CloseDark.png` (✗). Text columns are
+   `<span class="sc-3f05b374-0 cByaUT">`. So the state pair is readable without a screenshot diff — read the
+   `img src`, not the row's `innerText`.
+3. **A row is addressable.** `[data-type="dataGrid"] [data-index="0"]` selects it (the selected row carries
+   `background-color: rgb(15, 175, 255)` plus an inset box-shadow). Clicking the widget's `Acknowledge` — a
+   `<span>` with no children — flipped **Acked `CloseDark.png` → `ApplyDark.png`** (✗ → ✓) within 1.2 s.
+4. **Read the state against the row's timestamp, because a linked alarm re-raises.** The row's timestamp
+   advanced every ~12 s (`2:22:19 → 2:23:01 → 2:23:11 → 2:23:27 → 2:23:39 → 2:23:50 → 2:24:02 PM`) while the
+   grid was open: an `OffNormalAlarmController` whose `InputValue` is `set_link`ed to a tag the runtime writes
+   re-raises a new event on its own poll, faster than the 30 s `SmtLineLogic` write. An acknowledge lands, but
+   it does not persist against the next re-raise — so prove it as a **state pair before/after one click on one
+   row**, and expect a fresh event to overwrite it. A latch you want to stay acknowledged needs the tag to
+   stop crossing `NormalStateValue`.
 
 - **An alarm controller costs a licence token.** The runtime log says `Component: Alarm controller requires 1
-  Standard Feature Token`. In demo mode the alarm still fired, so this is a deployment note, not a blocker for
-  a proof.
+  Standard Feature Token`, and the alarm chain is not free on its own: with the DataLogger and store in place
+  the same session logged `Component: Data logger requires 1 Standard Feature Token` and the whole runtime
+  `requires 6 Standard Feature Tokens` (Native 1 + Web 3 + Alarm controller 1 + Data logger 1). In demo mode
+  both the alarm and the logger still ran, so this is a deployment note, not a blocker for a proof.
 
 ## Hand-drawn alarm tables
 
