@@ -75,7 +75,15 @@ async function vendor(name) {
   // interpreter last ran in the checkout, it is not source, and a stale `.pyc`
   // beside an edited module is a trap the engine does not need. 0.4.21 shipped
   // three of them because a `py_compile` check ran before packing.
-  for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'help', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'locale', 'icon.svg']) {
+  //
+  // `skills` is the Optix topic playbooks `optix_get_skill` reads. It was missing
+  // from this list through 0.99.0, so the published tarball carried
+  // `vendor/optix/lib/skills.js` but no `vendor/optix/skills/`: the module resolved
+  // `../skills` into an absent directory, `optix_list_skills` answered with an empty
+  // list and `optix_get_skill` refused every topic. A payload a component resolves
+  // at runtime has to be in this list or the tool that reads it ships broken, which
+  // is what `test/components.spec.mjs` now checks by name.
+  for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'help', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'skills', 'locale', 'icon.svg']) {
     await cp(join(from, entry), join(to, entry), {
       recursive: true,
       filter: s => !s.includes('__pycache__') && !s.endsWith('.pyc') && (!s.endsWith('.ts') || s.endsWith('.d.ts')),

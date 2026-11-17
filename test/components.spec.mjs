@@ -7,7 +7,9 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { load } from 'js-yaml'
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -87,6 +89,94 @@ test('the assembler vendors exactly the components the manifest marks', () => {
     .map(component => packagesOf(component)[0].split('/').pop())
     .sort()
   assert.deepEqual(vendored, expected, 'scripts/assemble.mjs and components.json disagree on which components are vendored')
+})
+
+/** Every file under a directory, skipping what a package generates for itself. */
+function textFilesUnder(directory) {
+  const found = []
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) found.push(...textFilesUnder(path))
+    else if (/\.(?:js|ts)$/u.test(entry.name) && !entry.name.endsWith('.d.ts')) found.push(path)
+  }
+  return found
+}
+
+/**
+ * A self-relative lookup the packer cannot keep, with the reason it is allowed.
+ * Each one is a decision, not a blind spot, so it has to say what it costs.
+ */
+const RESOLVER_EXCEPTIONS = new Map([
+  // `vendor/<component>/package.json` does not exist: the bundle carries one
+  // manifest at its root. `brandPackageVersion()` reads it inside a try/catch and
+  // prints no version when it is absent, so an Arya-branded document footer loses
+  // its version number. Copying each component's manifest into `vendor/<name>/`
+  // would put a package boundary and a `type` field inside the bundle, which is a
+  // wider change than the release that found it.
+  ['l5x:package.json', 'the vendored tree carries no per-component manifest; brandPackageVersion() degrades to no version instead'],
+])
+
+test('the assembler carries every payload directory a component resolves at runtime', () => {
+  const source = read('scripts/assemble.mjs')
+  const list = /for \(const entry of \[([\s\S]*?)\]\) \{/u.exec(source)
+  assert.ok(list, 'scripts/assemble.mjs has no payload copy list')
+  const copied = new Set([...list[1].matchAll(/'([^']+)'/gu)].map(match => match[1]))
+
+  // A module that reads a file or folder beside itself is a promise the packer has
+  // to keep. Both forms resolve relative to the built file, so in
+  // `vendor/<component>/lib/` they point at `vendor/<component>/<name>` - and if
+  // `<name>` is not in the copy list the tool that reads it ships with nothing to
+  // read. That is exactly how 0.99.0 shipped `optix_list_skills` and `optix_get_skill`
+  // with no payload: the tarball carried `vendor/optix/lib/skills.js` and no
+  // `vendor/optix/skills/`, so the list came back empty and every topic refused.
+  const RESOLVERS = [
+    /new URL\(\s*["'`]([^"'`]+?)["'`]\s*,\s*import\.meta\.url\s*\)/gu,
+    /join\(\s*dirname\((?:fileURLToPath\(import\.meta\.url\)|import\.meta\.dirname)\)\s*,\s*((?:"\.\."(?:\s*,\s*"[^"]+")?)+)\)/gu,
+  ]
+
+  for (const component of components.filter(candidate => candidate.vendor === true)) {
+    for (const packagePath of packagesOf(component)) {
+      const name = packagePath.split('/').pop()
+      const packageRoot = fileURLToPath(new URL(`../${packagePath}/`, import.meta.url))
+      for (const tree of ['lib', 'src']) {
+        const directory = join(packageRoot, tree)
+        if (!existsSync(directory)) continue
+        for (const file of textFilesUnder(directory)) {
+          const moduleDir = dirname(file)
+          for (const match of readFileSync(file, 'utf8').matchAll(RESOLVERS[0])) {
+            // A template hole (`../templates/${id}/`) still names its directory in
+            // the part before it, which is the part the packer has to carry.
+            const spec = match[1].split('${')[0]
+            const inside = relative(packageRoot, resolve(moduleDir, spec))
+            if (inside.startsWith('..')) continue
+            const wanted = inside.split(/[/\\]/u)[0]
+            const exception = RESOLVER_EXCEPTIONS.get(`${name}:${wanted}`)
+            if (exception !== undefined) {
+              assert.ok(exception.length > 30, `${name}: the exception for ${wanted} must say what it costs`)
+              continue
+            }
+            assert.ok(copied.has(wanted),
+              `${packagePath}/${tree}: ${relative(packageRoot, file)} resolves "../${spec}" at runtime, but scripts/assemble.mjs never copies ${wanted} into vendor/${name}/ - the tool that reads it ships with an empty folder`)
+          }
+          for (const match of readFileSync(file, 'utf8').matchAll(RESOLVERS[1])) {
+            const parts = [...match[1].matchAll(/"([^"]+)"/gu)].map(part => part[1])
+            const spec = parts.join('/')
+            const inside = relative(packageRoot, resolve(moduleDir, spec))
+            if (inside.startsWith('..')) continue
+            const wanted = inside.split(/[/\\]/u)[0]
+            const exception = RESOLVER_EXCEPTIONS.get(`${name}:${wanted}`)
+            if (exception !== undefined) {
+              assert.ok(exception.length > 30, `${name}: the exception for ${wanted} must say what it costs`)
+              continue
+            }
+            assert.ok(copied.has(wanted),
+              `${packagePath}/${tree}: ${relative(packageRoot, file)} resolves "${spec}" at runtime, but scripts/assemble.mjs never copies ${wanted} into vendor/${name}/ - the tool that reads it ships with an empty folder`)
+          }
+        }
+      }
+    }
+  }
 })
 
 test('every skill is registered, unique and inside its budget', () => {

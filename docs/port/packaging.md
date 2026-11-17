@@ -38,10 +38,43 @@ git push origin main --tags
 
 `prepack` runs `build:client` and `assemble`, so a packed tarball cannot carry a stale client bundle
 or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`, `entries/*.js`,
-`vendor/optix/lib/index.js`, `vendor/l5x/cip-worker.mjs`, `vendor/l5x/studio-bridge/*.csproj`,
-`vendor/mwi/code/engine/**` and `vendor/ecad/assets/acadrust.wasm` must all be present. The packaged
+`vendor/optix/lib/index.js`, `vendor/optix/skills/*.md`, `vendor/l5x/cip-worker.mjs`,
+`vendor/l5x/studio-bridge/*.csproj`, `vendor/mwi/code/engine/**` and `vendor/ecad/assets/acadrust.wasm`
+must all be present. The packaged
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
+
+**0.100.0 release record (2026-11-17).** Built from the Optix verification series (`3aa8b91` layout
+containers and NodeId pointers, `fa5f4ca` the checking tools on a container screen, `abbf0a2` the layout
+track, `67c5b56` the pointer playbooks, `badcab3` container margins, `089c6f2` the alarm route and the
+Stretch rule, `c65f898` the logging chain and the shadowing-name gate, `6e0ab90` the gap register and the
+test-runner guard) plus the `Release 0.100.0` bump (`6a9b4f7`), tagged `v0.100.0`. Release evidence:
+`pnpm docs:check` clean (`gen-tool-reference: reference is up to date.`, `docs/print.css` up to date);
+`pnpm test` **76 files passed** (31,461 ms — the run is five files larger than 0.99.0's because
+`scripts/test.mjs` had been skipping five Optix specs, and it now fails on that drift by name);
+`pnpm -r build` + `pnpm assemble` → 8 components into `vendor/`; `pnpm publish --no-git-checks --access public` →
+`✅ Published package @aryacode/dsh-engineering@0.100.0`. The first `verify-release.mjs --wait 120` answered
+`registry latest is 0.99.0, this repository is 0.100.0` and `npm view …@0.100.0` answered E404; the packument
+gained `dist-tags.latest 0.100.0` and `time["0.100.0"] 2026-11-17T20:38:23.446Z` about seven minutes after the
+publish, and the tarball URL kept answering 404 for four more 30-second polls before it downloaded. The publish
+was **not** retried. Registry copy: 4 795 983 bytes, `fileCount 919`, `unpackedSize 19 995 598`, npm
+`shasum 8d5d60db0282a8201a3c070209f2e03d0962ad38` (the downloaded file's sha1 matches it) and
+`sha256 07011ed0c4c8da8df6499c17aec58279e3513a1f60dd2b44ba8f97dbc2688b8d`; this machine's own `pnpm pack`
+digest differs (`18cee4f3a4970a7a5b06787c127736c1b9c50549281332320599ca9b5853d6cf`), as expected.
+**Packaged smoke from the published bytes** (`node tmp/smoke-0100.mjs`, which mounts
+`tmp/pack-0100/package/vendor/optix/lib/index.js` extracted from the downloaded tarball, against a live Studio
+bridge on `AryaSMTLineDemo`): 27 tools registered; `optix_list_skills` → **10 topics** (`alarms …
+verify-and-release`) where 0.99.0's tarball carried **zero** `vendor/optix/skills/` files and the same call
+returned an empty list; `optix_get_skill name=gaps-and-refusals` → 11 187 bytes, title "What the tools refuse,
+and what to do instead", naming `unsupported_array_write`, `not_an_object`, `proxy_only_property` and
+`Table.RecordLimit`; `optix_build action=status` → `state built, proven true, artifact 248 832 bytes,
+type_collisions null`; `optix_edit create_widget name=Trend widget_type=Screen` → `status refused, applied 0`
+with *"…it would shadow FTOptix.UI.Trend in every NetLogic in the project…"* and nothing reaching the bridge,
+while the same op as `TrendProbe` validated `ok`. Gaps shipped with it, recorded in
+`packages/optix/skills/gaps-and-refusals.md`: `vendor/<name>/package.json` does not exist so
+`brandPackageVersion()` prints no version in an Arya-branded footer; `Table.RecordLimit` has no tool route;
+`import_tags` end to end is still unproven; `CHANGELOG.md` carries mojibake introduced by `ab5fe6011`
+(2026-10-28) that no decoder in this repo can undo.
 
 **0.94.3 release record (2026-11-14).** Built from the engagement-order policy
 (`feat(policy): a new build starts from the brief and the standards, not the host`, `5a083a5`) plus two doc

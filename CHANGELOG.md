@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.100.0] - 2026-11-17
+
 ### Added
 
 - **A project type named after a built-in type is refused, and the shadowing is reported from Studio's own
@@ -43,6 +45,28 @@
   rewriting those six rows to `Height -1` changed nothing on screen and silenced the rule.
 
 ### Fixed
+
+- **`optix_list_skills` and `optix_get_skill` shipped with no payload, and the packer now has a guard against
+  repeating it.** `scripts/assemble.mjs` copies a fixed entry list into `vendor/<component>/`, and `skills` was never
+  in it: the published **0.99.0** tarball carries `vendor/optix/lib/skills.js` and **zero** `vendor/optix/skills/`
+  files (905 files in that tarball; `SKILL.md` 1, `schema/` 2, `netlogic/` 55, `templates/` 169), and the installed
+  copy under `~/.aryacode/profiles/desktop/node_modules/@aryacode/dsh-engineering/vendor/optix/` has the module and
+  `SKILL.md` with no folder beside it. `packages/optix/lib/skills.js:13` resolves
+  `join(dirname(fileURLToPath(import.meta.url)), "..", "skills")`, so in the shipped tree that is an absent
+  directory: `optix_list_skills` answers with an empty list and `optix_get_skill` refuses every topic with
+  `No Optix topic named "…". Topics: `. `skills` is in the copy list now, `packages/optix/package.json` declares
+  `skills/**/*` in its own `files`, and `pnpm assemble` produced `vendor/optix/skills/` with all ten pages — read
+  back through the **vendored** module, which lists 10 topics with `gaps-and-refusals` at 11 187 bytes. The guard is
+  in `test/components.spec.mjs`: it resolves every self-relative lookup in a vendored component's built tree (the
+  `new URL("../x/…", import.meta.url)` form and the `join(dirname(…import.meta.url), "..", "x")` form), takes the
+  package-relative first segment, and fails when the copy list does not carry it. Proven both ways: with `skills`
+  removed from the list it fails naming `packages/optix/lib: lib\skills.js resolves "../skills" at runtime, but
+  scripts/assemble.mjs never copies skills into vendor/optix/`; with it present the spec is 15/15. One lookup is
+  carried as a named exception rather than a blind spot: `packages/l5x/lib/engine/brand.js:77` reads
+  `../../package.json`, and the vendored tree has no per-component manifest (verified: no `package.json` anywhere
+  under `vendor/` in the 0.99.0 tarball), so `brandPackageVersion()` degrades to printing no version in an
+  Arya-branded footer. Copying each component's manifest into `vendor/<name>/` would put a package boundary and a
+  `type` field inside the bundle, which is a wider change than the release that found it.
 
 - **Five specs under `test/` were never run, and the gate reported green anyway.** `scripts/test.mjs` runs a
   hand-maintained `BUNDLE`, and nothing compared it to the folder: `test/optix-production.spec.mjs`,

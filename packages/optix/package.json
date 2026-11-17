@@ -12,6 +12,7 @@
     "netlogic/**/*",
     "schema/**/*",
     "help/**/*",
+    "skills/**/*",
     "locale/**/*",
     "icon.svg"
   ],
