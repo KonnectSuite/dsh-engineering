@@ -1,6 +1,39 @@
 ## [Unreleased]
 
+### Added
+
+- **`VIEW-LAYOUT-04`: a size the runtime throws away is now reported.** Four states of one node measured on
+  `UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3`, one variable at a time, each saved and re-measured in a
+  fresh runtime: `Height 300` + `VerticalAlignment 3` rendered **158** (the leftover fill); the same 300 with
+  alignment 0 rendered **300**; `Width 500` + `HorizontalAlignment 3` rendered **1012** (the whole track); the
+  same 500 with alignment 0 rendered **500**. `Stretch` on an axis *is* the size on that axis, on either axis,
+  whatever the parent's orientation — and the model keeps the number it discarded, so `optix_read node` still
+  reported `Height 300 (Float)` while the row drew at 158. `VIEW-LAYOUT-04` names the pair (`evidence: axis,
+  size, alignment: 3, parent`) wherever a `RowLayout` or `ColumnLayout` child carries it; `VIEW-LAYOUT-03` now
+  counts such a child as a **fill sibling** rather than spending its number against the track, because read as a
+  fixed 300 it invents a starvation the runtime never causes; and `layout()` in `packages/optix/lib/containers.js`
+  refuses to emit the pair at all. The rule also explains the other half of the spelling: a `-1` under alignment
+  0/1/2 renders at **content size**, which is why the demo's `Header`/`Footer` drew 204 px and 280 px wide.
+  `gridLayout` writes a row with a numeric `rowHeights` entry at `VerticalAlignment 0` for that reason — the old
+  spelling paired every row with Stretch, and the live check fired on all three demo screens (`Row1`/`Row2` naming
+  `Height 247` in a 514 px track). The render had measured 247 only because an equal fill split reproduces it;
+  rewriting those six rows to `Height -1` changed nothing on screen and silenced the rule.
+
 ### Fixed
+
+- **`optix_invoke` never reached the bridge.** `applyInvoke` was called without the gateway `apply()` builds, so
+  every call threw `ReferenceError: bridge is not defined` at `packages/optix/lib/index.js:1977`. With the gateway
+  passed, the alarm probe got the bridge's own answer instead: `CoreException: No behaviour or observer found that
+  handles the method 'Acknowledge' on node Root/Objects/AryaSMTLineDemo/Alarms/Alm_FeederJam` — the documented
+  refusal for a tool-created node, now measured rather than assumed.
+
+- **`set_link` could not be authored through `optix_edit`.** Bridge 1.0.9 answers it with `unknown_op` — "op
+  'set_link' is not validated by this bridge; it will be applied unchecked" — in both `errors` and `warnings` with
+  `ok: false`, and `acceptedValidation` required both lists to be empty, so the batch was refused with `applied: 0`
+  for an op the bridge only declined to *preflight*. An `unknown_op` is now separated out (`validationUnchecked`,
+  exported), a concrete defect beside it still refuses the batch, and a completed batch reports the ops it applied
+  unchecked. Measured live: `Alarms/Alm_FeederJam/InputValue` → `Model/Smt/ActiveFaults` applied, and Studio saved
+  it as `DynamicLink` / `DataType: NodePath` / `Value: "../../../Model/Smt/ActiveFaults"`.
 
 - **`optix_emulator`'s `save_verdict` reported that a Save had not reached disk even when it had.** The verdict
   compared `disk.newest_write` (an `mtimeMs` number) with `unsaved.first` (an ISO **string**): `number >= string`

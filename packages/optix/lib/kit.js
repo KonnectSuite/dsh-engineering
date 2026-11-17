@@ -364,16 +364,20 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 		let cardParent;
 		let chartParent;
 		if (sideBySide) {
-			const bodyRow = rowLayout(path, "Body", { box: bodyArea, horizontalAlignment: ALIGN.STRETCH, verticalAlignment: ALIGN.STRETCH, horizontalGap: gap });
+			// The body band is pinned to the rectangle the geometry library computed, so its alignment is the
+			// ordinal 0 (Left on the horizontal axis, Top on the vertical one): Stretch on an axis discards the
+			// numeric size written on it (measured 2026-11-17), and here the split between the card column and
+			// the adapter column depends on that width being real.
+			const bodyRow = rowLayout(path, "Body", { box: bodyArea, horizontalAlignment: ALIGN.LEFT, verticalAlignment: ALIGN.LEFT, horizontalGap: gap });
 			ops.push(...bodyRow.ops);
 			nodes.push(bodyRow.path);
-			const cardColumn = columnLayout(bodyRow.path, "BodyCards", { width: cardColumnWidth, height: FILL, horizontalAlignment: ALIGN.STRETCH, verticalAlignment: ALIGN.STRETCH, verticalGap: gap });
+			const cardColumn = columnLayout(bodyRow.path, "BodyCards", { width: cardColumnWidth, height: FILL, horizontalAlignment: ALIGN.LEFT, verticalAlignment: ALIGN.STRETCH, verticalGap: gap });
 			ops.push(...cardColumn.ops);
 			nodes.push(cardColumn.path);
 			cardParent = cardColumn.path;
 			chartParent = bodyRow.path;
 		} else {
-			const bodyColumn = columnLayout(path, "Body", { box: bodyArea, horizontalAlignment: ALIGN.STRETCH, verticalAlignment: ALIGN.STRETCH, verticalGap: gap });
+			const bodyColumn = columnLayout(path, "Body", { box: bodyArea, horizontalAlignment: ALIGN.LEFT, verticalAlignment: ALIGN.LEFT, verticalGap: gap });
 			ops.push(...bodyColumn.ops);
 			nodes.push(bodyColumn.path);
 			cardParent = bodyColumn.path;
@@ -581,8 +585,9 @@ export function messageFeed(parent, name, slot, spec, theme, kind) {
 	const perRow = kind === "compact" ? 2 : Math.min(3, messages.length);
 	const lines = Math.max(1, Math.ceil(messages.length / perRow));
 	// What is left for the tiles once the card's own padding and its title are taken out. Each row gets that
-	// height divided by the number of rows: several stretched rows inside one column splitting the height
-	// equally has not been measured, so the division is written rather than asked for.
+	// height divided by the number of rows: stretched rows inside one column were measured (2026-11-17) to
+	// split the track equally - two rows in a 608 px column with a 10 px gap each rendered 299 px - and the
+	// division written here is the same figure, written down so an unequal row height is possible later.
 	const listHeight = Math.max(40, slot.height - 44);
 	const tileHeight = Math.floor((listHeight - 8 * (lines - 1)) / lines);
 	const list = gridLayout(body.path, "List", {

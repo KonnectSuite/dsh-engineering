@@ -198,9 +198,10 @@ export function margins(path, edges) {
  * @param {number} [options.height] - Height, or `FILL`.
  * @param {object} [options.margins] - Edge margins written after the box.
  * @param {number} [options.horizontalAlignment] - `ALIGN` value. Defaults to `ALIGN.STRETCH` when `width` is
- *   `FILL`, because a fill without Stretch renders at the content size (measured 2026-11-17).
+ *   `FILL`, because a fill without Stretch renders at the content size (measured 2026-11-17). Naming Stretch
+ *   beside a numeric width is refused: the runtime discards that width.
  * @param {number} [options.verticalAlignment] - `ALIGN` value. Defaults to `ALIGN.STRETCH` when `height` is
- *   `FILL`, for the same reason.
+ *   `FILL`, for the same reason, and refused beside a numeric height for the same reason.
  * @param {number} [options.contentAlignment] - Content alignment; the enum depends on the orientation.
  * @param {number} [options.horizontalGap] - Gap between siblings, in pixels.
  * @param {number} [options.verticalGap] - Gap between siblings, in pixels.
@@ -239,6 +240,21 @@ export function layout(parent, name, type, options = {}) {
 	// inside a 1060 px row. So a `FILL` size implies Stretch unless the caller names an alignment.
 	const horizontal = options.horizontalAlignment ?? (options.width === FILL ? ALIGN.STRETCH : undefined);
 	const vertical = options.verticalAlignment ?? (options.height === FILL ? ALIGN.STRETCH : undefined);
+	// Stretch (3) is not a preference about a size, it is the size: measured 2026-11-17 on
+	// UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3 one variable at a time - Height 300 with
+	// VerticalAlignment 3 rendered 158 (the fill spelling, `flex: 1 1 0px`), the same 300 with alignment 0
+	// rendered 300 (`height: 300px`); Width 500 with HorizontalAlignment 3 rendered 1012 (`width: auto`),
+	// the same 500 with alignment 0 rendered 500. So a numeric size written on an axis whose alignment is 3
+	// is thrown away by the runtime, on either axis. Refusing the pair here is cheaper than authoring a
+	// model whose numbers are lies and finding it out in a render.
+	const declaredWidth = options.box !== undefined ? options.box.width : options.width;
+	const declaredHeight = options.box !== undefined ? options.box.height : options.height;
+	if (horizontal === ALIGN.STRETCH && declaredWidth !== undefined && declaredWidth !== FILL) {
+		throw new Error(`layout ${path}: Width ${declaredWidth} with horizontalAlignment ${ALIGN.STRETCH} is discarded by the runtime (measured: 500 + alignment 3 rendered 1012) - pass FILL to fill the track, or alignment 0/1/2 to keep ${declaredWidth}`);
+	}
+	if (vertical === ALIGN.STRETCH && declaredHeight !== undefined && declaredHeight !== FILL) {
+		throw new Error(`layout ${path}: Height ${declaredHeight} with verticalAlignment ${ALIGN.STRETCH} is discarded by the runtime (measured: 300 + alignment 3 rendered as a fill) - pass FILL to fill the track, or alignment 0/1/2 to keep ${declaredHeight}`);
+	}
 	if (horizontal !== undefined) ops.push(set(path, "HorizontalAlignment", String(horizontal)));
 	if (vertical !== undefined) ops.push(set(path, "VerticalAlignment", String(vertical)));
 	if (options.contentAlignment !== undefined) ops.push(set(path, "ContentAlignment", String(options.contentAlignment)));
@@ -346,8 +362,9 @@ export function arrayWriteRefusal(op) {
  * crash). So a grid here is the composition Rockwell's own shipped widgets use. Equal columns come free:
  * children at `Width -1` with `HorizontalAlignment 3` split their row (measured 2026-11-17 - two cards took
  * 530 px and 514 px of a 1060 px row across a 20 px gap). A row that takes the leftover height is `Height
- * -1` with `VerticalAlignment 3`; a row with a fixed height is given that height, which is what the emitters
- * do when the design check has already reserved the band.
+ * -1` with `VerticalAlignment 3`; a row with a fixed height is given `VerticalAlignment 0`, because Stretch on
+ * that axis discards the height (measured 2026-11-17: `Height 300` + alignment 3 rendered as a fill, the same
+ * 300 with alignment 0 rendered 300). `layout()` refuses the discarded pair, so a caller cannot write it.
  *
  * Callers place an item into `rowPaths[row]`. An unequal track has no `fr` spelling the bridge will write, so
  * it is an explicit pixel width on the item - the width the geometry library already computed for it.
@@ -390,11 +407,15 @@ export function gridLayout(parent, name, options = {}) {
 	const ops = [...column.ops];
 	const rowPaths = [];
 	for (let index = 0; index < rowCount; index += 1) {
+		const height = rowHeights ? (rowHeights[index] ?? FILL) : FILL;
 		const row = layout(column.path, `Row${index + 1}`, CONTAINERS.row, {
 			width: FILL,
-			height: rowHeights ? (rowHeights[index] ?? FILL) : FILL,
+			height,
 			horizontalAlignment: ALIGN.STRETCH,
-			verticalAlignment: ALIGN.STRETCH,
+			// A fixed row height only survives when the axis alignment is not Stretch (measured 2026-11-17:
+			// Height 300 + VerticalAlignment 3 rendered as a fill; the same 300 with alignment 0 rendered 300).
+			// `ALIGN.LEFT` is the same ordinal 0 that means Top on the vertical axis.
+			verticalAlignment: height === FILL ? ALIGN.STRETCH : ALIGN.LEFT,
 			horizontalGap: options.horizontalGap,
 		});
 		ops.push(...row.ops);

@@ -1844,14 +1844,37 @@ function resolve(config) {
 	return resolved;
 }
 /**
-* Require authoritative validation fields rather than treating a partial report as approval.
-* @param value - External validation result.
-* @param count - Number of submitted operations.
-* @returns Whether strict preflight accepted every operation.
-*/
+ * Require authoritative validation fields rather than treating a partial report as approval.
+ *
+ * An `unknown_op` entry is not a refusal. Measured live on bridge 1.0.9 (2026-11-17, `set_link` on
+ * `Alarms/Alm_FeederJam/InputValue`): the bridge answers `ok: false` with the same entry in both lists and
+ * the message "op 'set_link' is not validated by this bridge; it will be applied unchecked". It is naming
+ * an op it cannot preflight, not a defect in the operation, and `node/set-link` is the only route that
+ * links a module-typed variable. Treating it as a refusal made that route unreachable through `optix_edit`.
+ * So a batch is refused when the bridge names a concrete defect; an `unknown_op` alone lets the batch
+ * through, and `validationUnchecked` reports which operations went out unchecked.
+ * @param value - External validation result.
+ * @param count - Number of submitted operations.
+ * @returns Whether strict preflight accepted every operation.
+ */
 function acceptedValidation(value, count) {
 	if (typeof value.ok !== "boolean" || value.op_count !== count || !Array.isArray(value.errors) || !Array.isArray(value.warnings)) throw new Error("Bridge returned an incomplete batch validation report");
-	return value.ok && value.errors.length === 0 && value.warnings.length === 0;
+	const unchecked = validationUnchecked(value);
+	if (value.errors.some((entry) => entry?.code !== "unknown_op") || value.warnings.some((entry) => entry?.code !== "unknown_op")) return false;
+	return value.ok || unchecked.length > 0;
+}
+/**
+ * Name the operations the bridge declined to preflight, in the order it reported them.
+ * @param value - A validation report from `validate_ops`.
+ * @returns One line per unchecked operation, empty when the bridge validated everything.
+ */
+export function validationUnchecked(value) {
+	const seen = new Set();
+	for (const entry of [...(value?.errors ?? []), ...(value?.warnings ?? [])]) {
+		if (entry?.code !== "unknown_op") continue;
+		seen.add(`${String(entry.op_index ?? "?")}: ${String(entry.message ?? "the bridge did not validate this operation")}`);
+	}
+	return [...seen];
 }
 /** An OCR install is a package-manager download, so it gets far longer than a request. */
 const OCR_INSTALL_TIMEOUT_MS = 300000;
@@ -1936,8 +1959,9 @@ function applySkills(ctx) {
  * `allowInvoke`.
  * @param ctx - Cordis context with the harness tool runtime.
  * @param settings - The Optix row's settings.
+ * @param bridge - The shared bridge gateway; without it the handler throws `ReferenceError: bridge is not defined`.
  */
-function applyInvoke(ctx, settings) {
+function applyInvoke(ctx, settings, bridge) {
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_invoke",
 		description: "Call a method on a live node in Studio - acknowledge or confirm an alarm, close a dialog, run a DataLogger's Log, or execute a NetLogic's [ExportMethod]. This is the only way to exercise behaviour: a model write cannot do it, and a node the bridge created as a plain object has no behaviour at all, which the bridge reports as \"No behaviour or observer found that handles the method\". Argument syntax follows the bridge: name=value pairs separated by semicolons. Needs allowInvoke.",
@@ -2226,7 +2250,7 @@ function apply(ctx, config = {}) {
 	applySave(ctx, settings);
 	applySkills(ctx);
 	applyLogs(ctx);
-	applyInvoke(ctx, settings);
+	applyInvoke(ctx, settings, bridge);
 	applyOcrSetup(ctx, settings);
 	if (settings.preview) ctx.inject(["attachments"], (scope) => {
 		applyPreview(scope, settings);
@@ -2518,10 +2542,12 @@ function apply(ctx, config = {}) {
 			applied: 0,
 			validation
 		};
+		const unchecked = validationUnchecked(validation);
 		if (!apply) return {
 			status: "validated",
 			applied: 0,
-			validation
+			validation,
+			...(unchecked.length === 0 ? {} : { unchecked })
 		};
 		const results = [];
 		for (const [index, op] of ops.entries()) {
@@ -2557,6 +2583,7 @@ function apply(ctx, config = {}) {
 			applied: results.length,
 			results,
 			validation,
+			...(unchecked.length === 0 ? {} : { unchecked }),
 			...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
 			...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed })
 		};
@@ -6435,5 +6462,5 @@ function apply(ctx, config = {}) {
 	})));
 }
 //#endregion
-export { Config, apply, inject, name };
+export { Config, apply, inject, name, acceptedValidation };
 

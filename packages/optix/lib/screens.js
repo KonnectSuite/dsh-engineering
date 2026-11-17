@@ -264,9 +264,10 @@ export function scaffoldOps(spec) {
 	const columns = (spec.cards?.length ?? 0) <= 1 ? 1 : 2;
 	const rowsOfCards = (spec.cards?.length ?? 0) === 0 ? 1 : Math.ceil((spec.cards?.length ?? 0) / columns);
 	// The content column is inset by the same padding as the painted surface under it, so the layout box
-	// and the reported `slots.body` are the same rectangle. Rows get the height the geometry computed
-	// rather than `FILL`: several stretched rows inside one `ColumnLayout` splitting the height equally has
-	// not been measured, and a screen must not depend on an unmeasured behaviour.
+	// and the reported `slots.body` are the same rectangle. Rows are given the height the geometry computed:
+	// stretched rows inside one `ColumnLayout` were measured (2026-11-17) to split the track equally, which is
+	// what this arithmetic already produces, and `gridLayout` writes such a row with `VerticalAlignment 0`
+	// because Stretch on that axis discards the number.
 	const rowHeight = Math.floor((body.height - GAP * (rowsOfCards - 1)) / rowsOfCards);
 	const content = gridLayout(chrome.path, "Content", {
 		width: FILL,

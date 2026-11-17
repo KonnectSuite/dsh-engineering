@@ -344,6 +344,76 @@ test('VIEW-LAYOUT-03: a fixed child eats the track its fill sibling needed', () 
 	})
 })
 
+test('VIEW-LAYOUT-03: a child whose alignment is Stretch competes for the leftover whatever size it names', () => {
+	// Measured 2026-11-17 on UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3, one variable at a time: Height
+	// 300 + VerticalAlignment 3 rendered 158 (the leftover fill) and Width 500 + HorizontalAlignment 3 rendered
+	// 1012. So a stretched child spends no part of the track, and counting its number as a fixed size invents a
+	// starvation the runtime never causes.
+	const canvas = {
+		path: 'UI/Screens/Probe/Canvas', name: 'Canvas', type: 'ScaleLayout',
+		properties: [...box(0, 0, 1060, 800), { name: 'OriginalWidth', value: '800.0' }, { name: 'OriginalHeight', value: '500.0' }, { name: 'FillMode', value: '1 (FillModeEnum)' }],
+		children: [{ name: 'Content', type: 'ColumnLayout' }],
+	}
+	const content = { path: `${canvas.path}/Content`, name: 'Content', type: 'ColumnLayout', properties: box(0, 0, -1, -1), children: [{ name: 'Row1', type: 'RowLayout' }] }
+	const row = { path: `${content.path}/Row1`, name: 'Row1', type: 'RowLayout', properties: [...box(0, 0, -1, -1), { name: 'HorizontalGap', value: '20.0' }], children: [{ name: 'Wide', type: 'Rectangle' }, { name: 'Stretch', type: 'Rectangle' }] }
+	const wide = { path: `${row.path}/Wide`, name: 'Wide', type: 'Rectangle', properties: box(0, 0, 700, 60), children: [] }
+	const stretched = { path: `${row.path}/Stretch`, name: 'Stretch', type: 'Rectangle', properties: [...box(720, 0, 300, 60), { name: 'HorizontalAlignment', value: '3 (Int32)' }], children: [] }
+	const probeScreen = { ...screen, properties: box(0, 0, 1060, 800) }
+	const run = (nodes) => designFindings({ nodes, screen: probeScreen, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-03')
+
+	// 700 + 20 leaves 80 px of the 800 px design track for the stretched child: no finding. Read as a fixed
+	// 300 it would be 1020 against 800, which is the false positive this classification exists to stop.
+	assert.deepEqual(run([canvas, content, row, wide, stretched]), [])
+
+	// With the fixed child at 790 the leftover is gone, and the stretched sibling is named by the number it
+	// wrote that the runtime threw away.
+	const starved = run([canvas, content, row, { ...wide, properties: box(0, 0, 790, 60) }, stretched])
+	assert.equal(starved.length, 1)
+	assert.deepEqual(starved[0].evidence, {
+		path: row.path,
+		type: 'RowLayout',
+		track: 800,
+		track_from: 'Canvas design box',
+		axis: 'Width',
+		fixed: ['Wide: 790'],
+		gap: 20,
+		used: 810,
+		fill_siblings: ['Stretch'],
+		scaled_by: 1.325,
+		rendered: 1067,
+		past_the_box: 7,
+	})
+	assert.ok(/Stretch at Width 300 with WidthAlignment 3 \(discarded\)/u.test(starved[0].message), starved[0].message)
+})
+
+test('VIEW-LAYOUT-04: a size beside a Stretch alignment is reported as discarded, on either axis', () => {
+	// The four states measured 2026-11-17 on Row3: Height 300 + VerticalAlignment 3 rendered 158; the same 300
+	// with alignment 0 rendered 300; Width 500 + HorizontalAlignment 3 rendered 1012; the same 500 with
+	// alignment 0 rendered 500. The model keeps the number, so the check names it.
+	const column = { path: 'UI/Screens/Overview/Content', name: 'Content', type: 'ColumnLayout', properties: [...box(0, 0, -1, -1), { name: 'VerticalGap', value: '20.0' }], children: [{ name: 'Row3', type: 'RowLayout' }] }
+	const row3 = { path: `${column.path}/Row3`, name: 'Row3', type: 'RowLayout', properties: [...box(0, 0, 500, 300), { name: 'HorizontalAlignment', value: '3 (Int32)' }, { name: 'VerticalAlignment', value: '3 (Int32)' }], children: [] }
+	const run = (nodes) => designFindings({ nodes, screen, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-04')
+
+	const both = run([column, row3])
+	assert.equal(both.length, 2, 'one axis each was expected')
+	assert.deepEqual(both.map((finding) => finding.evidence), [
+		{ path: row3.path, type: 'RowLayout', axis: 'Width', size: 500, alignment: 3, parent: column.path },
+		{ path: row3.path, type: 'RowLayout', axis: 'Height', size: 300, alignment: 3, parent: column.path },
+	])
+	assert.ok(/draws at the leftover, not at 300 px/u.test(both[1].message), both[1].message)
+	assert.ok(/Pass -1 to fill the track, or alignment 0\/1\/2 to keep 300/u.test(both[1].message))
+
+	// The honest spellings: a stretched child that asks for the leftover, and a pinned child with alignment 0.
+	assert.deepEqual(run([column, { ...row3, properties: [...box(0, 0, -1, -1), { name: 'HorizontalAlignment', value: '3 (Int32)' }, { name: 'VerticalAlignment', value: '3 (Int32)' }] }]), [])
+	assert.deepEqual(run([column, { ...row3, properties: [...box(0, 0, 500, 300), { name: 'HorizontalAlignment', value: '0 (Int32)' }, { name: 'VerticalAlignment', value: '0 (Int32)' }] }]), [])
+	// Only a layout's own child is judged: this is where it was measured, and a ScaleLayout child is not claimed.
+	const scaled = { path: 'UI/Screens/Overview/Canvas', name: 'Canvas', type: 'ScaleLayout', properties: [...box(0, 0, 1060, 800), { name: 'OriginalWidth', value: '800.0' }, { name: 'OriginalHeight', value: '500.0' }], children: [{ name: 'Marker', type: 'Rectangle' }] }
+	const marker = { path: `${scaled.path}/Marker`, name: 'Marker', type: 'Rectangle', properties: [...box(0, 0, 300, 300), { name: 'HorizontalAlignment', value: '3 (Int32)' }], children: [] }
+	assert.deepEqual(run([scaled, marker]), [])
+})
+
 test('VIEW-LAYOUT-03: a layout\'s own margins come off the track before its children spend it', () => {
 	// Measured live 2026-11-17 on UI/Screens/LineStatus. The `Content` ColumnLayout at `Width -1` with
 	// LeftMargin 24 and RightMargin 24 inside a 1060 px canvas rendered 1012 px wide at x=244, and its

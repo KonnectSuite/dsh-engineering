@@ -67,7 +67,8 @@ every guid the map reports — measure structurally with `[data-type="scaleLayou
 1. **several stretched rows splitting one `ColumnLayout` equally — settled.** Two `Height -1` rows with
    `VerticalAlignment 3` in a 608 px column with a 10 px gap both rendered **299 px**: `(608 - 10) / 2`. A row
    left at `FILL` splits the column, so `rowHeights` is for a band the design *must* pin (a 44 px touch floor,
-   a reserved footer), not for making rows equal;
+   a reserved footer), not for making rows equal — and pinning means `VerticalAlignment 0` on that axis, which
+   item 7 is about;
 2. **clipping versus push — it pushes.** A child declared 900 wide inside an 800 px design track rendered
    **1192.5 px** and its `Width -1` sibling rendered at **w=0 at x=1433**, past the window edge. A layout
    neither shrinks nor clips a child to make room for its neighbours, and the overflow is drawn rather than
@@ -102,6 +103,31 @@ every guid the map reports — measure structurally with `[data-type="scaleLayou
    collapses to zero instead of being shrunk. The `ScaleLayout` and `Rectangle` wrappers are CSS grid
    (`grid-template-columns: minmax(0px,1fr)`), so measure both kinds structurally rather than by element id.
 
+7. **`Stretch` (3) on an axis *is* the size on that axis, and it discards the number written there.** Four
+   states of one node (`UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3`), one variable changed at a time,
+   each saved and re-measured in a fresh runtime:
+
+   | authored | rendered | the runtime's spelling |
+   | --- | --- | --- |
+   | `Height 300` + `VerticalAlignment 3` | **158** (the leftover fill) | `flex-grow: 1; flex-basis: 0px; min-height: 0px` |
+   | `Height 300` + `VerticalAlignment 0` | **300** | `height: 300px; min-height: 300px; flex: 0 1 auto` |
+   | `Width 500` + `HorizontalAlignment 3` | **1012** (the whole track) | `width: auto; align-self: stretch` |
+   | `Width 500` + `HorizontalAlignment 0` | **500** | `width: 500px; align-self: flex-start` |
+
+   It holds on both axes and whatever the parent's orientation is, and the model keeps the number the runtime
+   threw away — `optix_read node` still reported `Height 300 (Float)` while the row drew at 158. Two rules come
+   out of it: `VIEW-LAYOUT-04` reports a numeric size beside alignment 3 as discarded, and `VIEW-LAYOUT-03`
+   counts such a child as a **fill sibling** rather than spending its number against the track (read as a fixed
+   300 it invents a starvation the runtime never causes). `layout()` in `containers.js` refuses to emit the
+   pair. The consequence for a design: pinning a band means alignment 0 on that axis, and a pinned band competes
+   for the leftover — on this screen pinning `Row1`/`Row2` at 247 would have left `Row3` 514 − 247 − 247 − 40 =
+   **20 px**, which is the same squeeze measured in item 2.
+
+   The other half of the same rule: a `-1` under alignment 0/1/2 renders at **content size**, not at the track.
+   That is why the demo's `Header` and `Footer` — `Width -1` written by the older emitter, which did not derive
+   Stretch from a fill size — drew 204 px and 280 px wide instead of 1012. A fill size and a stretch alignment
+   belong together; a `-1` with no alignment is a label that hugs its text.
+
 The one case still not opened is a window genuinely larger than the design box (the 1920×1080 panel). The
 mechanism is proven both ways — a fit factor computed from the rendered box, up-scaling included — but the
 bigger-window number has been reasoned about, not measured.
@@ -112,7 +138,9 @@ Two authoring mechanics the same session measured, worth keeping beside those pr
   path against the **live** model, so a pointer to a node created earlier in the batch is refused
   (`bad_value: NodeId value must be a resolvable node path`). Create the node, then point at it in a second
   batch;
-- `set_link` is not validated by bridge 1.0.9 (`unknown_op: it will be applied unchecked`), so a pointer is
+- `set_link` is not validated by bridge 1.0.9 (`unknown_op: it will be applied unchecked`). The batch runner
+  treats that as unchecked rather than as a refusal and reports the op in `unchecked`, so a dynamic link can be
+  authored through a batch (it lands as a `DynamicLink` child, `DataType: NodePath`). A **pointer** is still
   written with `set_property` on the NodeId variable, which echoes the resolved `NodeId` back.
 
 Studio Save and Ctrl+Shift+B are still required before the runtime loads a bridge-authored batch, and the order

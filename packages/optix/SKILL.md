@@ -401,21 +401,35 @@ by `optix_script pointers=[…]`) then `store.Query(sql, out header, out object[
 `Scripts/GenericTableExporter` and `Scripts/DataLoggerExporter` export the same table to CSV with their own
 `Query` property.
 
-**A real alarm is a behaviour type, so `create_object` cannot make one.** `FTOptix.Alarm.DigitalAlarm` fails
-`type_not_found`, and the bare BrowseName `OffNormalAlarmController` creates a `BaseObject` **shell** with the
-right property names and no behaviour — it never reaches `/Objects/RetainedAlarms`, so the shipped
-`Widgets/AlarmGrid` stays empty however many shells exist. Make the alarm in design-time C# instead:
+**An alarm is authorable, but not invokable.** `FTOptix.Alarm.DigitalAlarm` is a Studio menu label, not a type:
+`create_object` refuses it with `type_not_found`, and the qualified name its refusal suggests
+(`FTOptix.Alarm.DigitalAlarm`) is refused with the identical message. The type to author is
+`OffNormalAlarmController`, and it is **not** an inert shell — measured 2026-11-17, an
+`OffNormalAlarmController` created by `optix_edit` under `Alarms`, with `InputValue` linked to a model tag
+through `set_link`, was raised by the runtime and listed by the shipped grid:
 
-    var alarm = InformationModel.MakeObject<FTOptix.Alarm.DigitalAlarm>("Alm_StationFault");
-    folder.Children.Add(alarm);
-    alarm.Severity = 750; alarm.LatchingEnabled = true; alarm.AutoAcknowledge = false; alarm.Enabled = true;
-    alarm.Message = "Station fault latched";
-    alarm.InputValueVariable.SetDynamicLink(source, DynamicLinkMode.Read);
+```
+{"op":"create_object","parent":"Alarms","name":"Alm_FeederJam","object_type":"OffNormalAlarmController"}
+{"op":"set_property","path":"Alarms/Alm_FeederJam","name":"Severity","value":"500"}
+{"op":"set_property","path":"Alarms/Alm_FeederJam","name":"NormalStateValue","value":"0"}
+{"op":"set_property","path":"Alarms/Alm_FeederJam","name":"LatchingEnabled","value":"true"}
+{"op":"set_property","path":"Alarms/Alm_FeederJam","name":"Message","value":"Feeder jam: component feed empty"}
+{"op":"set_link","path":"Alarms/Alm_FeederJam/InputValue","source":"Model/Smt/ActiveFaults","mode":"Read"}
+```
 
-Deploy that as `optix_script { action: "add", kind: "design", name: "AlarmSetup" }`, write the class over the
-generated file, `optix_script { action: "review", build: true }`, restart Studio so the new assembly loads,
-then `optix_script { action: "run", method: "SetupAlarms" }`. Acks are method calls (`Acknowledge`/`Confirm`)
-or the grid's own buttons; no authoring op invokes a method on a runtime node.
+`set_link` is one of the ops bridge 1.0.9 will not preflight (`unknown_op: it will be applied unchecked`); the
+batch runner reports it in `unchecked` rather than refusing it, and it lands as a `DynamicLink` child
+(`DataType: NodePath`, `Value: "../../../Model/Smt/ActiveFaults"`). Properties are materialised when written, not
+created from the type.
+
+What the tools cannot do is *drive* it. `optix_invoke Acknowledge` on that node answers `CoreException: No
+behaviour or observer found that handles the method 'Acknowledge'` — a tool-created node carries the type's
+properties and none of its behaviour. Acknowledge has to come from the grid's own buttons or from a runtime
+NetLogic, and a rendered `AlarmGrid` gives a preview test no hook at all: no `dataGridRow`, no `dataGridCell`,
+no `role="row"`, no `tr`, and Active/Acked/Confirmed are icons rather than text. `optix_read clr_type` cannot see
+any alarm type either (`type_not_found` for `AlarmController`, `AlarmsCategoryFolder`, `AlarmSet`); `optix_schema`
+is the route to the property list. An alarm controller also costs a licence token (`Component: Alarm controller
+requires 1 Standard Feature Token`), though the alarm still fired in demo mode.
 
 **Users, session and the shell.** Users are `FTOptix.Core.User` under `Security/Users`, and a password is
 written with `Session.ChangePassword(user, password, "")` — never as a property. Identity is shown by binding
@@ -723,6 +737,19 @@ than the design box by the container's own margins: on the demo's `LineStatus`, 
 sibling at zero 58 px past the row's edge — which is why the rule subtracts a container's margins before its
 children spend the space, and why a shortfall can hide in the margins of a screen that looks fine.
 
+**And a size is only real if the alignment on that axis is not Stretch.** Four states of one node, one variable
+at a time, each saved and re-measured in a fresh runtime: `Height 300` + `VerticalAlignment 3` rendered **158**
+(the leftover fill); the same 300 with alignment 0 rendered **300**; `Width 500` + `HorizontalAlignment 3`
+rendered **1012** (the whole track); the same 500 with alignment 0 rendered **500**. Stretch on an axis *is* the
+size on that axis and discards the number written there — on either axis, whatever the parent's orientation —
+while the model keeps the discarded number, so `optix_read node` still reported `Height 300 (Float)` for a row
+drawing at 158. `VIEW-LAYOUT-04` names the pair; `VIEW-LAYOUT-03` counts such a child as a fill sibling rather
+than spending its number against the track; `layout()` refuses to emit it. The mirror of the same rule: a `−1`
+under alignment 0/1/2 renders at **content size**, which is why the demo's `Header` and `Footer` drew 204 px and
+280 px instead of the 1012 px their row offered. Pinning a band therefore means alignment 0 on that axis, and a
+pinned band competes for the leftover — pinning this screen's `Row1`/`Row2` at 247 would have left the alarm
+grid's row 514 − 247 − 247 − 40 = 20 px.
+
 Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
 the rule-to-tool map are in `docs/reference/hmi-design.md`.
@@ -1007,7 +1034,7 @@ Everything below was proved on a live project on 2026-11-16, not read from help.
 
 **A trend.** A `Trend` created through the bridge never draws: it is not a behaviour instance, so `Refresh()` answers `No behaviour or observer found`. The template-library `Widgets/AdvancedTrend` panel does: import it, instantiate its `AdvancedTrendMain` PanelType on the screen, point its existing `Logger` `NodePointer` at the DataLogger (that is the "Logger Alias"), and switch the pens on from a NetLogic — the library creates them disabled, which looks exactly like a broken chart.
 
-**An alarm.** `create_object` yields a `BaseObject` shell that never reaches `/Objects/RetainedAlarms`; the browse-name type to instantiate is `OffNormalAlarmController`, or better, make real `FTOptix.Alarm.DigitalAlarm` objects from a runtime NetLogic with `InformationModel.MakeObject`. The shipped `Widgets/AlarmGrid` then needs its `Model` retargeted from `/Objects/RetainedAlarms/LocalizedAlarms` to the `Alarms` folder before it lists anything.
+**An alarm's behaviour.** `OffNormalAlarmController` authors, fires from a linked tag and is listed by the shipped grid — but `optix_invoke` cannot drive it (`No behaviour or observer found that handles the method 'Acknowledge'`), and a rendered `AlarmGrid` gives a preview test no row hook at all, so an acknowledge is proven by a screenshot or a model read, never by clicking a grid row. The grid's `AlarmsDataGrid/Model` already points at `/Objects/RetainedAlarms/LocalizedAlarms` and that is correct: retarget it and the grid lists alarm definitions instead of events.
 
 **Users and login.** `Session.ChangePassword(userName, newPassword, oldPassword)` — the third argument is the OLD password, and passing an empty one fails `WrongOldPassword` for a user that has none. `LogicObject.GetAlias("Users")` THROWS on a NetLogic the tools created (it does not return null), so wrap it and fall back to `Project.Current.Get("Security/Users")`. A Screen created through `create_object` serialises as `Type: Screen` instead of `Supertype: Screen` and renders blank when mounted — build sign-in UI as children of the window and toggle their `Visible`.
 
@@ -1028,10 +1055,10 @@ This page is the entry point; the deep end lives in nine topic playbooks shipped
 | `authoring-loop` | any authoring session: save, restart, prove, and the batch rules that refuse things |
 | `bindings-expressions` | wiring a value to a widget (`bind`, `set_link`, expression, formatter) |
 | `runtime-csharp` | anything the bridge cannot make work because it needs behaviour (`optix_script`) |
-| `alarms` | a real alarm system: DigitalAlarm objects plus the shipped AlarmGrid and its Model retarget |
+| `alarms` | a real alarm system: the `OffNormalAlarmController` route that fires, and what the shipped AlarmGrid will not let a test do |
 | `data-logger-trend-sql` | history: store, logger sampling mode, the typed VariablesToLog, AdvancedTrend, SQL |
 | `dialogs-and-login` | overlays: a Dialog as a window child, and a sign-in card plus real Users |
-| `screens-and-layout` | laying out a screen: the container tree the generators emit, ARGB colours, paint order, the shell's slots, and what a live session still owes |
+| `screens-and-layout` | laying out a screen: the container tree the generators emit, ARGB colours, paint order, the shell's slots, and the seven container behaviours a live session measured |
 | `tags-import` | `import_tags`: the file kinds, the filter rule, and the station prerequisite |
 | `verify-and-release` | judging whether work is actually done, and what makes a green result meaningless |
 

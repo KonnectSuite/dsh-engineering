@@ -7,7 +7,8 @@
  * the fill it sits on (`HMI-CONTRAST-01`), a screen with no navigation area
  * (`VIEW-NAV-01`), a screen nothing leaves from (`VIEW-NAV-02`), a screen whose
  * size is not the box its mounting panel gives it (`VIEW-LAYOUT-02`), a layout
- * whose fixed children leave nothing for the sibling that fills (`VIEW-LAYOUT-03`),
+ * whose fixed children leave nothing for the sibling that fills (`VIEW-LAYOUT-03`), a size the runtime
+ * throws away because the alignment on that axis is Stretch (`VIEW-LAYOUT-04`),
  * a hand-built copy repeated across screens instead of a type with instances
  * (`OPTIX-UI-01`) and behaviour living inside a composition (`OPTIX-UI-02`),
  * an Advanced SVG image with nothing to animate (`OPTIX-IMG-01`), a literal
@@ -579,11 +580,15 @@ export function designFindings(input) {
 		const unknown = [];
 		for (const kid of kids) {
 			const size = numberValue(property(kid, key));
+			const stretched = numberValue(property(kid, key === "Width" ? "HorizontalAlignment" : "VerticalAlignment")) === 3;
 			if (size === undefined) {
 				unknown.push(kid.name);
 				continue;
 			}
-			if (size < 0) filling.push(kid);
+			// Stretch on the axis IS the size on that axis: a child with alignment 3 competes for the leftover
+			// whatever number it names there (measured 2026-11-17 - Height 300 + VerticalAlignment 3 rendered as
+			// a fill). The number it threw away is `VIEW-LAYOUT-04`'s finding, not this one's arithmetic.
+			if (size < 0 || stretched) filling.push({ kid, size, stretched });
 			else fixed.push({ kid, size });
 		}
 		if (unknown.length > 0) unchecked.push(`${node.type} ${node.name}: ${unknown.length} child(ren) report no ${unknown.length === 1 ? key : `${key}s`} (${unknown.slice(0, 6).join(", ")}${unknown.length > 6 ? ", …" : ""}), so they count as nothing against its ${track.size} px track`);
@@ -605,7 +610,7 @@ export function designFindings(input) {
 			rule: "VIEW-LAYOUT-03",
 			severity: "warning",
 			message: filling.length > 0
-				? `${node.type} ${node.name} has a ${track.size} px ${axisWord} track, and its ${fixed.length} fixed ${trackNoun} plus ${kids.length - 1} ${gap} px gap${kids.length - 1 === 1 ? "" : "s"} already take ${used} px: ${filling.map((kid) => `${kid.name} at ${key} -1`).join(", ")} render at zero - a layout neither shrinks nor clips a child to make room for its neighbours.`
+				? `${node.type} ${node.name} has a ${track.size} px ${axisWord} track, and its ${fixed.length} fixed ${trackNoun} plus ${kids.length - 1} ${gap} px gap${kids.length - 1 === 1 ? "" : "s"} already take ${used} px: ${filling.map((entry) => `${entry.kid.name} at ${key} ${entry.size < 0 ? "-1" : `${entry.size} with ${key}Alignment 3 (discarded)`}`).join(", ")} render at zero - a layout neither shrinks nor clips a child to make room for its neighbours.`
 				: `${node.type} ${node.name} has a ${track.size} px ${axisWord} track and its ${fixed.length} fixed children take ${used} px, so they are drawn past it rather than shrunk to fit.`,
 			evidence: {
 				path: node.path,
@@ -616,11 +621,34 @@ export function designFindings(input) {
 				fixed: fixed.map((entry) => `${entry.kid.name}: ${entry.size}`),
 				gap,
 				used,
-				...(filling.length === 0 ? {} : { fill_siblings: filling.map((kid) => kid.name) }),
+				...(filling.length === 0 ? {} : { fill_siblings: filling.map((entry) => entry.kid.name) }),
 				...(factor === 1 ? {} : { scaled_by: factor, rendered: rendered }),
 				...(over > 0 ? { past_the_box: over } : {})
 			}
 		});
+	}
+
+	// VIEW-LAYOUT-04: a numeric size written on an axis whose alignment is Stretch is discarded by the runtime.
+	// Measured 2026-11-17 on UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3, one variable at a time: Height
+	// 300 + VerticalAlignment 3 rendered 158 (the leftover fill); the same 300 with alignment 0 rendered 300.
+	// Width 500 + HorizontalAlignment 3 rendered 1012; the same 500 with alignment 0 rendered 500. Studio keeps
+	// the number and shows it in the property grid, so a band a design reserved is not the band the operator
+	// sees. Judged only on a child of a RowLayout or ColumnLayout, because that is where it was measured.
+	const ALIGNMENT_OF_AXIS = new Map([["Width", "HorizontalAlignment"], ["Height", "VerticalAlignment"]]);
+	for (const node of nodes) {
+		const parent = parentOf(node);
+		if (parent === undefined || (parent.type !== "RowLayout" && parent.type !== "ColumnLayout")) continue;
+		for (const [axis, alignmentName] of ALIGNMENT_OF_AXIS) {
+			const size = numberValue(property(node, axis));
+			if (!(size > 0)) continue;
+			if (numberValue(property(node, alignmentName)) !== 3) continue;
+			findings.push({
+				rule: "VIEW-LAYOUT-04",
+				severity: "warning",
+				message: `${node.type} ${node.name} names ${axis} ${size} inside ${parent.type} ${parent.name}, but ${alignmentName} 3 (Stretch) makes that axis a fill: it draws at the leftover, not at ${size} px (measured 2026-11-17 - 300 with alignment 3 rendered as a fill, the same 300 with alignment 0 rendered 300). Pass -1 to fill the track, or alignment 0/1/2 to keep ${size}.`,
+				evidence: { path: node.path, type: node.type, axis, size, alignment: 3, parent: parent.path }
+			});
+		}
 	}
 
 	// OPTIX-UI-01: a repeated composition should be a type with instances.

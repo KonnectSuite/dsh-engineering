@@ -22,6 +22,7 @@ import {
 	arrayWriteRefusal,
 	columnLayout,
 	gridLayout,
+	frame,
 	layout,
 	margins,
 	rowLayout,
@@ -97,11 +98,21 @@ test("a grid is a ColumnLayout holding one RowLayout per row", () => {
 	assert.equal(property(grid.ops, grid.rowPaths[0], "Height"), "120.0");
 	assert.equal(property(grid.ops, grid.rowPaths[1], "Height"), "96.0");
 	assert.equal(property(grid.ops, grid.rowPaths[0], "HorizontalAlignment"), String(ALIGN.STRETCH));
-	assert.equal(property(grid.ops, grid.rowPaths[0], "VerticalAlignment"), String(ALIGN.STRETCH));
+	// A fixed row height needs the ordinal 0 on that axis (Left horizontally, Top vertically): Stretch (3)
+	// discards the numeric size written on the same axis (measured 2026-11-17 on
+	// UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3 - Height 300 with VerticalAlignment 3 rendered as a
+	// fill, the same 300 with alignment 0 rendered 300).
+	assert.equal(property(grid.ops, grid.rowPaths[0], "VerticalAlignment"), String(ALIGN.LEFT));
 	assert.equal(property(grid.ops, grid.rowPaths[0], "HorizontalGap"), "20.0");
 	// A row with no reserved height takes what is left, which is the pair measured to work in the runtime.
 	const filling = gridLayout("UI/Screens/Home", "Content", { columns: 2, rows: 1 });
 	assert.equal(property(filling.ops, filling.rowPaths[0], "Height"), "-1.0");
+	assert.equal(property(filling.ops, filling.rowPaths[0], "VerticalAlignment"), String(ALIGN.STRETCH));
+	// A row that mixes the two takes its own height and fills only the axis that asked to fill.
+	const mixed = gridLayout("UI/Screens/Home", "Content", { columns: 2, rows: 2, rowHeights: [120, FILL] });
+	assert.equal(property(mixed.ops, mixed.rowPaths[0], "VerticalAlignment"), String(ALIGN.LEFT));
+	assert.equal(property(mixed.ops, mixed.rowPaths[1], "VerticalAlignment"), String(ALIGN.STRETCH));
+	assert.equal(property(mixed.ops, mixed.rowPaths[1], "Height"), "-1.0");
 	// An `fr` array is accepted only for its length: no `fr` spelling is ever written, because the bridge
 	// refuses the array property it would live in.
 	const fromFr = gridLayout("UI/Screens/Home", "Content", { columns: ["2fr", "1fr"], rows: ["1fr", "1fr"] });
@@ -247,6 +258,26 @@ test("a fill size implies Stretch, and a pinned size does not", () => {
 	const named = columnLayout("UI/Screens/Home", "Feed", { width: FILL, height: FILL, horizontalAlignment: ALIGN.CENTER });
 	assert.equal(property(named.ops, named.path, "HorizontalAlignment"), String(ALIGN.CENTER));
 	assert.equal(property(named.ops, named.path, "VerticalAlignment"), String(ALIGN.STRETCH));
+});
+
+test("a numeric size beside Stretch is refused, because the runtime throws the number away", () => {
+	// Measured 2026-11-17 on UI/Screens/AlarmSummary/Canvas/Layout/Content/Row3, one variable at a time:
+	// Height 300 + VerticalAlignment 3 rendered 158 (the fill spelling); the same 300 with alignment 0 rendered
+	// 300. Width 500 + HorizontalAlignment 3 rendered 1012; the same 500 with alignment 0 rendered 500. So
+	// Stretch on an axis IS the size on that axis, and a number written beside it is discarded - on either
+	// axis, whatever the parent's orientation. A model that carries such a number is a model whose numbers
+	// are lies, so the pair never leaves this module.
+	assert.throws(() => rowLayout("UI/Screens/Home", "Row3", { width: 500, height: FILL, horizontalAlignment: ALIGN.STRETCH }), /Width 500 with horizontalAlignment 3 is discarded by the runtime/u);
+	assert.throws(() => columnLayout("UI/Screens/Home", "Row3", { width: FILL, height: 300, verticalAlignment: ALIGN.STRETCH }), /Height 300 with verticalAlignment 3 is discarded by the runtime/u);
+	// A `box` call is covered too, because its numbers arrive through the frame.
+	assert.throws(() => layout("UI/Screens/Home", "Body", CONTAINERS.row, { box: frame(244, 176, 1012, 300), verticalAlignment: ALIGN.STRETCH }), /Height 300 with verticalAlignment 3/u);
+	// The honest spellings still build: a pinned box writes no alignment, a fill writes the pair.
+	const pinned = rowLayout("UI/Screens/Home", "Row3", { width: 500, height: 300 });
+	assert.equal(property(pinned.ops, pinned.path, "HorizontalAlignment"), undefined);
+	assert.equal(property(pinned.ops, pinned.path, "VerticalAlignment"), undefined);
+	const filled = rowLayout("UI/Screens/Home", "Row3", { width: FILL, height: FILL, horizontalAlignment: ALIGN.STRETCH, verticalAlignment: ALIGN.STRETCH });
+	assert.equal(property(filled.ops, filled.path, "Width"), "-1.0");
+	assert.equal(property(filled.ops, filled.path, "Height"), "-1.0");
 });
 
 test("a finished screen keeps the same tree, adds bound readouts and a navigation row", () => {
