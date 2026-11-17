@@ -344,6 +344,82 @@ test('VIEW-LAYOUT-03: a fixed child eats the track its fill sibling needed', () 
 	})
 })
 
+test('VIEW-LAYOUT-03: a layout\'s own margins come off the track before its children spend it', () => {
+	// Measured live 2026-11-17 on UI/Screens/LineStatus. The `Content` ColumnLayout at `Width -1` with
+	// LeftMargin 24 and RightMargin 24 inside a 1060 px canvas rendered 1012 px wide at x=244, and its
+	// RowLayout child rendered 1012 px too. With Card1 at Width 1050 across a 20 px gap, Card2 rendered at
+	// w=0 at x=1314 - 58 px past the row's own right edge at 1256. The first version of the rule read the
+	// track as the 1060 px design box and reported a 10 px overflow: the direction was right, the number was
+	// 48 px off, and a screen whose margins are bigger than that would have been missed entirely.
+	const spaced = (left, top, right, bottom, width, height) => [
+		{ name: 'LeftMargin', value: `${left}.0` },
+		{ name: 'TopMargin', value: `${top}.0` },
+		{ name: 'RightMargin', value: `${right}.0` },
+		{ name: 'BottomMargin', value: `${bottom}.0` },
+		{ name: 'Width', value: `${width}.0` },
+		{ name: 'Height', value: `${height}.0` },
+	]
+	const canvas = {
+		path: 'UI/Screens/LineStatus/Canvas', name: 'Canvas', type: 'ScaleLayout',
+		properties: [...spaced(0, 0, 0, 0, 1060, 706), { name: 'OriginalWidth', value: '1060.0' }, { name: 'OriginalHeight', value: '706.0' }, { name: 'FillMode', value: '0 (FillModeEnum)' }],
+		children: [{ name: 'Layout', type: 'ColumnLayout' }],
+	}
+	const layout = { path: `${canvas.path}/Layout`, name: 'Layout', type: 'ColumnLayout', properties: spaced(0, 0, 0, 0, -1, -1), children: [{ name: 'Content', type: 'ColumnLayout' }] }
+	const content = { path: `${layout.path}/Content`, name: 'Content', type: 'ColumnLayout', properties: spaced(24, 24, 24, 24, -1, -1), children: [{ name: 'Row1', type: 'RowLayout' }] }
+	const row = { path: `${content.path}/Row1`, name: 'Row1', type: 'RowLayout', properties: [...spaced(0, 0, 0, 0, -1, 247), { name: 'HorizontalGap', value: '20.0' }], children: [{ name: 'Card1', type: 'Rectangle' }, { name: 'Card2', type: 'Rectangle' }] }
+	const card1 = { path: `${row.path}/Card1`, name: 'Card1', type: 'Rectangle', properties: spaced(0, 0, 0, 0, 1050, -1), children: [] }
+	const card2 = { path: `${row.path}/Card2`, name: 'Card2', type: 'Rectangle', properties: spaced(0, 0, 0, 0, -1, -1), children: [] }
+	const lineStatus = { ...screen, path: 'UI/Screens/LineStatus', name: 'LineStatus', properties: spaced(0, 0, 0, 0, 1060, 706) }
+	const nodes = [lineStatus, canvas, layout, content, row, card1, card2]
+	const run = (list) => designFindings({ nodes: list, screen: lineStatus, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-03')
+
+	const starved = run(nodes)
+	assert.equal(starved.length, 1, 'a 1050 px card inside a 1012 px track left its -1 sibling unreported')
+	assert.deepEqual(starved[0].evidence, {
+		path: row.path,
+		type: 'RowLayout',
+		track: 1012,
+		track_from: 'Canvas design box',
+		axis: 'Width',
+		fixed: ['Card1: 1050'],
+		gap: 20,
+		used: 1070,
+		fill_siblings: ['Card2'],
+		past_the_box: 58,
+	})
+
+	// The margins are the whole difference at 1020 px: 1020 + 20 does not fit the 1012 px track the margins
+	// leave, and fits the 1060 px track when they are gone. Same card, same gap, one variable.
+	const shortAt = (track, used, over) => [{
+		rule: 'VIEW-LAYOUT-03',
+		severity: 'warning',
+		message: `RowLayout Row1 has a ${track} px width track, and its 1 fixed widths plus 1 20 px gap already take ${used} px: Card2 at Width -1 render at zero - a layout neither shrinks nor clips a child to make room for its neighbours.`,
+		evidence: {
+			path: row.path, type: 'RowLayout', track, track_from: 'Canvas design box', axis: 'Width',
+			fixed: ['Card1: 1020'], gap: 20, used, fill_siblings: ['Card2'], past_the_box: over,
+		},
+	}]
+	const at1020 = (list) => list.map((entry) => entry === card1 ? { ...card1, properties: spaced(0, 0, 0, 0, 1020, -1) } : entry);
+	assert.deepEqual(run(at1020(nodes)), shortAt(1012, 1040, 28), 'the margins were not spent before the children were')
+	assert.deepEqual(run(at1020(nodes.map((entry) => entry === content ? { ...content, properties: spaced(0, 0, 0, 0, -1, -1) } : entry))), [],
+		'a card that fits the unmarginated track was reported as short')
+	// A vertical track pays for TopMargin and BottomMargin the same way, and the margins are what make the
+	// same children short: 640 + 20 fits in 706 but not in 706 - 30 - 30.
+	const stack = { path: 'UI/Screens/Overview/Stack', name: 'Stack', type: 'ColumnLayout', properties: [...spaced(0, 30, 0, 30, -1, -1), { name: 'VerticalGap', value: '20.0' }], children: [{ name: 'Header', type: 'Rectangle' }, { name: 'Body', type: 'Rectangle' }] }
+	const header = { path: `${stack.path}/Header`, name: 'Header', type: 'Rectangle', properties: spaced(0, 0, 0, 0, 1060, 640), children: [] }
+	const body = { path: `${stack.path}/Body`, name: 'Body', type: 'Rectangle', properties: spaced(0, 0, 0, 0, 1060, -1), children: [] }
+	const verticalRun = (list) => designFindings({ nodes: list, screen: lineStatus, canvas: undefined, siblings: [] })
+		.findings.filter((finding) => finding.rule === 'VIEW-LAYOUT-03')
+	const vertical = verticalRun([lineStatus, stack, header, body])
+	assert.equal(vertical.length, 1)
+	assert.deepEqual(vertical[0].evidence.track, 646, 'TopMargin 30 and BottomMargin 30 were not taken off the 706 px height')
+	assert.equal(vertical[0].evidence.used, 660)
+	assert.equal(vertical[0].evidence.past_the_box, 14)
+	assert.deepEqual(verticalRun([lineStatus, { ...stack, properties: [...spaced(0, 0, 0, 0, -1, -1), { name: 'VerticalGap', value: '20.0' }] }, header, body]), [],
+		'the same stack without margins was reported as short')
+})
+
 test('a size of -1 is Fill, not a box, so no rule measures it as one', () => {
 	// Read as a number, -1 is a rectangle with negative area. Before this was refused, HMI-TARGET-01 reported a
 	// control placed by a layout as "-1×-1; the target minimum is 44px" and OPTIX-LAYOUT-01 called every child

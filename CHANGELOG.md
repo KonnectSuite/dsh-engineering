@@ -2,6 +2,31 @@
 
 ### Fixed
 
+- **`optix_emulator`'s `save_verdict` reported that a Save had not reached disk even when it had.** The verdict
+  compared `disk.newest_write` (an `mtimeMs` number) with `unsaved.first` (an ISO **string**): `number >= string`
+  coerces the string to NaN, so the comparison was false for every project, always. Measured 2026-11-17 on the
+  demo — a save that landed at `17:43:54` was answered with "No file in the project is newer than the first
+  pending bridge change (17:38:46.861Z); the newest write under Nodes/ is 2026-11-17T17:43:54.218Z", naming the
+  newer file and denying it in the same sentence. The decision is now `saveReachedDisk(disk, unsaved)` in
+  `packages/optix/lib/emulator.js`: both sides are epoch milliseconds, and the comparison is against the **last**
+  pending change, because a disk write newer than only the first of several changes proves a save happened
+  mid-series, not that the remaining changes were saved. The refusal sentence now names the ordering a session
+  has to follow — Studio stamps the YAML seconds after the `Ctrl+S` keystroke, so poll the file's write time and
+  restart the runtime only after it moves.
+
+- **`VIEW-LAYOUT-03` measured the wrong track: a container's own margins were not subtracted before its
+  children spent it.** The rule was written against a probe whose layouts carried no margins, so it compared the
+  children with the `ScaleLayout` design box. On the demo's `UI/Screens/LineStatus` the truth is smaller:
+  `…/Canvas/Layout/Content` is `Width -1` with `LeftMargin 24` and `RightMargin 24`, and it rendered **1012 px at
+  x=244** — 48 px less than the 1060 px the rule reported. Pushing `Row1/Card1` to `Width 1050` rendered Card1 at
+  1050 px and its `Width -1` sibling `Card2` at **w=0 at x=1314**, 58 px past the row's right edge, while the rule
+  said `past_the_box: 10`. `boxOf` in `packages/optix/lib/design.js` now subtracts `marginsOf(node, key)` in every
+  branch (the screen-box seed, a `ScaleLayout` design box, an axis passed straight through, and a splitting
+  layout's leftover), and the live evidence reads `track 1012, used 1070, past_the_box 58` — matching the DOM. Only
+  a container's own margins count: a layout-placed child reports none in the model (the runtime emits
+  `margin: 0px`) and a hand-placed node's `LeftMargin` is a position, not a share of a shared track. A screen whose
+  shortfall hides inside its margins would otherwise have passed.
+
 - **A size of `-1` was read as a rectangle, so two rules invented geometry about it.** `rectOf` in
   `packages/optix/lib/design.js` took the four values a node reports and multiplied them: a control placed by a
   layout — `Width -1` meaning Fill — came out as a box with negative area, `HMI-TARGET-01` reported it as

@@ -484,6 +484,15 @@ export function designFindings(input) {
 	};
 	const childrenOf = (node) => childNodes.get(node.path) ?? [];
 	const gapOf = (node, key) => numberValue(property(node, key === "Width" ? "HorizontalGap" : "VerticalGap")) ?? 0;
+	// A node's own margins on one axis. Measured live 2026-11-17: a `ColumnLayout` at `Width -1` with
+	// `LeftMargin 24` and `RightMargin 24` inside a 1060 px canvas rendered 1012 px wide at x=244, and its
+	// `RowLayout` child rendered 1012 px too. A fill size asks for the parent's room, and the margins take their
+	// share of it before the node draws. Sibling margins are deliberately not counted against a shared track:
+	// a layout-placed child reports no margin at all in the model (the runtime emits `margin: 0px`), and a
+	// hand-placed node's `LeftMargin` is a position, not a share of the track.
+	const marginsOf = (node, key) => key === "Width"
+		? (numberValue(property(node, "LeftMargin")) ?? 0) + (numberValue(property(node, "RightMargin")) ?? 0)
+		: (numberValue(property(node, "TopMargin")) ?? 0) + (numberValue(property(node, "BottomMargin")) ?? 0);
 	// The box one node hands the next on a single axis: `size` in the coordinate space that node's own children
 	// declare in, `rendered` in the pixels it draws at, and `x`/`y` for the factor between them when a
 	// `ScaleLayout` is what set the space. FillMode 1 (Stretch) scales the two axes independently (measured
@@ -493,10 +502,11 @@ export function designFindings(input) {
 		seen.add(node.path);
 		const own = numberValue(property(node, key));
 		if (own > 0) return { size: own, rendered: own };
+		const ownMargin = marginsOf(node, key);
 		const parent = parentOf(node);
 		if (parent === undefined) {
 			const seed = key === "Width" ? screenRect?.width : screenRect?.height;
-			return seed === undefined ? undefined : { size: seed, rendered: seed, from: "the screen box" };
+			return seed === undefined ? undefined : { size: seed - ownMargin, rendered: seed - ownMargin, from: "the screen box" };
 		}
 		const designWidth = numberValue(property(parent, "OriginalWidth"));
 		const designHeight = numberValue(property(parent, "OriginalHeight"));
@@ -514,9 +524,10 @@ export function designFindings(input) {
 			const y = fit ?? (known ? tall.rendered / designHeight : 1);
 			// What the design box actually draws at: the design size times the factor, which for a Fit mode is
 			// the uniform one and so leaves the leftover of the host box as centring margin, not as track.
+			const designSize = (key === "Width" ? designWidth : designHeight) - ownMargin;
 			return {
-				size: key === "Width" ? designWidth : designHeight,
-				rendered: known ? key === "Width" ? designWidth * x : designHeight * y : undefined,
+				size: designSize,
+				rendered: known ? designSize * (key === "Width" ? x : y) : undefined,
 				x,
 				y,
 				from: `${parent.name} design box`
@@ -524,9 +535,17 @@ export function designFindings(input) {
 		}
 		const inherited = boxOf(parent, key, seen);
 		if (inherited === undefined) return undefined;
-		// A layout only spends its track on the axis it splits along. Children of a `RowLayout` sit side by side,
-		// so their heights do not eat the vertical track; the row's own height passes through to them.
-		if (LAYOUT_AXES.get(parent.type) !== key) return inherited;
+		const scale = (key === "Width" ? inherited.x : inherited.y) ?? 1;
+		if (LAYOUT_AXES.get(parent.type) !== key) {
+			// A layout only spends its track on the axis it splits along, so on the other axis it hands the whole
+			// of it down - but this node's own margins come off it before it draws.
+			return {
+				size: inherited.size - ownMargin,
+				rendered: inherited.rendered === undefined ? undefined : inherited.rendered - ownMargin * scale,
+				...(inherited.x === undefined ? {} : { x: inherited.x, y: inherited.y }),
+				...(inherited.from === undefined ? {} : { from: inherited.from })
+			};
+		}
 		const siblings = childrenOf(parent).filter((child) => !isVariableType(child.type));
 		const taken = siblings.reduce((total, child) => {
 			if (child.path === node.path) return total;
@@ -534,11 +553,12 @@ export function designFindings(input) {
 			return total + (size > 0 ? size : 0);
 		}, 0);
 		const gaps = gapOf(parent, key) * Math.max(siblings.length - 1, 0);
-		const leftover = inherited.size - taken - gaps;
-		const scale = (key === "Width" ? inherited.x : inherited.y) ?? 1;
+		const leftover = inherited.size - taken - gaps - ownMargin;
 		return {
 			size: leftover,
-			rendered: inherited.rendered === undefined ? undefined : inherited.rendered - taken * scale - gaps,
+			rendered: inherited.rendered === undefined
+				? undefined
+				: inherited.rendered - taken * scale - gaps - ownMargin * scale,
 			...(inherited.x === undefined ? {} : { x: inherited.x, y: inherited.y }),
 			from: `${parent.name} leftover`
 		};

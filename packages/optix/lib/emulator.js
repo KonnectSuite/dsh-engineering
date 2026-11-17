@@ -133,6 +133,40 @@ export async function diskState(project) {
 	state.newest_write_iso = state.newest_write === 0 ? "" : new Date(state.newest_write).toISOString();
 	return state;
 }
+/**
+ * Decide whether a Save reached disk, from the file evidence alone.
+ *
+ * Both sides must be epoch milliseconds. The pending-change stamps are ISO strings, and a number compared
+ * with a string is a NaN comparison that is always false: measured 2026-11-17, a save that demonstrably
+ * landed at 17:43:54 was reported as "Studio has not written that change to disk yet". The comparison is
+ * against the *last* pending change, because a disk write newer than only the first of several changes
+ * proves a save happened mid-series, not that the remaining changes were saved.
+ * @param disk - `diskState` result for the project folder.
+ * @param unsaved - `pendingModelChanges` result for the bridge origin.
+ * @returns `saved` (undefined when nothing is pending) and the sentence a session should read.
+ */
+export function saveReachedDisk(disk, unsaved) {
+	const last = unsaved?.last ?? "";
+	if (last === "") return {
+		saved: undefined,
+		verdict: ""
+	};
+	const newest = Math.max(disk.newest_write ?? 0, disk.project_write ?? 0);
+	const newestIso = disk.newest_write_iso ?? "";
+	const lastMs = Date.parse(last);
+	if (!Number.isFinite(lastMs)) return {
+		saved: undefined,
+		verdict: `The pending-change stamp "${last}" is not a timestamp, so the save cannot be judged from disk.`
+	};
+	if (newest >= lastMs) return {
+		saved: true,
+		verdict: `The newest write under Nodes/ (${newestIso}) is newer than the last pending bridge change (${last}), so the save reached disk.`
+	};
+	return {
+		saved: false,
+		verdict: `No file in the project is newer than the last pending bridge change (${last}); the newest write under Nodes/ is ${newestIso || "older than any bridge change"}. Studio has not written that change to disk yet, so the runtime cannot load it. Studio stamps the file seconds after the Ctrl+S keystroke, so poll the file's write time rather than the reported save time, and restart the runtime only after it moves.`
+	};
+}
 /** Folder holding the runtime logs this plugin writes; one file per project. */
 export function logDirectory() {
 	const base = typeof process.env.LOCALAPPDATA === "string" && process.env.LOCALAPPDATA !== "" ? process.env.LOCALAPPDATA : tmpdir();

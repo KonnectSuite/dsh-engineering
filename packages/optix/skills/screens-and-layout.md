@@ -86,7 +86,21 @@ every guid the map reports — measure structurally with `[data-type="scaleLayou
    box** (265×160 ÷ 100×50 → **2.65**) and centres that scaled design box when the aspects differ;
 5. **gaps are not scaled by a `ScaleLayout`.** A 20 px row gap and a 10 px column gap stayed exact through the
    1.325 × 1.6 stretch. A gap is a real cost at any zoom, which is what makes the equal-split arithmetic in
-   item 1 worth writing down.
+   item 1 worth writing down;
+6. **a layout's own margins come off its track before its children spend it.** On the demo's `LineStatus`,
+   `Content` is `Width -1` with `LeftMargin 24` and `RightMargin 24` inside a 1060 px design box, and it
+   rendered **1012 px at x=244** — its `RowLayout` child also 1012 px. Push `Row1/Card1` to `Width 1050` and the
+   row rendered Card1 at 1050 px and its `Width -1` sibling `Card2` at **w=0 at x=1314** (244 + 1050 + 20), 58 px
+   past the row's own right edge. `VIEW-LAYOUT-03` reported `track 1012`, `used 1070`, `past_the_box 58` — the
+   margins are the difference between a rule that fires and a rule that is 48 px wrong. A layout-placed child
+   reports no margin in the model (the runtime emits `margin: 0px`); a hand-placed node's `LeftMargin` is a
+   position, not a share of the track, so only the container's own margins are subtracted.
+
+   How the runtime lays a row out, from the same measurement: a `RowLayout` is `display: flex` with
+   `column-gap`, and a child with a named size gets `width: Wpx; min-width: Wpx` with **no flex properties**,
+   while a child at `-1` gets `flex-grow: 1; flex-basis: 0px; min-width: 0px`. That is exactly why the fill child
+   collapses to zero instead of being shrunk. The `ScaleLayout` and `Rectangle` wrappers are CSS grid
+   (`grid-template-columns: minmax(0px,1fr)`), so measure both kinds structurally rather than by element id.
 
 The one case still not opened is a window genuinely larger than the design box (the 1920×1080 panel). The
 mechanism is proven both ways — a fit factor computed from the rendered box, up-scaling included — but the
@@ -101,9 +115,14 @@ Two authoring mechanics the same session measured, worth keeping beside those pr
 - `set_link` is not validated by bridge 1.0.9 (`unknown_op: it will be applied unchecked`), so a pointer is
   written with `set_property` on the NodeId variable, which echoes the resolved `NodeId` back.
 
-Studio Save and Ctrl+Shift+B are still required before the runtime loads a bridge-authored batch, and Studio's
-own write lands several seconds after the `Ctrl+S` keystroke: a runtime restarted inside that window serves the
-**pre-save** design, so restart it again rather than trusting the first render.
+Studio Save and Ctrl+Shift+B are still required before the runtime loads a bridge-authored batch, and the order
+that proves a change is `optix_save` → **poll the YAML's `LastWriteTime` until it moves** → `optix_emulator
+restart` → **navigate the browser again**. `optix_save` reports `saved_at` at the keystroke plus a few seconds of
+latency, but Studio writes the file later still (measured: `saved_at 17:39:17Z`, `Screens.yaml` stamped 17:39:29),
+and a runtime restarted inside that window serves the **pre-save** design. A page opened before the restart keeps
+rendering the old screen over a dead WebSocket even after a cache-busting reload, so re-navigate rather than
+refresh. A bridge write is not durable until that save: when Studio crashed mid-session an unsaved `Width` change
+was simply gone, and every file under `Nodes/` came back as it was.
 
 ## Facts that decide the design
 

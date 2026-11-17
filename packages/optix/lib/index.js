@@ -25,7 +25,7 @@ import { writeAssets } from "./assets.js";
 import { RAIL_WIDTH, SHELL_NAMES, shellPlan } from "./shell.js";
 import { DIALOG_KINDS, dialogPlan } from "./dialogs.js";
 import { describeScreen, rubricCatalogue, scoreScreen } from "./rubric.js";
-import { diskState, emulatorLogs, emulatorStatus, restartEmulator, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
+import { diskState, emulatorLogs, emulatorStatus, restartEmulator, saveReachedDisk, startEmulator, stopEmulator, studioProcesses } from "./emulator.js";
 import { saveProject, saveStamp, studioWindow } from "./save.js";
 import { listSkills, readSkill } from "./skills.js";
 import { bridgeLog, runtimeLog } from "./logs.js";
@@ -1633,17 +1633,16 @@ function applyEmulator(ctx, settings) {
 			if (projectDir === "") throw new Error("optix_emulator needs the project folder: pass project (or project_root) as the directory that holds the .optix file.");
 			const unsaved = pendingModelChanges(origin);
 			const disk = await diskState(projectDir);
-			// Files are the only evidence a Save reached disk: nothing in UAManagedCore can
-			// save a project, so the newest write under Nodes/ is compared with the first
-			// pending bridge change instead of trusting that a keystroke landed.
+			// Files are the only evidence a Save reached disk: nothing in UAManagedCore can save a project, so
+			// the newest write under Nodes/ is compared with the newest pending bridge change instead of
+			// trusting that a keystroke landed.
 			const diskReport = {
 				newest_write: disk.newest_write_iso,
 				newest_path: disk.newest_path,
 				nodes_files: disk.files,
 				project_bytes: disk.project_bytes
 			};
-			const savedAfterEdit = unsaved.first === void 0 ? void 0 : Math.max(disk.newest_write, disk.project_write) >= unsaved.first;
-			const saveVerdict = savedAfterEdit === void 0 ? void 0 : savedAfterEdit ? "The saved project is newer than the first pending bridge change, so the save reached disk." : `No file in the project is newer than the first pending bridge change (${new Date(unsaved.first).toISOString()}); the newest write under Nodes/ is ${disk.newest_write_iso || "older than any bridge change"}. Studio has not written that change to disk yet, so the runtime cannot load it.`;
+			const { saved: savedAfterEdit, verdict: saveVerdict } = saveReachedDisk(disk, unsaved);
 			const withSaveState = (report) => {
 				if (unsaved.pending === 0) return report;
 				return {

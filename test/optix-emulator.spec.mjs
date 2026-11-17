@@ -15,6 +15,7 @@ import {
   projectFile,
   restartEmulator,
   runtimeCandidates,
+  saveReachedDisk,
   startEmulator,
   stopEmulator,
 } from '../packages/optix/lib/emulator.js'
@@ -357,4 +358,27 @@ test('diskState on a folder that is not a project is empty, not an error', async
   assert.equal(state.newest_write, 0)
   assert.equal(state.project_write, 0)
   assert.equal(state.newest_write_iso, '')
+})
+
+test('saveReachedDisk compares epoch to epoch, not a number with an ISO string', () => {
+  // The measured defect: `disk.newest_write` is mtimeMs and the pending stamps are ISO strings, so
+  // `newest >= unsaved.first` was a NaN comparison that reported every save as never having landed.
+  const disk = { newest_write: Date.parse('2026-11-17T17:43:54.218Z'), newest_write_iso: '2026-11-17T17:43:54.218Z', project_write: 0 }
+  const landed = saveReachedDisk(disk, { pending: 5, first: '2026-11-17T17:38:46.861Z', last: '2026-11-17T17:43:20.000Z' })
+  assert.equal(landed.saved, true)
+  assert.match(landed.verdict, /newer than the last pending bridge change/u)
+})
+
+test('saveReachedDisk judges the last pending change, so a mid-series save is not a clean one', () => {
+  const disk = { newest_write: Date.parse('2026-11-17T17:39:00.000Z'), newest_write_iso: '2026-11-17T17:39:00.000Z', project_write: 0 }
+  const stale = saveReachedDisk(disk, { pending: 2, first: '2026-11-17T17:38:00.000Z', last: '2026-11-17T17:40:00.000Z' })
+  assert.equal(stale.saved, false)
+  assert.match(stale.verdict, /No file in the project is newer than the last pending bridge change/u)
+  assert.match(stale.verdict, /poll the file's write time/u)
+  // Nothing pending: no verdict to give, and the tool leaves the key out.
+  assert.equal(saveReachedDisk(disk, { pending: 0, routes: [] }).saved, undefined)
+  assert.equal(saveReachedDisk(disk, { pending: 0, routes: [] }).verdict, '')
+  // A project file newer than every Nodes file still counts as a save.
+  assert.equal(saveReachedDisk({ newest_write: 0, newest_write_iso: '', project_write: Date.parse('2026-11-17T18:00:00.000Z') },
+    { pending: 1, first: '2026-11-17T17:00:00.000Z', last: '2026-11-17T17:30:00.000Z' }).saved, true)
 })

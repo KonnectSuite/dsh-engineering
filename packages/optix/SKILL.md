@@ -717,7 +717,11 @@ The `−1` rule is worth naming on its own because a layout never fixes it for y
 a child declared 900 wide inside an 800 px design track rendered 1192.5 px and its `Width −1` sibling rendered
 at zero width, drawn past the window edge. A layout neither shrinks nor clips a child to make room for its
 neighbours, gaps are not scaled by a parent `ScaleLayout`, and `VIEW-LAYOUT-03` reports the track, whose design
-box it is, the px the fixed children took, and how far past the rendered box they landed.
+box it is, the px the fixed children took, and how far past the rendered box they landed. The track is smaller
+than the design box by the container's own margins: on the demo's `LineStatus`, `Content` at `Width −1` with
+`LeftMargin 24` and `RightMargin 24` inside 1060 px rendered 1012 px, and a 1050 px card plus a 20 px gap put its
+sibling at zero 58 px past the row's edge — which is why the rule subtracts a container's margins before its
+children spend the space, and why a shortfall can hide in the margins of a screen that looks fine.
 
 Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
 a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
