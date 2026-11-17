@@ -1890,7 +1890,7 @@ const OCR_INSTALL_TIMEOUT_MS = 300000;
 function applySkills(ctx) {
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_list_skills",
-		description: "List the plugin's own Optix topic playbooks - one page per capability (authoring loop, bindings and expressions, runtime C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag import). Each row reports the topic name, its title, a one-line summary and its size, so a session can pick the page it needs and read only that one with optix_get_skill. Read-only.",
+		description: "List the plugin's own Optix topic playbooks - one page per capability (authoring loop, bindings and expressions, runtime C#, alarms, data logger/trend/SQL, dialogs and login, screens and layout, verifying and releasing, PLC tag import, and the refusals and traps a session otherwise rediscovers). Each row reports the topic name, its title, a one-line summary and its size, so a session can pick the page it needs and read only that one with optix_get_skill. Read-only.",
 		parameters: {
 			query: {
 				type: "string",

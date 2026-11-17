@@ -44,6 +44,15 @@
 
 ### Fixed
 
+- **Five specs under `test/` were never run, and the gate reported green anyway.** `scripts/test.mjs` runs a
+  hand-maintained `BUNDLE`, and nothing compared it to the folder: `test/optix-production.spec.mjs`,
+  `test/optix-batch-validation.spec.mjs`, `test/optix-names.spec.mjs`, `test/optix-tool-registration.spec.mjs` and
+  `test/optix-skills.spec.mjs` each landed in a commit while the run kept printing the same `71 file(s) passed`.
+  The runner now fails on the drift by name (`test: never run by this script: …`) after normalising separators,
+  because `specsIn` builds `test\file.spec.mjs` on Windows while `BUNDLE` spells `test/file.spec.mjs` — the first
+  version of the guard named all 50 specs and would have broken every run. Proven both ways: a clean tree exits 0,
+  and a temporary unlisted `test/zz-guard-probe.spec.mjs` exited 1 naming only itself. The run is 76 files.
+
 - **`optix_invoke` never reached the bridge.** `applyInvoke` was called without the gateway `apply()` builds, so
   every call threw `ReferenceError: bridge is not defined` at `packages/optix/lib/index.js:1977`. With the gateway
   passed, the alarm probe got the bridge's own answer instead: `CoreException: No behaviour or observer found that
@@ -302,6 +311,29 @@
   `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*), the record-limit warning every session
   logs and the fact that no tool sets `Table.RecordLimit`, and the `Widgets/AdvancedTrend` import's real shape
   (a **Folder** of 12 types, not one PanelType) with `Logger` as a **`NodeId`**.
+
+- **A playbook page for the refusals, so a session reads them before it pays for them.**
+  `packages/optix/skills/gaps-and-refusals.md` (new) is the consolidated register of Batches A–D: what the bridge
+  refuses by design (array-valued properties and the partial `indeterminate` write they cause, `move` on an
+  ObjectType, `create_object ScreenType`, `DigitalAlarm`, the three logger properties, `bind` on a
+  `VariableToLog`, `Table.RecordLimit`, a same-batch `NodeId`, `retype` onto a pointer, `set-structured` with no
+  op), what our own gate refuses because the bridge let it through, what our playbooks used to get wrong, and the
+  failures that **report success while nothing moved** (a bridge write is not durable until `optix_save`; a
+  NetLogic loads when its panel is instantiated, so a clean startup log proves nothing; a `NodeId`'s namespace
+  index is session-local — `102/…` from the bridge, `9/…` from the runtime for the same node; WAL mode makes a
+  store-file size poll lie; `needs_save.pending` survives a Studio crash). `lib/skills.js` discovers pages by
+  scanning the folder, so the page needed no index; `optix_list_skills`'s description and the `SKILL.md` playbook
+  table now name it.
+- **One cosmetic residue diagnosed instead of rewritten.** `CHANGELOG.md` carries 445 corrupted punctuation runs
+  across 76 historical lines. It arrived in one commit (`ab5fe6011`, 2026-10-28, 99 marker sequences where its
+  parent had none) and compounded to 7 032 as later edits re-encoded already-corrupted text.
+  `scripts/repair-encoding.mjs` refuses it — every undo layer shrinks the damage (7 032 → 3 251 → 1 516 → 679 →
+  199) but yields U+FFFD, which its acceptance loop rejects — and a deterministic forward model (50 candidate
+  punctuation characters through 6 corruption layers, replace only on an exact match) repaired **0 of 445**,
+  because the stored runs begin with `¡` (U+00A1), which a pure UTF-8→cp1252 chain of punctuation never produces.
+  A scan of 2 260 textual files repo-wide found **no file carrying U+FFFD**, so nothing was ever lost and the
+  prose is left as it is; the recorded rule is the cause: never let text round-trip through a cp1252 console, and
+  never put mojibake literals on a pwsh command line, where they are re-parsed as commands.
 
 ## [0.99.0] - 2026-11-16
 

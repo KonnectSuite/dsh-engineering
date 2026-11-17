@@ -1049,12 +1049,13 @@ shortest path to "SQL results on a screen".
 
 ## Topic playbooks: `optix_list_skills` and `optix_get_skill`
 
-This page is the entry point; the deep end lives in nine topic playbooks shipped beside it in
+This page is the entry point; the deep end lives in ten topic playbooks shipped beside it in
 `packages/optix/skills/`, each written from a live measurement rather than from help text:
 
 | Topic | Read it before |
 | --- | --- |
 | `authoring-loop` | any authoring session: save, restart, prove, and the batch rules that refuse things |
+| `gaps-and-refusals` | anything at all, before you start: what the bridge refuses, what our own gate refuses, what our playbooks used to get wrong, and the failures that report success |
 | `bindings-expressions` | wiring a value to a widget (`bind`, `set_link`, expression, formatter) |
 | `runtime-csharp` | anything the bridge cannot make work because it needs behaviour (`optix_script`) |
 | `alarms` | a real alarm system: the `OffNormalAlarmController` route that fires, the shipped AlarmGrid's acknowledge that does work, and the assembly rebuild it needs |

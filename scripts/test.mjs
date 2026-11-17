@@ -57,6 +57,11 @@ const BUNDLE = [
   'test/optix-adapters.spec.mjs',
   'test/optix-assets.spec.mjs',
   'test/optix-dialogs.spec.mjs',
+  'test/optix-batch-validation.spec.mjs',
+  'test/optix-names.spec.mjs',
+  'test/optix-production.spec.mjs',
+  'test/optix-skills.spec.mjs',
+  'test/optix-tool-registration.spec.mjs',
   'test/skill-engagement.spec.mjs',
   'test/entry-tool-contract.spec.mjs',
   'test/resources.spec.mjs',
@@ -80,6 +85,23 @@ const files = [
   ...specsIn('packages/ecad/test'),
   ...specsIn('packages/ecad/test/client'),
 ]
+
+/**
+ * BUNDLE is hand-maintained, and that drift is invisible: five specs committed under test/ -
+ * optix-production, optix-batch-validation, optix-names, optix-tool-registration, optix-skills - were never
+ * run, while this script kept reporting a green gate. A spec file under test/ is not optional, so an unlisted
+ * one fails the run by name instead of quietly lowering the count. A spec that genuinely cannot run here (it
+ * needs a live Studio with the bridge started) is not named *.spec.mjs, which is how the three
+ * test/optix-live-*.mjs proofs stay out.
+ */
+const listed = new Set(BUNDLE.map(file => file.split(/[\\/]/u).join('/')))
+const unrun = specsIn('test')
+  .map(file => file.split(/[\\/]/u).join('/'))
+  .filter(file => !listed.has(file))
+if (unrun.length > 0) {
+  console.error(`test: never run by this script: ${unrun.join(', ')}. Add each spec under test/ to BUNDLE, or give it a name this script cannot see and say why.`)
+  process.exit(1)
+}
 
 const only = process.argv.indexOf('--only')
 const selected = only === -1 ? files : files.filter(file => file.includes(process.argv[only + 1] ?? ''))
