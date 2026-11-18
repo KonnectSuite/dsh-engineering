@@ -1,11 +1,14 @@
 # Handoff — Optix template-library access + a product-neutral HMI design lane
 
+> **Historical record (written 2026-11-13/14).** This batch landed on `main` and shipped in `0.101.0`;
+> the `wip/optix-hmi-design` branch it was written on was deleted when the repository was consolidated
+> back to a single `main` branch. Current state lives in [`CHANGELOG.md`](CHANGELOG.md) and `package.json`;
+> what follows is the record of how the lane was planned and what the live runs taught.
+
 Written 2026-11-13 on the Windows workstation, from
-`C:\Users\KNPhu\AryaCode\KonnectSuite\dsh-engineering`.
-Branch: **`wip/optix-hmi-design`**, based on `main` @ `5d15103 docs: record the 0.93.0 release`.
-The batch is unfinished work in progress, not a release: `package.json` is still `0.93.0` and nothing is
-bumped, tagged or published. `## [Unreleased]` now exists in `CHANGELOG.md` and carries both the planned
-work and what the live run below changed.
+`C:\Users\KNPhu\AryaCode\KonnectSuite\dsh-engineering`, on a branch based on `main` @ `5d15103 docs: record
+the 0.93.0 release`. At that time the batch was unfinished work in progress, not a release: `package.json`
+was still `0.93.0` and nothing was bumped, tagged or published.
 
 Read **Status 2026-11-14** first: the batch has since run against a live Studio, and the section after this
 one describes the plan as it stood before that run.
@@ -188,7 +191,7 @@ Plugins → Add plugin → local directory path and point it at
 
 ```sh
 git fetch origin
-git switch --track origin/wip/optix-hmi-design
+git switch main
 pnpm install
 ```
 

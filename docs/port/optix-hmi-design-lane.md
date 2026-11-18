@@ -1,8 +1,9 @@
 ﻿# Optix library access and a product-neutral HMI design lane
 
 Approved plan, written 2026-11-13 and kept as design history. Status when it was written: A1-A3
-implemented on branch `wip/optix-hmi-design`; phases B-E not started. `HANDOFF.md` at the repository
-root carries the current state; this file keeps the reasoning and the full task breakdown.
+implemented on branch `wip/optix-hmi-design`; phases B-E not started. That branch was deleted after the
+work landed on `main` (shipped in `0.101.0`); this file keeps the reasoning and the full task breakdown,
+and `HANDOFF.md` at the repository root keeps the record of the live runs.
 
 ---
 
