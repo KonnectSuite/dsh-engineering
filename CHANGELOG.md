@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.101.0] - 2026-11-18
+
 ### Added
 
 - **The screen kit draws four more kinds of screen, and its density is now measured rather than guessed.**

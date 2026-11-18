@@ -25,12 +25,14 @@ pnpm assemble                 # vendor/ from the four component trees plus the E
 pnpm pack                     # one tarball: cordis.patch.yml, entries/, lib/, vendor/, locale/
 
 pnpm publish --no-git-checks --access public     # npm is the artefact host
-npm view @aryacode/dsh-engineering@<version> dependencies   # four libraries, no plugin
+npm view @aryacode/dsh-engineering@<version> dependencies   # real version specs, never workspace:*
 
-# then, in the dsh-arya-market clone: record the version the registry now serves
-node scripts/publish-arya-catalog.mjs --pull
-node scripts/publish-arya-release.mjs --source KonnectSuite/dsh-engineering --npm <version>
-node scripts/publish-arya-catalog.mjs --push
+# npm lags a publish by minutes. Wait until the packument serves the version and the tarball
+# downloads, then verify from this repository:
+node scripts/verify-release.mjs --wait 600
+
+# and record the version the registry now serves, from the dsh-arya-market clone:
+node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests
 
 git tag -a v<version> -m "Engineering bundle <version>"      # provenance, in this repo
 git push origin main --tags
@@ -43,6 +45,49 @@ or a missing vendor tree. Inspect the tarball before publishing: `lib/client.js`
 must all be present. The packaged
 smoke calls a real ECAD tool from the tarball (see the release body) so the bundled engine, DOM
 shim and DWG converter are exercised from the published bytes, not from the repository build.
+
+**0.101.0 release record (2026-11-18).** Built from the Batch F/G/H series (`b73ea6b` the render check that
+looks at the screen an operator sees, `4c26c17` the four new screen patterns and the measured density,
+`da1cc05` the NetLogic fixture and the sampler that had been reading the wrong pixels twice) plus the
+`Release 0.101.0` bump (`dfc9048`), tagged `v0.101.0`. Release evidence: `pnpm docs:tools` wrote 158 tools and
+changed nothing on disk — the Optix tools are not in the generated reference, which is what its own test
+asserts; `pnpm test` **77 files passed** (33,618 ms); `pnpm -r build` clean; `pnpm assemble` → 8 components
+into `vendor/`; `pnpm pack` → 4 828 998 bytes carrying `lib/client.js`, `entries/`, `vendor/optix/lib/index.js`,
+**11** `vendor/optix/skills/*.md`, `vendor/l5x/cip-worker.mjs`, `vendor/l5x/studio-bridge/`,
+`vendor/mwi/code/engine/`, `vendor/ecad/assets/acadrust.wasm`, `cordis.patch.yml` and `locale/` (921 files);
+`pnpm publish --no-git-checks --access public` → `✅ Published package @aryacode/dsh-engineering@0.101.0`.
+Seven 30-second polls of the packument answered `latest=0.100.0, 0.101.0 absent` and the eighth, about four
+minutes after the publish, answered `latest=0.101.0` with `time["0.101.0"] 2026-11-18T08:09:21.296Z`; the
+tarball then downloaded on its first attempt. The publish was **not** retried. Registry copy: 4 828 998 bytes,
+`fileCount 921`, `unpackedSize 20 107 077`, npm `shasum c5e31782ec2e24e244eb759e66f87f8266afb916` (the
+downloaded file's sha1 matches it) and `sha256 4569d727d22546cbbcec4a375418d76b33432a2ab53823807ce255bcfdeb5afe`
+— this time identical to this machine's own `pnpm pack` digest, where 0.100.0's record notes the two packers
+usually produce different bytes. `node scripts/verify-release.mjs --wait 120` →
+`ok @aryacode/dsh-engineering@0.101.0 → …/dsh-engineering-0.101.0.tgz`.
+**Packaged smoke from the published bytes** (`node tmp/smoke-0101.mjs`, which mounts
+`tmp/registry-0101/package/vendor/optix/lib/index.js` extracted from the downloaded registry tarball, against a
+live Studio bridge on `AryaSMTLineDemo` with the emulator serving `http://127.0.0.1:8081/`): **30 tools**
+registered — the 27 core ones plus the three preview-gated ones, including **`optix_render_check`, which ships
+in published bytes for the first time**; the published `kit.js` `PATTERNS` carries `station`, `table`,
+`faceplate`, `split`; `netlogic.js` `TEMPLATES` carries `fixture` and `NETLOGIC_RULES` carries `OPTIX-NL-15`;
+`optix_render_check` measured **178 elements, 7 findings, 0 unchecked** on the served LineStatus, its capture
+clipped to `window_box 1280x800` out of a 1920x1080 browser viewport, `measured.paint_read "captured pixels"`,
+and the seven findings are the same seven the repository run reported — the `--:--` `VIEW-RENDER-01`, four
+`VIEW-RENDER-02` cards at 496x247 filling 3–6 %, the cyan-on-cyan `"Ready"` `VIEW-RENDER-05`, and the rail tab
+`"Line Status" #ffffff on #0fafff 2.44:1` judged from the band around the text box; `optix_script action=review
+name=LineProbeFixture build=false` → 45 lines, 1 800 bytes, `sha256 fb9898236e42aa4d1ef101dff582ae6b80b33c4952dd666a983610c91f22829b`,
+`export_methods ["RunFixture"]`, `verdict clean`, counts 0/0/0, `checked OPTIX-NL-03 … OPTIX-NL-15`;
+`optix_list_skills` → **11 topics** (0.100.0 shipped 10; `render-checks` is the new one) and the shipped
+`runtime-csharp` playbook carries the fixture section and no longer names `Ctrl+Shift+B`. The same run showed
+why the wording fix matters: the **installed 0.100.0** copy still answers `nothing in this plugin can save the
+project` in its `needs_save.next` while its own `optix_emulator` answer proves a save landed (`save_verdict`:
+the newest write under `Nodes/` at `2026-11-18T06:40:04.902Z` is newer than the last pending bridge change at
+`2026-11-18T06:38:02.645Z`). Gaps this release ships still open, recorded in `packages/optix/skills/gaps-and-refusals.md`
+and `optix-proof/smt/STATUS.md` §36: the confirm dialog is a type with no proven open/close route; `import_tags`
+is proven only to the station lookup; a fixture is proven reviewable and compilable but not yet *exercisable*,
+because a save does not load the class; the rail tab's 2.44:1, the `--:--` and the cyan-on-cyan `"Ready"` remain
+findings the kit cannot fix; and `optix_ui action:"screen"` has no batch ceiling where `optix_screen` refuses
+above 700.
 
 **0.100.0 release record (2026-11-17).** Built from the Optix verification series (`3aa8b91` layout
 containers and NodeId pointers, `fa5f4ca` the checking tools on a container screen, `abbf0a2` the layout
