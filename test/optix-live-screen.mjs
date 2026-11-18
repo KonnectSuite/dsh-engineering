@@ -166,7 +166,7 @@ try {
 		line("apply status", applied.status);
 		line("applied", applied.applied);
 		assert.equal(applied.status, "applied", `apply refused: ${JSON.stringify(applied).slice(0, 600)}`);
-		console.log("live screen apply ok — Save (Ctrl+S) and Build (Ctrl+Shift+B) in Studio to see it");
+		console.log("live screen apply ok — save with optix_save to see it; a screen batch needs no build");
 	}
 } finally {
 	await harness.dispose();

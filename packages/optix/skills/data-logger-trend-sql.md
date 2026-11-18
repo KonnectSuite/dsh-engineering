@@ -25,6 +25,10 @@ as "the logger is writing nothing". The file is locked while the runtime holds i
 runtime session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] Root/Objects/<project>/DataStores/LineStore:
 No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device.` The limit lives
 on the **table** (`Table.RecordLimit`, `UInt32`), not on the store, and `SQLiteStore` has no property for it.
+Write it on the table: `optix_edit ops=[{"op":"set_property","path":"DataStores/LineStore/Tables/SmtTrend","name":"RecordLimit","value":"5000"}]`
+— measured on the demo as `{datatype:"UInt32", via:"materialized"}`, and the warning stopped. The one trap is
+the clock: `optix_project action check` reads the chapters on disk, so its finding clears only after
+`optix_save` lands.
 
 `optix_project action check` names it offline as **OPTIX-DATA-02** before the runtime has been writing for
 weeks: any `*StoreTable` chapter node whose `RecordLimit` is absent **or 0** (Studio writes a property child

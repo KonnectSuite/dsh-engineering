@@ -85,9 +85,10 @@ DlgCancel, DlgConfirm`, and `UI/Screens/UiProbe/BtnDeleteRecipe` exists and open
 wiring, the trigger's `OpenDialog` arguments, the readable title, the restating second plan, and the refusals).
 
 `node test/optix-live-dialog.mjs` (manual, needs a bridge) plans and applies `DshConfirmDelete` against a real
-project and reads the type and the trigger back; `node test/optix-live-dialog.mjs apply` writes it. Then press
-Ctrl+S and Ctrl+Shift+B in Studio with the emulator stopped, start the runtime with
-`optix_emulator { action: "start" }`, and click the trigger — the dialog is the runtime's proof.
+project and reads the type and the trigger back; `node test/optix-live-dialog.mjs apply` writes it. Then save
+with `optix_save` (Ctrl+S raised into the Studio window; a dialog is model data, so no build is needed for it),
+start the runtime with `optix_emulator { action: "start" }`, and click the trigger — the dialog is the runtime's
+proof.
 
 ## The measured open/close contract
 

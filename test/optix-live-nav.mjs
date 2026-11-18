@@ -8,7 +8,7 @@
  *   node test/optix-live-nav.mjs screens
  *   node test/optix-live-nav.mjs plan
  *   node test/optix-live-nav.mjs apply
- *   ... save (Ctrl+S) and build (Ctrl+Shift+B) in Studio, emulator stopped, then:
+ *   ... save with optix_save (emulator stopped; a navigation batch needs no build), then:
  *   node test/optix-live-nav.mjs serve
  *   node test/optix-live-nav.mjs verify
  *
@@ -150,7 +150,7 @@ try {
 			assert.equal(result.buttons?.length, targets.length, JSON.stringify(result.buttons))
 		} else {
 			assert.ok(result.applied >= 1, JSON.stringify(result))
-			console.log(`\nNow in Studio: stop the emulator, press Ctrl+S, then Ctrl+Shift+B, and run: node test/optix-live-nav.mjs verify`)
+			console.log(`\nNow: stop the emulator, save with optix_save, and run: node test/optix-live-nav.mjs verify`)
 		}
 	} else if (stage === 'serve') {
 		step('the emulator starts and serves the saved project')

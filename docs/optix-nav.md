@@ -65,9 +65,10 @@ A second `apply` is a no-op rather than a second handler.
    it just wrote. The runtime resolves that absolute design-time NodeId before the relative link, so
    clearing it is part of wiring, not cleanup. `optix_production_check` reports it as
    `OPTIX-PROD-01` when it survives.
-4. The `next` sentence names the handoff: Save (`Ctrl+S`), Build (`Ctrl+Shift+B`),
-   `optix_emulator action restart`, then `verify`. The bridge authored the model; only Studio writes
-   the file the runtime loads.
+4. The `next` sentence names the handoff: save with `optix_save`, `optix_emulator action restart`,
+   then `verify`. The bridge authored the model; only a save writes the file the runtime loads. A
+   navigation-only batch needs no build — measured: it left `bin/<Project>.dll` at its older timestamp and
+   the runtime still drew the new bar after the save.
 
 ### What `verify` proves, and what it refuses to claim
 

@@ -17,6 +17,11 @@ import {
 	widthClass
 } from "../packages/optix/lib/layout.js";
 import {
+	CONTRAST_MINIMUM,
+	contrastRatio
+} from "../packages/optix/lib/design.js";
+import { languageNames } from "../packages/optix/lib/languages.js";
+import {
 	MAX_STATIONS,
 	MAX_TABLE_COLUMNS,
 	MAX_TABLE_ROWS,
@@ -336,4 +341,73 @@ test("the catalogue names the patterns and the components the kit compiles", () 
 	assert.ok(/one tile width across every row/u.test(tile.description), `stationTile description: ${tile.description}`);
 	const card = catalogue.components.find((entry) => entry.name === "card");
 	assert.ok(/fill so they split the card's height/u.test(card.description), `card description: ${card.description}`);
+});
+
+// The chrome ink is chosen from the theme, not assumed: a white title on the accent band measures
+// 2.30:1 in modern-dark and 2.44:1 in modern, and a light label on a white chip measures 1.27:1.
+// Both checking tools caught the same screen - HMI-CONTRAST-01 on the model side, VIEW-RENDER-04 on
+// the captured pixels - so this test holds the pairing for every language the theme can author.
+function paint(ops, path, name) {
+	const op = ops.find((entry) => entry.op === "set_property" && entry.path === path && entry.name === name);
+	return op?.value;
+}
+
+test("every ink the kit puts on a fill clears the contrast floor in every language it authors", () => {
+	for (const language of languageNames) {
+		const built = compileBlueprint(
+			{
+				title: "Alarm summary",
+				subtitle: "Six stations, one line",
+				pattern: "table",
+				table: alarmTable(3, 3),
+				header: { chips: [{ text: "Line 1" }, { text: "SMT", on: false }], clock: "14:05", language: "EN", user: "Operator" },
+				status: { text: "Comm. Driver - established", ok: true }
+			},
+			{ screen: "UI/Screens/Probe", width: 1280, height: 800, language }
+		);
+		const theme = built.theme;
+		const screen = "UI/Screens/Probe";
+		const pairs = [
+			["HeaderTitle", `${screen}/HeaderTitle`, `${screen}/HeaderBand`, "FillColor"],
+			["HeaderSubtitle", `${screen}/HeaderSubtitle`, `${screen}/HeaderBand`, "FillColor"],
+			["HeaderClock", `${screen}/HeaderClock`, `${screen}/HeaderBand`, "FillColor"],
+			["HeaderBellLabel", `${screen}/HeaderBellLabel`, `${screen}/HeaderBell`, "FillColor"],
+			["HeaderUserName", `${screen}/HeaderUserName`, `${screen}/HeaderUser`, "FillColor"],
+			["HeaderLanguageLabel", `${screen}/HeaderLanguageLabel`, `${screen}/HeaderLanguage`, "FillColor"],
+			["HeaderChip1Label", `${screen}/HeaderChip1Label`, `${screen}/HeaderChip1`, "FillColor"],
+			["TableHead1", `${screen}/TableArea/Table1/Body/HeaderBand/Cells/Head1`, `${screen}/TableArea/Table1/Body/HeaderBand`, "FillColor"],
+			["StatusText", `${screen}/StatusText`, `${screen}/StatusStrip`, "FillColor"]
+		];
+		for (const [label, textPath, fillPath, fillName] of pairs) {
+			const fore = paint(built.ops, textPath, "TextColor");
+			const back = paint(built.ops, fillPath, fillName);
+			assert.ok(typeof fore === "string" && /^#[0-9a-f]{6}$/iu.test(fore), `${language} ${label} TextColor ${fore}`);
+			assert.ok(typeof back === "string" && /^#[0-9a-f]{6}$/iu.test(back), `${language} ${label} fill ${back}`);
+			const ratio = contrastRatio(fore, back);
+			assert.ok(ratio >= CONTRAST_MINIMUM, `${language} ${label} ${fore} on ${back} measures ${ratio.toFixed(2)}:1, under the ${CONTRAST_MINIMUM}:1 floor`);
+		}
+		// The ink is the one kitTheme resolved, so a theme change reaches the drawing.
+		assert.equal(paint(built.ops, `${screen}/HeaderTitle`, "TextColor"), theme.colours.headerInk, `${language} header ink`);
+		assert.equal(paint(built.ops, `${screen}/TableArea/Table1/Body/HeaderBand/Cells/Head1`, "TextColor"), theme.colours.tableHeaderInk, `${language} table header ink`);
+		// The alarm affordance is the border, because a red glyph cannot clear the floor on a neutral.
+		assert.equal(paint(built.ops, `${screen}/HeaderBell`, "BorderColor"), theme.colours.danger, `${language} bell border carries the state`);
+		// A chip's state is its border too, so both states keep the ink the plate can carry.
+		assert.equal(paint(built.ops, `${screen}/HeaderChip1`, "BorderColor"), theme.colours.accent, `${language} chip border`);
+		assert.notEqual(paint(built.ops, `${screen}/HeaderChip2Label`, "TextColor"), paint(built.ops, `${screen}/HeaderChip2`, "FillColor"), `${language} chip label is not its own plate`);
+	}
+});
+
+test("the header ink stops being white where the accent band cannot carry white", () => {
+	for (const language of ["modern", "modern-dark", "material-dark", "kiosk"]) {
+		const colours = kitTheme(language).colours;
+		// The pairing the kit used to emit, held as the regression this fix answers.
+		assert.ok(contrastRatio(colours.accentText, colours.accent) < CONTRAST_MINIMUM, `${language} white on ${colours.accent} should still fail`);
+		assert.notEqual(colours.headerInk, colours.accentText, `${language} headerInk`);
+		assert.ok(contrastRatio(colours.headerInk, colours.accent) >= CONTRAST_MINIMUM, `${language} ${colours.headerInk} on ${colours.accent}`);
+	}
+	// The languages that could carry white keep it, so the fix is not a blanket darkening.
+	for (const language of ["isa101", "isa101-hc", "minimal-light"]) {
+		const colours = kitTheme(language).colours;
+		assert.equal(colours.headerInk, colours.accentText, `${language} keeps its accent ink`);
+	}
 });

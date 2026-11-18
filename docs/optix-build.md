@@ -39,7 +39,9 @@ missing intermediate file). A missing SDK is an error with `code: "dotnet_sdk_mi
 false "compiles".
 
 A green check means the C# compiles. It does **not** mean Studio built it: the runtime loads what
-Studio's build wrote, and only `action build` (or the engineer's `Ctrl+Shift+B`) writes that.
+Studio's build wrote, and only `action build`, or the build the engineer runs on the solution Studio opens
+through its main toolbar (**Open .NET Solution**), writes that — Studio 1.8.1.27 documents `Ctrl+S` and
+`F5` and no build keystroke.
 
 ## `action references`
 
@@ -87,7 +89,9 @@ holds `bin/<Project>.dll` open while it serves.
    paths no longer resolve.
 3. `optix_build action init` — only when the project has no csproj/sln at all.
 4. `optix_build action check` — after editing C#, before opening Studio. Never writes the project.
-5. Studio: `Ctrl+S` then `Ctrl+Shift+B`.
+5. Save with `optix_save` (or the engineer's own `Ctrl+S`), then build: `optix_build action build` with
+   the emulator stopped, or the solution opened from Studio's main toolbar (**Open .NET Solution**) built
+   there.
 6. `optix_build action status` — prove the artefact is newer than the source, then start the
    emulator with `optix_emulator`.
 

@@ -47,7 +47,8 @@ The bridge is a C# NetLogic class (`StudioMCPBridge`) inside the project. Only S
 only the engineer's right-click can start it:
 
 1. Open the `.optix` file in Studio.
-2. Build the solution (Ctrl+Shift+B).
+2. Build the solution. Studio 1.8.1.27 documents no build keystroke: `optix_build action build` with the
+   runtime stopped, or the solution opened from Studio's main toolbar (**Open .NET Solution**).
 3. Right-click the `StudioMCPBridge` NetLogic node → **StartBridge**.
 
 The first `StartBridge` raises Studio's NetLogic security warning (the bridge references
@@ -62,7 +63,7 @@ anything: a screenshot of the IDE is not a step in this workflow.
 | State | Who sees it | How it gets there |
 | --- | --- | --- |
 | **Live model** | `optix_read`, and every `optix_edit` changes it | the bridge, inside Studio |
-| **Saved project** | the runtime | Studio's Save (Ctrl+S) or Build (Ctrl+Shift+B) |
+| **Saved project** | the runtime | `optix_save`, or the engineer's Save (Ctrl+S) when another window holds the foreground |
 | **Rendered screen** | `optix_preview`, `optix_screenshot` | a runtime serving the Web presentation engine's URL |
 
 `optix_status` counts the authoring calls made since the last save and reports `needs_save`;
@@ -70,19 +71,21 @@ anything: a screenshot of the IDE is not a step in this workflow.
 count — but a reply is not evidence, so the save is checked on disk instead:
 `optix_emulator { action: "status", project }` reports `disk` (the newest write under `Nodes/`, its path,
 the project file's size) and `saved_after_edit`, which stays `false` while every file on disk is older
-than the first pending bridge change. Nothing in this bundle can save the project: the bridge has no save
-route, and `UAManagedCore.dll` carries no `Save`, `IsDirty` or `Persist` symbol at all, so no design-time
-NetLogic can reach a save either. Both of Studio's own actions do write bridge edits — measured on the
-reference machine, a Build wrote a whole bridge-authored screen to `Nodes/**` and a later Ctrl+S wrote a
-re-bound `Panel` link by itself. When `saved_after_edit` is `false`, say what was measured and ask for
-**File > Save** by name; a first build measured minutes, so re-read the disk before concluding that a
-save failed.
+than the first pending bridge change. The bridge has no save route, and `UAManagedCore.dll` carries no
+`Save`, `IsDirty` or `Persist` symbol at all, so no design-time NetLogic can reach a save either — which
+is why `optix_save` is a keystroke rather than a call: it raises the Studio window, sends `Ctrl+S`, and
+reports `saved` only once a file under `Nodes/` or `ProjectFiles/NetSolution` is newer than before the
+keystroke. A save is not a build: measured 2026-11-18, a save that moved 29 sources under
+`ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older timestamp. Both of Studio's own actions
+do write bridge edits — measured on the reference machine, a Build wrote a whole bridge-authored screen to
+`Nodes/**` and a later Ctrl+S wrote a re-bound `Panel` link by itself. When `saved_after_edit` is `false`,
+say what was measured and name the fix — `optix_save`, or **File > Save** when another window holds the
+foreground; a first build measured minutes, so re-read the disk before concluding that a save failed.
 
-The one sanctioned reason for the agent to touch the desktop is that handoff: when the engineer asks the
-agent to press Save and Build rather than do it themselves, it may send exactly two keystrokes
-(`Ctrl+S`, then `Ctrl+Shift+B`) to the already-open Studio window — no clicks, no menus, no launching
-Studio, and the emulator still only ever through `optix_emulator`. The handoff is offered first and taken
-only on the engineer's word, and it is verified on disk like any other save.
+The one sanctioned reason for the agent to touch the desktop is that handoff: `optix_save` sends exactly
+one `Ctrl+S` to the already-open Studio window and nothing else — no clicks, no menus, no launching
+Studio, and the emulator still only ever through `optix_emulator`. When it answers `foreground_refused`,
+the engineer's own Ctrl+S is the route, and the save is verified on disk like any other.
 
 ## Phase 5 — the order that works
 

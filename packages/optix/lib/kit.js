@@ -52,6 +52,7 @@ import {
 } from "./containers.js";
 import { DEFAULT_LANGUAGE, getLanguage } from "./languages.js";
 import { adapterOps } from "./adapters.js";
+import { CONTRAST_MINIMUM, contrastRatio } from "./design.js";
 
 /**
  * The blueprints a blueprint's `pattern` may name, in the order the kit documents them.
@@ -107,6 +108,30 @@ function colour(value) {
 }
 
 /**
+ * Pick the ink a label can actually be read in on this fill, out of the theme's own palette.
+ *
+ * Measured 2026-11-18 on the two screens the kit drew at 1060x706: the title on the accent band is 2.30:1
+ * in modern-dark and 2.44:1 in modern, and a light label on a white chip is 1.27:1 in the dark languages.
+ * Both were caught twice over on the same screen - once by the model-side HMI-CONTRAST-01 and once by the
+ * render-side VIEW-RENDER-04 - so the kit no longer assumes the language pairs its accent with its
+ * interactive ink. The candidate order is the intended pairing first (`accentText`), then the body ink,
+ * then the window colour: the first that clears CONTRAST_MINIMUM wins. When no palette colour clears the
+ * fill, the highest-contrast candidate is used and the residual is left for the checking tools to report
+ * rather than hidden - a saturated alarm colour genuinely cannot clear 4.5:1 against a light neutral.
+ *
+ * @param fill - The `#RRGGBB` the label sits on.
+ * @param candidates - Palette colours to choose from, in preference order.
+ * @returns The chosen `#RRGGBB`.
+ */
+export function inkOn(fill, candidates) {
+	const ordered = [...new Set(candidates.filter((c) => typeof c === "string" && c !== fill))];
+	if (ordered.length === 0) return fill;
+	const clear = ordered.find((c) => contrastRatio(c, fill) >= CONTRAST_MINIMUM);
+	if (clear !== undefined) return clear;
+	return ordered.reduce((best, c) => (contrastRatio(c, fill) > contrastRatio(best, fill) ? c : best), ordered[0]);
+}
+
+/**
  * Resolve a design language into the palette and type scale the kit draws with.
  *
  * @param language - A language name; blank means the default.
@@ -131,6 +156,11 @@ export function kitTheme(language = DEFAULT_LANGUAGE) {
 		warn: colour("#F5A524"),
 		danger: colour("#E5484D")
 	};
+	// The chrome inks are resolved from the palette rather than assumed: the accent band and the table's
+	// header band get whichever of the theme's own colours they can carry text in.
+	colours.headerInk = inkOn(colours.accent, [colours.accentText, colours.text, colours.window]);
+	colours.tableHeaderInk = inkOn(colours.surfaceAlt, [colours.accentText, colours.text, colours.window]);
+	colours.chipInk = inkOn(colours.surface, [colours.text, colours.accentText, colours.window]);
 	return {
 		name: resolved.name,
 		language: resolved,
@@ -154,11 +184,18 @@ function widget(parent, name, type) {
 	return { op: "create_widget", screen: parent, name, widget_type: type };
 }
 
-/** A rectangle with a fill, a hairline border and a corner radius, placed by its slot. */
-function surface(parent, name, slot, fill, theme, { border = true, radius = true } = {}) {
+/**
+ * A rectangle with a fill, a hairline border and a corner radius, placed by its slot.
+ *
+ * `borderColour` is where a component's state lives when its ink cannot carry that state: a red alarm glyph
+ * measures 3.91:1 on white and 4.35:1 on the dark surface, under the 4.5:1 floor in every language, so the
+ * bell carries the danger colour in its border and the chip carries its state in the accent border. One write
+ * per property, because a batch that writes a property twice is a batch whose order decides the render.
+ */
+function surface(parent, name, slot, fill, theme, { border = true, radius = true, borderColour } = {}) {
 	const path = `${parent}/${name}`;
 	const ops = [widget(parent, name, "Rectangle"), ...box(path, slot), set(path, "FillColor", fill)];
-	if (border) ops.push(set(path, "BorderColor", theme.colours.border), set(path, "BorderThickness", theme.borderWidth));
+	if (border) ops.push(set(path, "BorderColor", borderColour ?? theme.colours.border), set(path, "BorderThickness", theme.borderWidth));
 	if (radius) ops.push(set(path, "CornerRadius", theme.radius));
 	return { path, ops };
 }
@@ -171,7 +208,7 @@ function surface(parent, name, slot, fill, theme, { border = true, radius = true
  * 514 (`optix-proof/smt/shots/probe-rc.png`). A component that owns an unequal share of its row is given the
  * pixel width the geometry library computed for it, because the bridge cannot write a `fr` track at all.
  */
-function cellSurface(parent, name, { width = FILL, height = FILL } = {}, fill, theme, { border = true, radius = true } = {}) {
+function cellSurface(parent, name, { width = FILL, height = FILL } = {}, fill, theme, { border = true, radius = true, borderColour } = {}) {
 	const path = `${parent}/${name}`;
 	const ops = [widget(parent, name, "Rectangle")];
 	// Size and Stretch are one pair: a child with only the -1 renders at its content size, which is what the
@@ -179,7 +216,7 @@ function cellSurface(parent, name, { width = FILL, height = FILL } = {}, fill, t
 	ops.push(...(width === FILL ? stretch(path) : [set(path, "Width", size(width))]));
 	ops.push(...(height === FILL ? stretchVertical(path) : [set(path, "Height", size(height))]));
 	ops.push(set(path, "FillColor", fill));
-	if (border) ops.push(set(path, "BorderColor", theme.colours.border), set(path, "BorderThickness", theme.borderWidth));
+	if (border) ops.push(set(path, "BorderColor", borderColour ?? theme.colours.border), set(path, "BorderThickness", theme.borderWidth));
 	if (radius) ops.push(set(path, "CornerRadius", theme.radius));
 	return { path, ops };
 }
@@ -270,8 +307,8 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 		slots.header = header;
 		const title = typeof blueprint.title === "string" && blueprint.title.trim() !== "" ? blueprint.title.trim() : "Untitled screen";
 		const subtitle = typeof blueprint.subtitle === "string" ? blueprint.subtitle : "";
-		push(text(path, "HeaderTitle", { left: PAD, top: 14, width: Math.max(160, Math.floor(width * 0.45)), height: 30 }, title.toUpperCase(), theme, { fontSize: theme.type.title, colour: theme.colours.accentText, weight: "700" }));
-		if (subtitle !== "") push(text(path, "HeaderSubtitle", { left: PAD, top: 48, width: Math.max(160, Math.floor(width * 0.45)), height: 22 }, subtitle, theme, { fontSize: theme.type.small, colour: theme.colours.accentText }));
+		push(text(path, "HeaderTitle", { left: PAD, top: 14, width: Math.max(160, Math.floor(width * 0.45)), height: 30 }, title.toUpperCase(), theme, { fontSize: theme.type.title, colour: theme.colours.headerInk, weight: "700" }));
+		if (subtitle !== "") push(text(path, "HeaderSubtitle", { left: PAD, top: 48, width: Math.max(160, Math.floor(width * 0.45)), height: 22 }, subtitle, theme, { fontSize: theme.type.small, colour: theme.colours.headerInk }));
 		let right = width - PAD;
 		const placeRight = (name, component, componentWidth) => {
 			right -= componentWidth;
@@ -282,27 +319,30 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 		if (headerBar.bell !== false) {
 			const bell = { left: right - 40, top: 14, width: 40, height: 40 };
 			right -= 52;
-			push(surface(path, "HeaderBell", bell, theme.colours.accentText, theme, { radius: false }));
-			push(text(path, "HeaderBellLabel", bell, "!", theme, { fontSize: theme.type.heading, colour: theme.colours.danger, weight: "700", align: 2 }));
+			// The alarm affordance is the danger border, not a red glyph on a light chip: a red glyph
+			// measures 3.91:1 on white and 4.35:1 on the dark surface, under the 4.5:1 floor in every
+			// language, so the glyph takes the ink the chip can carry it in and the border carries the state.
+			push(surface(path, "HeaderBell", bell, theme.colours.surface, theme, { radius: false, borderColour: theme.colours.danger }));
+			push(text(path, "HeaderBellLabel", bell, "!", theme, { fontSize: theme.type.heading, colour: inkOn(theme.colours.surface, [theme.colours.danger, theme.colours.chipInk]), weight: "700", align: 2 }));
 		}
 		if (typeof headerBar.user === "string" && headerBar.user !== "") {
 			const widthBox = 150;
 			const slot = { left: right - widthBox, top: 14, width: widthBox, height: 40 };
 			right -= widthBox + 12;
-			push(surface(path, "HeaderUser", slot, theme.colours.accentText, theme, { radius: true }));
+			push(surface(path, "HeaderUser", slot, theme.colours.surface, theme, { radius: true }));
 			push(dot(path, "HeaderUserDot", { left: slot.left + 8, top: slot.top + 12, width: 16, height: 16 }, theme.colours.ok));
-			push(text(path, "HeaderUserName", { left: slot.left + 30, top: slot.top + 10, width: widthBox - 38, height: 20 }, headerBar.user, theme, { fontSize: theme.type.small, colour: theme.colours.text }));
+			push(text(path, "HeaderUserName", { left: slot.left + 30, top: slot.top + 10, width: widthBox - 38, height: 20 }, headerBar.user, theme, { fontSize: theme.type.small, colour: theme.colours.chipInk }));
 		}
 		if (typeof headerBar.language === "string" && headerBar.language !== "") {
 			const slot = { left: right - 56, top: 14, width: 56, height: 40 };
 			right -= 68;
-			push(surface(path, "HeaderLanguage", slot, theme.colours.accentText, theme, { radius: true }));
-			push(text(path, "HeaderLanguageLabel", slot, headerBar.language.toUpperCase(), theme, { fontSize: theme.type.small, colour: theme.colours.text, weight: "600", align: 2 }));
+			push(surface(path, "HeaderLanguage", slot, theme.colours.surface, theme, { radius: true }));
+			push(text(path, "HeaderLanguageLabel", slot, headerBar.language.toUpperCase(), theme, { fontSize: theme.type.small, colour: theme.colours.chipInk, weight: "600", align: 2 }));
 		}
 		if (typeof headerBar.clock === "string" && headerBar.clock !== "") {
 			const slot = { left: right - 96, top: 22, width: 96, height: 24 };
 			right -= 108;
-			push(text(path, "HeaderClock", slot, headerBar.clock, theme, { fontSize: theme.type.subheading, colour: theme.colours.accentText, weight: "600", align: 1 }));
+			push(text(path, "HeaderClock", slot, headerBar.clock, theme, { fontSize: theme.type.subheading, colour: theme.colours.headerInk, weight: "600", align: 1 }));
 		}
 		const chips = Array.isArray(headerBar.chips) ? headerBar.chips.slice(0, 4) : [];
 		for (const [index, chip] of chips.entries()) {
@@ -311,8 +351,11 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 			const chipWidth = Math.max(96, Math.min(200, 16 + label.length * 8));
 			const slot = { left: right - chipWidth, top: 48, width: chipWidth, height: 26 };
 			right -= chipWidth + 8;
-			push(surface(path, `HeaderChip${index + 1}`, slot, chip?.on === false ? theme.colours.surface : theme.colours.accentText, theme, { radius: true }));
-			push(text(path, `HeaderChip${index + 1}Label`, slot, label, theme, { fontSize: theme.type.micro, colour: chip?.on === false ? theme.colours.text : theme.colours.text, weight: "600", align: 2 }));
+			// A chip is a neutral plate on the band; its state is the border, so the label keeps one ink in
+			// both states instead of swapping to a colour the band cannot carry.
+			const chipFill = chip?.on === false ? theme.colours.interactive : theme.colours.surface;
+			push(surface(path, `HeaderChip${index + 1}`, slot, chipFill, theme, { radius: true, borderColour: chip?.on === false ? theme.colours.border : theme.colours.accent }));
+			push(text(path, `HeaderChip${index + 1}Label`, slot, label, theme, { fontSize: theme.type.micro, colour: inkOn(chipFill, [theme.colours.chipInk, theme.colours.text, theme.colours.window]), weight: "600", align: 2 }));
 		}
 	}
 
@@ -723,7 +766,7 @@ export function tableCard(parent, name, slot, spec, theme) {
 	const headerCells = rowLayout(headerBand.path, "Cells", { width: FILL, height: FILL, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
 	ops.push(...headerCells.ops);
 	for (const [index, column] of heads.entries()) {
-		ops.push(...layoutText(headerCells.path, `Head${index + 1}`, column.toUpperCase(), theme, { width: cellSlots[index].width, height: 22, fontSize: theme.type.small, colour: theme.colours.accentText, weight: "700", verticalAlignment: ALIGN.CENTER }).ops);
+		ops.push(...layoutText(headerCells.path, `Head${index + 1}`, column.toUpperCase(), theme, { width: cellSlots[index].width, height: 22, fontSize: theme.type.small, colour: theme.colours.tableHeaderInk, weight: "700", verticalAlignment: ALIGN.CENTER }).ops);
 	}
 	for (const [index, entry] of rows.entries()) {
 		const rowBand = cellSurface(body.path, `Row${index + 1}`, { width: FILL, height: FILL }, index % 2 === 0 ? theme.colours.surface : theme.colours.surfaceAlt, theme, { radius: false });

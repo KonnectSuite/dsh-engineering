@@ -118,14 +118,50 @@ optix_script action="add" kind="runtime" name="MyLogic" parent="NetLogic" code="
   methods answer `No behaviour or observer found`. Always go through `optix_script`.
 - A *new method added later* to an existing class does not reach the node: the node's method children were
   materialised when the class was added. Delete and re-add the node, then restart Studio.
-- `kind: "design"` ([ExportMethod] helpers) is not exercisable in this build: the tree offers no Execute item
-  and the invoke route answers `No behaviour or observer found`. Use `kind: "runtime"` and do the work in
-  `Start()`.
+- `kind: "design"` is the `[ExportMethod]` route, and `optix_script action "run"` executes one at design
+  time through the bridge (`invoke` must be enabled). What it cannot do is reach a class the loaded
+  assembly predates — see "Fixture: prove a class without the runtime".
+
+## Fixture: prove a class without the runtime
+
+A fixture is a design-time `[ExportMethod]` you invoke through the bridge: the route for proving a class
+does what you think before the runtime is up, and for reading a variable no screen shows.
+
+```
+optix_script action="add" kind="design" template="fixture" name="LineProbeFixture" parent="NetLogic" \
+  pointers='[{"name":"Target","target":"Model/Smt/TotalUnits"}]'
+optix_script action="run" name="LineProbeFixture" method="RunFixture"
+```
+
+- `template: "fixture"` refuses `kind: "runtime"`: Studio runs it through right-click Execute or
+  `optix_script action "run"`, never through `Start()`.
+- The shipped class reads `LogicObject.GetVariable("Target")`, casts `(NodeId)target.Value`, refuses
+  `NodeId.Empty`, resolves `InformationModel.GetVariable(targetId)`, then reads the value, writes the value
+  it just read, and reads it again — a fixture that touches a tag puts it back. It returns a JSON string
+  (`{"ok":true,"target":…,"before":…,"after":…,"restored":true}`) and every failure branch returns a JSON
+  reason plus a `Log.Error`.
+- `action: "add"` compiles it and `reviewNetLogic` counts its writes against **OPTIX-NL-15** ("a fixture
+  writes a variable and never puts the original back", severity warning). The census looks only inside
+  `[ExportMethod]` bodies, and a write whose right-hand side is the local the method read out counts as
+  restored.
+- **The measured gap.** On the reference machine (2026-11-18) `LineProbeFixture` was added, reviewed clean,
+  pointed at `Model/Smt/TotalUnits` with `DataType: NodeId`, and `optix_build action check` compiled the
+  whole solution in a scratch folder: 0 errors, 0 warnings. `optix_script action "run"` then answered
+  `status: "not-loaded"` — the class compiles, but Studio's loaded NetLogic assembly predates it. A save
+  does not fix that: after `Ctrl+S` moved 29 sources, `bin/<Project>.dll` was still the older file
+  (05:40:00Z against a newest source at 05:54:46Z) and the run answered `not-loaded` again. The build is a
+  tool's job (`optix_build action build`, emulator stopped); making Studio reload the assembly it already
+  loaded is not — that needs a Studio restart.
+- So a fixture proves three things without the runtime: the class is real C# (`action check`), the node
+  binds it (`optix_read action: "node"` shows the pointer as `NodeId`), and what the class returns once the
+  assembly is current. It does not prove the class runs in the runtime.
 
 ## Deploying a class change
 
 1. `optix_script action="add|edit" ...` (compiles in place; fails while the runtime holds the DLL — stop it first).
-2. `optix_save` (Studio rebuilds `bin\AryaOptixTemplate.dll`).
+2. `optix_save` — it writes the design model and the `.cs`, and it does not rebuild (measured 2026-11-18: a
+   save that moved 29 sources under `ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older
+   timestamp). Build with `optix_build action build` once the runtime is stopped.
 3. Stop Studio and start it again if the change is a *new* class or a new bridge route; a loaded assembly is
    not reloaded by a save alone.
 4. `optix_emulator action="restart"`, then read the runtime log for the class's own `Log.Info` lines.

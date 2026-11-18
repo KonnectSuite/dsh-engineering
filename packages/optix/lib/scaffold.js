@@ -218,7 +218,7 @@ export async function scaffoldProject({ templateRoot, destination, sourceProject
 		},
 		studio_steps: [
 			`Ask the engineer to open ${join(root, optixFile)} in FactoryTalk Optix Studio. You do not open Studio yourself.`,
-			"The engineer builds the project (Ctrl+Shift+B, or Build > Build Solution) so the bridge class compiles.",
+			"The engineer builds the solution so the bridge class compiles. Studio 1.8.1.27 documents no build keystroke: its main toolbar's Open .NET Solution opens the solution in the default external editor, and a Studio restart reloads the assembly.",
 			"The engineer right-clicks the StudioMCPBridge NetLogic node and chooses StartBridge.",
 			"Then call optix_status: the bridge answers on the port the profile configures."
 		],

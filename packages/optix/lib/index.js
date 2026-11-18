@@ -127,10 +127,9 @@ function jsonObject(value) {
 * Bridge authoring changes this session made, per bridge origin.
 *
 * Every authoring route is a POST, and Studio holds those changes in memory until the
-* engineer saves the project and builds it. The plugin cannot save: no bridge route and no
-* documented API reach it, so the only honest thing it can do is count what is outstanding
-* and say so, which stops an agent from pressing Ctrl+S in Studio or promising a preview
-* that cannot show what it just wrote.
+* project is saved. No bridge route and no documented API reach that save, so the plugin's own route is
+* the keystroke optix_save raises through the Studio window, and what this counter does is say what is
+* outstanding - which stops an agent from promising a preview that cannot yet show what it just wrote.
 */
 const modelChanges = new Map();
 /**
@@ -194,7 +193,15 @@ function clearModelChanges(origins) {
 	return cleared;
 }
 /** Save and build are the engineer's keystrokes, because no tool can perform them. */
-const SAVE_HANDOFF = "Ask the engineer to save and build in Studio (Ctrl+S, then Ctrl+Shift+B) with the emulator stopped, then confirm; nothing in this plugin can save the project.";
+const SAVE_HANDOFF = "Save with optix_save: it raises the Studio window, sends Ctrl+S, and reports saved only once a file under Nodes/ or ProjectFiles/NetSolution is newer than before the keystroke; it needs allowWrites, and when another window holds the foreground it answers foreground_refused and the engineer's own Ctrl+S is the route. Confirm with optix_status {saved:true}. The build is a separate step: Studio 1.8.1.27 documents Ctrl+S and F5 and no build keystroke, so the named routes are its main toolbar's Open .NET Solution, which opens the solution in the default external editor, or a Studio restart, which reloads the assembly.";
+/**
+ * The handoff when a class is on disk but Studio's loaded assembly predates it.
+ *
+ * Measured 2026-11-18: a save that moved 29 sources left bin/AryaSMTLineDemo.dll at its older timestamp, so
+ * Ctrl+S alone never makes a new class exercisable, and Ctrl+Shift+B is not in Studio's documented shortcut
+ * table - naming it as though it were is advice a user cannot follow in the documented interface.
+ */
+const BUILD_HANDOFF = "Studio's loaded NetLogic assembly predates the file on disk. Studio documents no build keystroke: open the solution from its main toolbar (Open .NET Solution) and build there, or restart Studio so it reloads the assembly. Outside Studio, optix_build action build produces bin/<Project>.dll once the emulator is stopped, because the runtime locks the DLL.";
 /**
 * Whether something accepts a TCP connection on a bridge origin's port.
 * @param origin - Validated loopback origin.
@@ -1214,7 +1221,7 @@ function applyPreview(ctx, config) {
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.letterbox ? ` Clipped to the served window; ${value.letterbox}` : ""}${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.letterbox ? ` Clipped to the served window; ${value.letterbox}` : ""}${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - run optix_save, or ask the engineer for Ctrl+S.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -2245,7 +2252,7 @@ function applyLogs(ctx) {
 function applySave(ctx, settings) {
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_save",
-		description: "Save the open Optix project through Studio and prove the write landed. Studio exposes no save API to a NetLogic bridge, so this raises the Studio window, sends Ctrl+S, and retries until a file under Nodes/ or ProjectFiles/NetSolution/bin is newer than it was before the first keystroke; it reports attempts, how many keystrokes were delivered, whether the foreground was confirmed, and the latency. ok is true only when the design model on disk actually moved - a keystroke that went to another window is reported as foreground_refused, and a delivered Ctrl+S that changed nothing is no_write. Saving rebuilds the .NET solution; a NetLogic or bridge change additionally needs a Studio restart before the new class answers. Requires allowWrites.",
+		description: "Save the open Optix project through Studio and prove the write landed. Studio exposes no save API to a NetLogic bridge, so this raises the Studio window, sends Ctrl+S, and retries until a file under Nodes/ or ProjectFiles/NetSolution/bin is newer than it was before the first keystroke; it reports attempts, how many keystrokes were delivered, whether the foreground was confirmed, and the latency. ok is true only when the design model on disk actually moved - a keystroke that went to another window is reported as foreground_refused, and a delivered Ctrl+S that changed nothing is no_write. A save is not a build: measured 2026-11-18, a save that moved 29 sources under ProjectFiles/NetSolution left bin/<Project>.dll at its older timestamp, so a NetLogic change needs optix_build action build (emulator stopped) or Studio's main toolbar Open .NET Solution, and a loaded class needs a Studio restart before the new code answers. Requires allowWrites.",
 		parameters: {
 			project: {
 				type: "string",
@@ -2439,7 +2446,7 @@ function apply(ctx, config = {}) {
 		parameters: {
 			saved: {
 				type: "boolean",
-				description: "Set true only after the engineer confirms they saved and built the project. It clears the outstanding-change count, which nothing else can clear because no tool can save the project."
+				description: "Set true after a save has landed - optix_save's own proof (a file under Nodes/ or ProjectFiles/NetSolution newer than before its keystroke) or the engineer's word that they pressed Ctrl+S. It clears the outstanding-change count, which nothing else can clear."
 			},
 			project: {
 				type: "string",
@@ -2519,7 +2526,7 @@ function apply(ctx, config = {}) {
 						pending: saved ? 0 : outstanding,
 						...(cleared > 0 ? { cleared } : {}),
 						routes: settings.bridgeUrls.flatMap((origin) => pendingModelChanges(origin).routes),
-						next: saved ? "Count cleared after the engineer's save." : SAVE_HANDOFF
+						next: saved ? "Count cleared after the save landed." : SAVE_HANDOFF
 					}
 				}),
 				...(outstanding === 0 || saved ? {} : { next: `${outstanding} authoring change${outstanding === 1 ? "" : "s"} exist in Studio's live model only. ${SAVE_HANDOFF}` })
@@ -5092,12 +5099,12 @@ function apply(ctx, config = {}) {
 
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_script",
-		description: "Add, read, review, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; review checks the source against the lifecycle, threading, observer, logging and naming rules (OPTIX-NL-03..14) and can compile it; add creates the node, points its `pointers` variables and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. add and edit refuse code with a critical finding unless force is true, so a class that breaks the documented lifecycle does not reach the project. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
+		description: "Add, read, review, edit, delete, compile and run FactoryTalk Optix NetLogic C# classes. A NetLogic is two writes that must agree: a node whose BrowseName equals the class name (created here through the bridge) and a .cs file in the project's ProjectFiles\\NetSolution, which Studio's SDK-style csproj globs on the next build. action list pairs every .cs with its live node and says which side is missing; read returns the source; review checks the source against the lifecycle, threading, observer, logging and naming rules (OPTIX-NL-03..15) and can compile it; add creates the node, points its `pointers` variables and writes a template or the code you pass; edit replaces the source (guarded by expect_sha256) and compiles it; delete removes the node and, unless the file belongs to a shipped library item, the file; build runs dotnet build and returns the diagnostics; run executes an [ExportMethod] at design time through the bridge (needs allowInvoke), which is how a design-time NetLogic is exercised. kind runtime gives Start/Stop that the runtime calls; kind design gives [ExportMethod] helpers Studio does not auto-run at design time. add and edit refuse code with a critical finding unless force is true, so a class that breaks the documented lifecycle does not reach the project. Studio still has to build the solution for a new or edited class to be loaded - say that rather than implying the write took effect in Studio.",
 		parameters: {
 			project: projectParameter,
 			action: {
 				type: "string",
-				description: "list (default) sends no writes; read returns a class; review checks a class against OPTIX-NL-03..14 and optionally compiles it; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
+				description: "list (default) sends no writes; read returns a class; review checks a class against OPTIX-NL-03..15 and optionally compiles it; add creates a node plus its .cs; edit replaces the .cs and builds; delete removes node and file; build compiles the NetSolution; run executes a design-time [ExportMethod]."
 			},
 			project_root: {
 				type: "string",
@@ -5113,11 +5120,11 @@ function apply(ctx, config = {}) {
 			},
 			kind: {
 				type: "string",
-				description: "runtime (Start/Stop run in the runtime) or design ([ExportMethod] helpers, run by right-click Execute or action run). Default runtime."
+				description: "runtime (Start/Stop run in the runtime) or design ([ExportMethod] helpers, run by right-click Execute or action run). Default runtime. template fixture requires design."
 			},
 			template: {
 				type: "string",
-				description: "For add with no code: blank, periodic (runtime class with a PeriodicTask, cached nodes, try/catch and dispose), observer (runtime class subscribing to VariableChange and unsubscribing in Stop), nav (runtime class bound inside a PanelLoader, exposing Open(screenPath) through ChangePanel - the navigation template), or login (runtime class exposing PerformLogin(username, password, out bool) through the Users alias, PasswordVariable.RemoteRead() and Session.ChangeUser). Default blank."
+				description: "For add with no code: blank, periodic (runtime class with a PeriodicTask, cached nodes, try/catch and dispose), observer (runtime class subscribing to VariableChange and unsubscribing in Stop), nav (runtime class bound inside a PanelLoader, exposing Open(screenPath) through ChangePanel - the navigation template), login (runtime class exposing PerformLogin(username, password, out bool) through the Users alias, PasswordVariable.RemoteRead() and Session.ChangeUser), or fixture (design class exposing RunFixture(), which resolves its Target pointer, writes the target's value and puts the original back, and returns the result as a JSON string - the way to prove a pointer and a datatype without starting the runtime). Default blank."
 			},
 			code: {
 				type: "string",
@@ -5197,7 +5204,7 @@ function apply(ctx, config = {}) {
 					project_root: root,
 					net_solution: netSolutionDir(root),
 					build: compile,
-					next: compile.ok ? "The assembly compiled on disk. A running Studio still has its own copy loaded: build in Studio (Ctrl+Shift+B) before a class is exercisable with action run." : compile.locked ? "The Optix runtime holds bin/&lt;project&gt;.dll open, so the copy step failed after the C# compiled. Stop the emulator (optix_emulator action stop), build again, then start it." : "Read the diagnostics, fix the class, then build again."
+					next: compile.ok ? "The assembly compiled on disk. A running Studio still has its own copy loaded, and a save alone does not replace it (measured 2026-11-18: a save moved 29 sources and left bin/<project>.dll at its older timestamp). Studio documents no build keystroke: open the solution from its main toolbar (Open .NET Solution) and build there, or restart Studio, before the class is exercisable with action run." : compile.locked ? "The Optix runtime holds bin/&lt;project&gt;.dll open, so the copy step failed after the C# compiled. Stop the emulator (optix_emulator action stop), build again, then start it." : "Read the diagnostics, fix the class, then build again."
 				};
 			}
 			const requester = async (origin) => (route, signal, query) => bridge.request(origin, route, signal, query);
@@ -5454,7 +5461,7 @@ function apply(ctx, config = {}) {
 					node: node.path,
 					method: method.trim(),
 					compiled: void 0,
-					next: `${wanted} compiles, but Studio's loaded NetLogic assembly predates it. Build the project in Studio (Build > Build Solution, or Ctrl+Shift+B) and run this again; the file is already on disk at ProjectFiles/NetSolution/${wanted}.cs.`
+					next: `${wanted} compiles, but Studio's loaded NetLogic assembly predates it. ${BUILD_HANDOFF} The file is already on disk at ProjectFiles/NetSolution/${wanted}.cs.`
 				};
 			}
 			return {
@@ -5577,7 +5584,7 @@ function apply(ctx, config = {}) {
 	})));
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_build",
-		description: "Compile a FactoryTalk Optix project's NetLogic C# outside Studio and report whether the runtime DLL is current. `status` reads bin/<Project>.dll against the newest .cs and the references file; `check` copies ProjectFiles/NetSolution to a scratch folder and runs dotnet build there, so a compile error is found without writing bin/ or obj/ into the project; `build` runs dotnet build in place, which is the only way outside Studio to produce the DLL the runtime loads (stop the emulator first, or the build fails because the DLL is locked); `references` rewrites <Project>.references from the installed Studio (a project without it cannot compile); `init` writes the csproj, sln and references a project copied or generated outside Studio does not have. None of this saves or builds the Studio project itself: that is still the engineer's Ctrl+S then Ctrl+Shift+B, and optix_status says when it is owed.",
+		description: "Compile a FactoryTalk Optix project's NetLogic C# outside Studio and report whether the runtime DLL is current. `status` reads bin/<Project>.dll against the newest .cs and the references file; `check` copies ProjectFiles/NetSolution to a scratch folder and runs dotnet build there, so a compile error is found without writing bin/ or obj/ into the project; `build` runs dotnet build in place, which is the only way outside Studio to produce the DLL the runtime loads (stop the emulator first, or the build fails because the DLL is locked); `references` rewrites <Project>.references from the installed Studio (a project without it cannot compile); `init` writes the csproj, sln and references a project copied or generated outside Studio does not have. None of this saves or builds the Studio project itself: the save is `optix_save`, and the build is the engineer's — Studio 1.8.1.27 documents Ctrl+S and F5 and no build keystroke, so its own routes are the main toolbar's Open .NET Solution or a Studio restart — and `optix_status` says when it is owed.",
 		parameters: {
 			action: {
 				type: "string",
@@ -5870,7 +5877,7 @@ function apply(ctx, config = {}) {
 						results,
 						...(pointerClearing.cleared === 0 ? {} : { pointer_values_cleared: pointerClearing.cleared }),
 						...(pointerClearing.failed.length === 0 ? {} : { pointer_values_uncleared: pointerClearing.failed }),
-						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then run optix_emulator action restart and optix_nav action verify. The bridge authored the model; only Studio writes the file the runtime loads."
+						next: "Save the project in Studio (optix_save, or Ctrl+S by hand), then run optix_emulator action restart and optix_nav action verify. The bridge authored the model; only Studio writes the file the runtime loads, and a navigation-only batch needs no build (measured 2026-11-18: a bridge-authored screen rendered after a save and an emulator restart with no Studio build)."
 					};
 				}
 				if (!settings.preview) throw new Error("The navigation proof opens the served preview: set preview true in the Optix row's plugin configuration");
@@ -6245,7 +6252,7 @@ function apply(ctx, config = {}) {
 						status: "applied",
 						...base,
 						applied: results.length,
-						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator: the runtime draws the saved screen with the project's style sheet."
+						next: "Save the project in Studio (optix_save, or Ctrl+S by hand), then restart the emulator: the runtime draws the saved screen with the project's style sheet. A screen batch needs no build (measured 2026-11-18: two bridge-authored screens rendered after a save and an emulator restart, with bin/<project>.dll left stale)."
 					};
 				}
 				if (action === "shell") {
@@ -6359,7 +6366,7 @@ function apply(ctx, config = {}) {
 						...base,
 						applied: results.length,
 						phases: report,
-						next: "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator. The rail switches the loader through ChangePanel; a tab that compiles is not a tab that works until a click is seen in the runtime."
+						next: "Save the project in Studio (optix_save, or Ctrl+S by hand), then restart the emulator. The rail switches the loader through ChangePanel; a tab that compiles is not a tab that works until a click is seen in the runtime."
 					};
 				}
 				if (action === "dialog") {
@@ -6620,7 +6627,7 @@ function apply(ctx, config = {}) {
 						engine_refs_after: after,
 						engine_refs_verified: verified,
 						next: verified
-							? "Save the project in Studio (Ctrl+S) and Build it (Ctrl+Shift+B), then restart the emulator: the runtime draws with this sheet on its next load. Run action audit after the save to prove the file carries it."
+							? "Save with optix_save (or ask the engineer for Ctrl+S), then restart the emulator: the runtime draws with this sheet on its next load. A style sheet is model data, so no build is needed for it. Run action audit after the save to prove the file carries it."
 							: `The sheet was written but ${engines.filter((engine) => after[engine] !== plan.sheet_path).join(", ")} does not point at it: write the pointer's Value child again, or name the sheet_path the engine already reads.`
 					};
 				}

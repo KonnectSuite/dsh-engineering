@@ -140,4 +140,4 @@ for (const path of ["UI/Screens/DshOverview", "UI/Screens/DshOverviewType"]) {
 	if (await exists(path)) await remove(path);
 }
 line("screens", (await children("UI/Screens")).map((child) => `${child.browse_name}[${child.dotnet_type}]`).join(", "));
-console.log("screens rebuilt as ScreenType - Save (Ctrl+S) + Build (Ctrl+Shift+B), then run the render proof");
+console.log("screens rebuilt as ScreenType - save with optix_save, then run the render proof");

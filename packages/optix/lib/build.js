@@ -571,7 +571,7 @@ export async function buildState(root) {
 		next: state === "built"
 			? "Studio's build is on disk. Start the runtime with optix_emulator to serve it."
 			: state === "stale"
-				? "The newest source is newer than the runtime DLL: save and build in Studio (Ctrl+S, then Ctrl+Shift+B)."
-				: "Studio has not built this project, or the build wrote no bin/<Project>.dll: press Ctrl+Shift+B in Studio."
+				? "The newest source is newer than the runtime DLL: save with optix_save, then build - Studio 1.8.1.27 documents no build keystroke, so the routes are optix_build action build with the emulator stopped, Studio's main toolbar's Open .NET Solution, or a Studio restart."
+				: "The project has never been built, or the build wrote no bin/<Project>.dll: optix_build action build with the emulator stopped, or build the solution Studio opens through its main toolbar's Open .NET Solution."
 	};
 }

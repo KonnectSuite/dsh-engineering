@@ -23,7 +23,7 @@ bridge, and hand the human only the steps tagged `human`:
 | `studio_open` | **human** | No tool can start Studio, open a project inside it, or activate a licence. |
 | `bridge_started` | **human** | Right-click `StudioMCPBridge` → StartBridge is a Studio menu item. Nothing outside Studio can press it. |
 | `save` | tool | `optix_save` raises the window and sends Ctrl+S until a file moves. |
-| `build` | tool | `optix_build action build` compiles NetSolution outside Studio — after `optix_emulator action stop`, because the runtime locks the DLL. Studio's Ctrl+Shift+B is the alternative. |
+| `build` | tool | `optix_build action build` compiles NetSolution outside Studio — after `optix_emulator action stop`, because the runtime locks the DLL. Studio documents no build keystroke; its route is the solution opened from the main toolbar's **Open .NET Solution**. |
 | `runtime` | tool | `optix_emulator action start` is the only sanctioned way to run the project. |
 | `preview_tools`, `browser` | **human** | `preview: true` in the Optix plugin row, and a browser to attach to, are settings this side cannot set. |
 | `ocr` | tool | `optix_ocr_setup with install true` installs Tesseract; the step only appears when none is configured. |

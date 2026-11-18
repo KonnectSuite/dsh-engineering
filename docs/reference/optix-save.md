@@ -48,9 +48,11 @@ Failure codes name the cause, so the fix is chosen instead of guessed:
 
 ## Two things it does that surprise people
 
-- **It rebuilds the .NET solution.** Studio's save also rebuilds `ProjectFiles/NetSolution/bin`, so a C#
-  change becomes a loadable assembly here. But a *loaded* NetLogic class only picks up new code after
-  Studio restarts; a newly added bridge route answers `404 unknown route` until it does.
+- **It saves; it does not rebuild.** Measured 2026-11-18: a save that moved 29 sources under
+  `ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older timestamp. The build is its own step —
+  `optix_build action build` with the emulator stopped, or the solution opened from Studio's main toolbar
+  (**Open .NET Solution**) built there. And a *loaded* NetLogic class only picks up new code after Studio
+  restarts; a newly added bridge route answers `404 unknown route` until it does.
 - **It needs `allowWrites`.** The tool writes the project to disk; it starts no process and edits no file
   itself.
 

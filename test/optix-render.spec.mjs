@@ -22,12 +22,14 @@ import {
   INVISIBLE_MAX_DISTANCE,
   MIN_TEXT_LEAVES,
   UNCHECKED_REPORTED,
+  bandInsideSurface,
   decodePng,
   flattenTree,
   measureDom,
   paintedColour,
   renderFindings,
   sampleBackground,
+  sampleInterior,
   strongestPixel,
   surfacePaint,
   windowBox,
@@ -711,6 +713,143 @@ describe('the colour rules judge the captured pixels, not the colours the DOM re
     const judged = renderFindings(labelPage({ color: 'rgb(255, 255, 255)' }), { png: Buffer.from('not a png at all') })
     assert.equal(judged.measured.paint_read, 'dom')
     assert.ok(judged.unchecked.some((line) => line.includes('could not be decoded')), judged.unchecked.join('\n'))
+  })
+})
+
+describe('the interior sampler: what a surface is filled with, past its own border', () => {
+  // Measured 2026-11-18 on the served StationWall: the kit draws a chip's label in a box equal to the chip
+  // rectangle behind it (96x26 at 550,48), and the engine paints that rectangle's 1px border as an inset
+  // shadow in the band's own colour. Reading the band outside the text box read the band's cyan and called a
+  // 13.40:1 label a 1.81:1 defect - four chrome labels reported on one screen and the same four on the next.
+  // The chip's own fill is what a reader sees behind the glyphs, so the sampler reads inside the surface.
+  const chip = (x, y) => {
+    if (x < 10 || x > 29 || y < 10 || y > 29) return [0, 188, 212]
+    if (x === 10 || y === 10 || x === 29 || y === 29) return [0, 188, 212]
+    return [28, 28, 28]
+  }
+
+  it('reads a surface past its border, because the engine draws that border inside the box it fills', () => {
+    const image = decodePng(buildPng({ width: 40, height: 40, paint: chip }))
+    const box = { x: 10, y: 10, width: 20, height: 20 }
+    // The route Batch F used: the band outside the box, which is the band behind the chip.
+    assert.equal(sampleBackground(image, box).hex, '#00bcd4')
+    // The route Batch H uses: inside the surface, past its border, which is the fill the glyphs sit in.
+    assert.equal(sampleInterior(image, box).hex, '#1c1c1c')
+  })
+
+  it('refuses an interior too small to read, so the caller falls back to the band instead of guessing', () => {
+    const image = decodePng(buildPng({ width: 40, height: 40, paint: () => cyan }))
+    assert.equal(sampleInterior(image, { x: 0, y: 0, width: 4, height: 4 }), undefined)
+  })
+
+  const chipBox = { x: 550, y: 48, width: 96, height: 26 }
+  const chipPage = (ink) => measureDom({}, env(page({
+    canvas: canvas(),
+    children: [
+      el({ type: 'screen', box: { x: 0, y: 0, width: 1280, height: 800 }, style: { background: 'rgb(18, 18, 18)' }, children: [
+        el({ type: 'rectangle', box: { x: 0, y: 0, width: 1280, height: 76 }, style: { background: 'rgb(0, 188, 212)' } }),
+        el({ type: 'rectangle', box: chipBox, style: { background: 'rgb(28, 28, 28)' } }),
+        el({ type: 'label', tag: 'span', box: chipBox, style: { color: ink }, text: 'Line 1' }),
+      ] }),
+    ],
+  })))
+  const chipPng = (ink) => buildPng({
+    width: 1280,
+    height: 800,
+    paint: (x, y) => {
+      if (x < 550 || x > 645 || y < 48 || y > 73) return [0, 188, 212]
+      if (x === 550 || y === 48 || x === 645 || y === 73) return [0, 188, 212]
+      if (x >= 560 && x <= 630 && y >= 55 && y <= 66) return ink
+      return [28, 28, 28]
+    },
+  })
+  const contrast = (judged) => judged.findings.filter((finding) => finding.rule === 'VIEW-RENDER-04' || finding.rule === 'VIEW-RENDER-05')
+
+  it('is quiet when the label box coincides with the chip and the ring around it is the band', () => {
+    const judged = renderFindings(chipPage('rgb(228, 228, 228)'), { png: chipPng([228, 228, 228]) })
+    assert.deepEqual(
+      contrast(judged).map((finding) => `${finding.rule} ${finding.evidence.background}`),
+      [],
+      contrast(judged).map((finding) => finding.message).join(' | '),
+    )
+  })
+
+  it('still reports a label the chip fill cannot carry, and names the interior as the route it read', () => {
+    const judged = renderFindings(chipPage('rgb(44, 44, 44)'), { png: chipPng([44, 44, 44]) })
+    const fired = contrast(judged)
+    assert.equal(fired.length, 1, fired.map((finding) => finding.message).join(' | '))
+    assert.equal(fired[0].rule, 'VIEW-RENDER-04')
+    // Against the chip's fill, not the band's cyan: the band made this label 1.81:1 and pointed the fix at
+    // the wrong surface.
+    assert.equal(fired[0].evidence.background, '#1c1c1c')
+    assert.equal(fired[0].evidence.color, '#2c2c2c')
+    assert.ok(fired[0].evidence.ratio < CONTRAST_MINIMUM, `ratio ${fired[0].evidence.ratio}`)
+    assert.ok(fired[0].evidence.measured_from.includes('past its border'), fired[0].evidence.measured_from)
+    assert.ok(fired[0].evidence.measured_from.includes('rectangle'), fired[0].evidence.measured_from)
+  })
+
+  it('falls back to the band when the surface holding the text paints with what the DOM does not report', () => {
+    // The rail's selected tab: a NavigationPanel paints it with a `background-image` gradient, so nothing on
+    // the chain carries a `backgroundColor` and there is no interior to read. The band outside the text box is
+    // where a gradient is visible, and that finding has to survive the interior route.
+    const surface = measureDom({}, env(page({
+      canvas: canvas(),
+      children: [
+        el({ type: 'navigationpanel', box: { x: 0, y: 0, width: 220, height: 800 }, children: [
+          el({ type: 'label', tag: 'span', box: { x: 20, y: 60, width: 120, height: 22 }, style: { color: 'rgb(255, 255, 255)' }, text: 'Station Wall' }),
+        ] }),
+      ],
+    })))
+    const judged = renderFindings(surface, {
+      png: buildPng({ width: 1280, height: 800, paint: (x, y) => (x >= 24 && x <= 130 && y >= 64 && y <= 78 ? [255, 255, 255] : [15, 175, 255]) }),
+    })
+    const fired = contrast(judged)
+    assert.equal(fired.length, 1, fired.map((finding) => finding.message).join(' | '))
+    assert.equal(fired[0].rule, 'VIEW-RENDER-04')
+    assert.equal(fired[0].evidence.background, '#0fafff')
+    assert.ok(fired[0].evidence.ratio < CONTRAST_MINIMUM, `ratio ${fired[0].evidence.ratio}`)
+    assert.equal(fired[0].evidence.measured_from, 'the captured pixels in the band around the text box')
+  })
+
+  it('reads the band, not the frame of a surface the text sits deep inside', () => {
+    // The same day's second measurement: on the served StationWall the element the DOM puts the rail tab on
+    // is a rectangle the size of the whole window, so reading that holder's inset frame read its four sides -
+    // white at the content edge - and called a white tab on a cyan gradient 1:1, while the invisible
+    // cyan-on-cyan "Ready" moved out of VIEW-RENDER-05 into a 2.44:1 VIEW-RENDER-04. A label deep inside a
+    // large surface is judged on the band around the label; the holder's own frame answers only the flush one.
+    const plate = { x: 0, y: 0, width: 1280, height: 800 }
+    const tab = { x: 50, y: 240, width: 120, height: 22 }
+    assert.equal(bandInsideSurface(chipBox, chipBox), 0)
+    assert.equal(bandInsideSurface(tab, plate), 1)
+    const surface = measureDom({}, env(page({
+      canvas: canvas(),
+      children: [
+        el({ type: 'screen', box: plate, style: { background: 'rgb(255, 255, 255)' }, children: [
+          el({ type: 'rectangle', box: plate, style: { background: 'rgb(255, 255, 255)' } }),
+          el({ type: 'navigationpanel', box: { x: 0, y: 64, width: 220, height: 736 }, children: [
+            el({ type: 'label', tag: 'span', box: tab, style: { color: 'rgb(255, 255, 255)' }, text: 'Station Wall' }),
+          ] }),
+        ] }),
+      ],
+    })))
+    const judged = renderFindings(surface, {
+      png: buildPng({
+        width: 1280,
+        height: 800,
+        paint: (x, y) => {
+          if (x >= 60 && x <= 160 && y >= 244 && y <= 258) return [255, 255, 255]
+          if (x >= 40 && x <= 180 && y >= 230 && y <= 272) return cyan
+          return [255, 255, 255]
+        },
+      }),
+    })
+    const fired = contrast(judged)
+    assert.equal(fired.length, 1, fired.map((finding) => finding.message).join(' | '))
+    assert.equal(fired[0].rule, 'VIEW-RENDER-04')
+    assert.equal(fired[0].evidence.background, '#0fafff')
+    assert.equal(fired[0].evidence.color, '#ffffff')
+    assert.equal(fired[0].evidence.ratio, 2.44)
+    assert.equal(fired[0].evidence.measured_from, 'the captured pixels in the band around the text box')
   })
 })
 

@@ -118,6 +118,11 @@ export const RENDERED_TARGET_TYPES = new Set([
 export const INVISIBLE_MAX_DISTANCE = 20;
 /** The band outside a text box that is read as what the text sits on. */
 export const SAMPLE_RING_PX = 3;
+
+/** How far inside a painted surface the sampler reads, so a 1 px border is not mistaken for its fill. */
+export const SAMPLE_INSET_PX = 3;
+/** How much of the band around a text box must lie inside its holder before that band is the colour behind it. */
+export const BAND_INSIDE_MINIMUM = 0.5;
 /** How much of a surface an overlay child must cover to be its paint. */
 export const SURFACE_OVERLAY_COVERAGE = 0.9;
 
@@ -253,6 +258,107 @@ export function sampleBackground(image, box, origin = { x: 0, y: 0 }, ring = SAM
 		}
 	}
 	return { hex, sampled, distinct: counts.size };
+}
+
+/**
+ * Read what a painted surface fills itself with, from a band just inside its own edge.
+ *
+ * The band is inside on purpose, and inset on purpose. A label the kit draws sits in a box equal to the
+ * chip rectangle behind it, and the engine draws that rectangle's border as a 1 px inset shadow: sampling
+ * outside the text box (measured 2026-11-18) read the header band's cyan through that border and reported
+ * a chip label as 1.81:1 when its own fill measures 13.40:1. Reading inside the surface, past its border,
+ * is the colour the text actually sits on.
+ *
+ * That answer belongs to a surface that is the text's own plate. Read for a label sitting deep inside a
+ * surface the size of the window, this band is that surface's four sides, far from the label: measured the
+ * same day it returned `#ffffff` for a white rail tab painted on a cyan gradient tab (1:1) and moved an
+ * invisible cyan-on-cyan "Ready" out of `VIEW-RENDER-05` into a 2.44:1 `VIEW-RENDER-04`.
+ * `bandInsideSurface` is what decides which band answers which label.
+ *
+ * @returns {{hex:string, sampled:number, distinct:number}|undefined} undefined when the inset region is too small to read
+ */
+export function sampleInterior(image, box, origin = { x: 0, y: 0 }, inset = SAMPLE_INSET_PX, band = SAMPLE_RING_PX) {
+	if (image === undefined || box === undefined) return undefined;
+	const left = Math.max(0, Math.floor(box.x - origin.x + inset));
+	const top = Math.max(0, Math.floor(box.y - origin.y + inset));
+	const right = Math.min(image.width - 1, Math.ceil(box.x + box.width - origin.x - inset));
+	const bottom = Math.min(image.height - 1, Math.ceil(box.y + box.height - origin.y - inset));
+	if (right - left < 1 || bottom - top < 1) return undefined;
+	const counts = new Map();
+	let sampled = 0;
+	const read = (x, y) => {
+		const hex = pixelHex(image, x, y);
+		counts.set(hex, (counts.get(hex) ?? 0) + 1);
+		sampled += 1;
+	};
+	// A frame, not the whole interior: the glyphs live in the middle of the surface, and the question is
+	// what colour is behind them. A surface too thin to hold a frame is read whole.
+	const framed = right - left >= band * 2 && bottom - top >= band * 2;
+	if (!framed) {
+		for (let y = top; y <= bottom; y += 1) for (let x = left; x <= right; x += 1) read(x, y);
+	} else {
+		for (let x = left; x <= right; x += 1) {
+			for (let d = 0; d < band; d += 1) {
+				read(x, top + d);
+				read(x, bottom - d);
+			}
+		}
+		for (let y = top + band; y <= bottom - band; y += 1) {
+			for (let d = 0; d < band; d += 1) {
+				read(left + d, y);
+				read(right - d, y);
+			}
+		}
+	}
+	if (sampled === 0) return undefined;
+	let hex = "";
+	let best = 0;
+	for (const [candidate, count] of counts) {
+		if (count > best) {
+			hex = candidate;
+			best = count;
+		}
+	}
+	return { hex, sampled, distinct: counts.size };
+}
+
+/**
+ * How much of the band around a text box lies inside the surface the DOM says holds it.
+ *
+ * The two samplers answer opposite questions, and this decides between them. A band outside a label that
+ * is flush with its plate reads through the plate's border onto whatever is behind the plate; a band just
+ * inside the edge of a large surface reads that surface's own four sides, nowhere near the label. A
+ * fraction near 1 means the band is already inside the holder, so it is the colour behind the text and the
+ * ring sampler answers it. A fraction near 0 means the label is the plate, so the holder's inset frame does.
+ *
+ * @param box - The text box.
+ * @param surfaceBox - The painted element the DOM puts the text on.
+ * @returns The fraction, 0..1, of the band pixels sitting at least `inset` inside the surface.
+ */
+export function bandInsideSurface(box, surfaceBox, ring = SAMPLE_RING_PX, inset = SAMPLE_INSET_PX) {
+	if (box === undefined || surfaceBox === undefined) return 1;
+	const left = Math.floor(box.x - ring);
+	const top = Math.floor(box.y - ring);
+	const right = Math.ceil(box.x + box.width + ring);
+	const bottom = Math.ceil(box.y + box.height + ring);
+	const innerLeft = Math.floor(box.x);
+	const innerTop = Math.floor(box.y);
+	const innerRight = Math.ceil(box.x + box.width);
+	const innerBottom = Math.ceil(box.y + box.height);
+	const holdLeft = Math.floor(surfaceBox.x + inset);
+	const holdTop = Math.floor(surfaceBox.y + inset);
+	const holdRight = Math.ceil(surfaceBox.x + surfaceBox.width - inset);
+	const holdBottom = Math.ceil(surfaceBox.y + surfaceBox.height - inset);
+	let total = 0;
+	let inside = 0;
+	for (let y = top; y <= bottom; y += 1) {
+		for (let x = left; x <= right; x += 1) {
+			if (x >= innerLeft && x <= innerRight && y >= innerTop && y <= innerBottom) continue;
+			total += 1;
+			if (x >= holdLeft && x <= holdRight && y >= holdTop && y <= holdBottom) inside += 1;
+		}
+	}
+	return total === 0 ? 1 : inside / total;
 }
 
 /**
@@ -739,10 +845,20 @@ export function renderFindings(report, options = {}) {
 	// VIEW-RENDER-04 and VIEW-RENDER-05: read the captured pixels when there are any.
 	// The engine paints a fill through an untyped overlay child and a NavigationPanel paints its tabs with a
 	// `background-image` gradient, so a computed `backgroundColor` is not what a reader sees behind the text;
-	// the pixels are. The DOM still supplies the text's own colour.
+	// the pixels are. The DOM supplies which surface holds the text and the text's own colour; the pixels
+	// supply what that surface is filled with.
 	for (const entry of textNodes) {
 		const foreground = paintedColour(entry.color);
-		const sampled = image === undefined ? undefined : sampleBackground(image, entry.box, origin);
+		// The surface the text sits on is decided by the DOM (which painted element covers this point, latest
+		// first). Its colour comes from the band around the text box when that band is already inside the
+		// surface, and from the surface's own inset frame when the text box is flush with it - the chip whose
+		// label fills it. A gradient tab has no `backgroundColor` to find, so it falls through to the band
+		// outside the text box, which is where a gradient is visible.
+		const holder = paintUnder(entry, flat);
+		const plate = holder !== undefined && bandInsideSurface(entry.box, holder.box) < BAND_INSIDE_MINIMUM;
+		const inside = plate && image !== undefined ? sampleInterior(image, holder.box, origin) : undefined;
+		const sampled = image === undefined ? undefined : (inside ?? sampleBackground(image, entry.box, origin));
+		const from = inside === undefined ? "the captured pixels in the band around the text box" : `the captured pixels inside ${locate(holder)}, past its border`;
 		if (sampled !== undefined) {
 			const drawn = strongestPixel(image, entry.box, origin, sampled.hex);
 			if (drawn === undefined) {
@@ -765,7 +881,7 @@ export function renderFindings(report, options = {}) {
 						pixel_distance: drawn.distance,
 						maximum: INVISIBLE_MAX_DISTANCE,
 						sampled_px: sampled.sampled,
-						measured_from: "the captured pixels inside the text box and the band around it"
+						measured_from: `${from} and inside the text box`
 					}
 				});
 				continue;
@@ -785,7 +901,7 @@ export function renderFindings(report, options = {}) {
 					ratio: Math.round(ratio * 100) / 100,
 					pixel_distance: drawn.distance,
 					sampled_px: sampled.sampled,
-					measured_from: "the captured pixels in the band around the text box"
+					measured_from: from
 				}
 			});
 			continue;
@@ -795,7 +911,7 @@ export function renderFindings(report, options = {}) {
 			unchecked.push(`${locate(entry)}: the browser reported no readable text colour`);
 			continue;
 		}
-		const holder = paintUnder(entry, flat);
+		// `holder` was already resolved above, from the same DOM, for the pixel path.
 		if (holder === undefined) {
 			unchecked.push(`${locate(entry)}: nothing painted was found under it, so contrast was not judged`);
 			continue;

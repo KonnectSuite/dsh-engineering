@@ -21,8 +21,9 @@ says the host is not the source.
 2. Ask all five in one `ask_user_question`: runtime target, canvas in pixels, project name, destination
    folder, what the line talks to.
 3. `optix_template` with the answers writes the project; there is nothing to open yet.
-4. Hand the engineer three actions and wait: open the `.optix`, Build (`Ctrl+Shift+B`), then
-   right-click `StudioMCPBridge` → StartBridge.
+4. Hand the engineer three actions and wait: open the `.optix`, build the solution (Studio 1.8.1.27
+   documents no build keystroke — `optix_build action build`, or its main toolbar's **Open .NET
+   Solution**), then right-click `StudioMCPBridge` → StartBridge.
 5. When the bridge answers, the starter already carries the operator shell's four screens (`Home`,
    `Alarms`, `Diagnostics`, `Settings`). Mount the first one with `optix_screen`, plan the bar with
    `optix_nav { action: "plan" }` and apply it, read the screen back with `optix_design_check`, then
@@ -53,11 +54,12 @@ the job done is out of bounds, however much faster it looks:
 
 - **No desktop automation, with one measured exception.** Never drive Studio, the emulator window or a
   browser by click, keystroke, key chord or window focus — not to start the emulator, not to look at it,
-  not to navigate Studio. The exception is Save and Build: when the engineer asks you to press them
-  instead of doing it themselves, send exactly two keystrokes to the already-open Studio window
-  (`Ctrl+S`, then `Ctrl+Shift+B`) and nothing else — no clicks, no menus, no dialogs, no launching
-  Studio. Offer the handoff first and take it only on the engineer's word, then verify it on disk: a
-  keystroke you delivered is not a save that landed.
+  not to navigate Studio. The exception is Save: `optix_save` raises the already-open Studio window and
+  sends exactly one `Ctrl+S`, and reports `saved` only once a file under `Nodes/` or
+  `ProjectFiles/NetSolution` is newer than before the keystroke. It sends nothing else — no clicks, no
+  menus, no dialogs, no launching Studio — and when another window owns the foreground it answers
+  `foreground_refused`, which is when the engineer's own `Ctrl+S` is the route. A keystroke you delivered
+  is not a save that landed.
 - **No process handling.** Never `Start-Process`, `Stop-Process`, `taskkill`, or launch
   `FTOptixRuntime.exe` yourself. `optix_emulator` is the only way to run, restart, stop and inspect the
   runtime, and it is the only thing that knows which runtime belongs to which project.
@@ -111,12 +113,16 @@ Three different things are called "the project", and confusing them is the most 
 reports success it does not have.
 
 - **The live model** — what `optix_read` sees and every `optix_edit` changes, inside Studio.
-- **The saved project** — what the runtime loads. This plugin cannot save: no tool and no bridge route
-  exists for it, and `UAManagedCore` carries no save member at all (measured: not one `Save`, `IsDirty`
-  or `Persist` symbol in `UAManagedCore.dll`). Persistence comes from Studio's own **Save** (Ctrl+S) or
-  **Build** (Ctrl+Shift+B) — by the engineer's hand, or by two keystrokes when they ask you to press them
-  (the exception above). Both write bridge edits: measured on the reference machine, a Build wrote the
-  whole bridge-authored screen to `Nodes/**`, and a later Ctrl+S wrote a re-bound `Panel` link on its own.
+- **The saved project** — what the runtime loads. `optix_save` is the plugin's route to it: it raises the
+  Studio window, sends `Ctrl+S`, and reports `saved` only when a file under `Nodes/` or
+  `ProjectFiles/NetSolution` is newer than the snapshot taken before the keystroke. There is no bridge
+  route — `UAManagedCore` carries no save member at all (measured: not one `Save`, `IsDirty` or `Persist`
+  symbol in `UAManagedCore.dll`), which is why the save is a keystroke — and when another window holds the
+  foreground `optix_save` answers `foreground_refused` and the engineer's own **Save** (Ctrl+S) is the
+  route. A save is not a build: measured 2026-11-18, a save that moved 29 sources under
+  `ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older timestamp, so a C# change needs the
+  build step too. Both write bridge edits: measured on the reference machine, a Build wrote the whole
+  bridge-authored screen to `Nodes/**`, and a later Ctrl+S wrote a re-bound `Panel` link on its own.
   `optix_status` counts the authoring calls made since the last save and reports `needs_save`;
   `optix_screenshot` repeats it in one line. After the save, call `optix_status` with `saved: true` to
   clear the count — but clear it on evidence, not on a reply: `optix_emulator` with `action: "status"`
@@ -200,7 +206,7 @@ it is how the engineer knows what you are doing and what is theirs.
 | **2 Open and arm** | nothing; the files are on disk. `optix_build action init` first only when the scaffold has no solution. `optix_docs` when a name is unsure | open the `.optix`, build, start the bridge |
 | **3 Connect** | `optix_status`, then `optix_read` once it answers | — |
 | **4 Author** | `optix_edit` / `optix_screen` / `optix_nav` / `optix_model` / `optix_script`, then the static checks | — |
-| **5 Persist** | read `needs_save`, ask, then verify the save on disk | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
+| **5 Persist** | read `needs_save`, run `optix_save` or ask, then verify the save on disk | save (Ctrl+S); the build only when C# changed, emulator stopped |
 | **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, `optix_render_check` on the served screen, `optix_nav verify` for a bar, prove the thing changed | — |
 | **7 Release** | `optix_production_check`, `optix_design_check` per screen, `optix_nav reconcile`, then state coverage | deploy in Studio's Deploy dialog |
 
@@ -619,11 +625,11 @@ Measured loop, in this order, because each step depends on the previous one (pha
 
 1. `optix_script { action: "add", name, parent: "UI/NetLogic", kind: "runtime" }` - node and class, reviewed
    and compiled by `dotnet build`.
-2. Stop the runtime if it is up (`optix_emulator { action: "stop" }`), then save and build in Studio
-   (**Build > Build Solution**, Ctrl+Shift+B) — the engineer's hand, or two keystrokes when they ask you
-   to press them. The build is what loads the class into Studio's NetLogic assembly and writes both the
-   .cs edits and the node to the project files. With the emulator running the build fails on `MSB3061`
-   (the DLL is locked) and nothing saves.
+2. Stop the runtime if it is up (`optix_emulator { action: "stop" }`), then save with `optix_save` and
+   build the solution — Studio 1.8.1.27 documents no build keystroke, so `optix_build action build` with
+   the runtime stopped, or the solution opened from Studio's main toolbar (**Open .NET Solution**). The
+   build is what loads the class into Studio's NetLogic assembly. With the emulator running the build
+   fails on `MSB3061` (the DLL is locked).
 3. `optix_status { saved: true }` clears the pending count once the save is confirmed on disk;
    `optix_emulator { action: "start" }` then, and `optix_screenshot`.
 4. Prove it: a bound value on the screen changes because the class wrote it. `optix_script { action: "run" }`
@@ -1007,7 +1013,8 @@ launching the executable yourself. Its `start` waits for the preview and `logs` 
 so a failed look is diagnosable without touching the desktop. Three measured constraints to state plainly:
 
 - the runtime loads the **saved** project, so a change made through the bridge appears in the emulator
-  only after the engineer saves in Studio (Ctrl+S) and builds (Ctrl+Shift+B) - `needs_save` is the signal;
+  only after the project is saved — `optix_save`, or the engineer's own Ctrl+S when another window holds
+  the foreground - `needs_save` is the signal; a C# change additionally needs the build step;
 - a build taken while the emulator runs fails on `MSB3061` and saves nothing, so stop first;
 - a screenshot is of the saved build, so it can be one save behind the live model: say which one you looked at.
 
@@ -1054,7 +1061,7 @@ Everything below was proved on a live project on 2026-11-16, not read from help.
 
 **A dialog.** `UICommands/OpenDialog` mounts nothing unless the window has a real `PanelLoader` with a panel; a bare `PanelLoader` child is not a host, and a relative `ParentItem` dynamic link can kill the runtime. What renders: instantiate the Dialog **ObjectType** as a child of the window (`create_object UI/MainWindow/ConfirmDialog type=UI/Dialogs/ConfirmCounters`), bind its `Visible` to a Boolean tag, and set that tag from the opening button with `wire_event command=SetVariable`.
 
-**A data logger.** `SamplingMode` on this build is 0 = None, 1 = Value change, 2 = Periodic — configured as 1 it never samples, so set `2` with `SamplingPeriod=10000000` (ticks, = 1 s). The `VariablesToLog` children **can** be authored through the bridge: `VariableToLog` is a variable kind, so `create_variable datatype:"VariableToLog"` under the logger plus a `set_link` to each tag works, and the runtime builds the table from those children (measured: `CREATE TABLE "SmtTrend" ("Timestamp" DATETIME,"LocalTimestamp" DATETIME,"OEE" REAL,"UPH" INTEGER,"CycleTime" REAL,"TotalUnits" INTEGER, "Id" INTEGER)`, 360 rows in 162 s). A `bind` on a `VariableToLog` is refused ("no settable property 'Value'"), so `set_link` is the only route. A runtime NetLogic is the alternative when the tag list is computed. The table schema freezes on the first sample, so columns added later read null. Three properties are unreachable: `LogVariableTimestamp` and `LogVariableOperationCode` are `unknown_property` although the bridge lists them, and `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*. A store with no `Filename` writes `ApplicationFiles/<store guid without dashes>.sqlite`, and **WAL mode makes a size poll lie**: the main file stayed at 4 096 B while its `-wal` grew to 4 144 752 B. A bridge-authored store and logger ship with **no record limit** and every session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device` — the limit is on the table (`Table.RecordLimit`), and no tool sets it — `optix_project action check` names it offline as **OPTIX-DATA-02** (absent **or 0**, because Studio writes a property child even at its default).
+**A data logger.** `SamplingMode` on this build is 0 = None, 1 = Value change, 2 = Periodic — configured as 1 it never samples, so set `2` with `SamplingPeriod=10000000` (ticks, = 1 s). The `VariablesToLog` children **can** be authored through the bridge: `VariableToLog` is a variable kind, so `create_variable datatype:"VariableToLog"` under the logger plus a `set_link` to each tag works, and the runtime builds the table from those children (measured: `CREATE TABLE "SmtTrend" ("Timestamp" DATETIME,"LocalTimestamp" DATETIME,"OEE" REAL,"UPH" INTEGER,"CycleTime" REAL,"TotalUnits" INTEGER, "Id" INTEGER)`, 360 rows in 162 s). A `bind` on a `VariableToLog` is refused ("no settable property 'Value'"), so `set_link` is the only route. A runtime NetLogic is the alternative when the tag list is computed. The table schema freezes on the first sample, so columns added later read null. Three properties are unreachable: `LogVariableTimestamp` and `LogVariableOperationCode` are `unknown_property` although the bridge lists them, and `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*. A store with no `Filename` writes `ApplicationFiles/<store guid without dashes>.sqlite`, and **WAL mode makes a size poll lie**: the main file stayed at 4 096 B while its `-wal` grew to 4 144 752 B. A bridge-authored store and logger ship with **no record limit** and every session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device` — the limit is on the table (`Table.RecordLimit`), and `optix_edit op:"set_property"` on the table is the route (measured: `RecordLimit 5000` came back `{datatype:"UInt32", via:"materialized"}` and the warning stopped; `optix_project action check` reads the chapters on disk, so its finding clears only once `optix_save` lands) — `optix_project action check` names it offline as **OPTIX-DATA-02** (absent **or 0**, because Studio writes a property child even at its default).
 
 **A trend.** A `Trend` created through the bridge never draws: it is not a behaviour instance, so `Refresh()` answers `No behaviour or observer found`. The template-library `Widgets/AdvancedTrend` panel does: import it (it lands as a **Folder** — `AdvancedTrendMain` plus 11 component types, unlike `AlarmGrid` which lands as one `PanelType`), instantiate `AdvancedTrendMain` with `create_object` whose `object_type` is its **project path**, and point its `Logger` — a **`NodeId`** variable, not a NodePointer — at the DataLogger. That one write drew four pens with legend, axes and the widget's own Pens panel. The pens are not reliably created disabled: in the measured instance all four arrived **enabled**, so check the preview before writing code to switch them on.
 

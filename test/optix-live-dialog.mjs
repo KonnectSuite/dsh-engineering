@@ -154,4 +154,4 @@ line("type children", type.map?.children?.map((child) => child.name).join(", ") 
 const trigger = await readBack(`${TRIGGER_SCREEN}/BtnDeleteRecipe`);
 line("trigger", trigger.map?.name ?? "(missing)");
 assert.equal(applied.status, "applied");
-console.log("live dialog apply ok - Save (Ctrl+S) and Build (Ctrl+Shift+B) in Studio, then click BtnDeleteRecipe in the runtime");
+console.log("live dialog apply ok - save with optix_save (a dialog is model data, so no build is needed), then click BtnDeleteRecipe in the runtime");

@@ -81,7 +81,7 @@ try {
 	}
 	assert.equal(planned.status, apply ? "applied" : "planned");
 	if (apply) line("applied", planned.applied);
-	console.log(apply ? "live shell apply ok - Save (Ctrl+S) and Build (Ctrl+Shift+B) in Studio to see it" : "live shell plan ok");
+	console.log(apply ? "live shell apply ok - save with optix_save to see it" : "live shell plan ok");
 } finally {
 	await harness.dispose();
 }

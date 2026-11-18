@@ -143,8 +143,9 @@ Two authoring mechanics the same session measured, worth keeping beside those pr
   authored through a batch (it lands as a `DynamicLink` child, `DataType: NodePath`). A **pointer** is still
   written with `set_property` on the NodeId variable, which echoes the resolved `NodeId` back.
 
-Studio Save and Ctrl+Shift+B are still required before the runtime loads a bridge-authored batch, and the order
-that proves a change is `optix_save` → **poll the YAML's `LastWriteTime` until it moves** → `optix_emulator
+A save is still required before the runtime loads a bridge-authored batch — a screen or navigation batch needs
+no build (measured: `bin/<Project>.dll` stayed at its older timestamp and the runtime still drew the new
+screens after the save), and the order that proves a change is `optix_save` → **poll the YAML's `LastWriteTime` until it moves** → `optix_emulator
 restart` → **navigate the browser again**. `optix_save` reports `saved_at` at the keystroke plus a few seconds of
 latency, but Studio writes the file later still (measured: `saved_at 17:39:17Z`, `Screens.yaml` stamped 17:39:29),
 and a runtime restarted inside that window serves the **pre-save** design. A page opened before the restart keeps

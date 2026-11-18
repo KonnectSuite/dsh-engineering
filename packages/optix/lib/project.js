@@ -924,7 +924,7 @@ export async function projectGates(rootInfo, { bridgePending = 0, label = "an ap
 		blockers.push({
 			code: "bridge_state_unflushed",
 			message: `${bridgePending} bridge change${bridgePending === 1 ? "" : "s"} exist in Studio's live model and are not saved to disk. Writing files now would discard them or be discarded by them.`,
-			next: "Save in Studio (Ctrl+S, then Ctrl+Shift+B), confirm with optix_status {saved:true}, then apply."
+			next: "Save with optix_save, which raises the Studio window and sends Ctrl+S until a file under Nodes/ moves (or ask the engineer for Ctrl+S when another window holds the foreground), confirm with optix_status {saved:true}, then apply."
 		});
 	}
 	if (lock.held) {
@@ -1396,7 +1396,7 @@ export async function applyStage(rootInfo, id, { bridgePending = 0, processes, f
 			project: rootInfo.name,
 			files: written.map(({ path, after_sha256, bytes, existed }) => ({ path, after_sha256, bytes, created: !existed })),
 			backup: backupRoot,
-			next: "Files are on disk. Open the project in Studio, let it load, then save and build (Ctrl+S, Ctrl+Shift+B); optix_project action \"diff\" reports what Studio changed."
+			next: "Files are on disk. Open the project in Studio and let it load; optix_project action \"diff\" reports what Studio changed. When the apply touched NetLogic sources, the build is its own step - optix_build action build with the emulator stopped, or the solution Studio opens through its main toolbar's Open .NET Solution."
 		};
 	} catch (error) {
 		for (const file of [...written].reverse()) {

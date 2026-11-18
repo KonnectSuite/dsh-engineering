@@ -200,8 +200,69 @@ test("the login template logs in through the Users alias without a hard-coded pa
 	assert.equal(reviewNetLogic(code, { name: "LoginLogic", kind: "runtime" }).counts.critical, 0);
 });
 
+test("the fixture template proves a pointer and a datatype without starting the runtime, and puts the value back", () => {
+	const code = templateCode({ name: "ProbeLine", kind: "design", template: "fixture" });
+	const review = reviewNetLogic(code, { name: "ProbeLine", kind: "design" });
+	assert.equal(review.verdict, "clean");
+	assert.deepEqual(review.counts, { critical: 0, warning: 0, info: 0 });
+	// The whole point of a fixture: Studio runs an [ExportMethod] at design time, so this
+	// is the only route that exercises a NetLogic class when the runtime is not running.
+	assert.match(code, /\[ExportMethod\]\n\s*public string RunFixture\(\)/u);
+	// Same pointer resolution the runtime class uses, so it fails where that class fails.
+	assert.match(code, /IUAVariable target = LogicObject\.GetVariable\("Target"\);/u);
+	assert.match(code, /targetId = \(NodeId\)target\.Value;/u);
+	assert.match(code, /targetId == null \|\| targetId == NodeId\.Empty/u);
+	assert.match(code, /IUAVariable value = InformationModel\.GetVariable\(targetId\);/u);
+	// Read, write, restore. The write is the proof; the restore is what keeps a probe from
+	// damaging the project it was run against, which is OPTIX-NL-15.
+	assert.match(code, /dynamic before = value\.Value;\n\s*value\.Value = before;\n\s*dynamic after = value\.Value;/u);
+	assert.match(code, /"restored\\":true/u);
+	assert.match(code, /Log\.Error\("ProbeLine", "fixture refused: the Target pointer is empty/u);
+	assert.doesNotMatch(code, /"\/Objects\//u);
+	// Every failure returns a reason rather than throwing, because the reason is the answer.
+	for (const reason of ["missing Target pointer", "the Target pointer is not a NodeId", "the Target pointer is empty", "does not resolve to a variable"]) {
+		assert.ok(code.includes(reason), `no fixture branch for ${reason}`);
+	}
+});
+
+test("a fixture is a design-time helper, so a runtime kind refuses it", () => {
+	assert.throws(() => templateCode({ name: "Probe", kind: "runtime", template: "fixture" }), /design-time helper/u);
+});
+
+test("OPTIX-NL-15 catches an export method that writes a tag and leaves it changed", () => {
+	const careless = [
+		"public class Nudge : BaseNetLogic",
+		"{",
+		"    [ExportMethod]",
+		"    public string NudgeLine()",
+		"    {",
+		"        IUAVariable value = LogicObject.GetVariable(\"Target\");",
+		"        value.Value = 12;",
+		"        Log.Info(\"Nudge\", \"wrote 12\");",
+		"        return \"{\\\"ok\\\":true}\";",
+		"    }",
+		"}"
+	].join("\n");
+	const flagged = reviewNetLogic(careless, { name: "Nudge", kind: "design" });
+	const finding = flagged.findings.find((entry) => entry.rule === "OPTIX-NL-15");
+	assert.notEqual(finding, void 0);
+	assert.match(finding.message, /value\.Value is written once in an \[ExportMethod\] and never put back/u);
+	assert.equal(flagged.verdict, "review");
+	// Restoring it is enough, and so is naming the restore - the rule is about the tag the
+	// operator is left looking at, not about a stylistic preference.
+	const restored = careless.replace("value.Value = 12;", "dynamic before = value.Value;\n        value.Value = before;");
+	assert.ok(!reviewNetLogic(restored, { name: "Nudge", kind: "design" }).findings.some((entry) => entry.rule === "OPTIX-NL-15"));
+	const named = careless.replace("value.Value = 12;", "value.Value = 12; // the original is restored by the line logic's own tick");
+	assert.ok(!reviewNetLogic(named, { name: "Nudge", kind: "design" }).findings.some((entry) => entry.rule === "OPTIX-NL-15"));
+	// A runtime class writing its target every tick is the normal case, not a fixture: the
+	// census is scoped to [ExportMethod]s, which is what run() executes against a live model.
+	const runtime = templateCode({ name: "LineClock", kind: "runtime", template: "periodic" });
+	assert.match(runtime, /value\.Value = current \+ 1;/u);
+	assert.ok(!reviewNetLogic(runtime, { name: "LineClock", kind: "runtime" }).findings.some((entry) => entry.rule === "OPTIX-NL-15"));
+});
+
 test("a template has to be one this tool knows, and a design class cannot start background work", () => {
-	assert.deepEqual(TEMPLATES, ["blank", "periodic", "observer", "nav", "login"]);
+	assert.deepEqual(TEMPLATES, ["blank", "periodic", "observer", "nav", "login", "fixture"]);
 	assert.throws(() => templateCode({ name: "Probe", kind: "runtime", template: "timers" }), /template must be one of/u);
 	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "periodic" }), /design-time NetLogic/u);
 	assert.throws(() => templateCode({ name: "Probe", kind: "design", template: "observer" }), /design-time NetLogic/u);
@@ -385,7 +446,7 @@ public class Helper : BaseNetLogic
 
 test("every review rule names its severity, fix and cheat-sheet page", () => {
 	const ids = Object.keys(NETLOGIC_RULES);
-	assert.equal(ids.length, 12);
+	assert.equal(ids.length, 13);
 	for (const id of ids) {
 		assert.match(id, /^OPTIX-NL-\d{2}$/u);
 		const rule = NETLOGIC_RULES[id];

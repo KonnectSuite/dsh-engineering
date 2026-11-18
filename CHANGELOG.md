@@ -46,7 +46,9 @@
   `Value` is not a limit either — with the table's column count and whether it can order its own rows, because
   the limit only replaces old rows once a `Timestamp` or `LocalTimestamp` column exists. Proven against the demo:
   `AryaSMTLineDemo/DataStores/LineStore/Tables/SmtTrend` in `Nodes/DataStores/DataStores.yaml`, six columns,
-  timeable fix. No tool writes `RecordLimit` yet; the finding says so and names the Studio action.
+  timeable fix. No tool writes `RecordLimit` was the old claim; the batch proved the op: `set_property … RecordLimit 5000` on
+   `SmtTrend` came back `{datatype:"UInt32", via:"materialized"}` and the runtime's warning stopped — the check
+   reads the chapters on disk, so its finding cleared only once `optix_save` landed (1 → 0).
 
 ### Fixed
 
@@ -128,6 +130,82 @@
   spec now judges once. `test/optix-render.spec.mjs` also builds its own PNG (local CRC32 + `deflateSync`) rather
   than trusting a real capture, and its fixtures are written so a test that expects a finding **fails against the
   wrong underlay** — a fixture that passes either way discriminates nothing.
+
+### Added
+
+- **`optix_script` can prove a class without the runtime: `template:"fixture"`, and the rule that keeps it
+  honest.** A sixth NetLogic template, allowed only with `kind:"design"` (it refuses `kind:"runtime"` because
+  Studio runs a fixture through right-click Execute or `optix_script action:"run"`, never through `Start()`).
+  The shipped class is a `[ExportMethod] public string RunFixture()` that reads its `Target` pointer, casts
+  `(NodeId)target.Value`, refuses `NodeId.Empty`, resolves `InformationModel.GetVariable(targetId)`, then
+  **reads the value, writes the value it just read, and reads it again**, returning
+  `{"ok":true,"target":…,"before":…,"after":…,"restored":true}`; every failure branch returns a JSON reason
+  plus a `Log.Error`. `OPTIX-NL-15` ("a fixture writes a variable and never puts the original back", warning)
+  reviews it: the census looks only inside `[ExportMethod]` bodies and counts a write as restored when its
+  right-hand side is the local the method read out. Proven on the demo: `LineProbeFixture` →
+  `ProjectFiles/NetSolution/LineProbeFixture.cs` (45 lines, 1800 B), `review.verdict "clean"` across
+  OPTIX-NL-03..15, pointer `Target` → `Model/Smt/TotalUnits` with `DataType: NodeId`, and
+  `optix_build action check` compiling the whole solution outside Studio at **0 errors, 0 warnings**.
+  **The gap it exposed:** `optix_script action:"run"` answered `status:"not-loaded"`, and it still did after a
+  save that moved 29 sources — `bin/AryaSMTLineDemo.dll` stayed at 05:40:00Z against a newest source at
+  05:54:46Z. A save does not make a new class exercisable; the build and Studio's own reload do, and no tool
+  in this bundle restarts Studio. `packages/optix/skills/runtime-csharp.md` carries the section.
+
+### Fixed
+
+- **`optix_render_check` was reading the wrong pixels, in two opposite directions.** A kit chip label has a box
+  coincident with its chip rectangle, and `sampleBackground` samples only *outside* the box: it read the header
+  band's cyan and reported `!`, `EN`, `Line 1` and `SMT` at **1.81:1** where their own fill measures
+  **13.40:1**. `sampleInterior` (new) reads the holder's own inset frame, 3 px past its border, where the Web
+  engine draws a rectangle's border. The first fix then produced its own false positive, and the live screen is
+  what showed it: `paintUnder` is not gated by `SURFACE_TYPES`, so the holder it found for a rail tab was a
+  **rectangle the size of the whole window**, and the interior sampler read that plate's four sides
+  (`sampled_px 12384` = 6·1280 + 6·800 − 36, nowhere near the label) — `"Station Wall"` came back white-on-white
+  **1:1**, and the invisible cyan-on-cyan `Ready` moved out of VIEW-RENDER-05 into a 2.44:1 VIEW-RENDER-04.
+  `bandInsideSurface(box, surfaceBox)` with `BAND_INSIDE_MINIMUM = 0.5` now decides which sampler answers: the
+  band around the text when that band is already inside the holder, the holder's inset frame when the text box
+  *is* the plate. `measured_from` names which one answered. Live on the demo, in the order the fixes landed:
+  StationWall **11 → 7 → 3** findings, AlarmTable **10 → 6 → 3**, LineStatus 7 throughout — and what remains is
+  real (`--:--`, the cyan-on-cyan `Ready`, the rail's selected tab at 2.44:1, LineStatus's four density findings).
+  `test/optix-render.spec.mjs` grew six tests (46 total), including the band-vs-plate discriminator that fails
+  against the wrong sampler.
+- **The kit drew chrome no language could read, and it now moves the state to the border instead of the ink.**
+  Measured on the served screens: the header title on its accent band was **2.30:1** (modern-dark) / **2.44:1**
+  (modern), a light label on a light chip **1.27:1**, the danger glyph **3.91:1** on white and **4.35:1** on the
+  dark surface — under the 4.5:1 floor in every language. `inkOn(fill, candidates)` in `packages/optix/lib/kit.js`
+  picks a legible ink per surface (`headerInk`, `chipInk`, `tableHeaderInk`) and reports the residual instead of
+  hiding it; the bell, user and language chips take a **surface fill with the state in their border**
+  (`borderColour` on `surface()` / `cellSurface()`), which is the only route that clears the floor. The four chip
+  findings on each new screen went to zero, and the contrast finding that survives is the rail's own selected tab
+  — `NavigationPanel` paints its tab strip with a gradient that is not model data, so no kit colour fixes it.
+  `test/optix-kit.spec.mjs` grew two tests (21 total) that assert the ratios across all seven languages.
+- **The bundle told engineers to press a keystroke Studio does not document, and denied that it could save.**
+  `Ctrl+Shift+B` appeared in 36 places in this bundle's own advice; **Studio 1.8.1.27 documents no build
+  keystroke at all** (documented: Ctrl+S, F5, Ctrl+Shift+F/H, F1, F2) — its routes are the main toolbar's **Open
+  .NET Solution**, double-clicking a NetLogic, or a Studio restart. Measured on this machine: a save that moved
+  **29 sources** under `ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older timestamp, and a
+  navigation-only batch needed no build at all — the runtime drew the new bar on the save alone. At the same time
+  `SAVE_HANDOFF` and `needs_save.next` said *"nothing in this plugin can save the project"* while `optix_save`
+  existed and was proven (attempts 83, latency 110.67 s, 1 keystroke, 1 foreground confirmation — 82 attempts
+  never took the foreground). Both sentences were false, in opposite directions. Corrected at every site:
+  `SAVE_HANDOFF`/`BUILD_HANDOFF`, the **`optix_save` tool description itself**, `lib/save.js`, `lib/build.js`,
+  `lib/chain.js`, `lib/project.js`, `lib/scaffold.js`, the `optix_status` / `optix_screenshot` / `optix_ui theme`
+  strings, `SKILL.md` (six sites, including the "no desktop automation" exception — now exactly one Ctrl+S, no
+  build keystroke), `skills/authoring-loop.md`, `skills/screens-and-layout.md`, `skills/runtime-csharp.md`,
+  `docs/optix-{build,workflow,dialog,nav,project}.md`, `docs/reference/optix-save.md`, and the
+  `test/optix-live-*.mjs` hints. `CHANGELOG.md` keeps its `Ctrl+Shift+B` history where history belongs.
+- **`RecordLimit` is writable, so the three pages that said it was not have been corrected.**
+  `set_property DataStores/LineStore/Tables/SmtTrend RecordLimit 5000` came back `{datatype:"UInt32", via:"materialized"}`,
+  and the runtime's `No record limit is set on 'SmtTrend'` warning stopped. The clock is the part to know:
+  `optix_project action check` reads the **chapters on disk**, so OPTIX-DATA-02 stayed at 1 until `optix_save`
+  landed and then reported 0 (warnings 12, critical 2). `skills/gaps-and-refusals.md`, `skills/data-logger-trend-sql.md`
+  and `SKILL.md` now name the op instead of the Studio menu.
+- **Two ceilings disagreed about how big a screen batch may be, and the bigger one won.** `StationWall` applied
+  **738 operations** and `AlarmTable` **599** — the 340-op ceiling section 35 recorded is gone, and LineStatus's
+  `HorizontalAlignment 3` landed so its four VIEW-RENDER-02 all became 496x247 (the 96.2/895.8 starvation is
+  gone). But 738 is above `maxScreenOps` 700 because `optix_ui action:"screen"` enforces no ceiling; only
+  `optix_screen` does. Recorded as a gap rather than quietly raising a cap: the two routes should agree, and
+  neither is wrong for accepting the batch.
 
 ## [0.100.0] - 2026-11-17
 

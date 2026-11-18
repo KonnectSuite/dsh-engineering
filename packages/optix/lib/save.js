@@ -3,7 +3,9 @@
  * design model on disk to move.
  *
  * Why this exists: every other authoring tool in this plugin edits the design model, and nothing is
- * live in the runtime until Studio writes `Nodes/**` and rebuilds the .NET solution. Studio exposes
+ * live in the runtime until Studio writes `Nodes/**` — and a C# change additionally needs its own build,
+ * because a save is not one (measured 2026-11-18: a save that moved 29 sources under
+ * `ProjectFiles/NetSolution` left `bin/<Project>.dll` at its older timestamp). Studio exposes
  * no save API that a NetLogic bridge can call, so the save is a keystroke - and a keystroke only
  * lands when the Studio window owns the foreground. This module performs that whole dance in one
  * call and proves the write happened instead of reporting "sent".
@@ -250,7 +252,7 @@ export async function saveProject(options) {
 				latency_s: Number(((Date.now() - started) / 1000).toFixed(2)),
 				keystrokes_sent: attempts.filter((row) => row.sent).length,
 				foreground_confirmed: attempts.filter((row) => row.foreground).length,
-				next: "Studio rebuilds the .NET solution on save; a NetLogic or bridge change also needs a Studio restart before the new class answers."
+				next: "The save moved the design model, not the assembly: measured 2026-11-18, a save that moved 29 sources under ProjectFiles/NetSolution left bin/<Project>.dll at its older timestamp. Build with optix_build action build once the emulator is stopped, or from Studio's main toolbar's Open .NET Solution; a loaded NetLogic class only picks up new code after a Studio restart."
 			};
 		}
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));

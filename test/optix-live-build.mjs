@@ -110,4 +110,4 @@ for (const name of NAMES) {
 }
 
 line("screens", (await children("UI/Screens")).map((child) => `${child.browse_name}[${child.dotnet_type}]`).join(", "));
-console.log("built - now Save (Ctrl+S) + Build (Ctrl+Shift+B) in Studio, then node test/optix-live-render.mjs");
+console.log("built - now save with optix_save and build the solution (optix_build action build with the emulator stopped, or Studio's main toolbar Open .NET Solution), then node test/optix-live-render.mjs");

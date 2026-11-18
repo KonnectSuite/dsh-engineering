@@ -6,7 +6,7 @@
  *   node test/optix-live-showcase.mjs status
  *   node test/optix-live-showcase.mjs clean,screens,rail,dialog,status
  *
- * After `dialog` the project holds unsaved work; press Ctrl+S then Ctrl+Shift+B in Studio (runtime stopped),
+ * After `dialog` the project holds unsaved work; save with `optix_save` (runtime stopped),
  * start the runtime with `optix_emulator`, and take the proof screenshots.
  */
 
@@ -262,7 +262,7 @@ if (stages.has("status")) {
 }
 
 if (stages.has("serve")) {
-	// The saved project is what the runtime serves: save and build in Studio first (Ctrl+S then Ctrl+Shift+B).
+	// The saved project is what the runtime serves: save with optix_save first.
 	const emulator = await run("optix_emulator", { action: "start", project: PROJECT_ROOT_DIR });
 	line("runtime", `${emulator.started ? "started" : "reused"} serving=${emulator.serving} ${emulator.status ?? ""}`);
 	assert.equal(emulator.serving, true, "the runtime did not answer");

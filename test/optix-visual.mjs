@@ -123,7 +123,7 @@ try {
 			value: '#E5484D',
 		})
 		console.log('bind red:', bound.written ?? bound.error, 'read back:', JSON.stringify(bound.read_back ?? null))
-		console.log('NEXT: save and build in Studio, then: node test/optix-visual.mjs shot red')
+		console.log('NEXT: save with optix_save, then: node test/optix-visual.mjs shot red')
 	} else if (phase === 'boolprepare') {
 		const variable = await call('optix_edit', {
 			project: 'OptixStandard',
@@ -176,7 +176,7 @@ try {
 		if (!node) throw new Error(`no image on UI/Screens/${SCREEN}: ${JSON.stringify(listed.images)}`)
 		const bound = await call('optix_svg', { project: 'OptixStandard', action: 'bind', node, id: 'Lamp', property: 'Color', value })
 		console.log('bind', value, ':', JSON.stringify(bound).slice(0, 900))
-		console.log('NEXT: save and build in Studio, then: node test/optix-visual.mjs shot changed')
+		console.log('NEXT: save with optix_save, then: node test/optix-visual.mjs shot changed')
 	} else if (phase === 'shot') {
 		const label = process.argv[3] ?? 'shot'
 		const status = await call('optix_emulator', { action: 'status', project: PROJECT })
@@ -218,7 +218,7 @@ try {
 		console.log('delete:', JSON.stringify(removed.results ?? removed.error))
 		const stopped = await call('optix_emulator', { action: 'stop', project: PROJECT, force: true })
 		console.log('runtime stopped:', stopped.stopped, JSON.stringify(stopped.stopped_pids ?? []))
-		console.log('NEXT: save and build in Studio so the deletion reaches the files')
+		console.log('NEXT: save with optix_save so the deletion reaches the files')
 	} else {
 		console.log('usage: prepare | colour <#hex> | shot <label> | cleanup')
 		process.exitCode = 2

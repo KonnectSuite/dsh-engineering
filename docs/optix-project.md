@@ -21,8 +21,10 @@ Studio session cannot be reused.
 | When is it refused | bridge offline, project not loaded | Studio has the project open, bridge changes unflushed, another write running |
 | What proves it | `optix_read` reads the value back | validation, a byte diff, and `optix_build action check` |
 
-Nothing in either channel saves or builds. `Ctrl+S` then `Ctrl+Shift+B` remain the engineer's two
-keystrokes, and the runtime loads what the last build wrote.
+`optix_project` itself neither saves nor builds — it writes files while Studio holds the project closed — and
+the bridge channel writes memory only, which is what `optix_save` exists to flush. The build is the engineer's
+own step (Studio 1.8.1.27 documents no build keystroke; `optix_build action build` runs it outside Studio), and
+the runtime loads what the last build wrote.
 
 ## Gates
 

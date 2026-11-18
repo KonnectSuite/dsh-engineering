@@ -148,18 +148,21 @@ const HEADER = (name, kind, stamp) =>
 	`// ${name} - a ${kind === "design" ? "design-time" : "runtime"} NetLogic written by AryaCode.\n` +
 	`// The class name must equal the NetLogic node name; Studio compiles every .cs in this folder.\n` +
 	(kind === "design"
-		? `// Studio does not fire Start() at design time: run these methods with right-click Execute,\n// or with optix_netlogic action "run" while the bridge is up.\n`
+		? `// Studio does not fire Start() at design time: run these methods with right-click Execute,\n// or with optix_script action "run" while the bridge is up.\n`
 		: `// Start()/Stop() run in the runtime when the node this class is bound to is loaded.\n`);
 
-export const TEMPLATES = ["blank", "periodic", "observer", "nav", "login"];
+export const TEMPLATES = ["blank", "periodic", "observer", "nav", "login", "fixture"];
 
 export function templateCode({ name, kind = "runtime", template = "blank", stamp = new Date().toISOString().slice(0, 10) }) {
 	checkName(name);
 	if (!TEMPLATES.includes(template)) {
 		throw new Error(`template must be one of ${TEMPLATES.join(", ")} (got ${String(template)})`);
 	}
-	if (kind === "design" && template !== "blank") {
+	if (kind === "design" && template !== "blank" && template !== "fixture") {
 		throw new Error(`a design-time NetLogic is a set of [ExportMethod] helpers - template ${template} starts background work, which belongs to a runtime class`);
+	}
+	if (template === "fixture" && kind !== "design") {
+		throw new Error("template fixture is a design-time helper: pass kind \"design\", because Studio runs it through right-click Execute or optix_script action \"run\" and never through Start()");
 	}
 	const header = HEADER(name, kind, stamp);
 	const usingBlock = [
@@ -171,7 +174,7 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 		...(template === "login" ? ["using FTOptix.Core;"] : []),
 		"",
 	].join("\n");
-	if (kind === "design") {
+	if (kind === "design" && template !== "fixture") {
 		return (
 			header +
 			"\n" +
@@ -409,6 +412,70 @@ export function templateCode({ name, kind = "runtime", template = "blank", stamp
 			`        catch (Exception error)\n` +
 			`        {\n` +
 			`            Log.Error("${name}", "handler failed: " + error.Message);\n` +
+			`        }\n` +
+			`    }\n` +
+			`}\n`
+		);
+	}
+	if (template === "fixture") {
+		return (
+			header +
+			"\n" +
+			usingBlock +
+			`public class ${name} : BaseNetLogic\n{\n` +
+			`    [ExportMethod]\n` +
+			`    public string RunFixture()\n` +
+			`    {\n` +
+			`        // A fixture is the only way to exercise a NetLogic class without the runtime.\n` +
+			`        // It resolves the Target pointer exactly the way the runtime class does, so it\n` +
+			`        // fails where the runtime class would fail: no Target variable, a pointer whose\n` +
+			`        // DataType is not NodeId, a pointer that points at nothing, a target that is not\n` +
+			`        // a variable. Each of those returns a reason instead of throwing, because the\n` +
+			`        // reason is the whole point of running it.\n` +
+			`        IUAVariable target = LogicObject.GetVariable("Target");\n` +
+			`        if (target == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "fixture refused: missing Target pointer - add a NodeId variable named Target");\n` +
+			`            return "{\\"ok\\":false,\\"error\\":\\"missing Target pointer\\"}";\n` +
+			`        }\n` +
+			`        NodeId targetId;\n` +
+			`        try\n` +
+			`        {\n` +
+			`            targetId = (NodeId)target.Value;\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "fixture refused: the Target pointer is not a NodeId: " + error.Message + " - create it with DataType NodeId");\n` +
+			`            return "{\\"ok\\":false,\\"error\\":\\"the Target pointer is not a NodeId\\"}";\n` +
+			`        }\n` +
+			`        if (targetId == null || targetId == NodeId.Empty)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "fixture refused: the Target pointer is empty - point it at the variable to probe");\n` +
+			`            return "{\\"ok\\":false,\\"error\\":\\"the Target pointer is empty\\"}";\n` +
+			`        }\n` +
+			`        IUAVariable value = InformationModel.GetVariable(targetId);\n` +
+			`        if (value == null)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "fixture refused: the Target pointer does not resolve to a variable");\n` +
+			`            return "{\\"ok\\":false,\\"error\\":\\"the Target pointer does not resolve to a variable\\"}";\n` +
+			`        }\n` +
+			`        try\n` +
+			`        {\n` +
+			`            // Read, write, restore. The write is the proof - the same value going back\n` +
+			`            // through the same path shows the pointer resolves, the datatype matches and\n` +
+			`            // the variable accepts a write. The restore is not decoration: this method is\n` +
+			`            // run against the live project, so a value it left changed is a value the\n` +
+			`            // operator now sees, which is what OPTIX-NL-15 is for.\n` +
+			`            dynamic before = value.Value;\n` +
+			`            value.Value = before;\n` +
+			`            dynamic after = value.Value;\n` +
+			`            Log.Info("${name}", "fixture wrote and restored " + value.BrowseName + ": " + after);\n` +
+			`            return "{\\"ok\\":true,\\"target\\":\\"" + value.BrowseName + "\\",\\"before\\":\\"" + before + "\\",\\"after\\":\\"" + after + "\\",\\"restored\\":true}";\n` +
+			`        }\n` +
+			`        catch (Exception error)\n` +
+			`        {\n` +
+			`            Log.Error("${name}", "fixture failed on " + value.BrowseName + ": " + error.Message);\n` +
+			`            return "{\\"ok\\":false,\\"error\\":\\"" + error.Message + "\\"}";\n` +
 			`        }\n` +
 			`    }\n` +
 			`}\n`
@@ -740,6 +807,12 @@ export const NETLOGIC_RULES = {
 		title: "Pointer value is cast to NodeId with no empty check",
 		fix: "Cast inside a try/catch and test the value against null and NodeId.Empty before using it: IUAVariable.Value is a UAValue wrapper, so the cast is the read and it throws when the variable is not DataType NodeId, and an unset pointer resolves to nothing - Start() succeeds and the class then does nothing at all, the quietest failure this model has.",
 		source: "accessing-project-nodes"
+	},
+	"OPTIX-NL-15": {
+		severity: "warning",
+		title: "A fixture writes a variable and never puts the original back",
+		fix: "Read the value into a local, write it, then assign the local back before returning - or name the restore in a comment. optix_script action \"run\" executes an export method against the live project, so a value a fixture leaves changed is a value the operator now sees.",
+		source: "good-practices"
 	}
 };
 
@@ -878,6 +951,36 @@ export function reviewNetLogic(code, { name = "", kind = "runtime" } = {}) {
 		} else if (inStart) {
 			add("OPTIX-NL-13", setImageContent.index, "SetImageContent in Start() may run before the drawing is loaded (advanced-svg.md)");
 		}
+	}
+
+	// A fixture is executed against the live project (right-click Execute, or
+	// optix_script action "run"), so a value it leaves changed is a value the operator
+	// now sees on the screen. A write is answered by the shape that answers it in C#: the
+	// value was read into a local first and that local is what goes back, or a second
+	// write follows, or the restore is named in a comment. The census is scoped to
+	// [ExportMethod]s because those are what run() executes against a live model - a
+	// runtime class writing its target every tick is the normal case, not a probe.
+	const writes = new Map();
+	for (const method of methods) {
+		if (!/\[ExportMethod\]/u.test(text.slice(Math.max(0, method.start - 240), method.start))) continue;
+		const reads = new Map();
+		const read = /\b([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\.\s*Value\s*;/gu;
+		let saved;
+		while ((saved = read.exec(method.body)) !== null) reads.set(saved[1], saved[2]);
+		const write = /\b([A-Za-z_][A-Za-z0-9_.]*)\s*\.\s*Value\s*=\s*([^;]{0,200});/gu;
+		let written;
+		while ((written = write.exec(method.body)) !== null) {
+			const at = method.bodyStart + written.index;
+			const seen = writes.get(written[1]) ?? { count: 0, first: at, restored: false };
+			seen.count += 1;
+			if (reads.get(written[2].trim()) === written[1]) seen.restored = true;
+			writes.set(written[1], seen);
+		}
+	}
+	for (const [variable, seen] of writes) {
+		if (seen.count > 1 || seen.restored) continue;
+		if (/restore|original|put it back/iu.test(text.slice(Math.max(0, seen.first - 900), seen.first + 240))) continue;
+		add("OPTIX-NL-15", seen.first, `${variable}.Value is written once in an [ExportMethod] and never put back`);
 	}
 
 	findings.sort((a, b) => a.line - b.line || RULE_ORDER.indexOf(a.rule) - RULE_ORDER.indexOf(b.rule));
