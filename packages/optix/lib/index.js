@@ -33,6 +33,7 @@ import { bridgeLog, runtimeLog } from "./logs.js";
 import { findEntry, itemNames, libraryNames, libraryRoots, noStudioInstall, readCatalog, suggestNames } from "./library.js";
 import { MAX_CARDS, MAX_NAV, SCREEN_THEME, mountOps as planMount, screenOps } from "./screens.js";
 import { designFindings, INTERACTIVE_TYPES } from "./design.js";
+import { measureDom, renderFindings, windowBox } from "./render.js";
 import { pointerFacts, productionFindings, walkTree } from "./production.js";
 import { DEFAULT_HIERARCHY, MODEL_METADATA, MODEL_ROOT, TYPES_FOLDER, modelFindings, planModel } from "./model.js";
 import { MARKER, NETLOGIC_FOLDER, NETLOGIC_RULES, TEMPLATES, findNetLogicNode, netSolutionDir, buildNetSolution, checkName, fileFor, findProjectRoot, listNetLogics, liveNetLogicNodes, netLogicReport, readNetLogic, removeNetLogicFile, reviewNetLogic, templateCode, writeNetLogic } from "./netlogic.js";
@@ -1002,14 +1003,27 @@ function applyPreview(ctx, config) {
 		});
 		return work;
 	}
-	/** Capture within the configured viewport and encoded image limits. */
-	async function capture(page) {
-		// The Web presentation engine paints its canvas after the websocket handshake, so a capture
-		// taken at the "load" event is a blank white frame (measured on Studio 1.8.1, 2026-11-14:
-		// 1280x720 of nothing). Wait for a canvas that has size, then let one frame settle.
+	/**
+	 * Capture the served window, not the whole browser viewport.
+	 *
+	 * The preview viewport is a browser window, and the runtime paints the project's window inside it,
+	 * so a full-viewport capture carries white margins around the screen (measured 2026-11-17: a
+	 * 1920x1080 viewport around a 1280x800 window). The canvas element is the served window's own box,
+	 * so it is measured and used as the clip, and the crop is reported instead of hidden.
+	 */
+	async function capture(page, { clipToWindow = true } = {}) {
+		// The runtime builds its DOM after the websocket handshake, so a capture taken at the "load" event
+		// is a blank white frame (measured on Studio 1.8.1, 2026-11-14: 1280x720 of nothing). Wait for the
+		// window element to have size, or for a canvas that has size for an engine that paints one, then
+		// let one frame settle. A canvas-only wait measures an empty page on a served page that has none.
 		await page.waitForFunction(
 			/* v8 ignore next */
 			() => {
+				const served = document.querySelector('[data-type="window"]');
+				if (served !== null) {
+					const rect = served.getBoundingClientRect();
+					if (rect.width > 0 && rect.height > 0) return true;
+				}
 				const canvas = document.querySelector("canvas");
 				return canvas !== null && canvas.width > 0 && canvas.height > 0;
 			},
@@ -1025,16 +1039,47 @@ function applyPreview(ctx, config) {
 			})
 		);
 		if (viewport.width * viewport.height > config.maxPreviewPixels) throw new Error("Optix preview exceeds maxPreviewPixels");
+		const windowBox = clipToWindow ? await page.evaluate(
+			/* v8 ignore next */
+			() => {
+				const boxOf = (element) => {
+					if (element === null) return null;
+					const rect = element.getBoundingClientRect();
+					if (!(rect.width > 0) || !(rect.height > 0)) return null;
+					return {
+						x: rect.x,
+						y: rect.y,
+						width: rect.width,
+						height: rect.height
+					};
+				};
+				return boxOf(document.querySelector('[data-type="window"]')) ?? boxOf(document.querySelector("canvas"));
+			}
+		) : null;
+		let clip = null;
+		if (windowBox && windowBox.width >= 1 && windowBox.height >= 1) {
+			const x = Math.max(0, Math.floor(windowBox.x));
+			const y = Math.max(0, Math.floor(windowBox.y));
+			const width = Math.min(Math.ceil(windowBox.width), viewport.width - x);
+			const height = Math.min(Math.ceil(windowBox.height), viewport.height - y);
+			// Only clip when it actually removes something; a clip that changes nothing is noise.
+			if (width >= 1 && height >= 1 && (width < viewport.width - 1 || height < viewport.height - 1)) clip = { x, y, width, height };
+		}
 		const bytes = await page.screenshot({
 			type: "png",
 			scale: "css",
+			...(clip ? { clip } : {}),
 			timeout: config.requestTimeoutMs
 		});
 		if (bytes.byteLength > config.maxResponseBytes) throw new Error("Optix screenshot exceeds maxResponseBytes");
 		return {
 			bytes,
-			width: viewport.width,
-			height: viewport.height
+			width: clip?.width ?? viewport.width,
+			height: clip?.height ?? viewport.height,
+			viewport,
+			window_box: windowBox ?? null,
+			clip,
+			origin: clip ? { x: clip.x, y: clip.y } : { x: 0, y: 0 }
 		};
 	}
 	const ocr = config.ocr;
@@ -1061,7 +1106,8 @@ function applyPreview(ctx, config) {
 		async execute(args, exec) {
 			if (args.psm < 0 || args.psm > 13) throw new Error("OCR psm must be between 0 and 13");
 			return withPage(exec.signal, async (page) => {
-				const { bytes, width, height } = await capture(page);
+				const captured = await capture(page);
+				const { bytes } = captured;
 				const sourceImage = await attachments.saveImage({
 					data: bytes,
 					mediaType: "image/png",
@@ -1081,9 +1127,10 @@ function applyPreview(ctx, config) {
 					words: result.words.map((word) => ({ ...word })),
 					confidence: result.confidence,
 					coordinateSpace: {
-						width,
-						height,
-						units: "viewport CSS pixels"
+						width: captured.width,
+						height: captured.height,
+						origin: captured.origin,
+						units: "captured-image CSS pixels; the origin is the captured rectangle's corner inside the browser viewport"
 					}
 				};
 			});
@@ -1153,12 +1200,21 @@ function applyPreview(ctx, config) {
 								}
 							}
 						}
+					},
+					window_box: {
+						type: "object",
+						additionalProperties: false,
+						description: "The served window's own box in viewport CSS pixels, read from the runtime's canvas element. The image is clipped to it when it is smaller than the viewport."
+					},
+					letterbox: {
+						type: "string",
+						description: "What the browser viewport held around the window, when the capture was clipped to the window box."
 					}
 				}
 			},
 			render: (_args, value) => [{
 				type: "text",
-				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
+				text: `Optix preview at ${value.url}: ${value.attachment.width}×${value.attachment.height}.${value.letterbox ? ` Clipped to the served window; ${value.letterbox}` : ""}${value.unsaved_changes > 0 ? ` This is the project as saved: ${value.unsaved_changes} authoring change${value.unsaved_changes === 1 ? "" : "s"} are not in it yet - ask the engineer for a save and build.` : ""}`
 			}, {
 				type: "image",
 				attachment: {
@@ -1174,16 +1230,28 @@ function applyPreview(ctx, config) {
 		}),
 		async execute(_args, exec) {
 			return withPage(exec.signal, async (page) => {
-				const { bytes } = await capture(page);
+				const captured = await capture(page);
 				const attachment = await attachments.saveImage({
-					data: bytes,
+					data: captured.bytes,
 					mediaType: "image/png",
 					name: "optix-preview.png"
 				});
 				const unsaved = pendingModelChanges(config.bridgeUrls[0] ?? "").pending;
+				const box = captured.window_box;
 				return {
 					url: page.url(),
 					attachment,
+					...(box ? {
+						window_box: {
+							x: Math.round(box.x),
+							y: Math.round(box.y),
+							width: Math.round(box.width),
+							height: Math.round(box.height)
+						},
+						...(captured.clip ? {
+							letterbox: `the browser viewport is ${captured.viewport.width}x${captured.viewport.height}, so ${captured.viewport.width - Math.round(box.width)} px horizontally and ${captured.viewport.height - Math.round(box.height)} px vertically sit outside the window.`
+						} : {})
+					} : {}),
 					...(unsaved === 0 ? {} : { unsaved_changes: unsaved })
 				};
 			});
@@ -1320,6 +1388,92 @@ function applyPreview(ctx, config) {
 					action: request.action,
 					url: page.url()
 				};
+			});
+		}
+	})));
+	ctx.effect(() => ctx.tools.register(jsonTool({
+		name: "optix_render_check",
+		description: "Judge the Optix screen as it is actually rendered, with no Studio bridge: capture the served preview clipped to the window it serves, measure the element boxes and computed colours, and read the captured pixels, then report text that is a placeholder nothing drives, a painted surface whose text covers under a third of it, an element hanging outside the served window, text whose colour does not separate from what was painted under it, text drawn in the very colour behind it so nothing there is readable, a painted target under the touch minimum, and text under the readable font floor. The colour rules read the pixels because the Web presentation engine paints a fill through an untyped overlay child and paints a NavigationPanel's tabs with a gradient, so a computed backgroundColor is not what an operator sees; measured.paint_read says which route judged them. The runtime serves the project as saved, so unsaved authoring is not in what it judges. Findings are located by the rendered type chain, never a project path, because the page reports none of the model's guids; pair them with optix_design_check, which reads the model and can name the node.",
+		parameters: {
+			max_nodes: {
+				type: "integer",
+				description: "How many elements the page walk measures in full; a cap hit is reported as truncated. Default 4000."
+			},
+			max_depth: {
+				type: "integer",
+				description: "How deep the element tree is walked. Default 40."
+			},
+			include_image: {
+				type: "boolean",
+				description: "Attach the window-clipped capture beside the findings so a finding can be looked at. Default true."
+			}
+		},
+		output: {
+			schema: { type: "json" },
+			render: (_args, value) => {
+				const parts = [{
+					type: "text",
+					text: `Optix render check at ${value.url}: ${value.measured.elements} elements measured, ${value.findings.length} finding(s), ${value.unchecked.length} unchecked.`
+				}];
+				if (value.attachment !== undefined) parts.push({
+					type: "image",
+					attachment: {
+						...value.attachment,
+						attachmentId: value.attachment.attachmentId
+					}
+				});
+				return parts;
+			}
+		},
+		presentCall: () => ({
+			card: "generic",
+			title: "Check the Optix render",
+			kind: "read"
+		}),
+		async execute(args, exec) {
+			const maxNodes = args.max_nodes ?? 4000;
+			const maxDepth = args.max_depth ?? 40;
+			if (maxNodes < 1 || maxNodes > 20000) throw new Error("max_nodes must be between 1 and 20000");
+			if (maxDepth < 1 || maxDepth > 80) throw new Error("max_depth must be between 1 and 80");
+			return withPage(exec.signal, async (page) => {
+				const captured = await capture(page);
+				const report = await page.evaluate(measureDom, {
+					max_nodes: maxNodes,
+					max_depth: maxDepth
+				});
+				const judged = renderFindings(report, {
+					png: captured.bytes,
+					origin: captured.origin
+				});
+				const unsaved = pendingModelChanges(config.bridgeUrls[0] ?? "").pending;
+				const box = windowBox(report);
+				const attachment = args.include_image === false ? undefined : await attachments.saveImage({
+					data: captured.bytes,
+					mediaType: "image/png",
+					name: "optix-render-check.png"
+				});
+				const value = {
+					url: page.url(),
+					window_box: box === undefined ? undefined : {
+						x: Math.round(box.x),
+						y: Math.round(box.y),
+						width: Math.round(box.width),
+						height: Math.round(box.height)
+					},
+					viewport: captured.viewport,
+					...judged,
+					...(unsaved === 0 ? {} : { unsaved_changes: unsaved }),
+					...(attachment === undefined ? {} : { attachment })
+				};
+				const text = JSON.stringify(value);
+				if (Buffer.byteLength(text) > config.maxResponseBytes) {
+					// The tree is the bulk of it; the findings and the counts are the answer.
+					return {
+						...value,
+						note: `The full measurement exceeded maxResponseBytes (${Buffer.byteLength(text)} bytes); findings and counts are reported, the element tree was dropped.`
+					};
+				}
+				return value;
 			});
 		}
 	})));

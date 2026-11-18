@@ -60,6 +60,7 @@ const BUNDLE = [
   'test/optix-batch-validation.spec.mjs',
   'test/optix-names.spec.mjs',
   'test/optix-production.spec.mjs',
+  'test/optix-render.spec.mjs',
   'test/optix-skills.spec.mjs',
   'test/optix-tool-registration.spec.mjs',
   'test/skill-engagement.spec.mjs',

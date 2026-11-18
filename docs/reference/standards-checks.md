@@ -48,7 +48,15 @@ latch result as "somewhere there is a reset", not as "this latch is safe".
 | `HMI-CONTRAST-01` | `optix_design_check` | Text below 4.5:1 against the smallest filled object that contains it — a label on a header band is judged against the band, not the backdrop. | HMI-CONTRAST-01 |
 | `VIEW-NAV-01` | `optix_design_check` | A screen holding no pressable control at all, so it has no navigation area of its own. | VIEW-NAV-01 |
 | `VIEW-NAV-02` | `optix_design_check` | A screen whose controls carry no event handler, so an operator who lands here has no way out through this screen. | VIEW-NAV-02 |
-| `VIEW-LAYOUT-02` | `optix_design_check` | A screen whose extents differ from the window canvas the project declares. When the screen node reports no geometry, the evidence says it was measured from the largest fill inside the screen. | VIEW-LAYOUT-02 |
+| `VIEW-LAYOUT-02` | `optix_design_check` | A screen whose extents differ from the box its mounting panel gives it — the mounter read through its `NodeId` pointers with its tab strip subtracted, the window canvas only as a fallback, and `mounted_in` names which. | VIEW-LAYOUT-02 |
+| `VIEW-LAYOUT-03` | `optix_design_check` | A `RowLayout` or `ColumnLayout` whose fixed children plus their gaps already take the whole track, so a sibling at `-1` renders at zero. The evidence names the track, its design box when the layout fills a `ScaleLayout`, the px the fixed children take, and how far past the rendered box they are drawn. | VIEW-LAYOUT-03 |
+| `VIEW-LAYOUT-04` | `optix_design_check` | A numeric size written on an axis whose alignment on that axis is Stretch: the runtime discards the number and fills, and the model keeps the number that never applied. | VIEW-LAYOUT-04 |
+| `VIEW-TYPE-02` | `optix_design_check` | Text below the 11 px readable floor, the same floor the offline rubric applies. | VIEW-TYPE-02 |
+| `VIEW-RENDER-01` | `optix_render_check` | Rendered text that is a placeholder nothing drives: `--:--`, `{TotalUnits}`, `undefined`, `TBD`. | VIEW-RENDER-01 |
+| `VIEW-RENDER-02` | `optix_render_check` | A painted surface whose text covers under 30 % of its box and leaves 60 px or more of it empty. | VIEW-RENDER-02 |
+| `VIEW-RENDER-03` | `optix_render_check` | A painted surface or control drawn outside the window box the runtime serves; the runtime clips there instead of shrinking it. | VIEW-RENDER-03 |
+| `VIEW-RENDER-04` | `optix_render_check` | Text below 4.5:1 against the colour the capture shows under it, not against the fill the model says it sits on. | HMI-CONTRAST-01 |
+| `VIEW-RENDER-05` | `optix_render_check` | Text whose own captured box holds no pixel more than 20 away from the background sampled around it: drawn in the very colour behind it. | HMI-CONTRAST-01 |
 | `OPTIX-UI-01` | `optix_design_check` | Two sibling screens holding the same hand-built child set — a device copy-pasted instead of modelled as a type with instances. | OPTIX-UI-01 |
 | `OPTIX-UI-02` | `optix_design_check` | A NetLogic, DelayedTask or LongRunningTask node living inside the screen composition. | OPTIX-UI-02 |
 | `TAG_CSV`, `UNPARSED_FILE`, `DUPLICATE_*` | `ftview_check` | Structural problems in the export itself, before any design question. | — |
@@ -66,6 +74,13 @@ finding, whose number lives in `hmi-colour-and-contrast` as `HMI-CONTRAST-01` wh
 describe of each object, then the window's own geometry. A control whose colour the bridge did not
 report, or a screen whose own extents it did not report, is listed in `unchecked` with the reason, so a
 clean summary and a blind summary are not the same result.
+
+`optix_render_check` checks the same screen from the other side and needs no bridge at all: it captures the
+preview the emulator serves (clipped to the window box the runtime paints), reads the element boxes the Web
+engine laid out, and judges the captured pixels for what sits under a piece of text. Its `unchecked` list
+works the same way — a page it could not measure is never reported as a pass — and its findings name a
+rendered type chain rather than a project path, because the ids the runtime writes into the DOM are not the
+bridge's guids. A screen can be clean under one and carry findings under the other; both are reported.
 
 Each `DUPLICATE_OBJECT_NAME` finding states how many objects share the name and carries that
 `count` in its evidence, so a display with eight `Value` objects is one finding rather than eight

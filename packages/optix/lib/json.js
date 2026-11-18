@@ -15,12 +15,18 @@ const MAX_DEPTH = 32;
 /**
  * Convert a value to lossless JSON: dates become ISO strings, non-finite numbers and undefined become null,
  * bigints become strings, maps and sets become arrays/objects, and everything else is copied.
+ *
+ * Cycle detection follows the path being copied, not every object ever seen. A shared sub-object is not a
+ * cycle: `optix_render_check` returns several findings that each carry the same window box, and one global
+ * visited set nulled every repeat after the first (measured 2026-11-17: the first finding carried
+ * `window_box`, the rest carried `null`). Only an object that contains itself becomes null.
+ *
  * @param value - The value a tool wants to return.
- * @param seen - Objects already visited, so a cycle cannot spin.
+ * @param ancestors - The objects on the path being copied, so a true cycle cannot spin.
  * @param depth - Current recursion depth, bounded by MAX_DEPTH.
  * @returns A value JSON can hold exactly.
  */
-export function jsonSafe(value, seen = /* @__PURE__ */ new WeakSet(), depth = 0) {
+export function jsonSafe(value, ancestors = [], depth = 0) {
 	if (depth > MAX_DEPTH) return null;
 	if (value === null) return null;
 	const type = typeof value;
@@ -36,23 +42,22 @@ export function jsonSafe(value, seen = /* @__PURE__ */ new WeakSet(), depth = 0)
 	if (value instanceof RegExp) return String(value);
 	if (value instanceof Uint8Array) return [...value];
 	if (typeof value.toJSON === "function") {
-		if (seen.has(value)) return null;
-		seen.add(value);
-		return jsonSafe(value.toJSON(), seen, depth + 1);
+		if (ancestors.includes(value)) return null;
+		return jsonSafe(value.toJSON(), [...ancestors, value], depth + 1);
 	}
 	if (typeof value !== "object") return null;
-	if (seen.has(value)) return null;
-	seen.add(value);
-	if (Array.isArray(value)) return value.map((entry) => jsonSafe(entry, seen, depth + 1));
+	if (ancestors.includes(value)) return null;
+	const path = [...ancestors, value];
+	if (Array.isArray(value)) return value.map((entry) => jsonSafe(entry, path, depth + 1));
 	if (value instanceof Map) {
 		const out = {};
-		for (const [key, entry] of value) out[String(key)] = jsonSafe(entry, seen, depth + 1);
+		for (const [key, entry] of value) out[String(key)] = jsonSafe(entry, path, depth + 1);
 		return out;
 	}
-	if (value instanceof Set) return [...value].map((entry) => jsonSafe(entry, seen, depth + 1));
+	if (value instanceof Set) return [...value].map((entry) => jsonSafe(entry, path, depth + 1));
 	const out = {};
 	for (const [key, entry] of Object.entries(value)) {
-		const clean = jsonSafe(entry, seen, depth + 1);
+		const clean = jsonSafe(entry, path, depth + 1);
 		if (entry === void 0) continue;
 		out[key] = clean;
 	}

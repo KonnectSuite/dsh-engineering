@@ -1,5 +1,65 @@
 ## [Unreleased]
 
+### Added
+
+- **`optix_render_check`: the checking tools now look at the screen an operator sees.** Every rule in this
+  plugin reads the design model through the bridge, and on `AryaSMTLineDemo` all of them were quiet on a screen
+  with four defects visible in a screenshot. `packages/optix/lib/render.js` (new) measures the served preview:
+  it walks the runtime's own DOM (`[data-type]` elements, boxes, computed colour and font), and `optix_render_check`
+  judges the capture's **pixels** with five rules — `VIEW-RENDER-01` rendered text that is a placeholder nothing
+  drives (`--:--`, `{TotalUnits}`, `undefined`), `VIEW-RENDER-02` a painted surface whose text covers under 30 %
+  of its box and leaves 60 px or more empty, `VIEW-RENDER-03` a painted surface or control drawn outside the box
+  the runtime serves, `VIEW-RENDER-04` text whose colour does not separate from what was painted under it
+  (under 4.5:1), and `VIEW-RENDER-05` text drawn in the very colour behind it, whose captured box holds no pixel
+  more than 20 away from its background. `HMI-TARGET-01` and `VIEW-TYPE-02` are re-decided on the painted box.
+  It runs on the **runtime leg**: the emulator serving the saved project is all it needs, no Studio and no bridge.
+  Measured on the served LineStatus screen: 172 elements, 29 text elements, 0 unchecked, **7 findings** — the
+  header clock drawing `--:--`; four cards at coverage 0.27, 0.05, 0.03 and 0.03 with 148-190 px of a 247 px card
+  empty; `Ready` painted `#0fafff` on `#0fafff` (pixel distance 1, nothing there is readable); and the rail's
+  selected caption `#ffffff` on `#0fafff` at 2.44:1. The header title, white on `#005d8a` at 7.16:1, produced no
+  finding, which is the discriminating case `test/optix-render.spec.mjs` (new, 40 tests) pins.
+- **The Web presentation engine does not paint where the model says it does, and the rules were rewritten to
+  match.** A typed `[data-type="rectangle"]` computes `backgroundColor: rgba(0, 0, 0, 0)`: its fill is on an
+  **untyped child div** carrying `width: 100%; height: 100%`, which is an *ancestor* of the element's real
+  children, and its border is an **inset `box-shadow`**; a `NavigationPanel` paints its tab strip with
+  `background-image: linear-gradient(…)`; only 14 elements in the whole served page carry a non-transparent
+  `backgroundColor`; and the band fills are **sibling underlays**, not ancestors. Judging the DOM's reported
+  colours therefore called every card unpainted. `surfacePaint()` reads through the overlay child, `paintUnder()`
+  takes the latest earlier element whose box covers the text's centre, and `decodePng` / `sampleBackground` /
+  `strongestPixel` read the capture itself (8-bit non-interlaced RGB or RGBA only, `node:zlib`, no new
+  dependency; a palette, 16-bit or interlaced capture is refused and the colour rules fall back to the DOM, which
+  `measured.paint_read` reports). The served page also has **no `canvas` element**: `div#root` measures **1264x0**
+  because its child is positioned, and the window is `div[data-type="window"]` at 1280x800 — a walk that stops at
+  a zero box measures an empty page (the first run measured 0 elements), so `measureDom`'s walk now returns an
+  array of nodes so a collapsed container bubbles its measured descendants, and `capture()` prefers the runtime's
+  window element. A finding names a **rendered type chain**, never a project path: DOM ids are the runtime's own
+  (`ns=9;g=…`) and are not the bridge's guid. `packages/optix/skills/render-checks.md` (new 11th playbook page)
+  carries the routes and the honest limits.
+- **`optix_screenshot` and `optix_ocr` no longer report a viewport that is not the window.** The preview browser
+  is 1920x1080 and the runtime paints the project's 1280x800 window inside it, so every capture carried white
+  margins and every coordinate was stated against the wrong box. `capture()` now reads the served window's own
+  rectangle and clips the screenshot to it when that removes something (`scale: "css"`): the same capture went
+  from 1920x1080 / 41 639 B to **1280x800 / 36 860 B**. `optix_screenshot` answers `window_box` plus a `letterbox`
+  sentence naming what sits outside it, and `optix_ocr` answers `coordinateSpace {width, height, origin, units}`
+  so a click coordinate is traceable to the image it came from.
+
+### Fixed
+
+- **`jsonSafe` erased a repeated reference that was not a cycle.** A shared sub-object appearing twice in one
+  value was nulled at its second occurrence (one `WeakSet` marks anything already visited, and a DAG is not a
+  cycle), so a tool answer silently lost data. `packages/optix/lib/json.js` now tracks the ancestor path
+  (`jsonSafe(value, ancestors = [], depth = 0)` with `ancestors.includes(value)`), which still refuses a true
+  cycle; `test/optix-json.spec.mjs` pins that a shared sub-object survives at every place it is used.
+- **`VIEW-RENDER-03` reported the engine's own wrappers.** The Web engine sizes a `label` element to its
+  container (measured: 1280x800 at (16,12) around text painting 22.6x16 at (860,18)), so the first run produced
+  four overflow findings that clipped nothing. The rule now judges painted surfaces and interactive controls only.
+- **Nine render assertions were passing for the wrong reason.** They called
+  `rules(renderFindings(measureDom(…)))`, which hands an already-judged result to `renderFindings`; it saw no
+  `.nodes`, found nothing to judge and returned `[]`, so every "reports no finding" assertion was vacuous. The
+  spec now judges once. `test/optix-render.spec.mjs` also builds its own PNG (local CRC32 + `deflateSync`) rather
+  than trusting a real capture, and its fixtures are written so a test that expects a finding **fails against the
+  wrong underlay** — a fixture that passes either way discriminates nothing.
+
 ## [0.100.0] - 2026-11-17
 
 ### Added

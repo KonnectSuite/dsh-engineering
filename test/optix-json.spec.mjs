@@ -44,6 +44,31 @@ test("jsonSafe survives a cycle instead of spinning", () => {
 	assert.deepEqual(jsonSafe(loop), { name: "loop", self: null });
 });
 
+test("jsonSafe keeps a shared sub-object at every place it is used", () => {
+	// The shape `optix_render_check` returns: several findings each carrying the same window box. A global
+	// visited set nulled every repeat after the first, so the second finding reported `window_box: null`
+	// (measured 2026-11-17 on the live served page).
+	const box = { x: 0, y: 0, width: 1280, height: 800 };
+	const value = {
+		findings: [
+			{ rule: "VIEW-RENDER-03", evidence: { window_box: box } },
+			{ rule: "VIEW-RENDER-03", evidence: { window_box: box } }
+		],
+		measured: { window_box: box }
+	};
+	const clean = jsonSafe(value);
+	assert.deepEqual(clean.findings[0].evidence.window_box, box);
+	assert.deepEqual(clean.findings[1].evidence.window_box, box);
+	assert.deepEqual(clean.measured.window_box, box);
+	// A shared object is copied, not aliased, so the result is plain JSON.
+	assert.deepEqual(JSON.parse(JSON.stringify(clean)), clean);
+	// A cycle deeper in the same value is still caught.
+	const shared = { name: "shared" };
+	const twin = { shared, other: shared };
+	twin.self = twin;
+	assert.deepEqual(jsonSafe(twin), { shared: { name: "shared" }, other: { name: "shared" }, self: null });
+});
+
 test("jsonSafe is idempotent and round-trips through JSON unchanged", () => {
 	const value = {
 		ok: true,

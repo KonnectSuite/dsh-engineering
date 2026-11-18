@@ -85,6 +85,14 @@ not visible to it; changing View's shipped palette is a separate decision with i
 | `VIEW-NAV-02` a screen with no way out | `view/view-navigation` | `ftview_design_check` | `optix_design_check` |
 | `VIEW-LAYOUT-01` two objects overlapping | `view/view-layout` | `ftview_validate` (`DRAFT_OVERLAP`) | the dry run's own warnings |
 | `VIEW-LAYOUT-02` a screen sized differently from its window | `view/view-layout` | `ftview_design_check` | `optix_design_check` |
+| `VIEW-LAYOUT-03` a layout track eaten by the children that name a size | `optix/optix-layout-and-containers` | — | `optix_design_check` |
+| `VIEW-LAYOUT-04` a size the runtime discards because that axis is Stretch | `optix/optix-layout-and-containers` | — | `optix_design_check` |
+| `VIEW-TYPE-02` text below the 11 px readable floor | `hmi/hmi-targets-and-labels` | `ftview_design_check` | `optix_design_check`, and `optix_render_check` on the computed font |
+| `VIEW-RENDER-01` rendered text that is a placeholder nothing drives | `optix/optix-data-presentation` | — | `optix_render_check` |
+| `VIEW-RENDER-02` a painted surface its text leaves mostly empty | `optix/optix-data-presentation` | — | `optix_render_check` |
+| `VIEW-RENDER-03` a painted object hanging outside the served window | `view/view-layout` | — | `optix_render_check` |
+| `VIEW-RENDER-04` text below 4.5:1 against what the render put behind it | `hmi/hmi-colour-and-contrast` | — | `optix_render_check` (the model route is `HMI-CONTRAST-01`) |
+| `VIEW-RENDER-05` text drawn in the colour behind it, so nothing is readable | `hmi/hmi-colour-and-contrast` | — | `optix_render_check` |
 | `OPTIX-UI-01` a device copy-pasted instead of typed | `optix/optix-ui-structure` | — | `optix_design_check` |
 | `OPTIX-UI-02` behaviour living inside the composition | `optix/optix-ui-structure` | — | `optix_design_check` |
 

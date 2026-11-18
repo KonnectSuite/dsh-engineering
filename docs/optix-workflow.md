@@ -194,7 +194,9 @@ operator words without changing the path. The rules are in `optix-variables-and-
 `optix_design_check` gains four rules for exactly these: `OPTIX-IMG-01` (an image with nothing bound),
 `OPTIX-STYLE-01` (a literal colour outside the palette on a styled type), `OPTIX-LAYOUT-01` (a child drawn
 outside its parent), `OPTIX-DATA-01` (a label showing a model number with a recorded unit but no
-formatter).
+formatter). The layout-container lane adds `VIEW-LAYOUT-03` (a track its fixed children leave nothing for),
+`VIEW-LAYOUT-04` (a size the runtime discards because that axis is Stretch) and `VIEW-TYPE-02` (text under the
+11 px floor); `packages/optix/skills/screens-and-layout.md` holds the measured container behaviour they rest on.
 
 ## Tools by phase
 
@@ -205,8 +207,8 @@ formatter).
 | Connect | `optix_status`, `optix_bridge_arm`, `optix_read`, `optix_validate_expression` |
 | Author | `optix_edit`, `optix_screen`, `optix_model`, `optix_script`, `optix_action`, `optix_library`, `optix_netlogic`, `optix_design_check`, `optix_schema`, `optix_svg`, `optix_project` (file channel), `optix_build` (references, solution, compile check) |
 | Persist | `optix_status` (`needs_save`, `saved: true`), `optix_emulator { action: "status" }` (`disk`, `saved_after_edit`), `optix_build { action: "status" }` |
-| Look | `optix_emulator` (`status`, `start`, `restart`, `logs`, `stop`), `optix_preview`, `optix_screenshot`, `optix_ocr` |
-| Release | `optix_production_check`, `optix_project { action: "check" }`, `optix_build { action: "check" }` |
+| Look | `optix_emulator` (`status`, `start`, `restart`, `logs`, `stop`), `optix_preview`, `optix_screenshot`, `optix_ocr`, `optix_render_check` (the served screen, no bridge needed) |
+| Release | `optix_production_check`, `optix_design_check` per screen, `optix_render_check` on the screen the runtime serves, `optix_project { action: "check" }`, `optix_build { action: "check" }` |
 
 ## What this workflow does not do
 

@@ -201,8 +201,8 @@ it is how the engineer knows what you are doing and what is theirs.
 | **3 Connect** | `optix_status`, then `optix_read` once it answers | — |
 | **4 Author** | `optix_edit` / `optix_screen` / `optix_nav` / `optix_model` / `optix_script`, then the static checks | — |
 | **5 Persist** | read `needs_save`, ask, then verify the save on disk | save (Ctrl+S) then build (Ctrl+Shift+B), emulator stopped |
-| **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, `optix_nav verify` for a bar, prove the thing changed | — |
-| **7 Release** | `optix_production_check`, `optix_nav reconcile`, then state coverage | deploy in Studio's Deploy dialog |
+| **6 Look** | `optix_emulator` start, `optix_preview`/`optix_screenshot`, `optix_render_check` on the served screen, `optix_nav verify` for a bar, prove the thing changed | — |
+| **7 Release** | `optix_production_check`, `optix_design_check` per screen, `optix_nav reconcile`, then state coverage | deploy in Studio's Deploy dialog |
 
 An existing project starts at phase 3; a request for a template or a standard is workflow E, which
 writes the standard before it scaffolds anything. Phases 0–2 are workflows A, B and C below.
@@ -750,9 +750,14 @@ under alignment 0/1/2 renders at **content size**, which is why the demo's `Head
 pinned band competes for the leftover — pinning this screen's `Row1`/`Row2` at 247 would have left the alarm
 grid's row 514 − 247 − 247 − 40 = 20 px.
 
-Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen;
-a clean `optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and
-the rule-to-tool map are in `docs/reference/hmi-design.md`.
+Finish by looking. `optix_preview` and `optix_screenshot` are the only step that sees the rendered screen, and
+`optix_render_check` turns that step into rules: it captures the served preview clipped to the window the
+runtime serves, measures the element boxes, and reads the captured pixels, so a clock drawing `--:--`, a card
+whose text fills a twentieth of it, text drawn in the very colour behind it, and a caption that does not
+separate from its surface are reported instead of admired. It needs no bridge, only the emulator. A clean
+`optix_design_check` proves geometry, not legibility. The shared screen grammar, the palette and the
+rule-to-tool map are in `docs/reference/hmi-design.md`; the measured paint routes are in the `render-checks`
+playbook.
 
 `optix_design_check` also judges the four things a screen can get wrong on its own: `OPTIX-IMG-01` an
 `AdvancedSVGImage` with no element property bound (artwork that can never change), `OPTIX-STYLE-01` a control
@@ -841,8 +846,9 @@ is not there, a screen the operator cannot reach from the panel the loader start
 left on the built-in starting user or the stock style sheet, and screens outside the screen folder. The
 shell bar counts as navigation for every panel, because it sits in the start window. `repair: true` clears
 the absolute pointer value of every handler the first rule reports; it needs `allowWrites` and writes only
-that value. Run `optix_design_check` on each screen after it, and click the buttons in the runtime: a
-verdict of `ready` says these rules did not fire, not that an operator saw the application.
+that value. Run `optix_design_check` on each screen after it, run `optix_render_check` on the screen the runtime
+actually serves, and click the buttons in the runtime: a verdict of `ready` says these rules did not fire, not
+that an operator saw the application.
 
 The order that survives the runtime — model, NetLogic class, screens, command buttons, save/build/run,
 operator click, release review — is written down as `optix-application-recipe` in
@@ -866,7 +872,9 @@ application is ready, these five have to be true, and each one names the call th
    return `status: "verified"` — every button clicked, the loader's `Panel` read back as that button's
    screen. A repaint is not a pass; a bar that was only planned is not wired.
 2. **The release review is clean.** `optix_production_check` returns `ready`, or every remaining finding
-   is stated with the node and why it is accepted. `optix_design_check` runs on each screen that changed.
+   is stated with the node and why it is accepted. `optix_design_check` runs on each screen that changed, and
+   `optix_render_check` runs on the screen as served: the model rules were quiet on a screen whose clock drew
+   `--:--`, whose cards were four fifths empty and whose selected rail caption was white on cyan.
 3. **The sources compile.** `optix_build { action: "check" }` exits 0. If the NetLogic classes changed,
    `optix_build { action: "status" }` afterwards must not say `stale` once Studio has rebuilt.
 4. **A save was proven, not assumed.** `optix_status` reports no unflushed bridge changes, and the file
@@ -1049,7 +1057,7 @@ shortest path to "SQL results on a screen".
 
 ## Topic playbooks: `optix_list_skills` and `optix_get_skill`
 
-This page is the entry point; the deep end lives in ten topic playbooks shipped beside it in
+This page is the entry point; the deep end lives in eleven topic playbooks shipped beside it in
 `packages/optix/skills/`, each written from a live measurement rather than from help text:
 
 | Topic | Read it before |
@@ -1063,6 +1071,7 @@ This page is the entry point; the deep end lives in ten topic playbooks shipped 
 | `dialogs-and-login` | overlays: a Dialog as a window child, and a sign-in card plus real Users |
 | `screens-and-layout` | laying out a screen: the container tree the generators emit, ARGB colours, paint order, the shell's slots, and the seven container behaviours a live session measured |
 | `tags-import` | `import_tags`: the file kinds, the filter rule, and the station prerequisite |
+| `render-checks` | judging a screen the way an operator sees it: the five render rules, how the Web engine really paints, and what a render check cannot say |
 | `verify-and-release` | judging whether work is actually done, and what makes a green result meaningless |
 
 Call `optix_list_skills` for the one-line summary of each, then `optix_get_skill name="<topic>"` for the page
