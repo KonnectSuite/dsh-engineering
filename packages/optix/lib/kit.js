@@ -53,11 +53,32 @@ import {
 import { DEFAULT_LANGUAGE, getLanguage } from "./languages.js";
 import { adapterOps } from "./adapters.js";
 
-/** The blueprints a blueprint's `pattern` may name, in the order the kit documents them. */
-export const PATTERNS = ["overview", "blank"];
+/**
+ * The blueprints a blueprint's `pattern` may name, in the order the kit documents them.
+ *
+ * `overview` is the line-and-plant screen, `station` is the machine grid an operator scans for a red lamp,
+ * `table` is the row-per-thing screen (alarms, units, recipes, the shift log), `faceplate` is one piece of
+ * equipment with its detail under it, and `split` is the deliberate two-column screen that puts the numbers
+ * beside the picture of them. `blank` is the empty canvas a hand-designed screen starts from.
+ */
+export const PATTERNS = ["overview", "blank", "station", "table", "faceplate", "split"];
 
 /** The message feed shows at most this many cards; more is a screen, not a feed. */
-export const MAX_MESSAGES = 6;
+export const MAX_MESSAGES = 8;
+
+/** A station grid places at most this many machines. The ceiling is the batch, not the eye: one tile compiles
+ * to 87-88 bridge operations (measured 2026-11-17: 1 tile 153 ops, 6 tiles 594, 8 tiles 768), a screen cannot
+ * be split across calls, and `optix_screen` refuses a batch over `maxScreenOps`. Six tiles is the largest wall
+ * that fits the ceiling it ships with. */
+export const MAX_STATIONS = 6;
+
+/** A table places at most this many columns and rows. A table is a screen, not a spreadsheet: every cell
+ * is a node the bridge has to create, so a 20x20 table is 400 widgets and a screen nobody can read. */
+export const MAX_TABLE_COLUMNS = 5;
+export const MAX_TABLE_ROWS = 6;
+
+/** The smallest band a card row can be given before its own 22 px label no longer fits inside it. */
+export const MIN_ROW_BAND = 26;
 
 /**
  * A refusal specific to a blueprint, so a caller can report the component that could not be placed.
@@ -241,7 +262,7 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 	const band = chrome === "screen" ? HEADER : 0;
 	const foot = chrome === "screen" ? FOOTER : 0;
 	const content = region({ width, height, header: band, footer: foot });
-	const slots = { header: null, kpis: [], cards: [], chart: null, messages: null, status: null, adapters: [] };
+	const slots = { header: null, kpis: [], cards: [], chart: null, messages: null, status: null, adapters: [], stations: [], table: null, hero: null };
 
 	if (chrome === "screen") {
 		const header = { left: 0, top: 0, width, height: HEADER };
@@ -311,25 +332,69 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 	const [bodyArea, adapterArea] = adapterSpecs.length === 0 ? [body, null] : columns(body, [2, 1], { minWidth: 320 });
 	const cards = Array.isArray(blueprint.cards) ? blueprint.cards.slice(0, 3) : [];
 	const wantsChart = blueprint.chart !== null && typeof blueprint.chart === "object";
+	const stations = Array.isArray(blueprint.stations) ? blueprint.stations.slice(0, MAX_STATIONS) : [];
+	const tableSpec = blueprint.table !== null && typeof blueprint.table === "object" && !Array.isArray(blueprint.table) ? blueprint.table : null;
+	const equipment = blueprint.equipment !== null && typeof blueprint.equipment === "object" && !Array.isArray(blueprint.equipment) ? blueprint.equipment : null;
+	// A pattern names the content it needs. Naming a pattern without that content is a refusal, not a quiet
+	// fall back to the overview drawing: a caller who asked for a station grid and got cards has to hear it.
+	if (pattern === "station" && stations.length === 0) refuse("blueprint_pattern_content", "the station pattern needs stations[]: {name, on, values[]} per machine");
+	if (pattern === "table" && tableSpec === null) refuse("blueprint_pattern_content", "the table pattern needs table: {title, columns[], widths[]?, rows[][]}");
+	if (pattern === "split" && (cards.length === 0 || !wantsChart)) refuse("blueprint_pattern_content", "the split pattern needs cards[] and chart{} side by side");
+	if (pattern === "faceplate" && equipment === null && stations.length === 0) refuse("blueprint_pattern_content", "the faceplate pattern needs equipment: {name, on, values[]} or at least one station");
+	// A station grid and a table own the whole body band. Cards or a chart beside them would be two screens
+	// in one band, and the grid is what the pattern asked for.
+	const bodyOwned = pattern === "station" || pattern === "table";
+	if (bodyOwned && wantsChart) refuse("blueprint_pattern_content", `the ${pattern} pattern places its own grid in the body: drop chart{} or choose the split pattern`);
+	if (bodyOwned && cards.length > 0) refuse("blueprint_pattern_content", `the ${pattern} pattern places its own grid in the body: drop cards[] or choose the overview pattern`);
+	if (!bodyOwned && cards.length === 0 && !wantsChart && adapterSpecs.length === 0 && pattern !== "faceplate") {
+		refuse("blueprint_empty_body", "a screen needs at least one card, a chart or an adapter: give cards[], chart{} or adapters[]");
+	}
 	// The width a card column gets when the chart sits beside it. The bridge cannot write a `2fr,1fr`
 	// track, so the 2:1 split the geometry library decided is written as this pixel width on the column.
 	let cardColumnWidth;
-	if (cards.length === 0 && !wantsChart && adapterSpecs.length === 0) refuse("blueprint_empty_body", "a screen needs at least one card, a chart or an adapter: give cards[], chart{} or adapters[]");
-	if (cards.length > 0 && wantsChart && kind !== "compact") {
+	// The band the cards and the chart are laid out in. A faceplate takes the top of the body for the
+	// equipment it is about and hands the rest to its detail; every other pattern has the whole body.
+	let cardBand = bodyArea;
+	if (pattern === "faceplate") {
+		const heroHeight = 148;
+		slots.hero = rect(bodyArea.left, bodyArea.top, bodyArea.width, heroHeight);
+		cardBand = rect(bodyArea.left, bodyArea.top + heroHeight + gap, bodyArea.width, bodyArea.height - heroHeight - gap);
+		if (cardBand.height < 160) refuse("layout_overflow", `a ${height}px canvas leaves ${cardBand.height.toFixed(0)}px under the 148px equipment band: a faceplate needs room for the detail as well as the machine`);
+	}
+	if (bodyOwned) {
+		// Nothing to split: the pattern's own component takes the body band.
+	} else if (pattern === "faceplate") {
+		// A faceplate stacks its detail under the machine it is about. The equipment band is the screen's
+		// subject and everything else is read against it, so the detail is one vertical stack rather than a
+		// side-by-side pairing, and it shares the band left under the hero equally between its cards and its
+		// chart.
+		const detail = cards.length + (wantsChart ? 1 : 0);
+		if (detail > 0) {
+			// Name the faceplate, not the floor: the band is short because the equipment band took the top of
+			// the body, and a caller who reads "140px floor" would go looking for a constant instead of
+			// dropping a card.
+			const perItem = Math.floor((cardBand.height - gap * (detail - 1)) / detail);
+			if (perItem < 140) refuse("layout_overflow", `a faceplate leaves ${cardBand.height.toFixed(0)}px of detail under its 148px equipment band, which splits ${detail} item(s) into ${perItem}px: a card or a chart needs 140px, so drop one of them or give the screen more height`);
+			const detailSlots = stack(cardBand, Array.from({ length: detail }, () => 1), { minHeight: 140 });
+			slots.cards = detailSlots.slice(0, cards.length);
+			if (wantsChart) slots.chart = detailSlots[cards.length];
+		}
+	} else if (cards.length > 0 && wantsChart && (kind !== "compact" || pattern === "split")) {
 		// The geometry library decides how much of the body a card column takes; the layout tree inside that
-		// area is what actually places the components, so their inner text moves with the component.
-		const [cardArea, chartArea] = columns(bodyArea, [2, 1], { minWidth: 300 });
+		// area is what actually places the components, so their inner text moves with the component. The split
+		// pattern asks for this branch whatever the width class is, because its whole point is the pairing.
+		const [cardArea, chartArea] = columns(cardBand, [2, 1], { minWidth: 300 });
 		slots.chart = chartArea;
 		cardColumnWidth = cardArea.width;
 		slots.cards = cards.length === 1 ? [cardArea] : stack(cardArea, cards.map(() => 1), { minHeight: 140 });
 	} else if (cards.length > 0) {
-		slots.cards = cards.length === 1 ? [bodyArea] : stack(bodyArea, cards.map(() => 1), { minHeight: 140 });
+		slots.cards = cards.length === 1 ? [cardBand] : stack(cardBand, cards.map(() => 1), { minHeight: 140 });
 		if (wantsChart) {
 			// A compact canvas stacks the chart under the cards rather than squeezing both side by side.
 			refuse("layout_too_narrow", `a ${width}px canvas cannot carry ${cards.length} card(s) and a chart side by side: drop the chart or the cards for the compact width class`);
 		}
 	} else if (wantsChart) {
-		slots.chart = bodyArea;
+		slots.chart = cardBand;
 	}
 	if (hasKpis) {
 		const kpiArea = rect(content.left, top, content.width, kpiHeight);
@@ -355,7 +420,61 @@ export function compileBlueprint(blueprint, { screen, width, height, language = 
 		}
 	}
 	const feedArea = hasFeed ? rect(content.left, content.top + content.height - feedHeight, content.width, feedHeight) : null;
-	if (cards.length > 0 || wantsChart) {
+	if (pattern === "station") {
+		// A station screen is a wall of lamps, so the grid is decided by the lamp: a tile narrower than
+		// 200 px cannot hold a name and a number on one line, and a band shorter than 110 px cannot hold
+		// the name row plus two value rows. The split is chosen by measuring every candidate row count and
+		// keeping the one whose tile is closest to 1.4:1 - the aspect a name row over two value rows reads
+		// well at. Filling the width first (the obvious rule) gives six machines five across with one
+		// stranded under them, and a short last row renders its tiles wider than the row above it, so the
+		// wall stops reading as one instrument.
+		const capacity = Math.max(1, Math.floor((bodyArea.width + gap) / (200 + gap)));
+		let grid = null;
+		for (let candidate = 1; candidate <= stations.length; candidate++) {
+			const perRow = Math.ceil(stations.length / candidate);
+			if (perRow > capacity) continue;
+			if (stations.length > 1 && perRow < 2) continue;
+			const height = Math.floor((bodyArea.height - gap * (candidate - 1)) / candidate);
+			if (height < 110) continue;
+			const tileWidth = Math.floor((bodyArea.width - gap * (perRow - 1)) / perRow);
+			const score = Math.abs(Math.log(tileWidth / height / 1.4));
+			if (!grid || score < grid.score) grid = { lines: candidate, perRow, tileHeight: height, tileWidth, score };
+		}
+		if (!grid) refuse("layout_overflow", `${stations.length} station(s) will not fit a ${bodyArea.width.toFixed(0)}x${bodyArea.height.toFixed(0)}px body: a station tile needs 200px across and 110px down, and this body holds ${capacity} tile(s) per row with no row left 110px tall. Drop machines, drop the KPI strip or the message feed, or give the screen more height.`);
+		const { lines, perRow, tileHeight, tileWidth } = grid;
+		const stationGrid = gridLayout(path, "Stations", { box: bodyArea, columns: perRow, rows: lines, rowHeights: Array.from({ length: lines }, () => tileHeight), horizontalGap: gap, verticalGap: gap });
+		ops.push(...stationGrid.ops);
+		slots.stations = stations.map((_, index) => {
+			const line = Math.floor(index / perRow);
+			const column = index % perRow;
+			return rect(bodyArea.left + column * (tileWidth + gap), bodyArea.top + line * (tileHeight + gap), tileWidth, tileHeight);
+		});
+		for (const [index, station] of stations.entries()) {
+			ops.push(...stationTile(stationGrid.rowPaths[Math.floor(index / perRow)], `Station${index + 1}`, slots.stations[index], station, theme).ops);
+		}
+	}
+	if (pattern === "table") {
+		// A Screen is not a layout container: a Rectangle created directly under it carries no coordinate,
+		// because the kit's surfaces are placed by their container's margins and gaps. The table therefore
+		// hangs off a ColumnLayout that owns the body band. That column keeps its numeric box and sits at the
+		// top-left of it - Stretch on an axis IS the size on that axis, so writing 608 and alignment 3 would
+		// throw the 608 away, which is the measurement the container rules were written from.
+		const tableArea = columnLayout(path, "TableArea", { box: bodyArea, horizontalAlignment: ALIGN.LEFT, verticalAlignment: ALIGN.LEFT });
+		ops.push(...tableArea.ops);
+		const table = tableCard(tableArea.path, "Table1", bodyArea, tableSpec, theme);
+		ops.push(...table.ops);
+		slots.table = bodyArea;
+	}
+	if (pattern === "faceplate") {
+		const faceColumn = columnLayout(path, "Body", { box: bodyArea, horizontalAlignment: ALIGN.LEFT, verticalAlignment: ALIGN.LEFT, verticalGap: gap });
+		ops.push(...faceColumn.ops);
+		ops.push(...stationTile(faceColumn.path, "Equipment", slots.hero, equipment ?? stations[0], theme).ops);
+		for (const [index, spec] of cards.entries()) {
+			ops.push(...cardComponent(faceColumn.path, `DataCard${index + 1}`, slots.cards[index], spec, theme).ops);
+		}
+		if (wantsChart) ops.push(...chartComponent(faceColumn.path, "Chart1", slots.chart, blueprint.chart, theme).ops);
+	}
+	if ((pattern === "overview" || pattern === "split") && (cards.length > 0 || wantsChart)) {
 		// The body is a layout tree. Side by side it is one row holding a card column and the chart, and the
 		// 2:1 split is the pixel width the geometry library computed for the column, because a `fr` track is
 		// not writable through the bridge. Stacked it is one column. Either way a card's rows and a chart's
@@ -482,8 +601,16 @@ export function cardComponent(parent, name, slot, spec, theme) {
 	const title = typeof spec?.title === "string" && spec.title !== "" ? spec.title : "Panel";
 	ops.push(...layoutText(body.path, "Title", title.toUpperCase(), theme, { height: 22, fontSize: theme.type.subheading, weight: "700" }).ops);
 	const rows = Array.isArray(spec?.rows) ? spec.rows.slice(0, 8) : [];
+	// A row pinned at 26 px is what made the served cards read as four fifths empty: three 26 px rows
+	// inside a 247 px surface paint their text in the top 97 px, which the render check measures as
+	// coverage 0.03-0.27 against a 0.30 minimum. A fill row is the only honest distribution a layout
+	// container offers - `ContentVerticalAlignment` has no space-between member (0 Top, 1 Center, 2
+	// Bottom) - and a fill row discards a numeric height on that axis, so the number is kept only where
+	// an equal band would not hold the row's own 22 px label.
+	const rowBand = rows.length === 0 ? MIN_ROW_BAND : (slot.height - 20 - 22 - 6 * rows.length) / rows.length;
+	const rowHeight = rows.length <= 3 && rowBand >= MIN_ROW_BAND ? FILL : 26;
 	for (const [index, entry] of rows.entries()) {
-		const row = rowLayout(body.path, `Row${index + 1}`, { width: FILL, height: 26, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
+		const row = rowLayout(body.path, `Row${index + 1}`, { width: FILL, height: rowHeight, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
 		ops.push(...row.ops);
 		const label = String(entry?.label ?? "");
 		ops.push(...layoutText(row.path, `Row${index + 1}Label`, label, theme, { height: 22, fontSize: theme.type.small, verticalAlignment: ALIGN.CENTER }).ops);
@@ -509,6 +636,107 @@ export function cardComponent(parent, name, slot, spec, theme) {
 		}
 	}
 	return { path: card.path, ops };
+}
+
+/**
+ * A station tile: the name of a machine, its lamp, and up to two of its numbers.
+ *
+ * This is the component an operator scans for a red lamp. The lamp is 22 px and pinned to the right end of
+ * the head row so a row of tiles reads as one line of lamps at the height an operator actually works at;
+ * a 16 px dot inside a 26 px row is the shape the render check cannot separate from its background. The
+ * tile itself is created at fill on both axes, so the row that holds it decides its width and the band
+ * that holds the row decides its height - the tile never carries a coordinate.
+ *
+ * @param parent - The layout that holds the tile.
+ * @param name - The tile's BrowseName.
+ * @param slot - The rectangle the grid library reserved for it.
+ * @param spec - `{name, on, values[]}` where a value is `{label, value, unit}`.
+ * @param theme - A `kitTheme()` result.
+ * @returns `{path, ops}`.
+ */
+export function stationTile(parent, name, slot, spec, theme) {
+	requireSlot(slot, name, { minWidth: 180, minHeight: 100 });
+	// The band the grid gave the tile is written on it, so a faceplate's equipment band stays the 148 px it
+	// was promised instead of stretching to fill whatever the column has left. Inside a station grid the
+	// band is the row's own height, so the tile fills its row either way.
+	const tile = cellSurface(parent, name, { width: Number.isFinite(slot?.width) ? slot.width : FILL, height: Number.isFinite(slot?.height) ? slot.height : FILL }, theme.colours.surface, theme);
+	const ops = [...tile.ops];
+	const body = columnLayout(tile.path, "Body", { width: FILL, height: FILL, margins: { left: 14, right: 14, top: 10, bottom: 10 }, verticalGap: 4 });
+	ops.push(...body.ops);
+	const label = typeof spec?.name === "string" && spec.name.trim() !== "" ? spec.name.trim() : "Station";
+	const head = rowLayout(body.path, "Head", { width: FILL, height: 26, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
+	ops.push(...head.ops);
+	ops.push(...layoutText(head.path, "StationName", label.toUpperCase(), theme, { width: FILL, height: 22, fontSize: theme.type.body, weight: "700", verticalAlignment: ALIGN.CENTER }).ops);
+	const lampPath = `${head.path}/Lamp`;
+	const lampColour = spec?.on === false ? theme.colours.danger : theme.colours.ok;
+	// HorizontalAlignment 1 (Right) with a numeric size is what pins the lamp to the far end of the row:
+	// alignment 3 on that axis would discard the 22 px written on it.
+	ops.push(widget(head.path, "Lamp", "Ellipse"), set(lampPath, "Width", size(22)), set(lampPath, "Height", size(22)), set(lampPath, "HorizontalAlignment", String(ALIGN.RIGHT)), set(lampPath, "VerticalAlignment", String(ALIGN.CENTER)), set(lampPath, "FillColor", lampColour), set(lampPath, "BorderColor", lampColour));
+	const values = Array.isArray(spec?.values) ? spec.values.slice(0, 2) : [];
+	for (const [index, entry] of values.entries()) {
+		const row = rowLayout(body.path, `Value${index + 1}`, { width: FILL, height: FILL, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
+		ops.push(...row.ops);
+		ops.push(...layoutText(row.path, `Value${index + 1}Label`, String(entry?.label ?? ""), theme, { width: FILL, height: 20, fontSize: theme.type.small, verticalAlignment: ALIGN.CENTER }).ops);
+		const unit = typeof entry?.unit === "string" ? entry.unit : "";
+		const value = entry?.value === undefined || entry?.value === null ? "—" : String(entry.value);
+		const numberPath = `${row.path}/Value${index + 1}Number`;
+		ops.push(...layoutText(row.path, `Value${index + 1}Number`, unit === "" ? value : `${value} ${unit}`, theme, { width: 96, height: 20, fontSize: theme.type.body, weight: "700", align: 2, verticalAlignment: ALIGN.CENTER }).ops);
+		ops.push(set(numberPath, "HorizontalAlignment", String(ALIGN.RIGHT)));
+	}
+	return { path: tile.path, ops };
+}
+
+/**
+ * A table: a title, one header band and up to `MAX_TABLE_ROWS` bands, each a painted row holding a RowLayout
+ * of cell labels. A layout container paints nothing, so each row is a Rectangle and the RowLayout inside it
+ * places the cells; the header band carries the alternate surface so the first line reads as a heading, and
+ * the data bands are left at fill so they split the height the table was given instead of stacking at the
+ * top of it.
+ *
+ * @param parent - The layout that holds the table.
+ * @param name - The table's BrowseName.
+ * @param slot - The rectangle the grid library reserved for it.
+ * @param spec - `{title, columns[], widths[]?, rows[][]}` where `widths[]` are column weights.
+ * @param theme - A `kitTheme()` result.
+ * @returns `{path, ops}`.
+ */
+export function tableCard(parent, name, slot, spec, theme) {
+	requireSlot(slot, name, { minWidth: 320, minHeight: 160 });
+	const heads = (Array.isArray(spec?.columns) ? spec.columns : []).map((column) => String(column ?? "")).filter((column) => column !== "").slice(0, MAX_TABLE_COLUMNS);
+	if (heads.length === 0) refuse("table_no_columns", "a table needs columns[]: the header line every row is read against");
+	const rows = Array.isArray(spec?.rows) ? spec.rows.slice(0, MAX_TABLE_ROWS) : [];
+	const declared = Array.isArray(spec?.widths) ? spec.widths.map((value) => Number(value)) : [];
+	const weights = heads.map((_, index) => (Number.isFinite(declared[index]) && declared[index] > 0 ? declared[index] : 1));
+	// The gap the cell RowLayout will be built with is the gap the column widths are computed against, or
+	// the last column lands short of the edge it was promised.
+	const cellSlots = columns(rect(slot.left + 14, slot.top, slot.width - 28, 24), weights, { gutter: 8, minWidth: 60 });
+	const table = cellSurface(parent, name, {}, theme.colours.surface, theme);
+	const ops = [...table.ops];
+	const body = columnLayout(table.path, "Body", { width: FILL, height: FILL, margins: { left: 14, right: 14, top: 10, bottom: 10 }, verticalGap: 6 });
+	ops.push(...body.ops);
+	const title = typeof spec?.title === "string" && spec.title !== "" ? spec.title : "Table";
+	ops.push(...layoutText(body.path, "Title", title.toUpperCase(), theme, { height: 22, fontSize: theme.type.subheading, weight: "700" }).ops);
+	const band = rows.length === 0 ? 0 : Math.floor((slot.height - 20 - 22 - 30 - 6 * (rows.length + 1)) / rows.length);
+	if (rows.length > 0 && band < 30) refuse("layout_overflow", `a ${slot.height}px table splits ${rows.length} row(s) into ${band}px bands: a table row needs 30px, so give the screen more height or drop rows`);
+	const headerBand = cellSurface(body.path, "HeaderBand", { width: FILL, height: 30 }, theme.colours.surfaceAlt, theme, { radius: false });
+	ops.push(...headerBand.ops);
+	const headerCells = rowLayout(headerBand.path, "Cells", { width: FILL, height: FILL, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
+	ops.push(...headerCells.ops);
+	for (const [index, column] of heads.entries()) {
+		ops.push(...layoutText(headerCells.path, `Head${index + 1}`, column.toUpperCase(), theme, { width: cellSlots[index].width, height: 22, fontSize: theme.type.small, colour: theme.colours.accentText, weight: "700", verticalAlignment: ALIGN.CENTER }).ops);
+	}
+	for (const [index, entry] of rows.entries()) {
+		const rowBand = cellSurface(body.path, `Row${index + 1}`, { width: FILL, height: FILL }, index % 2 === 0 ? theme.colours.surface : theme.colours.surfaceAlt, theme, { radius: false });
+		ops.push(...rowBand.ops);
+		const cells = rowLayout(rowBand.path, "Cells", { width: FILL, height: FILL, contentAlignment: CONTENT_ALIGN_ROW.LEFT, horizontalGap: 8 });
+		ops.push(...cells.ops);
+		for (const [columnIndex, column] of heads.entries()) {
+			const value = Array.isArray(entry) ? entry[columnIndex] : entry?.[column];
+			const text = value === undefined || value === null || value === "" ? "—" : String(value);
+			ops.push(...layoutText(cells.path, `Row${index + 1}Cell${columnIndex + 1}`, text, theme, { width: cellSlots[columnIndex].width, height: 22, fontSize: theme.type.small, verticalAlignment: ALIGN.CENTER }).ops);
+		}
+	}
+	return { path: table.path, ops };
 }
 
 /**
@@ -625,7 +853,9 @@ export function kitCatalogue(language = DEFAULT_LANGUAGE) {
 		components: [
 			{ name: "headerBand", props: ["title", "subtitle", "chips[]", "clock", "language", "user", "bell"], description: "The band every operator reads first: brand area, screen title, state chips, live clock, language selector, user badge and an alarm bell." },
 			{ name: "kpiTile", props: ["label", "value", "unit"], description: "One number with its unit, large enough to read at a glance, arranged by a column layout inside a row of the KPI strip." },
-			{ name: "card", props: ["title", "rows[].label", "rows[].value", "rows[].unit", "rows[].kind=value|lamp|bar", "rows[].percent", "rows[].on"], description: "A titled panel of label/value, label/lamp or label/progress rows, each row a row layout under the card's column layout." },
+			{ name: "card", props: ["title", "rows[].label", "rows[].value", "rows[].unit", "rows[].kind=value|lamp|bar", "rows[].percent", "rows[].on"], description: "A titled panel of label/value, label/lamp or label/progress rows, each row a row layout under the card's column layout. Up to three rows are left at fill so they split the card's height instead of painting their text in its top quarter." },
+			{ name: "stationTile", props: ["name", "on", "values[].label", "values[].value", "values[].unit"], description: "One machine: its name, a 22px lamp pinned to the right of the name row, and up to two numbers. The tile carries the box its row was given, so a wall of them keeps one tile width across every row." },
+			{ name: "tableCard", props: ["title", "columns[]", "widths[]", "rows[][]"], description: `A header band and up to ${MAX_TABLE_ROWS} banded rows of up to ${MAX_TABLE_COLUMNS} cells: each band is a painted rectangle holding a row layout, because a layout container paints nothing and an unpainted band cannot be read as a row.` },
 			{ name: "barChart", props: ["title", "values[]", "labels[]", "unit", "threshold"], description: "A bar chart with a baseline, a value label per bar and one bar marked as the alarm threshold, one bottom-aligned column layout per bar in a single row." },
 			{ name: "messageFeed", props: ["title", "messages[].title", "messages[].text"], description: "A feed of small cards for reminders, maintenance notes and operator messages, one row per line of tiles inside the feed." },
 			{ name: "statusStrip", props: ["text", "ok"], description: "The bottom strip: a connection lamp and one line of status, the way the vendor demos do it." },

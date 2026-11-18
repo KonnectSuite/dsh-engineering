@@ -10,12 +10,12 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { scrubbedParentEnv } from "@deepseek-ai/dsh-subprocess";
 import { fileURLToPath } from "node:url";
-import { chainReport, ocrProbe, samePreviewTarget, tesseractInstallCommand } from "./chain.js";
+import { chainReport, ocrProbe, samePreviewTarget, setupChecklist, tesseractInstallCommand } from "./chain.js";
 import { arrayWriteRefusal } from "./containers.js";
 import { typeBearingCreateRefusal } from "./names.js";
 import { armBridge, bridgeVersion } from "./arm.js";
 import { buildState, checkBuild, initNetSolution, readReferences, studioInstalls, writeReferences } from "./build.js";
-import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, validateProject } from "./project.js";
+import { applyStage, census, diffBackup, projectGates, projectInfo, readNode, readStage, restoreBackup, sources, stageOps, studioState, validateProject } from "./project.js";
 import { scaffoldProject } from "./scaffold.js";
 import { NAV_MAX_BUTTONS, buttonSlot, launchRuntimePage, navTargets, handlerChild, panelOpens, panelProperty, planBar, planOps, verifyNavigation, verifyNext } from "./nav.js";
 import { DEFAULT_LANGUAGE, languageCatalogue, languageNames } from "./languages.js";
@@ -1866,7 +1866,14 @@ const Config = z.object({
 	requestTimeoutMs: z.natural().min(1).max(2147483647).default(2e4),
 	maxResponseBytes: z.natural().min(1).default(2e6),
 	maxBatchOps: z.natural().min(1).default(40),
-	maxScreenOps: z.natural().min(1).default(400),
+	// Measured 2026-11-17 on the kit's own patterns: a dense screen is not a small batch. A six-tile station
+	// wall is 594 operations, that wall plus the line's KPI strip is 645, a 6x5 table with a KPI, a feed and a
+	// status strip is 588, and a faceplate with a chart is 391. A screen cannot be split across calls (the
+	// bridge only resolves a parent it created in the same batch), so the ceiling has to hold a whole dense
+	// screen: 400 refused a four-tile station wall at 414, and 600 refused a station wall that also carried
+	// the KPI strip every line screen has. Only a fully loaded 1920x1080 overview (1011) exceeds 700, and that
+	// refusal names what to drop.
+	maxScreenOps: z.natural().min(1).default(700),
 	maxMapNodes: z.natural().min(1).default(800),
 	maxMapDepth: z.natural().min(1).default(8),
 	preview: z.boolean().default(false),
@@ -1959,7 +1966,7 @@ function resolve(config) {
 		requestTimeoutMs: config.requestTimeoutMs ?? 2e4,
 		maxResponseBytes: config.maxResponseBytes ?? 2e6,
 		maxBatchOps: config.maxBatchOps ?? 40,
-		maxScreenOps: config.maxScreenOps ?? 400,
+		maxScreenOps: config.maxScreenOps ?? 700,
 		maxMapNodes: config.maxMapNodes ?? 800,
 		maxMapDepth: config.maxMapDepth ?? 8,
 		preview: config.preview ?? false,
@@ -2428,7 +2435,7 @@ function apply(ctx, config = {}) {
 	}
 	ctx.effect(() => ctx.tools.register(jsonTool({
 		name: "optix_status",
-		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, the preview, emulator and OCR chain with the first missing link named, and whether the live project has authoring changes the engineer still has to save. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, after authoring, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required.",
+		description: "Report the state of the FactoryTalk Optix tool chain: loaded Studio projects through configured local bridges, the preview, emulator and OCR chain with the first missing link named, and whether the live project has authoring changes the engineer still has to save. Call it when a project is in play - to check which project is loaded, before a preview or screenshot, after authoring, or when a bridge answers nothing - not to find out what to build: a new build starts from the brief, our two packaged starters and `engineering_reference`, and an inventory of the machine is not a brief (CRAFT-ORD-01). No MCP or Python service is required. With project or project_root the answer also carries setup: the ordered steps that make that project authorable, each owned by a tool or by the engineer, because no tool can run StartBridge or Studio's build.",
 		parameters: {
 			saved: {
 				type: "boolean",
@@ -2436,7 +2443,7 @@ function apply(ctx, config = {}) {
 			},
 			project: {
 				type: "string",
-				description: "Optional project name. With project or project_root, the answer also carries build_state: whether bin/<Project>.dll is newer than the newest .cs, and whether the references file resolves."
+				description: "Optional project name. With project or project_root, the answer also carries build_state: whether bin/<Project>.dll is newer than the newest .cs, and whether the references file resolves; and setup: the ordered tool-versus-engineer steps that make it authorable."
 			},
 			project_root: {
 				type: "string",
@@ -2477,12 +2484,24 @@ function apply(ctx, config = {}) {
 			const saved = args?.saved === true;
 			const cleared = saved ? clearModelChanges(settings.bridgeUrls) : 0;
 			let buildStateReport;
+			let setupReport;
 			const wantsBuild = (typeof args?.project === "string" && args.project.trim() !== "")
 				|| (typeof args?.project_root === "string" && args.project_root.trim() !== "");
+			const chain = await chainReport(settings, exec.signal);
 			if (wantsBuild) {
 				try {
 					const resolved = await resolveProjectFolder(args);
 					buildStateReport = await buildState(resolved.root);
+					const info = await projectInfo(resolved.project, resolved.root);
+					const studio = await studioState(info);
+					setupReport = await setupChecklist(settings, chain, {
+						name: info.name,
+						root: info.root,
+						studio_open: studio.studio_open,
+						bridge_answers: endpoints.some((entry) => entry.available),
+						pending_changes: saved ? 0 : outstanding,
+						build_state: buildStateReport
+					});
 				} catch (error) {
 					buildStateReport = { error: error.message };
 				}
@@ -2492,8 +2511,9 @@ function apply(ctx, config = {}) {
 				authoring: settings.allowWrites,
 				destructive: settings.allowDestructive,
 				invoke: settings.allowInvoke,
-				preview_chain: await chainReport(settings, exec.signal),
+				preview_chain: chain,
 				...(buildStateReport === undefined ? {} : { build_state: buildStateReport }),
+				...(setupReport === undefined ? {} : { setup: setupReport }),
 				...(outstanding === 0 && !saved ? {} : {
 					needs_save: {
 						pending: saved ? 0 : outstanding,

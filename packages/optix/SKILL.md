@@ -305,9 +305,25 @@ the numbers are in the `screens-and-layout` playbook.
 
 Two measured rules the kit already obeys, that any hand-written screen must obey too: a colour is a
 `#RRGGBB` string (`validate_ops` refuses `0xRRGGBBAA`), and a node name that a legacy scaffold already
-uses (`Card1`) collides - `already_exists` is reported before anything is written. `pattern` is
-`overview` or `blank` today; the navigation rail and the dialogs arrive with
-`optix_ui action: "shell"|"dialog"` in the same P-series, so do not hand-draw them in the meantime.
+uses (`Card1`) collides - `already_exists` is reported before anything is written.
+
+`pattern` is one of six, each needing the content that pattern is for: `overview` (cards, KPIs, a chart,
+a feed, a status strip), `station` (the machine wall an operator scans for a red lamp), `table`
+(row-per-thing: alarms, units, recipes, the shift log), `faceplate` (one piece of equipment with its
+detail under it), `split` (the numbers beside the picture of them) and `blank`. A pattern given no
+content of its own is refused (`blueprint_pattern_content`) instead of answered as an empty screen. The
+density it will draw is capped - 3 cards, 4 KPIs, 8 feed cards, 6 stations, 5 columns by 6 table rows,
+4 navigation buttons - and a blueprint that asks for more is sliced to the cap, so ask for what the
+screen can actually show.
+
+That cap is the batch, not the eye. A screen is compiled in one call because the bridge only resolves a
+parent it created in the same batch, so a screen cannot be split across calls, and `optix_screen` refuses
+a batch over `maxScreenOps` (700). Measured on 1.8.1.27: one station tile is 87-88 operations, so six
+tiles are 594 and six tiles plus the KPI strip every line screen carries is 645; a 6x5 table with a KPI,
+a feed and a status strip is 588; a faceplate with a chart is 390; a fully loaded `overview` on a
+1920x1080 canvas is 1011 and is refused with the component to drop named. A station wall is laid out for
+the tile's shape rather than the row's width - six machines become 3+3 at one tile size, never 5+1 with
+the stranded last tile stretched across the row.
 
 ## The window is a frame, and the shell draws it
 
@@ -1038,7 +1054,7 @@ Everything below was proved on a live project on 2026-11-16, not read from help.
 
 **A dialog.** `UICommands/OpenDialog` mounts nothing unless the window has a real `PanelLoader` with a panel; a bare `PanelLoader` child is not a host, and a relative `ParentItem` dynamic link can kill the runtime. What renders: instantiate the Dialog **ObjectType** as a child of the window (`create_object UI/MainWindow/ConfirmDialog type=UI/Dialogs/ConfirmCounters`), bind its `Visible` to a Boolean tag, and set that tag from the opening button with `wire_event command=SetVariable`.
 
-**A data logger.** `SamplingMode` on this build is 0 = None, 1 = Value change, 2 = Periodic — configured as 1 it never samples, so set `2` with `SamplingPeriod=10000000` (ticks, = 1 s). The `VariablesToLog` children **can** be authored through the bridge: `VariableToLog` is a variable kind, so `create_variable datatype:"VariableToLog"` under the logger plus a `set_link` to each tag works, and the runtime builds the table from those children (measured: `CREATE TABLE "SmtTrend" ("Timestamp" DATETIME,"LocalTimestamp" DATETIME,"OEE" REAL,"UPH" INTEGER,"CycleTime" REAL,"TotalUnits" INTEGER, "Id" INTEGER)`, 360 rows in 162 s). A `bind` on a `VariableToLog` is refused ("no settable property 'Value'"), so `set_link` is the only route. A runtime NetLogic is the alternative when the tag list is computed. The table schema freezes on the first sample, so columns added later read null. Three properties are unreachable: `LogVariableTimestamp` and `LogVariableOperationCode` are `unknown_property` although the bridge lists them, and `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*. A store with no `Filename` writes `ApplicationFiles/<store guid without dashes>.sqlite`, and **WAL mode makes a size poll lie**: the main file stayed at 4 096 B while its `-wal` grew to 4 144 752 B. A bridge-authored store and logger ship with **no record limit** and every session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device` — the limit is on the table (`Table.RecordLimit`), and no tool sets it.
+**A data logger.** `SamplingMode` on this build is 0 = None, 1 = Value change, 2 = Periodic — configured as 1 it never samples, so set `2` with `SamplingPeriod=10000000` (ticks, = 1 s). The `VariablesToLog` children **can** be authored through the bridge: `VariableToLog` is a variable kind, so `create_variable datatype:"VariableToLog"` under the logger plus a `set_link` to each tag works, and the runtime builds the table from those children (measured: `CREATE TABLE "SmtTrend" ("Timestamp" DATETIME,"LocalTimestamp" DATETIME,"OEE" REAL,"UPH" INTEGER,"CycleTime" REAL,"TotalUnits" INTEGER, "Id" INTEGER)`, 360 rows in 162 s). A `bind` on a `VariableToLog` is refused ("no settable property 'Value'"), so `set_link` is the only route. A runtime NetLogic is the alternative when the tag list is computed. The table schema freezes on the first sample, so columns added later read null. Three properties are unreachable: `LogVariableTimestamp` and `LogVariableOperationCode` are `unknown_property` although the bridge lists them, and `LogMethod` is `proxy_only_property` — *"creating it crashes Studio"*. A store with no `Filename` writes `ApplicationFiles/<store guid without dashes>.sqlite`, and **WAL mode makes a size poll lie**: the main file stayed at 4 096 B while its `-wal` grew to 4 144 752 B. A bridge-authored store and logger ship with **no record limit** and every session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device` — the limit is on the table (`Table.RecordLimit`), and no tool sets it — `optix_project action check` names it offline as **OPTIX-DATA-02** (absent **or 0**, because Studio writes a property child even at its default).
 
 **A trend.** A `Trend` created through the bridge never draws: it is not a behaviour instance, so `Refresh()` answers `No behaviour or observer found`. The template-library `Widgets/AdvancedTrend` panel does: import it (it lands as a **Folder** — `AdvancedTrendMain` plus 11 component types, unlike `AlarmGrid` which lands as one `PanelType`), instantiate `AdvancedTrendMain` with `create_object` whose `object_type` is its **project path**, and point its `Logger` — a **`NodeId`** variable, not a NodePointer — at the DataLogger. That one write drew four pens with legend, axes and the widget's own Pens panel. The pens are not reliably created disabled: in the measured instance all four arrived **enabled**, so check the preview before writing code to switch them on.
 

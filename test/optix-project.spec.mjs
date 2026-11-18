@@ -438,6 +438,129 @@ test('validation names the dead bindings, the UI pointer and the flat screens a 
   assert.equal(repaired.ok, true)
 })
 
+/**
+ * A store chapter in the shape the demo's own DataStores.yaml holds: a store, a Tables folder, and a
+ * SQLiteStoreTable whose Columns are StoreColumn children. `limitState` is how the table carries its
+ * limit - `none` (no child at all), `default` (the child Studio writes even for an untouched
+ * property), `zero` (an explicit 0) or `set` (a real number). `timed: false` drops the time columns.
+ */
+const loggingFixture = async ({ limitState = 'none', timed = true } = {}) => {
+  const root = await scratch()
+  for (const folder of ['DataStores', 'Loggers']) await mkdir(join(root, 'Nodes', folder), { recursive: true })
+  await writeFile(
+    join(root, 'Proj.optix'),
+    `Project:
+  Name: Proj
+  GUID: 33333333-3333-3333-3333-333333333333
+  FormatVersion: 1
+  Nodes:
+  - File: Nodes/Proj.yaml
+ `,
+  )
+  await writeFile(
+    join(root, 'Nodes', 'Proj.yaml'),
+    `Name: Proj
+Type: ProjectFolder
+Children:
+- File: DataStores/DataStores.yaml
+- File: Loggers/Loggers.yaml
+ `,
+  )
+  const limit = limitState === 'none' ? '' : `      - Name: RecordLimit
+        Type: BaseDataVariableType
+        DataType: UInt32${limitState === 'default' ? '' : `\n        Value: ${limitState === 'zero' ? 0 : 10000}`}
+`
+  await writeFile(
+    join(root, 'Nodes', 'DataStores', 'DataStores.yaml'),
+    `Name: DataStores
+Type: DataStoresCategoryFolder
+Children:
+- Name: LineStore
+  Type: SQLiteStore
+  Children:
+  - Name: Tables
+    Type: BaseObjectType
+    Children:
+    - Name: SmtTrend
+      Type: SQLiteStoreTable
+      Children:
+${limit}      - Name: Columns
+        Type: BaseObjectType
+        Children:
+${timed ? `        - Name: Timestamp
+          Type: StoreColumn
+          DataType: UtcTime
+` : ''}        - Name: OEE
+          Type: StoreColumn
+          DataType: Float
+`,
+  )
+  await writeFile(
+    join(root, 'Nodes', 'Loggers', 'Loggers.yaml'),
+    `Name: Loggers
+Type: Folder
+Children:
+- Name: LineLogger
+  Type: DataLogger
+  Children:
+  - Name: Store
+    Type: NodePointer
+    DataType: NodeId
+    Value: "/Objects/Proj/DataStores/LineStore"
+ `,
+  )
+  return root
+}
+
+const loggingFindings = async (options) => {
+  const report = await validateProject(await projectInfo('Proj', await loggingFixture(options)))
+  return {
+    report,
+    hits: report.findings.filter((finding) => finding.code === 'OPTIX-DATA-02'),
+  }
+}
+
+test('a store table that logs with no record limit is named offline, and a limit of 0 is not a limit', async () => {
+  const none = await loggingFindings()
+  assert.equal(none.hits.length, 1, JSON.stringify(none.report.findings))
+  const [hit] = none.hits
+  assert.equal(hit.file, 'Nodes/DataStores/DataStores.yaml')
+  assert.equal(hit.path, 'Proj/DataStores/LineStore/Tables/SmtTrend')
+  assert.equal(hit.value, null, JSON.stringify(hit))
+  // The message quotes the warning the runtime writes at every boot, so the finding is recognisable
+  // from the log line an engineer has already seen.
+  assert.match(hit.message, /No record limit is set on 'SmtTrend'/u)
+  assert.match(hit.fix, /replaces its oldest rows/u)
+  assert.equal(hit.evidence.timeable, true)
+  assert.equal(hit.evidence.columns, 2)
+  // The logger that reads the store is not reported as a second fault.
+  assert.ok(!none.report.findings.some((finding) => String(finding.path).includes('Loggers')), JSON.stringify(none.report.findings))
+
+  // A real limit silences the rule.
+  const set = await loggingFindings({ limitState: 'set' })
+  assert.equal(set.hits.length, 0, JSON.stringify(set.hits))
+  assert.equal(set.report.ok, true, JSON.stringify(set.report.findings))
+
+  // An explicit 0 is the same fault, and says so in its own words.
+  const zero = await loggingFindings({ limitState: 'zero' })
+  assert.equal(zero.hits.length, 1, JSON.stringify(zero.hits))
+  assert.equal(zero.hits[0].value, 0)
+  assert.match(zero.hits[0].message, /RecordLimit 0/u)
+
+  // Studio writes a property as a child even when it holds its default, so a valueless child is
+  // still no limit - the shape a project copied or generated outside Studio carries.
+  const defaulted = await loggingFindings({ limitState: 'default' })
+  assert.equal(defaulted.hits.length, 1, JSON.stringify(defaulted.hits))
+  assert.equal(defaulted.hits[0].value, null)
+
+  // Without a time column the limit cannot replace anything, and the fix names that instead.
+  const untimed = await loggingFindings({ timed: false })
+  assert.equal(untimed.hits.length, 1)
+  assert.equal(untimed.hits[0].evidence.timeable, false)
+  assert.match(untimed.hits[0].fix, /no Timestamp or LocalTimestamp/u)
+  assert.match(untimed.hits[0].fix, /1 column\(s\)/u)
+})
+
 test('the write gate refuses an open Studio and unflushed bridge changes', async () => {
   const project = await info()
 

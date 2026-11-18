@@ -395,6 +395,7 @@ export async function validateProject(rootInfo, { planned = new Map(), typeCheck
 		const index = indexTree(tree, projectName);
 		checkBindings(index, { critical, warning, note });
 		checkViews(index, { warning });
+		checkLogging(index, { warning });
 	}
 	return {
 		project: projectName,
@@ -793,6 +794,46 @@ function checkViews(index, report) {
 		if (!record.children.some((child) => typeOf(child) === "ScaleLayout")) {
 			report.warning("VIEW-SCALE-01", `${record.file}: screen ${record.path} has no ScaleLayout child, so the runtime draws it at its design size and clips or letterboxes it on a different window`, { file: record.file, path: record.path, fix: "Add a ScaleLayout as the screen's first child and place the content inside it; a screen without one does not scale to the operator's window or panel size." });
 		}
+	}
+}
+
+/**
+ * OPTIX-DATA-02: a store table that logs with no record limit.
+ *
+ * Measured on this machine: a store and a logger authored through the bridge ship with no
+ * `RecordLimit`, and every session then opens with
+ * `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is set on 'SmtTrend', which may
+ * cause an out-of-memory issue on your device`. The limit is a property of the table
+ * (`Table.RecordLimit`, UInt32, inherited by every `*StoreTable`) and the store itself has no
+ * property for it, so this is read off the table. It is reported offline because the warning is
+ * only visible after the runtime has already been writing for weeks.
+ */
+function checkLogging(index, report) {
+	for (const record of index.records) {
+		const type = typeof record.type === "string" ? record.type : String(record.doc?.Supertype ?? "");
+		if (!/StoreTable$/u.test(type)) continue;
+		// Studio writes a property as a child even when it holds its default, so the child's value is
+		// the fact here: a RecordLimit child carrying 0 or no value at all is the same as none.
+		const limit = record.children.find((child) => bareName(child.name) === "RecordLimit");
+		const limitValue = limit === undefined ? Number.NaN : Number(limit.doc?.Value);
+		if (Number.isFinite(limitValue) && limitValue > 0) continue;
+		const columns = [];
+		for (const child of record.children) {
+			if (bareName(child.name) !== "Columns") continue;
+			for (const column of child.children) columns.push(column.name);
+		}
+		// The limit only replaces old rows once the table can order them, which is why the column list
+		// is part of the evidence rather than a footnote.
+		const timeable = columns.some((name) => name === "Timestamp" || name === "LocalTimestamp");
+		report.warning("OPTIX-DATA-02", `${record.file}: table ${record.path} logs with ${Number.isFinite(limitValue) && limitValue === 0 ? "RecordLimit 0" : "no RecordLimit"}, so it grows for the life of the device and the store warns at every boot ("No record limit is set on '${record.name}', which may cause an out-of-memory issue on your device")`, {
+			file: record.file,
+			path: record.path,
+			value: Number.isFinite(limitValue) ? limitValue : null,
+			evidence: { type, columns: columns.length, timeable },
+			fix: timeable
+				? "Set RecordLimit (UInt32) on the table to the number of rows the trend actually needs on screen; the table then replaces its oldest rows instead of growing."
+				: `Set RecordLimit (UInt32) on the table, and note the limit only replaces old rows once the table can order them: ${record.name} has ${columns.length} column(s) and no Timestamp or LocalTimestamp among them.`
+		});
 	}
 }
 

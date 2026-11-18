@@ -16,7 +16,15 @@ import {
 	stack,
 	widthClass
 } from "../packages/optix/lib/layout.js";
-import { compileBlueprint, kitCatalogue, kitTheme } from "../packages/optix/lib/kit.js";
+import {
+	MAX_STATIONS,
+	MAX_TABLE_COLUMNS,
+	MAX_TABLE_ROWS,
+	MIN_ROW_BAND,
+	compileBlueprint,
+	kitCatalogue,
+	kitTheme
+} from "../packages/optix/lib/kit.js";
 
 /** A rectangle inside another, for the placement assertions. */
 function inside(outer, inner) {
@@ -159,4 +167,173 @@ test("kitCatalogue describes the components and the grid the kit places into", (
 	assert.equal(catalogue.grid.columns, 12);
 	assert.ok(catalogue.tokens.includes("AccentColor"));
 	assert.ok(catalogue.type_scale.body >= 14);
+});
+
+const machine = (name) => ({ name, on: true, values: [{ label: "Head speed", value: 68000, unit: "cph" }, { label: "Feeder", value: 12, unit: "active" }] });
+const machines = (count) => Array.from({ length: count }, (_value, index) => machine(`Machine ${index + 1}`));
+const cardSpec = (title, rows) => ({ title, rows });
+const throughput = cardSpec("Throughput", [{ label: "Units / hour", value: 46800 }, { label: "Total units", value: 21490 }]);
+const lineState = cardSpec("Line state", [{ label: "Running", kind: "lamp", on: true }, { label: "Faults", kind: "lamp", on: false }]);
+const cycleChart = { title: "Station cycle", values: [42, 51, 47, 60, 55], labels: ["1", "2", "3", "4", "5"], unit: "s" };
+const alarmTable = (rows, cols) => ({
+	title: "Alarm summary",
+	columns: ["Time", "Station", "Text", "Severity", "State"].slice(0, cols),
+	widths: [2, 2, 4, 1.5, 1.5].slice(0, cols),
+	rows: Array.from({ length: rows }, () => ["14:52:10", "Mounter 2", "Feeder empty", "High", "Active"].slice(0, cols))
+});
+
+/** The box each station tile was given, keyed `Row1/Station1`. */
+function tileBoxes(result) {
+	const boxes = new Map();
+	for (const op of result.ops) {
+		if (op.op !== "set_property" || (op.name !== "Width" && op.name !== "Height")) continue;
+		const match = /\/(Row\d+)\/(Station\d+)$/.exec(op.path ?? "");
+		if (!match) continue;
+		const key = `${match[1]}/${match[2]}`;
+		const box = boxes.get(key) ?? { width: undefined, height: undefined };
+		box[op.name === "Width" ? "width" : "height"] = Number(op.value);
+		boxes.set(key, box);
+	}
+	return boxes;
+}
+
+test("the station pattern lays a balanced wall: every row holds the same tile width", () => {
+	// Six machines on a 608px body used to be five across with one stranded under them, and the short
+	// last row rendered its tiles wider than the row above. The split is now chosen by the tile's aspect.
+	for (const [count, perRow] of [[6, [3, 3]], [5, [2, 3]], [4, [2, 2]], [2, [2]]]) {
+		const result = compileBlueprint({ title: "Station health", pattern: "station", stations: machines(count) }, { screen: "UI/Screens/Stations", width: 1280, height: 800 });
+		const boxes = tileBoxes(result);
+		assert.equal(boxes.size, count, `tiles for ${count} machines`);
+		const first = boxes.get("Row1/Station1");
+		const rows = new Map();
+		for (const [key, box] of boxes) {
+			const row = key.slice(0, key.lastIndexOf("/"));
+			rows.set(row, (rows.get(row) ?? 0) + 1);
+			assert.equal(box.width, first.width, `tile ${key} is ${box.width} wide against ${first.width}`);
+			assert.equal(box.height, first.height, `tile ${key} is ${box.height} tall against ${first.height}`);
+			assert.ok(box.width >= 200, `tile ${box.width} wide cannot hold a name and a number on one line`);
+			assert.ok(box.height >= 110, `tile ${box.height} tall cannot hold a name row and two value rows`);
+		}
+		assert.deepEqual([...rows.values()].sort(), perRow, `${count} machines split into ${[...rows].join(", ")}`);
+	}
+	// The same wall on the demo's real host box, which is where the ragged row was measured.
+	const demo = compileBlueprint({ title: "Station health", pattern: "station", stations: machines(6) }, { screen: "UI/Screens/Stations", width: 1060, height: 706 });
+	const boxes = tileBoxes(demo);
+	assert.equal(boxes.get("Row1/Station1").width, boxes.get("Row2/Station4").width);
+	assert.deepEqual([...new Set([...boxes.values()].map((box) => `${box.width}x${box.height}`))], ["324x247"]);
+});
+
+test("the station pattern caps the wall, and the densest natural screen fits the shipped ceiling", () => {
+	const six = compileBlueprint({ title: "Station health", pattern: "station", stations: machines(6) }, { screen: "UI/Screens/Stations", width: 1280, height: 800 });
+	const twelve = compileBlueprint({ title: "Station health", pattern: "station", stations: machines(12) }, { screen: "UI/Screens/Stations", width: 1280, height: 800 });
+	// The cap is a slice, the kit's established behaviour for a pattern's content (cards, messages): a
+	// twelve-machine request compiles the six-tile wall it can actually place.
+	assert.equal(twelve.ops.length, six.ops.length, "a capped request must not emit a partial wall");
+	assert.equal(tileBoxes(twelve).size, MAX_STATIONS);
+	// Measured 2026-11-17: one tile is 87-88 bridge operations, so the wall is the kit's densest pattern.
+	// 700 is the ceiling `optix_screen` ships with (packages/optix/lib/index.js:1869) and a screen cannot
+	// be split across calls, so a station wall carrying the line's KPI strip has to fit under it.
+	const withKpis = compileBlueprint({ title: "Station health", pattern: "station", stations: machines(6), kpis: [{ label: "OEE", value: 82, unit: "%" }, { label: "Faults", value: 0 }] }, { screen: "UI/Screens/Stations", width: 1280, height: 800 });
+	assert.ok(withKpis.ops.length <= 700, `station wall plus a KPI strip is ${withKpis.ops.length} operations`);
+	assert.equal(withKpis.counts.operations, withKpis.ops.length);
+});
+
+test("the station pattern refuses a body that cannot hold the wall and names what to drop", () => {
+	assert.throws(() => compileBlueprint({
+		title: "Station health",
+		pattern: "station",
+		stations: machines(6),
+		kpis: [{ label: "OEE", value: 82, unit: "%" }],
+		messages: ["Feeder empty on Mounter 2", "Zone 3 over limit"],
+		status: { text: "Running", ok: true }
+	}, { screen: "UI/Screens/Stations", width: 1060, height: 706 }), (error) => error instanceof LayoutError
+		&& error.code === "layout_overflow"
+		&& /200px across and 110px down/u.test(error.message)
+		&& /drop the KPI strip or the message feed/u.test(error.message));
+});
+
+test("the table pattern paints a banded table and refuses rows that cannot hold a 30px band", () => {
+	const result = compileBlueprint({ title: "Alarm summary", pattern: "table", table: alarmTable(6, 5) }, { screen: "UI/Screens/Alarms", width: 1280, height: 800 });
+	const created = result.ops.filter((op) => op.op === "create_widget").map((op) => op.name);
+	for (const required of ["TableArea", "Table1", "HeaderBand", "Row1", "Row6"]) {
+		assert.equal(created.includes(required), true, `missing ${required}`);
+	}
+	// A layout container paints nothing, so each band is a Rectangle and the cells live in a RowLayout
+	// inside it. The header band carries the alternate fill so the first line reads as a heading.
+	assert.equal(result.ops.some((op) => op.op === "set_property" && op.path === "UI/Screens/Alarms/TableArea/Table1/Body/HeaderBand/Cells" && op.name === "Height"), true);
+	assert.equal(result.ops.some((op) => op.op === "create_widget" && op.name === "Row1Cell1"), true);
+	// Seven columns and seven rows are capped to what a 1280px body can hold a legible cell in.
+	const capped = compileBlueprint({ title: "Alarm summary", pattern: "table", table: alarmTable(9, 9) }, { screen: "UI/Screens/Alarms", width: 1280, height: 800 });
+	assert.equal(capped.ops.filter((op) => op.op === "create_widget" && /^Row\d+Cell\d+$/.test(op.name)).length, MAX_TABLE_ROWS * MAX_TABLE_COLUMNS);
+	// TableArea keeps its numeric box and sits at the top-left of it: Stretch on an axis discards the size
+	// written on it, so the column that owns the body band is aligned 0, not 3.
+	const area = result.ops.find((op) => op.op === "set_property" && op.path === "UI/Screens/Alarms/TableArea" && op.name === "VerticalAlignment");
+	assert.equal(area?.value, "0", "TableArea must keep the band it was given");
+	assert.throws(() => compileBlueprint({
+		title: "Alarm summary",
+		pattern: "table",
+		table: alarmTable(6, 5),
+		kpis: [{ label: "Active", value: 3 }],
+		messages: ["Feeder empty", "Zone over limit"],
+		status: { text: "Running", ok: true }
+	}, { screen: "UI/Screens/Alarms", width: 1060, height: 706 }), (error) => error.code === "layout_overflow" && /table row needs 30px/u.test(error.message));
+});
+
+test("a faceplate that cannot hold its detail says so in faceplate terms", () => {
+	// The old message read "a row of 133px is under the 140px floor in a 440px area", which sends the
+	// reader looking for a constant instead of dropping a card.
+	assert.throws(() => compileBlueprint({ title: "Mounter 1", pattern: "faceplate", equipment: machine("Mounter 1"), cards: [throughput, lineState], chart: cycleChart }, { screen: "UI/Screens/Faceplate", width: 1060, height: 706 }), (error) => error instanceof LayoutError
+		&& error.code === "layout_overflow"
+		&& /a faceplate leaves/u.test(error.message)
+		&& /under its 148px equipment band/u.test(error.message));
+	const built = compileBlueprint({ title: "Mounter 1", pattern: "faceplate", equipment: machine("Mounter 1"), cards: [throughput] }, { screen: "UI/Screens/Faceplate", width: 1060, height: 706 });
+	const created = built.ops.filter((op) => op.op === "create_widget").map((op) => op.name);
+	for (const required of ["Body", "Equipment", "DataCard1", "StationName"]) {
+		assert.equal(created.includes(required), true, `missing ${required}`);
+	}
+	// The equipment band keeps the 148px it was promised rather than stretching to fill the column.
+	const equipment = built.ops.filter((op) => op.op === "set_property" && op.path === "UI/Screens/Faceplate/Body/Equipment");
+	assert.equal(equipment.some((op) => op.name === "Height" && Number(op.value) > 100 && Number(op.value) !== -1), true, "the equipment band must keep its numeric height");
+});
+
+test("a card's rows fill the band the geometry gave the card instead of stacking at its top", () => {
+	const heights = (blueprint, options) => compileBlueprint(blueprint, options)
+		.ops.filter((op) => op.op === "set_property" && /\/DataCard1\/Body\/Row\d+$/u.test(op.path ?? "") && op.name === "Height")
+		.map((op) => Number(op.value));
+	// Three 26px rows inside a 247px surface paint their text in the top 97px, which the render check
+	// measures as coverage 0.03-0.27 against a 0.30 minimum. A fill row is the honest distribution.
+	const two = heights({ title: "Line status", pattern: "overview", cards: [throughput] }, { screen: "UI/Screens/Home", width: 1280, height: 800 });
+	assert.deepEqual(two, [-1, -1], `card rows ${two}`);
+	const three = heights({ title: "Line status", pattern: "overview", cards: [cardSpec("Throughput", [{ label: "a", value: 1 }, { label: "b", value: 2 }, { label: "c", value: 3 }])] }, { screen: "UI/Screens/Home", width: 1280, height: 800 });
+	assert.deepEqual(three, [-1, -1, -1], `card rows ${three}`);
+	// Past three rows an equal band would not hold the row's own 22px label, so the number is kept.
+	const five = heights({ title: "Line status", pattern: "overview", cards: [cardSpec("Throughput", Array.from({ length: 5 }, (_v, index) => ({ label: `row ${index + 1}`, value: index })))] }, { screen: "UI/Screens/Home", width: 1280, height: 800 });
+	assert.equal(five.length, 5);
+	assert.ok(five.every((height) => height >= MIN_ROW_BAND), `card rows ${five}`);
+	assert.ok(five.every((height) => height !== -1), `a card with ${five.length} rows must keep a numeric band`);
+});
+
+test("a pattern that needs its own content refuses instead of drawing an empty screen", () => {
+	for (const blueprint of [
+		{ title: "Station health", pattern: "station" },
+		{ title: "Alarm summary", pattern: "table" },
+		{ title: "Mounter 1", pattern: "faceplate" }
+	]) {
+		assert.throws(() => compileBlueprint(blueprint, { screen: "UI/Screens/Probe", width: 1280, height: 800 }), (error) => error instanceof LayoutError && error.code === "blueprint_pattern_content", `${blueprint.pattern} with no content`);
+	}
+	assert.throws(() => compileBlueprint({ title: "Alarm summary", pattern: "table", table: { title: "t", columns: [], rows: [] } }, { screen: "UI/Screens/Probe", width: 1280, height: 800 }), (error) => error.code === "table_no_columns");
+});
+
+test("the catalogue names the patterns and the components the kit compiles", () => {
+	const catalogue = kitCatalogue("modern");
+	for (const pattern of ["overview", "split", "station", "table", "faceplate", "blank"]) {
+		assert.equal(catalogue.patterns.includes(pattern), true, `pattern ${pattern}`);
+	}
+	for (const component of ["headerBand", "kpiTile", "card", "stationTile", "tableCard", "barChart", "messageFeed", "statusStrip"]) {
+		assert.equal(catalogue.components.some((entry) => entry.name === component), true, `component ${component}`);
+	}
+	const tile = catalogue.components.find((entry) => entry.name === "stationTile");
+	assert.ok(/one tile width across every row/u.test(tile.description), `stationTile description: ${tile.description}`);
+	const card = catalogue.components.find((entry) => entry.name === "card");
+	assert.ok(/fill so they split the card's height/u.test(card.description), `card description: ${card.description}`);
 });

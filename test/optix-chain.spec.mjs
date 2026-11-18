@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test } from 'node:test'
-import { chainReport, ocrProbe, tesseractInstallCommand, TESSERACT_PACKAGE_ID } from '../packages/optix/lib/chain.js'
+import { BRIDGE_NODE_FILE, BRIDGE_SOURCE_FILE, chainReport, ocrProbe, setupChecklist, tesseractInstallCommand, TESSERACT_PACKAGE_ID } from '../packages/optix/lib/chain.js'
 
 /**
  * The Optix preview chain is four external preconditions the plugin neither starts nor
@@ -310,4 +310,126 @@ test('a chain probe outside a tool call still answers', async () => {
     assert.equal(chain.emulator.listening, false)
     assert.match(chain.next, /optix_emulator with action start/)
   })
+})
+
+/** A project folder carrying, or not carrying, the two halves the bridge needs to be startable. */
+const projectFolder = async ({ bridgeSource = true, bridgeNode = true } = {}) => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-optix-setup-'))
+  await mkdir(join(root, 'ProjectFiles', 'NetSolution'), { recursive: true })
+  await mkdir(join(root, 'Nodes', 'NetLogic'), { recursive: true })
+  if (bridgeSource) await writeFile(join(root, BRIDGE_SOURCE_FILE), 'class StudioMCPBridge {\n}\n')
+  if (bridgeNode) await writeFile(join(root, BRIDGE_NODE_FILE), 'Name: NetLogic\nType: NetLogicCategoryFolder\nChildren:\n- Name: StudioMCPBridge\n  Type: NetLogic\n')
+  return root
+}
+
+/** A chain shaped like `chainReport`'s answer, with only the legs a setup step reads. */
+const fakeChain = (overrides = {}) => ({
+  preview: true,
+  browser: { mode: 'attach', port: 9222, listening: true },
+  emulator: { url: 'http://127.0.0.1:8081/', listening: true },
+  preview_tabs: 1,
+  ocr: { configured: false },
+  ...overrides,
+})
+
+const setupSettings = { previewUrl: 'http://127.0.0.1:8081/' }
+
+/** Read one step out of a checklist. */
+const stepOf = (setup, name) => setup.steps.find((entry) => entry.step === name)
+
+test('the setup checklist puts the step no tool can take ahead of the one a tool can take', async () => {
+  const root = await projectFolder()
+  try {
+    const setup = await setupChecklist(setupSettings, fakeChain({ emulator: { url: 'http://127.0.0.1:8081/', listening: false } }), {
+      name: 'Line',
+      root,
+      studio_open: false,
+      bridge_answers: false,
+      pending_changes: 0,
+      build_state: { state: 'built' },
+    })
+    assert.equal(setup.steps[0].step, 'project')
+    // The licence is the one step nothing outside Studio can see, so it must never lead the list.
+    assert.equal(setup.steps.at(-1).step, 'licence')
+    for (const entry of setup.steps) {
+      assert.ok(['tool', 'human'].includes(entry.owner), JSON.stringify(entry))
+      assert.ok(typeof entry.action === 'string' && entry.action.length > 20, `no action on ${entry.step}`)
+    }
+    const owners = Object.fromEntries(setup.steps.map((entry) => [entry.step, entry.owner]))
+    assert.deepEqual(
+      { project: owners.project, bridge_in_project: owners.bridge_in_project, save: owners.save, build: owners.build, runtime: owners.runtime, studio_open: owners.studio_open, bridge_started: owners.bridge_started, licence: owners.licence },
+      { project: 'tool', bridge_in_project: 'tool', save: 'tool', build: 'tool', runtime: 'tool', studio_open: 'human', bridge_started: 'human', licence: 'human' },
+    )
+    assert.equal(stepOf(setup, 'bridge_in_project').done, true)
+    assert.equal(stepOf(setup, 'save').done, true)
+    assert.equal(stepOf(setup, 'build').done, true, JSON.stringify(stepOf(setup, 'build')))
+    assert.equal(stepOf(setup, 'runtime').done, false)
+    // Studio being closed is the reason the bridge answers nothing, so it is the first thing named.
+    assert.equal(setup.ready, false)
+    assert.match(setup.next, /^studio_open \(human\)/u)
+    assert.match(setup.next, /No tool can start Studio/u)
+    assert.equal(setup.human_open, 2, JSON.stringify(setup.steps.filter((entry) => entry.owner === 'human' && entry.done === false)))
+    assert.deepEqual(setup.unobservable, ['licence'])
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('a project without the bridge names the missing half instead of offering StartBridge', async () => {
+  const root = await projectFolder({ bridgeSource: false, bridgeNode: false })
+  try {
+    const setup = await setupChecklist(setupSettings, fakeChain(), { name: 'Line', root, studio_open: true, bridge_answers: false, pending_changes: 0, build_state: { state: 'built' } })
+    const armed = stepOf(setup, 'bridge_in_project')
+    assert.equal(armed.done, false)
+    assert.match(armed.action, /optix_bridge_arm/u)
+    assert.match(armed.detail, /no ProjectFiles\/NetSolution\/StudioMCPBridge\.cs/u)
+    assert.match(armed.detail, /no StudioMCPBridge NetLogic node in Nodes\/NetLogic\/NetLogic\.yaml/u)
+    // Starting a node that does not exist is the trap this step exists to prevent.
+    assert.match(stepOf(setup, 'bridge_started').detail, /does not exist yet/u)
+    assert.match(setup.next, /^bridge_in_project \(tool\)/u)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('every observable step done is a ready checklist, and the unobservable licence step never blocks it', async () => {
+  const root = await projectFolder()
+  try {
+    const setup = await setupChecklist(setupSettings, fakeChain(), { name: 'Line', root, studio_open: true, bridge_answers: true, pending_changes: 0, build_state: { state: 'built' } })
+    assert.equal(setup.ready, true, JSON.stringify(setup.steps.filter((entry) => entry.done === false)))
+    assert.equal(setup.next, undefined)
+    assert.equal(setup.human_open, 0)
+    assert.deepEqual(setup.unobservable, ['licence'])
+    // A stale build and an unflushed save are both reported as open, with the call that clears them.
+    const stale = await setupChecklist(setupSettings, fakeChain(), { name: 'Line', root, studio_open: true, bridge_answers: true, pending_changes: 3, build_state: { state: 'stale' } })
+    assert.equal(stepOf(stale, 'save').done, false)
+    assert.match(stepOf(stale, 'save').action, /optix_save/u)
+    assert.equal(stepOf(stale, 'build').done, false)
+    assert.match(stepOf(stale, 'build').detail, /stale/u)
+    assert.match(stale.next, /^save \(tool\)/u)
+    // A step whose state nothing outside Studio reports is null, not a guess.
+    const unknown = await setupChecklist(setupSettings, fakeChain(), { name: 'Line', root, studio_open: true, bridge_answers: true, pending_changes: 0 })
+    assert.equal(stepOf(unknown, 'build').done, null)
+    assert.deepEqual(unknown.unobservable, ['build', 'licence'])
+    assert.equal(unknown.ready, true)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('the ocr step appears only when OCR is configured, and names the install rather than a reinstall', async () => {
+  const root = await projectFolder()
+  try {
+    const bare = await setupChecklist(setupSettings, fakeChain(), { name: 'Line', root, studio_open: true, bridge_answers: true, pending_changes: 0, build_state: { state: 'built' } })
+    assert.equal(stepOf(bare, 'ocr'), undefined)
+    const broken = await setupChecklist(setupSettings, fakeChain({ ocr: { configured: true, installed: false, traineddata: false, language: 'eng', tessdata: 'C:/Tesseract-OCR/tessdata' } }), { name: 'Line', root, studio_open: true, bridge_answers: true, pending_changes: 0, build_state: { state: 'built' } })
+    const ocr = stepOf(broken, 'ocr')
+    assert.ok(ocr !== undefined)
+    assert.equal(ocr.done, false)
+    assert.equal(ocr.owner, 'tool')
+    assert.match(ocr.action, /optix_ocr_setup with install true/u)
+    assert.match(ocr.detail, /language eng/u)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

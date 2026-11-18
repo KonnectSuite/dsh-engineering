@@ -173,6 +173,60 @@ was simply gone, and every file under `Nodes/` came back as it was.
 - Colours are packed ARGB (`0xAARRGGBB`). A colour written without the `0xFF` alpha byte is fully
   transparent — that is why a lamp or a pill can be "set" and invisible.
 
+## What the kit will draw, and what it costs (measured 2026-11-17)
+
+A blueprint is compiled into one batch, and a screen **cannot be split across calls** — the bridge only
+resolves a parent it created in the same batch — so the density the kit draws is bounded by
+`maxScreenOps` (700), not by taste. The measured marginal cost of each component is what makes the caps
+look the way they do:
+
+| Composition | Operations | Nodes |
+| --- | --- | --- |
+| one station tile | 152 | 20 |
+| each further station tile | **87-88** | +13 |
+| six station tiles | 588 | 76 |
+| six tiles + the line's KPI strip | 639 | 83 |
+| six tiles + two KPIs | 672 | 87 |
+| a 1x3 table | 161 | 21 |
+| each further table row at 3 columns | +36 | +6 |
+| a 6x3 table | 341 | 45 |
+| a 6x5 table | 441 | 57 |
+| a 6x5 table + KPI + feed + status strip | 588 | 79 |
+| a faceplate with one card | 219 | 29 |
+| a faceplate with two cards | 294 | 39 |
+| a faceplate with a card and a chart | 390 | 52 |
+| `split` at the demo host box 1060×706 | 379 | 51 |
+| a fully loaded `overview` at 1920×1080 | **1011** | 135 |
+
+The caps follow from that table: `MAX_STATIONS` 6 (eight tiles would be 768), `MAX_TABLE_COLUMNS` 5 ×
+`MAX_TABLE_ROWS` 6, `MAX_MESSAGES` 8, 3 cards, 4 KPIs, 4 navigation buttons. A blueprint that asks for
+more is **sliced to the cap silently** — twelve stations compile to exactly the six-tile batch — which is
+the kit's established behaviour for cards and messages but is still a gap worth naming: `compileBlueprint`
+reports `counts`, never "four were dropped".
+
+Three layout decisions that came out of measuring, not from help:
+
+- **A station wall is laid out for the tile's shape, not the row's width.** Filling the width first turns
+  six machines into 5 across plus 1 stranded, and the short last row renders its single tile far wider
+  than the row above it. The kit now searches every row count and keeps the one whose tile is closest to
+  1.4:1 (the aspect a name row over two value rows reads well at), gated by 200 px across and 110 px down:
+  six machines become **3+3 at one tile size** at every canvas (397×294 at 1280×800, 324×247 at 1060×706,
+  610×434 at 1920×1080). Each tile carries the box its row was given, so the wall keeps one tile width
+  across every row.
+- **Card rows fill.** `ContentVerticalAlignment` has no space-between member (0 Top / 1 Centre / 2 Bottom),
+  so a card's rows are distributed by `Height -1` with `VerticalAlignment 3` while the band each row gets
+  is at least `MIN_ROW_BAND` 26 px; past three rows, or in a band too short to fill, the rows keep 26 px
+  and the card scrolls its own empty space instead of starving its labels.
+- **A table's body keeps its numeric box.** `TableArea` is a `ColumnLayout` at `VerticalAlignment 0`, not a
+  stretch: Stretch *is* the size on that axis, so writing `Height 608` with alignment 3 discards the 608 —
+  the exact measurement the container rules were written from.
+
+One geometric limit is not a regression but a fact of the canvas: a `overview` asking for three cards, a
+chart, two KPIs, a feed and a status strip at 1280×800 is refused —
+`layout_overflow a row of 96px is under the 140px floor in a 327px area` — because the KPI strip, the feed
+and the status strip take 285 of the 608 px content band before the cards are asked to stack three deep.
+Drop a KPI or a card, or give the screen more height.
+
 ## The authoring order that avoids rework
 
 1. `optix_screen` or `optix_ui action="screen"` for a whole screen from a blueprint (a container tree that

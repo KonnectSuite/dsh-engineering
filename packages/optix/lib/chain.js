@@ -1,5 +1,5 @@
 /** Probe the preview, emulator and OCR chain without a bridge or a harness import. @module dsh-tool-ft-optix/chain */
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 /** Whether two URLs address the same preview page, the rule the preview tools enforce on tabs. */
 export function samePreviewTarget(left, right) {
@@ -273,4 +273,84 @@ export async function chainReport(config, signal) {
 	chain.next = chainBlocker(config, chain);
 	return chain;
 }
+//#region setup
+/** The source file the bridge ships as, relative to the project folder. */
+export const BRIDGE_SOURCE_FILE = "ProjectFiles/NetSolution/StudioMCPBridge.cs";
+/** The chapter that has to name the bridge node before StartBridge is reachable at all. */
+export const BRIDGE_NODE_FILE = "Nodes/NetLogic/NetLogic.yaml";
+/** The NetLogic node name the bridge needs, because Optix binds a node to its class by name. */
+export const BRIDGE_NODE_NAME = "StudioMCPBridge";
+/**
+ * The ordered steps that make a project authorable and readable, each one owned by a tool or by the engineer.
+ *
+ * The bridge leg is the only leg with a step no tool can take - right-click StudioMCPBridge then
+ * StartBridge, and Studio's own build for a class Studio created - so a session that reads only the
+ * tool list keeps retrying a call that cannot land until the human step is named. This is that list,
+ * built from what is already known about the machine: the project on disk, whether it carries a
+ * bridge, whether Studio has it open, whether the bridge answers, and what the preview chain found.
+ * A step nothing outside Studio can observe reports `done: null` rather than a guess.
+ * @param config - Resolved deployment settings.
+ * @param chain - The probed chain from `chainReport`.
+ * @param project - `{ name, root, studio_open, bridge_answers, pending_changes, build_state }` for the project in play; an empty object reports only the steps that need no project.
+ * @returns Ordered `steps`, the `ready` verdict, the count of open human steps, and `next`.
+ */
+export async function setupChecklist(config, chain, project = {}) {
+	const name = typeof project.name === "string" && project.name !== "" ? project.name : "the project";
+	const root = typeof project.root === "string" ? project.root : "";
+	const steps = [];
+	const add = (step, owner, done, action, detail) => {
+		steps.push({
+			step,
+			owner,
+			done,
+			action,
+			...(detail === undefined || detail === "" ? {} : { detail })
+		});
+	};
+	add("project", "tool", root !== "", "optix_template with template arya-optix-app (or arya-optix-ipc / arya-optix-panel), destination and the operator's real width and height scaffolds a project folder of its own; Studio's New Project is the hand route.", root === "" ? "No project folder was resolved, so every step below it is reported as unknown." : root);
+	// The bridge is two files: the class under NetSolution and the node Studio instantiates it as.
+	// A hand-built project usually holds neither, and StartBridge is unreachable without the node.
+	let bridgeSource = false;
+	let bridgeNode = false;
+	if (root !== "") {
+		try {
+			await access(join(root, BRIDGE_SOURCE_FILE));
+			bridgeSource = true;
+		} catch {
+			bridgeSource = false;
+		}
+		try {
+			bridgeNode = new RegExp(`Name:\\s*${BRIDGE_NODE_NAME}\\b`, "u").test(await readFile(join(root, BRIDGE_NODE_FILE), "utf8"));
+		} catch {
+			bridgeNode = false;
+		}
+	}
+	const missing = [
+		bridgeSource ? "" : `no ${BRIDGE_SOURCE_FILE}`,
+		bridgeNode ? "" : `no ${BRIDGE_NODE_NAME} NetLogic node in ${BRIDGE_NODE_FILE}`,
+	].filter((entry) => entry !== "").join(" and ");
+	add("bridge_in_project", "tool", bridgeSource && bridgeNode, `optix_bridge_arm with project ${root === "" ? "<the project folder>" : root} and confirm false reads the plan, confirm true writes the bridge and the StartBridge node after copying every file it touches into one backup folder.`, missing);
+	add("studio_open", "human", root === "" ? null : project.studio_open === true, `Open FactoryTalk Optix Studio and open ${name}.optix. No tool can start Studio, open a project in it, or activate a licence.`);
+	add("bridge_started", "human", project.bridge_answers === true, "In Studio's project tree right-click StudioMCPBridge and choose StartBridge, then call optix_status again. No tool can run StartBridge.", bridgeNode ? "" : "The node does not exist yet, so there is nothing to start: arm the bridge first.");
+	add("save", "tool", Number.isFinite(project.pending_changes) ? project.pending_changes === 0 : null, `optix_save with project ${root === "" ? "<the project folder>" : root} raises the Studio window and sends Ctrl+S until a file under Nodes/ or ProjectFiles/NetSolution/bin is newer than it was. Only Studio saves the design.`);
+	const build = project.build_state;
+	add("build", "tool", build === undefined || build === null || !Object.hasOwn(build, "state") ? null : build.state === "built", "optix_build with action build compiles ProjectFiles/NetSolution outside Studio - stop the runtime first with optix_emulator action stop, or the build fails because bin/<Project>.dll is locked. Studio's own Ctrl+Shift+B is the route while Studio holds the project open.", build === undefined || build === null || !Object.hasOwn(build, "state") ? "" : `bin/${name}.dll against the newest source: ${build.state}.`);
+	add("runtime", "tool", chain.emulator.listening, `optix_emulator with action start (project ${root === "" ? "<the project folder>" : root}) finds FTOptixRuntime.exe under the Studio install, loads ${name}.optix and reports started only once ${config.previewUrl} answers. The runtime serves the project as saved, so a bridge change needs the save first.`);
+	add("preview_tools", "human", chain.preview, "Set preview to true in the Optix row's plugin configuration. The screenshot, preview, render-check and OCR tools are only registered when it is, and no tool can edit its own row.");
+	add("browser", "human", chain.browser.mode === "launch" ? chain.browser.launchable !== false : chain.browser.listening, chain.browser.mode === "launch" ? "Install Chrome or Edge where the plugin looks, or set browserPath to the browser executable." : `Start a Chromium-family browser with --remote-debugging-port=${chain.browser.port} and open ${config.previewUrl} in it, or set browser to launch so the plugin starts its own.`);
+	if (chain.ocr.configured) {
+		add("ocr", "tool", chain.ocr.installed === true && chain.ocr.traineddata === true, "optix_ocr_setup with install true installs Tesseract through the Windows package manager; when the executable is present but the language data is not, point ocrTessdataDirectory at the folder holding the .traineddata file.", `language ${chain.ocr.language}, data searched in ${chain.ocr.tessdata}`);
+	}
+	// Kept last on purpose: it is the one step that is never observable, so it must not lead the list.
+	add("licence", "human", null, "Activate or sign in to the FactoryTalk licence in Studio. Nothing outside Studio can tell whether this is done, so this step is never reported as complete.");
+	const blocked = steps.find((entry) => entry.done === false);
+	return {
+		steps,
+		ready: blocked === undefined,
+		human_open: steps.filter((entry) => entry.owner === "human" && entry.done === false).length,
+		unobservable: steps.filter((entry) => entry.done === null).map((entry) => entry.step),
+		...(blocked === undefined ? {} : { next: `${blocked.step} (${blocked.owner}): ${blocked.action}` })
+	};
+}
+//#endregion setup
 //# sourceMappingURL=chain.js.map

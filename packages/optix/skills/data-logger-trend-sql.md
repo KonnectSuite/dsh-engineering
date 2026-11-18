@@ -26,6 +26,12 @@ runtime session logs `WARNING (urn:FTOptix:SQLiteStore) [code=1c] Root/Objects/<
 No record limit is set on 'SmtTrend', which may cause an out-of-memory issue on your device.` The limit lives
 on the **table** (`Table.RecordLimit`, `UInt32`), not on the store, and `SQLiteStore` has no property for it.
 
+`optix_project action check` names it offline as **OPTIX-DATA-02** before the runtime has been writing for
+weeks: any `*StoreTable` chapter node whose `RecordLimit` is absent **or 0** (Studio writes a property child
+even at its default, so a child with no `Value` is not a limit either). The finding names the table, its
+column count, and whether the table can order its own rows — the limit only replaces old rows once a
+`Timestamp` or `LocalTimestamp` column exists.
+
 ## 2. The logger (two silences)
 
 ```

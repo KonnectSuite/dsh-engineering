@@ -2,6 +2,54 @@
 
 ### Added
 
+- **The screen kit draws four more kinds of screen, and its density is now measured rather than guessed.**
+  `optix_ui action:"screen"` and `optix_screen` took two patterns (`overview`, `blank`); they now take six:
+  **`station`** (the machine wall an operator scans for a red lamp), **`table`** (row-per-thing — alarms,
+  units, recipes, the shift log), **`faceplate`** (one piece of equipment with its detail under it) and
+  **`split`** (the numbers beside the picture of them). A pattern given no content of its own is refused
+  (`blueprint_pattern_content`) instead of answered as an empty screen. The caps are the batch, not the eye:
+  a screen is compiled in one call because the bridge only resolves a parent it created in the same batch, so
+  it cannot be split across calls, and `maxScreenOps` went **400 → 700** after measuring that 400 refused a
+  four-tile station wall at 414. Measured on 1.8.1.27 (`packages/optix/lib/kit.js`): one station tile is
+  **87-88 operations**, six tiles 588, six tiles plus the KPI strip every line screen carries 639, a 6x5
+  table with a KPI, a feed and a status strip 588, a faceplate with a chart 390, and a fully loaded
+  `overview` on a 1920x1080 canvas 1011 — refused, with the component to drop named. So `MAX_STATIONS` is
+  **6** (eight tiles would be 768), `MAX_TABLE_COLUMNS` 5 x `MAX_TABLE_ROWS` 6, `MAX_MESSAGES` 8.
+  `test/optix-kit.spec.mjs` grew eight tests (19 total) that record the counts instead of asserting a shape.
+- **A station wall is laid out for the tile's shape, not the row's width.** Filling the width first made six
+  machines 5 across plus 1 stranded, and the short last row rendered its single tile far wider than the row
+  above it. The kit now searches every row count and keeps the tile closest to **1.4:1** — the aspect a name
+  row over two value rows reads well at — gated by 200 px across and 110 px down, and each tile carries the
+  box its row was given. Six machines are **3+3 at one tile size** at every canvas measured: 397x294 at
+  1280x800, 324x247 at the demo's 1060x706 host box, 610x434 at 1920x1080. A wall that cannot fit is refused
+  with both constraints and what to drop named: `6 station(s) will not fit a 1012x418px body: a station tile
+  needs 200px across and 110px down, and this body holds 5 tile(s) per row with no row left 110px tall.`
+- **Card rows now fill their card.** `ContentVerticalAlignment` has no space-between member (0 Top / 1 Centre /
+  2 Bottom), so a card's rows are distributed by `Height -1` with `VerticalAlignment 3` while each row keeps at
+  least `MIN_ROW_BAND` 26 px; past three rows, or in a band too short to fill, they hold 26 px. This is the fix
+  for the defect the render check found on the served LineStatus screen: three rows stacked at the top of a
+  247 px card, 148-190 px of it empty.
+- **`optix_status` now answers who owes which step.** With `project` or `project_root` it carries `setup`: the
+  ordered steps that make that project authorable, each tagged `owner: "tool"` or `"human"`, each with the exact
+  call or the exact Studio action. `setupChecklist` in `packages/optix/lib/chain.js` probes what it can (the
+  bridge's two files, Studio's process list, the build artifact, the runtime, the browser, Tesseract) and marks
+  what it cannot see `done: null` rather than guessing — the licence step is last and never blocks `ready`.
+  `next` names the first step genuinely open, which is the sentence to hand the engineer, because **no tool can
+  run StartBridge or Studio's Ctrl+Shift+B**. Measured on this machine with Studio closed: `ready false`,
+  `human_open 2`, `unobservable ["licence"]`, `next "studio_open (human): Open FactoryTalk Optix Studio…"`.
+  `packages/optix/skills/authoring-loop.md` carries the step table.
+- **`optix_project action check` names an unbounded store table offline (`OPTIX-DATA-02`).** The runtime has
+  said it for weeks and nobody read the log: `WARNING (urn:FTOptix:SQLiteStore) [code=1c] … No record limit is
+  set on 'SmtTrend', which may cause an out-of-memory issue on your device`. `checkLogging` in
+  `packages/optix/lib/project.js` reads the chapters with no Studio and reports every `*StoreTable` whose
+  `RecordLimit` is absent **or 0** — Studio writes a property child even at its default, so a child with no
+  `Value` is not a limit either — with the table's column count and whether it can order its own rows, because
+  the limit only replaces old rows once a `Timestamp` or `LocalTimestamp` column exists. Proven against the demo:
+  `AryaSMTLineDemo/DataStores/LineStore/Tables/SmtTrend` in `Nodes/DataStores/DataStores.yaml`, six columns,
+  timeable fix. No tool writes `RecordLimit` yet; the finding says so and names the Studio action.
+
+### Fixed
+
 - **`optix_render_check`: the checking tools now look at the screen an operator sees.** Every rule in this
   plugin reads the design model through the bridge, and on `AryaSMTLineDemo` all of them were quiet on a screen
   with four defects visible in a screenshot. `packages/optix/lib/render.js` (new) measures the served preview:
@@ -45,6 +93,27 @@
 
 ### Fixed
 
+- **The kit refused its own table.** `optix_ui action:"screen" pattern:"table"` failed its numeric-plus-Stretch
+  guard: `layout UI/Screens/Probe/TableArea: Height 608 with verticalAlignment 3 is discarded by the runtime
+  (measured: 300 + alignment 3 rendered as a fill)`. `TableArea` is now a `ColumnLayout` at
+  `VerticalAlignment 0` keeping its numeric band — Stretch *is* the size on that axis, so writing 608 with
+  alignment 3 throws the 608 away. `test/optix-kit.spec.mjs` pins `TableArea`'s `VerticalAlignment === "0"`
+  with the comment "TableArea must keep the band it was given".
+- **A refusal that named a constant instead of the thing to drop.** A faceplate with two cards and a chart at
+  the demo's 1060x706 host box answered `a row of 133px is under the 140px floor in a 440px area`, which sent
+  the reader looking for a number. It now says `a faceplate leaves 440px of detail under its 148px equipment
+  band, which splits 3 item(s) into 133px: a card or a chart needs 140px, so drop one of them or give the
+  screen more height`.
+- **`setupChecklist` read two keys that do not exist.** It compared `build.state === "current"` when
+  `buildState` reports `"built"` / `"stale"` / missing-artifact (`packages/optix/lib/build.js:548-550`), and it
+  probed the NetLogic chapter for the string `StartBridge` when that chapter names the **node**
+  `StudioMCPBridge` (`Nodes/NetLogic/NetLogic.yaml:4`) and `StartBridge` only appears as a `Class: Method` child
+  at `:24`. Both were found only by running the checklist against the real project, and both made a ready
+  project look unready. The missing-half detail is now an array join; the earlier ternary concatenation had
+  produced `" is missingNodes/NetLogic/NetLogic.yaml names no StartBridge node."`.
+- **`optix_status` probed the preview chain twice.** `chainReport` was called inline in the return value and
+  again inside the build branch, so every status call paid for two browser/emulator probes. It is computed
+  once and reused.
 - **`jsonSafe` erased a repeated reference that was not a cycle.** A shared sub-object appearing twice in one
   value was nulled at its second occurrence (one `WeakSet` marks anything already visited, and a DAG is not a
   cycle), so a tool answer silently lost data. `packages/optix/lib/json.js` now tracks the ancestor path
