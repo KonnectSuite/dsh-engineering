@@ -1,5 +1,23 @@
 ## [Unreleased]
 
+### Added
+
+- **The packaging gate reads every bare import the node-side payload makes.** `scripts/check-package.mjs`
+  gains PKG-08: for `entries/`, `lib/`, `presets/` and `vendor/` (minus the browser faces) it reports an
+  import of a package the manifest does not declare. A copy that resolves only because the host hoisted it
+  is not a dependency, and three were resolving that way: `@deepseek-ai/dsh-tools` and
+  `@deepseek-ai/dsh-subprocess` imported by the vendored Optix build output, and `zod` imported by two
+  preset projections. Each is now a peer dependency (the host provides it) with a dev dependency at the
+  version this repository resolves.
+
+### Fixed
+
+- **CI can assemble and pack a clean checkout.** `ci.yml` now runs `pnpm assemble` after the workspace
+  build, because `vendor/` is gitignored and every path the packaging gate proves was missing on a runner.
+- **The Studio install scan test reads the tree it redirects.** `test/optix-build.spec.mjs` asserted the
+  chosen install through `studioInstall()` outside the `withProgramFiles()` wrapper, so it passed on a
+  machine with Optix installed and threw on a clean runner.
+
 ## 0.102.0 — 2026-11-19
 
 ### Added

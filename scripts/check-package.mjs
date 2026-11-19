@@ -205,6 +205,28 @@ export function findings() {
     if (!manifest.dependencies?.[name] && packageOf(name) !== name) warning('PKG-07', `peer dependency ${name} is not also a dependency`)
   }
 
+  // --- declared imports --------------------------------------------------------
+  // The payload ships as built, so a bare import it makes has to be declared here:
+  // otherwise it resolves only because some package happened to hoist that copy on
+  // the author's machine and a clean install fails at `import` (the Optix build
+  // output needed @deepseek-ai/dsh-tools and dsh-subprocess this way).
+  const BUILTIN = new Set(['assert', 'buffer', 'child_process', 'crypto', 'events', 'fs', 'http', 'https', 'net', 'os', 'path', 'process', 'stream', 'string_decoder', 'timers', 'tls', 'url', 'util', 'v8', 'worker_threads', 'zlib'])
+  const declaredRuntime = new Set([...Object.keys(manifest.dependencies ?? {}), ...Object.keys(manifest.peerDependencies ?? {}), ...Object.keys(manifest.optionalDependencies ?? {})])
+  for (const file of payload()) {
+    if (!/\.(?:js|mjs)$/u.test(file.path)) continue
+    if (!/^(?:entries|lib|presets|vendor)\//u.test(file.path)) continue
+    if (file.path.includes('client') || file.path.includes('/templates/')) continue
+    for (const line of read(file.path).split('\n')) {
+      for (const match of line.matchAll(/^(?:import\s+(?:[^'"\n]*?\sfrom\s+)?|export\s+[^'"\n]*?\sfrom\s+|(?:const|let|var)\s+[^=\n]+=\s*(?:await\s+)?(?:import|require)\s*\(\s*|(?:await\s+)?import\s*\(\s*|\}\s*from\s*)['"]([^'"]+)['"]/gu)) {
+        const specifier = match[1]
+        if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')) continue
+        const name = packageOf(specifier)
+        if (BUILTIN.has(name) || name === manifest.name || declaredRuntime.has(name)) continue
+        error('PKG-08', `${file.path} imports ${name}, which dependencies/peerDependencies does not declare`)
+      }
+    }
+  }
+
   // --- size --------------------------------------------------------------------
   const sizes = payload()
   const total = sizes.reduce((sum, file) => sum + file.bytes, 0)

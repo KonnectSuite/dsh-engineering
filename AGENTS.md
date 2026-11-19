@@ -1,4 +1,4 @@
-# AGENTS.md — dsh-engineering
+﻿# AGENTS.md â€” dsh-engineering
 
 ## Documentation rule
 
@@ -37,14 +37,14 @@ A change is not finished until the documentation it invalidates is updated in th
 | `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only and vendored dependencies |
 | `test/tool-reference.spec.mjs` | The reference freshness, tool count and unique tool names |
 | `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, namespaces, maturity, context budget, README counts and owning documents |
-| `scripts/check-package.mjs` | The packaging contract: identity fields, the `dsh` block, what `files` actually ships, every row's export target, dependency hygiene and the unpacked size |
+| `scripts/check-package.mjs` | The packaging contract: identity fields, the `dsh` block, what `files` actually ships, every row's export target, dependency hygiene, every bare import the node-side payload makes, and the unpacked size |
 | `test/package.spec.mjs` | That contract as a test, plus the licence notices and the products the description promises |
 | `NOTICE.md` | Third-party notices: the embedded acadrust/ACadSharp, the Optix bridge, the upstream snapshots and every dependency licence |
 | `docs/development/packaging.md` | Build order, the vendor step, what the tarball ships and the packaging gate |
 | `docs/development/retirement.md` | How a component leaves: rows, packages, entries, tests and documents together |
 | `docs/port/*.md` | Port decisions and measurements, kept as design history (`packaging-record.md` is the pre-registry packing record; `optix-template-library-handoff.md` is the Optix lane handoff) |
 | `HANDOFF.md` | The current state: version, commit, tarball digest, what was verified and how, known gaps, how to pick the work up |
-| `CONTRIBUTING.md` · `SECURITY.md` | How to contribute and how to report a vulnerability privately |
+| `CONTRIBUTING.md` Â· `SECURITY.md` | How to contribute and how to report a vulnerability privately |
 | `.github/workflows/ci.yml` | The gate on every push and pull request: install, build, `docs:check`, `check:package`, the suite |
 | `.github/workflows/release.yml` | A `v*` tag becomes a GitHub Release whose body is that version's changelog section |
 
@@ -65,16 +65,16 @@ A change is not finished until the documentation it invalidates is updated in th
 - a component's maturity is unstated or malformed: a stability outside `stable`/`beta`/`experimental`, a `since` that names no changelog release, a `stable` component with no recorded verification, or a `beta` one that does not say what is not proved yet,
 - the tarball needs a path at mount time that `files` does not ship, a row's export target is missing, `publishConfig.access` is not `public`, or the unpacked payload outgrows the market's cap.
 
-When one of these fails, fix the documentation — not the test — unless the documented behavior itself is what changed.
+When one of these fails, fix the documentation â€” not the test â€” unless the documented behavior itself is what changed.
 
 ## Contract, upgrade and release rules
 
 - **Test the host contract with the host's services.** Declare only the services the bundle uses, and test one real composition that mounts it through a profile with the harness's own `fs`, `tools` and `skills`. A fake is a double, not the contract: mirrors must return what the host returns (`fs.resolve` yields an `FsTarget`, not a string). A string-returning fake hid the target change and shipped a broken ACD export.
-- **Test the upgrade path.** A profile with an older local copy of the bundle or a component must not keep loading it after the installer updates the payload. Cover N-1 → N, assert the components resolve from the installed payload, and prune stale copies; a leftover package shadows the payload even when resolution prefers the installation.
+- **Test the upgrade path.** A profile with an older local copy of the bundle or a component must not keep loading it after the installer updates the payload. Cover N-1 â†’ N, assert the components resolve from the installed payload, and prune stale copies; a leftover package shadows the payload even when resolution prefers the installation.
 - **Release evidence calls a changed tool.** The packaged smoke must exercise at least one tool whose behavior changed, end to end, and the release body records the command and result. A boot smoke and a green unit suite do not prove a tool works.
 - **Every documented switch or command is checked.** Generated inventories are mandatory; a README claim without a test is a defect.
 - **Tag the release commit.** Create `vX.Y.Z` in this repository at the commit the bundle was built from; artifacts live on the download host, but the tag is what maps payload to source.
-- **One version per batch, not per change.** Every change stages under `## [Unreleased]`; a batch ships as one version. The one-bundle model is only cheaper than separate plugins while each release carries a batch — a publish per change turns into an approval request per change, which the owner rejected explicitly.
+- **One version per batch, not per change.** Every change stages under `## [Unreleased]`; a batch ships as one version. The one-bundle model is only cheaper than separate plugins while each release carries a batch â€” a publish per change turns into an approval request per change, which the owner rejected explicitly.
 - **Withholding is documented.** If this bundle stays private or out of the market index, the README records that decision and the reason.
 
 Retirement includes packaging scripts and their tests, generated catalogs and profile-local packages; follow `docs/development/retirement.md`.
@@ -95,7 +95,7 @@ This repository owns the engineering bundle, its rows, and the engineering produ
 
 ## Client UI (binding)
 
-A client face is part of the app, and the owner judges it that way. Every face — new or edited — follows the host's visual and interaction standards:
+A client face is part of the app, and the owner judges it that way. Every face â€” new or edited â€” follows the host's visual and interaction standards:
 
 - **Use the host theme.** Read the harness `docs/web-styling.md` and its `--dsw-*` tokens before choosing a colour, radius, depth or type scale; use the tokens (with fallbacks), never a new palette, literal brand colours, a component library, Tailwind or emoji icons.
 - **Both themes.** Light and dark come from tokens: no hardcoded backgrounds, text or borders, and state never depends on colour alone.
@@ -108,15 +108,15 @@ A client face is part of the app, and the owner judges it that way. Every face �
 
 - **Never change the installed AryaCode.** `%LOCALAPPDATA%\Programs\AryaCode` (payload, `app.asar`, runtime) and `~/.aryacode` (profiles, `node_modules`, `userData`) are the user's live product. Read them; do not write to them, patch them, or edit a profile's `package.json` to work around a bug. Do not stop, uninstall, or launch a second instance against that profile.
 - **Release in batches, and only on request.** Commit and test each change locally with its `CHANGELOG.md` entry under `## [Unreleased]`; do not bump, tag, publish or touch the catalog until the owner says ship. Then release once: bump the version, move the unreleased entries under it, `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`, and record the version in the market catalog. A published version becomes readable on the registry minutes later, not at once (measured: about four
-  to ten minutes for this package), so a release per change still costs a verification loop per change — the owner rejected that pattern explicitly. `lib/` is gitignored build output, and `scripts/assemble.mjs` refuses a component whose `lib/` is older than its `src/`. npm is the artefact host — the catalog points at `registry.npmjs.org`, so no GitHub release asset is created. Published versions are immutable — never repack or overwrite one.
+  to ten minutes for this package), so a release per change still costs a verification loop per change â€” the owner rejected that pattern explicitly. `lib/` is gitignored build output, and `scripts/assemble.mjs` refuses a component whose `lib/` is older than its `src/`. npm is the artefact host â€” the catalog points at `registry.npmjs.org`, so no GitHub release asset is created. Published versions are immutable â€” never repack or overwrite one.
 - **Test on Dev AryaCode**, `%LOCALAPPDATA%\AryaCode-dev\home`, never on the installed instance: install the tarball there, compose the profile, then boot.
-- **Harness fixes are not this repository's.** If a change requires editing the shell or a `@deepseek-ai` package, it belongs in `KonnectSuite/AryaCode`, verified on Dev AryaCode, and shipped as a harness patch release — not as a local edit here or in the installed app.
+- **Harness fixes are not this repository's.** If a change requires editing the shell or a `@deepseek-ai` package, it belongs in `KonnectSuite/AryaCode`, verified on Dev AryaCode, and shipped as a harness patch release â€” not as a local edit here or in the installed app.
 - **No in-place rescue.** If a fix seems to need touching the installed copy, that is the signal the change belongs upstream. Say so and take the release path.
 
 ## Releasing: the market step is not optional
 
 This repository releases in batches, only on request, through its own pipeline
-(`pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`) — see the change
+(`pnpm -r build`, `pnpm assemble`, `pnpm publish`, tag `vX.Y.Z`) â€” see the change
 policy above. The catalogue step comes after it and has no substitute: a version on npm
 that the market does not list is not released, it is hidden, because the market answers
 from `releases[0]`.

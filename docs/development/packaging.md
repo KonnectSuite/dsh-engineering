@@ -24,6 +24,13 @@ Nothing else: `test/`, `scripts/`, `docs/`, `tmp/` and `artifacts/` are reposito
 disk, every row's export target is present, and the unpacked size is reported against the market's
 64 MiB cap (17.7 MiB today, dominated by `vendor/ecad/assets/acadrust.wasm`).
 
+It also reads every bare import the node-side payload makes — `entries/`, `lib/`, `presets/` and
+`vendor/`, minus the browser faces — and reports one the manifest does not declare. A copy that happens to
+resolve because the host hoisted it is not a declared dependency: the vendored Optix build output needed
+`@deepseek-ai/dsh-tools` and `@deepseek-ai/dsh-subprocess` that way, and `zod` was imported by two preset
+projections without being named at all. Each is now a peer dependency (the host provides it) plus a dev
+dependency at the version this repository resolves.
+
 ## Build order
 
 ```sh
