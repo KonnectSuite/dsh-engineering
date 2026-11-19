@@ -97,4 +97,4 @@ jobs:
           else
             gh release create "$TAG" --verify-tag --title "$TAG" --notes-file release-notes.md --latest
           fi
-          gh release view "$TAG" --json tagName,isLatest,url
+          gh release view "$TAG" --json tagName,isPrerelease,url

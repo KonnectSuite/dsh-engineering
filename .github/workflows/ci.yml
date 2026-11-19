@@ -60,6 +60,12 @@ jobs:
       # and the suite all read it, so it is built before anything is checked.
       - run: pnpm -r build
 
+      # `vendor/` is the assembled payload the patch rows mount, and it is
+      # gitignored too. Without this step check:package sees no vendor tree and
+      # fails PKG-03/PKG-04, which is the gate reporting a real absence, not a
+      # false alarm: a clean checkout has to assemble before it can be packed.
+      - run: pnpm assemble
+
       # The generated tool reference and print CSS are committed. This fails when
       # a tool changed without `pnpm docs:tools`.
       - run: pnpm docs:check
