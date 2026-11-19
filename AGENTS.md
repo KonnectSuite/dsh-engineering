@@ -1,4 +1,4 @@
-﻿# AGENTS.md â€” dsh-engineering
+# AGENTS.md â€” dsh-engineering
 
 ## Documentation rule
 

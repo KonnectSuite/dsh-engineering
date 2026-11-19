@@ -7,29 +7,25 @@ State of the bundle for the next person who picks it up. The rules live in
 
 | | |
 |---|---|
-| Branch | `Overhaul` — the public-repo and documentation overhaul, unreleased |
-| Last release | **0.101.0**, published 2026-11-18 from `f81d7a2` |
-| Release tag | `v0.101.0` (on the remote, at the release commit) |
-| npm tarball | `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.101.0.tgz` |
-| npm shasum (sha1) | `c5e31782ec2e24e244eb759e66f87f8266afb916` |
-| npm integrity (sha512) | `sha512-K/+ku6pMYw+t20UGqa5LqjWiCHiUJYuOi4N4D8NmFnUGgJrlc64vHKZyAFBn8meB4stTbCeUtvqNrJPoSTo/fA==` |
-| Tarball size | 921 files, 20,107,077 bytes unpacked |
-| Market | `@aryacode/dsh-engineering` in `dsh-arya-market`, `releases[0]` = 0.101.0 |
-| Stable branch | `main` at `4769ffc` "docs: record the single-branch consolidation" |
+| Branch | `main` — the overhaul shipped as **0.102.0** |
+| Last release | **0.102.0**, published 2026-11-19 from `2ad2cf5` |
+| Release tag | `v0.102.0` (on the remote, at the release commit) |
+| GitHub release | `https://github.com/KonnectSuite/dsh-engineering/releases/tag/v0.102.0` — badged Latest, body is the changelog section |
+| npm tarball | `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.102.0.tgz` |
+| npm shasum (sha1) | `8bd89d48736211ba50b8a2b8811ab72d805fbefc` |
+| npm sha256 (what the catalogue records) | `5694afe8fe4386a520635efeb9747127e846e03b6736575b262204893f96bb59` |
+| Tarball size | 918 files, 18,618,562 bytes unpacked |
+| Market | `releases[0]` = 0.102.0 in `dsh-arya-market`; 43 releases; `check-catalogue-parity.mjs` green |
+| CI | `ci.yml` green on `0ee4702` — the first passing run; 0.102.0 shipped before CI was fixed |
 
-Nothing on `Overhaul` is committed, bumped, tagged or published. The release gate is
-`pnpm test`; it is green on the branch (`78` spec files in about 34 s) plus
-`pnpm check:package`.
+Unreleased on `main` since 0.102.0, to ride the next batch: the packaging gate's declared-import
+rule (PKG-08) and the three packages that rule declared (`@deepseek-ai/dsh-tools`,
+`@deepseek-ai/dsh-subprocess`, `zod`), the CI step that assembles `vendor/` before the gate, and
+the Studio-scan test fix. `0.102.0` itself predates those manifest declarations — a published
+tarball is immutable, so the next batch carries them. Nothing else is pending.
 
-The overhaul build itself is packed, installed into the Dev profile and activated there, so the next
-step is the release, not another build:
-
-| | |
-|---|---|
-| Overhaul tarball | `artifacts/aryacode-dsh-engineering-0.101.0.tgz` — 4.8 MB packed, 18.6 MB unpacked, 918 files |
-| Overhaul shasum (sha1) | `d162fc6fea74ad029e66a048ac5bd38a45906e7a` |
-| Dev profile install | `%LOCALAPPDATA%\AryaCode-dev\home\profiles\desktop` — 0.101.0 from that tarball |
-| Dev activation | `live` via its bundle patch, `diagnostics.findings` empty (see below) |
+Measured on this machine: `pnpm test` 78 spec files in about 29 s, `pnpm check:package`
+17.7 MiB in 915 files (limit 64 MiB), `npm pack` 4.8 MB packed.
 
 ## What the overhaul changes
 
