@@ -104,7 +104,7 @@ test('the install scan finds Studio versions and picks the newest', async () => 
   const installs = await withProgramFiles(tree, () => studioInstalls())
   assert.equal(installs.length, 2)
   assert.deepEqual(installs.map((entry) => entry.version), ['1.7.0.9-Stable', '1.8.1.27-Stable'])
-  const chosen = await studioInstall()
+  const chosen = await withProgramFiles(tree, () => studioInstall())
   assert.match(chosen.version, /1\.8\.1\.27/u)
   assert.equal(existsSync(newest.install), true)
 })
