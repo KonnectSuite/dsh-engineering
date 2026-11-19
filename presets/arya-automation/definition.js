@@ -14,7 +14,7 @@
  *
  * The Engineering bundle's own rows are **not** re-mounted: they belong to the
  * installed bundle and stay visible to every session. A preset that repeated them
- * would double-register 142 tools.
+ * would double-register 190 tools.
  *
  * @module dsh-aryacode-polish-arya-automation-definition
  */

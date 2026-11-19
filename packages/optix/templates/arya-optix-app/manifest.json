@@ -44,10 +44,10 @@
   ],
   "optixStudioVersion": "1.8.1.27-Stable",
   "sourceProjectName": "AryaOptixApp",
-  "contentHash": "665272662fb0c746bed754bc879c1e6a32ef67bac2c1c496bf9125915aa3b550",
+  "contentHash": "43b4463a955a65fb6b0e32c9feec8ae402a3a75eba66aaf8d989f6f187e4b8d3",
   "bridgeSourceHash": "3927af063f3fb68856b969ff024448d2524a113e0037ed136d22e81bd6106c80",
-  "fileCount": 74,
-  "totalBytes": 2339653,
+  "fileCount": 70,
+  "totalBytes": 873253,
   "readOnly": true,
   "directories": [
     "ApplicationFiles",
@@ -114,33 +114,9 @@
       "text": false
     },
     {
-      "path": "ApplicationFiles/AlarmsRetentivityStorage.db-shm",
-      "size": 32768,
-      "sha256": "64cba76ea2318d332ae292ea15038d67e6506f2bcfc862b7d6f63bd066000d0d",
-      "text": false
-    },
-    {
-      "path": "ApplicationFiles/AlarmsRetentivityStorage.db-wal",
-      "size": 700432,
-      "sha256": "a2c942f7fe73c04e5a297de4b224f42438dee244262fe1de5016be81d05caafa",
-      "text": false
-    },
-    {
       "path": "ApplicationFiles/SecurityRetentivityStorage.db",
       "size": 4096,
       "sha256": "5c9dec1886cc01f5f2307ee1ea87f9b32a4cef0f8f9a2c68beebc558013bedab",
-      "text": false
-    },
-    {
-      "path": "ApplicationFiles/SecurityRetentivityStorage.db-shm",
-      "size": 32768,
-      "sha256": "0fa59aa3a25bd86778937c2803fa55959f42b289c3f278c6bce56a8d531abdf3",
-      "text": false
-    },
-    {
-      "path": "ApplicationFiles/SecurityRetentivityStorage.db-wal",
-      "size": 700432,
-      "sha256": "9c4b55fedde3e4f862fe6316a6155b3093f3d17820297410c04498deb29a33a6",
       "text": false
     },
     {

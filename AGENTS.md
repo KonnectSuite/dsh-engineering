@@ -16,15 +16,19 @@ A change is not finished until the documentation it invalidates is updated in th
 
 | File | Owns |
 |---|---|
-| `README.md` | Purpose, the component table and defaults, composition diagrams, the switch table, install, tools summary, requirements, safety, documentation map, known gaps |
+| `README.md` | Purpose, the component table with defaults and maturity, the switch table, install, where it appears, requirements, safety, skills, known limits, documentation map |
+| `docs/index.md` | The documentation map: every page, by task and by product |
+| `docs/getting-started.md` | The first session: per-product requirements, install, the shared five-step loop, a paste-ready prompt per product |
 | `docs/architecture.md` | Row model, service injection, configuration, row switches, client faces, distribution, compatibility |
+| `docs/products/*.md` | One page per product: what it adds, what it needs installed, the order to work in, and where it stops. `docs/products/optix/` holds the Optix pages |
+| `docs/preset.md` | The Arya Automation Engineer preset: the five-step contract, the compaction, the ledger and what a preset cannot make true |
 | `docs/examples.md` | End-to-end sessions for L5X and FactoryTalk View, with call shapes and reporting reminders |
 | `docs/capabilities.md` | The figures: which call produced each one, and what an image cannot prove |
 | `docs/reference/tools.md` | Every registered tool, its description and parameters (generated) |
 | `docs/reference/tools.json` | The machine-readable tool and group inventory (generated) |
-| `components.json` | The component manifest: kind, capability class, default posture, tool namespace, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents, and the default-on context budget |
-| `docs/reference/components.md` | What a component is, the capability classes, the manifest fields, the context budget, the checklist for adding one and the growth policy |
-| `docs/reference/migration.md` | The migration row: the two tools, the formats, the lint rules, the five-step workflow and its limits |
+| `components.json` | The component manifest: kind, capability class, default posture, maturity (stability, since, requirements, recorded verification), tool namespace, row, entry, package, tools, skill and its budget, probe, evidence gate, owning documents, and the default-on context budget |
+| `docs/reference/components.md` | What a component is, the capability classes, the manifest fields, maturity, the context budget, the checklist for adding one and the growth policy |
+| `docs/reference/hmi-design.md` | The shared screen grammar for both HMI products: the loop, the layout rules, the palette and the rule-to-tool map |
 | `CHANGELOG.md` | Released and unreleased changes, one entry per version |
 | `cordis.patch.yml` | The composed behavior, with comments explaining why each entry has its shape |
 | `package.json` | Name, version, bundle patch path, dependencies, peer compatibility |
@@ -32,8 +36,17 @@ A change is not finished until the documentation it invalidates is updated in th
 | `test/patch.spec.mjs` | Invariants of the patch file itself |
 | `test/docs.spec.mjs` | The prose-to-patch agreement: row ids, switches, version heading, locale parity, registry-only and vendored dependencies |
 | `test/tool-reference.spec.mjs` | The reference freshness, tool count and unique tool names |
-| `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, namespaces, context budget, README counts and owning documents |
-| `docs/port/*.md` | Port decisions and measurements, kept as design history |
+| `test/components.spec.mjs` | The component manifest against the patch rows, tool inventory, skill budgets, namespaces, maturity, context budget, README counts and owning documents |
+| `scripts/check-package.mjs` | The packaging contract: identity fields, the `dsh` block, what `files` actually ships, every row's export target, dependency hygiene and the unpacked size |
+| `test/package.spec.mjs` | That contract as a test, plus the licence notices and the products the description promises |
+| `NOTICE.md` | Third-party notices: the embedded acadrust/ACadSharp, the Optix bridge, the upstream snapshots and every dependency licence |
+| `docs/development/packaging.md` | Build order, the vendor step, what the tarball ships and the packaging gate |
+| `docs/development/retirement.md` | How a component leaves: rows, packages, entries, tests and documents together |
+| `docs/port/*.md` | Port decisions and measurements, kept as design history (`packaging-record.md` is the pre-registry packing record; `optix-template-library-handoff.md` is the Optix lane handoff) |
+| `HANDOFF.md` | The current state: version, commit, tarball digest, what was verified and how, known gaps, how to pick the work up |
+| `CONTRIBUTING.md` · `SECURITY.md` | How to contribute and how to report a vulnerability privately |
+| `.github/workflows/ci.yml` | The gate on every push and pull request: install, build, `docs:check`, `check:package`, the suite |
+| `.github/workflows/release.yml` | A `v*` tag becomes a GitHub Release whose body is that version's changelog section |
 
 ## Documentation is checked
 
@@ -48,7 +61,9 @@ A change is not finished until the documentation it invalidates is updated in th
 - the committed `lib/client.js` is stale against the faces it is built from,
 - `docs/reference/tools.md` or `tools.json` is stale,
 - `components.json` disagrees with the patch rows, a tool count, a skill budget or body, a tool name cited by a skill, a README table number or a document a component owns,
-- a component's `default` posture disagrees with its patch row's `disabled`, a tool name leaves its component's namespace, or the default-on surface exceeds the recorded context budget.
+- a component's `default` posture disagrees with its patch row's `disabled`, a tool name leaves its component's namespace, or the default-on surface exceeds the recorded context budget,
+- a component's maturity is unstated or malformed: a stability outside `stable`/`beta`/`experimental`, a `since` that names no changelog release, a `stable` component with no recorded verification, or a `beta` one that does not say what is not proved yet,
+- the tarball needs a path at mount time that `files` does not ship, a row's export target is missing, `publishConfig.access` is not `public`, or the unpacked payload outgrows the market's cap.
 
 When one of these fails, fix the documentation — not the test — unless the documented behavior itself is what changed.
 
@@ -62,15 +77,16 @@ When one of these fails, fix the documentation — not the test — unless the d
 - **One version per batch, not per change.** Every change stages under `## [Unreleased]`; a batch ships as one version. The one-bundle model is only cheaper than separate plugins while each release carries a batch — a publish per change turns into an approval request per change, which the owner rejected explicitly.
 - **Withholding is documented.** If this bundle stays private or out of the market index, the README records that decision and the reason.
 
-Retirement includes packaging scripts and their tests, generated catalogs and profile-local packages; follow `docs/port/retirement.md`.
+Retirement includes packaging scripts and their tests, generated catalogs and profile-local packages; follow `docs/development/retirement.md`.
 
 ## Commands
 
 ```sh
 pnpm install
-pnpm test          # patch, docs agreement, tool reference, dependencies, client face
+pnpm test          # patch, docs agreement, packaging, tool reference, dependencies, client face
 pnpm docs:tools    # regenerate docs/reference/tools.md and tools.json
 pnpm docs:check    # fail when the generated reference is stale
+pnpm check:package # what the tarball ships and how big it is, without publishing
 ```
 
 ## Scope

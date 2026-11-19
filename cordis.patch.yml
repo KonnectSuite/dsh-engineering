@@ -1,6 +1,6 @@
 # AryaCode engineering bundle.
 #
-# Five product rows and three support rows, one switch each. A row mounts a product's whole surface —
+# Six product rows, three support rows and one surface row, one switch each. A row mounts a product's whole surface —
 # its read tools, its guidance and its optional parts — so the Plugins page
 # shows a product per row instead of a surface per row.
 #

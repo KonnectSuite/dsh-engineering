@@ -84,10 +84,23 @@ async function vendor(name) {
   // at runtime has to be in this list or the tool that reads it ships broken, which
   // is what `test/components.spec.mjs` now checks by name.
   for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'help', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'skills', 'locale', 'icon.svg']) {
-    await cp(join(from, entry), join(to, entry), {
+    const source = join(from, entry)
+    // An absent entry is expected: one list serves every component. Any other
+    // failure is not - `cp(...).catch(() => {})` used to swallow both, which is
+    // how a payload a tool resolves at runtime (optix `skills/`, through 0.99.0)
+    // could be missing from the tarball while assemble reported success.
+    const present = await stat(source).then(
+      () => true,
+      error => {
+        if (error.code === 'ENOENT') return false
+        throw error
+      },
+    )
+    if (present === false) continue
+    await cp(source, join(to, entry), {
       recursive: true,
       filter: s => !s.includes('__pycache__') && !s.endsWith('.pyc') && (!s.endsWith('.ts') || s.endsWith('.d.ts')),
-    }).catch(() => {})
+    })
   }
 }
 

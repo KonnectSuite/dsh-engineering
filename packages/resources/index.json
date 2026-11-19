@@ -167,9 +167,9 @@
         "CRAFT-REVIEW-01",
         "CRAFT-REVIEW-02"
       ],
-      "words": 103,
-      "bytes": 885,
-      "sha256": "fa7bb33d3350972edbfc011ddae10312b1d605c317b3c345b393ce4669625392"
+      "words": 112,
+      "bytes": 926,
+      "sha256": "8139406d769f5b4a85ae78bb30238c8d608b7231dd05991a0922cea3c1370817"
     },
     {
       "id": "craft-units-and-ranges",

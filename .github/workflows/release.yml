@@ -1,0 +1,100 @@
+name: release
+
+# Publishing to npm happens from the owner's machine. npm trusted publishing is
+# bound to one repository and one workflow, and it is not this one, so there is
+# no publish step here and no `id-token` permission. A tag becomes a GitHub
+# Release whose body is the changelog section for the version the tag names.
+# It needs no secret: the repository token is enough.
+on:
+  push:
+    tags: ['v*']
+  # Redo a release from a tag that already exists, without moving it.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to release, for example v0.102.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+
+      # The tag, `package.json` and the top of the changelog must agree, or the
+      # release body would describe a version this tag does not carry.
+      - name: Check the tag against package.json and the changelog
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          case "$TAG" in
+            v[0-9]*) ;;
+            *)
+              echo "::error::tag '$TAG' does not look like vX.Y.Z"
+              exit 1
+              ;;
+          esac
+          version="${TAG#v}"
+          packaged="$(node -p "require('./package.json').version")"
+          if [ "$packaged" != "$version" ]; then
+            echo "::error::tag '$TAG' names version '$version' but package.json is '$packaged'"
+            exit 1
+          fi
+          # `--latest` would re-point the current release at an older version, so the
+          # tag must name the newest section in the changelog. Releases are cut from
+          # the top of the file in order, which is why the first heading wins.
+          newest="$(grep -E '^## [0-9]' CHANGELOG.md | head -n 1 | sed -E 's/^## ([0-9][^ ]*).*/\1/')"
+          if [ -n "$newest" ] && [ "$newest" != "$version" ]; then
+            echo "::error::CHANGELOG.md's newest release is '$newest', so '$version' cannot be marked latest"
+            exit 1
+          fi
+          printf 'VERSION=%s\nTAG=%s\n' "$version" "$TAG" >> "$GITHUB_ENV"
+
+      # The body is the section the changelog already carries for this version, so
+      # the release notes and the committed history cannot disagree. A section
+      # starts at `## 0.101.0 — 2026-11-18` and ends at the next `## ` heading; its
+      # heading is dropped and its blank lines at both ends are trimmed. The form
+      # is the one the market's release parser reads, so npm and the market show
+      # the same notes.
+      - name: Extract the changelog section
+        run: |
+          awk -v version="$VERSION" '
+            BEGIN { heading = "## " version }
+            index($0, heading) == 1 && (length($0) == length(heading) || substr($0, length(heading) + 1, 1) == " ") { inside = 1; next }
+            inside && /^## / { exit }
+            inside { line[++count] = $0 }
+            END {
+              while (count > 0 && line[count] !~ /[^[:space:]]/) count -= 1
+              first = 1
+              while (first <= count && line[first] !~ /[^[:space:]]/) first += 1
+              for (i = first; i <= count; i += 1) print line[i]
+            }
+          ' CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::CHANGELOG.md has no section \"## $VERSION\". Headings present:"
+            grep -E '^## ' CHANGELOG.md | head -n 20 || true
+            exit 1
+          fi
+          echo "release body (first lines):"
+          head -n 8 release-notes.md
+
+      # `--latest` is what marks this release as the current one. The edit branch
+      # makes a re-run update the body instead of failing on the existing release.
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md --latest
+          else
+            gh release create "$TAG" --verify-tag --title "$TAG" --notes-file release-notes.md --latest
+          fi
+          gh release view "$TAG" --json tagName,isLatest,url

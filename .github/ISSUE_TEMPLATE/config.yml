@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/index.md
+    about: The documentation map - getting started, a page per product, examples, and the generated tool reference.
+  - name: Install and update in AryaCode (the plugin market)
+    url: https://github.com/KonnectSuite/dsh-arya-market
+    about: Installation, updates and the catalogue are the market's business, not this repository's.
+  - name: The AryaCode host itself
+    url: https://github.com/KonnectSuite/AryaCode/issues
+    about: The shell, profiles, harness packages and the installer - report those upstream, not here.

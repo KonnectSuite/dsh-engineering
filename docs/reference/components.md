@@ -43,6 +43,11 @@ is written before the first `gateway-api` component ships, not after.
 | `kind` | `product`, `support` or `surface`. |
 | `capability` | The class above; the workflow skill routes by it. |
 | `default` | `on` or `off`: whether a fresh install mounts this row. `on` must stay inside the context budget below. |
+| `stability` | `stable`, `beta` or `experimental`: what a user may rely on today, not how old the component is. See [Maturity](#maturity). |
+| `since` | The first release whose patch carried this row id (`v0.86.0`), not the last change to the row. |
+| `requires` | What the component needs outside the host, and whether that is optional: `[{ "of": "FactoryTalk Optix Studio", "version": "1.8.1", "for": "the Studio bridge", "optional": false }]`. `[]` when plain files are enough. |
+| `verified` | `{ "against": what was actually proven, "where": the document that records it }`, or `null` for a surface that proves itself by rendering. |
+| `stabilityNote` | What is not proved yet. Required for `beta` and `experimental`; `stable` must not carry one. |
 | `namespace` | The tool-name prefixes the component owns; `null` when it registers no tools. `{ "prefixes": ["ftview_"], "legacy": false }`, or the L5X-only `{ "prefixes": [], "legacy": true, "note": "…" }`. |
 | `row` / `rowName` | The patch row and the package entry it mounts (`@aryacode/dsh-engineering/<id>`). |
 | `entry` | The bundle entry file that applies the row, or `null` for a surface mounted from the package root. |
@@ -56,6 +61,37 @@ is written before the first `gateway-api` component ships, not after.
 | `probe` | The capability probe tool a caller should run before the product's real work. |
 | `gate` | The tool whose verdict proves a change (`tool` + `why`). |
 | `docs` | Documents this component owns. Every path must exist. |
+
+## Maturity
+
+One bundle has one version, so the version number cannot say that L5X has been settled for a hundred
+releases while Optix gained four tools last week. Each component answers for itself instead:
+
+| Field | Answers |
+|---|---|
+| `stability` | What a user may rely on today. |
+| `since` | When this component started, as a release tag. |
+| `requires` | What it needs outside the host, and whether that is optional. |
+| `verified` | What was actually proven, and the document that records it. |
+| `stabilityNote` | What is not proved yet, for anything not labelled `stable`. |
+
+`stable` means the tool set and its result contract are settled: a change is additive, and a breaking
+one carries its own release note. `beta` means it works and is documented, but the tool set or a
+result may still change between releases without notice. `experimental` means it ships off by default
+or behind a flag and may be reshaped or removed. The default posture is a context-budget decision, not
+a maturity one: a component that ships off can be `stable`. Today every component is `beta`: the
+bundle is pre-1.0 and the component contract itself is still being settled, so nothing claims the
+`stable` promise yet.
+
+`since` is the first release whose `cordis.patch.yml` carried the row id, and the checks confirm the
+tag names a CHANGELOG release, so it cannot be typed wrongly and left. It is not a promise that the
+tools are unchanged since — a component may gain tools every release; it says when the component's row
+first appeared, which is what a reader wants when asking "is this new?".
+
+`stable` is a claim about evidence, so it must name the document that records the last real
+verification. A `beta` or `experimental` component must say what is not proved yet: one honest line
+beats a silent gap. Move a component up only in a release that says so in the CHANGELOG and leaves the
+evidence behind.
 
 ## Context budget
 
@@ -104,7 +140,10 @@ component that ships off still appears in both without moving a ceiling.
 6. **Name the evidence gate** — the tool whose verdict proves a change, using only what the
    product's default surface already has. A gate that needs an optional license is not a gate. A
    component whose change cannot be proven is `read-only`, and the README says so.
-7. **Add the manifest entry** to `components.json` and a row to the README tables.
+7. **Add the manifest entry** to `components.json` and a row to the README tables. A new component
+   enters as `beta` or `experimental`, with `since` set to the release that ships it, its `requires`
+   filled in and a `stabilityNote` saying what is not proved; only a later release that leaves the
+   evidence behind moves it to `stable`.
 8. **Add a document** under `docs/` for the product's port decisions or usage, and list it in
    the manifest.
 9. **Add fixtures** under `packages/<id>/test/fixtures` from a real export, and tests for the
@@ -192,6 +231,11 @@ export function apply(ctx) {
   "kind": "product",
   "capability": "offline-file",
   "default": "off",
+  "stability": "beta",
+  "since": "v0.102.0",
+  "requires": [{ "of": "<vendor product>", "version": null, "for": "<what needs it>", "optional": false }],
+  "verified": null,
+  "stabilityNote": "<what is not proved yet>",
   "namespace": { "prefixes": ["<prefix>_"], "legacy": false },
   "row": "<id>",
   "rowName": "@aryacode/dsh-engineering/<id>",
@@ -227,6 +271,12 @@ manifest names. The checks fail on whichever one is missing.
 - a tool name outside its component's namespace, a shared or ambiguous prefix, or a second component
   claiming the L5X legacy exemption
 - a fresh install above the recorded tool or character budget
+- a stability outside `stable`, `beta` and `experimental`, a `since` that names no CHANGELOG release, or
+  a `since` newer than the package version
+- a requirement with no software, no reason or no `optional` flag, a `verified.where` that names no
+  file, a `stable` component with no recorded verification, or a `beta` component with no
+  `stabilityNote`
+- a README support-table row whose stability word disagrees with the manifest
 
 The per-skill budgets are policy, not physics: a body costs about a token per four characters
 each time the skill is invoked. The current product pair (`rockwell-l5x` 7,981 and

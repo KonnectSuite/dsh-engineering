@@ -41,10 +41,10 @@ const CDP_TIMEOUT_MS = 30_000
  * The page directory carries the browser profile, and Chrome re-launches itself, so the
  * process this harness spawned is not the one holding the profile: a killed or orphaned
  * run leaves that directory locked. A fresh name per run means the next run never has to
- * win the lock. It does not mean the leftovers are free: `artifacts/` is a tracked tree in
- * this repository and a Chrome profile costs over a hundred megabytes once the browser has
- * downloaded its component and on-device models into it, so a run prunes the page
- * directories its earlier runs left behind and keeps its own small.
+ * win the lock. It does not mean the leftovers are free: a Chrome profile costs over a
+ * hundred megabytes once the browser has downloaded its component and on-device models
+ * into it, so a run prunes the page directories its earlier runs left behind and keeps
+ * its own small. (`artifacts/` is ignored, not tracked, so the cost is local disk only.)
  */
 const outArg = process.argv.indexOf('--out')
 const OUT = resolve(outArg === -1 ? join(tmpdir(), 'ecad-cad-face-shots') : process.argv[outArg + 1])
@@ -583,8 +583,8 @@ async function main() {
   const directory = join(OUT, PAGE)
   mkdirSync(OUT, { recursive: true })
   // A run whose profile was locked leaves a page-<pid> tree behind, and that tree is a
-  // whole Chrome profile: over a hundred megabytes of downloaded models. `artifacts/` is
-  // tracked here, so the next run clears what its predecessors could not — which means
+  // whole Chrome profile: over a hundred megabytes of downloaded models. The next run
+  // clears what its predecessors could not — which means
   // reaping the browser that still holds the directory, then deleting it.
   for (const name of readdirSync(OUT)) {
     if (!name.startsWith('page-') || name === PAGE) continue

@@ -81,8 +81,11 @@ test('every vendored component dependency is declared here', () => {
 })
 
 test('the package version has a changelog heading', () => {
-  assert.match(changelog, new RegExp(`^## \\[${manifest.version.replaceAll('.', '\\.')}\\]`, 'mu'),
-    `CHANGELOG.md has no [${manifest.version}] heading`)
+  // `## 0.101.0 — 2026-11-18`. The form is a machine contract: the market's release
+  // parser matches `## <version>` to build the release body, so a bracketed heading
+  // silently degrades every entry to "Published <version>.".
+  const heading = new RegExp(`^## ${manifest.version.replaceAll('.', '\\.')}(?: |$)`, 'mu')
+  assert.match(changelog, heading, `CHANGELOG.md has no "## ${manifest.version}" heading`)
 })
 
 test('the locale files agree on keys', () => {

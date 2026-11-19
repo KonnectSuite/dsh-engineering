@@ -66,6 +66,6 @@ export function bridgeReport(bridge: CadBridge | undefined): BridgeReport {
     tools,
     hint: tools.length > 0
       ? 'Authoring, plotting and the electrical netlist run through those tools; start with the entry tool, then read its capabilities.'
-      : `No tool of MCP server ${JSON.stringify(serverName)} is registered in this composition. The owner mounts the bridge in their own profile (see docs/aryacad-bridge.md); this row never starts the CAD application. A bridge configured but still discovering tools also reads as not mounted, so call ${prefix}${BRIDGE_ENTRY_TOOL} to confirm before concluding.`
+      : `No tool of MCP server ${JSON.stringify(serverName)} is registered in this composition. The owner mounts the bridge in their own profile (see docs/products/ecad/aryacad-bridge.md); this row never starts the CAD application. A bridge configured but still discovering tools also reads as not mounted, so call ${prefix}${BRIDGE_ENTRY_TOOL} to confirm before concluding.`
   }
 }

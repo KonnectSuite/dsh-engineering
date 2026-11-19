@@ -172,7 +172,7 @@ const fakeEcad = {
       entryTool: 'mcp__ocs__ocs_sessions',
       mounted: false,
       tools: [],
-      hint: 'No AryaCAD Electrical MCP row is visible to this composition; see docs/aryacad-bridge.md.',
+      hint: 'No AryaCAD Electrical MCP row is visible to this composition; see docs/products/ecad/aryacad-bridge.md.',
     },
   }),
   sheets: async () => ({ ok: true, sheets: [{ path: MODEL.path, entityCount: MODEL.stats.entities }] }),

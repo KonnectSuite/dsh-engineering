@@ -22,6 +22,7 @@ const ROOT = join(import.meta.dirname, '..')
 const BUNDLE = [
   'test/patch.spec.mjs',
   'test/docs.spec.mjs',
+  'test/package.spec.mjs',
   'test/tool-reference.spec.mjs',
   'test/components.spec.mjs',
   'test/manifests.spec.mjs',

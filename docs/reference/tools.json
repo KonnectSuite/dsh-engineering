@@ -320,7 +320,7 @@
         "engineering_reference",
         "engineering_profile"
       ],
-      "contextChars": 1454
+      "contextChars": 1470
     },
     {
       "product": "ECAD",
@@ -474,12 +474,12 @@
     }
   ],
   "context": {
-    "characters": 139961,
+    "characters": 139977,
     "byProduct": {
       "L5X": 50984,
       "Migration": 9025,
       "PLC-5": 5144,
-      "Engineering resources": 1454,
+      "Engineering resources": 1470,
       "ECAD": 11942,
       "FactoryTalk View": 43260,
       "MotionWorks IEC": 18152

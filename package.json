@@ -1,21 +1,33 @@
 {
   "name": "@aryacode/dsh-engineering",
-  "version": "0.101.0",
-  "description": "AryaCode engineering bundle: one install surface for the Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC and FactoryTalk Optix surfaces, one row per product, with the ladder and display previews.",
+  "version": "0.102.0",
+  "description": "AryaCode engineering bundle: Studio 5000 L5X, FactoryTalk View ME, FactoryTalk Optix, MotionWorks IEC, ECAD drawing reads and RSLogix 500/5 to Logix migration — one install, one row per toolchain.",
   "keywords": [
     "dsh",
+    "dsh-plugin",
     "deepseek-harness",
+    "aryacode",
     "cordis",
     "plugin",
     "bundle",
     "engineering",
     "automation",
-    "plc",
+    "rockwell",
+    "allen-bradley",
     "studio-5000",
+    "l5x",
+    "rslogix",
+    "plc",
+    "ladder-logic",
     "factorytalk",
-    "motionworks"
+    "factorytalk-view",
+    "factorytalk-optix",
+    "motionworks",
+    "hmi",
+    "ecad"
   ],
   "license": "MIT",
+  "author": "AryaCode",
   "type": "module",
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
@@ -28,6 +40,9 @@
   "bugs": {
     "url": "https://github.com/KonnectSuite/dsh-engineering/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "cordis.patch.yml",
     "entries/**/*",
@@ -37,6 +52,7 @@
     "vendor/**/*",
     "README.md",
     "LICENSE",
+    "NOTICE.md",
     "presets/**/*"
   ],
   "dsh": {
@@ -77,7 +93,8 @@
     "e2e:actions": "node packages/viewer/test/render/interactions.mjs",
     "e2e:instructions": "node packages/viewer/test/render/instructions.mjs",
     "assemble": "node scripts/assemble.mjs",
-    "prepack": "node scripts/build-viewer-face.mjs && node scripts/build-ftview-face.mjs && node scripts/build-ecad-face.mjs && node scripts/build-client.mjs && node scripts/assemble.mjs",
+    "check:package": "node scripts/check-package.mjs",
+    "prepack": "pnpm -r build && node scripts/build-client.mjs && node scripts/assemble.mjs",
     "docs:print-css": "tsx scripts/gen-print-css.mts",
     "docs:handbook": "python scripts/gen-handbook.py"
   },
@@ -96,15 +113,14 @@
     "@deepseek-ai/dsh-llm": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
     "@deepseek-ai/dsh-tool-skill": "^0.2.0-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
-    "@deepseek-ai/dsh-util-values": "^0.2.1-rc.3 || ^0.2.2-alpha.2",
-    "@deepseek-ai/schemastery": "^3.18.5"
+    "@deepseek-ai/dsh-util-values": "^0.2.1-rc.3 || ^0.2.2-alpha.2"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-compaction-basic": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-llm": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-typert-protocol": "0.2.2-alpha.3",
     "@deepseek-ai/dsh-util-values": "0.2.2-alpha.2",
-    "@deepseek-ai/schemastery": "3.18.5",
+    "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
     "zod": "^4.6.7"
   },

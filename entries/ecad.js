@@ -7,7 +7,7 @@
  * second switch on the row and start off: a mounted row reads and reviews, and
  * only writes the deliverables a person enabled — every written file is a new
  * file. Drawing authoring is not this row's: it runs in AryaCAD Electrical, which
- * the owner mounts as an MCP server in their own profile (docs/aryacad-bridge.md);
+ * the owner mounts as an MCP server in their own profile (docs/products/ecad/aryacad-bridge.md);
  * `bridgeServerName` only tells this row which server name to report on.
  */
 import z from '@deepseek-ai/schemastery'

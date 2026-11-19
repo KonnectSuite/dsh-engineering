@@ -6,7 +6,7 @@
  * see, the search over carried text, and the print/SVG/PNG exports of the
  * current view. It draws nothing the reader can move: authoring a drawing
  * happens in AryaCAD Electrical, which the owner mounts as an MCP server (see
- * docs/aryacad-bridge.md), and the review layer that reads these files stays
+ * docs/products/ecad/aryacad-bridge.md), and the review layer that reads these files stays
  * in the `ecad_*` tools.
  *
  * The pure geometry lives in `scene.ts`; this file owns pointer state and the

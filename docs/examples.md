@@ -1,7 +1,7 @@
 # Examples
 
 - [Composing a rung, seeing it, and getting it into Studio](examples/composer-to-studio.md) — one rung end to end: compose, draw, copy, paste as Neutral Text, build 0/0.
-Worked sessions for both products. Each call shows only the arguments that matter; every tool also
+End-to-end sessions. Each call shows only the arguments that matter; every tool also
 accepts the handle (`project_id` or `view_id`) when more than one is open. The full parameter list is
 in the [tool reference](reference/tools.md).
 
@@ -423,8 +423,10 @@ optix_validate_expression({ "project": "Line", "expression": "String.Format('{0:
 optix_netlogic({ "query": "PeriodicTask" })
 ```
 
-A successful model change is not a save: `optix_apply` is not a Studio save, and rendering still needs
-the emulator preview (`optix_screenshot`) when one is configured.
+A successful model change is not a save: `optix_edit` writes the live Studio model, `optix_save`
+writes the project through Studio (Ctrl+S), and the runtime serves the saved project, so a NetLogic
+change also needs a build before it is loaded. Look at the result with `optix_screenshot` when the
+emulator preview is configured.
 
 ## Reporting reminders
 

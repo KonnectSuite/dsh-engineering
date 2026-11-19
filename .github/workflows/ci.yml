@@ -1,0 +1,73 @@
+name: ci
+
+# Every branch and every pull request. Nothing here needs a secret, a controller
+# or vendor software, so a fork runs exactly the gate a maintainer runs.
+on:
+  # Any branch. A tag push is the release workflow's business, so filtering to
+  # branches keeps one push from starting two runs.
+  push:
+    branches: ['**']
+  pull_request:
+
+# A newer push to the same branch makes the older run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows only, deliberately: this bundle drives Studio 5000, FactoryTalk
+        # View ME, FactoryTalk Optix, MotionWorks IEC and RSLogix 5, all of which
+        # are Windows products, and the host it plugs into is the Windows desktop
+        # build. A Linux job would test a configuration nobody runs.
+        os: [windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # package.json carries no `packageManager` field today, so this falls back
+      # to pnpm 10. The field wins when it is added, so the pin stays in one place;
+      # only the version is taken from it, not the `+sha512...` integrity suffix.
+      # Node is on the hosted runner before setup-node runs, so this can go first.
+      - name: Resolve the pnpm version
+        id: pnpm-version
+        shell: bash
+        run: |
+          node -e 'const p = require("./package.json"); const pinned = (p.packageManager || "").replace(/^pnpm@/, "").split("+")[0]; process.stdout.write("version=" + (pinned || "10") + "\n")' >> "$GITHUB_OUTPUT"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.pnpm-version.outputs.version }}
+
+      # `cache: pnpm` asks pnpm for its store path, so pnpm is installed first.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # From the lockfile, so a dependency change has to show up in the diff.
+      - run: pnpm install --frozen-lockfile
+
+      # `packages/*/lib` is gitignored build output. docs:check, check:package
+      # and the suite all read it, so it is built before anything is checked.
+      - run: pnpm -r build
+
+      # The generated tool reference and print CSS are committed. This fails when
+      # a tool changed without `pnpm docs:tools`.
+      - run: pnpm docs:check
+
+      # The tarball contract: what ships, its identity fields and its size.
+      - run: pnpm check:package
+
+      # One child process per spec file, each spawned unrestricted. A GitHub
+      # runner is not sandboxed, so scripts/test.mjs runs unchanged; do not wrap
+      # it in a sandbox of your own.
+      - run: pnpm test

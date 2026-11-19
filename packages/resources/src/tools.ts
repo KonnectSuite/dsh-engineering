@@ -78,7 +78,7 @@ export const referenceTool = {
     properties: {
       query: { type: 'string', description: 'Topic, rule id or tag to search for, for example "state machine", "VIEW-HPM-02" or "seal-in".' },
       id: { type: 'string', description: 'Exact page id from the contents, for example "iec-state-machines".' },
-      domain: { type: 'string', description: 'Optional domain filter: iec, rockwell, yaskawa, view, optix or craft.' },
+      domain: { type: 'string', description: 'Optional domain filter: iec, rockwell, yaskawa, view, optix, craft, migration or hmi.' },
       limit: { type: 'integer', description: 'Most search hits to return; defaults to 8, maximum 20.', minimum: 1, maximum: 20 },
     },
     additionalProperties: false,

@@ -1,6 +1,70 @@
 ## [Unreleased]
 
-## [0.101.0] - 2026-11-18
+## 0.102.0 — 2026-11-19
+
+### Added
+
+- **Every component states its maturity, and each one is `beta` for now.** `components.json` gains
+  `maturityPolicy` and, per component, `stability` (`stable` | `beta` | `experimental`), `since` (the
+  first release whose patch carried that row), `requires` (the vendor software it needs, and whether it
+  is optional), `verified` (what was actually proved, and the document that records it) and
+  `stabilityNote` (what is not proved yet). All ten are `beta` because the bundle is pre-1.0: a tool set
+  or a result may still change between releases, and each note says which part. `default` stays a
+  context-budget decision — `ecad` and `plc5` ship off because not every profile needs them, not because
+  they are less finished. Two tests keep the field set honest (vocabulary, a `since` that names a real
+  changelog release, a stable component's recorded verification, a beta one's note), and the README
+  support table carries the stability of every row.
+- **A packaging gate.** `scripts/check-package.mjs` (`pnpm check:package`) and `test/package.spec.mjs`
+  check the tarball without publishing: the identity fields, the `dsh` block, every path a mount needs at
+  run time is matched by `files` and exists on disk, every row's export target is present, no dependency
+  travels as a URL, git or workspace spec, no package is declared twice, and the unpacked size is
+  reported against the market's 64 MiB cap. Today: **17.7 MiB in 915 files**, the largest entries
+  `vendor/ecad/assets/acadrust.wasm` (6.11 MiB) and the Optix help index (1.32 MiB).
+- **`NOTICE.md` travels with the code.** The embedded acadrust/ACadSharp (MPL-2.0 and MIT), the Optix
+  bridge (MIT, modified, from `asqi-carter/ftx-mcp`), the pinned NetLogic cheat-sheet snapshot, the Optix
+  help index, the standards corpus and every dependency licence, with the trademark disclaimer.
+- **GitHub scaffolding.** Issue forms, a pull-request template, `CONTRIBUTING.md`, `SECURITY.md`, a CI
+  workflow that runs the whole gate on Windows for every push and pull request, and a release workflow
+  that turns a `v*` tag into a GitHub Release whose notes are that version's changelog section.
+- **A current-state `HANDOFF.md`**: version, commit, tarball digest, what was verified and how, known
+  gaps.
+
+### Changed
+
+- **The documentation is reorganised around the products it serves.** `docs/getting-started.md` is the
+  first session (per-product requirements, install, the shared five-step loop, a paste-ready prompt per
+  product); `docs/index.md` is the map; `docs/products/**` holds one page per product plus the Optix
+  tree; `docs/reference/**` holds the component contract, the generated tool reference, HMI design and
+  standards checks; `docs/capabilities.md` holds the evidence; `docs/port/**` is kept as design history.
+  Every link in the README points at an absolute GitHub URL, because npm renders the README without the
+  rest of the repository — 57 of 58 relative links were dead on npmjs before this batch.
+- **The README is rewritten for a person who has not installed it**, and the bundle description
+  (`package.json`, the Plugins-page text and the repository description) now names all six products and
+  the three previews instead of four products and two.
+- **Publication-ready identity**: `author`, `publishConfig.access: public`, extended keywords,
+  `NOTICE.md` in `files`, `prepack` builds the workspace before packing, `@deepseek-ai/schemastery`
+  declared once (it was in both `dependencies` and `peerDependencies`), `esbuild` declared (it was used
+  but never listed).
+- **Changelog headings are `## 0.101.0 — 2026-11-18`.** The bracketed form is what the market's release
+  parser cannot read (it matches `## <version>`), so every market release body had degraded to
+  "Published 0.101.0."; the section extractor in `release.yml` and the two specs that pin the form follow
+  it.
+- **Repository state is not public state**: generated previews and harness output (`artifacts/**`,
+  `.l5x-preview/**`) are untracked and ignored, and the pre-registry packing record and the Optix lane
+  handoff moved into `docs/port/`.
+
+### Fixed
+
+- **`scripts/assemble.mjs` reports a failed copy instead of swallowing it.** Every entry was copied with
+  `.catch(() => {})`, which is how `vendor/optix/skills/` went missing on npm from 0.100.0 through
+  0.101.0 while the local tree looked complete. A copy that fails now names the component and the path;
+  an entry that genuinely does not exist is skipped by an explicit `stat` for `ENOENT` only.
+- **The scaffolded Optix project no longer inherits SQLite journals.** `arya-optix-app` carried
+  `Alarms-` and `SecurityRetentivityStorage.db-wal`/`.db-shm` (1,466,400 bytes of stale runtime state), so
+  every project scaffolded from it started with someone else's uncommitted transactions; the template is
+  regenerated and its `--check` passes.
+
+## 0.101.0 — 2026-11-18
 
 ### Added
 
@@ -209,7 +273,7 @@
   `optix_screen` does. Recorded as a gap rather than quietly raising a cap: the two routes should agree, and
   neither is wrong for accepting the batch.
 
-## [0.100.0] - 2026-11-17
+## 0.100.0 — 2026-11-17
 
 ### Added
 
@@ -568,7 +632,7 @@
   prose is left as it is; the recorded rule is the cause: never let text round-trip through a cp1252 console, and
   never put mojibake literals on a pwsh command line, where they are re-parsed as commands.
 
-## [0.99.0] - 2026-11-16
+## 0.99.0 — 2026-11-16
 
 ### Fixed
 
@@ -614,7 +678,7 @@
   demo project: the route, the filter, every refusal code, `FilePath`/`Mode` on the real importer, and the
   prerequisite that a station must carry a `TagImporter` child. The end-to-end import is **not** yet proven
   there — the offline `Import()` against a bridge-created station did not finish inside the timeout — and
-  the docs say so. Documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md).
+  the docs say so. Documented in `docs/reference/optix-model.md`.
 
 - **The Optix bridge can put a dynamic link on a variable, not only on a property.**
   `POST /bridge/node/set-link?path=&source=&mode=Read|Write|ReadWrite` links the variable at `path` to the
@@ -627,7 +691,7 @@
   validated rather than defaulted. Verified live on the demo project: four `VariableToLog` elements linked
   to `Model/Smt/{OEE,UPH,CycleTime,BoardsOut}`, the links present in `Nodes/Loggers/Loggers.yaml` after a
   Studio save, and the DataLogger's table then created with those columns. Documented in
-  [`docs/reference/optix-model.md`](docs/reference/optix-model.md); the tool layer still has no op for it,
+  `docs/reference/optix-model.md`; the tool layer still has no op for it,
   which is recorded there alongside `set-structured`.
 
 - **The Optix bridge can author module-typed children, and the route for a structured property.**
@@ -649,7 +713,7 @@
   each field is coerced by the same code `set_property` uses, a failed batch rolls back what it created and
   `effect=replace` says it cannot restore what it removed. Compile-verified offline against the demo
   `NetSolution` (0 warnings, 0 errors) and shipped byte-identically in the bridge and all three template
-  copies; documented in [`docs/reference/optix-model.md`](docs/reference/optix-model.md), including the gap
+  copies; documented in `docs/reference/optix-model.md`, including the gap
   that no plugin tool maps the structured route yet.
 
 - **`optix_edit` can write a dynamic link onto a variable: the `set_link` op.** The `set-link` route existed
@@ -682,7 +746,7 @@
 - The shell rail's own spec asserted a 6-item cap while `SHELL_MAX_RAIL` had been raised to 12; the spec now
   imports the constant, so a cap change is a one-line change again.
 
-## [0.98.0] - 2026-11-15
+## 0.98.0 — 2026-11-15
 
 ### Added
 
@@ -771,7 +835,7 @@
   DlgCancel, DlgConfirm` and the trigger opens it. Optional `destructive: true` marks the dialog for
   `optix_design_check`'s `VIEW-DLG-01`.
 
-## [0.97.0] - 2026-11-15
+## 0.97.0 — 2026-11-15
 
 - **A second authoring channel: the project files, behind gates.** `optix_project` reads and edits the
   project the way Studio stores it — the `.optix` document, its `- File:` registrations and the YAML
@@ -834,7 +898,7 @@
   evidence for documented behaviour, not for the live project, and it says so — `status` reports the Studio
   version the index was built from and when an upgrade has made it stale.
 
-## [0.96.0] - 2026-11-15
+## 0.96.0 — 2026-11-15
 
 - **A NetLogic request routes by the words the request uses.** `optix_netlogic { query: "alarm banner" }`
   found nothing: the cheat sheets are written in their own vocabulary and none of them says "banner". The
@@ -886,7 +950,7 @@
   bridge sends an object keyed by browse name, `optix_svg list` composed paths without the screen's
   parent and read `name` where a node read answers `browse_name`, and `create_variable` declared
   `array` as text so an array length was refused before it reached the bridge.
-## [0.95.1] - 2026-11-14
+## 0.95.1 — 2026-11-14
 
 - **0.95.1 is 0.95.0, and both are live; take 0.95.1.** This package's registry writes become readable
   minutes after `npm publish` reports success - about four here, the packument first and the tarball
@@ -944,7 +1008,7 @@
   `docs/reference/optix-netlogic.md` gained the same loop as a four-state table: exists, compiles, loaded, running —
   with what each state proves and what it does not.
 
-## [0.94.4] - 2026-11-14
+## 0.94.4 — 2026-11-14
 
 - **The standards tools now register in the real app, and a refused tool is reported instead of swallowed.**
   0.94.3 shipped with `engineering_reference` and `engineering_profile` refused by the harness tool contract
@@ -964,7 +1028,7 @@
   Also restored the two product-tool description clauses (`ftview_apps`, `mw_project_find`) in their TypeScript
   sources: 0.94.3 edited the built `lib` copies, and the release build regenerated them from source, so the
   published descriptions lacked the `CRAFT-ORD-01` sentence the tests looked for.
-## [0.94.3] - 2026-11-14
+## 0.94.3 — 2026-11-14
 
 - **A new build starts from the brief, our packaged templates and the published standards — the machine is read
   only when the operator points at it.** Measured on a real session (attached by the operator, 14 Nov 2026): asked
@@ -995,7 +1059,7 @@
   discovery descriptions, and the no-starter answer) plus additions to `test/resources.spec.mjs` and
   `test/optix-template.spec.mjs`.
 
-## [0.94.2] - 2026-11-14
+## 0.94.2 — 2026-11-14
 
 - **A Rockwell plant now starts from Rockwell's own published style guide, not only the generic baseline.** New corpus
   page `hmi-rockwell-process-style-guide` (`HMI-RW-01`..`08`) summarises the *Process HMI Style Guide*, publication
@@ -1062,7 +1126,7 @@
   not instantiated. Covered by `test/optix-model.spec.mjs` (9 tests), the skill's new "Lay out the model the
   way an OPC UA client expects" section, `docs/reference/optix-model.md` and the corpus page
   `optix-opcua-model-structure`; tool surface 18, README 176, `defaultOnTools` 156.
-## [0.94.1] - 2026-11-14
+## 0.94.1 — 2026-11-14
 
 - **A new project now asks for the screen box, and never uses the workspace root as its own folder.** Two
   defects an operator hit on the first real run: `optix_template` scaffolded a 1920x1080 project without
@@ -1075,7 +1139,7 @@
   Covered by `test/optix-scaffold.spec.mjs` (6 tests); the skill's new-project steps and
   `docs/reference/hmi-design.md` now say to ask before scaffolding.
 
-## [0.94.0] - 2026-11-14
+## 0.94.0 — 2026-11-14
 
 - **A scaffolded project, opened by the engineer, is one tool session away from a running application.**
   Verified end to end on `C:\Users\KNPhu\Documents\Rockwell Automation\FactoryTalk Optix\Projects\LineDemo`,
@@ -1340,7 +1404,7 @@
   state and the remaining steps, including the sandbox trap that stops `pnpm test` inside a confined shell.
 
 
-## [0.93.0]
+## 0.93.0
 
 - **Breaking: the ECAD row stopped being a CAD editor.** Four tools are gone — `ecad_draft_ops`,
   `ecad_draft_apply`, `ecad_draft_discard` and `ecad_verify` — and the surface behind them with them:
@@ -1388,7 +1452,7 @@
   Electrical and prove the result — `ecad_backup` to keep the before-state, the bridge's own
   `save_verified` to write it, `ecad_open` with `reload: true` and `ecad_compare` against the kept copy
   to accept the change. It refuses to imitate a CAD edit by hand-editing DXF text.
-- **New document:** [`docs/aryacad-bridge.md`](docs/aryacad-bridge.md) owns the seam — the two halves and
+- **New document:** `docs/aryacad-bridge.md` owns the seam — the two halves and
   the GPL boundary, how to mount the overlay and which two names must agree, the four facades and
   seventeen intent tools AryaCAD exposes, the backup → edit → save_verified → reload → compare sequence,
   and why the pane's Print is the local route to a PDF while a headless plot goes through the bridge.
@@ -1412,7 +1476,7 @@
   AryaCAD Electrical and **skips rather than fakes** when the file is absent: the application is GPL-3.0
   and this bundle is MIT, so its drawings are not committed here.
 
-## [0.92.0] - 2026-11-12
+## 0.92.0 — 2026-11-12
 
 - **The Optix preview chain reports itself, and the plugin starts its own browser.** Reading the
   emulator needs four links the row never described: the `preview` switch, a browser answering CDP,
@@ -1457,12 +1521,12 @@
   box every screen is laid out against, and the starter ships 1920×1080), the project name, and where
   to copy it. Those answers are baked into files that are tedious to re-edit afterwards, so the skill
   asks them before any copy happens.
-- **New document:** [`docs/port/optix.md`](docs/port/optix.md) records why Optix is the one component
+- **New document:** `docs/port/optix.md` records why Optix is the one component
   with no source here, what the pinned upstream bridge is and is not (the bundle runs none of
   upstream's MCP or Python), the four-link chain, and the runtime route to the emulator;
   `docs/getting-started.md` gained the chain and the bridge-arm caveat.
 
-## [0.91.0] - 2026-11-12
+## 0.91.0 — 2026-11-12
 
 - **A rung copied out of a Studio routine is now an input the plugin reads.** `parseLadder` accepted
   only this plugin's bracket NeutralText, so the text an engineer actually holds — `XIC Start XIO Stop
@@ -1498,7 +1562,7 @@
   `rockwell-l5x` SKILL body grew to 12,121 characters (budget raised to match), and the default-on
   schema ceiling moved to 127,423 with the measured 122,522.
 
-## [0.90.0] - 2026-11-09
+## 0.90.0 — 2026-11-09
 
 - **RSLogix 5 (PLC-5) is a product row of its own.** The new `plc5` component (row ships off) adds
   eight read-only tools and the `rslogix-5` skill: `plc5_capabilities`, `plc5_open`, `plc5_ladder`,
@@ -1521,7 +1585,7 @@
   collection is dropped before the answer is built. The migration row keeps its seven tools; the
   PLC-5 reads do not reach SLC 500.
 
-## [0.89.0] - 2026-11-08
+## 0.89.0 — 2026-11-08
 
 - **Alarm setup is now draftable.** `ftview_draft_alarm_add`, `ftview_draft_alarm_set` and
   `ftview_draft_alarm_delete` stage edits to the export's `Alarms/Alarms.xml` — a trigger with its first
@@ -1544,7 +1608,7 @@
   structural elements the guide documents (`animateVisibility`, `animateColor`, `confirm`, `group`,
   `vbaProject`, `vbaItem`, `vbaCode`).
 
-## [0.88.0] - 2026-11-08
+## 0.88.0 — 2026-11-08
 
 - **The L5X studio tools spend the cheap checks before the build.** `verify_offline_l5x` now refuses a
   baseline that was not exported from an `.ACD` in this chat, and a project file that is no longer on disk,
@@ -1583,7 +1647,7 @@
   acquisition list live under `packages/resources/evidence/rockwell/`; the l5x skill names them beside its
   rung rules.
 
-## [0.87.2] - 2026-11-06
+## 0.87.2 — 2026-11-06
 
 - **Both engineering presets mount the full DSH standard tool row set.** Arya Standard and Arya Automation Engineer were
   missing the `tool-schedule` row, the whole `delegation` group and the conditional Host `tool-plugin-manager` /
@@ -1616,7 +1680,7 @@
   expectation rules, the immediate/fail-open decisions, the poll budgets, and one warning per fail-open decision; the
   preset spec pins both row states and the mount path.
 
-## [0.87.1] - 2026-11-05
+## 0.87.1 — 2026-11-05
 
 - **Removed the ECAD status bar above the message input.** The composer dock repeated the drawing,
   DWG, profile, writes and truncation facts on every chat that held a drawing, directly above the
@@ -1624,7 +1688,7 @@
   is gone; a new chat no longer gets the extra line, and the panel is unchanged. The face tests now
   assert the slot is not registered.
 
-## [0.87.0] - 2026-11-04
+## 0.87.0 — 2026-11-04
 
 - **Ladder logic can be composed in the chat with no project and no file.** A request such as
   "compose a start/stop circuit for Studio 5000" no longer needs an L5X/ACD export: the new
@@ -1745,7 +1809,7 @@
   repository hygiene under the "customer prints stay out of the repo" rule. The real-corpus filenames
   quoted in `docs/port/ecad.md` remain as the measured-evidence record.
 
-## [0.86.0] - 2026-11-04
+## 0.86.0 — 2026-11-04
 
 - **ECAD (DXF) groundwork — feasibility measured on the owner's real print set.** The 34-sheet DXF
   corpus parses with `@mlightcad/data-model@1.15.21` (MIT) and round-trips with **no** model
@@ -1765,7 +1829,7 @@
   were exercised against a fake Host context over two real sheets (render-model artifact, new-file
   apply with verification, stale-document and writes-disabled refusals). Known writer limits (ATTRIB
   vertical justification, filled hatch islands, planar geometry assumption) are reported per write.
-  ([port evidence](docs/port/ecad.md))
+  (port evidence: `docs/port/ecad.md`)
 - **ECAD drawing tools land behind a row that ships off.** Sixteen `ecad_*` tools — probe, profile, scan,
   open, overview, find, cross-reference, checks, render, compare, staged drafts with `ecad_verify`, and
   the document/backup deliverables — plus the `ecad-drafting` skill, mounted by a new `ecad` row inserted
@@ -1774,7 +1838,7 @@
   create a new file beside the source, and 31 tool specs through a fake Cordis composition. Because the row
   ships off the default-on tool budget is unchanged; the generated reference, component manifest and README
   record the new surface. DWG and the right-panel viewer landed in this batch.
-  ([port evidence](docs/port/ecad.md))
+  (port evidence: `docs/port/ecad.md`)
 - **DWG drawings work in the same ECAD tools through an embedded converter, measured on the owner's 33
   DWGs.** `acadrust 0.6.8` (MPL-2.0, DWG code ported from MIT ACadSharp) is built to a single 6.4 MB
   WASM module (rustc 1.99.1, 107.5 s first build, one host clock import, no wasm-bindgen) and shipped
@@ -1794,7 +1858,7 @@
   (~90 % shared geometry), never as equality; a DWG write renumbers anonymous blocks, and proxy/ACIS/xref
   coverage is unmeasured. The wrapper's ATTRIB reattachment (an acadrust 0.6.8 gap), the `web-time` shim,
   the MPL and ACadSharp notices and the source-availability note ship with the package.
-  ([port evidence](docs/port/ecad.md#m4--the-dwg-converter-measured))
+  (port evidence: `docs/port/ecad.md#m4--the-dwg-converter-measured`)
 - **The ECAD drawing panel lands as the bundle's third client face.** Opening a `.dxf` (or `.dwg`) in
   the right panel draws the sheet: fit, pan, zoom, layer visibility, layout tabs, click selection with an
   inspector, coverage badges, the converter provenance for DWG, the loading/empty/truncated/read-only/
@@ -1822,7 +1886,7 @@
   policy-checked local writer (read-only sessions refuse, destinations must stay in the writable
   workspace, `createIfAbsent` is kept) with tests; `assemble` was also fixed to compare the newest
   built file so a face-only rebuild is not refused.
-  ([port evidence](docs/port/ecad.md#m4--in-panel-editing))
+  (port evidence: `docs/port/ecad.md#m4--in-panel-editing`)
 - **ECAD work is legible in the conversation.** The drawing face now registers a tool card for all
   sixteen `ecad_*` tools through the shell's keyed `tool.call.toolview` slot — specialised cards for
   open (DXF/DWG badge, conversion warnings, entity coverage, title block), scan, checks (severity counts
@@ -1836,7 +1900,7 @@
   and a seven-shot harness (cards light/dark, dock light/dark/absent/read-only, narrow column) pass;
   the render card names its SVG path instead of faking a thumbnail, and cards replace the generic row's
   Inspect control because the shell tool primitives are not bundled.
-  ([port evidence](docs/port/ecad.md#m5--conversation-intelligence))
+  (port evidence: `docs/port/ecad.md#m5--conversation-intelligence`)
 - **The bundle exposes its own Typert Remote service.** `package.json` exports `"./typert"`
   (`lib/typert.host.js`), so the Host's typert loader registers the bundle's `ecad/open`, `ecad/apply`,
   `ecad/sheets` and `ecad/capabilities` invocations while the `viewers` row is mounted, and
@@ -1877,7 +1941,7 @@
   counts, the generated reference states the measured 133 definitions (plus 9 vendored Optix tools), and
   `docs/print.css` now matches the report stylesheet it is generated from.
 
-## [0.85.3] - 2026-11-02
+## 0.85.3 — 2026-11-02
 
 - **A block draws what it writes on the right and what it reads on the left.** Instruction blocks listed every operand
   down the middle, so `ADD(Count,1,Count)` read as three values in a column with no indication which one the instruction
@@ -1887,7 +1951,7 @@
   nothing) keeps both operands on the left and `TON` keeps `Timer`/`Preset`/`Accum` there, because none of them is a
   written slot. Contacts and coils were already in flow order; a coil is the right-hand element of its rung.
 
-## [0.85.2] - 2026-11-02
+## 0.85.2 — 2026-11-02
 
 - **Ladder labels sit above their symbol and reserve their own width.** A contact's tag was absolutely positioned
   *below* the glyph and the element was 15px wide, so `Timer.DN` printed over the next block, `Stop` and `Run` ran into
@@ -1898,13 +1962,13 @@
   so a bullet written across two lines came out as a bullet plus a stray paragraph. Blocks now continue until a blank
   line, a heading, a fence or a new marker.
 
-## [0.85.1] - 2026-11-02
+## 0.85.1 — 2026-11-02
 
 - **The tool reference is regenerated for `report_notes`.** 0.85.0 shipped the parameter and left `docs/reference/tools.md`
   stale; `pnpm docs:check` caught it (the reference is generated from the schemas, so a new parameter must appear there).
   No behaviour change from 0.85.0.
 
-## [0.85.0] - 2026-11-02
+## 0.85.0 — 2026-11-02
 
 - **A report you asked for can carry your own narrative, with the ladder still drawn.** `document_project` takes
   `report_notes`: a path to a Markdown file. Its content becomes the report's first section, **Changes**, ahead of
@@ -1916,7 +1980,7 @@
 - **Two tests** pin the section's presence, its numbering, the contents entry, that Markdown became structure, and that
   a report without notes is unchanged.
 
-## [0.84.0] - 2026-11-02
+## 0.84.0 — 2026-11-02
 
 - **A multidimensional array element with a member now composes.** `Alarm_Timer[0,8].DN` was refused with
   `INVALID_OPERAND: "Alarm_Timer[0,8].DN" is not a tag or a number.`, which read as though the tag did not exist. It did:
@@ -1929,7 +1993,7 @@
   not with "not a tag or a number". Three tests pin the three cases: two subscripts plus a member, one subscript plus a
   member, and a wrong rank that must not read as a missing tag.
 
-## [0.83.0] - 2026-11-02
+## 0.83.0 — 2026-11-02
 
 - **FTView and the migration surface now write with the session's sandbox policy too.** 0.82.0 fixed this in the L5X
   store; the same omission existed in the other two components — six writes in `ftview`'s edit tools and two in
@@ -1946,7 +2010,7 @@
   `migration` `knowledge.spec.ts > has a page for every PCE code the row documents`. They are not caused by this change
   and are not fixed here.
 
-## [0.82.0] - 2026-11-02
+## 0.82.0 — 2026-11-02
 
 - **A draft writes with the session's sandbox policy, not the deployment default.** `draft_apply`, `document_project` and
   every other writer in this package called `fs.writeText(target, text, options, signal)` and stopped there. A confining
@@ -1963,7 +2027,7 @@
   the provider either. Both fail the same way in a wider-than-default session. They are separate packages with their own
   `FsService` types and need the same threading.
 
-## [0.81.0] - 2026-11-02
+## 0.81.0 — 2026-11-02
 
 - **The report is branded.** A generated document now carries the production brand kit: the monochrome mark and the
   `Arya`/`Code` wordmark with the tagline, the violet→blue→cyan rule above the cover and again above the footer, numbers
@@ -1975,23 +2039,23 @@
   and omits the mark rather than failing.
 - **`assets/**` ships** like the rest of the package, so an installed copy can generate a branded report.
 
-## [0.80.0] - 2026-11-02
+## 0.80.0 — 2026-11-02
 
 - **The report draws ladder in the pane's language, not as coloured boxes.** A generated document used `renderLadderSvg`, the blocky box-and-label drawing the preview tools use, so a report showed a symbol-free picture of logic the app itself draws as contacts and coils. The report now emits the pane's own markup: `.ldr-contact` is two green bars with a negation slash for `XIO`, `.ldr-coil` is an oval, instruction blocks are `.ldr-block` cards with the mnemonic as a header and one row per operand, rails are two thick rules at the ends of the rung, a branch is a bordered column of parallel paths, and every symbol carries its tag underneath. The styles live in `report-styles.ts` beside the rest of the print CSS, so a document and a printed page agree on them.
 - **The document carries no ladder SVG at all.** A test asserts it: no `<svg>`, no pane-dark fill, and the `ldr-*` classes present. The preview tools keep `renderLadderSvg` — they run in Node with no browser and no stylesheet, which is the reason the report used it in the first place.
 
-## [0.79.0] - 2026-11-02
+## 0.79.0 — 2026-11-02
 
 - **One print path: the handbook and a report are now the same kind of document.** The report's stylesheet moved to `packages/l5x/src/engine/report-styles.ts`; `pnpm docs:print-css` writes `docs/print.css` from that one definition and `docs:check` fails when the file drifts. `scripts/gen-handbook.py` emits the same cover, table of contents, section and table markup a report uses, links that stylesheet, and prints its PDF through `scripts/print-pdf.mts` — the same Chrome invocation as `report_format: "pdf"` — so reportlab and its parallel typography are gone. The regenerated handbook is 8 pages, produced by Skia/PDF, where it used to be built by a second engine. The DOCX path is untouched: it is the editable copy and has no printing to share.
 - **`docs/print.css` ships with the package** like the rest of the documentation, so an installed copy and this repository print identically.
 
-## [0.78.1] - 2026-11-02
+## 0.78.1 — 2026-11-02
 
 - **The docs map now covers the report.** `docs/index.md` gains a "Reports and documents" section that separates the
   handover bundle from the printable report, names the generator and the palette behind its ladder, and repeats the
   footer's limit: a document is evidence of what the export contains, not of what the machine does.
 
-## [0.78.0] - 2026-11-02
+## 0.78.0 — 2026-11-02
 
 - **The report is a tool, not scaffolding.** `document_project` takes a new `report` part: one self-contained HTML document with a cover, a table of contents, at-a-glance counts, the ladder drawn inside each routine, rung tables, tag and I/O tables, and a footer that states what a generated document cannot prove. `report_format` is `html` (default), `pdf`, or `both`; a PDF is the same page printed by the local Chrome or Edge, and when neither is installed the answer says so instead of writing nothing. The module the previous release shipped unused (`engine/report.ts`) is now called by the bundle and by the tool, so the document and the handover bundle cannot disagree about what the export contains.
 - **The documentation ships with the package.** `docs/**` is in `files`: the ten guide pages, the reference, the decision records, the worked examples and the 32 generated figures now travel in the npm tarball. Before this, `README.md` linked `docs/getting-started.md` and eight other pages that did not exist in an installed copy — 692 files in the tarball, 62 of them docs.
@@ -1999,11 +2063,11 @@
 - **Structured Text is highlighted, though not by Prism.** `highlightSt` colours comments, string literals, keywords and numbers in the report's ST bodies. It is a scanner in this repository with no dependency, and a test asserts that stripping the markup returns the body byte for byte — highlighting cannot rewrite the logic it colours.
 - **A report cannot silently lose a section.** `REPORT_SECTIONS` declares `glance`, `logic`, `tags` and `io`; the generator validates every one before assembling the page and returns the list it wrote, and the table of contents links to the same anchors. A future edit that drops a section fails a test instead of shipping a document that is quietly missing its tag list.
 
-## [0.77.0] - 2026-11-01
+## 0.77.0 — 2026-11-01
 
 - **Report generator scaffolding, not yet exposed.** `packages/l5x/src/engine/report.ts` builds a self-contained HTML document from an export: cover, numbered sections, a ladder figure per routine, rung tables, tag and I/O tables, print CSS. `scripts/example-report.mts` drives it and prints a PDF through headless Chrome. The ladder in this version is drawn by the plugin's SVG renderer; the capture path that renders it through the shipped viewer exists only in the example script, so **no tool exposes the report yet** and nothing in the product uses this module.
 
-## [0.76.0] - 2026-11-01
+## 0.76.0 — 2026-11-01
 
 - **The docs now say what evidence exists per surface, including where none does.** `docs/capabilities.md` carries a table of all four products: Studio 5000 and FactoryTalk View ME have captures, MotionWorks IEC and FactoryTalk Optix say **none** and why (no reachable IDE bridge on this host) instead of borrowing a figure from another surface. The two empty rows are the honest state of the repository, not a judgement about the tools.
 - **The composer chain has its worked example.** `docs/examples/composer-to-studio.md` follows one rung from `compose_rung` to a 0/0 build: the call and the answer it returns (the emitted `TON(Timer,2000,0)`, the `preview_path`, the `present` step), the viewer drawing it, the copy affordance, the **In Neutral Text** step that makes the paste work, and the captured build. It says which parts are captures and which are the shape the tests assert, and closes with what the chain does not prove - that the rung is sensible, that the preset suits the process, or anything about runtime.`n- **The paste path is proved, and the step that was missing is documented.** A composed rung reaches Studio as text, but the rung editor has a format selector and it opens in **In ASCII Text**: text typed there is rejected as `Invalid or unrecognized instruction` and replaced with an `Unknown Instruction` placeholder even when it is correct. Switching the editor to **In Neutral Text** and pasting `XIC(Run)TON(Timer,2000,0);` into rung 4 of `E2E_Standard` built **0 errors, 0 warnings, 0 messages** on a 5069-L320ER at 37.11, captured as `docs/figures/studio-neutral-text-paste.png` and written up in `docs/capabilities.md` with the four steps. The accumulator operand from the previous release is confirmed by that build.
@@ -2056,7 +2120,7 @@
   `rockwell-l5x` guidance says to present the preview and its budget moves 8000 → 8300 for that sentence; English and
   Chinese strings move together; a test pins the written document, the rung text and the `present` step.
 
-## [0.75.0] - 2026-11-01
+## 0.75.0 — 2026-11-01
 
 - **A composed SFC chart now draws its steps on separate rows, because the IDE showed them stacked.** `draft_sfc`
   defaulted every step to `X=300, Y=100` and every transition to `Y=200`, so a two-step chart was written with both steps
@@ -3548,7 +3612,7 @@
   and accept a filter that can never match. The test now asserts set equality in both directions: no emitted rule missing, no listed rule unemitted.
   540 package tests.
 
-## [0.74.0] - 2026-11-01
+## 0.74.0 — 2026-11-01
 
 ### Added
 
@@ -3829,7 +3893,7 @@
 
 326 package tests and 70 bundle tests pass.
 
-## [0.73.0] - 2026-10-31
+## 0.73.0 — 2026-10-31
 
 ### Added
 
@@ -3908,7 +3972,7 @@
   `css.<name>` the stylesheet does not define — both used to be invisible, one as dead intent and the other as an
   unstyled element with no error anywhere.
 
-## [0.72.1] - 2026-10-31
+## 0.72.1 — 2026-10-31
 
 ### Changed
 
@@ -3919,7 +3983,7 @@
   message withholds. The rule came out of CENTURY CABINETS, where the arity error survived an OSR repair, ASCII
   stubbing, a dropped `JSR` operand and two operand swaps before the bisect left one rung.
 
-## [0.72.0] - 2026-10-31
+## 0.72.0 — 2026-10-31
 
 ### Added
 
@@ -4011,7 +4075,7 @@
   11 rung rewrites and 44 operand repairs, no markers and no unknown operands left, and a file that imports with
   0 warnings and 0 errors.
 
-## [0.71.0] - 2026-10-30
+## 0.71.0 — 2026-10-30
 
 ### Added
 
@@ -4094,7 +4158,7 @@
   descends by the branch's height before drawing, which keeps the comment in its own band and grows
   the canvas to match. Rungs without a branch are unchanged.
 
-## [0.70.0] - 2026-10-29
+## 0.70.0 — 2026-10-29
 
 - **A data file with no type letter is not called unmapped.** The comparator only claims files whose prefix could exist; PLC-5 I/O-structure files carry no letter and used to appear as ?0.
 ### Changed
@@ -4216,7 +4280,7 @@
   `comparison.unchanged`, `changed` and `added`. An import rewrites whatever it lists, so the
   identical screens are worth knowing before asking a human to run a batch that changes nothing.
 
-## [0.69.0] - 2026-10-29
+## 0.69.0 — 2026-10-29
 
 ### Fixed
 
@@ -4225,7 +4289,7 @@
   display the application does not have yet and `update` for one it does, reporting the counts. The
   wizard fails the entire batch when one entry's type is wrong, which is how a package of new and
   changed screens failed in the field.
-## [0.68.0] - 2026-10-29
+## 0.68.0 — 2026-10-29
 
 ### Added
 
@@ -4234,7 +4298,7 @@
   package lists every display in the export and copies the artwork those untouched displays name,
   so a fresh application can be built from one import instead of a delta that leaves screens and
   their pictures behind.
-## [0.67.0] - 2026-10-29
+## 0.67.0 — 2026-10-29
 
 ### Fixed
 
@@ -4244,7 +4308,7 @@
   `bmp`), writes it beside the displays, and returns `images` and `missing_images` — a name the
   export does not carry is reported instead of failing silently. Filesystem providers gained an
   optional `writeBytes`, so binary files are copied byte-for-byte.
-## [0.66.0] - 2026-10-29
+## 0.66.0 — 2026-10-29
 
 ### Added
 
@@ -4252,7 +4316,7 @@
   now also reports, per display, staged objects the import dropped and fields whose landed value
   differs from the value the draft set (geometry, face colours, caption). That is the difference
   between "the file was accepted" and "the change is on the screen".
-## [0.65.0] - 2026-10-29
+## 0.65.0 — 2026-10-29
 
 ### Added
 
@@ -4261,7 +4325,7 @@
   not need a restyle pass afterwards; the result echoes the palette and reports the contrast of the
   two text-on-band pairs, flagging a title that would not be readable.
 
-## [0.64.0] - 2026-10-29
+## 0.64.0 — 2026-10-29
 
 ### Added
 
@@ -4274,7 +4338,7 @@
 
 - The bundle no longer lists the retired `@aryacode/dsh-engineering-ftview` package as a dependency.
 
-## [0.63.0] - 2026-10-29
+## 0.63.0 — 2026-10-29
 
 ### Added
 
@@ -4283,7 +4347,7 @@
   and each non-conforming display becomes one `VIEW-THEME-01` finding. Deciding which screens still
   need `ftview_draft_restyle` was a manual pass over dozens of displays.
 
-## [0.62.0] - 2026-10-29
+## 0.62.0 — 2026-10-29
 
 ### Fixed
 
@@ -4292,7 +4356,7 @@
   prepare step with `COMPONENT_NOT_FOUND`. The rest of the draft still validates, so one wrong name no
   longer hides the findings for the other operations. A set or delete on an object the same draft added
   is accepted, and an `object_add` can still be followed by edits to the object it placed.
-## [0.61.0] - 2026-10-29
+## 0.61.0 — 2026-10-29
 
 ### Added
 
@@ -4302,7 +4366,7 @@
   Reference objects are skipped because the global object owns their look, and indicators or drawings
   are skipped because their colours carry meaning. `theme_json` overrides any colour; the display
   backdrop is staged as a display setting, so `ftview_draft_display_set` remains the audit trail.
-## [0.60.0] - 2026-10-29
+## 0.60.0 — 2026-10-29
 
 ### Added
 
@@ -4310,14 +4374,14 @@
   (or any object with a `Display` connection) that names a missing display is `GOTO_TARGET_MISSING`,
   with the display, object and target. A typo there is invisible until an operator touches the button
   on the terminal.
-## [0.59.0] - 2026-10-29
+## 0.59.0 — 2026-10-29
 
 ### Fixed
 
 - **`TAG_NOT_BOUND` reads the expression the way Machine Edition writes it.** Braces are stripped and
   alias bindings (`{[PLC]Tag}`) are left alone, so a real export reports no false positives instead of
   one finding per `{` character.
-## [0.58.0] - 2026-10-29
+## 0.58.0 — 2026-10-29
 
 ### Added
 
@@ -4325,7 +4389,7 @@
   is resolved to its root tag; when the CSV is present and does not declare that root, the finding is
   `TAG_NOT_BOUND` with the display, object, connection and expression. A misspelled tag used to look
   identical to a working one in a render and only fail on the PanelView.
-## [0.57.0] - 2026-10-29
+## 0.57.0 — 2026-10-29
 
 ### Added
 
@@ -4338,7 +4402,7 @@
 
 - **Line breaks in captions are kept.** `escapeAttribute` writes `&#xA;` for a newline, so a multi-line
   message reaches Studio as two lines instead of being flattened onto one.
-## [0.56.0] - 2026-10-29
+## 0.56.0 — 2026-10-29
 
 ### Fixed
 
@@ -4348,7 +4412,7 @@
   A display that lost its settings element gets one inserted. Resizing a display or turning it into an
   `onTop` popup is now something a draft can do.
 
-## [0.55.0] - 2026-10-29
+## 0.55.0 — 2026-10-29
 
 ### Added
 
@@ -4362,7 +4426,7 @@
   keep the single-line row pitch, so the next row sat tight against it; the row now grows by the height
   of its tallest device.
 
-## [0.54.0] - 2026-10-29
+## 0.54.0 — 2026-10-29
 
 ### Changed
 
@@ -4374,7 +4438,7 @@
   `start_rung` that continues it, so a page image carries its own navigation instead of relying on the
   caller to remember the offset.
 
-## [0.53.0] - 2026-10-29
+## 0.53.0 — 2026-10-29
 
 ### Added
 
@@ -4389,7 +4453,7 @@
   change staged default geometry (`left/top 10`, `100x30`), silently repositioning the object; the
   defaults now apply only when the object is created.
 
-## [0.52.0] - 2026-10-29
+## 0.52.0 — 2026-10-29
 
 ### Added
 
@@ -4398,7 +4462,7 @@
   `next_start`, and the summary says which offset to page from next. A 799-rung commissioning project
   used to be truncated after `max_rungs` with no way to see the rest.
 
-## [0.51.0] - 2026-10-29
+## 0.51.0 — 2026-10-29
 
 ### Added
 
@@ -4412,7 +4476,7 @@
 - `ftview_draft_drop` refuses an index the draft does not hold and names the operation count, so a
   wrong index cannot silently remove the wrong step.
 
-## [0.50.0] - 2026-10-29
+## 0.50.0 — 2026-10-29
 
 ### Added
 
@@ -4428,7 +4492,7 @@
   PNGs, then ask for the import. The L5X skill says to start a review with `l5x_diagram` rather
   than reading rungs one at a time.
 
-## [0.49.0] - 2026-10-29
+## 0.49.0 — 2026-10-29
 
 ### Fixed
 
@@ -4445,7 +4509,7 @@
   and the generic abort advice carries that evidence when it exists.
 
 
-## [0.48.0] - 2026-10-29
+## 0.48.0 — 2026-10-29
 
 ### Added
 
@@ -4456,7 +4520,7 @@
 - Every routine heading names `program/routine`, so repeated rung numbers are explainable, and long
   operands are clipped inside their box instead of running off the page.
 
-## [0.47.0] - 2026-10-29
+## 0.47.0 — 2026-10-29
 
 ### Added
 
@@ -4464,7 +4528,7 @@
   entry per display (file, size, problems) and one merged `problems` list. Checking a twelve-screen set is
   now one or two calls instead of twelve, which is where review time went in the field.
 
-## [0.46.0] - 2026-10-29
+## 0.46.0 — 2026-10-29
 
 ### Added
 
@@ -4479,13 +4543,13 @@
   `<object type="...">` element drew every text, button, indicator and trend as an unlabelled rectangle.
   It now prefers the declared `type` attribute.
 
-## [0.45.0] - 2026-10-29
+## 0.45.0 — 2026-10-29
 
 ### Added
 
 - `l5x_routine_diagram` draws the rungs of a routine that already exists in the open project. Pass `program` and `routine`; it numbers the rungs, lists the instructions it found, and writes a PNG beside the SVG when Chrome or Edge is installed. A missing routine is refused with the program's routines as candidates, and a Structured Text routine is refused because there is no ladder to draw.
 
-## [0.44.0] - 2026-10-29
+## 0.44.0 — 2026-10-29
 
 ### Fixed
 
@@ -4496,7 +4560,7 @@
 - `IMPORT.md` now lists the wizard's exact four steps and counts creates against updates, so a run cannot
   fail because the manifest disagreed with the application.
 
-## [0.43.0] - 2026-10-29
+## 0.43.0 — 2026-10-29
 
 ### Added
 
@@ -4505,7 +4569,7 @@
   After a Studio import this is the proof that a specific object landed, where a file hash only says the
   file is different.
 
-## [0.42.0] - 2026-10-29
+## 0.42.0 — 2026-10-29
 
 ### Fixed
 
@@ -4518,7 +4582,7 @@
 - The package refuses a display that does not parse as XML, instead of letting the wizard answer only
   "Unable to load the XML file".
 
-## [0.41.0] - 2026-10-29
+## 0.41.0 — 2026-10-29
 
 ### Added
 
@@ -4531,7 +4595,7 @@
 
 - Long expressions are shortened to the room the frame has; the full text stays in `data.connections`.
 
-## [0.40.0] - 2026-10-29
+## 0.40.0 — 2026-10-29
 
 ### Added
 
@@ -4540,14 +4604,14 @@
 - Character references in captions (`&#xA;`, `&amp;`) are decoded, and a multi-line caption is drawn as one
   `tspan` per line instead of a flattened single line.
 
-## [0.39.0] - 2026-10-29
+## 0.39.0 — 2026-10-29
 
 ### Added
 
 - `ftview_draft_display_attrs` stages many attribute changes on a display or one of its objects in a
   single call, instead of one `ftview_draft_display_set` per attribute.
 
-## [0.38.0] - 2026-10-29
+## 0.38.0 — 2026-10-29
 
 ### Added
 
@@ -4559,7 +4623,7 @@
 - A `line` object is drawn from its own `line` polyline with its line width and dash style; it used to be
   a diagonal across the object's bounding box.
 
-## [0.37.0] - 2026-10-29
+## 0.37.0 — 2026-10-29
 
 ### Added
 
@@ -4571,13 +4635,13 @@
 - `ftview_apply` writes the Studio batch-import manifest for displays a draft created, which arrive as
   `X.xml` rather than `Displays/X.xml`.
 
-## [0.36.0] - 2026-10-29
+## 0.36.0 — 2026-10-29
 
 ### Changed
 
 - **`verify_offline_l5x` explains a no-changes import abort.** `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` now carries the reason (safety controller, or an L5X whose safety signature must be recomputed) and the alternative (build in Studio 5000, or prove the change with `run_checks` and a targeted read). The field session retried this four times.
 - Safety detection also reads `SafetySignature`, `Type="SAFETY"` and `SafetyNetworkNumber`, not only `SafetyTask`/`SafetyProgram`.
-## [0.35.0] - 2026-10-29
+## 0.35.0 — 2026-10-29
 
 ### Added
 
@@ -4586,7 +4650,7 @@
 ### Changed
 
 - The batch is atomic: an entry with neither description nor type refuses the whole set and stages nothing, naming the tag at fault.
-## [0.34.0] - 2026-10-29
+## 0.34.0 — 2026-10-29
 
 ### Added
 
@@ -4595,7 +4659,7 @@
 ### Changed
 
 - The batch is atomic: if any rung in it is invalid, nothing is staged and the refusal names the entry. A rung number that already exists is refused with the start rung to use instead, not a generic collision.
-## [0.33.0] - 2026-10-29
+## 0.33.0 — 2026-10-29
 
 ### Added
 
@@ -4604,7 +4668,7 @@
 ### Changed
 
 - Row kinds are validated before anything is staged: `value` becomes a numeric display bound on `Value`, `lamp` a multistate indicator bound on `Indicator` with two states. More than four cards or four navigation buttons is refused with the reason, not silently truncated.
-## [0.32.0] - 2026-10-29
+## 0.32.0 — 2026-10-29
 
 ### Added
 
@@ -4621,7 +4685,7 @@
 ### Changed
 
 - `draft_remove_op` takes a positional index that `draft_list` reports, not a rung number, so a removal cannot land on real logic by guesswork. An out-of-range index is refused with the current operation count and a pointer back to `draft_list`.
-## [0.30.0] - 2026-10-29
+## 0.30.0 — 2026-10-29
 
 ### Added
 
@@ -4630,7 +4694,7 @@
 ### Changed
 
 - Overwrite replaces the file set with the current draft; it does not merge with what an earlier apply wrote. Re-run the draft you want as the final state.
-## [0.29.0] - 2026-10-29
+## 0.29.0 — 2026-10-29
 
 ### Added
 
@@ -4641,37 +4705,37 @@
 
 - **Offline verification refuses safety projects instead of failing inside the SDK.** A GuardLogix or Compact GuardLogix export always aborts with `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` in the offline importer, even when the L5X is unchanged; `verify_offline_l5x` now detects `SafetyTask` / `SafetyProgram` and returns `SAFETY_PROJECT_OFFLINE_VERIFY` with the honest alternative (import and build in Studio 5000).
 - Rasterising tests carry a 30 s timeout, so a loaded host no longer fails them on the default 5 s.
-## [0.28.0] - 2026-10-29
+## 0.28.0 — 2026-10-29
 
 ### Added
 
 - **Ladder answers now carry a diagram.** `l5x_rung_preview` draws the validated rungs as an SVG and, when Chrome or Edge is installed, rasterises it to a PNG beside the preview document, so a chat answer shows ladder logic instead of NeutralText. Instruction boxes carry their operands, branches stack inside a bracket, and every rung is numbered. `diagram: "no"` skips the image work; a host without a browser still gets the SVG, and the result says why no PNG appeared.
 - The diagram is explicitly a schematic: it is drawn from the parsed rungs, not rendered by Studio, and the coverage list says so.
-## [0.27.0] - 2026-10-29
+## 0.27.0 — 2026-10-29
 
 ### Added
 
 - **A render inlines the display's real artwork.** `ftview_render` reads the rasters a display references from the export's `Images` folder and embeds them in the SVG, so a screen shows its actual images instead of a labelled placeholder. An image the export mentions but does not ship is still drawn as a placeholder, and the result now says so, because many ME exports ship an empty `Images` folder.
 
-## [0.26.0] - 2026-10-29
+## 0.26.0 — 2026-10-29
 
 ### Added
 
 - **`ftview_render` can draw the staged draft, not just the export.** Pass `source: "draft"` and the render reflects everything staged but not yet applied, so a screen can be looked at before `ftview_apply` and before anyone imports it. A draft that does not touch the display is refused with `NOT_FOUND` instead of silently drawing the committed file.
 
-## [0.25.1] - 2026-10-29
+## 0.25.1 — 2026-10-29
 
 ### Fixed
 
 - ftview_render resolves the SVG path before handing it to the browser, so a relative `output` folder now produces the PNG as well.
 
 
-## [0.25.0] - 2026-10-29
+## 0.25.0 — 2026-10-29
 
 ### Added
 
 - **ftview_render shows the screen before anyone imports it.** The tool draws one display of the open export as an SVG file and, when Chrome or Edge is installed, rasterises it to PNG with a headless screenshot, so the image can be attached to the answer. Panels, text, buttons, indicators and lines are drawn from the geometry the export declares; animations, images, global objects and vendor widgets appear as labelled placeholders. The result says which browser produced the PNG, or that only the SVG exists because none was found.
-## [0.24.0] - 2026-10-29
+## 0.24.0 — 2026-10-29
 
 ### Added
 
@@ -4686,7 +4750,7 @@
 - **`run_checks` says what it now covers** in its description: the documentation rules, the two standards rules and the optional baseline I/O comparison.
 # Changelog
 
-## [0.23.0] - 2026-10-29
+## 0.23.0 — 2026-10-29
 
 ### Added
 
@@ -4696,7 +4760,7 @@
 
 - **An object added to a display with no trailing newline landed after the root element.** The insertion point fell back to the end of the file, so the new element sat outside `<gfx>` and the re-parse behaved as if the object did not exist. The insertion now falls back to the parent's closing tag.
 
-## [0.22.2] - 2026-10-28
+## 0.22.2 — 2026-10-28
 
 ### Fixed
 
@@ -4707,12 +4771,12 @@
 ### Changed
 
 - **Coverage is documented per component.** Tag decoding succeeds on 64 of the 66 installed applications (two were locked by a running Studio); alarm decoding on 34. Both paths keep the Studio wizard as the fallback, and every fallback is reported rather than hidden.
-## [0.22.1] - 2026-10-28
+## 0.22.1 — 2026-10-28
 
 ### Changed
 
 - **`ftview_export` refreshes stale or missing tags headlessly.** When the store has `TAG/<application>.MDF` and the snapshot is absent or older than the application database, the export decodes the tag CSV itself and reports `tags: "fresh"` with no warning, instead of copying the old snapshot and telling the reader to run Studio. Falls back to the snapshot copy (with the existing warning) when local SQL tools are unavailable. Verified on `AryaFTV_CarpenterPilot_20261007`: decoded 9,986 bytes, byte-identical to the wizard CSV.
-## [0.22.0] - 2026-10-28
+## 0.22.0 — 2026-10-28
 
 ### Added
 
@@ -4722,7 +4786,7 @@
 ### Changed
 
 - **Alarms are no longer "requires Studio".** `ftview_capabilities` reports `alarms: "available"` when the machine alarm database exists, with the Studio wizard kept as the fallback for applications that carry no `M_Alarms` folder. Skill and `docs/reference/ftview-any-app.md` now describe the decoder and its limits.
-## [0.21.0] - 2026-10-28
+## 0.21.0 — 2026-10-28
 
 ### Added
 
@@ -4733,7 +4797,7 @@
 
 - **Tag snapshots no longer need a human at the wizard.** Skill, `docs/reference/ftview-any-app.md` and the capability notes now prefer `ftview_tag_snapshot`, with `ftview_studio_export_prepare` (DatabaseConverter) as the fallback when no local SQL Server is reachable. Alarm XML and display import still run inside Studio.
 
-## [0.20.2] - 2026-10-28
+## 0.20.2 — 2026-10-28
 
 ### Added
 
@@ -4742,7 +4806,7 @@
 ### Changed
 
 - **The export workflow no longer implies Studio.** Skill and `docs/examples.md` state that export, authoring, validation, apply and verification need no Studio; only the alarm snapshot and the display import do. The fresh-asset example now passes `export_root` and validates the snapshot in place.
-## [0.20.1] - 2026-10-28
+## 0.20.1 — 2026-10-28
 
 ### Changed
 
@@ -4752,7 +4816,7 @@
 ### Verified
 
 - On `AryaFTV_CarpenterPilot_20261007` with Studio open, the Alarm Import Export Wizard wrote `Alarms.xml` (29,089 B) straight into `Exports\AlarmDirectTest`; the project store's `Alarms.xml` kept its previous timestamp, proving nothing was written to the store first.
-## [0.20.0] - 2026-10-28
+## 0.20.0 — 2026-10-28
 
 ### Added
 
@@ -4762,7 +4826,7 @@
 ### Documented
 
 - `docs/reference/ftview-any-app.md` now records what the installed product exposes and does not: standalone tag wizard; display-only export server; `GfxImport`/`GraphicsXmlWizard` COM that needs Studio's graphics server and project context; `METriggerEditor` alarm implementation with no CLI; `ApplicationManagerServer` backup that fails on this host.
-## [0.19.2] - 2026-10-28
+## 0.19.2 — 2026-10-28
 
 ### Fixed
 
@@ -4772,7 +4836,7 @@
 
 - Tag export through `DatabaseConverter.exe`: `CC019_Main-Tags.CSV`, 104 tags, 110 lines.
 - Alarm export through `Alarm Setup ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ Import and Export`: `Alarms.xml`, 71,865 bytes, root `<alarms version="1.0">`.
-## [0.19.1] - 2026-10-28
+## 0.19.1 — 2026-10-28
 
 ### Fixed
 
@@ -4781,7 +4845,7 @@
 ### Verified
 
 - Second application exported and drafted against: `CC019_Main` (70 displays, 1280ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â800, schema `Gfx-ME17.xsd`, **no** tag or alarm snapshot). A 12-object `ARYA_DIAG` display passed schema validation and applied cleanly, proving the catalog/draft/validate/apply path is not Laminator-specific.
-## [0.19.0] - 2026-10-28
+## 0.19.0 — 2026-10-28
 
 ### Fixed
 
@@ -4791,28 +4855,28 @@
 ### Added
 
 - **`docs/reference/ftview-any-app.md`** ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â what is generic across applications (catalog, reading, drafting, packaging, snapshots, live mapping), what varies (schema version, tag CSV, alarms, display names and size, image stems, global objects, connection names), and the export ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ draft ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ validate ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ apply ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ import ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ verify loop.
-## [0.18.4] - 2026-10-28
+## 0.18.4 — 2026-10-28
 
 ### Added
 
 - **`ftview_studio_import_prepare` takes `mode: "create" | "update"`.** A display that already exists must be updated, not created: a create-mode entry ignores every existing object and reports "element already exists ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦ will be ignored". Update mode is what completes a partially imported display. Default stays `create`.
-## [0.18.3] - 2026-10-28
+## 0.18.3 — 2026-10-28
 
 ### Fixed
 
 - **`multistateIndicator` binds through `Indicator`, not `Value`.** Studio's importer rejected `name="Value"` on the element with `The connection with the name 'Value' is not valid on a 'multistateIndicator' element.` The object writer now maps a caller's `Value` connection to `Indicator` for indicators, so the mode lamp imports. The same fix was applied to the pending `Arya Control.xml` package.
 - Restored the non-stateful branch of `addObject` after the connection mapping edit, so visibility animations on panels keep being written (regression caught by the animation test).
-## [0.18.2] - 2026-10-28
+## 0.18.2 — 2026-10-28
 
 ### Fixed
 
 - **Import packages now force display creation.** The generated `gfxImport` entries were bare `importFile` references, so Studio imported in update mode and refused with `The display 'Arya Overview' does not exist.` Each entry now carries `importType="create"` and the explicit `display` name, which is what the batch file documents. The package under `Laminator/HMI/Arya Import` was rewritten for the retry.
-## [0.18.1] - 2026-10-28
+## 0.18.1 — 2026-10-28
 
 ### Fixed
 
 - **`ftview_studio_import_prepare` produced a package Studio could not import.** The display XML files went into `Displays/` while `BatchImport.xml` referenced them beside itself, so the Graphics Import Export Wizard failed with `Unable to load the XML file 'ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦\Arya Overview.xml'. Cause: The system cannot locate the object specified.` The XML files now sit beside the batch file, which is where Studio resolves `importFile`. The existing package under `Laminator/HMI/Arya Import` was corrected by hand for the retry.
-## [0.18.0] - 2026-10-28
+## 0.18.0 — 2026-10-28
 
 ### Added
 
@@ -4825,45 +4889,45 @@
 - `Displays/Arya Control.xml` was generated through these writers and validated against Studio's own **`Gfx-ME17.xsd`: 0 errors** ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â two stateful push buttons, a value-triggered mode lamp, two navigation buttons and two visibility-animated objects.
 - Rendered to `artifacts/ftview-arya/Arya Control.png`.
 - Not yet imported into a live Studio application: Studio started in Demo Mode and the application did not finish loading during this run, so the schema is the acceptance evidence here.
-## [0.17.2] - 2026-10-28
+## 0.17.2 — 2026-10-28
 
 ### Changed
 
 - The FTView skill now says how applied displays reach Studio (`ftview_studio_import_prepare`, then the Graphics Import Export Wizard) and corrects the object-contract count to the 34 drawable types.
-## [0.17.1] - 2026-10-28
+## 0.17.1 — 2026-10-28
 
 ### Fixed
 
 - **`ftview_apply` now composes write paths from the resolved target's `displayPath`.** The host may return an `FsTarget` object from `fs.resolve`; interpolating it produced `[object Object]` in child paths instead of the folder the caller named. `targetPath()` normalizes both shapes, and the apply existence check still runs against the resolved target.
-## [0.17.0] - 2026-10-28
+## 0.17.0 — 2026-10-28
 
 ### Added
 
 - **`ftview_studio_import_prepare`** packages displays from an applied export for Studio's Graphics Import Export Wizard: it copies the selected `<gfx>` display XML files, writes the `gfxImport` batch file, and returns the wizard steps. Non-`<gfx>` files are refused.
 - **Verified end to end on this host**: the wizard (right-click Displays > Import and Export) imported `Arya Proof.xml`; Studio created `GFX\Arya Proof.gfx` (104,960 bytes), listed **Arya Proof** in the Displays tree, and opened it in the editor. A pre-import backup of the application is kept under `backups/ftview/Carpenter_EPS_Laminator001/pre-proof-import-20261028T050943Z`.
-## [0.16.1] - 2026-10-28
+## 0.16.1 — 2026-10-28
 
 ### Fixed
 
 - **Copying a real Studio ME display produced schema-invalid XML.** `ftview_draft_display_add` renamed the copy by writing a `name` attribute onto the root, but a ME display is named by its file and its root is `<gfx>`, which `Gfx-ME17.xsd` rejects ("The 'name' attribute is not declared"). The rename now rewrites the name only on the legacy `<display name="ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¦">` shape and leaves `<gfx>` untouched; the file name is the display name.
-## [0.16.0] - 2026-10-28
+## 0.16.0 — 2026-10-28
 
 ### Changed
 
 - **`ftview_export` now reports asset freshness instead of only warning.** Its result carries `assets: { tags, alarms }` as `fresh`, `stale` or `missing`, and when either is not fresh the `next` list names `ftview_studio_export_prepare` (with the right `kind`) so the model refreshes the snapshot through the wizard and accepts it, rather than binding against an old file.
-## [0.15.0] - 2026-10-28
+## 0.15.0 — 2026-10-28
 
 ### Added
 
 - **Alarm export is now a prepared path.** The Alarm Import Export Wizard is hosted by Studio (it runs inside `VStudio.exe`); `ftview_studio_export_prepare { kind: "alarms" }` returns the exact Studio steps, the store folder and the `Alarms.xml` it must produce. `ftview_studio_export_accept { kind: "alarms" }` validates the `<alarms>` XML and copies it.
 - Verified on this host: export alarm configuration -> Next -> Finish wrote `Carpenter_EPS_Laminator001\Alarms.xml`, 34,559 bytes, root `<alarms version="1.0">`.
-## [0.14.1] - 2026-10-28
+## 0.14.1 — 2026-10-28
 
 ### Fixed
 
 - The 0.14.0 skill exceeded its 8000-byte budget (the new export section pushed it over; `pnpm test` caught it after
   publish). The skill is trimmed back under budget with the prepare/accept workflow kept.
-## [0.14.0] - 2026-10-28
+## 0.14.0 — 2026-10-28
 
 ### Added
 
@@ -4874,7 +4938,7 @@
 ### Notes
 
 - Rockwell's wizards are desktop dialogs. UIA, Win32 messages, browse-dialog automation and coordinate input were tried against them and are not reliable enough to ship; the harness's computer use is the actuator, and the two tools above make its result verifiable. Application Manager backup was also attempted and fails on this host ("Class not registered").
-## [0.13.1] - 2026-10-28
+## 0.13.1 — 2026-10-28
 
 ### Fixed
 
@@ -4883,7 +4947,7 @@
   into the store. The tool now says it exports displays and global objects, copies an existing snapshot **only if
   present**, reports its age, and the warnings state that the files are not part of a normal application. Skill and
   tool descriptions corrected to match.
-## [0.13.0] - 2026-10-28
+## 0.13.0 — 2026-10-28
 
 ### Added
 
@@ -4904,14 +4968,14 @@
 
 `Load Conveyor Screen` now draws the MANUAL bar and the header/footer exactly where Studio puts them; `Main Screen`
 draws the logo, triangles and round lamps. 66 FTView tests, 12 renderer tests, 69 bundle tests.
-## [0.12.1] - 2026-10-27
+## 0.12.1 — 2026-10-27
 
 ### Fixed
 
 - **The generated tool reference was stale.** `ftview_object_types` gained the `all` parameter in 0.12.0, but
   `docs/reference/tools.md` was generated before that edit and `pnpm test` caught it only after the release was
   published. The reference is regenerated; no tool behaviour changed.
-## [0.12.0] - 2026-10-27
+## 0.12.0 — 2026-10-27
 
 ### Added
 
@@ -4936,7 +5000,7 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
 - The alarm banner/list draws a labelled placeholder instead of the runtime message.
 - A reference multistate whose base state is value-triggered can render the design-time state instead of the runtime
   one (`MANUAL` bar on Load Conveyor).
-## [0.11.1] - 2026-10-27
+## 0.11.1 — 2026-10-27
 
 ### Fixed
 
@@ -4946,7 +5010,7 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
   and `.gif`.
 - The preview harness can inline `Images/` as data URLs, which is how the logo and the triangle indicators were
   verified: with the real Images present, `Main Screen` now draws the CARPENTER logo and the green/red triangles.
-## [0.11.0] - 2026-10-27
+## 0.11.0 — 2026-10-27
 
 ### Added
 
@@ -4966,7 +5030,7 @@ circular loader lamps; `Load Conveyor Screen` matches the Studio layout apart fr
 The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 `artifacts/ftview/studio-load-conveyor.png`; comparing it with the preview identified the three gaps above
 (header/logo via globals and images, and circular indicators).
-## [0.10.9] - 2026-10-27
+## 0.10.9 — 2026-10-27
 
 ### Fixed
 
@@ -4975,7 +5039,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   it, so Fit and 100% looked identical. Fit now renders through `responsiveSvg`, which overrides the size, keeps the
   `viewBox` and preserves the aspect ratio; 100% still shows the full-size drawing with scrolling. Found by driving the
   running app with computer use, not by a unit test.
-## [0.10.8] - 2026-10-27
+## 0.10.8 — 2026-10-27
 
 ### Added
 
@@ -4986,7 +5050,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Changed
 
 - Phase 4 of the preview plan is complete: inspect, navigate, back, PNG export and compare.
-## [0.10.7] - 2026-10-27
+## 0.10.7 — 2026-10-27
 
 ### Added
 
@@ -5000,7 +5064,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Known gaps
 
 - Side-by-side compare of two versions of a display is not in this release; the rest of phase 4 is.
-## [0.10.6] - 2026-10-27
+## 0.10.6 — 2026-10-27
 
 ### Added
 
@@ -5014,7 +5078,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Changed
 
 - FactoryTalk View read surface: 7 ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ 9 tools; bundle total 100 ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ 102.
-## [0.10.5] - 2026-10-27
+## 0.10.5 — 2026-10-27
 
 ### Added
 
@@ -5031,7 +5095,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - The route is served only when the host provides a web server; a CLI host keeps the tool surface without live values.
 - Live reads have not been exercised against a controller in this round; the transport is the same driver the L5X live
   row already uses, and the route is unit-tested with an injected reader.
-## [0.10.4] - 2026-10-27
+## 0.10.4 — 2026-10-27
 
 ### Added
 
@@ -5048,7 +5112,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Known gaps
 
 - Values are still supplied by the caller; the controller route is the remaining phase-3 work.
-## [0.10.3] - 2026-10-27
+## 0.10.3 — 2026-10-27
 
 ### Added
 
@@ -5065,7 +5129,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - Values are supplied by the caller (tests and the preview harness); live controller values arrive with the route.
 - Reference objects (`isReferenceObject="true"` with `linkBaseObject`) still render their local state only; resolving
   the base object in Global Objects is not implemented.
-## [0.10.2] - 2026-10-27
+## 0.10.2 — 2026-10-27
 
 ### Changed
 
@@ -5081,13 +5145,13 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Known gaps
 
 - `barGraph`, `gauge`, `trend` and `listSelector` still draw as plain faces; live values and navigation are not wired yet.
-## [0.10.1] - 2026-10-27
+## 0.10.1 — 2026-10-27
 
 ### Added
 
 - **A sourced renderer for the display preview.** The FTView face had no source, only a committed closure bundle. `packages/ftview-viewer/src` now owns an XML reader and an SVG renderer with tests, and `scripts/ftview-preview.mjs` renders any display export to SVG/HTML (plus a headless PNG) outside the app. On the real Laminator `Main Screen` it draws the object set the artifact dropped ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â **button captions from `<states><state><caption>`**, per-state colours, groups, and numeric fields ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â which is why the old preview showed blank navigation buttons.
 - The renderer is not wired into the client face yet; the artifact still serves the panel. Known gap, stated rather than implied.
-## [0.10.0] - 2026-10-27
+## 0.10.0 — 2026-10-27
 
 ### Added
 
@@ -5106,7 +5170,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 ### Known gaps
 
 - The live *values* route and the new viewer are not in this release. The mapping and assets they depend on are.
-## [0.9.3] - 2026-10-27
+## 0.9.3 — 2026-10-27
 
 ### Fixed
 
@@ -5117,7 +5181,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   `Tags/<application>.csv` are snapshots Studio last wrote when those components were exported from their
   editors ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â not fresh data. The warning states that, and that the application export in Studio is what
   refreshes them. There is no supported headless export for either component; this is the honest boundary.
-## [0.9.2] - 2026-10-27
+## 0.9.2 — 2026-10-27
 
 ### Fixed
 
@@ -5127,7 +5191,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   The skill is now its own plugin with `inject: ['skills']`, the same pattern the product skills use, so the
   host activates it when the service is up regardless of row order. A test asserts the injection list and
   registration.
-## [0.9.1] - 2026-10-27
+## 0.9.1 — 2026-10-27
 
 ### Fixed
 
@@ -5141,7 +5205,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - **The corpus is now actually shipped.** The assembler copied only `lib/` and `SKILL.md`, so the vendored
   package had no `corpus/`, `index.json` or `SOURCE.json` and `engineering_reference` would have failed at
   the first call. `scripts/assemble.mjs` now copies those files, and the packed artifact is checked for them.
-## [0.9.0] - 2026-10-27
+## 0.9.0 — 2026-10-27
 
 ### Added
 
@@ -5168,7 +5232,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - `engineering_review` (rule-based draft review) and MWI/Optix profile extraction are planned for 0.9.1; the
   corpus already applies to those products and the product validation still judges the result.
-## [0.8.4] - 2026-10-27
+## 0.8.4 — 2026-10-27
 
 ### Added
 
@@ -5184,7 +5248,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 
 - FTView skill, getting-started and the handbook now describe the alarms/tags copy and its staleness
   warning instead of "the vendor export carries no tag CSV".
-## [0.8.3] - 2026-10-27
+## 0.8.3 — 2026-10-27
 
 ### Documentation
 
@@ -5198,7 +5262,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - The diagrams and handbook are **generated**, not hand-drawn: `scripts/gen-diagrams.py` owns the layout
   and `scripts/gen-handbook.py` the prose, so a changed workflow is one edit and one regeneration.
 - README: the handbook in the documentation table and the generators in the Development commands.
-## [0.8.2] - 2026-10-27
+## 0.8.2 — 2026-10-27
 
 ### Documentation
 
@@ -5213,7 +5277,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - Examples: section 7 now walks the real 0.8.x FactoryTalk View flow (vendor export ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ author ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢
   schema-validate ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ apply with the `BatchImport` manifest ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ verify the import), and a new section 9
   covers reading and authoring a FactoryTalk Optix project.
-## [0.8.1] - 2026-10-27
+## 0.8.1 — 2026-10-27
 
 ### Added
 
@@ -5238,7 +5302,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
 - `packages/ftview/SKILL.md`: an Authoring section (apps ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ export ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ author ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ validate) and an Import
   and verify section that states plainly which steps remain Studio and ME Transfer Utility.
 - README: 97 tools, FactoryTalk View ME 22, and the 0.8.0 milestone.
-## [0.7.0] - 2026-10-27
+## 0.7.0 — 2026-10-27
 
 ### Added
 
@@ -5270,7 +5334,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   Documentation section (bundle contents, the comment round trip, what the bundle cannot prove).
 - README: 89 tools, L5X 44, and the 0.7.0 milestone.
 
-## [0.6.0] - 2026-10-27
+## 0.6.0 — 2026-10-27
 
 ### Added
 
@@ -5290,7 +5354,7 @@ The reference screenshot of `Load Conveyor Screen` in Studio is committed at
   `pages/*.md`, and generates `index.json` plus `SOURCE.json` (commit, page count, risk counts).
   `pnpm netlogic:sync` refreshes it; `test/netlogic.spec.mjs` fails when the index and the pages drift.
 
-## [0.5.0] - 2026-10-27
+## 0.5.0 — 2026-10-27
 
 Commissioned against the Laminator fixtures: a real Studio 5000 ACD exported to a 5.4 MB L5X, a
 real FactoryTalk View ME export, and two MotionWorks projects.
@@ -5368,7 +5432,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   pinned snapshot, a generated index, and one `optix_netlogic` retrieval tool, with the risk flags and
   disclaimers the repository itself requires.
 
-## [0.4.22] - 2026-10-27
+## 0.4.22 — 2026-10-27
 
 ### Fixed
 
@@ -5379,7 +5443,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   release line must not carry. `assemble.mjs` now excludes `__pycache__` and `*.pyc` at copy time, so
   the outcome no longer depends on someone remembering to delete them.
 
-## [0.4.21] - 2026-10-27
+## 0.4.21 — 2026-10-27
 
 ### Changed
 
@@ -5403,14 +5467,14 @@ Verified on both Laminator projects through the shipped engine: attach into
   packing. That is how the 0.4.20 market tarball came to carry the 0.4.16 MotionWorks build under a
   0.4.20 version.
 
-## [0.4.20] - 2026-10-27
+## 0.4.20 — 2026-10-27
 
 ### Fixed
 
 - **The bundle no longer ships Python bytecode.** `__pycache__` and `*.pyc` from the MotionWorks
   engine are ignored and excluded, so the tarball contains only the sources the plugin runs.
 
-## [0.4.19] - 2026-10-27
+## 0.4.19 — 2026-10-27
 
 ### Fixed
 
@@ -5419,7 +5483,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   direct workflow no longer fails with `NO_PROJECT`. A leftover `.motionworks/stage` copy no longer
   shadows that project, and two attached projects are reported as `AMBIGUOUS_PROJECT` with both names.
 
-## [0.4.18] - 2026-10-27
+## 0.4.18 — 2026-10-27
 
 ### Fixed
 
@@ -5429,7 +5493,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 - **A stale stage no longer makes the direct workflow ambiguous.** When a project has a verified
   pre-edit backup, `singleStage()` now prefers that project over old `.motionworks/stage` copies.
 
-## [0.4.17] - 2026-10-27
+## 0.4.17 — 2026-10-27
 
 ### Fixed
 
@@ -5469,7 +5533,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   describe a direct edit. The row-default table and diagram now match the shipped defaults (every
   surface on), which the 0.4.15 release changed but the diagram still showed as off.
 
-## [0.4.16] - 2026-10-27
+## 0.4.16 — 2026-10-27
 
 ### Added
 
@@ -5485,7 +5549,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   A saved blank `previewUrl` or `cdpUrl` now falls back to the loopback defaults
   instead of failing with `Invalid URL`.
 
-## [0.4.15] - 2026-10-27
+## 0.4.15 — 2026-10-27
 
 ### Changed
 
@@ -5499,7 +5563,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   on-by-default behaviour. `docs/architecture.md`, `README.md`, `cordis.patch.yml`
   and the settings page copy were updated with the schemas.
 
-## [0.4.14] - 2026-10-27
+## 0.4.14 — 2026-10-27
 
 ### Added
 
@@ -5509,7 +5573,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   bridge origins and token, live authoring, destructive operations, exported-method
   invocation, the emulator preview and preview input. Live authoring is on by default from 0.4.15; the Configure page can
   switch it off. Reads work as soon as a project with the Studio bridge is open.
-## [0.4.13] - 2026-10-27
+## 0.4.13 — 2026-10-27
 
 ### Changed
 
@@ -5521,7 +5585,7 @@ Verified on both Laminator projects through the shipped engine: attach into
 - **Staging is optional.** `mw_project_stage` remains for a sandbox copy, but the skill and tool
   descriptions lead with the direct path.
 
-## [0.4.12] - 2026-10-27
+## 0.4.12 — 2026-10-27
 
 ### Fixed
 
@@ -5529,7 +5593,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   live reference; passing the reference to `configureWorkspace` did nothing. The row now unwraps it
   with `text()`, so the value saved in Configure is the folder the tools search.
 
-## [0.4.11] - 2026-10-27
+## 0.4.11 — 2026-10-27
 
 ### Fixed
 
@@ -5545,7 +5609,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   setting (shown in Configure) and falls back to the `mwi.workspace` marker in the profile, then the
   process directory. Project discovery follows directory junctions without looping.
 
-## [0.4.10] - 2026-10-26
+## 0.4.10 — 2026-10-26
 
 ### Fixed
 
@@ -5561,7 +5625,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   `allowWrites`, `allowedAddresses`, `ftview.edit`/`studio` and `mwi.edit` are now volatile, so the
   Configure page edits the running row instead of remounting it.
 
-## [0.4.9] - 2026-10-26
+## 0.4.9 — 2026-10-26
 
 ### Fixed
 
@@ -5569,7 +5633,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   bundled face rather than the two viewer faces. Same pages and same defaults as 0.4.8; this build is
   the installable one.
 
-## [0.4.8] - 2026-10-26
+## 0.4.8 — 2026-10-26
 
 ### Fixed
 
@@ -5581,7 +5645,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   MotionWorks IEC edits. Values are staged and saved through the row's own configuration form, and the
   defaults are unchanged.
 
-## [0.4.7] - 2026-10-25
+## 0.4.7 — 2026-10-25
 
 ### Fixed
 
@@ -5602,7 +5666,7 @@ Verified on both Laminator projects through the shipped engine: attach into
   the unused capability (CIP subscriptions, UDT `Structure` reads) is named.
 - `packages/l5x/README.md`: read and write tool tables, and the full live configuration row.
 
-## [0.4.6] - 2026-10-25
+## 0.4.6 — 2026-10-25
 
 ### Added
 
@@ -5633,7 +5697,7 @@ L5X product row's `live` switch:
 - `test/live.spec.ts` covers the gating: switch off, policy `never`, declined prompt, wrong value type,
   and a UDT tag refused as non-scalar ÃÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â 70 tests in the package.
 
-## [0.4.5] - 2026-10-25
+## 0.4.5 — 2026-10-25
 
 ### Changed
 
@@ -5647,7 +5711,7 @@ L5X product row's `live` switch:
 
 One plugin now covers all four products: 5 rows, 79 tools, both previews, no component packages.
 
-## [0.4.4] - 2026-10-25
+## 0.4.4 — 2026-10-25
 
 ### Changed
 
@@ -5671,7 +5735,7 @@ carry the switches"), so a group switch is a shell feature rather than a bundle 
 row list is what a bundle can do on its own, without a harness change to maintain across DSH
 upgrades.
 
-## [0.4.3] - 2026-10-25
+## 0.4.3 — 2026-10-25
 
 ### Fixed
 
@@ -5682,7 +5746,7 @@ upgrades.
   import, taking its tools with them. The bundle now declares all three at the versions the components
   pin, and `test/docs.spec.mjs` fails when a component dependency is not declared here.
 
-## [0.4.2] - 2026-10-25
+## 0.4.2 — 2026-10-25
 
 ### Fixed
 
@@ -5703,7 +5767,7 @@ upgrades.
 - The patch is now **inserts only**, and `test/patch.spec.mjs` fails if any entry targets a row another
   bundle owns.
 
-## [0.4.1] - 2026-10-25
+## 0.4.1 — 2026-10-25
 
 ### Fixed
 
@@ -5719,7 +5783,7 @@ upgrades.
 - `test/docs.spec.mjs` now fails when any dependency, optional dependency or peer is a URL, git, file,
   link or workspace spec, so the tarball spec cannot come back quietly.
 
-## [0.4.0] - 2026-10-25
+## 0.4.0 — 2026-10-25
 
 ### Changed
 
@@ -5732,14 +5796,14 @@ upgrades.
 - `scripts/build-client.mjs` builds `lib/client.js` from the two committed face bundles. The face bodies are copied verbatim, each in its own closure, and the merged plugin exports the union of both faces' services. `pnpm build:client` regenerates the artifact; `pnpm pack` runs it first.
 - `test/client-face.spec.mjs` holds the three properties that would otherwise fail silently in the app: the registration id equals the package name, the factory materializes with both faces and merges their services, and `apply` mounts both previews. It also fails when `lib/client.js` is stale against its faces.
 
-## [0.3.0] - 2026-10-23
+## 0.3.0 — 2026-10-23
 
 ### Added
 
 - **FactoryTalk Optix as a bundle component:** the `optix` row mounts `@aryacode/dsh-tool-ft-optix` (Studio discovery, live authoring, validation, templates, preview and OCR) from a released component tarball. The standalone tool plugin is no longer a product entry or an installer dependency.
 - The bundle now registers 79 tools: the 73 generated reference tools plus six Optix tools. Optix stays unlinked to a skill until one exists.
 
-## [0.2.0] - 2026-10-23
+## 0.2.0 — 2026-10-23
 
 ### Added
 
@@ -5753,7 +5817,7 @@ upgrades.
 
 Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.2] - 2026-10-23
+## 0.1.2 — 2026-10-23
 
 ### Fixed
 
@@ -5774,7 +5838,7 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Rewrite the README for the current bundle: what it is, the eleven components and their defaults, install, composition, the policy table, tools, requirements, safety and known gaps.
 - Add `docs:tools` and `docs:check` scripts; tests now run through tsx so they can read the TypeScript tool factories.
 
-## [0.1.1] - 2026-10-23
+## 0.1.1 — 2026-10-23
 
 
 
@@ -5840,7 +5904,7 @@ Notable changes to `dsh-engineering`. The format follows [Keep a Changelog](http
 - Add `AGENTS.md`: documentation is updated in the same change as the code it describes, diagrams are part of the contract, and known gaps stay explicit.
 - Add `test/docs.spec.mjs`, which fails when the README policy table, the documented unlinked namespace, the changelog version heading, or the locale key sets disagree with the patch. Verified to fail on a dropped policy row and on a renamed prefix.
 
-## [0.1.0]
+## 0.1.0
 
 - Add the engineering bundle: a phase-1, additive loader layer that targets the existing `tool-capability-policy` row and links `l5x_*`, `ftview_*` and `mw_*` to the skills that govern them.
 - Keep `onDemand: false` so the bundle does not change the product-wide eager tool exposure Arya measured and kept.

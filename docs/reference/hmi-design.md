@@ -8,6 +8,10 @@ Design quality is not a product feature. A 20 px close box is too small in Facto
 small in FactoryTalk Optix; a white title on a saturated brand blue fails contrast in both. The tools
 below were written once for View and ported to Optix so the same question gets the same answer.
 
+Product-specific detail lives in the product pages: [FactoryTalk View ME](../products/ftview/README.md)
+for the display, tag and alarm tools, and [FactoryTalk Optix](../products/optix/README.md) for the bridge,
+the screens, the model and the release review.
+
 ## The loop
 
 Both products run the same four steps, and the order is the point:
@@ -130,31 +134,28 @@ than an oversight.
 ## The model underneath the screens
 
 A screen binds to a tag path; the tag path is the part of the application an OPC UA client, a future alarm
-server and the next engineer actually navigate. `optix_model` owns that shape: `Model/Types` for equipment
-`ObjectType`s and `Model/<Plant>/<Area>/<Line>/<Equipment>/<Signal>` for instances and signals, with units,
-range and a description travelling as child String variables. Its rules (`OPTIX-MDL-01`..`06`) are reported
-with a `structured` / `needs-work` verdict, every finding naming the path and the fix, and it never rewrites
-a flat model it finds. `docs/reference/optix-model.md` carries the convention, the rule table and the two
-measured limits - metadata as String variables, and type members copied onto instances until the bridge
-writes a modelling rule for them - and the corpus page is `optix/optix-opcua-model-structure`.
+server and the next engineer actually navigate. `optix_model` owns that shape and reports its rules
+(`OPTIX-MDL-01`..`06`) with a `structured` / `needs-work` verdict, every finding naming the path and the
+fix, and it never rewrites a flat model it finds. The convention, the rule table and the two measured
+limits live in [the Optix project page](../products/optix/project.md); the corpus page is
+`optix/optix-opcua-model-structure`.
+
 ## The release review: `optix_production_check`
 
 A screen can pass every geometry rule and still ship dead. The review that runs over the whole project
 is `optix_production_check`; it reads the `UI` tree once and answers with a verdict (`ready`, `review`,
 `not_ready`), a count per severity and findings that name the node and the fix.
 
-| Rule | What it catches | Why the designer does not show it |
-|---|---|---|
-| `OPTIX-PROD-01` | a handler whose `ObjectPointer` still holds the absolute design-time NodeId | the button and its handler both exist; the runtime instantiates UI per session and reports `No behaviour or observer found that handles the method` when it is clicked |
-| `OPTIX-PROD-02` | a handler with neither a reference nor a dynamic link, or navigation to a screen that is not there | the property editor shows a path that used to exist |
-| `OPTIX-PROD-03` | a screen the operator cannot reach from the panel the loader starts on | nothing marks a screen as orphaned; the shell bar counts for every panel because it sits in the start window |
-| `OPTIX-PROD-04` | a presentation engine on the built-in starting user or the stock style sheet | the defaults are legitimate engineering values; they are not a production policy |
-| `OPTIX-PROD-05` | a screen outside the screen folder | the tree renders it identically |
+The five rules — `OPTIX-PROD-01`..`05` — and the reason the designer cannot show them are in [the Optix
+production page](../products/optix/production.md). The one worth knowing before a release is
+`OPTIX-PROD-01`: a handler whose `ObjectPointer` still holds the absolute design-time NodeId. The button
+and its handler both exist, and the runtime instantiates UI per session, so clicking it reports `No
+behaviour or observer found that handles the method`.
 
 `repair: true` clears the absolute pointer value of every `OPTIX-PROD-01` finding — the measured cause of
 "the click fires and nothing switches" — and needs `allowWrites`. It writes only that value; re-check
-afterwards, then click the button in the runtime, because the review reports what the model says, not
-what an operator saw.
+afterwards, then click the button in the runtime, because the review reports what the model says, not what
+an operator saw.
 
 The build order that avoids these failures in the first place (model, NetLogic class, screens, command
 buttons, save/build/run, operator click, review) is `optix-application-recipe` in the corpus.
@@ -165,18 +166,14 @@ The fastest way to a screen that looks designed is to stop drawing primitives. B
 composition, and the tools reach it:
 
 - **Optix** ships seven template libraries under `<Studio>\Files\Libraries`. `optix_library` with
-  `action: "list"` reads that catalog from disk with Studio closed and returns each item's browse name,
-  its display name, the usage text the library itself ships, and its Chinese display name. On the
-  install this repository is tested against that is 94 importable items: Widgets 42 (AlarmIcon,
-  LoginForm, AlarmGrid, ConfirmationDialog, PanelLoaderWithBack, DateAndTimeWidget, …), Scripts 33,
-  FeaturePreview 6, Misc 6, StyleSheets 4 (`FriendlyLight`, `FriendlyDark`, `MaterialDark`,
-  `ISAStyleSheet`), GraphicElements 2 items plus 8 group folders (the industrial graphics: pumps, valves,
-  tanks, motors, signs), Keyboards 1. `action: "import"` pulls one into the open project through the
-  bridge, landing it under `UI/Components/<Library>` (the folder chain is created when missing), so the
-  imported types stay separable from the project's own objects. `optix_screen` with `library_items` does
-  the whole step for a screen in one call: import each named composite once, instantiate it under the
-  screen, place it in a card slot. A `Rectangle`/`Label`/`Panel` composition is the fallback, not the
-  first answer.
+  `action: "list"` reads that catalog from disk with Studio closed, and on the install this repository is
+  tested against that is 94 importable items — Widgets 42, Scripts 33, FeaturePreview 6, Misc 6,
+  StyleSheets 4, GraphicElements 2 plus 8 group folders, Keyboards 1. `action: "import"` pulls one into
+  the open project under `UI/Components/<Library>`, and `optix_screen` with `library_items` does the whole
+  step for a screen in one call: import each named composite once, instantiate it under the screen, place
+  it in a card slot. The catalog, the import rules and the one unverified case are in [the Optix screens
+  page](../products/optix/screens.md) and [the Optix production page](../products/optix/production.md). A
+  `Rectangle`/`Label`/`Panel` composition is the fallback, not the first answer.
 - **FactoryTalk View ME** carries its own composition in the export, and `ftview_theme_audit` reports
   how much of the house palette a display already uses, paired with `ftview_draft_restyle` for the
   display that does not.
@@ -208,16 +205,12 @@ There are two entry points, and the tools differ for each. Neither one involves 
 Studio.
 
 **A project that has no bridge yet** - a new one from a starter, or somebody's existing project.
-`optix_template` with `destination` scaffolds the starter: copy, rename, the bridge this bundle ships,
-and the canvas from `width`/`height` (`Nodes/UI/UI.yaml` `MainWindow`). Those two numbers are required
-rather than defaulted, because every screen drafted afterwards reads the canvas from the live window: a
-wrong answer is not one edit later, it is the size of every screen in the project. The copy lands in
-`<destination>/<name>` - Studio warns (`423`) when a project's name and the folder holding it disagree,
-and a workspace root is not a project folder. For an existing project,
-`optix_bridge_arm` with `confirm: false` first reports what is there, and `confirm: true` writes the
-bridge and adds the `StudioMCPBridge` NetLogic node to `Nodes/NetLogic/NetLogic.yaml` when the project
-has none - a hand-built project usually has none, and `StartBridge` is unreachable without it. Every
-file it replaces is kept under `ProjectFiles/.dsh-backups`.
+`optix_template` with `destination` scaffolds the starter: copy, rename, the bridge this bundle ships, and
+the canvas from `width`/`height`, which are required rather than defaulted because every screen drafted
+afterwards reads the canvas from the live window. For an existing project, `optix_bridge_arm` reports what
+is there with `confirm: false` and writes the bridge and its NetLogic node with `confirm: true`, keeping
+every replaced file under `ProjectFiles/.dsh-backups`. [The Optix page](../products/optix/README.md)
+carries both paths, their backups and their refusals.
 
 **A project that already has the bridge.** Nothing to write: the engineer opens it and runs
 `StartBridge`, and the agent works through the bridge.
@@ -232,6 +225,7 @@ with `optix_emulator` - never Studio's own toolbar.
 One measured constraint belongs in every handover: the runtime loads the **saved** project, so a change
 made through the bridge reaches the emulator only after the engineer saves in Studio. Ask for that save
 when a visual check is the point.
+
 ## What a clean report does not prove
 
 Every rule above is a static reading of the model. None of them renders the screen, runs it, or touches

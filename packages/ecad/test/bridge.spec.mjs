@@ -35,7 +35,7 @@ test('a host that cannot answer a registry read reports no bridge, never an erro
     { serverName: 'ocs', entryTool: 'mcp__ocs__ocs_sessions', mounted: false, tools: [] },
     'the default server is named even when nothing can be read',
   )
-  assert.match(cad.hint, /docs\/aryacad-bridge\.md/u, 'the hint points at the owner-facing document')
+  assert.match(cad.hint, /docs\/products\/ecad\/aryacad-bridge\.md/u, 'the hint points at the owner-facing document')
   assert.match(cad.hint, /never starts the CAD application/u, 'the hint states the ownership boundary')
   assert.match(cad.hint, /still discovering tools also reads as not mounted/u, 'a discovering bridge is not mistaken for an absent one')
   assert.match(answer.summary, /the AryaCAD bridge is not mounted/u, answer.summary)

@@ -9,6 +9,11 @@
     "defaultBudget": 8000,
     "note": "A skill body is injected into the request when the skill is invoked, so the budget is a context-cost ceiling. Depth belongs in docs/ and is linked, not embedded. The tested pair cost is the sum of two product bodies: l5x 10265 + ftview 7975 = 18240 characters (about 4.6k tokens), so a workflow skill must stay near 3k to keep a three-skill load near 6k."
   },
+  "maturityPolicy": {
+    "stability": ["stable", "beta", "experimental"],
+    "note": "stable: the tool set and its result contract are settled, so a change is additive and a breaking one carries its own release note. beta: works and is documented, but the tool set or a result may still change between releases without notice. experimental: ships off by default or behind a flag and may be reshaped or removed. since is the first release whose cordis.patch.yml carried this component's row id, not the last change to it. A stable component must name the document that records its last real verification; a beta or experimental one must say what is not proved yet.",
+    "since": "The first release tag whose patch carried the row id, e.g. v0.86.0."
+  },
   "components": [
     {
       "id": "l5x",
@@ -16,6 +21,14 @@
       "kind": "product",
       "capability": "offline-file",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.4.4",
+      "requires": [
+        { "of": "Studio 5000 Logix Designer", "version": null, "for": "SDK builds, upload, mode change and download", "optional": true },
+        { "of": "a Logix controller", "version": null, "for": "live EtherNet/IP reads and the two approval-gated writes", "optional": true }
+      ],
+      "verified": { "against": "Logix Designer 37.11 (SDK build, 0 errors) on a real project, with a composed rung pasted as Neutral Text and built clean", "where": "docs/capabilities.md" },
+      "stabilityNote": "Proven with Logix Designer 37.11 on a small number of projects; other Studio revisions, other controller families, the wider instruction surface and a hand-driven Studio import of a draft are not measured.",
       "namespace": {
         "prefixes": [],
         "legacy": true,
@@ -56,8 +69,8 @@
         "why": "the written L5X differs from the source by exactly the draft's operations and run_checks passes on it, which proves the edit offline without any Studio install"
       },
       "docs": [
-        "docs/port/l5x.md"
-      ],
+          "docs/products/l5x.md"
+        ],
       "vendor": true
     },
     {
@@ -66,6 +79,13 @@
       "kind": "product",
       "capability": "offline-file",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.4.4",
+      "requires": [
+        { "of": "FactoryTalk View Studio ME", "version": null, "for": "discovery and the Studio handoff", "optional": true }
+      ],
+      "verified": { "against": "a FactoryTalk View ME application export: a display authored with the draft tools and drawn by this bundle's own renderer", "where": "docs/capabilities.md" },
+      "stabilityNote": "Proven against one FactoryTalk View ME export and this bundle's own renderer; other ME versions, a second application, a PanelView Plus terminal and the Studio import of an authored display are not measured.",
       "namespace": { "prefixes": ["ftview_"], "legacy": false },
       "row": "ftview",
       "rowName": "@aryacode/dsh-engineering/ftview",
@@ -95,10 +115,9 @@
         "why": "an applied display is only proven once a fresh export matches it object by object"
       },
       "docs": [
-        "docs/port/ftview.md",
-        "docs/reference/ftview-any-app.md",
-        "docs/reference/ftview-cross.md"
-      ],
+          "docs/products/ftview/README.md",
+          "docs/products/ftview/cross-reference.md"
+        ],
       "vendor": true
     },
     {
@@ -107,6 +126,13 @@
       "kind": "product",
       "capability": "live-ide",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.4.4",
+      "requires": [
+        { "of": "MotionWorks IEC 3 Pro", "version": "1.19", "for": "every session, read, edit and compile", "optional": false }
+      ],
+      "verified": { "against": "MotionWorks IEC 3 Pro 1.19, live-verified on 2026-10-23 against a staged copy of a real project", "where": "docs/products/mwi.md" },
+      "stabilityNote": "Proven on MotionWorks IEC 3 Pro 1.19 with one staged project; other IDE versions, other controller families and a download to real hardware are not measured.",
       "namespace": { "prefixes": ["mw_"], "legacy": false },
       "row": "mwi",
       "rowName": "@aryacode/dsh-engineering/mwi",
@@ -133,8 +159,8 @@
         "why": "a saved-project edit is only accepted once the vendor compiler reports clean"
       },
       "docs": [
-        "docs/port/mwi.md"
-      ],
+          "docs/products/mwi.md"
+        ],
       "vendor": true
     },
     {
@@ -143,6 +169,13 @@
       "kind": "product",
       "capability": "offline-file",
       "default": "off",
+      "stability": "beta",
+      "since": "v0.86.0",
+      "requires": [
+        { "of": "AryaCAD Electrical", "version": null, "for": "drawing authoring, which runs in that application through its own MCP row; this row only reads and renders", "optional": true }
+      ],
+      "verified": { "against": "AryaCAD Electrical's own sample and template drawings read out of tree, and the read face driven in headless Chrome with zero page errors", "where": "docs/capabilities.md" },
+      "stabilityNote": "The 34-sheet write and re-read round trip is not run in this pass, a real DWG was verified only in the Dev pass, and the row ships off by default.",
       "namespace": { "prefixes": ["ecad_"], "legacy": false },
       "row": "ecad",
       "rowName": "@aryacode/dsh-engineering/ecad",
@@ -178,9 +211,9 @@
         "why": "a drawing changed in AryaCAD Electrical is only accepted once a re-read here compares it against the kept copy and names what moved"
       },
       "docs": [
-        "docs/port/ecad.md",
-        "docs/aryacad-bridge.md"
-      ],
+          "docs/products/ecad/README.md",
+          "docs/products/ecad/aryacad-bridge.md"
+        ],
       "vendor": true
     },
     {
@@ -189,6 +222,15 @@
       "kind": "product",
       "capability": "live-ide",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.3.0",
+      "requires": [
+        { "of": "FactoryTalk Optix Studio", "version": "1.8.1", "for": "the Studio bridge: reads, authoring, build and preview", "optional": false },
+        { "of": ".NET 8 SDK", "version": "8.0", "for": "optix_build compile checks", "optional": true },
+        { "of": "Tesseract", "version": null, "for": "optix_ocr reading text off the preview canvas", "optional": true }
+      ],
+      "verified": { "against": "Studio 1.8.1.27 with the system .NET 8 SDK on a live project, and Studio 1.7.4.32 for the emulator", "where": "docs/products/optix/project.md" },
+      "stabilityNote": "The tool set still changes between releases (optix_screen, optix_ui, optix_nav and optix_model are recent), and no capture of the Studio bridge exists on this host.",
       "namespace": { "prefixes": ["optix_"], "legacy": false },
       "row": "optix",
       "rowName": "@aryacode/dsh-engineering/optix",
@@ -246,20 +288,13 @@
         "why": "an authoring call is only accepted once the live model reads back the change"
       },
       "docs": [
-        "docs/optix-netlogic.md",
-        "docs/optix-design.md",
-        "docs/optix-svg.md",
-        "docs/optix-project.md",
-        "docs/optix-build.md",
-        "docs/optix-docs.md",
-        "docs/optix-nav.md",
-        "docs/optix-theme.md",
-        "docs/optix-kit.md",
-        "docs/optix-shell.md",
-        "docs/optix-dialog.md",
-        "docs/optix-adapters.md",
-							"docs/optix-rubric.md"
-      ],
+          "docs/products/optix/README.md",
+          "docs/products/optix/netlogic.md",
+          "docs/products/optix/screens.md",
+          "docs/products/optix/project.md",
+          "docs/products/optix/artwork.md",
+          "docs/products/optix/production.md"
+        ],
       "vendor": true
     },
     {
@@ -268,6 +303,11 @@
       "kind": "support",
       "capability": "offline-file",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.9.1",
+      "requires": [],
+      "verified": { "against": "the bundled corpus, read back through engineering_reference, and the profile inferred from an open export", "where": "docs/products/resources.md" },
+      "stabilityNote": "Proven by reading the bundled corpus and profiling one open export; the corpus is this project's own judgment rather than a vendor specification, and the profile's confidence has only been seen on a few projects.",
       "namespace": { "prefixes": ["engineering_"], "legacy": false },
       "row": "engineering-resources",
       "rowName": "@aryacode/dsh-engineering/resources",
@@ -283,14 +323,15 @@
         "file": "packages/resources/SKILL.md",
         "budget": 4700,
         "allow": [
-          "engineering_review"
+          "engineering_reference",
+          "engineering_profile"
         ]
       },
       "probe": null,
       "gate": null,
       "docs": [
-        "docs/resources.md"
-      ],
+          "docs/products/resources.md"
+        ],
       "vendor": true
     },
     {
@@ -299,6 +340,11 @@
       "kind": "support",
       "capability": "none",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.76.0",
+      "requires": [],
+      "verified": null,
+      "stabilityNote": "One preset and no tools: the workflow layer is the next design item, so its settings and file layout may still change.",
       "namespace": null,
       "row": "engineering-preset",
       "rowName": "@aryacode/dsh-engineering/preset",
@@ -313,8 +359,8 @@
       "probe": null,
       "gate": null,
       "docs": [
-        "docs/preset-arya-automation.md"
-      ],
+          "docs/preset.md"
+        ],
       "vendor": false
     },
     {
@@ -323,6 +369,13 @@
       "kind": "support",
       "capability": "offline-file",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.72.0",
+      "requires": [
+        { "of": "RSLogix 500 or RSLogix 5", "version": null, "for": "headless .RSS, .ACH and .RSP reads; the .SLC export and the .L5K need neither", "optional": true }
+      ],
+      "verified": { "against": "a converted RSLogix 500 project and the .L5K the migration wizard wrote from it", "where": "docs/products/migration.md" },
+      "stabilityNote": "Verified against a small number of real projects; what the wizard leaves behind varies by revision, and the workflow still grows release to release.",
       "namespace": { "prefixes": ["migration_", "l5k_", "slc_"], "legacy": false },
       "row": "migration",
       "rowName": "@aryacode/dsh-engineering/migration",
@@ -350,8 +403,8 @@
       "probe": "migration_assess",
       "gate": null,
       "docs": [
-        "docs/reference/migration.md"
-      ],
+          "docs/products/migration.md"
+        ],
       "vendor": true
     },
     {
@@ -360,6 +413,13 @@
       "kind": "product",
       "capability": "offline-file",
       "default": "off",
+      "stability": "beta",
+      "since": "v0.90.0",
+      "requires": [
+        { "of": "RSLogix 5", "version": "v10", "for": "automation-server reads; the container reader answers from the file alone without it", "optional": true }
+      ],
+      "verified": { "against": "one project, F00607.RSP on RSLogix 5 v10, through both the automation server and the container reader", "where": "docs/products/plc5.md" },
+      "stabilityNote": "Verified against one project; other RSLogix 5 versions, SFC and sequential files and the point cards are untested, and the row ships off by default.",
       "namespace": { "prefixes": ["plc5_"], "legacy": false },
       "row": "plc5",
       "rowName": "@aryacode/dsh-engineering/plc5",
@@ -388,8 +448,8 @@
       "probe": "plc5_capabilities",
       "gate": null,
       "docs": [
-        "docs/reference/plc5.md"
-      ],
+          "docs/products/plc5.md"
+        ],
       "vendor": true
     },
     {
@@ -398,6 +458,11 @@
       "kind": "surface",
       "capability": "none",
       "default": "on",
+      "stability": "beta",
+      "since": "v0.4.0",
+      "requires": [],
+      "verified": null,
+      "stabilityNote": "Proven by drawing the three faces from document payloads in the browser; very large projects, a live controller session and an ME runtime data source are not measured.",
       "namespace": null,
       "row": "viewers",
       "rowName": "@aryacode/dsh-engineering",
@@ -415,8 +480,8 @@
       "probe": null,
       "gate": null,
       "docs": [
-        "docs/architecture.md"
-      ],
+          "docs/architecture.md"
+        ],
       "vendor": false
     }
   ]

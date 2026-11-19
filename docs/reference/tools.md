@@ -4,7 +4,7 @@
 
 The engineering bundle registers **158 tools** for L5X and Migration and PLC-5 and Engineering resources and ECAD and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 158 definitions total **139961 characters** of model-visible JSON — name, description and
+Those 158 definitions total **139977 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -857,7 +857,7 @@ Read the local engineering corpus: return the contents with no arguments, ranked
 |---|---|---|---|
 | `query` | string | no | Topic, rule id or tag to search for, for example "state machine", "VIEW-HPM-02" or "seal-in". |
 | `id` | string | no | Exact page id from the contents, for example "iec-state-machines". |
-| `domain` | string | no | Optional domain filter: iec, rockwell, yaskawa, view, optix or craft. |
+| `domain` | string | no | Optional domain filter: iec, rockwell, yaskawa, view, optix, craft, migration or hmi. |
 | `limit` | integer | no | Most search hits to return; defaults to 8, maximum 20. |
 
 #### `engineering_profile`

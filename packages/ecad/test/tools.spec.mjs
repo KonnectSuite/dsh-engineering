@@ -117,7 +117,7 @@ test('capabilities reports formats, limits, writes and what the build cannot do,
   assert.equal(data.cad.entryTool, 'mcp__ocs__ocs_sessions')
   assert.equal(data.cad.mounted, false, 'a row built without a bridge reports it not mounted')
   assert.deepEqual(data.cad.tools, [])
-  ok(data.cad.hint.includes('docs/aryacad-bridge.md'), 'the hint points at the bridge note')
+  ok(data.cad.hint.includes('docs/products/ecad/aryacad-bridge.md'), 'the hint points at the bridge note')
   assert.deepEqual(data.rules, [...ECAD_RULES])
   assert.equal(data.workspace.index.present, false)
   assert.equal(data.workspace.profile.source, 'default')

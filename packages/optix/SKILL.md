@@ -301,7 +301,7 @@ canvas non-uniformly, a nested FIT canvas from its own rendered box) are all mea
 the numbers are in the `screens-and-layout` playbook.
 
 1. `optix_ui { action: "components", language }` - and, if the brief is a real design, read
-   [`docs/optix-kit.md`](../../docs/optix-kit.md) for the blueprint shape before writing one.
+   [`docs/products/optix/screens.md`](../../docs/products/optix/screens.md) for the blueprint shape before writing one.
 2. `optix_ui { action: "screen", project, screen, pattern: "overview", mode: "plan", blueprint }`.
    The answer carries the canvas, the operations, the components and the validation.
 3. The same call with `mode: "apply"` (writes allowed) - it validates the whole batch `strict: true`
@@ -389,7 +389,7 @@ that a widget shows live data is proved only in the runtime, after Save and Buil
 ## Production rows: logging, trend, SQL, alarms and users
 
 These are the rows a demo is judged on, and each has one shape that works. All of it was measured on a live
-project in Studio 1.8.1.27; the durable detail is in `docs/reference/optix-model.md`.
+project in Studio 1.8.1.27; the durable detail is in `docs/products/optix/project.md`.
 
 **A DataLogger logs nothing until two separate writes exist.** The store is an ordinary object
 (`create_object` with `SQLiteStore`, `InMemory=false`, `Filename="smtline.db"`), and `DataLogger.Store` takes

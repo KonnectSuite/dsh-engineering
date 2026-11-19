@@ -1,0 +1,88 @@
+name: Bug report
+description: Something in the bundle did not do what the documentation says it does.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A bug report is acted on fastest when it names the tool, the host version and the exact
+        text that came back. Update to the latest release first: a bug fixed last week cannot be
+        answered here.
+
+        **Redact before you submit.** Remove credentials, tokens, licence keys, controller and
+        network addresses, customer and site names, and any client program, drawing, HMI export or
+        screenshot you are not allowed to share. A minimal file that still reproduces the problem is
+        usually enough.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Before you file
+      options:
+        - label: I am on the latest published release of the bundle.
+          required: true
+        - label: I removed credentials, client data and customer names from this report and its attachments.
+          required: true
+  - type: textarea
+    id: doing
+    attributes:
+      label: What you were doing
+      description: The engineering job in your words, and which export or project was open.
+      placeholder: Cross-referencing an HMI screen against the controller tags of an L5X export.
+    validations:
+      required: true
+  - type: textarea
+    id: tool
+    attributes:
+      label: The exact tool or command
+      description: The tool name and its arguments, or the command you ran. A short sequence is fine.
+      placeholder: |
+        l5x_open {"path":"line.L5X"} then l5x_find_references {"symbol":"Motor_1"}
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host and version
+      description: AryaCode or DeepSeek Harness version, from Settings > About. Add the bundle version from the Plugins list.
+      placeholder: AryaCode 0.8.4, DeepSeek Harness 0.2.2-alpha.4, bundle 0.101.0
+    validations:
+      required: true
+  - type: dropdown
+    id: product
+    attributes:
+      label: Product
+      description: The row the problem was in. Choose the bundle itself for installation, the plugin list, the preset, the skills or a preview face.
+      options:
+        - Studio 5000 L5X
+        - FactoryTalk View ME
+        - FactoryTalk Optix
+        - MotionWorks IEC
+        - ECAD electrical prints
+        - RSLogix 5 (PLC-5) program reads
+        - SLC 500 / PLC-5 to Logix migration
+        - The bundle itself
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: OS and version, and whether the vendor software the product uses is installed, with its version.
+      placeholder: Windows 11 24H2; Studio 5000 Logix Designer 37.11 installed
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What happened, and what you expected
+      description: Paste the error text verbatim, including the whole tool result when there is one. "It failed" cannot be acted on.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshot
+      description: Drag files here, or paste the relevant log lines. When a vendor application was involved, say which one and whether it was open.
+    validations:
+      required: false

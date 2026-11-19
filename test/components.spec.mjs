@@ -343,3 +343,70 @@ test('the default-on surface stays inside the recorded context budget', () => {
   assert.ok(characters <= budget.defaultOnSchemaCharacters,
     `default-on generated definitions are ${characters} characters; the recorded ceiling is ${budget.defaultOnSchemaCharacters}. Ship the component off by default, or raise the ceiling with the measurement.`)
 })
+
+test('every component carries its maturity, its own start and what it needs', () => {
+  const policy = catalog.maturityPolicy
+  assert.ok(policy !== undefined, 'components.json declares no maturityPolicy')
+  assert.deepEqual([...(policy.stability ?? [])].sort(), ['beta', 'experimental', 'stable'],
+    'maturityPolicy.stability must name exactly stable, beta and experimental')
+  assert.ok(typeof policy.note === 'string' && policy.note.length > 120,
+    'maturityPolicy needs a note saying what each stability word means')
+  assert.ok(typeof policy.since === 'string' && policy.since.length > 20,
+    'maturityPolicy needs a note saying what since records')
+
+  const vocabulary = new Set(policy.stability)
+  const changelog = read('CHANGELOG.md')
+  const version = JSON.parse(read('package.json')).version
+  const numbers = tag => tag.replace(/^v/u, '').split('.').map(Number)
+  const [major, minor, patch] = numbers(`v${version}`)
+  const older = tag => {
+    const [sMajor, sMinor, sPatch] = numbers(tag)
+    if (sMajor !== major) return sMajor < major
+    if (sMinor !== minor) return sMinor < minor
+    return sPatch <= patch
+  }
+
+  for (const component of components) {
+    assert.ok(vocabulary.has(component.stability),
+      `${component.id}: unknown stability ${component.stability}; use ${[...vocabulary].join(', ')}`)
+    assert.match(component.since, /^v\d+\.\d+\.\d+$/u, `${component.id}: since must be a release tag such as v0.86.0`)
+    assert.ok(older(component.since), `${component.id}: since ${component.since} is newer than this package's ${version}`)
+    const releaseHeading = new RegExp(`^## ${component.since.slice(1).replaceAll('.', '\\.')}(?: |$)`, 'mu')
+    assert.match(changelog, releaseHeading,
+      `${component.id}: since ${component.since} has no CHANGELOG release heading, so the start cannot be checked`)
+
+    assert.ok(Array.isArray(component.requires), `${component.id}: requires must be an array, empty when plain files are enough`)
+    for (const need of component.requires) {
+      assert.ok(typeof need.of === 'string' && need.of.length > 2, `${component.id}: a requirement names no software`)
+      assert.ok(typeof need.for === 'string' && need.for.length > 10, `${component.id}: the ${need.of} requirement does not say what needs it`)
+      assert.equal(typeof need.optional, 'boolean', `${component.id}: the ${need.of} requirement does not say whether it is optional`)
+      assert.ok(need.version === null || typeof need.version === 'string',
+        `${component.id}: the ${need.of} requirement has a version that is neither a string nor null`)
+    }
+
+    if (component.verified !== null) {
+      assert.ok(typeof component.verified.against === 'string' && component.verified.against.length > 20,
+        `${component.id}: verified names nothing that was actually proven`)
+      assert.ok(exists(component.verified.where),
+        `${component.id}: verified.where ${component.verified.where} does not exist`)
+    }
+    if (component.stability === 'stable') {
+      assert.equal(component.stabilityNote, undefined, `${component.id} is stable, so it cannot carry a stabilityNote`)
+      if (component.capability !== 'none') {
+        assert.ok(component.verified !== null, `${component.id} is stable but names no recorded verification`)
+      }
+      continue
+    }
+    assert.ok(typeof component.stabilityNote === 'string' && component.stabilityNote.length > 40,
+      `${component.id} is ${component.stability}, so it must say what is not proved yet`)
+  }
+})
+
+test('the README support table states each component maturity', () => {
+  for (const component of components) {
+    if (component.tools.count === 0) continue
+    const row = new RegExp(
+      `\\|\\s*\\*\\*${escape(component.title)}\\*\\*[^\\n]*\\|\\s*${component.stability}\\s*\\|`, 'u').exec(readme)
+    assert.ok(row, `the README table does not state "${component.stability}" for ${component.title}`)
+  }
+})
