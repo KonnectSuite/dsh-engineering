@@ -7,25 +7,26 @@ State of the bundle for the next person who picks it up. The rules live in
 
 | | |
 |---|---|
-| Branch | `main` — the overhaul shipped as **0.102.0** |
-| Last release | **0.102.0**, published 2026-11-19 from `2ad2cf5` |
-| Release tag | `v0.102.0` (on the remote, at the release commit) |
-| GitHub release | `https://github.com/KonnectSuite/dsh-engineering/releases/tag/v0.102.0` — badged Latest, body is the changelog section |
-| npm tarball | `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.102.0.tgz` |
-| npm shasum (sha1) | `8bd89d48736211ba50b8a2b8811ab72d805fbefc` |
-| npm sha256 (what the catalogue records) | `5694afe8fe4386a520635efeb9747127e846e03b6736575b262204893f96bb59` |
-| Tarball size | 918 files, 18,618,562 bytes unpacked |
-| Market | `releases[0]` = 0.102.0 in `dsh-arya-market`; 43 releases; `check-catalogue-parity.mjs` green |
-| CI | `ci.yml` green on `0ee4702` — the first passing run; 0.102.0 shipped before CI was fixed |
+| Branch | `main` — the preset retirement shipped as **0.103.0** |
+| Last release | **0.103.0**, published 2026-11-20 from `9841f1f` (retirement commit `5d55c6b`) |
+| Release tag | `v0.103.0` (on the remote, at the release commit) |
+| GitHub release | `https://github.com/KonnectSuite/dsh-engineering/releases/tag/v0.103.0` — created by `release.yml` from the tag, body is the changelog section |
+| npm tarball | `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.103.0.tgz` |
+| npm shasum (sha1) | `92a84b5b64350ed389041e5e497a50143658b770` |
+| npm sha256 (what the catalogue records) | `2e9d14720d7d1c21bca2e9d566d7db8b479959287c8b12ab0424b5d591032419` |
+| Tarball size | 896 files, 18,480,029 bytes unpacked (4,763,737 packed) |
+| Market | `releases[0]` = 0.103.0 in `dsh-arya-market` branch `catalog`, commit `3c96506`; 44 releases; `check-catalogue-parity.mjs` green |
+| CI | `ci.yml` green on `9841f1f`; `release.yml` published the tag's release from the same commit |
 
-Unreleased on `main` since 0.102.0, to ride the next batch: the packaging gate's declared-import
-rule (PKG-08) and the two packages that rule still declares (`@deepseek-ai/dsh-tools`,
-`@deepseek-ai/dsh-subprocess`), the CI step that assembles `vendor/` before the gate, the
-Studio-scan test fix, and the retirement of the Arya Automation Engineer preset together with the
-`presets/arya-standard/` kit it derived from — the `engineering-preset` row, the `./preset`,
-`./arya-standard` and `./arya-standard-policy` exports and `zod` all go with it. `0.102.0` itself
-predates those manifest declarations — a published
-tarball is immutable, so the next batch carries them. Nothing else is pending.
+Nothing is pending on `main` beyond 0.103.0. Two things are known gaps rather than
+work in progress: the two Plugins-page figures in `docs/getting-started.md` were
+captured on the 0.102.0 install — ten rows, `ecad` and `plc5` off — and still show
+the `preset` row that this release removed, so both need a re-shoot; and the
+retirement is proved by the suite, the packaging gate and the payload listing
+(`tar -tzf` on the published tarball names no `lib/preset.js` and no path under
+`presets/arya-*`; the one `presets/` file it does carry is `presets/billion-context.js`,
+which this release keeps on purpose), not on a host — no Dev AryaCode boot has yet
+composed a profile without the `engineering-preset` row.
 
 Measured on this machine: `pnpm test` 77 spec files in about 34 s, `pnpm check:package`
 17.6 MiB in 893 files (limit 64 MiB), `npm pack --ignore-scripts` 4.7 MB packed, 896 files,
@@ -62,7 +63,7 @@ Measured on this machine: `pnpm test` 77 spec files in about 34 s, `pnpm check:p
 |---|---|
 | The suite | `pnpm test` — 77 spec files, one child process each |
 | The tarball contract | `pnpm check:package` — "the tarball is conforming", 17.6 MiB in 893 files |
-| What npm would receive | `npm pack --ignore-scripts --dry-run` on the current tree — 4.7 MB packed, 896 files, 18.5 MB unpacked, shasum `3e99eb5c…` |
+| What npm received | the published 0.103.0 tarball, downloaded from the registry — 4,763,737 B packed, 18,480,029 B unpacked per `dist.unpackedSize`, sha1 `92a84b5b…`, sha256 `2e9d1472…` equal to what the `catalog` branch records. A fresh `npm pack --ignore-scripts --dry-run` on this tree gives 896 files / 18.5 MB with a **different** shasum (`c6944f63…`): the payload is not byte-reproducible, so the catalogue records the registry copy |
 | The Dev profile install | the packed tarball unpacked over `…\AryaCode-dev\home\profiles\desktop\node_modules\@aryacode\dsh-engineering` (`0.101.0`, `cordis.patch.yml` and `vendor/optix/skills/` present). `pnpm add` cannot run there: the profile pins `@deepseek-ai/dsh-host-webserver@>=0.2.1 <0.3.0-0` and the registry publishes no release in that range, so the install is a file swap over the existing tree |
 | The docs agree with the code | `test/docs.spec.mjs`, `test/components.spec.mjs` (row ids, counts, switches, maturity, budgets, owned documents) |
 | The tool reference is current | `pnpm docs:check` |
@@ -95,7 +96,7 @@ itself, and one tool per product exercised end to end. Both need a shell outside
 
 ## Picking it up
 
-1. `git switch Overhaul`, `pnpm install`, `pnpm -r build`.
+1. `git switch main`, `pnpm install`, `pnpm -r build`.
 2. `pnpm test` (needs a full-access shell: the runner spawns a child process per spec).
 3. Read [AGENTS.md](AGENTS.md) before changing behaviour; docs are updated in the same change.
 4. Install into the Dev home when the release is being tested —
