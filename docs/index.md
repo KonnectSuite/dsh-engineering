@@ -35,7 +35,6 @@ adds, what it needs installed, the order to work in, and where it stops.
 | SLC 500 / PLC-5 → Logix migration | [Migration](products/migration.md) |
 | RSLogix 5 (PLC-5) reads | [PLC-5](products/plc5.md) |
 | Engineering resources (support) | [Resources](products/resources.md) |
-| Arya Automation Engineer (support) | [Preset](preset.md) |
 | Ladder, display and drawing previews (surface) | [Components](reference/components.md) |
 
 [Product index](products/README.md) — the same pages with what each one is for in a sentence.

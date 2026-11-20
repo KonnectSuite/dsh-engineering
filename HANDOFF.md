@@ -19,18 +19,22 @@ State of the bundle for the next person who picks it up. The rules live in
 | CI | `ci.yml` green on `0ee4702` — the first passing run; 0.102.0 shipped before CI was fixed |
 
 Unreleased on `main` since 0.102.0, to ride the next batch: the packaging gate's declared-import
-rule (PKG-08) and the three packages that rule declared (`@deepseek-ai/dsh-tools`,
-`@deepseek-ai/dsh-subprocess`, `zod`), the CI step that assembles `vendor/` before the gate, and
-the Studio-scan test fix. `0.102.0` itself predates those manifest declarations — a published
+rule (PKG-08) and the two packages that rule still declares (`@deepseek-ai/dsh-tools`,
+`@deepseek-ai/dsh-subprocess`), the CI step that assembles `vendor/` before the gate, the
+Studio-scan test fix, and the retirement of the Arya Automation Engineer preset together with the
+`presets/arya-standard/` kit it derived from — the `engineering-preset` row, the `./preset`,
+`./arya-standard` and `./arya-standard-policy` exports and `zod` all go with it. `0.102.0` itself
+predates those manifest declarations — a published
 tarball is immutable, so the next batch carries them. Nothing else is pending.
 
-Measured on this machine: `pnpm test` 78 spec files in about 29 s, `pnpm check:package`
-17.7 MiB in 915 files (limit 64 MiB), `npm pack` 4.8 MB packed.
+Measured on this machine: `pnpm test` 77 spec files in about 34 s, `pnpm check:package`
+17.6 MiB in 893 files (limit 64 MiB), `npm pack --ignore-scripts` 4.7 MB packed, 896 files,
+18.5 MB unpacked.
 
 ## What the overhaul changes
 
 - **One public surface.** The README is rewritten for a person who has never installed the bundle: what
-  each of the ten rows adds, what it needs installed, where it appears, one paste-ready prompt per
+  each of the nine rows adds, what it needs installed, where it appears, one paste-ready prompt per
   product, the switch table, safety, known limits, and a documentation map whose links work on npmjs
   (absolute GitHub URLs, because npm renders the README without the rest of the repository).
 - **A documentation tree with one home per fact**: `docs/getting-started.md` (first session),
@@ -56,15 +60,15 @@ Measured on this machine: `pnpm test` 78 spec files in about 29 s, `pnpm check:p
 
 | What | Evidence |
 |---|---|
-| The suite | `pnpm test` — 78 spec files, one child process each |
-| The tarball contract | `pnpm check:package` — "the tarball is conforming", 17.7 MiB in 915 files |
-| What npm would receive | `npm pack --pack-destination artifacts` — 4.8 MB packed, 918 files, 18.6 MB unpacked, shasum `d162fc6f…` |
+| The suite | `pnpm test` — 77 spec files, one child process each |
+| The tarball contract | `pnpm check:package` — "the tarball is conforming", 17.6 MiB in 893 files |
+| What npm would receive | `npm pack --ignore-scripts --dry-run` on the current tree — 4.7 MB packed, 896 files, 18.5 MB unpacked, shasum `3e99eb5c…` |
 | The Dev profile install | the packed tarball unpacked over `…\AryaCode-dev\home\profiles\desktop\node_modules\@aryacode\dsh-engineering` (`0.101.0`, `cordis.patch.yml` and `vendor/optix/skills/` present). `pnpm add` cannot run there: the profile pins `@deepseek-ai/dsh-host-webserver@>=0.2.1 <0.3.0-0` and the registry publishes no release in that range, so the install is a file swap over the existing tree |
 | The docs agree with the code | `test/docs.spec.mjs`, `test/components.spec.mjs` (row ids, counts, switches, maturity, budgets, owned documents) |
 | The tool reference is current | `pnpm docs:check` |
 | The catalogue still matches npm | `node ../dsh-arya-market/scripts/check-catalogue-parity.mjs` |
 | The Dev activation | `GET /dsh-market/installed` on the Dev host: `installed` resolves to the overhaul tarball, `activation.state` = `live` ("live via its bundle patch"), `diagnostics.findings` = 0 |
-| The rendered rows | [docs/images/dev-components.png](docs/images/dev-components.png) — the Plugins page reports `Components 10 total · 8 running · 2 off`; `ecad` and `plc5` are the two that ship off |
+| The rendered rows | [docs/images/dev-components.png](docs/images/dev-components.png) — the Plugins page reports `Components 10 total · 8 running · 2 off`; `ecad` and `plc5` are the two that ship off. That figure is from the 0.102.0 install, which still carried the `preset` row |
 | The README on the surface | [docs/images/dev-components-rows.png](docs/images/dev-components-rows.png) — the plugin page renders the installed build's README ("Where it appears") |
 
 The Dev host was started from `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode` (branch `rebrand/identity`,
@@ -84,6 +88,10 @@ itself, and one tool per product exercised end to end. Both need a shell outside
   declines the file ("not a mis-decoding this can undo"), so it is left as written rather than mangled.
 - The GitHub Releases before this overhaul (v0.1.0–v0.3.0, 0.73.0) have no changelog body; only releases
   cut from a `v*` tag after this workflow exists will.
+- `docs/images/dev-components.png` and `docs/images/dev-components-rows.png` are from the 0.102.0 install
+  and still show the `preset` row; both need a re-shoot on a Dev host running the current payload.
+- The preset removal is proved by the suite and the packaging gate, not on a host: no Dev AryaCode boot has
+  yet composed a profile without the `engineering-preset` row.
 
 ## Picking it up
 

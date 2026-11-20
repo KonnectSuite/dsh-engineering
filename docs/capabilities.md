@@ -127,7 +127,7 @@ application session asking the row what the machine can do.
 
 **Engagement replays.** These record a task as it was given and the trajectory the bundle took, in
 the order it took it — the brief first, then the tools, then the hand-off. The last one starts from
-the standards instead of the brief, which is the difference the preset is for.
+the standards instead of the brief, which is what the `engineering-standards` skill asks for.
 
 ![An engagement replay that starts from the brief](port/optix-live-proof/17-engagement-replay-a-brief-first.png)
 

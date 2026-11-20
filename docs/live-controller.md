@@ -124,7 +124,7 @@ project.
 - A running controller is not a test bench. Read with the direct lane, capture with the SDK lane, and
   change nothing until the request names the controller and the change.
 - A successful download is not a commissioning. The five-step loop, the gates and the hand-off
-  steps are in [Arya Automation Engineer](preset.md).
+  steps are in [the loop every product follows](getting-started.md#3-the-loop-every-product-follows).
 - The machine's capabilities come first: `studio_sdk_status` reports whether this host can drive the
   SDK at all, and `controller_approval_status` reports whether approval is available before a call
   needs it.

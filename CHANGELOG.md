@@ -8,7 +8,23 @@
   is not a dependency, and three were resolving that way: `@deepseek-ai/dsh-tools` and
   `@deepseek-ai/dsh-subprocess` imported by the vendored Optix build output, and `zod` imported by two
   preset projections. Each is now a peer dependency (the host provides it) with a dev dependency at the
-  version this repository resolves.
+  version this repository resolves. The two preset projections went with the preset below, so `zod` is
+  declared no longer.
+
+### Removed
+
+- **The Arya Automation Engineer preset, and the preset layer it was built on.** `presets/arya-automation/`
+  (persona, definition, projection, plugin) and the `presets/arya-standard/` kit it derived from — its
+  engine, policy, compaction, settings and projection modules, its prompt files and their `CODEX-LICENSE` —
+  are gone, along with the `engineering-preset` row in `cordis.patch.yml`, its `components.json` entry, the
+  `./preset`, `./arya-standard` and `./arya-standard-policy` exports, the compaction and policy rows the
+  preset mounted, the engineering ledger's session projection, `test/arya-automation.spec.mjs` and
+  `docs/preset.md`. The row id is retired: nothing in this bundle mounts `engineering-preset` any more.
+  `NOTICE.md` never carried the preset's notices, so it is unchanged.
+- **`zod` leaves `peerDependencies` and `devDependencies`.** The two preset projections were its only
+  importers. `presets/billion-context.js` stays: the adapter that stands this bundle's compaction down when
+  bili compresses is still mounted by no row and still proved by `test/billion-context.spec.mjs`, and it
+  keeps step with the same file in `dsh-aryacode-polish`.
 
 ### Fixed
 

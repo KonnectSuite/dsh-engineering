@@ -335,35 +335,6 @@
       "vendor": true
     },
     {
-      "id": "engineering-preset",
-      "title": "Arya Automation Engineer preset",
-      "kind": "support",
-      "capability": "none",
-      "default": "on",
-      "stability": "beta",
-      "since": "v0.76.0",
-      "requires": [],
-      "verified": null,
-      "stabilityNote": "One preset and no tools: the workflow layer is the next design item, so its settings and file layout may still change.",
-      "namespace": null,
-      "row": "engineering-preset",
-      "rowName": "@aryacode/dsh-engineering/preset",
-      "entry": "entries/preset.js",
-      "package": "presets/arya-automation",
-      "tools": {
-        "product": null,
-        "count": 0,
-        "inReference": false
-      },
-      "skill": null,
-      "probe": null,
-      "gate": null,
-      "docs": [
-          "docs/preset.md"
-        ],
-      "vendor": false
-    },
-    {
       "id": "migration",
       "title": "SLC 500 and PLC-5 to Logix migration",
       "kind": "support",

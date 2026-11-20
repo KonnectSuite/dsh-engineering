@@ -11,7 +11,7 @@ same host and this page applies to both.
 [![licence](https://img.shields.io/npm/l/@aryacode/dsh-engineering)](LICENSE)
 [![Arya plugin market](https://img.shields.io/badge/market-Arya_Plugin_Market-2f6f4e)](https://github.com/KonnectSuite/dsh-arya-market)
 
-**One bundle: 10 component rows · 190 tools · 6 products · every component is beta**
+**One bundle: 9 component rows · 190 tools · 6 products · every component is beta**
 
 The bundle is one npm package with one install surface. Inside it, each product is a **row** on the
 Plugins page: a row is a plugin, so switching one off unloads that product and its tool schemas stop
@@ -34,7 +34,6 @@ then open the page for the product you have in front of you.
 | **SLC 500 and PLC-5 to Logix migration** | 7 | on | beta | Assess a legacy program, lint the `.L5K` the migration wizard writes, resolve its conversion markers, and write the report a person signs off from | Nothing; reads `.RSS`/`.ACH`/`.RSP` or the `.SLC` export |
 | **RSLogix 5 (PLC-5) program reads** | 8 | off | beta | Open a `.RSP` hidden and read program files, ladder, symbols, I/O footprint, chassis configuration and processor identity | RSLogix 5 for the automation-server path; the container reader needs nothing |
 | **Engineering resources** | 2 | on | beta | A local standards corpus (IEC 61131-3, Rockwell, Yaskawa, HMI, Optix, craft rules) and a house-style profile of the open project | An open L5X or ME project for the profile |
-| **Arya Automation Engineer preset** | 0 | on | beta | The agent preset: engineering-tuned compaction, a work ledger and the five-step contract | Nothing |
 | **Ladder and display previews** | 0 | on | beta | Three file viewers: `.l5x`/`.acd` ladder, ME display `.xml`, and DXF/DWG drawings | Nothing |
 
 Every component is beta until the bundle is declared 1.0: the tool sets and result contracts may still
@@ -44,7 +43,7 @@ and what has not. [Why each is beta](https://github.com/KonnectSuite/dsh-enginee
 ## Install
 
 **From the market:** open **Plugins → Arya Plugin Market → Engineering → Install**. The bundle
-installs its own rows, components, viewers and preset; installing a component package on its own gives
+installs its own rows, components and viewers; installing a component package on its own gives
 you tools without the rows that switch them.
 
 **Into a profile you manage yourself:**
@@ -62,14 +61,13 @@ Per-row enable state lives in the profile, so a row you switch off stays off acr
 
 ## Where it appears
 
-- **Plugins page** — ten rows, one per component or surface. Each row has its own Configure page:
-  `l5x`, `ftview`, `mwi`, `ecad` (off), `optix`, `resources`, `migration`, `plc5` (off), `preset`, and
-  `viewers` (which mounts the package root and therefore shows the package name and description rather
+- **Plugins page** — nine rows, one per component or surface. Each row has its own Configure page:
+  `l5x`, `ftview`, `mwi`, `ecad` (off), `optix`, `resources`, `migration`, `plc5` (off) and `viewers`
+  (which mounts the package root and therefore shows the package name and description rather
   than a product title).
 - **File viewers** — three entries in **Settings → File viewers**: *Logix project* (`.l5x`, `.acd`),
   *FactoryTalk View display* (`.xml`), *ECAD drawing* (`.dxf`, `.dwg`). All three come from one browser
   bundle mounted by the `viewers` row; switching a product row off does not remove its viewer.
-- **Preset picker** — *Arya Automation Engineer*.
 
 ## First session
 
@@ -111,7 +109,6 @@ cheap decision takes one switch and the fine decision lives one level down.
 | `migration` | Legacy → Logix migration | on | `assess`, `lint`, `compare`, `resolve`, `report`, `plan` (on) |
 | `plc5` | RSLogix 5 reads | off | the eight read tools, one option each |
 | `engineering-resources` | Standards corpus and house style | on | `reference` (on) |
-| `engineering-preset` | Arya Automation Engineer | on | none — the preset's own settings |
 | `viewers` | Ladder, display and drawing previews | on | none |
 
 Two rows ship off: ECAD, a large surface many profiles do not need, and the RSLogix 5 reads, whose
@@ -178,7 +175,7 @@ rather than a tool.
   reported as approximate. Proxy objects, ACIS bodies and xrefs remain unmeasured and are reported
   through the converter's diagnostics.
 - FBD and SFC semantics are not exercised.
-- All ten components are beta, and each one records in `components.json` what is not proved yet.
+- All nine components are beta, and each one records in `components.json` what is not proved yet.
 
 ## Documentation
 
@@ -195,7 +192,7 @@ Start here: [Getting started](https://github.com/KonnectSuite/dsh-engineering/bl
 | ECAD electrical prints | [ECAD](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/ecad/README.md) · [AryaCAD bridge](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/ecad/aryacad-bridge.md) |
 | Migration | [SLC 500 / PLC-5 to Logix](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/migration.md) |
 | RSLogix 5 reads | [PLC-5](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/plc5.md) |
-| Support and surface | [Resources](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/resources.md) · [Preset](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/preset.md) · [Components](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/reference/components.md) |
+| Support and surface | [Resources](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/resources.md) · [Components](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/reference/components.md) |
 
 | Area | Pages |
 |---|---|
@@ -225,7 +222,7 @@ would need but the tarball omits — each fails `pnpm test`. See [Contributing](
 ## Removing the bundle
 
 Remove the row from the profile's bundle list (or disable it on the Plugins page), then
-`pnpm remove @aryacode/dsh-engineering` in the profile. Rows, viewers and the preset unload with it.
+`pnpm remove @aryacode/dsh-engineering` in the profile. Rows and viewers unload with it.
 Nothing the bundle wrote into a workspace is touched: drafts, exports, backups and `.migration/` plans
 stay where they are.
 

@@ -21,7 +21,6 @@ A change is not finished until the documentation it invalidates is updated in th
 | `docs/getting-started.md` | The first session: per-product requirements, install, the shared five-step loop, a paste-ready prompt per product |
 | `docs/architecture.md` | Row model, service injection, configuration, row switches, client faces, distribution, compatibility |
 | `docs/products/*.md` | One page per product: what it adds, what it needs installed, the order to work in, and where it stops. `docs/products/optix/` holds the Optix pages |
-| `docs/preset.md` | The Arya Automation Engineer preset: the five-step contract, the compaction, the ledger and what a preset cannot make true |
 | `docs/examples.md` | End-to-end sessions for L5X and FactoryTalk View, with call shapes and reporting reminders |
 | `docs/capabilities.md` | The figures: which call produced each one, and what an image cannot prove |
 | `docs/reference/tools.md` | Every registered tool, its description and parameters (generated) |

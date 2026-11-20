@@ -70,7 +70,6 @@ const BUNDLE = [
   'test/viewer-face-css.spec.mjs',
   'test/diagram-face.spec.mjs',
   'test/billion-context.spec.mjs',
-  'test/arya-automation.spec.mjs',
   'test/instruction-coverage.spec.mjs',
   'packages/l5x/test/dist-smoke.mjs',
   'packages/ftview-viewer/test/render.spec.mjs',

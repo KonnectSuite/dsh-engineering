@@ -17,14 +17,13 @@ what the packaged artifact contains.
 | A product's own surfaces, calls and limits | [Products](products/README.md) |
 | Build order, the vendor step, what the tarball ships | [Packaging](development/packaging.md) |
 | What an image proves, and the call behind each figure | [Capabilities](capabilities.md) |
-| The preset: five-step contract, compaction, ledger | [Arya Automation Engineer](preset.md) |
 | What retirement removes; why one package | [Retirement](development/retirement.md), [One package](handoff-one-package.md) |
 
 ## Repository layout
 
 ```
 package.json                    bundle manifest: dsh.bundle.patch, dsh.client, dsh.engines, dependencies
-cordis.patch.yml                the loader layer: ten inserted rows, inserts only
+cordis.patch.yml                the loader layer: nine inserted rows, inserts only
 components.json                 the component manifest: posture, maturity, tools, skill, docs, budgets
 entries/                        one composite entry per row, plus config.js and netlogic.js
 lib/index.js                    the host half the `viewers` row mounts: registers the `ecad` Remote service
@@ -37,7 +36,7 @@ packages/ecad                   ECAD engine, tools, skill, DWG converter and the
 packages/{mwi,resources}        MotionWorks host tools and skill; standards corpus, index and profile
 packages/{migration,plc5}       legacy assessment/lint/compare/resolver/report; RSLogix 5 headless reader
 packages/optix                  the published Optix build, tracked as source: no source here
-presets/                        arya-automation (persona, definition, projection), arya-standard, billion-context
+presets/                        billion-context: the bili compaction gate adapter
 scripts/{build-client,assemble}.mjs  fold the four faces into lib/client.js and render the Typert
                                 artifact; copy eight built components into the gitignored vendor/ tree
 vendor/                         build output: eight components, written by `pnpm assemble`, gitignored
@@ -49,7 +48,7 @@ vendored as a published build, so its tree is the source of truth for that row.
 
 ## Row model
 
-The patch inserts ten rows with stable ids — six product rows, three support-component rows and one
+The patch inserts nine rows with stable ids — six product rows, two support-component rows and one
 surface row:
 
 | id | entry | mounts | config (default) | tools |
@@ -63,7 +62,6 @@ surface row:
 | `migration` | `entries/migration.js` | assessment, `.L5K` lint, comparison, marker resolution, report, plan, guidance | one flag per tool, all on | 7 |
 | `plc5` | `entries/plc5.js` | `.RSP` reader, ladder text, search, I/O census, chassis, data files, processor, guidance. **Ships off**; writes nothing | — | 8 |
 | `optix` | `entries/optix.js` | the prebuilt Studio engine (reads, authoring, preview, NetLogic) and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `netlogic` on; `bridgeUrls` `http://127.0.0.1:8768` | 32 |
-| `engineering-preset` | `entries/preset.js` | the preset through the host's `agentPresets` service, and the engineering ledger projection | forwarded to the preset's settings reader | 0 |
 
 Ids are the contract: profiles, patches and the Plugins page address a row by id, so a row's
 implementation can be rebuilt without resetting the user's enabled state. A **product row** is a
@@ -119,8 +117,8 @@ export function apply(ctx, config = {}) {
 
 Every tool entry declares `tools` and `fs`; a skill part declares `skills`; a draft or Studio part also
 declares the read part's handle service (`l5xProjects`, `ftviewViews`) so it reuses the open export
-instead of reading it twice, and a chat's handles are scoped to that chat. The preset declares
-`agentPresets`; the `viewers` client face declares the seven `@deepseek-ai` packages in `package.json`.
+instead of reading it twice, and a chat's handles are scoped to that chat. The `viewers` client face
+declares the seven `@deepseek-ai` packages in `package.json`.
 
 ## Configuration
 
@@ -273,10 +271,10 @@ installs one thing and toggles rows inside it; a dependency that is a URL, a git
 
 ```
 dsh-engineering-<version>.tgz
-  ├── cordis.patch.yml        the ten rows (inserts only)
+  ├── cordis.patch.yml        the nine rows (inserts only)
   ├── lib/                    client.js, index.js, typert.host.js
   ├── entries/                one entry per row, plus config.js and netlogic.js
-  ├── presets/                the preset definition, engine and policy modules
+  ├── presets/                the billion-context compaction gate adapter
   └── vendor/<component>/     eight component trees (ECAD's engine and notices included)
 ```
 

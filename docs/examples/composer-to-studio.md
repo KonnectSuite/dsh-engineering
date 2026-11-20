@@ -86,7 +86,7 @@ It does not prove:
 
 - **that the rung does anything sensible.** A build is a syntax-and-reference verdict. `TON(Timer,2000)` is valid whether
   or not two seconds is the right delay for that machine.
-- **that the preset suits the process.** The number came from the request, not from an engineering calculation.
+- **that the number suits the process.** The number came from the request, not from an engineering calculation.
 - **that the logic is what the machine needs** — that is the engineer's judgement, and the reason step 5 of the loop hands
   the human what is human.
 - **anything about runtime.** Nothing here ran.

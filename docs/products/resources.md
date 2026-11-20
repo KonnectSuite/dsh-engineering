@@ -148,7 +148,7 @@ The profile carries:
 
 The extraction lives in `packages/l5x/src/engine/style.ts` and `packages/ftview/src/style.ts`; the schema
 and its validator are `packages/resources/src/profile.ts`. A profile is evidence, not an instruction: a
-low-confidence field is a hint to look, and the preset teaches the session to say so.
+low-confidence field is a hint to look, and the report should say so.
 
 The profile is also an input: `ftview_draft_display_create` takes a `profile_id` for the display's
 background colour, and `ftview_draft_object_add` takes it for button geometry and font, so a new display
@@ -176,7 +176,5 @@ starts in the plant's own style instead of the tool's defaults.
   product checks report it.
 - [HMI design](../reference/hmi-design.md) — the shared screen grammar, and the rule-to-tool map for both
   HMI products.
-- [The Arya Automation Engineer preset](../preset.md) — the posture that puts the profile before the
-  authoring.
 - [Tool reference](../reference/tools.md) — `engineering_reference` and `engineering_profile` with their
   parameters.

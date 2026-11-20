@@ -10,26 +10,25 @@ distribution model itself (one package, one row per product, vendored components
 
 | Path | Why it ships |
 |---|---|
-| `cordis.patch.yml` | The bundle patch a profile mounts: ten rows, each naming an export of this package |
+| `cordis.patch.yml` | The bundle patch a profile mounts: nine rows, each naming an export of this package |
 | `entries/**/*` | One entry module per row — the plugin the row mounts |
 | `lib/**/*` | The package root (`index.js`, `typert.host.js`) and the one `client.js` browser bundle |
 | `src/remote/**/*` | The ECAD Remote service the viewer and the tools call |
 | `vendor/**/*` | The eight assembled component trees, including each component's `SKILL.md` |
 | `locale/*.json` | The English and Chinese UI strings |
-| `presets/**/*` | The Arya Automation Engineer preset |
+| `presets/**/*` | The billion-context compaction gate adapter |
 | `README.md`, `LICENSE`, `NOTICE.md` | The public face and the third-party notices |
 
 Nothing else: `test/`, `scripts/`, `docs/`, `tmp/` and `artifacts/` are repository state, not payload.
 `pnpm check:package` proves it — every path a mount needs at run time is matched by `files` and exists on
 disk, every row's export target is present, and the unpacked size is reported against the market's
-64 MiB cap (17.7 MiB today, dominated by `vendor/ecad/assets/acadrust.wasm`).
+64 MiB cap (17.6 MiB today, dominated by `vendor/ecad/assets/acadrust.wasm`).
 
 It also reads every bare import the node-side payload makes — `entries/`, `lib/`, `presets/` and
 `vendor/`, minus the browser faces — and reports one the manifest does not declare. A copy that happens to
 resolve because the host hoisted it is not a declared dependency: the vendored Optix build output needed
-`@deepseek-ai/dsh-tools` and `@deepseek-ai/dsh-subprocess` that way, and `zod` was imported by two preset
-projections without being named at all. Each is now a peer dependency (the host provides it) plus a dev
-dependency at the version this repository resolves.
+`@deepseek-ai/dsh-tools` and `@deepseek-ai/dsh-subprocess` that way. Both are now peer dependencies (the
+host provides them) plus a dev dependency at the version this repository resolves.
 
 ## Build order
 

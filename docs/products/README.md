@@ -45,14 +45,13 @@ Turn a row on from the Plugins page, or in the profile patch as described in
 
 ## Support components
 
-The other four components are not products. They add no vendor surface of their own, and they are on by
+The other three components are not products. They add no vendor surface of their own, and they are on by
 default.
 
 | Component | Tools | What it adds | Page |
 |---|---|---|---|
 | SLC 500 and PLC-5 to Logix migration | 7 | Assess a legacy export, lint the `.L5K` the wizard wrote, resolve its conversion markers, and report what a sign-off needs | [Migration](migration.md) |
 | Engineering resources | 2 | A local corpus of 70 rule pages and a measured house-style profile of the open project | [Engineering resources](resources.md) |
-| Arya Automation Engineer preset | — | The five-step working contract, the engineering ledger and the compaction tuned for read-heavy sessions | [Preset](../preset.md) |
 | Ladder and display previews | — | Viewer faces for L5X ladder, FactoryTalk View displays and ECAD drawings | [Architecture](../architecture.md#client-faces) |
 
 ## Reading order

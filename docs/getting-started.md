@@ -1,14 +1,14 @@
 # Getting started
 
-This bundle gives the host nine engineering surfaces behind one install: **Studio 5000 L5X**,
+This bundle gives the host eight engineering surfaces behind one install: **Studio 5000 L5X**,
 **FactoryTalk View ME**, **FactoryTalk Optix**, **MotionWorks IEC**, **ECAD electrical prints**,
-**SLC 500 / PLC-5 → Logix migration**, **RSLogix 5 reads**, the **engineering resources** corpus, and the
-**Arya Automation Engineer** preset. Each product is a *row* you can switch on or off, and each registers
+**SLC 500 / PLC-5 → Logix migration**, **RSLogix 5 reads** and the **engineering resources** corpus.
+Each product is a *row* you can switch on or off, and each registers
 a **skill** (how the agent should work) plus **tools** (what it can do). You do not call tools yourself:
 you say what you want in the chat, and the agent loads the skill and the tools that match.
 
-Ten rows, six products: the three support components (resources, preset, viewers) are cross-toolchain,
-and *viewers* is the surface that draws files rather than talking to a toolchain.
+Nine rows, six products: the two support components (engineering resources and migration) are
+cross-toolchain, and *viewers* is the surface that draws files rather than talking to a toolchain.
 
 This page is the shortest path from "just installed" to a finished job. The per-product detail lives in
 [Products](products/README.md) and [Examples](examples.md).
@@ -49,8 +49,9 @@ Plugins page is the truth: a row reads **Running** only when its entry mounted.
 
 ### What it looks like
 
-The Engineering card on the Plugins page, captured on a Dev AryaCode host with this build installed —
-ten rows, eight running, `ecad` and `plc5` off:
+The Engineering card on the Plugins page, captured on a Dev AryaCode host with the 0.102.0 install —
+ten rows, eight running, `ecad` and `plc5` off. That install still carried the `preset` row, which has
+since been removed, so both figures below need a re-shoot:
 
 ![The Engineering card on the Plugins page: ten component rows, eight running, ecad and plc5 off](images/dev-components.png)
 
