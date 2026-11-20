@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## 0.103.0 — 2026-11-20
+
 ### Added
 
 - **The packaging gate reads every bare import the node-side payload makes.** `scripts/check-package.mjs`
