@@ -1,22 +1,23 @@
 # Handoff
 
-The bundle after the 0.104.0 knowledge-and-legacy batch. This file is the current state:
-version, what the batch changes, what was verified and how, what could not be run on this
-host, and the next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not here.
+The bundle after the 0.104.0 knowledge-and-legacy batch, now hardened against the vendor software
+actually installed on this host. This file is the current state: version, what the batch changes,
+what was verified and how, what could not be run on this host, and the next step. History belongs
+to [CHANGELOG.md](CHANGELOG.md), not here.
 
 ## Right now
 
 | | |
 | --- | --- |
-| Branch | `main`; this batch is one local commit (the commit that contains this file). No tag, no publish, no market step. |
+| Branch | `main`; this batch is local commits (the commit that contains this file). No tag, no publish, no market step. |
 | Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-22` heading in `CHANGELOG.md`. |
-| Release state | **Verified locally and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
-| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,267,841 B packed, SHA256 `732086063C7C1BADCD5232EE4CBA7AC5F2191F63DE7B276AFDFF77084A8B4766`, SHA1 `966B25B89673AF156A5153CA1B84B44E937C84D4`; `check:package` reports 21.6 MiB in 1,094 files unpacked. |
+| Release state | **Verified locally, against installed vendor software, and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,272,852 B packed, SHA256 `72035A5BDAFC0F4D734B69218B37848A93ABB13CEA63D73FEACA865344FED25E`, SHA1 `6C5970345D9AC76534A0522100D6745204B5C89F`; `check:package` reports 21.6 MiB in 1,094 files unpacked. |
 | Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **198 registered tools**, **173 default-on**, 8 skills, 6 product documents. |
 | Generated reference | `docs/reference/tools.md` and `tools.json`: **166 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
 | Context budget | **173 tools / 135,251 schema characters** — measured 130,049 + 4% (L5X 53,718 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825). |
-| Verified | `pnpm test` **79/79 spec files pass** (48,343 ms on this tree); `pnpm docs:check`, `pnpm check:package`, `node scripts/eval-knowledge.mjs --check`, `node scripts/sync-knowledge-lib.mjs --check` all green; clean Dev profile boots the installed tarball with 173 tools and the designed nine rows. |
-| ECM-software reality | MotionWorks IEC is not installed on this host, and the ECAD product was retired. Those paths are **not-runnable**, never pass — see the table below. |
+| Verified | `pnpm test` **79/79 spec files pass** (54,264 ms on this tree); `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming"), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` all green. Fresh Dev profile `verify-0104f` from the tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled). |
+| Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 
 ## What 0.104.0 changes
 
@@ -40,8 +41,8 @@ host, and the next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not he
   PLC-5 is 15 tools, off by default.
 - **New RSLogix 500 row (`slc`).** Ten read-only `slc500_*` tools (`capabilities`, `open`,
   `ladder`, `find`, `io_census`, `io_config`, `data_read`, `processor`, `database`, `docs`),
-  skill `rslogix-500`, ships **off**. Text exports and `.SLC` exports are read offline; `.RSS`
-  through the automation server is honest about not being proved (`NOT_LICENSED`/`SOURCE_NOT_INSTALLED`).
+  skill `rslogix-500`, ships **off**. Text exports and `.SLC` Library exports are read offline;
+  `.RSS` through the automation server is honest about not being proved (`NOT_LICENSED`/`SOURCE_NOT_INSTALLED`).
 - **MotionWorks IEC honest IDE-free behaviour.** Known version line **3.0.3–3.7.5**; a host probe
   that inspects 7 locations; `mw_ide_status` reports `installed:false`, 7 looked-for locations and
   `NOT_INSTALLED`; compile/live/profile paths answer `not-runnable` with a fix instead of a false
@@ -56,6 +57,13 @@ host, and the next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not he
   (124 cases total), checks Recall@5/MRR@5/nDCG@10 against per-product thresholds, exact and
   no-match shares, the read/hit caps, latency p95 and determinism (sha256 over two runs), and
   writes `artifacts/eval-knowledge.json`.
+- **The installed-software fixes.** The Studio 5000 SDK bridge discovers the installed CSClient
+  package and targets the framework that package ships (net8.0 for v36, net10.0 for v37); a new
+  FTView display follows the export's declared `Gfx-ME<n>.xsd` version and `ftview_verify_import`
+  treats vendor defaults and colour spellings as normalisation; the SLC reader parses the real
+  RSLogix 500 Library (`*.SLC`) APS dialect and the measured headerless `.EAS`/`.ERP` documentation
+  exports; PLC-5 results are lossless JSON; the Optix bridge arm recognises Optix 1.8's indented
+  `Nodes:` section. Each has a regression test.
 
 ## Verified, and how
 
@@ -63,21 +71,36 @@ All commands below were run on this tree; the tree then carried the evidence int
 
 | Area | Command / evidence | Result |
 | --- | --- | --- |
-| Suite | `pnpm test` (with `HANDBOOK_PYTHON` set to the bundled Python) | **79 file(s) passed in 48,343 ms**; includes knowledge core/packaging, per-product knowledge, legacy, MWI IDE-free, SLC and handbook specs. |
+| Suite | `pnpm test` (with `HANDBOOK_PYTHON` set to the bundled Python) | **79 file(s) passed in 54,264 ms**; includes knowledge core/packaging, per-product knowledge, legacy, MWI IDE-free, SLC and handbook specs. |
 | Generated docs | `pnpm docs:check` | `gen-tool-reference: reference is up to date.` / `gen-print-css: docs/print.css is up to date.` |
 | Packaging | `pnpm check:package` | `the tarball is conforming`; PKG-06 21.6 MiB in 1,094 files; largest entries the ECAD wasm (6.11 MiB) and the L5X/optix indexes. |
 | Knowledge eval | `node scripts/eval-knowledge.mjs --check` | **all products pass**, determinism true, no problems. |
-| Retrieval figures | `artifacts/eval-knowledge.json` | L5X 32 cases R@5 .957 / MRR .891 / nDCG .900 (p95 43.7 ms); FTView 23 .933/.967/.942 (18.5 ms); migration 25 1/.972/.979 (3.3 ms); PLC-5 22 1/1/.991 (2.0 ms); SLC 22 1/.817/.864 (1.3 ms). Exact share 1, no-match 1, hit cap true, determinism true. |
+| Retrieval figures | `artifacts/eval-knowledge.json` | L5X 32 cases R@5 .957 / MRR .891 / nDCG .900; FTView 23 .933/.967/.942; migration 25 1/.972/.979; PLC-5 22 1/1/.991; SLC 22 1/.817/.864. Exact share 1, no-match 1, hit cap true, determinism true. |
 | Knowledge sync | `node scripts/sync-knowledge-lib.mjs --check` | Current; 5 consumers byte-equal to `packages/knowledge/src`. |
 | Generators | l5x/ftview/migration/plc5/slc knowledge generators `--check` | All current; two clean L5X runs byte-identical (5,493 v37.05 pages + 6,581 v36.00 pages, 328 mnemonics). |
 | Handbook | bundled Python + `scripts/gen-handbook.py`, then `--check` | 15 pages; docx/html/pdf regenerated; source hash `105186b902a2f2ae`; check ok. |
-| Clean install | fresh Dev profile `verify-0104b` from the 0.104.0 tarball | Boots: **173 tools**; engineering 170 = `engineering_` 2 + `ftview_` 52 + `l5x_` 55 + `migration_` 6 + `mw_` 24 + `optix_` 31; nine rows — l5x, ftview, mwi, viewers, engineering-resources, migration, optix `active`, plc5 and slc `disabled`; `l5xProjects` provided and the five sample `l5x_*` names executable. |
+| Clean install | fresh Dev profile `verify-0104f` from the 0.104.0 tarball | Boots: **173 tools**; engineering 170 = `engineering_` 2 + `ftview_` 52 + `l5x_` 55 + `migration_` 6 + `mw_` 24 + `optix_` 31; nine rows — l5x, ftview, mwi, viewers, engineering-resources, migration, optix `active`, plc5 and slc `disabled`; `l5xProjects` provided and the five sample `l5x_*` names executable. |
 | Changed-tool packaged smoke | from the installed profile, on `packages/l5x/test/fixtures/sample.l5x` | `l5x_open_project` parsed the project (rev 33.1/export 33.00; 1769-L33ER; 2 programs, 19 tags, 3 routines, 3 modules); `l5x_run_checks` 3 INFO findings; `l5x_docs search` 91 hits with `instruction-ton` first; `l5x_document_project` wrote 3 files (5 rung comments, 11 rungs). |
-| Cross-product | installed profile | `ftview_capabilities` (6 applications, schemas 1–16) and `ftview_docs` (38 hits, authored export-import first) work; `migration_assess` on the L5X sample succeeds (3 modules, 0 findings) and `migration_docs` searches; `slc500_open`/`ladder`/`docs` work on a text export; `plc5_docs` searches; `optix_status` reports the local bridge/Studio unavailable honestly; `mw_ide_status` reports `NOT_INSTALLED` honestly. |
 | Upgrade / rollback (N-1) | 0.103.0 tarball (`npm pack @aryacode/dsh-engineering@0.103.0`, 4,763,737 B) → 0.104.0 local tarball, then back | 0.103 composition: 170 tools, legacy L5X names, `ecad` row present/disabled, no `slc` row. Update: 990 ms `pnpm install`, 173 tools, all 55 names prefixed, `entries/ecad.js` absent, `vendor/ecad` viewer payload + L5X knowledge present, nine rows. Rollback: 170 tools and the 0.103 composition. Profile finally left on 0.104.0. |
 | No-vendor source | installed profile with `L5X_HELP_ROOT_V37_05`/`V36_00` = `Z:/no-such-help-root` | `l5x_docs read` of `help/clinset/timer-counter/timer-on-delay--ton-` returns `SOURCE_NOT_INSTALLED` naming the searched root; with the real install the same read returns the real TON page body. Structural `search`/`status` still answer from the shipped index — by design. |
 | Offline / no-network | static grep over the knowledge core, five `docs.ts` adapters and the eval script | No `fetch`, `node:http(s)`, `axios`, `child_process`, `net.connect` or `WebSocket`; the eval is local only. |
 | Licensing | NOTICE/README/`docs/reference/knowledge.md` | MIT posture: authored pages ship; the installed-help bodies are parsed from the user's own installation at read time and are never in the tarball. |
+
+### Installed vendor software, driven end to end
+
+Every row below was executed on this host on 2026-11-22, with the installed applications driven as
+the user through Computer Use and the tools called through the installed 0.104.0 profile. Evidence
+files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are not shipped.
+
+| Product | What was done | Evidence |
+| --- | --- | --- |
+| Studio 5000 Logix Designer 37.11 + Logix Designer SDK | `l5x_studio_sdk_status` available; `l5x_export_acd_to_l5x` exported the real `OEEDemo.ACD` (1,842,823 B); `l5x_open_project` reported ConnectOEE_Sim, 8 programs/141 tags/8 routines, controller 1769-L36ERM rev 37.11; drafted a comment into `MainProgram/MainRoutine` with `l5x_draft_st` → validate → apply; `l5x_verify_offline_l5x` built `OEEDemo-0104d-built.ACD` (4,173,455 B, "Offline build passed; 0 blocker(s)"); opened the built ACD in Logix Designer and the editor shows the drafted line; re-exporting the built ACD found the drafted comment again (2,284,833 B) | `tmp/studio-e2e/` (step JSONs, `OEEDemo-0104d-built.ACD`), `tmp/studio-e2e/evidence/logix-built-acd-mainroutine.png`, `tmp/studio-e2e/evidence/studio-e2e-proof.json` |
+| FactoryTalk View Studio 15.0 (ME) | Vendor export of `BlockMachine Demo` through the installed export server (303 files, 73 display objects, 419 tags); authored a new display + scaffold (7 objects, 8 operations) into `edited-BlockMachine-Demo` (78 files incl. `Displays/Arya OEE Overview.xml` + `BatchImport_…xml` + tags CSV); preflight ready (3 files differ, 0 blockers); vendor `SEAddComponent` import succeeded ("Import completed successfully", `.gfx` 8,192 B); `ftview_verify_import` **1/1 display match, staged objects all landed, 87 vendor defaults normalised** | `tmp/ftview-e2e/` (exports, edited export, component package, `$AddComponent.txt`), `tmp/ftview-verify-import4.log` |
+| RSLogix 500 12.00 (installed) | Opened `IC500DMO.RSS`; Save As copy with Export database + external files produced `.RSS` 49,152 B, `.EAS` 23,623 B, `.ERP` 1,422 B (`.EIC`/`.ESG` empty); Save As Library + Export SLC Format produced `IC500DMO_Lib.SLC` 18,800 B (real APS dialect, 569 lines); the installed bundle's `slc500_open` parses it — 5 program files, 68 rungs, 3 I/O modules, timer `PRE 80 ACC 7`, N7 11/22/33, I/O census — and `slc500_database` parses the real `.EAS` (325 rows, symbols/descriptions) and `.ERP` (rung rows skipped, warning) | `tmp/slc-e2e/` (`IC500DMO_Copy.*`, `IC500DMO_Lib.SLC`, `installed-e2e-results.json`), `tmp/slc-e2e/evidence/aps-parse.json` |
+| RSLogix 5 10.00 (installed) | Created and saved a real project `E2E_PLC5.RSP` (81,920 B, PLC5/40, Save As through the installed application); with RSLogix 5 closed, the installed bundle's PLC-5 tools read it headlessly — `plc5_open` "3 program files (1 ladder), 1 rungs, 255 symbols, 9 data files, read headlessly by RSLogix 5 10.00.00.00"; `plc5_processor` "Processor code 6 series 0, 49152 words"; `plc5_ladder` `END{ } ;` | `tmp/rslogix5/E2E_PLC5.RSP`, `tmp/rslogix5/installed-e2e-results.json`, `tmp/plc5-lossless-check.mjs` |
+| FactoryTalk Optix Studio 1.8.1.27 | Application project copy of `AryaSMTLineDemo`; `StudioMCPBridge` NetLogic → Execute StartBridge (security warning → Proceed), bridge 1.0.9 listening on 127.0.0.1:8768; `optix_status` available with authoring/destructive/invoke true; `optix_build status` (29 sources, DLL 252,928 B, built); `optix_project census` 37 files/6,533 nodes; `optix_read` map/node; `optix_screen` dry-run 197 operations, then applied 203 objects for `UI/Screens/DSH E2E Overview`; `optix_save` saved through Studio (Ctrl+S, `needs_save` 0); `optix_emulator start` served the project; the rendered page shows the authored screen — OEE 0.9, Run state lamp green, Total units 539, Units per hour 50,400 | `tmp/optix-e2e/` project copy, `tmp/optix-e2e/evidence/optix-authored-screen-live.png` + `.json`, `tmp/optix-author-e2e2.log`, `tmp/optix-runtime-e2e.log` |
+| Dev AryaCode UI | Booted the installed profile's web host (`dsh --profile verify-0104e --no-open --port 0`); Plugins shows the bundle enabled; Components "9 total · 7 running · 2 off"; toggled slc then plc5 on ("9 total · 9 running") and back off; Skills lists the eight shipped skills | `tmp/dev-ui-0104e-*.png` |
+| RSLogix 500 `.RSS` automation read | The COM class is registered, but no transcript proves the session and the edition is unrecorded | `slc500_open` answers `NOT_LICENSED` with the export-text/record-transcript fix — **not-runnable**, see below |
 
 ### Not runnable on this host — three-state evidence, never "pass"
 
@@ -86,14 +109,14 @@ All commands below were run on this tree; the tree then carried the evidence int
 
 | Item | State | Substitute evidence recorded |
 | --- | --- | --- |
-| MotionWorks IEC compile / profile / live | **not-runnable** — the IDE is not installed | `mw_ide_status` answers `NOT_INSTALLED` (7 probed locations, known line 3.0.3–3.7.5); `test/mwi-idefree.spec.mjs` 10/10 and the package `vitest` suite 81/81 prove the IDE-free logic with a stub host/help tree. |
+| MotionWorks IEC compile / profile / live | **not-runnable** — the IDE is not installed | `mw_ide_status` answers `NOT_INSTALLED` (7 probed locations, known line 3.0.3–3.7.5); `test/mwi-idefree.spec.mjs` 10/10 and the package `vitest` suite prove the IDE-free logic with a stub host/help tree. |
 | ECAD product / live AryaCAD bridge | **not-runnable** — component retired; no AryaCAD surface on this host | The row, 12 tools and skill are removed; the DXF/DWG drawing preview face still builds and mounts; the bridge's live path is not claimed anywhere. |
-| PLC-5 live COM read | **not-runnable** — RSLogix 5's automation server is not registered (`powershell32` present, COM server absent) | Read-only text tools are covered by the package tests and negative drills. There is no real `.PC5` export fixture in the repo, so the positive `.pc5` text path is proved at parser/unit level, not live. |
-| SLC 500 `.RSS` automation read | **not-runnable** — automation class registered, but no recorded transcript and the edition is unrecorded | `slc500_open` on a text export works end to end; `.RSS` returns `NOT_LICENSED` with the export-text/record-transcript fix. |
-| FTView attended import round-trip | **not run** — needs an attended Studio import step | `ftview_capabilities` reports `import requires studio`; the authored FTView corpus records the measured export and the attended rules. |
+| SLC 500 `.RSS` automation read | **not-runnable** — automation class registered, but no recorded transcript and the edition is unrecorded | `slc500_open` reads a text/Library export end to end; `.RSS` returns `NOT_LICENSED` with the export-text/record-transcript fix. |
+| PLC-5 `PC5 EXPORT` text path | **not-runnable** — RSLogix 5's UI/export tools do not write that document on this host (IMPEXP5.EXE is 16-bit; no `.PC5` fixture) | The headless COM read of a real `.RSP` is proved; the text tools stay parser/unit-tested only. |
+| FTView imported display in the Studio tree | **not-run** — the imported display appears as an unnamed tree row (UIA name blank) and an OCR/find search cannot select it | The import itself is proved object-for-object by `ftview_verify_import` (1/1, 87 defaults normalised). Candidate fix recorded: write display-name metadata so Studio labels the new display. |
 | Ten scripted tasks per product on a weaker model | **not run** — no weaker-model harness in this environment | Tool-level drills for every product were recorded here instead; the owner/agent walkthrough remains the intended check. |
 | Desktop Electron window and refreshed Plugins screenshots | **not run** — composition booted through the CLI/web probe path | The installed tarball's composition is proved; `docs/images/dev-components*.png` are still 0.102.0 screenshots. |
-| Publish / tag / market catalogue | **not run** — owner-only | This batch is local and uncommitted to the registry; release is a separate, explicit request. |
+| Publish / tag / market catalogue | **not run** — owner-only | This batch is local; release is a separate, explicit request. |
 
 ## Known gaps
 
@@ -105,9 +128,13 @@ All commands below were run on this tree; the tree then carried the evidence int
   `v*` tag after the release workflow exists will.
 - `docs/images/dev-components.png` and `docs/images/dev-components-rows.png` are from the 0.102.0
   install and need a re-shoot on a Dev host running the current payload.
-- PLC-5 has no positive `.PC5` text-export fixture; the text tools are parser-tested only.
+- The FTView imported display renders as an unnamed tree row in Studio 15.0; the import is proved by
+  comparison, but the display-name metadata that Studio uses for the tree label is not written yet.
+- PLC-5 has no positive `.PC5` text-export fixture; the text tools are parser-tested only. The
+  headless COM read is proved with a real `.RSP`.
 - SLC 500's `.RSS` automation path needs a recorded transcript (and a Professional/Developer
-  edition) before it can be called proved; the text-export path is proved.
+  edition) before it can be called proved; the text-export/Library and documentation-export paths
+  are proved against the installed RSLogix 500.
 - MWI's compile/profile/live paths need a machine with MotionWorks IEC 3 Pro installed.
 - Dense retrieval v2 was deliberately not added; v1 is lexical BM25 + exact identifiers only.
 
@@ -125,7 +152,12 @@ All commands below were run on this tree; the tree then carried the evidence int
    dependency at the tarball, `pnpm install --prefer-offline --ignore-scripts`, then boot the
    profile. Never modify the installed AryaCode (`%LOCALAPPDATA%\Programs\AryaCode` or
    `~/.aryacode`); read only.
-5. The batch commit is the release candidate. When the owner says ship, follow the release
+5. The batch commits are the release candidate. When the owner says ship, follow the release
    section of [AGENTS.md](AGENTS.md): `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`,
    tag `v0.104.0`, wait for the registry, then run the market catalogue step. Do not bump the
-   version for a registry-lag 404/409.
+   version to work around registry lag.
+6. The installed-software drivers live under `AryaCode\tmp\` in the harness checkout and are not
+   part of the bundle: `studio-e2e-full.mjs`, `ftview-e2e.mjs`/`ftview-author-e2e.mjs`/
+   `ftview-verify-import.mjs`, `slc-installed-e2e.mjs`/`slc-real-check.mjs`, `plc5-installed-e2e.mjs`,
+   `optix-e2e-run.mjs`/`optix-author-e2e.mjs`/`optix-runtime-e2e.mjs`, `dev-ui` screenshots and a
+   `verify-0104*` Dev profile.

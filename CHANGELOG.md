@@ -131,6 +131,35 @@
 - **The MotionWorks IEC requirement no longer names a version that does not exist.** The component said
   "MotionWorks IEC 3 Pro 1.19"; the 3 line runs 3.0.3–3.7.5, so `components.json` and the README state
   the measured line and that the IDE is absent from this host.
+- **The Studio 5000 SDK path works against the SDK the host actually has.** The probe matched only the
+  hardcoded client package `RockwellAutomation.LogixDesigner.CSClient.2.1.974.nupkg`; Studio 5000 v37
+  ships 2.2.1109 (a net10.0-only package), so every SDK tool answered "Compatible SDK client package not
+  installed". The bridge now discovers the highest installed CSClient package, passes its version to
+  `StudioBridge.csproj`, and targets the framework that package ships (net8.0 for v36, net10.0 for v37).
+  Proved by exporting the real `OEEDemo.ACD`, drafting a structured-text edit, building a new ACD through
+  the installed SDK, and re-exporting the drafted comment from it.
+- **A new FTView display follows the schema version the export declares.** The new-display skeleton
+  hardcoded `Gfx-ME17.xsd`; Studio 15.0 ships schemas only through `Gfx-ME16.xsd`, so the vendor Add
+  Component Tool imported the display empty. `createDisplay` now takes the schema version read from the
+  export itself. `ftview_verify_import` also stops reporting vendor-added default attributes
+  (`displayNumber`, `backStyle`, ...) as mismatches, and compares colour names (`white` vs `#FFFFFF`)
+  canonically. Proved by importing the authored display with `SEAddComponent` and verifying 1/1 display
+  match against the vendor export (87 default attributes normalised).
+- **SLC 500 reads the Library (`*.SLC`) text the vendor actually writes.** The parser expected an invented
+  INI dialect; the installed RSLogix 500 writes an APS-style `START`/`RACK`/`SLOT`/`PROJECT`/`LADDER`/
+  `DATA`/`FORCE` dialect. `parseSlcText` now auto-detects and parses it, and the documentation-export
+  reader handles the measured headerless `.EAS` 13-cell layout, `.ERP` 3-cell layout with embedded
+  newlines, rung-description rows and `C5:0/DN`/`I:0`/`S:0` addresses. Proved on the real
+  `IC500DMO_Lib.SLC` export (5 program files, 68 rungs, 3 I/O modules, timer and integer values). The
+  dead `scripts/record-slc500-transcript.mjs` references are replaced with the documented transcript
+  JSON shape.
+- **PLC-5 tool results are valid JSON.** `plc5_capabilities` reported `unpacked_bytes: undefined` for
+  non-packed streams, which the host rejects as "value is not lossless JSON"; it now reports `null`.
+  Proved by a headless COM read of a vendor-saved `E2E_PLC5.RSP` (3 program files, 1 ladder, 255 symbols,
+  9 data files, read by RSLogix 5 10.00.00.00).
+- **Optix 1.8 project files are recognised by the bridge arm.** The arm matched a column-zero `Nodes:`
+  section and `- File:` entries; Optix 1.8 writes them indented under `Project:`. The arm now matches
+  either indentation and writes the registration at the file's own indent.
 - **Stale row counts in getting-started and the index.** "Ten rows, ecad and plc5 off" and "six products
   plus three support components and one surface" described a composition the patch no longer had;
   both now state the nine rows and two off rows.
