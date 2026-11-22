@@ -4,8 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- The SDK release ships its own client package; the caller passes the installed version
+         so a Studio 5000 update does not strand the bridge on a hardcoded one. -->
+    <RockwellSdkClientVersion Condition="'$(RockwellSdkClientVersion)' == ''">2.1.974</RockwellSdkClientVersion>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="RockwellAutomation.LogixDesigner.CSClient" Version="2.1.974" />
+    <PackageReference Include="RockwellAutomation.LogixDesigner.CSClient" Version="$(RockwellSdkClientVersion)" />
   </ItemGroup>
 </Project>

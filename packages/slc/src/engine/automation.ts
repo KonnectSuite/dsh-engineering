@@ -96,7 +96,7 @@ export function powershell32Path(): string {
 
 function requiredString(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim() === '') {
-    throw new SlcAutomationError('TRANSCRIPT_INVALID', `The automation transcript has no ${field}.`, 'Re-record the transcript with scripts/record-slc500-transcript.mjs and point SLC500_AUTOMATION_TRANSCRIPT at it.')
+    throw new SlcAutomationError('TRANSCRIPT_INVALID', `The automation transcript has no ${field}.`, 'Re-record the transcript in the documented JSON shape and point SLC500_AUTOMATION_TRANSCRIPT at it.')
   }
   return value
 }

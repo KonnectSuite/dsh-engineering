@@ -19,7 +19,7 @@ RSLogix 500 can write the project's documentation as a text export rather than t
 - `.CSV` — comma-separated export of the same records.
 - `.CTD` and plain `.TXT` — tabular dumps with a recognisable header.
 
-`slc500_database` detects the delimiter (tab, pipe or comma) and the column set, maps the header aliases (`address`/`addr`/`tag`, `symbol`/`name`, `description`/`comment`, `scope`/`file`), and keeps every row as written. When no header names an address column, a headerless file is accepted only if its first cell is address-shaped; otherwise the answer is `DATABASE_FORMAT_UNSUPPORTED` rather than a guess.
+`slc500_database` detects the delimiter (tab, pipe or comma) and the column set, and keeps every row as written. A CSV export with a header row is mapped through the header aliases (`address`/`addr`/`tag`, `symbol`/`name`, `description`/`comment`, `scope`/`file`). The vendor writes `.EAS` and `.ERP` without a header, so those two are read from their measured column layouts: `.EAS` is 13 comma-separated cells (address, a reserved cell, symbol, then the description spread over up to four cells, then flags), and `.ERP` is three cells (address or a `RUNG...` reference, title, description text). Rung-description rows in an `.ERP` report are reported as skipped, not as addresses. Any other headerless file is accepted only when its first row starts with something address-shaped; otherwise the answer is `DATABASE_FORMAT_UNSUPPORTED` rather than a guess.
 
 ## What the rows mean
 

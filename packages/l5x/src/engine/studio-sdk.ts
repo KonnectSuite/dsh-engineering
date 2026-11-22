@@ -1,8 +1,8 @@
-﻿import { createHash } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { tmpdir, homedir } from 'node:os'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { EngineeringError, type ProjectSnapshot } from '../session.ts'
@@ -18,10 +18,12 @@ const bridgeKey = existsSync(bridgeProject) && existsSync(bridgeSource)
   ? createHash('sha256').update(readFileSync(bridgeProject)).update(readFileSync(bridgeSource)).digest('hex').slice(0, 16)
   : 'missing'
 const bridgeBuildRoot = join(tmpdir(), `arya-l5x-studio-bridge-${bridgeKey}-${process.pid}`)
-const bridgeDll = join(bridgeBuildRoot, 'bin', 'Release', 'net8.0', 'StudioBridge.dll')
+/** Studio 5000 v37's client package targets net10.0; v36's targeted net8.0, so the framework follows the installed client package. */
+let bridgeTargetFramework = 'net8.0'
+const bridgeDllFor = (framework: string): string => join(bridgeBuildRoot, 'bin', 'Release', framework, 'StudioBridge.dll')
 const defaultSdkRoot = 'C:\\Users\\Public\\Documents\\Studio 5000\\Logix Designer SDK'
 const sdkRoot = (): string => process.env.LOGIX_DESIGNER_SDK_ROOT || defaultSdkRoot
-const bridgeBuilt = (): boolean => existsSync(bridgeProject) && existsSync(bridgeSource) && existsSync(bridgeDll)
+const bridgeBuilt = (): boolean => existsSync(bridgeProject) && existsSync(bridgeSource) && existsSync(bridgeDllFor(bridgeTargetFramework))
 
 export interface SdkStatus {
   available: boolean
@@ -49,6 +51,48 @@ const MIN_BUILD_REVISION = 37
 const BUILD_REVISION_OBSERVED = 'Operation not supported on Logix Designer version 36.0'
 /** A FactoryTalk Directory cache failure is transient; one retry refreshes it. */
 const FTSP_RETRYABLE = /Security cannot proceed|Directory Server|cache has expired/iu
+/** The SDK installer loads its client package into the SDK's dotnet folder; the filename carries the version that matches the Studio 5000 release. */
+const SDK_CLIENT_PACKAGE = /^RockwellAutomation\.LogixDesigner\.CSClient\.(\d+)\.(\d+)\.(\d+)\.nupkg$/iu
+
+/**
+ * Pick the installed Logix Designer SDK client package.
+ *
+ * The SDK release moves with Studio 5000: v36 shipped client 2.1.974 and v37 ships
+ * 2.2.1109. Pinning one filename made the SDK report "Compatible SDK client package not
+ * installed" on a newer, perfectly usable install. Choose the highest installed version
+ * instead, and let NuGet resolve it from the SDK's own folder.
+ *
+ * @param files - File names in the SDK's dotnet folder.
+ * @returns The nupkg file to reference, or undefined when none is installed.
+ */
+export function selectSdkClientPackage(files: readonly string[]): string | undefined {
+  const parsed = files.flatMap(file => {
+    const match = SDK_CLIENT_PACKAGE.exec(file)
+    if (match === null) return []
+    return [{ file, version: [Number(match[1]), Number(match[2]), Number(match[3])] as const }]
+  })
+  parsed.sort((left, right) => right.version[0] - left.version[0] || right.version[1] - left.version[1] || right.version[2] - left.version[2])
+  return parsed[0]?.file
+}
+
+/** The client package version the bridge's PackageReference has to name. */
+function sdkClientVersion(packageFile: string | undefined): string | undefined {
+  const match = packageFile === undefined ? null : SDK_CLIENT_PACKAGE.exec(packageFile)
+  return match === null ? undefined : `${match[1]}.${match[2]}.${match[3]}`
+}
+
+/** Target frameworks the restored client package compiles for, read from NuGet's cache. */
+function sdkClientFrameworks(version: string | undefined): readonly string[] {
+  if (version === undefined) return []
+  const libDir = join(homedir(), '.nuget', 'packages', 'rockwellautomation.logixdesigner.csclient', version, 'lib')
+  return existsSync(libDir) ? readdirSync(libDir).filter(name => /^net\d+(?:\.\d+)?$/u.test(name)) : []
+}
+
+/** net8.0 ranks 80, net10.0 ranks 100; unknown frameworks rank below every real one. */
+function frameworkRank(framework: string): number {
+  const match = /^net(\d+)(?:\.(\d+))?$/u.exec(framework)
+  return match === null ? -1 : Number(match[1]) * 10 + Number(match[2] ?? '0')
+}
 
 export function parseSdkServiceState(output: string): string {
   return /\bSTATE\s*:\s*\d+\s+([A-Z_]+)/iu.exec(output)?.[1]?.toUpperCase() ?? 'UNKNOWN'
@@ -117,7 +161,7 @@ export async function studioSdkStatus(): Promise<SdkStatus> {
   if (!existsSync(bridgeProject) || !existsSync(bridgeSource)) return { available: false, reason: 'Studio bridge source was not packaged', ...serviceFields, sdk_root: root, bridge_built: false, open_supported_project_revisions: '31+', build_supported_project_revisions: '37+', sdk_release: release, installed_studio_versions: installedVersions }
   const packageDir = join(root, 'dotnet')
   const files = existsSync(packageDir) ? await readdir(packageDir) : []
-  const clientPackage = files.find(file => /^RockwellAutomation\.LogixDesigner\.CSClient\.2\.1\.974\.nupkg$/iu.test(file))
+  const clientPackage = selectSdkClientPackage(files)
   if (clientPackage === undefined) return { available: false, reason: 'Compatible SDK client package not installed', ...serviceFields, sdk_root: root, bridge_built: bridgeBuilt(), open_supported_project_revisions: '31+', build_supported_project_revisions: '37+', sdk_release: release, installed_studio_versions: installedVersions }
   if (installedVersions.length === 0) return { available: false, reason: 'No Studio 5000 Logix Designer version is installed', ...serviceFields, sdk_root: root, client_package: clientPackage, bridge_built: bridgeBuilt(), open_supported_project_revisions: '31+', build_supported_project_revisions: '37+', sdk_release: release, installed_studio_versions: installedVersions }
   try {
@@ -163,7 +207,7 @@ export async function exportAcdToL5x(acdPath: string, outputPath: string, signal
   await createOutputFolder(output)
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   await ensureBridge(availability, signal)
-  let result = await runBridge([bridgeDll, 'export-l5x', source, output], 240_000, signal)
+  let result = await runBridge([bridgeDllFor(bridgeTargetFramework), 'export-l5x', source, output], 240_000, signal)
   // A project open in Studio 5000 holds an exclusive handle on its ACD, and the
   // SDK opens the file itself, so the ordinary case - the project the user is
   // working on - failed with "being used by another process". Exporting reads a
@@ -177,7 +221,7 @@ export async function exportAcdToL5x(acdPath: string, outputPath: string, signal
     if (createHash('sha256').update(await readFile(scratch)).digest('hex') !== sourceHash) {
       throw new EngineeringError('ACD_CHANGED', 'The ACD changed while it was being copied; save or close it in Studio 5000 and retry')
     }
-    result = await runBridge([bridgeDll, 'export-l5x', scratch, output], 240_000, signal)
+    result = await runBridge([bridgeDllFor(bridgeTargetFramework), 'export-l5x', scratch, output], 240_000, signal)
   }
   if (result.code !== 0 || !result.output.includes('EXPORTED_L5X_SUCCEEDED')) {
     throw new EngineeringError('L5X_EXPORT_FAILED', result.output, 'Close the project in Studio 5000, or retry: a locked ACD is exported from a private copy.')
@@ -211,10 +255,24 @@ async function ensureBridge(availability: SdkStatus, signal?: AbortSignal): Prom
   await copyFile(bridgeSource, join(bridgeBuildRoot, 'Program.cs'))
   await writeFile(join(bridgeBuildRoot, 'NuGet.Config'), `<configuration><packageSources><clear/><add key="LocalRockwellSdk" value="${escaped}"/><add key="nuget.org" value="https://api.nuget.org/v3/index.json"/></packageSources></configuration>`, 'utf8')
   const buildProject = join(bridgeBuildRoot, 'StudioBridge.csproj')
-  const restored = await run('dotnet', ['restore', buildProject, '--configfile', join(bridgeBuildRoot, 'NuGet.Config'), '--ignore-failed-sources'], 120_000, signal)
+  const clientVersion = sdkClientVersion(availability.client_package)
+  const versionArgument = clientVersion === undefined ? [] : [`-p:RockwellSdkClientVersion=${clientVersion}`]
+  const restoreArgs = ['restore', buildProject, '--configfile', join(bridgeBuildRoot, 'NuGet.Config'), '--ignore-failed-sources', ...versionArgument]
+  const restored = await run('dotnet', restoreArgs, 180_000, signal)
   if (restored.code !== 0) throw new EngineeringError('SDK_BRIDGE_BUILD_FAILED', restored.output)
-  const built = await run('dotnet', ['build', buildProject, '-c', 'Release', '--no-restore'], 120_000, signal)
-  if (built.code !== 0 || !existsSync(bridgeDll)) throw new EngineeringError('SDK_BRIDGE_BUILD_FAILED', built.output)
+  // The SDK package follows the Studio release: v36 targets net8.0, v37 targets net10.0.
+  // Build the bridge for the target the restored client package actually ships.
+  const frameworks = sdkClientFrameworks(clientVersion)
+  const supported = frameworks.includes('net8.0') ? 'net8.0'
+    : [...frameworks].sort((left, right) => frameworkRank(right) - frameworkRank(left))[0]
+  if (supported !== undefined && supported !== bridgeTargetFramework) {
+    bridgeTargetFramework = supported
+    const reRestored = await run('dotnet', [...restoreArgs, `-p:TargetFramework=${supported}`], 180_000, signal)
+    if (reRestored.code !== 0) throw new EngineeringError('SDK_BRIDGE_BUILD_FAILED', reRestored.output)
+  }
+  const frameworkArgument = [`-p:TargetFramework=${bridgeTargetFramework}`]
+  const built = await run('dotnet', ['build', buildProject, '-c', 'Release', '--no-restore', ...frameworkArgument, ...versionArgument], 180_000, signal)
+  if (built.code !== 0 || !existsSync(bridgeDllFor(bridgeTargetFramework))) throw new EngineeringError('SDK_BRIDGE_BUILD_FAILED', built.output)
 }
 
 /**
@@ -268,7 +326,7 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
   // A cold first open starts the Studio engine; the observed cold run took 183s, so 180s
   // budget killed it and the kill looked like a project that would not open.
   const verifyTimeoutMs = 300_000
-  const result = await runBridge([bridgeDll, 'verify', source, output], verifyTimeoutMs, signal)
+  const result = await runBridge([bridgeDllFor(bridgeTargetFramework), 'verify', source, output], verifyTimeoutMs, signal)
   const outputInfo = existsSync(output) ? await stat(output) : undefined
   const summary = /<Summary Warnings="(\d+)" Errors="(\d+)"\s*\/>/u.exec(result.output)
   const lines = sdkDiagnosticLines(result.output)
@@ -314,7 +372,7 @@ export async function editOfflineAcd(acdPath: string, draft: ProjectSnapshot, pr
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
   if (createHash('sha256').update(await readFile(draft.path)).digest('hex') !== draft.sha256) throw new EngineeringError('STALE_EXPORT', 'Draft changed since l5x_open_project')
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, 'edit-routine', source, resolve(draft.path), output, program, routine, exported, sourceHash, draft.sha256], 240_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'edit-routine', source, resolve(draft.path), output, program, routine, exported, sourceHash, draft.sha256], 240_000, signal)
   const summary = /<Summary Warnings="(\d+)" Errors="(\d+)"\s*\/>/u.exec(result.output)
   const importErrors = summary === null ? null : Number(summary[2])
   const passed = result.code === 0 && result.output.includes('OFFLINE_ACD_EDIT_SUCCEEDED') && existsSync(output) && existsSync(exported) && (importErrors ?? 0) === 0
@@ -337,7 +395,7 @@ export async function readControllerMode(project: ProjectSnapshot, commPath: str
     mode = await readControllerModeForAction(snapshot, commPath, signal)
   } else {
     await ensureBridge(availability, signal)
-    const result = await run('dotnet', [bridgeDll, 'read-mode', resolve(project.path), commPath], 90_000, signal)
+    const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'read-mode', resolve(project.path), commPath], 90_000, signal)
     const observed = /^READ_CONTROLLER_MODE=(\w+)$/mu.exec(result.output)?.[1]
     if (result.code !== 0 || observed === undefined) throw new EngineeringError('CONTROLLER_READ_FAILED', result.output)
     mode = observed
@@ -373,7 +431,7 @@ export async function readProjectCommPath(inputPath: string, signal?: AbortSigna
   }
   if (availability === undefined) throw new EngineeringError('SDK_UNAVAILABLE', 'ACD route inspection requires the SDK')
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, 'get-comm-path', path, '--read-only'], 90_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'get-comm-path', path, '--read-only'], 90_000, signal)
   const commPath = /^PROJECT_COMM_PATH=(.*)$/mu.exec(result.output)?.[1]?.trim()
   if (result.code !== 0 || commPath === undefined) throw new EngineeringError('COMM_PATH_READ_FAILED', result.output)
   return { project_path: path, communications_path: commPath, source: 'project_saved_path',
@@ -505,7 +563,7 @@ export async function sampleLiveTags(snapshotPath: string, commPath: string, tag
   const bytes = await readFile(snapshot).catch(() => { throw new EngineeringError('FILE_NOT_FOUND', 'Snapshot ACD not found') })
   await ensureBridge(availability, signal)
   const specs = tags.map(tag => ({ Name: tag.name, DataType: tag.data_type }))
-  const result = await run('dotnet', [bridgeDll, 'sample-tags', snapshot, commPath, JSON.stringify(specs), String(sampleCount), String(intervalMs)], 100_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'sample-tags', snapshot, commPath, JSON.stringify(specs), String(sampleCount), String(intervalMs)], 100_000, signal)
   const lines = result.output.split(/\r?\n/u).filter(line => line.startsWith('SAMPLE_JSON='))
   if (result.code !== 0 || !result.output.includes('SAMPLING_SUCCEEDED') || lines.length !== sampleCount)
     throw new EngineeringError('CONTROLLER_READ_FAILED', result.output)
@@ -537,7 +595,7 @@ export async function readLiveTag(snapshotPath: string, commPath: string, tag: s
   if (!existsSync(snapshot)) throw new EngineeringError('FILE_NOT_FOUND', 'Snapshot ACD not found')
   const bytes = await readFile(snapshot)
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, 'read-tag', snapshot, commPath, tag, normalizedType], 90_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'read-tag', snapshot, commPath, tag, normalizedType], 90_000, signal)
   const value = /^READ_TAG=(.+)$/mu.exec(result.output)?.[1]
   if (result.code !== 0 || value === undefined) throw new EngineeringError('CONTROLLER_READ_FAILED', result.output)
   if (normalizedType === 'BOOL' && value !== 'true' && value !== 'false') throw new EngineeringError('CONTROLLER_READ_FAILED', 'Invalid BOOL value returned by SDK')
@@ -559,7 +617,7 @@ export async function captureControllerSnapshot(commPath: string, outputPath: st
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'Snapshot must be a new file')
   await createOutputFolder(output)
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, 'upload-new', output, commPath], 900_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'upload-new', output, commPath], 900_000, signal)
   if (result.code !== 0 || !result.output.includes('UPLOAD_TO_NEW_ACD_SUCCEEDED')) throw new EngineeringError('CONTROLLER_UPLOAD_FAILED', result.output)
   const bytes = await readFile(output)
   return { output_path: output, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'), captured_at: new Date().toISOString(), communications_path: commPath, controller_operation: 'read_only_upload_to_new_local_file' }
@@ -601,7 +659,7 @@ async function runControllerAction(command: string, file: ControllerActionFile, 
   const current = createHash('sha256').update(await readFile(file.path)).digest('hex')
   if (current !== file.sha256) throw new EngineeringError('ACD_CHANGED', 'ACD changed after approval; request a new approval')
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, command, file.path, commPath, file.sha256, ...(mode ? [mode] : []), ...(expectedMode ? [expectedMode] : [])], command === 'download' ? 240_000 : 90_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), command, file.path, commPath, file.sha256, ...(mode ? [mode] : []), ...(expectedMode ? [expectedMode] : [])], command === 'download' ? 240_000 : 90_000, signal)
   if (result.code !== 0) throw new EngineeringError('CONTROLLER_OPERATION_FAILED', result.output)
   return result.output
 }
@@ -617,7 +675,7 @@ export async function readControllerModeForAction(file: ControllerActionFile, co
   requireLiveDependencies(availability)
   checkCommPath(commPath)
   await ensureBridge(availability, signal)
-  const result = await run('dotnet', [bridgeDll, 'read-mode', file.path, commPath], 90_000, signal)
+  const result = await run('dotnet', [bridgeDllFor(bridgeTargetFramework), 'read-mode', file.path, commPath], 90_000, signal)
   const mode = /^READ_CONTROLLER_MODE=(\w+)$/mu.exec(result.output)?.[1]
   if (result.code !== 0 || mode === undefined) throw new EngineeringError('CONTROLLER_READ_FAILED', result.output)
   return mode

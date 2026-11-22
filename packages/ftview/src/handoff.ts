@@ -38,10 +38,12 @@ export interface SignatureDifference {
 export interface DisplayVerification {
   /** Export-relative display file. */
   readonly file: string
-  /** True when the trees are identical. */
+  /** True when the trees are identical after ignoring vendor defaults the draft did not set. */
   readonly matched: boolean
   /** Differences, capped by the caller. */
   readonly differences: readonly SignatureDifference[]
+  /** Attributes or elements the vendor import added; normalisation, not a mismatch. */
+  readonly normalised?: readonly SignatureDifference[]
 }
 
 /** One signature of a node, recursively. */
@@ -67,8 +69,51 @@ export function signatureOf(xml: string): ObjectSignature {
   return { type: tree.root.type, attributes: {}, children: tree.root.children.map(signatureOfNode) }
 }
 
+/** Named colours the vendor exporter may emit where the draft wrote hex. */
+const NAMED_COLOURS: Readonly<Record<string, string>> = {
+  aqua: '#00ffff',
+  black: '#000000',
+  blue: '#0000ff',
+  cyan: '#00ffff',
+  fuchsia: '#ff00ff',
+  gray: '#808080',
+  green: '#008000',
+  grey: '#808080',
+  lime: '#00ff00',
+  magenta: '#ff00ff',
+  maroon: '#800000',
+  navy: '#000080',
+  olive: '#808000',
+  purple: '#800080',
+  red: '#ff0000',
+  silver: '#c0c0c0',
+  teal: '#008080',
+  white: '#ffffff',
+  yellow: '#ffff00',
+}
+
+/**
+ * Compare one attribute, treating a named colour and its hex form as equal.
+ *
+ * The vendor export writes `white` where an authored display wrote `#FFFFFF`;
+ * that is the same colour, not a mismatch the import introduced.
+ */
+function sameAttributeValue(name: string, left: string, right: string): boolean {
+  if (left === right) return true
+  if (!/colou?r/iu.test(name)) return false
+  const canonical = (value: string): string => {
+    const lower = value.trim().toLowerCase()
+    const named = NAMED_COLOURS[lower]
+    if (named !== undefined) return named
+    if (/^#[0-9a-f]{6}$/u.test(lower)) return lower
+    if (/^#[0-9a-f]{3}$/u.test(lower)) return `#${lower[1]}${lower[1]}${lower[2]}${lower[2]}${lower[3]}${lower[3]}`
+    return lower
+  }
+  return canonical(left) === canonical(right)
+}
+
 /** Collect differences between two signatures at one path. */
-function diff(expected: ObjectSignature, actual: ObjectSignature, path: string, out: SignatureDifference[]): void {
+function diff(expected: ObjectSignature, actual: ObjectSignature, path: string, out: SignatureDifference[], normalised: SignatureDifference[]): void {
   if (out.length >= 50) return
   if (expected.type !== actual.type) {
     out.push({ path, expected: expected.type, actual: actual.type })
@@ -76,8 +121,17 @@ function diff(expected: ObjectSignature, actual: ObjectSignature, path: string, 
   }
   const names = new Set([...Object.keys(expected.attributes), ...Object.keys(actual.attributes)])
   for (const name of names) {
-    if (expected.attributes[name] !== actual.attributes[name]) {
-      out.push({ path: `${path} @${name}`, expected: expected.attributes[name], actual: actual.attributes[name] })
+    const left = expected.attributes[name]
+    const right = actual.attributes[name]
+    if (left === undefined) {
+      // An attribute the draft did not set is a vendor default the import
+      // filled in, not a mismatch: the vendor export always carries its full
+      // attribute set, while an authored display only carries what it set.
+      normalised.push({ path: `${path} @${name}`, actual: right })
+      continue
+    }
+    if (right === undefined || !sameAttributeValue(name, left, right)) {
+      out.push({ path: `${path} @${name}`, expected: left, actual: right })
       if (out.length >= 50) return
     }
   }
@@ -87,9 +141,9 @@ function diff(expected: ObjectSignature, actual: ObjectSignature, path: string, 
     const left = expectedChildren[index]
     const right = actualChildren[index]
     const label = left?.name ?? right?.name ?? `child[${index}]`
-    if (left === undefined) { out.push({ path: `${path} > ${label}`, actual: 'present in import, missing in draft' }); continue }
+    if (left === undefined) { normalised.push({ path: `${path} > ${label}`, actual: 'present in import, missing in draft' }); continue }
     if (right === undefined) { out.push({ path: `${path} > ${label}`, expected: 'present in draft, missing in import' }); continue }
-    diff(left, right, `${path} > ${label}`, out)
+    diff(left, right, `${path} > ${label}`, out, normalised)
   }
 }
 
@@ -107,13 +161,14 @@ export async function verifyDisplays(fs: FsService, root: string, expected: Read
     const bytes = await fs.readBytes(`${root}/${file}`, undefined, 64 * 1024 * 1024)
     const actual = new TextDecoder('utf-8').decode(bytes)
     const differences: SignatureDifference[] = []
+    const normalised: SignatureDifference[] = []
     try {
-      diff(signatureOf(intended), signatureOf(actual), file, differences)
+      diff(signatureOf(intended), signatureOf(actual), file, differences, normalised)
     } catch (error) {
       results.push({ file, matched: false, differences: [{ path: file, expected: 'a parsable display', actual: error instanceof Error ? error.message : String(error) }] })
       continue
     }
-    results.push({ file, matched: differences.length === 0, differences })
+    results.push({ file, matched: differences.length === 0, differences, ...(normalised.length === 0 ? {} : { normalised }) })
   }
   return results
 }

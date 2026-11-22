@@ -97,6 +97,64 @@ const SAMPLE_ALT = [
 /** A documentation export with a recognisable header. */
 const SAMPLE_EAS = ['address,symbol,description,scope', 'I:1/0,START_PB,start push button,2', 'N7:0,SPEED_SP,speed preset,7', 'O:0/0,RUN_LAMP,run lamp,2', ''].join('\n')
 
+/** The vendor `.EAS`: quoted comma-separated with no header, 13 cells, address first. */
+const SAMPLE_EAS_VENDOR = [
+  '"",""',
+  '"B3:0","0","","","","","","","0","","","0",""',
+  '"B3:0/0","0","CTRL_ENABLED","Control","Enabled","","","","0","","","0",""',
+  '"B3:0/1","0","PUMP_RUN","Pump","Running","","","","0","","","0",""',
+  '',
+].join('\n')
+
+/** The vendor `.ERP`: quoted comma-separated with no header, address or RUNG reference first. */
+const SAMPLE_ERP_VENDOR = [
+  '"B0003:000/11","Bottle Table Index Control","This Section is the bottle table index control"',
+  '"RUNG000002-000000","Start Up Diagnostic Check","Diagnostic rung description"',
+  '"B0003:000/12","Bottle Table Stop","Bottle table stop control"',
+  '',
+].join('\n')
+
+/** A Library (*.SLC) export in the vendor APS dialect, shaped like a measured RSLogix 500 export. */
+const SAMPLE_APS = [
+  'START 1747-L524    % 1747-L524    5/02 CPU - 4K Mem. %',
+  '% PROCESSOR RACK CONFIGURATION INFORMATION %',
+  'RACK 1 1746-A4   % 4-Slot Rack %',
+  '% SLOT CONFIGURATION INFORMATION %',
+  'SLOT 1 1746-IA4    % 4-Input 100/120 VAC %  SCAN_IN 1 SCAN_OUT 0',
+  'SLOT 2 1746-IA8    % 8-Input 100/120 VAC %  SCAN_IN 1 SCAN_OUT 0',
+  'SLOT 3 1746-OA8    % 8-Output 120/240 VAC %  SCAN_IN 0 SCAN_OUT 1',
+  'PROJECT "DEMO_APS"',
+  '     2 "MAIN_LADDR"',
+  '     3 "SUB_RT"',
+  'LADDER 2',
+  '% Rung: 1 %',
+  'SOR XIC B3:0/0 XIC I:1.0/0 OTE O:3.0/0 EOR ',
+  '% TITLE/RUNG DESCRIPTION  ATTACHED TO:RUNG',
+  'TITLE:Start Up Diagnostic Check',
+  'RUNG DESCRIPTION:',
+  'This is a sample Rung Description.',
+  '%',
+  '% Rung: 2 %',
+  'SOR XIO B3:0/1 OTE O:3.0/1 EOR ',
+  'LADDER 3',
+  '% Rung: 1 %',
+  'SOR XIC I:1.0/1 OTE O:3.0/2 EOR ',
+  'DATA O:3',
+  '% O:3.0 % 0X0050',
+  'DATA I:1',
+  '% I:1.0 % 0X0000',
+  'DATA B3:0',
+  '% B3:0 % 0 -32768 1',
+  'DATA T4:0',
+  '% .CTL   .PRE   .ACC    %',
+  '0XC207     80      7 % T4:0  %',
+  'DATA N7:0',
+  '% N7:0 % 11 22 33',
+  'DATA S:0',
+  '% S:0 % 0 1 0 2560 0 0 0 0 0 0',
+  '',
+].join('\n')
+
 /** A transcript shaped like the recorded automation snapshot. */
 const SAMPLE_TRANSCRIPT = {
   project_name: 'DEMO_PUMP',
@@ -117,6 +175,9 @@ before(() => {
     slc: join(directory, 'DEMO_PUMP.SLC'),
     alt: join(directory, 'DEMO_PUMP_ALT.SLC'),
     eas: join(directory, 'DEMO_PUMP.EAS'),
+    easVendor: join(directory, 'VENDOR.EAS'),
+    erpVendor: join(directory, 'VENDOR.ERP'),
+    aps: join(directory, 'DEMO_APS.SLC'),
     rss: join(directory, 'DEMO_PUMP.RSS'),
     ach: join(directory, 'LEGACY.ACH'),
     rs1: join(directory, 'ARCHIVE.RS1'),
@@ -126,6 +187,9 @@ before(() => {
   writeFileSync(files.slc, SAMPLE_SLC, 'utf8')
   writeFileSync(files.alt, SAMPLE_ALT, 'utf8')
   writeFileSync(files.eas, SAMPLE_EAS, 'utf8')
+  writeFileSync(files.easVendor, SAMPLE_EAS_VENDOR, 'utf8')
+  writeFileSync(files.erpVendor, SAMPLE_ERP_VENDOR, 'utf8')
+  writeFileSync(files.aps, SAMPLE_APS, 'utf8')
   writeFileSync(files.rss, 'binary-ish bytes', 'utf8')
   writeFileSync(files.ach, 'aps-era bytes', 'utf8')
   writeFileSync(files.rs1, 'archive bytes', 'utf8')
@@ -254,6 +318,42 @@ describe('the offline text and documentation paths', () => {
     assert.match(answer.data.rungs[0].text, /XIC I:1\/0/u)
   })
 
+  test('open reads the vendor Library (*.SLC) APS dialect and inventories it', async () => {
+    const { byName } = buildTools()
+    const answer = await call(byName.get('slc500_open'), { path: files.aps })
+    assert.equal(answer.error, undefined)
+    assert.equal(answer.data.source, 'text')
+    assert.equal(answer.data.project.name, 'DEMO_APS')
+    assert.equal(answer.data.project.processor.type, '1747-L524')
+    assert.equal(answer.data.project.processor.series, '5/02')
+    assert.equal(answer.data.project.processor.memory_words, 4096)
+    assert.equal(answer.data.project.files.length, 2)
+    assert.equal(answer.data.project.io_modules, 3)
+    assert.equal(answer.data.project.total_rungs, 3)
+  })
+
+  test('ladder reads SOR/EOR rung blocks from the APS dialect', async () => {
+    const { byName } = buildTools()
+    const answer = await call(byName.get('slc500_ladder'), { path: files.aps })
+    assert.equal(answer.error, undefined)
+    assert.equal(answer.data.file, 'LAD 2')
+    assert.equal(answer.data.logic_rungs, 2)
+    assert.deepEqual(answer.data.rungs.map(rung => rung.text), [
+      'XIC B3:0/0 XIC I:1.0/0 OTE O:3.0/0',
+      'XIO B3:0/1 OTE O:3.0/1',
+    ])
+  })
+
+  test('data_read reads APS data blocks, including timer triplets', async () => {
+    const { byName } = buildTools()
+    const timer = await call(byName.get('slc500_data_read'), { path: files.aps, file: 'T4', element: 0, count: 1 })
+    assert.equal(timer.error, undefined)
+    assert.equal(timer.data.elements[0].value, 'PRE 80 ACC 7')
+    const words = await call(byName.get('slc500_data_read'), { path: files.aps, file: 'N7', element: 0, count: 3 })
+    assert.equal(words.error, undefined)
+    assert.deepEqual(words.data.elements.map(entry => entry.value), ['11', '22', '33'])
+  })
+
   test('find matches symbols and data values by scope', async () => {
     const { byName } = buildTools()
     const symbols = await call(byName.get('slc500_find'), { path: files.slc, query: 'START', scope: 'symbols' })
@@ -306,9 +406,34 @@ describe('the offline text and documentation paths', () => {
     const answer = await call(byName.get('slc500_database'), { path: files.eas })
     assert.equal(answer.error, undefined)
     assert.equal(answer.data.format, 'csv')
+    assert.equal(answer.data.layout, 'header')
     assert.equal(answer.data.total, 3)
     assert.equal(answer.data.rows[0].address, 'I:1/0')
     assert.equal(answer.data.rows[0].symbol, 'START_PB')
+  })
+
+  test('database reads the vendor headerless .EAS layout', async () => {
+    const { byName } = buildTools()
+    const answer = await call(byName.get('slc500_database'), { path: files.easVendor })
+    assert.equal(answer.error, undefined)
+    assert.equal(answer.data.layout, 'eas')
+    assert.equal(answer.data.total, 3)
+    assert.equal(answer.data.rows[0].address, 'B3:0')
+    assert.equal(answer.data.rows[1].address, 'B3:0/0')
+    assert.equal(answer.data.rows[1].symbol, 'CTRL_ENABLED')
+    assert.equal(answer.data.rows[1].description, 'Control Enabled')
+    assert.equal(answer.data.rows[2].symbol, 'PUMP_RUN')
+  })
+
+  test('database reads the vendor headerless .ERP layout and skips rung rows', async () => {
+    const { byName } = buildTools()
+    const answer = await call(byName.get('slc500_database'), { path: files.erpVendor })
+    assert.equal(answer.error, undefined)
+    assert.equal(answer.data.layout, 'erp')
+    assert.equal(answer.data.total, 2)
+    assert.equal(answer.data.rows[0].address, 'B0003:000/11')
+    assert.match(answer.data.rows[0].description, /bottle table index control/iu)
+    assert.ok(answer.data.warnings.some(message => /rung-description row/iu.test(message)))
   })
 
   test('documentation exports are routed to the database tool, not parsed as projects', async () => {

@@ -1336,11 +1336,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const results = await verifyDisplays(fs, root, expected)
         const matched = results.filter(result => result.matched).length
         const differences = results.flatMap(result => result.differences.map(difference => ({ file: result.file, ...difference })))
+        const normalised = results.flatMap(result => (result.normalised ?? []).map(difference => ({ file: result.file, ...difference })))
         const reopened = handMade ?? await session.open(root, exec)
         const drift = verifyDraft(draft, reopened.app)
         return success(
-          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}. Compared against ${proof}, kept at ${root}.`,
-          { application: requiredString(args, 'application'), export_root: root, displays: results, differences, matched: allMatched(results), drift },
+          `${matched}/${results.length} display(s) match the draft${allMatched(results) ? '' : `; ${differences.length} difference(s)`}; ${drift.missing + drift.changed === 0 ? 'staged objects all landed' : `${drift.missing} staged object(s) missing and ${drift.changed} changed`}${normalised.length === 0 ? '' : `; vendor added ${normalised.length} default attribute(s) the draft did not set`}. Compared against ${proof}, kept at ${root}.`,
+          { application: requiredString(args, 'application'), export_root: root, displays: results, differences, normalised, matched: allMatched(results), drift },
           matched === results.length
             ? [{ tool: 'ftview_draft_display_create', why: 'Author the next screen against the verified export.' }]
             : [{ tool: 'ftview_validate', args: { draft_id: draft.id }, why: 'Re-read the draft findings before correcting the difference.' }],

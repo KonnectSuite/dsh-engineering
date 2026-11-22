@@ -10,9 +10,9 @@ revision: 12.00.00
 
 An SLC 500 project reaches an engineer as one of several formats, and the format decides what this row can prove. Name the format as part of every answer.
 
-## `.SLC` — neutral text export
+## `.SLC` — RSLogix 500 Library export
 
-The vendor's text export of a verified project. It carries the program (neutral-text rungs), program files, data files, symbols and descriptions. The vendor only allows data that has been verified to be saved this way, so a successful export is meaningful evidence about the project. This row reads `.SLC` offline, with no RSLogix 500 install. Symbols are truncated to 15 printable ASCII characters.
+The vendor's Library export (Save Program As → Save as type `Library Files(*.SLC)` → `Export SLC Format`, Complete Program Save). Measured on RSLogix 500 12.00.00, it carries the processor line, rack and slot configuration, the project name and program files with their titles, neutral-text rungs wrapped in `SOR … EOR`, rung titles and descriptions, data-file element values, and force tables. It does **not** carry the symbol/description database — those arrive in the `.EAS`/`.ERP` documentation exports (and the `.SY5`/`.SY6` sidecar files), so read names and descriptions with `slc500_database` and read logic with `slc500_open`/`slc500_ladder`. This row parses the Library dialect offline with no RSLogix 500 install, and also accepts the documented INI-style text export. Symbols are not truncated inside the `.SLC` because they are not present there; the 15-character limit applies only to the INI-style symbol field.
 
 ## `.RSS` — binary project container
 

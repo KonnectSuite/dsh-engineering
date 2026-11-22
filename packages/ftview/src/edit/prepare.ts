@@ -54,6 +54,23 @@ async function readText(fs: FsService, root: string, file: string, signal: Abort
   return decode(await fs.readBytes(`${root}/${file}`, signal, 64 * 1024 * 1024))
 }
 
+/**
+ * The `Gfx-ME<major>.xsd` version the opened export declares.
+ *
+ * A new display must declare the same schema release the existing displays do,
+ * because Studio's Add Component Tool looks the name up in the schemas its own
+ * release installed: a ME17-tagged display on a Studio 15 host (schemas through
+ * ME16) imports with "schema could not be found" and every object is dropped.
+ */
+async function exportDisplaySchemaVersion(fs: FsService, app: Application, signal: AbortSignal | undefined): Promise<string | undefined> {
+  for (const display of app.displays.slice(0, 3)) {
+    const text = await readText(fs, app.root, display.file, signal)
+    const version = /xsi:noNamespaceSchemaLocation="Gfx-ME(\d+)\.xsd"/u.exec(text)?.[1]
+    if (version !== undefined) return version
+  }
+  return undefined
+}
+
 /** The tag CSV the edit targets, refusing an ambiguous export. */
 function tagFileOf(app: Application): string {
   if (app.tagFiles.length === 0) {
@@ -166,6 +183,7 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
   const displayNames = new Set(app.displays.map(display => display.name))
   const missingTargets: Finding[] = []
   const addedObjects = new Map<string, Set<string>>()
+  const displaySchemaVersion = await exportDisplaySchemaVersion(fs, app, signal)
   for (const operation of operations) {
     if (operation.kind === 'display_set') {
       if (!displayByFile.has(operation.file) && !added.includes(operation.file)) {
@@ -185,7 +203,7 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
       if (app.files.some(file => file.file.toLowerCase() === operation.file.toLowerCase())) {
         throw new EngineeringError('COMPONENT_EXISTS', `The export already has a file ${operation.file}.`, 'Pass a different file path.')
       }
-      texts.set(operation.file, createDisplay(operation))
+      texts.set(operation.file, createDisplay(operation, displaySchemaVersion))
       added.push(operation.file)
       displayNames.add(operation.name)
       continue

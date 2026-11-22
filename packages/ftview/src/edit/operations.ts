@@ -356,10 +356,19 @@ function connectionsXml(connections: Readonly<Record<string, string>>, depth: nu
 /**
  * Build a new display document from a schema-valid skeleton.
  *
+ * The schema version must follow the export, not the newest schema this
+ * project knows about: Studio's Add Component Tool resolves the
+ * `xsi:noNamespaceSchemaLocation` name against the schemas its own release
+ * installed. A display written as `Gfx-ME17.xsd` on a Studio release whose
+ * newest schema is `Gfx-ME16.xsd` imports with "schema could not be found" and
+ * drops every object, leaving an empty display. The caller therefore passes
+ * the version found in the opened export's existing display files.
+ *
  * @param op - Display identity and size.
+ * @param schemaVersion - ME major version for `xsi:noNamespaceSchemaLocation`, e.g. "16".
  * @returns Whole XML text.
  */
-export function createDisplay(op: DisplayCreateOperation): string {
+export function createDisplay(op: DisplayCreateOperation, schemaVersion = '17'): string {
   const settings: Record<string, string> = {}
   if (op.displayType !== undefined) settings.displayType = op.displayType
   settings.width = String(op.width)
@@ -367,7 +376,7 @@ export function createDisplay(op: DisplayCreateOperation): string {
   if (op.backColor !== undefined) settings.backColor = op.backColor
   if (op.displayNumber !== undefined) settings.displayNumber = String(op.displayNumber)
   const attributes = Object.entries(settings).map(([name, value]) => ` ${name}="${escapeAttribute(value)}"`).join('')
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME17.xsd">\n    <displaySettings${attributes}/>\n</gfx>\n`
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME${schemaVersion}.xsd">\n    <displaySettings${attributes}/>\n</gfx>\n`
 }
 
 /**

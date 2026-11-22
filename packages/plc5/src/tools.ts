@@ -243,7 +243,7 @@ export function plc5Tools(fs: FsService, _sandboxPolicy?: SandboxPolicyResolver)
               name: stream.name,
               bytes: stream.size,
               packed: stream.packed,
-              unpacked_bytes: stream.unpackedSize,
+              unpacked_bytes: stream.unpackedSize ?? null,
             })),
           }
           const identity = readContainerIdentity(bytes)

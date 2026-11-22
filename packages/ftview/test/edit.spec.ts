@@ -36,7 +36,7 @@ async function opened() {
 describe('editing registration', () => {
   it('mounts the edit tools after the read surface', () => {
     const { definitions } = harness(exportFiles(), { edit: true })
-    expect(definitions.map(definition => definition.name).slice(23)).toEqual([
+    expect(definitions.map(definition => definition.name).slice(24)).toEqual([
       'ftview_draft_display_set', 'ftview_draft_display_attrs', 'ftview_draft_display_add', 'ftview_draft_tag_upsert', 'ftview_draft_tags', 'ftview_draft_discard', 'ftview_draft_ops', 'ftview_draft_drop',
       'ftview_draft_display_create', 'ftview_draft_display_scaffold', 'ftview_draft_screen', 'ftview_draft_popup', 'ftview_draft_object_add',
       'ftview_draft_object_set',
@@ -99,6 +99,22 @@ describe('stage, validate, apply', () => {
     const applied = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'out' })
     expect(applied.error).toBeUndefined()
     expect(l5x.written.get('out/MainCopy.xml')).toContain('name="MainCopy"')
+  })
+
+  it('writes a new display with the schema version the export declares', async () => {
+    const files = new Map([
+      ['export/Displays/Main.xml', '<?xml version="1.0" encoding="UTF-8"?><gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME16.xsd"><displaySettings width="800" height="600"/></gfx>'],
+      ['export/tags.csv', CSV],
+    ])
+    const l5x = harness(files, { edit: true })
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    expect(open.error).toBeUndefined()
+    const view = open.data?.view_id as string
+    const staged = await l5x.call('ftview_draft_display_create', { view_id: view, name: 'New', width: 800, height: 600 })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('ftview_apply', { draft_id: staged.data?.draft_id as string, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    expect(l5x.written.get('out/Displays/New.xml') ?? '').toContain('xsi:noNamespaceSchemaLocation="Gfx-ME16.xsd"')
   })
 
   it('clears the draft after applying', async () => {
@@ -552,6 +568,39 @@ describe('verify against a hand-made export', () => {
     expect(verified.error).toBeUndefined()
     expect(verified.summary).toContain('1/1 display(s) match')
     expect(verified.summary).toContain('staged objects all landed')
+  })
+
+  it('treats vendor default attributes as normalisation, not a mismatch', async () => {
+    const display = (attributes: string, caption: string, colour: string) => [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<gfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="Gfx-ME16.xsd">',
+      `    <displaySettings width="640" height="480" backColor="#FFFFFF"${attributes}/>`,
+      `    <text name="Title" left="10" top="10" width="200" height="20" foreColor="${colour}" caption="${caption}"/>`,
+      '</gfx>',
+      '',
+    ].join('\n')
+    const l5x = harness(new Map([
+      ['base/Displays/Main.xml', display('', 'Before', '#FFFFFF')],
+      ['base/Tags/Tags.csv', CSV],
+      ['landed/Displays/Main.xml', display(' displayNumber="1"', 'After', 'white')],
+      ['landed/Tags/Tags.csv', CSV],
+    ]), { edit: true })
+    const opened = await l5x.call('ftview_open', { root: 'base' })
+    await l5x.call('ftview_draft_display_set', {
+      view_id: opened.data?.view_id,
+      display: 'Main',
+      object: 'Title',
+      attribute: 'caption',
+      value: 'After',
+    })
+    const verified = await l5x.call('ftview_verify_import', {
+      application: 'AnyApp',
+      export_root: 'landed',
+    })
+    expect(verified.error).toBeUndefined()
+    expect(verified.summary).toContain('1/1 display(s) match')
+    expect(verified.summary).toContain('vendor added 1 default attribute(s)')
+    expect(verified.data?.normalised).toHaveLength(1)
   })
 
   it('refuses to guess when the vendor export cannot run', async () => {

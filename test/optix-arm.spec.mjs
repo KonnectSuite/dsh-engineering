@@ -19,13 +19,13 @@ const SHIPPED = 'public class StudioMCPBridge { private const string BridgeVersi
 const OPTIX = 'Name: Kymera\nGUID: 0123456789abcdef\nNodes:\n- File: Nodes/UI/UI.yaml\n- File: Nodes/NetLogic/NetLogic.yaml\n'
 
 /** Create a scratch Optix project; `bridge` is the source its NetSolution already holds. */
-const scratch = async ({ csproj = 'Kymera.HMI.csproj', bridge = null, netlogic = null } = {}) => {
+const scratch = async ({ csproj = 'Kymera.HMI.csproj', bridge = null, netlogic = null, optix = OPTIX } = {}) => {
   const root = await mkdtemp(join(tmpdir(), 'dsh-optix-arm-'))
   const solution = join(root, 'ProjectFiles', 'NetSolution')
   await mkdir(solution, { recursive: true })
   if (csproj !== null) await writeFile(join(solution, csproj), '<Project Sdk="Microsoft.NET.Sdk" />')
   if (bridge !== null) await writeFile(join(solution, 'StudioMCPBridge.cs'), bridge)
-  await writeFile(join(root, 'Kymera.optix'), OPTIX)
+  await writeFile(join(root, 'Kymera.optix'), optix)
   if (netlogic !== null) {
     await mkdir(join(root, 'Nodes', 'NetLogic'), { recursive: true })
     await writeFile(join(root, 'Nodes', 'NetLogic', 'NetLogic.yaml'), netlogic)
@@ -173,6 +173,28 @@ test('a node file the project never registered is registered, and its body is no
     assert.match(after, /^- File: Nodes\/UI\/UI\.yaml$/mu)
     assert.match(after, /^- File: Nodes\/NetLogic\/NetLogic\.yaml$/mu)
     assert.equal(report.optix_file_edited, true)
+    const body = await readFile(join(root, 'Nodes', 'NetLogic', 'NetLogic.yaml'), 'utf8')
+    assert.match(body, /^- Name: StudioMCPBridge$/mu)
+  } finally {
+    await cleanup(root)
+  }
+})
+
+test('a project file saved by Optix 1.8 with an indented Nodes: section is registered at its own indent', async () => {
+  const indented = 'Project:\n Name: Kymera\n GUID: 0123456789abcdef\n Statistics:\n  Files: 1\n Nodes:\n - File: Nodes/UI/UI.yaml\n'
+  const root = await scratch({
+    bridge: SHIPPED,
+    optix: indented,
+    netlogic: 'Name: NetLogic\nType: NetLogicCategoryFolder\nChildren:\n',
+  })
+  try {
+    const report = await armBridge(root, SHIPPED, { confirm: true })
+    assert.equal(report.netlogic_node, 'added')
+    assert.equal(report.optix_file_edited, true)
+    const after = await readFile(join(root, 'Kymera.optix'), 'utf8')
+    assert.match(after, /^ Nodes:$/mu)
+    assert.match(after, /^ - File: Nodes\/UI\/UI\.yaml$/mu)
+    assert.match(after, /^ - File: Nodes\/NetLogic\/NetLogic\.yaml$/mu)
     const body = await readFile(join(root, 'Nodes', 'NetLogic', 'NetLogic.yaml'), 'utf8')
     assert.match(body, /^- Name: StudioMCPBridge$/mu)
   } finally {

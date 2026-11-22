@@ -25,6 +25,8 @@ export interface DatabaseRow {
 export interface DatabaseExport {
   path: string
   format: 'csv' | 'tab' | 'pipe'
+  /** How the columns were recognised: a header row or one of the vendor layouts. */
+  layout: 'header' | 'eas' | 'erp' | 'headerless'
   header: string[]
   rows: DatabaseRow[]
   warnings: string[]
@@ -53,17 +55,36 @@ const DESCRIPTION_ALIASES = ['description', 'comment', 'desc', 'note', 'notes']
 const SCOPE_ALIASES = ['scope', 'file', 'program', 'program_file', 'routine']
 
 /** An SLC address in the forms the documentation exports use. */
-const ADDRESS_LIKE = /^(?:[A-Za-z]{1,2}\d+(?:[:.]\d+)?(?:[/.]\d+)?|[IO]:\d+(?:\.\d+)?\/\d+)$/u
+const ADDRESS_LIKE = /^(?:[A-Za-z]{1,2}\d+(?:[:.]\d+)?(?:[/.][\dA-Za-z]+)?|[A-Za-z]{1,2}:\d+(?:\.\d+)?(?:\/[\dA-Za-z]+)?)$/u
 
-function splitLine(line: string, delimiter: string): string[] {
-  if (delimiter === '\t') return line.split('\t').map(cell => cell.trim())
-  const cells: string[] = []
+/**
+ * Split the export into records. The vendor writes quoted fields that may hold
+ * a comma or a newline (the `.ERP` description does), so a line-by-line split
+ * would cut a row in half; the quote state is tracked across newlines.
+ */
+function splitRecords(text: string, delimiter: string): string[][] {
+  if (delimiter === '\t') {
+    return text
+      .split(/\r?\n/u)
+      .map(line => line.split('\t').map(cell => cell.trim()))
+      .filter(cells => cells.some(cell => cell !== ''))
+  }
+  const records: string[][] = []
+  let cells: string[] = []
   let current = ''
   let quoted = false
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index] ?? ''
+  const endCell = () => {
+    cells.push(current.trim())
+    current = ''
+  }
+  const endRecord = () => {
+    if (cells.some(cell => cell !== '')) records.push(cells)
+    cells = []
+  }
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index] ?? ''
     if (character === '"') {
-      if (quoted && line[index + 1] === '"') {
+      if (quoted && text[index + 1] === '"') {
         current += '"'
         index += 1
       } else {
@@ -72,14 +93,20 @@ function splitLine(line: string, delimiter: string): string[] {
       continue
     }
     if (character === delimiter && !quoted) {
-      cells.push(current.trim())
-      current = ''
+      endCell()
+      continue
+    }
+    if (!quoted && (character === '\n' || character === '\r')) {
+      if (character === '\r' && text[index + 1] === '\n') index += 1
+      endCell()
+      endRecord()
       continue
     }
     current += character
   }
-  cells.push(current.trim())
-  return cells
+  endCell()
+  endRecord()
+  return records
 }
 
 function detectFormat(text: string): 'csv' | 'tab' | 'pipe' {
@@ -103,46 +130,99 @@ function indexOfAlias(header: readonly string[], aliases: readonly string[]): nu
   return -1
 }
 
+/** Join the non-empty cells between two indexes, preserving their order. */
+function joinCells(raw: readonly string[], from: number, to: number): string {
+  const cells: string[] = []
+  for (let index = Math.max(0, from); index <= Math.min(to, raw.length - 1); index += 1) {
+    const cell = (raw[index] ?? '').trim()
+    if (cell !== '') cells.push(cell)
+  }
+  return cells.join(' ')
+}
+
+/** True when the address cell is an SLC operand or a .ERP rung reference. */
+function addressOrRung(cell: string): boolean {
+  return ADDRESS_LIKE.test(cell) || /^RUNG\d+(?:-\d+)?$/iu.test(cell)
+}
+
 /** Parse one documentation export; an unrecognised format is a typed failure. */
 export function parseDatabaseExport(text: string, path: string): DatabaseExport {
   const cleaned = text.replace(/^\uFEFF/u, '')
   if (cleaned.includes('\u0000')) {
-    throw new SlcDatabaseError('DATABASE_FORMAT_UNSUPPORTED', `${path} carries NUL bytes, so it is a binary container, not a documentation export.`, 'Export the documentation from RSLogix 500 (File > Export > Documentation) as .EAS/.ERP/.EIC/.ESG or a comma-separated file, then pass that file.')
+    throw new SlcDatabaseError('DATABASE_FORMAT_UNSUPPORTED', `${path} carries NUL bytes, so it is a binary container, not a documentation export.`, 'Save the program with Save As… and check Export database (or export the documentation from RSLogix 500) as .EAS/.ERP/.EIC/.ESG or a comma-separated file, then pass that file.')
   }
   const format = detectFormat(cleaned)
   const delimiter = format === 'tab' ? '\t' : format === 'pipe' ? '|' : ','
-  const lines = cleaned.split(/\r?\n/u).filter(line => line.trim() !== '')
-  if (lines.length === 0) {
-    throw new SlcDatabaseError('DATABASE_FORMAT_UNSUPPORTED', `${path} is empty.`, 'Export the documentation from RSLogix 500 and pass the exported file.')
+  const records = splitRecords(cleaned, delimiter)
+  if (records.length === 0) {
+    throw new SlcDatabaseError('DATABASE_FORMAT_UNSUPPORTED', `${path} is empty.`, 'RSLogix 500 writes an empty documentation export when that documentation kind is not recorded; save the program with Save As… and check Export database, then pass the export that carries rows.')
   }
-  const header = splitLine(lines[0] ?? '', delimiter)
+  const extension = path.toLowerCase().match(/\.([a-z0-9]+)$/u)?.[1] ?? ''
+  let header = records[0] ?? []
   let addressAt = indexOfAlias(header, ADDRESS_ALIASES)
-  const symbolAt = indexOfAlias(header, SYMBOL_ALIASES)
-  const descriptionAt = indexOfAlias(header, DESCRIPTION_ALIASES)
-  const scopeAt = indexOfAlias(header, SCOPE_ALIASES)
+  let symbolAt = indexOfAlias(header, SYMBOL_ALIASES)
+  let descriptionAt = indexOfAlias(header, DESCRIPTION_ALIASES)
+  let scopeAt = indexOfAlias(header, SCOPE_ALIASES)
+  let layout: DatabaseExport['layout'] = 'header'
   let start = 1
+  let descriptionFrom = -1
+  let descriptionTo = -1
   if (addressAt < 0) {
-    // No addressed header: accept a headerless export only when the first data
-    // row already starts with something address-like.
-    const firstRow = splitLine(lines[0] ?? '', delimiter)
-    if (firstRow.length >= 2 && ADDRESS_LIKE.test(firstRow[0] ?? '')) {
-      addressAt = 0
-      start = 0
-    } else {
+    // The vendor .EAS and .ERP exports carry no header: find the first row of
+    // the data block, then map the vendor layout by extension and width.
+    let firstData = -1
+    for (let index = 0; index < Math.min(records.length, 8); index += 1) {
+      const cells = records[index] ?? []
+      if (addressOrRung((cells[0] ?? '').trim()) && cells.length >= 2) {
+        firstData = index
+        break
+      }
+    }
+    if (firstData < 0) {
       throw new SlcDatabaseError(
         'DATABASE_FORMAT_UNSUPPORTED',
-        `${path} has no address column (header: ${header.join(' | ')}).`,
-        'Pass an RSLogix 500 documentation export (.EAS/.ERP/.EIC/.ESG/.CSV) whose header names the address column, or a headerless export whose first column is an address such as N7:0 or I:1/0.',
+        `${path} has no address column (first row: ${header.join(' | ')}).`,
+        'Pass an RSLogix 500 documentation export (.EAS/.ERP/.EIC/.ESG/.CSV) whose header names the address column, or a headerless vendor export whose first column is an address such as N7:0 or I:1/0.',
       )
+    }
+    addressAt = 0
+    start = firstData
+    header = []
+    if (extension === 'eas' || (records[firstData] ?? []).length >= 10) {
+      // .EAS: address, reserved, symbol, then the description split over up to
+      // four cells, then flags. Keep the symbol and join the description cells.
+      layout = 'eas'
+      symbolAt = 2
+      descriptionAt = -1
+      descriptionFrom = 3
+      descriptionTo = Math.min(6, (records[firstData] ?? []).length - 1)
+    } else if (extension === 'erp') {
+      // .ERP: address (or RUNG reference), title, then the description text.
+      layout = 'erp'
+      symbolAt = -1
+      descriptionAt = -1
+      descriptionFrom = 1
+      descriptionTo = 2
+    } else {
+      layout = 'headerless'
+      symbolAt = -1
+      descriptionAt = -1
+      descriptionFrom = 1
+      descriptionTo = Math.min(3, (records[firstData] ?? []).length - 1)
     }
   }
   const warnings: string[] = []
   const rows: DatabaseRow[] = []
-  for (let index = start; index < lines.length; index += 1) {
-    const raw = splitLine(lines[index] ?? '', delimiter)
+  let skippedRungs = 0
+  for (let index = start; index < records.length; index += 1) {
+    const raw = records[index] ?? []
     const address = (raw[addressAt] ?? '').trim()
     if (address === '') {
       if (warnings.length < 20) warnings.push(`row ${index + 1} has no address and was skipped.`)
+      continue
+    }
+    if (layout === 'erp' && /^RUNG/iu.test(address)) {
+      skippedRungs += 1
       continue
     }
     if (!ADDRESS_LIKE.test(address) && warnings.length < 20) {
@@ -150,13 +230,16 @@ export function parseDatabaseExport(text: string, path: string): DatabaseExport 
     }
     rows.push({
       address,
-      symbol: (raw[symbolAt] ?? '').trim(),
-      description: (raw[descriptionAt] ?? '').trim(),
-      scope: (raw[scopeAt] ?? '').trim(),
+      symbol: symbolAt < 0 ? '' : (raw[symbolAt] ?? '').trim(),
+      description: descriptionFrom < 0 ? (raw[descriptionAt] ?? '').trim() : joinCells(raw, descriptionFrom, descriptionTo),
+      scope: scopeAt < 0 ? '' : (raw[scopeAt] ?? '').trim(),
       raw,
     })
   }
-  return { path, format, header, rows, warnings }
+  if (skippedRungs > 0) {
+    warnings.push(`${skippedRungs} rung-description row(s) in the report are not SLC addresses and were not listed.`)
+  }
+  return { path, format, layout, header, rows, warnings }
 }
 
 /** The format name the answer reports. */

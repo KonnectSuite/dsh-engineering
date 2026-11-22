@@ -98,7 +98,7 @@ async function projectName(optixFile) {
  */
 function listsNodeFile(text, relative) {
 	const escaped = relative.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-	return new RegExp(`^- File:\\s*${escaped}\\s*$`, "mu").test(text);
+	return new RegExp(`^[ \\t]*- File:\\s*${escaped}\\s*$`, "mu").test(text);
 }
 /**
  * Put the bridge node into a project that has none, registering the node file when the project has
@@ -157,14 +157,21 @@ async function ensureNetLogicNode(project, optixFile, record) {
 	 */
 	if (!listed) {
 		await record(optixFile, optixText);
-		const entry = `- File: Nodes/NetLogic/NetLogic.yaml`;
-		const nodesAt = optixText.search(/^Nodes:\s*$/mu);
+		/**
+		 * Optix 1.8 indents the top-level sections under `Project:` by one space, and lists each
+		 * node file at the same indentation as `Nodes:`. Match the header's own indentation and
+		 * write the entry there, so a project saved by the installed Studio is accepted instead
+		 * of failing the "has no Nodes: section" check.
+		 */
+		const nodesMatch = /^([ \t]*)Nodes:\s*$/mu.exec(optixText);
+		const nodesAt = nodesMatch === null ? -1 : nodesMatch.index;
 		if (nodesAt < 0) throw new Error(`${optixFile} has no Nodes: section, so the NetLogic node file cannot be registered; open the project in Studio once and save it, then arm again.`);
+		const indent = nodesMatch[1];
 		const afterNodes = optixText.slice(nodesAt);
 		const lineEnd = afterNodes.indexOf("\n");
 		const insertAt = lineEnd < 0 ? optixText.length : nodesAt + lineEnd + 1;
 		const ending = optixText.includes("\r\n") ? "\r\n" : "\n";
-		const updated = `${optixText.slice(0, insertAt)}- File: ${"Nodes/NetLogic/NetLogic.yaml"}${ending}${optixText.slice(insertAt)}`;
+		const updated = `${optixText.slice(0, insertAt)}${indent}- File: ${"Nodes/NetLogic/NetLogic.yaml"}${ending}${optixText.slice(insertAt)}`;
 		await writeFile(optixFile, updated);
 	}
 	return {

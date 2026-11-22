@@ -197,7 +197,7 @@ async function loadProject(fs: FsService, path: string, exec: ToolExec): Promise
         throw new SlcToolError(
           'NOT_LICENSED',
           'The RSLogix 500 automation class is registered, but no transcript proves this session may use it and the edition is not recorded on this host, so reading the .RSS project was not attempted.',
-          'Export the project as a text export (File > Save As) or a documentation export from RSLogix 500 and open that file; or record a redacted transcript with scripts/record-slc500-transcript.mjs and set SLC500_AUTOMATION_TRANSCRIPT for a licensed Professional/Developer edition.',
+          'Export the project as a text export (File > Save As) or a documentation export from RSLogix 500 and open that file; or record a redacted automation transcript (the JSON shape is documented in the SLC knowledge collection) and set SLC500_AUTOMATION_TRANSCRIPT for a licensed Professional/Developer edition.',
         )
       }
       throw new SlcToolError(
@@ -696,9 +696,10 @@ export function slc500Tools(fs: FsService, _sandboxPolicy?: unknown): ToolDefini
         const needle = query?.toLowerCase()
         const rows = parsed.rows.filter(row => needle === undefined || row.address.toLowerCase().includes(needle) || row.symbol.toLowerCase().includes(needle) || row.description.toLowerCase().includes(needle) || row.scope.toLowerCase().includes(needle))
         return {
-          summary: `${parsed.path}: ${parsed.rows.length} documented row(s), ${rows.length} shown${needle === undefined ? '' : ` for "${query}"`} (${databaseFormatName(parsed.format)}).`,
+          summary: `${parsed.path}: ${parsed.rows.length} documented row(s), ${rows.length} shown${needle === undefined ? '' : ` for "${query}"`} (${databaseFormatName(parsed.format)}; ${parsed.layout} column layout).`,
           data: {
             format: parsed.format,
+            layout: parsed.layout,
             columns: parsed.header,
             total: parsed.rows.length,
             rows: rows.slice(0, limit),
