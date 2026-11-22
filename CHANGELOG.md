@@ -13,6 +13,16 @@
   attended-verified on a generated ladder project: Studio Import Routine with Overwrite, Studio
   Import Rungs reading the rung-target file as Imported Rungs: 1, and Studio Verify reporting
   0 errors/0 warnings after each; the routine route's re-export matched the applied draft.
+- **Multi-operation ladder round-trip and paste-ready text.** A two-rung replacement/insert draft
+  (rung 0 replace with a Fault interlock, rung 1 parallel start/run branch, both rung comments, six
+  BOOL tags, and one rung inserted then deleted in the same draft so numbering stayed contiguous)
+  was applied offline, exported with `l5x_export_rungs` as `Imported Rungs: 2`, imported through
+  Studio's Import Rungs on Logix Designer 37.05, and verified with Studio Verify 0 errors. The
+  operation appended the imported rungs after the selected rung rather than replacing it, so the
+  superseded rung was deleted before the clean verify; that Studio behaviour is documented on the
+  offline-editing page. `l5x_export_rungs` now also returns each rung's Studio copy text
+  (`paste_text`) with a note that plain-text Ctrl+V does not create rungs in 37.05 and the file is
+  the import path.
 
 ## 0.104.0 — 2026-11-22
 

@@ -251,7 +251,7 @@
         "l5x_draft_apply",
         "l5x_export_rungs"
       ],
-      "contextChars": 19394
+      "contextChars": 19613
     },
     {
       "product": "L5X",
@@ -499,9 +499,9 @@
     }
   ],
   "context": {
-    "characters": 149248,
+    "characters": 149467,
     "byProduct": {
-      "L5X": 55234,
+      "L5X": 55453,
       "Migration": 10825,
       "PLC-5": 10922,
       "RSLogix 500": 6761,

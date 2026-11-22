@@ -11,7 +11,7 @@
 
 import { prepareChangeSet, checkRungText, fbdSheetXml, sfcChartXml } from '../engine/change-set.ts'
 import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
-import { studioForm, type LadderNode } from '../engine/logic-syntax.ts'
+import { parseRung, studioForm, studioText, type LadderNode } from '../engine/logic-syntax.ts'
 import { previewDocument, previewDocumentOf, previewSlug, type PreviewBody } from '../engine/preview-document.ts'
 import { buildRungTargetExport } from '../engine/rung-export.ts'
 import { L5xError } from '../core/errors.ts'
@@ -903,7 +903,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'l5x_export_rungs',
-      description: 'Write a rung-target L5X for Studio\'s Ladder Editor Import Rungs (also the online rung-import path). A routine-target file from l5x_draft_apply is refused by Import Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0); this tool writes the shape Studio does accept: TargetType="Rung", TargetCount, context, and Rung Use="Target" elements. Reads the open project and writes ONE new file; never changes the export.',
+      description: 'Write a rung-target L5X for Studio\'s Ladder Editor Import Rungs (also the online rung-import path), and return the same rungs as Studio ladder copy text. A routine-target file from l5x_draft_apply is refused by Import Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0); this tool writes the shape Studio does accept: TargetType="Rung", TargetCount, context, and Rung Use="Target" elements. paste_text is the copyable ladder text for review or a manual rung copy; it is not an import path (Studio 5000 v37 does not create a rung from a plain-text Ctrl+V). Reads the open project and writes ONE new file; never changes the export.',
       parameters: object({
         project_id: PROJECT_ID,
         program: string('Program holding the ladder routine. Omit when the export has exactly one program.'),
@@ -923,6 +923,15 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           ...(rungs === undefined ? {} : { rungs }),
         })
         const target = await session.writeNew(requiredString(args, 'output_path'), built.xml, exec)
+        const routineBody = getRoutine(project.document, built.program, built.routine)?.body
+        const byNumber = new Map<number, { readonly number: number; readonly text: string; readonly comment?: string }>()
+        if (routineBody?.type === 'RLL') for (const rung of routineBody.rungs) byNumber.set(rung.number, rung)
+        const pasteText = built.rung_numbers.map(number => {
+          const rung = byNumber.get(number)
+          if (rung === undefined) return ''
+          const parsed = parseRung(rung.text)
+          return studioText(rung.text, parsed.nodes)
+        })
         return success(
           `Wrote ${built.rung_numbers.length} rung${built.rung_numbers.length === 1 ? '' : 's'} from ${built.program}/${built.routine} to ${target}.`,
           {
@@ -930,6 +939,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             program: built.program,
             routine: built.routine,
             rung_numbers: built.rung_numbers,
+            paste_text: pasteText,
+            paste_text_note: 'Studio ladder copy text, for review or copying rung content by hand. It is not an import path: Studio 5000 v37 does not create a rung from a plain-text Ctrl+V, so use Import Rungs/Import Routine with this file instead.',
             import_route: 'Studio 5000 Ladder Editor: right-click a rung header > Import Rungs > this file > choose Operation Use Existing / Overwrite / Create (Insert or Append) / Discard.',
             validation: { xml: 'passed', studio_import: 'not_run' },
           },

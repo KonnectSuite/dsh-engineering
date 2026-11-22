@@ -130,6 +130,13 @@ instances.
 - Both hand-driven Studio imports of a draft were exercised on Logix Designer 37.05: Import Routine
   (Operation Overwrite) and Import Rungs (`l5x_export_rungs`, read as Imported Rungs: 1), each followed
   by Studio Verify 0 errors/0 warnings, and the routine route's re-export matched the applied draft.
+  A second rung-target round-trip on 2026-11-22 imported a two-rung export (rung replace with Fault,
+  parallel-branch insert, comments, six BOOL tags; a third rung inserted and deleted in the same draft)
+  through Import Rungs: Import Configuration read `Imported Rungs: 2`, both rungs and the branch appeared,
+  and Studio Verify reported 0 errors. The operation appended the imported rungs after the selected rung
+  rather than replacing it, so the superseded rung had to be deleted first; that behaviour, not the file,
+  produced the only transient duplicate-destructive-bit warning. `l5x_export_rungs` also returns each
+  rung's Studio copy text (`paste_text`) for review; it is not an import path.
   Online Pending/Accepted/Finalized import against a live controller, a second application's export and
   a PanelView-side workflow are unmeasured.
 - `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`

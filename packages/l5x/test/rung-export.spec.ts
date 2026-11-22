@@ -37,6 +37,10 @@ describe('l5x_export_rungs', () => {
     expect(result.data?.routine).toBe('MainRoutine')
     expect(result.data?.rung_numbers).toEqual([0, 2])
     expect(result.data?.import_route).toContain('Import Rungs')
+    expect(result.data?.paste_text).toHaveLength(2)
+    expect(result.data?.paste_text?.[1]).toContain('XIC')
+    expect(result.data?.paste_text?.[1]).toContain('OTE')
+    expect(result.data?.paste_text_note).toContain('Ctrl+V')
     expect(result.data?.validation).toEqual({ xml: 'passed', studio_import: 'not_run' })
 
     const document = l5x.written.get('MainProgram-MainRoutine-rungs.L5X') ?? ''

@@ -4,7 +4,7 @@
 
 The engineering bundle registers **167 tools** for L5X and Migration and PLC-5 and RSLogix 500 and Engineering resources and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 167 definitions total **149248 characters** of model-visible JSON — name, description and
+Those 167 definitions total **149467 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -464,7 +464,7 @@ Apply the validated draft to ONE new L5X file beside the source. Never overwrite
 
 #### `l5x_export_rungs`
 
-Write a rung-target L5X for Studio's Ladder Editor Import Rungs (also the online rung-import path). A routine-target file from l5x_draft_apply is refused by Import Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0); this tool writes the shape Studio does accept: TargetType="Rung", TargetCount, context, and Rung Use="Target" elements. Reads the open project and writes ONE new file; never changes the export.
+Write a rung-target L5X for Studio's Ladder Editor Import Rungs (also the online rung-import path), and return the same rungs as Studio ladder copy text. A routine-target file from l5x_draft_apply is refused by Import Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0); this tool writes the shape Studio does accept: TargetType="Rung", TargetCount, context, and Rung Use="Target" elements. paste_text is the copyable ladder text for review or a manual rung copy; it is not an import path (Studio 5000 v37 does not create a rung from a plain-text Ctrl+V). Reads the open project and writes ONE new file; never changes the export.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
