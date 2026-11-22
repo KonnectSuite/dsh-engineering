@@ -1,3 +1,19 @@
+## [Unreleased]
+
+### Added
+
+- **`l5x_export_rungs` writes a rung-target export for Studio's Import Rungs.** The offline ladder
+  workflow could only produce a routine-target export, which Studio's Ladder Editor refuses in Import
+  Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0). The new tool
+  writes the same `TargetType="Rung"` shape Studio's own Export Rungs produces: a selected rung list,
+  `Use="Target"` rungs, `Use="Context"` controller/program/routine/rung content and the source
+  export's revision and tag context. `l5x_draft_apply` now names its Import Routine route and points
+  at `l5x_export_rungs` when only some rungs change or when the import must respect pending edits.
+  The rung shape was derived from a real Studio 5000 v37.05 Export Rungs file and both routes were
+  attended-verified on a generated ladder project: Studio Import Routine with Overwrite, Studio
+  Import Rungs reading the rung-target file as Imported Rungs: 1, and Studio Verify reporting
+  0 errors/0 warnings after each; the routine route's re-export matched the applied draft.
+
 ## 0.104.0 — 2026-11-22
 
 ### Added

@@ -29,6 +29,7 @@ const tokens = [...new Set([...body.matchAll(/`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/
 // The Studio lane runs in the host as MCP tools, not in this plugin's registry; the skill documents
 // both lanes, so these names are expected to be absent from the plugin definitions.
 const HOST_TOOLS = new Set([
+  'engineering_reference',
   'l5x_build_acd_from_draft',
   'l5x_controller_approval_status',
   'l5x_export_acd_to_l5x',

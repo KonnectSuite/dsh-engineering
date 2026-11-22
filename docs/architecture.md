@@ -1,7 +1,7 @@
 # Architecture
 
 `@aryacode/dsh-engineering` is one npm package that gives DeepSeek Harness (AryaCode) six products
-and two support components: nine rows in the bundle patch, 198 registered tools and eight skills,
+and two support components: nine rows in the bundle patch, 199 registered tools and eight skills,
 plus one browser bundle and one Remote service. This page owns the internal contract — the file
 layout, the row model, what an entry may declare, how `vendor/` and `lib/client.js` are produced, and
 what the packaged artifact contains.
@@ -70,7 +70,7 @@ composite that mounts the whole surface (`ctx.plugin(part)`) and exposes its opt
 `Config` schema the page renders; a **support component** mounts one part. `viewers` carries no tools.
 
 **Every optional surface ships on.** L5X drafts, Studio SDK and live reads default on and a read-only
-profile turns them off, and MotionWorks edits default on. A fresh install therefore pays for 173 tools,
+profile turns them off, and MotionWorks edits default on. A fresh install therefore pays for 174 tools,
 the recorded budget in
 [components.json](../components.json).
 
@@ -147,8 +147,8 @@ document it owns.
 change between releases, and `stabilityNote` says what is not proved yet. `since` is the first release
 whose patch carried the row id, not the last change.
 
-Two budgets come from it. `contextBudget.defaultOnTools` = **173** and
-`defaultOnSchemaCharacters` = **135251** are the measured default-on surface: one more default-on tool
+Two budgets come from it. `contextBudget.defaultOnTools` = **174** and
+`defaultOnSchemaCharacters` = **136828** are the measured default-on surface: one more default-on tool
 fails the suite until the count is raised with its measurement, or the component ships off.
 `skillPolicy.defaultBudget` = **8000** characters is the ceiling for a skill body, because a skill is
 injected into the request when it is invoked; depth belongs on `docs/` pages and is linked.

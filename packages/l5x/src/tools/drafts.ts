@@ -13,6 +13,7 @@ import { prepareChangeSet, checkRungText, fbdSheetXml, sfcChartXml } from '../en
 import { composePattern, composeRung, PATTERNS, validateRungTags, type ComposedRung, type LadderNodeSpec, type PatternName } from '../engine/ladder.ts'
 import { studioForm, type LadderNode } from '../engine/logic-syntax.ts'
 import { previewDocument, previewDocumentOf, previewSlug, type PreviewBody } from '../engine/preview-document.ts'
+import { buildRungTargetExport } from '../engine/rung-export.ts'
 import { L5xError } from '../core/errors.ts'
 import { stagedTags as stagedFromDraft, withStagedTags } from '../engine/staged-tags.ts'
 import { getRoutine } from '../model/routines.ts'
@@ -48,7 +49,7 @@ function safetyGuard(project: ProjectSnapshot, program: string): string {
   return program
 }
 import { success, type Coverage } from '../core/result.ts'
-import { choice, integer, object, string } from '../core/params.ts'
+import { choice, integer, list, object, string } from '../core/params.ts'
 import type { ToolDefinition } from '../core/tool.ts'
 import type { ProjectSession, ProjectSnapshot } from '../session.ts'
 import type { Draft, DraftOperation, DraftStore } from '../drafts.ts'
@@ -868,7 +869,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
     }),
     tool({
       name: 'l5x_draft_apply',
-      description: 'Apply the validated draft to ONE new L5X file beside the source. Never overwrites, never imports into Studio, never contacts a controller.',
+      description: 'Apply the validated draft to ONE new L5X file beside the source. Never overwrites, never imports into Studio, never contacts a controller. The written file is a routine-target export: Studio imports it through right-click the program folder > Import Routine (Operation Overwrite). To import rungs instead, call l5x_export_rungs on this applied file and use Studio\'s Import Rungs.',
       parameters: object({
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
         output_path: string('New .L5X path to write. It must not exist.'),
@@ -886,6 +887,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             output_path: target,
             draft_sha256: prepared.draft_sha256,
             operation_count: draft.operations.length,
+            import_route: 'Studio 5000: right-click the program folder > Import Routine > this file > Operation: Overwrite.',
             validation: prepared.validation,
           },
           [
@@ -893,6 +895,46 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             // the point at which a composed draft stops being text and becomes something to look at.
             { tool: 'present', args: { files: [{ path: target, description: 'The applied draft, opened as logic' }] }, why: 'Show the written export so the composed logic can be read as ladder, ST, FBD or SFC.' },
             { tool: 'l5x_open_project', args: { path: target }, why: 'Reopen the written draft and review it.' },
+            { tool: 'l5x_export_rungs', args: { output_path: target.replace(/\.L5X$/iu, '-rungs.L5X') }, why: 'Write the rung-target shape when the change must go in through Studio\'s Import Rungs instead of Import Routine.' },
+          ],
+          DRAFT_COVERAGE,
+        )
+      },
+    }),
+    tool({
+      name: 'l5x_export_rungs',
+      description: 'Write a rung-target L5X for Studio\'s Ladder Editor Import Rungs (also the online rung-import path). A routine-target file from l5x_draft_apply is refused by Import Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0); this tool writes the shape Studio does accept: TargetType="Rung", TargetCount, context, and Rung Use="Target" elements. Reads the open project and writes ONE new file; never changes the export.',
+      parameters: object({
+        project_id: PROJECT_ID,
+        program: string('Program holding the ladder routine. Omit when the export has exactly one program.'),
+        routine: string('Ladder routine to export. Omit when the program has exactly one routine.'),
+        rungs: list('Rung numbers to export in document order. Omit for every rung in the routine.', integer('One rung number in the source routine.')),
+        output_path: string('New rung-target .L5X path to write. It must not exist.'),
+      }, ['output_path']),
+      async run(args, exec) {
+        const project = await session.require(optionalString(args, 'project_id'), exec)
+        const rungs = Array.isArray(args.rungs)
+          ? (args.rungs as unknown[]).map(value => typeof value === 'number' && Number.isInteger(value) ? value : Number.NaN)
+          : undefined
+        if (rungs !== undefined && rungs.some(value => !Number.isInteger(value))) throw new L5xError('INVALID_ARGUMENT', 'rungs must be whole numbers', 'Pass rung numbers as integers, for example [0, 1].')
+        const built = buildRungTargetExport(project, {
+          ...(optionalString(args, 'program') === undefined ? {} : { program: optionalString(args, 'program')! }),
+          ...(optionalString(args, 'routine') === undefined ? {} : { routine: optionalString(args, 'routine')! }),
+          ...(rungs === undefined ? {} : { rungs }),
+        })
+        const target = await session.writeNew(requiredString(args, 'output_path'), built.xml, exec)
+        return success(
+          `Wrote ${built.rung_numbers.length} rung${built.rung_numbers.length === 1 ? '' : 's'} from ${built.program}/${built.routine} to ${target}.`,
+          {
+            output_path: target,
+            program: built.program,
+            routine: built.routine,
+            rung_numbers: built.rung_numbers,
+            import_route: 'Studio 5000 Ladder Editor: right-click a rung header > Import Rungs > this file > choose Operation Use Existing / Overwrite / Create (Insert or Append) / Discard.',
+            validation: { xml: 'passed', studio_import: 'not_run' },
+          },
+          [
+            { tool: 'present', args: { files: [{ path: target, description: 'Rung-target export for Studio Import Rungs' }] }, why: 'Show the rung export so it can be reviewed before import.' },
           ],
           DRAFT_COVERAGE,
         )

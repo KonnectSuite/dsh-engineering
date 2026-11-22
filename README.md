@@ -11,7 +11,7 @@ ships as **AryaCode**; the two names are the same host and this page applies to 
 [![licence](https://img.shields.io/npm/l/@aryacode/dsh-engineering)](LICENSE)
 [![Arya plugin market](https://img.shields.io/badge/market-Arya_Plugin_Market-2f6f4e)](https://github.com/KonnectSuite/dsh-arya-market)
 
-**One bundle: 9 component rows · 198 tools · 6 products · every component is beta**
+**One bundle: 9 component rows · 199 tools · 6 products · every component is beta**
 
 The bundle is one npm package with one install surface. Inside it, each product is a **row** on the
 Plugins page: a row is a plugin, so switching one off unloads that product and its tool schemas stop
@@ -26,7 +26,7 @@ then open the page for the product you have in front of you.
 
 | Product | Tools | Default | Stability | What it adds | Needs |
 |---|---|---|---|---|---|
-| **Studio 5000 L5X** | 55 | on | beta | Read, check, compare and document an L5X/ACD; stage ladder edits as a new file; optional Logix Designer SDK work; live EtherNet/IP reads and two approval-gated writes; `l5x_docs` over the authored corpus and the installed Studio help index, with revision guards | Node; a Logix Designer SDK only for SDK builds; a controller only for live |
+| **Studio 5000 L5X** | 56 | on | beta | Read, check, compare and document an L5X/ACD; stage ladder edits as a new file; optional Logix Designer SDK work; live EtherNet/IP reads and two approval-gated writes; `l5x_docs` over the authored corpus and the installed Studio help index, with revision guards | Node; a Logix Designer SDK only for SDK builds; a controller only for live |
 | **FactoryTalk View ME** | 52 | on | beta | Read an ME export, run structural checks, edit displays, tags and objects, validate against the vendor schema, stage a Studio import handoff, and search `ftview_docs` | Node; FactoryTalk View Studio ME for discovery and the handoff |
 | **FactoryTalk Optix** | 32 | on | beta | Read and author a loaded Optix Studio project through a bridge, draw operator screens, write and compile NetLogic C#, drive the emulator preview | Optix Studio; .NET 8 SDK for compile checks; Tesseract for OCR |
 | **MotionWorks IEC** | 24 | on | beta | Operate a running MotionWorks IEC 3 Pro IDE on the real project files: read, edit, compile, diagnose, verify — and report honestly when the IDE is absent | MotionWorks IEC 3 Pro (3.0.3–3.7.5); nothing when it is absent |
@@ -135,7 +135,7 @@ ships off rather than claiming a result. Both stay listed, so one switch enables
 reinstall.
 
 The default-on surface is budgeted, not accidental: `components.json` records the tools and the
-characters of model-visible schema a fresh install may mount (173 tools, 135,251 characters today), and
+characters of model-visible schema a fresh install may mount (174 tools, 136,828 characters today), and
 a component that would exceed either ceiling ships off until the ceiling is raised with its
 measurement. The budget and the field set are documented in the
 [component contract](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/reference/components.md#context-budget).
@@ -189,7 +189,7 @@ rather than a tool.
   verifies the import object by object afterwards, but does not import or build a `.mer`.
 - The vendor export does not include the HMI tag CSV, so tag bindings cannot be checked from a fresh
   export unless that database is exported separately.
-- The generated tool reference covers the 166 tools built from this repository; the 32 vendored Optix tools
+- The generated tool reference covers the 167 tools built from this repository; the 32 vendored Optix tools
   are not generated from source here, so their descriptions live in their own definitions and in
   [the Optix pages](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/products/optix/README.md).
 - The DXF/DWG drawing preview renders through the embedded converter; proxy objects, ACIS bodies and

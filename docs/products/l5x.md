@@ -1,6 +1,6 @@
 # Studio 5000 L5X
 
-`@aryacode/dsh-engineering` ships 54 tools that read a Studio 5000 `.L5X` export, follow a tag through
+`@aryacode/dsh-engineering` ships 56 tools that read a Studio 5000 `.L5X` export, follow a tag through
 the logic, run evidence-backed review rules, draft rungs and tags into a new file, build an offline
 `.ACD` with the Logix Designer SDK, and read or write declared scalars on a live controller over
 EtherNet/IP — all without opening Studio for the read-only work.
@@ -15,14 +15,14 @@ and the Studio SDK and live-controller paths carry the narrower, honest limits r
 | Component id | `l5x` — *Studio 5000 L5X* |
 | Capability class | `offline-file` (it reads an export; seven tools also read a live controller over EtherNet/IP) |
 | Stability | beta, since `v0.4.4` |
-| Tools | 54, under the legacy unprefixed names (`l5x_open_project`, `l5x_draft_apply`) |
+| Tools | 56, all `l5x_`-prefixed (`l5x_open_project`, `l5x_draft_apply`, `l5x_export_rungs`) |
 | Package / entry | `packages/l5x` → `entries/l5x.js` and its editing, Studio and live rows |
 | Skill | `rockwell-l5x` (`packages/l5x/SKILL.md`, 12,800-character budget) |
 | Evidence gate | `l5x_compare_projects` — an export claim is checked against a second export |
 | Switches | `editing`, `studio`, `live`, `allowWrites`, `allowedAddresses`, `maxFileBytes`, `maxDraftOperations` |
 
-The tool names are unprefixed on purpose: this row predates the `ftview_`/`mw_` namespaces, and a
-prefixed rename is scheduled rather than done. `l5x_open_project` opens one export for the chat and returns a
+Every tool carries the `l5x_` prefix; 0.104.0 renamed the row's original unprefixed names in one
+release, with a migration table in `CHANGELOG.md` and no aliases. `l5x_open_project` opens one export for the chat and returns a
 `project_id`; every other tool takes that handle, or omits it when exactly one project is open.
 
 Revisions are a compatibility surface, not a detail:
@@ -84,8 +84,11 @@ l5x_draft_validate        # resolve the whole draft against the project, write n
 l5x_draft_apply { "output_path": "C:/Projects/Line/Line-edited.L5X" }
 ```
 
-`l5x_draft_apply` writes one new `.L5X` beside the source and refuses to overwrite anything. Paste that file
-into Studio yourself; whether the paste imports cleanly is Studio's answer, and the tool says so.
+`l5x_draft_apply` writes one new `.L5X` beside the source and refuses to overwrite anything. Import it
+in Studio: the routine export goes through Import Routine (Operation Overwrite), and `l5x_export_rungs`
+writes the rung-target shape for Import Rungs when only some rungs change or the import must respect
+pending edits. The tools never import; see [offline editing](../../packages/l5x/knowledge/l5x-offline-workflows/pages/offline-edit-without-studio.md)
+for the two routes and the online rules.
 
 ## What it does
 
@@ -98,7 +101,7 @@ The surface groups by the job, not by the alphabet.
 | Review | `l5x_run_checks`, `l5x_compare_projects` | 43 evidence-backed rules, with an optional baseline export for I/O change checks; a component-by-component export comparison that ignores timestamps, XML formatting and Studio-added defaults |
 | Document | `l5x_list_instructions`, `l5x_document_project` | the instruction catalog the composer validates, with operand kinds and ranges; a handover bundle in a new folder — project summary, I/O list, tag CSVs, per-program rung documentation, FBD/SFC decoding, AOI routines, and one printable report whose ladder is drawn inside the page |
 | Preview and diagram | `l5x_rung_preview`, `l5x_compose_logic`, `l5x_routine_diagram`, `l5x_diagram` | paste-ready Studio ladder text for proposed rungs; chat-only composition when no project is open; drawn routines and whole-project schematic pages |
-| Draft edits | 17 `draft_*`, `l5x_compose_rung`, `l5x_compose_batch` tools | stage rungs, ST bodies, FBD sheets, SFC charts, routines, tags, UDT members and comments; validate; then write one new file |
+| Draft edits | 18 `draft_*`/export tools (`l5x_compose_rung`, `l5x_compose_batch` and `l5x_export_rungs` included) | stage rungs, ST bodies, FBD sheets, SFC charts, routines, tags, UDT members and comments; validate; then write one new file |
 | Studio SDK | `l5x_studio_sdk_status`, `l5x_studio_capabilities`, `l5x_export_acd_to_l5x`, `l5x_verify_offline_l5x`, `l5x_build_acd_from_draft`, `l5x_studio_review_evidence` | prove the SDK service is there; export an `.ACD`; import an `.L5X` into a new offline `.ACD` and build it; edit one existing routine and build; quote the evidence behind a claim |
 | Controller | `l5x_controller_approval_status`, `l5x_capture_controller_snapshot`, `l5x_go_online`, `l5x_read_controller_mode`, `l5x_read_live_tag`, `l5x_change_controller_mode`, `l5x_download_project` | approval policy; an upload; a read-only online session; mode and live reads; a mode change and a download, both approval-gated |
 | Live EtherNet/IP | `l5x_poll_live_tags`, `l5x_read_live_tags`, `l5x_read_controller_clock`, `l5x_discover_controllers`, `l5x_start_plc_trend`, `l5x_write_live_tag`, `l5x_write_controller_clock` | sweeps of up to 64 declared scalars in one request, up to 16 tags per sweep with a 50 ms floor, a bounded trend job, broadcast discovery, the wall clock on L8x, and two writes that also need `allowWrites` |
@@ -124,8 +127,11 @@ instances.
 - `l5x_verify_offline_l5x` wants a Studio-exported `.L5X`. An `.L5X` written by `l5x_export_acd_to_l5x` is
   refused on re-import with `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` (observed 2026-10-23), so use it for
   reading and provenance, not as build input.
-- A hand-driven Studio import of a draft, a second application's export, and a PanelView-side workflow are
-  not measured; the tools report the import and build they performed, not the one you performed.
+- Both hand-driven Studio imports of a draft were exercised on Logix Designer 37.05: Import Routine
+  (Operation Overwrite) and Import Rungs (`l5x_export_rungs`, read as Imported Rungs: 1), each followed
+  by Studio Verify 0 errors/0 warnings, and the routine route's re-export matched the applied draft.
+  Online Pending/Accepted/Finalized import against a live controller, a second application's export and
+  a PanelView-side workflow are unmeasured.
 - `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`
   has the same restriction.
 

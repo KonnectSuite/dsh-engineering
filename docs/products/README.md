@@ -10,12 +10,12 @@ session, what it does, its limits, its safety rules when it writes anything, and
 ## The products
 
 Six rows are products: they read or author a vendor artifact, and each one is a page in this section.
-Tool counts are for this release; the generated reference covers 166 of them, and the 32 Optix tools are
+Tool counts are for this release; the generated reference covers 167 of them, and the 32 Optix tools are
 vendored and not in that generated list.
 
 | Product | Tools | Default | Stability | Needs | Page |
 |---|---|---|---|---|---|
-| Studio 5000 L5X | 55 | on | beta, since v0.4.4 | nothing to read, review and draft; Logix Designer optional for SDK builds and controller upload; a Logix controller optional for live EtherNet/IP reads | [Studio 5000 L5X](l5x.md) |
+| Studio 5000 L5X | 56 | on | beta, since v0.4.4 | nothing to read, review and draft; Logix Designer optional for SDK builds and controller upload; a Logix controller optional for live EtherNet/IP reads | [Studio 5000 L5X](l5x.md) |
 | FactoryTalk View ME | 52 | on | beta, since v0.4.4 | nothing to read, check, draft and render an export folder; FactoryTalk View Studio ME on Windows for discovery, export and the import handoff; SQL Server Express for the tag snapshot | [FactoryTalk View ME](ftview/README.md) |
 | FactoryTalk Optix | 32 | on | beta, since v0.3.0 | FactoryTalk Optix Studio 1.8.1 (required); .NET 8 SDK optional for `optix_build`; Tesseract optional for `optix_ocr` | [FactoryTalk Optix](optix/README.md) |
 | MotionWorks IEC | 24 | on | beta, since v0.4.4 | MotionWorks IEC 3 Pro 3.0.3–3.7.5 (required, licensed, and running for IDE operations); not installed on this host, so those paths answer NOT_INSTALLED | [MotionWorks IEC](mwi.md) |

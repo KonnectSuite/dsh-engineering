@@ -18,6 +18,7 @@ describe('studio registration', () => {
       'l5x_compose_logic',
       'l5x_routine_diagram',
   'l5x_diagram',
+      'l5x_docs',
       'l5x_studio_sdk_status',
       'l5x_studio_capabilities',
       'l5x_export_acd_to_l5x',

@@ -12,11 +12,11 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
 | Branch | `main`; this batch is local commits (the commit that contains this file). No tag, no publish, no market step. |
 | Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-22` heading in `CHANGELOG.md`. |
 | Release state | **Verified locally, against installed vendor software, and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
-| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,272,852 B packed, SHA256 `72035A5BDAFC0F4D734B69218B37848A93ABB13CEA63D73FEACA865344FED25E`, SHA1 `6C5970345D9AC76534A0522100D6745204B5C89F`; `check:package` reports 21.6 MiB in 1,094 files unpacked. |
-| Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **198 registered tools**, **173 default-on**, 8 skills, 6 product documents. |
-| Generated reference | `docs/reference/tools.md` and `tools.json`: **166 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
-| Context budget | **173 tools / 135,251 schema characters** — measured 130,049 + 4% (L5X 53,718 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825). |
-| Verified | `pnpm test` **79/79 spec files pass** (54,264 ms on this tree); `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming"), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` all green. Fresh Dev profile `verify-0104f` from the tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled). |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,272,852 B packed, SHA256 `72035A5BDAFC0F4D734B69218B37848A93ABB13CEA63D73FEACA865344FED25E`, SHA1 `6C5970345D9AC76534A0522100D6745204B5C89F`; this is the 0.104.0 build and does **not** contain the unreleased `l5x_export_rungs` work. `check:package` on the current tree reports 21.6 MiB in 1,096 files unpacked. |
+| Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **199 registered tools**, **174 default-on**, 8 skills, 6 product documents. |
+| Generated reference | `docs/reference/tools.md` and `tools.json`: **167 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
+| Context budget | **174 tools / 136,828 schema characters** — measured 131,565 + 4% (L5X 55,234 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825). |
+| Verified | `pnpm test` **79/79 spec files pass** on this tree; the l5x package vitest suite **580/580** (45 files); `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming", 1,096 files), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` and the L5X knowledge generator check all green. Fresh Dev profile `verify-0104f` from the 0.104.0 tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled); the unreleased tree registers 199 tools / 174 default-on. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 
 ## What 0.104.0 changes
@@ -31,7 +31,8 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
   structural indexes of the installed Studio 5000 v37.05.00 and v36.00.00 help (5,493 and 6,581
   pages), `instruction-versions.json` (328 mnemonics) and revision guards
   (`INSTRUCTION_NOT_IN_REVISION`, fail-open `REVISION_UNVERIFIED`, `SOURCE_NOT_INSTALLED`).
-  All 55 L5X tools now carry the `l5x_` prefix — **50 renamed, 5 already prefixed**, no aliases;
+  All 56 L5X tools now carry the `l5x_` prefix — **50 renamed, 5 already prefixed**, plus
+  `l5x_export_rungs` for the Studio Import Rungs route; no aliases,
   the migration table is in the 0.104.0 changelog section.
 - **FTView knowledge.** Authored ME pages (9) plus structural indexes of the installed ME and SE
   help (1,544 and 2,603 pages) behind `ftview_docs`.
@@ -73,15 +74,16 @@ All commands below were run on this tree; the tree then carried the evidence int
 | --- | --- | --- |
 | Suite | `pnpm test` (with `HANDBOOK_PYTHON` set to the bundled Python) | **79 file(s) passed in 54,264 ms**; includes knowledge core/packaging, per-product knowledge, legacy, MWI IDE-free, SLC and handbook specs. |
 | Generated docs | `pnpm docs:check` | `gen-tool-reference: reference is up to date.` / `gen-print-css: docs/print.css is up to date.` |
-| Packaging | `pnpm check:package` | `the tarball is conforming`; PKG-06 21.6 MiB in 1,094 files; largest entries the ECAD wasm (6.11 MiB) and the L5X/optix indexes. |
+| Packaging | `pnpm check:package` | `the tarball is conforming`; the 0.104.0 tarball is 1,094 files, the current unreleased tree 1,096; largest entries the ECAD wasm (6.11 MiB) and the L5X/optix indexes. |
 | Knowledge eval | `node scripts/eval-knowledge.mjs --check` | **all products pass**, determinism true, no problems. |
 | Retrieval figures | `artifacts/eval-knowledge.json` | L5X 32 cases R@5 .957 / MRR .891 / nDCG .900; FTView 23 .933/.967/.942; migration 25 1/.972/.979; PLC-5 22 1/1/.991; SLC 22 1/.817/.864. Exact share 1, no-match 1, hit cap true, determinism true. |
 | Knowledge sync | `node scripts/sync-knowledge-lib.mjs --check` | Current; 5 consumers byte-equal to `packages/knowledge/src`. |
 | Generators | l5x/ftview/migration/plc5/slc knowledge generators `--check` | All current; two clean L5X runs byte-identical (5,493 v37.05 pages + 6,581 v36.00 pages, 328 mnemonics). |
 | Handbook | bundled Python + `scripts/gen-handbook.py`, then `--check` | 15 pages; docx/html/pdf regenerated; source hash `105186b902a2f2ae`; check ok. |
-| Clean install | fresh Dev profile `verify-0104f` from the 0.104.0 tarball | Boots: **173 tools**; engineering 170 = `engineering_` 2 + `ftview_` 52 + `l5x_` 55 + `migration_` 6 + `mw_` 24 + `optix_` 31; nine rows — l5x, ftview, mwi, viewers, engineering-resources, migration, optix `active`, plc5 and slc `disabled`; `l5xProjects` provided and the five sample `l5x_*` names executable. |
+| Clean install | fresh Dev profile `verify-0104f` from the 0.104.0 tarball | Boots: **173 tools** (the tarball predates `l5x_export_rungs`); engineering 170 = `engineering_` 2 + `ftview_` 52 + `l5x_` 55 + `migration_` 6 + `mw_` 24 + `optix_` 31; nine rows — l5x, ftview, mwi, viewers, engineering-resources, migration, optix `active`, plc5 and slc `disabled`; `l5xProjects` provided and the five sample `l5x_*` names executable. A release build adds `l5x_export_rungs` for 174 default-on tools. |
 | Changed-tool packaged smoke | from the installed profile, on `packages/l5x/test/fixtures/sample.l5x` | `l5x_open_project` parsed the project (rev 33.1/export 33.00; 1769-L33ER; 2 programs, 19 tags, 3 routines, 3 modules); `l5x_run_checks` 3 INFO findings; `l5x_docs search` 91 hits with `instruction-ton` first; `l5x_document_project` wrote 3 files (5 rung comments, 11 rungs). |
-| Upgrade / rollback (N-1) | 0.103.0 tarball (`npm pack @aryacode/dsh-engineering@0.103.0`, 4,763,737 B) → 0.104.0 local tarball, then back | 0.103 composition: 170 tools, legacy L5X names, `ecad` row present/disabled, no `slc` row. Update: 990 ms `pnpm install`, 173 tools, all 55 names prefixed, `entries/ecad.js` absent, `vendor/ecad` viewer payload + L5X knowledge present, nine rows. Rollback: 170 tools and the 0.103 composition. Profile finally left on 0.104.0. |
+| L5X ladder import (non-SDK) | Studio 5000 v37.05 UI on a generated `LadderReliability` project | Exported MainRoutine (routine target, empty rung `;`); offline `l5x_draft_tag` ×3 + `l5x_draft_rung` + `l5x_draft_validate` (draft hash `ccd1631c…`) + `l5x_draft_apply` (1,370 B); Studio **Import Routine** Operation Overwrite; Studio **Verify** "Complete - 0 error(s), 0 warning(s)"; Ctrl+S; re-export `LadderReliability_imported_RLL.L5X` (1,923 B) carries the three BOOL tags and `<Comment>` + `<Text>XIC(Start)XIO(Stop)OTE(Run);</Text>`. Then `l5x_export_rungs` wrote `LadderReliability-draft-rungs.L5X`, Studio **Import Rungs** read it as Imported Rungs: 1 (Operation overwrite), applied it, and Studio **Verify** reported "Complete - 0 error(s), 0 warning(s)". |
+| Upgrade / rollback (N-1) | 0.103.0 tarball (`npm pack @aryacode/dsh-engineering@0.103.0`, 4,763,737 B) → 0.104.0 local tarball, then back | 0.103 composition: 170 tools, legacy L5X names, `ecad` row present/disabled, no `slc` row. Update: 990 ms `pnpm install`, 173 tools in the 0.104.0 tarball (all 55 names then registered prefixed; `l5x_export_rungs` lands in the next release), `entries/ecad.js` absent, `vendor/ecad` viewer payload + L5X knowledge present, nine rows. Rollback: 170 tools and the 0.103 composition. Profile finally left on 0.104.0. |
 | No-vendor source | installed profile with `L5X_HELP_ROOT_V37_05`/`V36_00` = `Z:/no-such-help-root` | `l5x_docs read` of `help/clinset/timer-counter/timer-on-delay--ton-` returns `SOURCE_NOT_INSTALLED` naming the searched root; with the real install the same read returns the real TON page body. Structural `search`/`status` still answer from the shipped index — by design. |
 | Offline / no-network | static grep over the knowledge core, five `docs.ts` adapters and the eval script | No `fetch`, `node:http(s)`, `axios`, `child_process`, `net.connect` or `WebSocket`; the eval is local only. |
 | Licensing | NOTICE/README/`docs/reference/knowledge.md` | MIT posture: authored pages ship; the installed-help bodies are parsed from the user's own installation at read time and are never in the tarball. |
@@ -132,6 +134,14 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
   comparison, but the display-name metadata that Studio uses for the tree label is not written yet.
 - PLC-5 has no positive `.PC5` text-export fixture; the text tools are parser-tested only. The
   headless COM read is proved with a real `.RSP`.
+- Studio's **Import Rungs** accepted the new rung-target export (`l5x_export_rungs`) attended on the
+  generated `LadderReliability` project: Import Configuration read the file as one imported rung
+  (Operation overwrite), OK applied it, and Studio **Verify** then reported "Complete - 0 error(s),
+  0 warning(s)". The file shape is byte-structured like a real Studio 5000 v37.05 Export Rungs file and
+  is covered by `packages/l5x/test/rung-export.spec.ts`. The routine-target **Import Routine** route was
+  attended-verified on the same project: Operation Overwrite, Studio Verify 0 errors/0 warnings, and a
+  re-export matching the applied draft. Online Pending/Accepted/Finalized import against a live
+  controller was not run (no controller on this host), and older Studio versions cannot be executed here.
 - SLC 500's `.RSS` automation path needs a recorded transcript (and a Professional/Developer
   edition) before it can be called proved; the text-export/Library and documentation-export paths
   are proved against the installed RSLogix 500.

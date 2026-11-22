@@ -22,10 +22,10 @@ test('the committed reference matches the registered tools', () => {
 })
 
 test('the reference covers every registered tool', () => {
-  // 166 tools are built from this repository's own components (L5X 55, FactoryTalk View 52,
+  // 167 tools are built from this repository's own components (L5X 56, FactoryTalk View 52,
   // MotionWorks IEC 24, Migration 8, PLC-5 15, RSLogix 500 10, Engineering resources 2). The 32
   // vendored Optix tools come from a separate package and are counted in the README instead.
-  assert.equal(names.length, 166, 'the reference covers 166 tools; update this when a surface changes')
+  assert.equal(names.length, 167, 'the reference covers 167 tools; update this when a surface changes')
   for (const group of groups) assert.ok(group.tools.length > 0, `${group.group} registers no tools`)
 })
 

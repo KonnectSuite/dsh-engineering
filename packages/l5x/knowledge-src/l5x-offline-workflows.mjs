@@ -19,7 +19,7 @@ export default {
 - open and inspect an export (l5x_open_project, l5x_project_overview, l5x_list_components, l5x_get_component),
 - find logic and tags (l5x_search_logic, l5x_find_references, l5x_trace_dependencies, l5x_resolve_tag, l5x_usage_map),
 - compose and stage a change (l5x_draft_rung, l5x_compose_rung, l5x_compose_batch, l5x_draft_validate),
-- apply a validated draft to ONE new L5X file beside the source (l5x_draft_apply),
+- apply a validated draft to ONE new L5X file beside the source (l5x_draft_apply) and write a rung export for a partial rung import (l5x_export_rungs),
 - compare two exports by engineering component (l5x_compare_projects),
 - run evidence-backed checks (l5x_run_checks),
 - write a documentation bundle (l5x_document_project),
@@ -27,7 +27,7 @@ export default {
 
 What they cannot do offline:
 
-- import the edited file into Studio or download it to a controller. l5x_draft_apply writes a new file; importing it is a Studio step.
+- import the edited file into Studio or download it to a controller. l5x_draft_apply writes a new routine export; importing it is a Studio Import Routine step. l5x_export_rungs writes a rung export; importing that one is a Studio Import Rungs step.
 - prove that a message path, a drive connection or an I/O module connection actually exists. Those are recorded as unverified coverage items.
 - change safety logic state on a live controller. Safety findings must be resolved before a draft is applied, and writes to a live controller are out of scope for offline tools.
 
@@ -63,7 +63,14 @@ If the file is an ACD rather than an L5X, it must be exported first. The studio 
 4. Inspect the staged operations: l5x_draft_list shows what is pending; l5x_draft_remove_op removes one; l5x_draft_discard throws the whole draft away.
 5. Validate: l5x_draft_validate returns a hash, a diff and check findings, and writes nothing.
 6. Apply: l5x_draft_apply writes exactly one new L5X file beside the source, never overwriting it and never importing it into Studio.
-7. Import the new file in Studio and review the change there.
+7. Import the new file in Studio, review the change there and run Studio's own Verify. There are two file shapes and two import routes, and they are not interchangeable:
+   - The file l5x_draft_apply writes is a routine export. In Studio, right-click the program folder, choose Import Routine, pick the file, and confirm Import Configuration with Operation Overwrite. The routine's rungs, rung comments and referenced tags arrive together.
+   - A file from l5x_export_rungs is a rung export. In the Ladder Editor, right-click the rung, choose Import Rungs, pick the file, and choose Use Existing, Overwrite, Create (Insert or Append) or Discard. The dialog shows a read-only rung count before it changes anything.
+   Import Rungs refuses a routine export with "The specified L5X file does not contain a Rung export" (error 5078-0), so use Import Rungs only with a rung export. Exporting the same rungs from Studio's Ladder Editor (Export Rungs) produces the shape l5x_export_rungs writes.
+
+When Studio is online in Remote Run, the import happens through the Online Options and Import Logic dialogs and the online rules are stricter than offline ones. Import Rungs is refused if the routine, or another routine in the same program or phase, already has accepted edits; pending edits in the routine are allowed. The controller is locked against other workstations for the duration of an online import, and the import fails if Studio cannot verify the project afterwards. Pending Edits are not downloaded and survive only as pending edits; Accepted Edits are accepted and downloaded; Finalized Edits are accepted, assembled and downloaded. New tags, UDTs and AOIs are downloaded immediately even if the logic change is later cancelled, and motion objects cannot be added online. A project exported while it has pending edits cannot be re-imported.
+
+An online import is asynchronous to the controller scan, and a failed or cancelled import rolls back the whole change, so import one change at a time and verify after each one.
 
 Every draft operation is a replace, insert or delete of one rung in one routine. Per-op your draft can change a rung comment, append a declaration, or add a structured-text body, FBD sheet or SFC chart; it cannot rename a routine or change a controller property. Those are file-level edits and belong in Studio.
 
@@ -80,6 +87,7 @@ One change per apply is the rule that keeps the diff reviewable. If two changes 
 - l5x_compose_batch is all-or-nothing: if one rung in the batch is invalid, none are staged.
 - l5x_draft_validate checks the accumulated draft against the open project and returns the hash, the diff and the findings. It writes nothing.
 - l5x_draft_apply requires a validated draft. It writes ONE new file beside the source with a new name, never the source, never an overwrite, never a controller connection.
+- l5x_export_rungs writes the rung-target shape for Import Rungs: pass the applied file or any export, pick the routine and the rung numbers, and Studio's Ladder Editor can import just those rungs. Use it when only some rungs change or when the import must respect pending edits.
 
 Practical rules:
 
@@ -162,7 +170,7 @@ Because it writes a folder, treat the destination as a deliverable path: pick an
       section: 'Exports',
       body: `l5x_rung_preview returns two things for one rung: a paste_text in Studio's copy format, and a minimal L5X preview document.
 
-The paste text is what makes the tool practical: Studio accepts rung text as space-separated mnemonics and operands, with parallel branches bracketed as BST/NXB/BND. Paste text from l5x_rung_preview into Studio's ladder editor and the rung appears as composed.
+The paste text is Studio's rung copy format: space-separated mnemonics and operands, with parallel branches bracketed as BST/NXB/BND. Read it as a review form and as the text Studio itself puts on the clipboard when a rung is copied; do not treat it as an insert command. In Studio 5000 v37.05 a plain-text Ctrl+V into the ladder canvas does not create a rung — with an instruction selected it edits that instruction's text, and with nothing selected it does nothing (both observed). Apply an edit through the import files instead: the routine export from l5x_draft_apply for Import Routine, or the rung export from l5x_export_rungs for Import Rungs.
 
 It needs neither an open project nor an L5X file when the rung is given directly; with an open project it can resolve tag names and apply the project's instruction spelling.
 
@@ -170,7 +178,8 @@ Limits to state when handing paste text to a human:
 
 - the preview document is a preview, not an export: it is for viewing and pasting, not for importing as a project.
 - paste text does not carry the rung comment; add the comment separately in Studio.
-- the paste text uses the target revision's spelling, so do not mix paste text generated for two different revisions in one rung.`,
+- the paste text uses the target revision's spelling, so do not mix paste text generated for two different revisions in one rung.
+- plain-text paste into the ladder canvas is not a reliable insert path in Studio 37.05; use the import routes above.`,
     },
     {
       id: 'offline-compose-logic',

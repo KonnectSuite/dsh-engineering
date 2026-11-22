@@ -63,7 +63,9 @@ batch's decisions:
 | Everything else in the gate | pass | commands and outputs recorded in `HANDOFF.md`; reinstalled into the fresh Dev profile `verify-0104f` |
 
 The installed-software pass on 2026-11-22 adds executed evidence for Studio 5000 (ACD export →
-L5X → draft → SDK build → open in Logix Designer → re-export), FTView (vendor export → authored
+L5X → draft → SDK build → open in Logix Designer → re-export), Studio 5000 offline ladder import
+(non-SDK: routine-target Import Routine and rung-target Import Rungs both accepted and followed by
+Verify 0 errors/0 warnings on a generated ladder project), FTView (vendor export → authored
 display → Add Component import → verify 1/1), RSLogix 500 (real project open → Save As
 documentation exports + Library `*.SLC` export → parsed by the SLC tools), RSLogix 5 (real project
 created and saved → headless COM read by the PLC-5 tools) and FactoryTalk Optix (bridge 1.0.9 →
