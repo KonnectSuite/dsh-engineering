@@ -751,7 +751,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
           },
           next: [
             { tool: 'migration_plan', why: 'Record each real difference as an exception, and the build that proves the fix as evidence.' },
-            { tool: 'draft_rung', why: 'Rewrite the rungs a real difference points at, one rung at a time, then build to prove it.' },
+            { tool: 'l5x_draft_rung', why: 'Rewrite the rungs a real difference points at, one rung at a time, then build to prove it.' },
           ],
           coverage: COVERAGE,
         }
@@ -832,7 +832,7 @@ export function migrationTools(fs: FsService, policy?: SandboxPolicyResolver): r
             checks: { headless: true, read_only: true, saved: false, rungs_read: project.rungs.length, truncated: project.truncated },
           },
           next: [
-            { tool: 'draft_rung', why: 'Stage the proposed rung text on the .L5X the export came from, then prove it with verify_offline_l5x.' },
+            { tool: 'l5x_draft_rung', why: 'Stage the proposed rung text on the .L5X the export came from, then prove it with l5x_verify_offline_l5x.' },
             { tool: 'migration_plan', why: 'Record each answer that needs a decision as an exception with its rationale.' },
           ],
           coverage: COVERAGE,

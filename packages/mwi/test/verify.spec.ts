@@ -6,10 +6,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MwiError } from '../src/core/errors.ts'
+import { MwiHostAdapter, mwiProbeStub } from '../src/core/host.ts'
 import { verifyTools } from '../src/tools/verify.ts'
 import type { SessionRuntime } from '../src/session/service.ts'
 
 type Envelope = { summary?: string; data?: Record<string, unknown>; next?: readonly { tool: string }[]; error?: { code: string } }
+
+const RUNNABLE = new MwiHostAdapter({ ...mwiProbeStub(), installed: true, versions: ['3.7.5'], displays: ['3.7.5.1'] })
+const NOT_INSTALLED = new MwiHostAdapter(mwiProbeStub())
 
 function fakeRuntime(overrides: Partial<SessionRuntime> = {}): SessionRuntime {
   return {
@@ -33,9 +37,9 @@ function fakeRuntime(overrides: Partial<SessionRuntime> = {}): SessionRuntime {
   }
 }
 
-async function call(runtime: SessionRuntime, name: string, args: Record<string, unknown> = {}): Promise<Envelope> {
+async function call(runtime: SessionRuntime, name: string, args: Record<string, unknown> = {}, adapter: MwiHostAdapter = RUNNABLE): Promise<Envelope> {
   const root = mkdtempSync(join(tmpdir(), 'mwi-verify-'))
-  const definition = verifyTools(() => runtime).find(tool => tool.name === name)
+  const definition = verifyTools(() => runtime, adapter).find(tool => tool.name === name)
   if (definition === undefined) throw new Error(`no tool ${name}`)
   return await definition.execute(args, { cwd: root }) as Envelope
 }
@@ -81,5 +85,30 @@ describe('verify tools', () => {
     })
     const result = await call(runtime, 'mw_verify', { mode: 'compare' })
     expect(result.error).toMatchObject({ code: 'BASELINE_REQUIRED' })
+  })
+
+  it('answers compile as not runnable when no IDE is installed, without calling the runtime', async () => {
+    let called = false
+    const runtime = fakeRuntime({ async compile() { called = true; return { is_compiled: true } } })
+    const result = await call(runtime, 'mw_compile', { mode: 'build' }, NOT_INSTALLED)
+    expect(called).toBe(false)
+    expect(result.error).toBeUndefined()
+    expect(result.data?.status).toBe('not-runnable')
+    expect(result.data?.code).toBe('NOT_INSTALLED')
+    expect(result.summary).toContain('not runnable')
+    expect(String(result.data?.fix)).toContain('3.0.3')
+    const lookedFor = result.data?.looked_for as readonly { where: string }[]
+    expect(lookedFor.length).toBeGreaterThan(0)
+    expect(String(result.data?.message)).toContain('inspected')
+  })
+
+  it('answers diagnostics as not runnable when no IDE is installed, without calling the runtime', async () => {
+    let called = false
+    const runtime = fakeRuntime({ async diagnostics() { called = true; return { count: 0 } } })
+    const result = await call(runtime, 'mw_diagnostics', { pane: 'Errors' }, NOT_INSTALLED)
+    expect(called).toBe(false)
+    expect(result.data?.capability).toBe('live')
+    expect(result.summary).toContain('not runnable')
+    expect(result.summary).not.toContain('compiled=true')
   })
 })

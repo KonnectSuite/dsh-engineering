@@ -43,16 +43,16 @@ const SHEET = {
 /** Open the fixture project. */
 async function opened() {
   const l5x = harness(new Map([['fbd.l5x', new TextEncoder().encode(PROJECT)]]), { editing: true })
-  const result = await l5x.call('open_project', { path: 'fbd.l5x' })
+  const result = await l5x.call('l5x_open_project', { path: 'fbd.l5x' })
   expect(result.error).toBeUndefined()
   return l5x
 }
 
-describe('draft_fbd', () => {
+describe('l5x_draft_fbd', () => {
   it('writes an FBD preview document the chat can draw', async () => {
     // The staged sheet used to be invisible until apply; the preview shows the same XML the apply path writes.
     const l5x = await opened()
-    const staged = await l5x.call('draft_fbd', SHEET)
+    const staged = await l5x.call('l5x_draft_fbd', SHEET)
     expect(staged.error).toBeUndefined()
     const path = String((staged.data as { preview_path?: unknown } | undefined)?.preview_path ?? '')
     expect(path).toBe('.l5x-preview/Main-F.L5X')
@@ -67,9 +67,9 @@ describe('draft_fbd', () => {
 
   it('writes the sheet in the shape Studio builds', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_fbd', SHEET)
+    const staged = await l5x.call('l5x_draft_fbd', SHEET)
     expect(staged.error).toBeUndefined()
-    const applied = await l5x.call('draft_apply', { output_path: 'out.L5X' })
+    const applied = await l5x.call('l5x_draft_apply', { output_path: 'out.L5X' })
     expect(applied.error).toBeUndefined()
     const text = l5x.written.get('out.L5X') ?? ''
     // This exact sheet passed a Logix Designer 37 build with zero warnings.
@@ -85,49 +85,49 @@ describe('draft_fbd', () => {
 
   it('composes a sheet the FBD checks call clean', async () => {
     const l5x = await opened()
-    expect((await l5x.call('draft_fbd', SHEET)).error).toBeUndefined()
-    expect((await l5x.call('draft_apply', { output_path: 'checked.L5X' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_draft_fbd', SHEET)).error).toBeUndefined()
+    expect((await l5x.call('l5x_draft_apply', { output_path: 'checked.L5X' })).error).toBeUndefined()
     const written = l5x.written.get('checked.L5X') ?? ''
     const checker = harness(new Map([['checked.L5X', new TextEncoder().encode(written)]]))
-    expect((await checker.call('open_project', { path: 'checked.L5X' })).error).toBeUndefined()
-    const checks = await checker.call('run_checks', {})
+    expect((await checker.call('l5x_open_project', { path: 'checked.L5X' })).error).toBeUndefined()
+    const checks = await checker.call('l5x_run_checks', {})
     const diagramRules = ((checks.data?.findings ?? []) as { rule: string }[]).map(finding => finding.rule).filter(rule => /^(FBD|IREF|OREF|ICON|OCON)_/u.test(rule))
     expect(diagramRules).toEqual([])
   })
 
   it('refuses a routine that is not a function block diagram', async () => {
     const l5x = await opened()
-    const result = await l5x.call('draft_fbd', { ...SHEET, routine: 'R' })
+    const result = await l5x.call('l5x_draft_fbd', { ...SHEET, routine: 'R' })
     expect(result.error?.code).toBe('UNSUPPORTED_TARGET')
   })
 
   it('refuses a block whose tag is not declared', async () => {
     const l5x = await opened()
-    const result = await l5x.call('draft_fbd', { ...SHEET, blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'missing', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] }]) })
+    const result = await l5x.call('l5x_draft_fbd', { ...SHEET, blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'missing', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] }]) })
     expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
-    expect(String(result.error?.fix)).toContain('draft_tag')
+    expect(String(result.error?.fix)).toContain('l5x_draft_tag')
   })
 
   it('refuses a tag whose type is not the block structure', async () => {
     const l5x = await opened()
-    const result = await l5x.call('draft_fbd', { ...SHEET, blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'r3', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] }]) })
+    const result = await l5x.call('l5x_draft_fbd', { ...SHEET, blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'r3', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] }]) })
     expect(result.error?.code).toBe('TYPE_MISMATCH')
   })
 
   it('refuses a wire that names no node', async () => {
     const l5x = await opened()
     // Staging is cheap and schema-only; the graph is judged when the draft is validated.
-    const staged = await l5x.call('draft_fbd', { ...SHEET, wires: JSON.stringify([{ from: 0, to: 99, to_pin: 'SourceA' }]) })
+    const staged = await l5x.call('l5x_draft_fbd', { ...SHEET, wires: JSON.stringify([{ from: 0, to: 99, to_pin: 'SourceA' }]) })
     expect(staged.error).toBeUndefined()
-    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    const validated = await l5x.call('l5x_draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error?.code).toBe('INVALID_CHANGE_SET')
   })
 
   it('refuses a pin the block does not show', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_fbd', { ...SHEET, wires: JSON.stringify([{ from: 0, to: 2, to_pin: 'Nope' }]) })
+    const staged = await l5x.call('l5x_draft_fbd', { ...SHEET, wires: JSON.stringify([{ from: 0, to: 2, to_pin: 'Nope' }]) })
     expect(staged.error).toBeUndefined()
-    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    const validated = await l5x.call('l5x_draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error?.code).toBe('INVALID_CHANGE_SET')
   })
 })
@@ -136,12 +136,12 @@ describe('draft_fbd', () => {
 describe('creating the routine and chaining blocks', () => {
   it('creates an FBD routine with no body, then stages a sheet into it', async () => {
     const l5x = await opened()
-    const routine = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
+    const routine = await l5x.call('l5x_draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
     expect(routine.error).toBeUndefined()
-    // A routine staged in the same draft is visible to draft_fbd.
-    const sheet = await l5x.call('draft_fbd', { ...SHEET, routine: 'G' })
+    // A routine staged in the same draft is visible to l5x_draft_fbd.
+    const sheet = await l5x.call('l5x_draft_fbd', { ...SHEET, routine: 'G' })
     expect(sheet.error).toBeUndefined()
-    const applied = await l5x.call('draft_apply', { output_path: 'new.L5X' })
+    const applied = await l5x.call('l5x_draft_apply', { output_path: 'new.L5X' })
     expect(applied.error).toBeUndefined()
     const written = l5x.written.get('new.L5X') ?? ''
     expect(written).toContain('<Routine Name="G" Type="FBD"><FBDContent SheetSize="B - 11 x 17 in" SheetOrientation="Landscape">')
@@ -149,13 +149,13 @@ describe('creating the routine and chaining blocks', () => {
 
   it('refuses an FBD routine that carries a body', async () => {
     const l5x = await opened()
-    const result = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD', code: 'XIC(a1)OTE(a2);' })
+    const result = await l5x.call('l5x_draft_routine', { program: 'Main', name: 'G', language: 'FBD', code: 'XIC(a1)OTE(a2);' })
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
 
   it('wires two blocks directly, naming the output and input pins', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_fbd', {
+    const staged = await l5x.call('l5x_draft_fbd', {
       program: 'Main', routine: 'F', sheet: 2,
       blocks: JSON.stringify([
         { id: 3, type: 'ADD', tag: 'add1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
@@ -169,7 +169,7 @@ describe('creating the routine and chaining blocks', () => {
       ]),
     })
     expect(staged.error).toBeUndefined()
-    const applied = await l5x.call('draft_apply', { output_path: 'chain.L5X' })
+    const applied = await l5x.call('l5x_draft_apply', { output_path: 'chain.L5X' })
     expect(applied.error).toBeUndefined()
     // This chain built in Studio with zero warnings.
     expect(l5x.written.get('chain.L5X')).toContain('<Wire FromID="3" FromParam="Dest" ToID="4" ToParam="SourceA"/>')
@@ -177,7 +177,7 @@ describe('creating the routine and chaining blocks', () => {
 
   it('refuses a sheet that both writes and reads one tag', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_fbd', {
+    const staged = await l5x.call('l5x_draft_fbd', {
       program: 'Main', routine: 'F', sheet: 3,
       blocks: JSON.stringify([
         { id: 3, type: 'ADD', tag: 'add1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'] },
@@ -193,7 +193,7 @@ describe('creating the routine and chaining blocks', () => {
       ]),
     })
     expect(staged.error).toBeUndefined()
-    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    const validated = await l5x.call('l5x_draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error?.code).toBe('INVALID_CHANGE_SET')
     expect(String(validated.error?.message)).toContain('both writes and reads')
   })
@@ -215,16 +215,16 @@ const BLOCK_ONLY = `<?xml version="1.0" encoding="UTF-8"?>
 
 
 describe('a block tag staged in the same draft', () => {
-  it('resolves for draft_fbd before draft_apply', async () => {
+  it('resolves for l5x_draft_fbd before l5x_draft_apply', async () => {
     // withStagedTags puts staged declarations on project.stagedTags, not document.tags, so the direct
-    // lookup in draft_fbd used to miss a tag draft_tag had just created.
+    // lookup in l5x_draft_fbd used to miss a tag l5x_draft_tag had just created.
     const l5x = harness(new Map([['b.l5x', new TextEncoder().encode(BLOCK_ONLY)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'b.l5x' })).error).toBeUndefined()
-    const routine = await l5x.call('draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
+    expect((await l5x.call('l5x_open_project', { path: 'b.l5x' })).error).toBeUndefined()
+    const routine = await l5x.call('l5x_draft_routine', { program: 'Main', name: 'G', language: 'FBD' })
     expect(routine.error).toBeUndefined()
-    const tag = await l5x.call('draft_tag', { scope: 'controller', name: 'sum1', data_type: 'FBD_MATH', description: 'ADD block' })
+    const tag = await l5x.call('l5x_draft_tag', { scope: 'controller', name: 'sum1', data_type: 'FBD_MATH', description: 'ADD block' })
     expect(tag.error).toBeUndefined()
-    const staged = await l5x.call('draft_fbd', {
+    const staged = await l5x.call('l5x_draft_fbd', {
       program: 'Main', routine: 'G', sheet: 1,
       blocks: JSON.stringify([{ id: 1, type: 'ADD', tag: 'sum1', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'], x: 320, y: 40 }]),
       refs: JSON.stringify([
@@ -247,9 +247,9 @@ describe('two sheets in one FBD routine', () => {
   it('keeps both sheets and both blocks', async () => {
     // A build proved this shape: two sheets, one ADD block each, 0 warnings and 0 errors.
     const l5x = await opened()
-    const one = await l5x.call('draft_fbd', SHEET)
+    const one = await l5x.call('l5x_draft_fbd', SHEET)
     expect(one.error).toBeUndefined()
-    const two = await l5x.call('draft_fbd', {
+    const two = await l5x.call('l5x_draft_fbd', {
       program: 'Main', routine: 'F', sheet: 2,
       blocks: JSON.stringify([{ id: 2, type: 'ADD', tag: 'add2', structure: 'FBD_MATH', pins: ['SourceA', 'SourceB', 'Dest'], x: 300, y: 20 }]),
       refs: JSON.stringify([
@@ -264,7 +264,7 @@ describe('two sheets in one FBD routine', () => {
       ]),
     })
     expect(two.error).toBeUndefined()
-    const applied = await l5x.call('draft_apply', { output_path: 'two.L5X' })
+    const applied = await l5x.call('l5x_draft_apply', { output_path: 'two.L5X' })
     expect(applied.error).toBeUndefined()
     const written = String(l5x.written.get('two.L5X') ?? '')
     expect((written.match(/<Sheet /gu) ?? []).length).toBe(2)

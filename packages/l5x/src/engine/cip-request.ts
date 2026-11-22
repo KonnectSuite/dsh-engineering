@@ -60,7 +60,7 @@ function declaredTag(project: ProjectSnapshot, entry: unknown, errorCode: 'UNSUP
   const declaration = tagContainer === undefined ? undefined : elementChildren(tagContainer, 'Tag').find(tag => tag.attrs.Name === base)
   const dimensions = declaration?.attrs.Dimensions ?? declaration?.attrs.Dimension ?? ''
   if (!declared) {
-    throw new EngineeringError(errorCode, `${String(entry.name)} is not a declared tag in this export`, 'Open the export that declares it, or check the name with list_components kind="tag".')
+    throw new EngineeringError(errorCode, `${String(entry.name)} is not a declared tag in this export`, 'Open the export that declares it, or check the name with l5x_list_components kind="tag".')
   }
   return {
     name: entry.name,

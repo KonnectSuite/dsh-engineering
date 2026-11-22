@@ -4,7 +4,7 @@
  * The composer is the generation half of the pair: the caller decides the logic,
  * this module decides the NeutralText. Every instruction is checked against the
  * catalog (or a declared AOI), every operand against the export, and the emitted
- * text is re-parsed by the same parser `draft_rung` uses. A rung that fails any
+ * text is re-parsed by the same parser `l5x_draft_rung` uses. A rung that fails any
  * of those never reaches a draft.
  *
  * @module dsh-engineering-l5x/engine/ladder
@@ -56,7 +56,7 @@ export interface ComposedOperand {
 
 /** One composed rung. */
 export interface ComposedRung {
-  /** NeutralText, ready for `draft_rung`. */
+  /** NeutralText, ready for `l5x_draft_rung`. */
   readonly neutral_text: string
   /** Instruction count. */
   readonly instructions: number
@@ -159,7 +159,7 @@ function missingTag(project: ProjectSnapshot, text: string, reason?: string): L5
   return new L5xError(
     'TAG_NOT_FOUND',
     message,
-    near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tag first.',
+    near.length === 0 ? 'Call l5x_list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tag first.',
     near,
   )
 }
@@ -190,7 +190,7 @@ export function validateRungTags(project: ProjectSnapshot, nodes: readonly Ladde
       throw new L5xError(
         'INVALID_OPERAND',
         `${instruction.name} takes ${required === instruction.operands.length ? String(required) : `${required}-${instruction.operands.length}`} operand(s): ${shape}; ${node.operands.length} were supplied.`,
-        `Call list_instructions with filter "${instruction.name}" for the exact operand order, or compose the rung instead.`,
+        `Call l5x_list_instructions with filter "${instruction.name}" for the exact operand order, or compose the rung instead.`,
       )
     }
     const seen: ComposedOperand[] = []
@@ -408,7 +408,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   // model as "the plugin is broken" rather than "fix the argument".
   const mnemonic = typeof node.instr === 'string' ? node.instr.trim() : ''
   if (mnemonic === '') {
-    throw new L5xError('INVALID_LADDER_SPEC', 'An instruction node needs a mnemonic.', 'Pass {"instr":"XIC","args":["Tag"]}; call list_instructions for the mnemonics this catalogue knows.')
+    throw new L5xError('INVALID_LADDER_SPEC', 'An instruction node needs a mnemonic.', 'Pass {"instr":"XIC","args":["Tag"]}; call l5x_list_instructions for the mnemonics this catalogue knows.')
   }
   const args = node.args ?? []
   if (!Array.isArray(args) || args.some(argument => typeof argument !== 'string')) {
@@ -423,7 +423,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
     // Refuse an unmodelled operand list explicitly. Claiming an arity this catalogue cannot
     // check is worse than refusing: it answers with confidence and leaves no way forward.
     if (instruction.notModelled === true) {
-      throw new L5xError('INSTRUCTION_NOT_MODELLED', `${instruction.name} is catalogued, but this catalogue does not model its operands.`, `Write the rung text with draft_rung (for example {"text":"${instruction.name}(...);"}); draft_rung accepts the raw operand list for an unmodelled instruction. Call list_instructions to see which names are modelled.`)
+      throw new L5xError('INSTRUCTION_NOT_MODELLED', `${instruction.name} is catalogued, but this catalogue does not model its operands.`, `Write the rung text with l5x_draft_rung (for example {"text":"${instruction.name}(...);"}); l5x_draft_rung accepts the raw operand list for an unmodelled instruction. Call l5x_list_instructions to see which names are modelled.`)
     }
     // A slot marked rest repeats for every remaining operand, so a JSR may pass as many
     // parameters as its target routine declares.
@@ -444,7 +444,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       throw new L5xError(
         'INVALID_OPERAND',
         `${instruction.name} takes ${required === instruction.operands.length ? String(required) : `${required}-${instruction.operands.length}`} operand(s): ${shape}; ${args.length} were supplied.`,
-        `Call list_instructions with filter "${instruction.name}" for the exact operand order.`,
+        `Call l5x_list_instructions with filter "${instruction.name}" for the exact operand order.`,
       )
     }
     // Emit the resolved operand text rather than the caller's spelling: a routine name
@@ -466,7 +466,7 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
       'UNKNOWN_INSTRUCTION',
       `"${mnemonic}" is neither a catalogued instruction nor an AOI declared in this export.`,
       // A name this catalogue does not carry may still be a valid instruction: about a hundred of the set are not modelled here. Point at the path that does not need the catalogue.
-      'Call list_instructions for the catalogued names; an AOI must be declared in the project. If the name is a real instruction this catalogue does not carry, write the rung text with draft_rung and run draft_validate instead.',
+      'Call l5x_list_instructions for the catalogued names; an AOI must be declared in the project. If the name is a real instruction this catalogue does not carry, write the rung text with l5x_draft_rung and run l5x_draft_validate instead.',
       nearestInstructions(node.instr),
     )
   }
@@ -478,10 +478,10 @@ function composeInstruction(project: ProjectSnapshot, node: InstructionNode, ope
   }
   const instance = checkOperand(project, args[0], 'ANY', operands)
   if (isLiteral(instance.text)) {
-    throw new L5xError('INVALID_OPERAND', `${instance.text} is a literal where ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Declare an instance with draft_tag data_type "${aoi.name}", or pass the declared instance first.`)
+    throw new L5xError('INVALID_OPERAND', `${instance.text} is a literal where ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Declare an instance with l5x_draft_tag data_type "${aoi.name}", or pass the declared instance first.`)
   }
   if ((instance.data_type ?? '').toUpperCase() !== aoi.name.toUpperCase()) {
-    throw new L5xError('INVALID_OPERAND', `${instance.text} is ${instance.data_type ?? 'an unknown type'}; ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Pass the declared ${aoi.name} instance first, or declare one with draft_tag data_type "${aoi.name}".`)
+    throw new L5xError('INVALID_OPERAND', `${instance.text} is ${instance.data_type ?? 'an unknown type'}; ${aoi.name} needs an instance tag of type ${aoi.name}.`, `Pass the declared ${aoi.name} instance first, or declare one with l5x_draft_tag data_type "${aoi.name}".`)
   }
   const required = aoi.parameters.filter(parameter => parameter.required === true)
   const supplied = args.slice(1)
@@ -825,7 +825,7 @@ export function composeRung(project: ProjectSnapshot, spec: LadderNodeSpec): Com
     throw new L5xError(
       'TAG_NOT_FOUND',
       `No tags named ${quoted.join(', ')} resolve in this export.`,
-      near.length === 0 ? 'Call list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tags first.',
+      near.length === 0 ? 'Call l5x_list_components kind="tag" to see the declared names.' : 'Retry with one of the candidates, or declare the tags first.',
       near,
     )
   }

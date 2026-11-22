@@ -38,7 +38,7 @@ interface ComponentRow {
 export function readTools(session: ProjectSession): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'open_project',
+      name: 'l5x_open_project',
       description: 'Open one Studio 5000 L5X export for this chat. Returns a project_id and a structure summary; every other tool reads this project.',
       parameters: object({
         path: string('Path to the .L5X export, absolute or relative to the workspace root. Example: "C:/Projects/Line/Line.L5X"'),
@@ -60,13 +60,13 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
             programs: document.programs.map(program => ({ name: program.name, mainRoutine: program.mainRoutine })),
             tasks: document.tasks.map(task => ({ name: task.name, type: task.type, rate: task.rate, programs: task.programs })),
           },
-          [{ tool: 'project_overview', why: 'Confirm tasks, programs and coverage before reading components.' }],
+          [{ tool: 'l5x_project_overview', why: 'Confirm tasks, programs and coverage before reading components.' }],
           COVERAGE,
         )
       },
     }),
     tool({
-      name: 'project_overview',
+      name: 'l5x_project_overview',
       description: 'Structure and coverage of the open project: controller (including its saved route and project serial), revision, tasks, programs, component counts, and an explicit limits list when routines are protected, types are vendor-owned or a safety task exists.',
       parameters: object({ project_id: PROJECT_ID }, []),
       async run(args, exec) {
@@ -95,16 +95,16 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
             ...(limits.length === 0 ? {} : { limits }),
           },
           [
-            { tool: 'list_components', args: { kind: 'routine' }, why: 'List the routines you can read next.' },
-            { tool: 'list_components', args: { kind: 'tag' }, why: 'List tags before tracing or reading one.' },
+            { tool: 'l5x_list_components', args: { kind: 'routine' }, why: 'List the routines you can read next.' },
+            { tool: 'l5x_list_components', args: { kind: 'tag' }, why: 'List tags before tracing or reading one.' },
           ],
           COVERAGE,
         )
       },
     }),
     tool({
-      name: 'list_components',
-      description: 'List one component kind in the open project, paginated. Use it to find the exact name get_component expects.',
+      name: 'l5x_list_components',
+      description: 'List one component kind in the open project, paginated. Use it to find the exact name l5x_get_component expects.',
       parameters: object({
         kind: choice('Component kind to list.', KINDS),
         scope: string('Program name for a program-scoped tag or routine. Omit for controller scope.'),
@@ -137,7 +137,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
       },
     }),
     tool({
-      name: 'get_component',
+      name: 'l5x_get_component',
       description: 'Read one component in full by exact name: a tag, UDT, routine, AOI, module, program, task or alarm.',
       parameters: object({
         kind: choice('Component kind to read.', KINDS),
@@ -154,7 +154,7 @@ export function readTools(session: ProjectSession): readonly ToolDefinition[] {
         return success(
           `${kind} ${name}${scope === undefined ? '' : ` in ${scope}`}.`,
           { kind, component },
-          [{ tool: 'list_components', args: { kind }, why: 'List the siblings of this component.' }],
+          [{ tool: 'l5x_list_components', args: { kind }, why: 'List the siblings of this component.' }],
           COVERAGE,
         )
       },
@@ -228,14 +228,14 @@ function pageNext(kind: Kind, page: readonly ComponentRow[], offset: number, lim
   if (first !== undefined) {
     const scope = first.scope ?? first.program
     next.push({
-      tool: 'get_component',
+      tool: 'l5x_get_component',
       args: scope === undefined ? { kind, name: first.name } : { kind, name: first.name, scope },
       why: 'Read the first row in full.',
     })
   }
   if (offset + limit < total) {
     next.push({
-      tool: 'list_components',
+      tool: 'l5x_list_components',
       args: { kind, filter, offset: offset + limit, limit },
       why: `Read the next ${Math.min(limit, total - offset - limit)} rows.`,
     })
@@ -341,8 +341,8 @@ function notFound(kind: Kind, name: string, names: readonly string[]): L5xError 
     'COMPONENT_NOT_FOUND',
     `No ${kind} named ${JSON.stringify(name)} in this export.`,
     candidates.length === 0
-      ? `Call list_components with kind "${kind}" to see what exists.`
-      : `Call list_components with kind "${kind}", or retry with one of the candidates.`,
+      ? `Call l5x_list_components with kind "${kind}" to see what exists.`
+      : `Call l5x_list_components with kind "${kind}", or retry with one of the candidates.`,
     candidates,
   )
 }

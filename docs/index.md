@@ -22,7 +22,7 @@ and what it does not](capabilities.md#what-an-image-cannot-prove).*
 
 ## Products
 
-One install, six products plus three support components and one surface. Each product page says what it
+One install, six products plus two support components and one surface. Each product page says what it
 adds, what it needs installed, the order to work in, and where it stops.
 
 | Product | Page |
@@ -31,11 +31,11 @@ adds, what it needs installed, the order to work in, and where it stops.
 | FactoryTalk View ME | [FactoryTalk View](products/ftview/README.md) · [Cross-referencing HMI to PLC](products/ftview/cross-reference.md) |
 | FactoryTalk Optix | [Optix](products/optix/README.md) · [NetLogic](products/optix/netlogic.md) · [Screens and layout](products/optix/screens.md) · [Project model](products/optix/project.md) · [Artwork](products/optix/artwork.md) · [Production readiness](products/optix/production.md) |
 | MotionWorks IEC | [MotionWorks IEC](products/mwi.md) |
-| ECAD electrical prints | [ECAD](products/ecad/README.md) · [AryaCAD bridge](products/ecad/aryacad-bridge.md) |
 | SLC 500 / PLC-5 → Logix migration | [Migration](products/migration.md) |
 | RSLogix 5 (PLC-5) reads | [PLC-5](products/plc5.md) |
+| RSLogix 500 (SLC 500 and MicroLogix) reads | [SLC 500](products/slc.md) |
 | Engineering resources (support) | [Resources](products/resources.md) |
-| Ladder, display and drawing previews (surface) | [Components](reference/components.md) |
+| Ladder, display and drawing previews (surface) | [Components](reference/components.md) · [Drawing preview](products/ecad/README.md) |
 
 [Product index](products/README.md) — the same pages with what each one is for in a sentence.
 
@@ -47,11 +47,12 @@ adds, what it needs installed, the order to work in, and where it stops.
 | [Components](reference/components.md) | The manifest: each row, its tools, its skill, its maturity, its probe and its gate, and the growth policy |
 | [HMI design](reference/hmi-design.md) | The shared screen grammar for both HMI products: the loop, the layout rules, the palette, and the rule-to-tool map |
 | [Standards checks](reference/standards-checks.md) | The rule IDs the checks cite, and the corpus they come from |
-| [Handbook](handbook/Engineering-Handbook.pdf) | The whole surface as a printable document, with the editable DOCX and HTML beside it |
+| [Knowledge plane](reference/knowledge.md) | The docs-tool contract: one source many compiled copies, the five actions, the envelope, BM25 constants, revision rules and licensing posture |
+| [Handbook](handbook/engineering-handbook.pdf) | The whole surface as a printable document, with the editable DOCX and HTML beside it |
 
 ## Reports and documents
 
-`document_project` writes two different things, and the difference is the point.
+`l5x_document_project` writes two different things, and the difference is the point.
 
 | Output | What it is for |
 |---|---|
@@ -73,6 +74,8 @@ because a document is evidence of what the export *contains*, not of what the ma
 |---|---|
 | [Packaging](development/packaging.md) | Build order, the vendor step, what the tarball ships, and the packaging gate |
 | [Retirement](development/retirement.md) | How a component leaves: rows, packages, entries, tests and documents together |
+| [Handbook build](development/handbook.md) | Markdown source model, the DOCX/HTML/PDF formats, the check, and how to add a page |
+| [Component scaffold](development/scaffold.md) | The copyable skeleton for a new component, and why it stays unmounted |
 | [Documentation pipeline](decisions/documentation-pipeline.md) | How PLC Copilot generates documents, reverse-engineered, and what this repository adopts from it |
 | [One package](handoff-one-package.md) | Why the bundle is one install instead of many plugins, with the criteria that would split one out |
 | [Changelog](../CHANGELOG.md) | Released and unreleased changes, one entry per version |
@@ -82,6 +85,8 @@ because a document is evidence of what the export *contains*, not of what the ma
 | Page | What it is for |
 |---|---|
 | [Port decisions](port/) (`l5x`, `ftview`, `mwi`, `ecad`, `optix`, `packaging`, `retirement`) | The measurements and decisions behind each product's shape, kept as history |
+| [Knowledge plane](decisions/knowledge-plane.md) | Why the knowledge library is a source library with synced copies, not a workspace dependency |
+| [Verification evidence](decisions/verification-evidence.md) | The three-state gate: pass, fail, and not-runnable on this host — and what substitute evidence each state needs |
 | [Optix design hardening](port/optix-design-hardening.md) · [Optix HMI lane](port/optix-hmi-design-lane.md) | How the Optix screens earned their layout rules |
 | [MachineAlarms.mal layout](research/machine-alarms-format.md) | Research notes on the format behind the alarm snapshot |
 

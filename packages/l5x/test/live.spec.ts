@@ -15,7 +15,7 @@ async function opened(options: { allowWrites?: boolean; approval?: { policy: 'as
   // The session is an object: the plugin scopes handles by `exec.agent.session`.
   const session = { id: 'session-1' }
   const agent = { agent: { session } }
-  const result = await l5x.call('open_project', { path: 'sample.l5x' }, agent)
+  const result = await l5x.call('l5x_open_project', { path: 'sample.l5x' }, agent)
   expect(result.error).toBeUndefined()
   return { definitions: l5x.definitions, written: l5x.written, call: (name: string, args: Record<string, unknown> = {}) => l5x.call(name, args, agent) }
 }
@@ -25,13 +25,13 @@ describe('live registration', () => {
     const { definitions } = liveHarness()
     const names = definitions.map(definition => definition.name)
     expect(names.slice(17)).toEqual([
-      'poll_live_tags',
-      'read_live_tags',
-      'read_controller_clock',
-      'discover_controllers',
-      'write_live_tag',
-      'write_controller_clock',
-      'start_plc_trend',
+      'l5x_poll_live_tags',
+      'l5x_read_live_tags',
+      'l5x_read_controller_clock',
+      'l5x_discover_controllers',
+      'l5x_write_live_tag',
+      'l5x_write_controller_clock',
+      'l5x_start_plc_trend',
     ])
   })
 })
@@ -39,7 +39,7 @@ describe('live registration', () => {
 describe('poll validation', () => {
   it('refuses a tag that is not a declared scalar', async () => {
     const l5x = await opened()
-    const polled = await l5x.call('poll_live_tags', {
+    const polled = await l5x.call('l5x_poll_live_tags', {
       ip_address: '192.168.1.10',
       tags: [{ name: 'No_Such_Tag' }],
     })
@@ -48,7 +48,7 @@ describe('poll validation', () => {
 
   it('refuses a JSON string where the tags array belongs', async () => {
     const l5x = await opened()
-    const polled = await l5x.call('poll_live_tags', {
+    const polled = await l5x.call('l5x_poll_live_tags', {
       ip_address: '192.168.1.10',
       tags: '[{"name":"Motor_1"}]',
     })
@@ -58,7 +58,7 @@ describe('poll validation', () => {
 
   it('refuses an address that is not IPv4', async () => {
     const l5x = await opened()
-    const polled = await l5x.call('poll_live_tags', { ip_address: 'not-an-ip', tags: [{ name: 'LineSpeed' }] })
+    const polled = await l5x.call('l5x_poll_live_tags', { ip_address: 'not-an-ip', tags: [{ name: 'LineSpeed' }] })
     expect(polled.error?.code).toBe('INVALID_CONTROLLER')
   })
 })
@@ -66,13 +66,13 @@ describe('poll validation', () => {
 describe('batch read validation', () => {
   it('refuses an undeclared tag before opening a connection', async () => {
     const l5x = await opened()
-    const result = await l5x.call('read_live_tags', { ip_address: '192.168.1.10', tags: [{ name: 'No_Such_Tag' }] })
+    const result = await l5x.call('l5x_read_live_tags', { ip_address: '192.168.1.10', tags: [{ name: 'No_Such_Tag' }] })
     expect(result.error?.code).toBe('UNSUPPORTED_WRITE_TAG')
   })
 
   it('refuses a JSON string where the tags array belongs', async () => {
     const l5x = await opened()
-    const result = await l5x.call('read_live_tags', { ip_address: '192.168.1.10', tags: '[{"name":"Motor_1"}]' })
+    const result = await l5x.call('l5x_read_live_tags', { ip_address: '192.168.1.10', tags: '[{"name":"Motor_1"}]' })
     expect(result.error?.code).toBe('INVALID_POLL')
   })
 })
@@ -80,39 +80,39 @@ describe('batch read validation', () => {
 describe('write gating', () => {
   it('refuses a write while the row switch is off, even with approval on', async () => {
     const l5x = await opened({ allowWrites: false, approval: { policy: 'ask' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
     expect(result.error?.code).toBe('WRITES_DISABLED')
     expect(result.error?.fix).toContain('allowWrites')
   })
 
   it('refuses a clock write while the row switch is off', async () => {
     const l5x = await opened({ allowWrites: false, approval: { policy: 'ask' } })
-    const result = await l5x.call('write_controller_clock', { ip_address: '192.168.1.10' })
+    const result = await l5x.call('l5x_write_controller_clock', { ip_address: '192.168.1.10' })
     expect(result.error?.code).toBe('WRITES_DISABLED')
   })
 
   it('refuses before contacting a controller when the session cannot ask', async () => {
     const l5x = await opened({ allowWrites: true, approval: { policy: 'never' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
     expect(result.error?.code).toBe('APPROVAL_UNAVAILABLE')
   })
 
   it('refuses when the human declines', async () => {
     const l5x = await opened({ allowWrites: true, approval: { policy: 'ask', outcome: 'rejected' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: 12 })
     expect(result.error?.code).toBe('APPROVAL_DENIED')
     expect(result.error?.fix).toContain('Nothing was sent to the controller')
   })
 
   it('rejects a value whose type does not match the declaration', async () => {
     const l5x = await opened({ allowWrites: true, approval: { policy: 'ask' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: true })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'LineSpeed', value: true })
     expect(result.error?.code).toBe('INVALID_WRITE')
   })
 
   it('refuses a UDT tag, which is not a scalar', async () => {
     const l5x = await opened({ allowWrites: true, approval: { policy: 'ask' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'Motor_1', value: 1 })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'Motor_1', value: 1 })
     expect(result.error?.code).toBe('UNSUPPORTED_WRITE_TAG')
   })
 
@@ -120,7 +120,7 @@ describe('write gating', () => {
     // Reads resolve aliases; a write must name the declared operand so the
     // controller changes exactly one known tag.
     const l5x = await opened({ allowWrites: true, approval: { policy: 'ask' } })
-    const result = await l5x.call('write_live_tag', { ip_address: '192.168.1.10', name: 'StartPB_Field', program: 'MainProgram', value: true })
+    const result = await l5x.call('l5x_write_live_tag', { ip_address: '192.168.1.10', name: 'StartPB_Field', program: 'MainProgram', value: true })
     expect(result.error?.code).toBe('UNSUPPORTED_WRITE_TAG')
     expect(result.error?.message).toContain('alias')
     expect(result.error?.message).toContain('write the tag it points at')
@@ -131,7 +131,7 @@ describe('write gating', () => {
 describe('discovery bounds', () => {
   it('refuses a window outside 1 to 15 seconds', async () => {
     const l5x = liveHarness()
-    const result = await l5x.call('discover_controllers', { duration_seconds: 60 })
+    const result = await l5x.call('l5x_discover_controllers', { duration_seconds: 60 })
     expect(result.error?.code).toBe('INVALID_POLL')
   })
 })
@@ -139,7 +139,7 @@ describe('discovery bounds', () => {
 describe('trend without a job service', () => {
   it('refuses before opening a controller connection', async () => {
     const l5x = await opened()
-    const trend = await l5x.call('start_plc_trend', {
+    const trend = await l5x.call('l5x_start_plc_trend', {
       ip_address: '192.168.1.10',
       tags: [{ name: 'LineSpeed' }],
       sample_count: 2,

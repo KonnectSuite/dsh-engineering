@@ -1,9 +1,9 @@
 # Getting started
 
 This bundle gives the host eight engineering surfaces behind one install: **Studio 5000 L5X**,
-**FactoryTalk View ME**, **FactoryTalk Optix**, **MotionWorks IEC**, **ECAD electrical prints**,
-**SLC 500 / PLC-5 → Logix migration**, **RSLogix 5 reads** and the **engineering resources** corpus.
-Each product is a *row* you can switch on or off, and each registers
+**FactoryTalk View ME**, **FactoryTalk Optix**, **MotionWorks IEC**,
+**SLC 500 / PLC-5 → Logix migration**, **RSLogix 5 reads**, **RSLogix 500 reads** and the
+**engineering resources** corpus. Each product is a *row* you can switch on or off, and each registers
 a **skill** (how the agent should work) plus **tools** (what it can do). You do not call tools yourself:
 you say what you want in the chat, and the agent loads the skill and the tools that match.
 
@@ -24,20 +24,18 @@ exports, prints and legacy programs.
 | FactoryTalk View ME | Read an export folder, check displays and tags, stage display edits | FactoryTalk View ME Studio to export the application and to import changes |
 | FactoryTalk Optix | Nothing: the project is read through the Studio bridge, and the bridge needs Studio | FactoryTalk Optix Studio open with the project loaded, and .NET 8 SDK for compile checks |
 | MotionWorks IEC | Read saved projects, code and variables | MotionWorks IEC 3 Pro running for live reads, edits and compile |
-| ECAD electrical prints | Read DXF prints, check them, render and compare them | None for reading; DWG goes through the embedded converter; authoring stays in AryaCAD Electrical |
 | Migration | Assess `.RSS`/`.ACH`/`.RSP` (or the `.SLC` export), lint a `.L5K`, resolve markers, write the report | None; RSLogix 500/5 only when the hidden automation-server read is wanted |
 | RSLogix 5 reads | Nothing without RSLogix 5 for the automation-server path; the container reader answers from the file | RSLogix 5 installed |
+| RSLogix 500 reads | The text export parser answers from a folder of RSLogix 500 text exports; the `.SLC` export is read through the same parser | RSLogix 500 installed for the automation-server path |
 | Resources | The standards corpus and the house-style profile | An open L5X or FactoryTalk View project for the profile |
-| Preset | The workflow contract, compaction and ledger | Nothing |
-| Viewers | The ladder, display and drawing previews | Nothing |
+| Viewers | The ladder, display and DXF/DWG drawing previews | Nothing |
 
 ## 2. Install and confirm
 
 Install **Engineering** from the market (**Plugins → Arya Plugin Market → Engineering**), or add
-`@aryacode/dsh-engineering` to the profile bundle list. After it loads, the Engineering card lists ten
-rows. Eight ship on; `ecad` and `plc5` ship off, because a profile that does not do electrical prints or
-RSLogix 5 reads should not pay their context. Turn any row off if the machine has no vendor software for
-it.
+`@aryacode/dsh-engineering` to the profile bundle list. After it loads, the Engineering card lists nine
+rows. Seven ship on; `plc5` and `slc` ship off, because a profile that does not do legacy reads should
+not pay their context. Turn any row off if the machine has no vendor software for it.
 
 Confirm the skills are present by asking for one of these in a new chat:
 
@@ -50,10 +48,10 @@ Plugins page is the truth: a row reads **Running** only when its entry mounted.
 ### What it looks like
 
 The Engineering card on the Plugins page, captured on a Dev AryaCode host with the 0.102.0 install —
-ten rows, eight running, `ecad` and `plc5` off. That install still carried the `preset` row, which has
-since been removed, so both figures below need a re-shoot:
+ten rows, eight running. That install predates this release (it carried the since-removed `preset` row
+and a since-retired product row), so the counts do not match; both figures below need a re-shoot:
 
-![The Engineering card on the Plugins page: ten component rows, eight running, ecad and plc5 off](images/dev-components.png)
+![The Engineering card on the Plugins page: ten component rows, eight running](images/dev-components.png)
 
 The row named `@aryacode/dsh-engineering` (the `viewers` row) mounts the package root, so it shows the
 package name and description instead of a product title, and it owns all three file viewers. Switching a
@@ -69,9 +67,8 @@ including this page's "Where it appears" section, is in
 1. **Point at the work.** A workspace folder with the export, project or print set, or an application
    name for FactoryTalk View ME.
 2. **Read before writing.** Overview, structure, references, checks. The agent should quote what it read.
-3. **Act in a copy.** L5X, FactoryTalk View, Optix screens and ECAD review bundles write **new** files or
-   folders and never touch the source; MotionWorks edits the saved project after taking a verified
-   backup.
+3. **Act in a copy.** L5X, FactoryTalk View and Optix screens write **new** files or folders and never
+   touch the source; MotionWorks edits the saved project after taking a verified backup.
 4. **Verify.** Re-read the written file, or run the vendor engine (SDK build, ME re-export, MWI compile,
    Optix build, schema validation). "Done" means the check passed, not that a file was written.
 5. **Hand off or download.** Some steps are deliberately human: importing displays in Studio, building
@@ -89,7 +86,7 @@ Then, for a change:
 
 > Add a seal-in rung for `StartPB`/`StopPB` driving `SystemRunning` in `MainProgram/MainRoutine`, rung 7.
 
-The agent composes the rung with the instruction catalog (`list_instructions`, `compose_rung`), stages it,
+The agent composes the rung with the instruction catalog (`l5x_list_instructions`, `l5x_compose_rung`), stages it,
 validates the whole draft, and applies to a new `.L5X`. With Studio 5000 and the SDK installed, ask for a
 build; with a controller, ask for a supervised download. Detail: [L5X](products/l5x.md).
 
@@ -149,16 +146,13 @@ lacks. Detail: [Optix](products/optix/README.md), and
 The agent starts the IDE, takes a backup under `<workspace>/backups/motionworks/`, edits the saved
 project, compiles and reads the diagnostics. Detail: [MotionWorks IEC](products/mwi.md).
 
-### ECAD electrical prints
+### DXF/DWG drawings
 
-> Review these drawing prints and give me the findings.
+> Open `PanelLayout.dxf` and show me sheet 3.
 
-> Which sheets reference `K1`? Build me a review bundle.
-
-The agent reads the DXF (DWG through the embedded converter), indexes sheets and title blocks, proposes
-cross-references with a confidence, runs the checks, and writes a review or backup bundle. Authoring a
-print is AryaCAD Electrical's job, bridged through its own MCP row. Detail:
-[ECAD](products/ecad/README.md).
+The drawing preview opens the sheet in the document tab and draws it read-only: pan, zoom, layer
+filtering and text search, with DWG going through the embedded converter. It needs no vendor software.
+Detail: [Drawing preview](products/ecad/README.md).
 
 ### Legacy migration
 

@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "collection": "l5x-errors",
+  "title": "L5X error codes and fixes",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 13,
+  "pages": [
+    {
+      "id": "error-code-index",
+      "title": "L5X tool error code index",
+      "section": "Tool errors",
+      "body": "pages/error-code-index.md",
+      "identifiers": [
+        "ERROR CODE INDEX"
+      ]
+    },
+    {
+      "id": "error-envelope",
+      "title": "The failure envelope every tool returns",
+      "section": "Tool errors",
+      "body": "pages/error-envelope.md",
+      "identifiers": [
+        "ERROR ENVELOPE",
+        "INTERNAL"
+      ]
+    },
+    {
+      "id": "error-import-export",
+      "title": "Import, export and stale-file errors",
+      "section": "Tool errors",
+      "body": "pages/error-import-export.md",
+      "identifiers": [
+        "STALE_EXPORT",
+        "ACD_CHANGED",
+        "OUTPUT_EXISTS"
+      ]
+    },
+    {
+      "id": "error-instruction-not-in-revision",
+      "title": "INSTRUCTION_NOT_IN_REVISION and the revision guard",
+      "section": "Tool errors",
+      "body": "pages/error-instruction-not-in-revision.md",
+      "identifiers": [
+        "INSTRUCTION_NOT_IN_REVISION"
+      ]
+    },
+    {
+      "id": "error-invalid-operand",
+      "title": "INVALID_OPERAND and the operand slot model",
+      "section": "Tool errors",
+      "body": "pages/error-invalid-operand.md",
+      "identifiers": [
+        "INVALID_OPERAND"
+      ]
+    },
+    {
+      "id": "error-revision-required",
+      "title": "REVISION_REQUIRED when a help collection needs a revision",
+      "section": "Tool errors",
+      "body": "pages/error-revision-required.md",
+      "identifiers": [
+        "REVISION_REQUIRED"
+      ]
+    },
+    {
+      "id": "error-source-not-installed",
+      "title": "SOURCE_NOT_INSTALLED and the searched roots",
+      "section": "Tool errors",
+      "body": "pages/error-source-not-installed.md",
+      "identifiers": [
+        "SOURCE_NOT_INSTALLED"
+      ]
+    },
+    {
+      "id": "error-tag-not-found",
+      "title": "TAG_NOT_FOUND and l5x_resolve_tag",
+      "section": "Tool errors",
+      "body": "pages/error-tag-not-found.md",
+      "identifiers": [
+        "TAG_NOT_FOUND"
+      ]
+    },
+    {
+      "id": "error-unknown-instruction",
+      "title": "UNKNOWN_INSTRUCTION and nearest catalogue names",
+      "section": "Tool errors",
+      "body": "pages/error-unknown-instruction.md",
+      "identifiers": [
+        "UNKNOWN_INSTRUCTION"
+      ]
+    },
+    {
+      "id": "error-jsr-without-return",
+      "title": "JSR without a return path, and SBR outside the first rung",
+      "section": "Studio compiler errors",
+      "body": "pages/error-jsr-without-return.md",
+      "identifiers": [
+        "JSR_WITHOUT_RETURN",
+        "SBR_NOT_FIRST",
+        "RxCMP_E_AUDIT_INVALIDNOOFOPS"
+      ]
+    },
+    {
+      "id": "error-rung-not-output",
+      "title": "RUNG_NO_OUTPUT: the rung never drives the right rail",
+      "section": "Studio compiler errors",
+      "body": "pages/error-rung-not-output.md",
+      "identifiers": [
+        "RUNG_NO_OUTPUT",
+        "RxCMP_E_AUDIT_INVALIDOPTYPE"
+      ]
+    },
+    {
+      "id": "error-serial-port-instruction",
+      "title": "Serial port instructions on controllers without a serial port",
+      "section": "Studio compiler errors",
+      "body": "pages/error-serial-port-instruction.md",
+      "identifiers": [
+        "SERIAL_PORT_INSTRUCTION_UNSUPPORTED"
+      ]
+    },
+    {
+      "id": "error-evidence-gaps",
+      "title": "Evidence gaps: what a passing check does not prove",
+      "section": "Evidence gaps",
+      "body": "pages/error-evidence-gaps.md",
+      "identifiers": [
+        "COVERAGE",
+        "UNVERIFIED"
+      ]
+    }
+  ]
+}

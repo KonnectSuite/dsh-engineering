@@ -5,7 +5,7 @@ domain: craft
 level: practitioner
 basis: [ISA-101 HMI lifecycle, ARC/ASM HMI design guidance, field practice]
 tags: [engagement, brief, inventory, template, standards, first-move]
-applies_to: [l5x, ftview, optix, plc5, mwi, ecad, migration]
+applies_to: [l5x, ftview, optix, plc5, mwi, migration]
 rules: [CRAFT-ORD-01, CRAFT-ORD-02, CRAFT-ORD-03, CRAFT-ORD-04]
 ---
 ## Principle

@@ -1,0 +1,2623 @@
+{
+  "schema": 1,
+  "provenance": {
+    "source": "Studio 5000 Logix Designer installed help, parsed structurally",
+    "helpVersions": [
+      "36.00.00",
+      "37.05.00"
+    ],
+    "v37Parse": "clinset topic page titles and file names; one revision shard per installed help tree",
+    "v36Parse": "search.json titles with toc.json Instruction Set ancestry",
+    "spellingPairs": "legacy/current spellings from packages/l5x/src/engine/mnemonics.ts; either spelling answers at either revision",
+    "generator": "scripts/gen-l5x-knowledge.mjs"
+  },
+  "instructions": [
+    {
+      "mnemonic": "ABL",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ABS",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ACB",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ACL",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ACOS",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ACS",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ADD",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AFI",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AHL",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ALM",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ALMA",
+      "family": "Alarm Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ALMD",
+      "family": "Alarm Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AND",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ARD",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ARL",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "ASIN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ASN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ASO",
+      "family": "Alarm Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ATAN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ATAN2",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ATN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AVC",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AVE",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "AWA",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "AWT",
+      "family": "ASCII Serial Port Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "BAND",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BCD_TO",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BNOT",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BOR",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BPT",
+      "family": "Debug Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BRK",
+      "family": "For/Break Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BSL",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BSR",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BTD",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BTDT",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "BXOR",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CBCM",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CBIM",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CBSSM",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CC",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CLR",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CMP",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CONCAT",
+      "family": "ASCII String Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "COP",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00"
+      ]
+    },
+    {
+      "mnemonic": "COS",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CPM",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CPS",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CPT",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CROUT",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CSM",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CTD",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CTU",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "CTUD",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "D2SD",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "D3SD",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCAF",
+      "family": "Safety Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCM",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCS",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCSRT",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCST",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCSTL",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DCSTM",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DDT",
+      "family": "Special Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DEDT",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DEG",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DELETE",
+      "family": "ASCII String Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DERV",
+      "family": "Filter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DFF",
+      "family": "Logical and Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DIN",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DIV",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DTOS",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "DTR",
+      "family": "Special Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ENPEN",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EOT",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EPMS",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EQ",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EQU",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ERR",
+      "family": "Shared Instruction Topics",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ESEL",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ESTOP",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EVENT",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "EXPT",
+      "family": "Advanced Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FAL",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FBC",
+      "family": "Special Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FFL",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FFU",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FGEN",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FIND",
+      "family": "ASCII String Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FLL",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FOR",
+      "family": "For/Break Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FPMS",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FRD",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FSBM",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "FSC",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "GE",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "GEQ",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "GRT",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "GSV",
+      "family": "Input/Output Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "GT",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "HLL",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "HMIBC",
+      "family": "HMI Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "HPF",
+      "family": "Filter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "IMC",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "INSERT",
+      "family": "ASCII String Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "INTG",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "IOT",
+      "family": "Input/Output Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ISINF",
+      "family": "Compare Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ISNAN",
+      "family": "Compare Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "JKFF",
+      "family": "Logical and Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "JMP",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "JSR",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "JXR",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LBL",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LC",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LDL2",
+      "family": "Filter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LDLG",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LE",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LEQ",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LES",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LFL",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LFU",
+      "family": "Array (File)/Shift Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LIM",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LIMIT",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LN",
+      "family": "Advanced Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LOG",
+      "family": "Advanced Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LOWER",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LPF",
+      "family": "Filter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LT",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "LV",
+      "family": "License Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAAT",
+      "family": "Motion Configuration Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAFR",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAG",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAH",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAHD",
+      "family": "Motion Configuration Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAJ",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAM",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAOC",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAPC",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAR",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAS",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MASD",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MASR",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MATC",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAVE",
+      "family": "Statistical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAW",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MAXC",
+      "family": "Statistical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCCD",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCCM",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCCP",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCD",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCLM",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCPM",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCR",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCS",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCSD",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCSR",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCSV",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCT",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCTO",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCTP",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MCTPO",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDAC",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDCC",
+      "family": "Multi-Axis Coordinated Motion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDF",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDO",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDOC",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDR",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDS",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MDW",
+      "family": "Motion Event Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MEQ",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MGS",
+      "family": "Motion Group Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MGSD",
+      "family": "Motion Group Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MGSP",
+      "family": "Motion Group Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MGSR",
+      "family": "Motion Group Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MID",
+      "family": "ASCII String Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MINC",
+      "family": "Statistical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MMC",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MMVC",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MOD",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MOV",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MOVE",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MRAT",
+      "family": "Motion Configuration Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MRHD",
+      "family": "Motion Configuration Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MRP",
+      "family": "Motion Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MSF",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MSG",
+      "family": "Input/Output Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MSO",
+      "family": "Motion State Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MSTD",
+      "family": "Statistical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MUL",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MUX",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MVC",
+      "family": "Metal Form Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MVM",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "MVMT",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NE",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NEG",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NEQ",
+      "family": "Compare Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NOP",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NOT",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "NTCH",
+      "family": "Filter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ONS",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OR",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OSF",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OSFI",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OSR",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OSRI",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OTE",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OTL",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "OTU",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PAH",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PAI",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PAID",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PAIM",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PAO",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PATT",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PBL",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PCE",
+      "family": "Shared Instruction Topics",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PCLF",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PCMD",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PCMDSRC",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PD4SD",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PDBC",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PDET",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PDI",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PDO",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PDOSE",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PFL",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PFO",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PHLS",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PI",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PID",
+      "family": "Special Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PIDE",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PINTLK",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PLLS",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PMTR",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PMUL",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PNPOS",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "POSP",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "POVR",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PPD",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PPERM",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PPID",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PPTC",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PRI",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PRNP",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PRT",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PSC",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PTST",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PVLV",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PVLVMP",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PVLVS",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PVSD",
+      "family": "PlantPAx Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "PXRQ",
+      "family": "Equipment Phase Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RAD",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "REF",
+      "family": "Input/Output Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RES",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RESD",
+      "family": "Logical and Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RET",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RIN",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RLIM",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RMPS",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "ROUT",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RTO",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RTOR",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "RTOS",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SASI",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SATT",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SBC",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SBR",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SCL",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SCLF",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SCMD",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SCRV",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SDET",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SDI",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SEL",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SETD",
+      "family": "Logical and Move Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SFP",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SFR",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SFX",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SIN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SIZE",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SLP",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SLS",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SMAT",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SNEG",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SOC",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SOS",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SOVR",
+      "family": "Equipment Sequence Diagram Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SQI",
+      "family": "Sequencer Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SQL",
+      "family": "Sequencer Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SQO",
+      "family": "Sequencer Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SQR",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SQRT",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SRT",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SRTP",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SS1",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SS2",
+      "family": "Drive Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SSUM",
+      "family": "Select/Limit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SSV",
+      "family": "Input/Output Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "STD",
+      "family": "Array File-Misc Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "STOD",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "STOR",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SUB",
+      "family": "Compute/Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "SWPB",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TAN",
+      "family": "Trigonometric Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "THRS",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "THRSE",
+      "family": "Safety Instructions",
+      "revisions": [
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TND",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TOD",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TOF",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TOFR",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TON",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TONR",
+      "family": "Timer and Counter Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TOT",
+      "family": "Process Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TO_BCD",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TPT",
+      "family": "Debug Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TRN",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TRUNC",
+      "family": "Math Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TSAM",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "TSSM",
+      "family": "Safety Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "UIE",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "UNK",
+      "family": "Program Control Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "UPDN",
+      "family": "Drives Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "UPPER",
+      "family": "ASCII Conversion Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "XIC",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "XIO",
+      "family": "Bit Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "XOR",
+      "family": "Move/Logical Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    },
+    {
+      "mnemonic": "XPY",
+      "family": "Advanced Math Instructions",
+      "revisions": [
+        "36.00.00",
+        "37.05.00"
+      ]
+    }
+  ]
+}

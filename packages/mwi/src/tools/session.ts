@@ -11,6 +11,7 @@
 import { boolean, choice, integer, object, string } from '../core/params.ts'
 import { success } from '../core/result.ts'
 import { MwiError } from '../core/errors.ts'
+import { MWI_KNOWN_VERSIONS, MWI_PRODUCT, MWI_VERSION_LINE, probeMwiHost, type MwiProbe } from '../core/host.ts'
 import { tool, type ToolDefinition } from '../core/tool.ts'
 import { findProjects, stageRootOf, workspaceOf } from '../session/workspace.ts'
 import { listBackups } from '../session/backup.ts'
@@ -43,9 +44,10 @@ async function optional(call: () => Promise<Record<string, unknown>>): Promise<R
  * The session tools.
  *
  * @param runtimeOf - Workspace runtime factory; defaults to the PowerShell bridge.
+ * @param probeOf - Host probe factory; defaults to the real installation probe.
  * @returns Tool definitions in registration order.
  */
-export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly ToolDefinition[] {
+export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor, probeOf: () => MwiProbe = () => probeMwiHost()): readonly ToolDefinition[] {
   return [
     tool({
       name: 'mw_project_find',
@@ -80,11 +82,34 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
       parameters: object({}),
       async run(_args, exec) {
         const workspace = workspaceOf(exec.cwd)
+        const probe = probeOf()
+        const installation = {
+          installed: probe.installed,
+          platform: probe.platform,
+          displays: probe.displays,
+          looked_for: probe.looked_for,
+          fix: probe.fix,
+          detail: probe.detail,
+        }
         const status = await optional(async () => await runtimeOf(workspace).status())
         if (status === undefined) {
+          const detected = probe.installed
+            ? probe.displays.length > 0
+              ? `Installed MotionWorks IEC v3 version(s): ${probe.displays.join(', ')}.`
+              : 'The vendor executable was found, but no version string was recorded.'
+            : `No ${MWI_PRODUCT} installation was detected; the probe inspected ${probe.looked_for.length} locations and none reported a version.`
           return success(
-            'MotionWorks IEC is not running.',
-            { ide_running: false, workspace, stage_root: stageRootOf(workspace) },
+            `MotionWorks IEC is not running. ${detected}`,
+            {
+              ide_running: false,
+              workspace,
+              stage_root: stageRootOf(workspace),
+              installed_versions: probe.displays,
+              known_versions: [...MWI_KNOWN_VERSIONS],
+              known_line: MWI_VERSION_LINE,
+              installation,
+              ...(probe.installed ? {} : { code: 'NOT_INSTALLED' }),
+            },
             [{ tool: 'mw_ide_start', why: 'Start the IDE with a staged workspace project.' }],
             IDE_COVERAGE,
           )
@@ -97,7 +122,16 @@ export function sessionTools(runtimeOf: RuntimeFactory = runtimeFor): readonly T
             : status.is_project_open === true
               ? `MotionWorks IEC is running with ${String(status.active_project ?? 'a project')} open.`
               : 'MotionWorks IEC is running with no project open.',
-          { workspace, stage_root: stageRootOf(workspace), ...status, ...(state === undefined ? {} : { ide_state: state }) },
+          {
+            workspace,
+            stage_root: stageRootOf(workspace),
+            ...status,
+            installed_versions: probe.displays,
+            known_versions: [...MWI_KNOWN_VERSIONS],
+            known_line: MWI_VERSION_LINE,
+            installation,
+            ...(state === undefined ? {} : { ide_state: state }),
+          },
           blocked
             ? [{ tool: 'mw_ide_status', why: 'Re-read after the dialog is resolved.' }]
             : [{ tool: 'mw_project_find', why: 'Confirm the project is the one in the workspace.' }],

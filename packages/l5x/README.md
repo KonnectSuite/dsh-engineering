@@ -7,16 +7,16 @@ Studio 5000 L5X tools for the `dsh-engineering` bundle. Four loader entries shar
 | `dsh-engineering-l5x` | 11 offline read and reference tools | Node |
 | `dsh-engineering-l5x/editing` | 9 `draft_*` tools | the read entry |
 | `dsh-engineering-l5x/studio` | 6 Logix Designer SDK tools and 7 supervised controller tools | Studio 5000, Logix Designer SDK, FactoryTalk Linx |
-| `dsh-engineering-l5x/live` | 7 EtherNet/IP tools: `poll_live_tags`, `read_live_tags`, `read_controller_clock`, `discover_controllers`, `start_plc_trend`, and the approval-gated `write_live_tag`, `write_controller_clock` | a reachable controller for reads; the row's `allowWrites` plus human approval for writes |
+| `dsh-engineering-l5x/live` | 7 EtherNet/IP tools: `l5x_poll_live_tags`, `l5x_read_live_tags`, `l5x_read_controller_clock`, `l5x_discover_controllers`, `l5x_start_plc_trend`, and the approval-gated `l5x_write_live_tag`, `l5x_write_controller_clock` | a reachable controller for reads; the row's `allowWrites` plus human approval for writes |
 
 The `rockwell-l5x` guidance ships as the separate `dsh-engineering-l5x/skill` entry, and the PLC
 trend card ships as the client face (`dsh.client`).
 
 ## Read surface
 
-`open_project` opens one export and returns a `project_id`. `project_overview`, `list_components` and
-`get_component` walk the structure; `search_logic`, `find_references`, `trace_dependencies`,
-`resolve_tag` and `usage_map` answer where a symbol is used; `run_checks` and `compare_projects`
+`l5x_open_project` opens one export and returns a `project_id`. `l5x_project_overview`, `l5x_list_components` and
+`l5x_get_component` walk the structure; `l5x_search_logic`, `l5x_find_references`, `l5x_trace_dependencies`,
+`l5x_resolve_tag` and `l5x_usage_map` answer where a symbol is used; `l5x_run_checks` and `l5x_compare_projects`
 produce review evidence. Every result carries `summary`, `data`, `coverage` and `next`.
 
 Reading accepts L5X revision 19 or later and never needs Studio. A changed export is refused with
@@ -24,19 +24,19 @@ Reading accepts L5X revision 19 or later and never needs Studio. A changed expor
 
 ## Editing
 
-`draft_rung`, `draft_st`, `draft_routine`, `draft_tag`, `draft_tag_description`, `draft_udt_member` and
-`draft_udt_description` append one operation per call; `draft_validate` prepares the draft and
-`draft_apply` writes one new L5X beside the source. Nothing overwrites, imports, connects or changes
+`l5x_draft_rung`, `l5x_draft_st`, `l5x_draft_routine`, `l5x_draft_tag`, `l5x_draft_tag_description`, `l5x_draft_udt_member` and
+`l5x_draft_udt_description` append one operation per call; `l5x_draft_validate` prepares the draft and
+`l5x_draft_apply` writes one new L5X beside the source. Nothing overwrites, imports, connects or changes
 a controller. The whole editing path needs Node only — no Studio, no Logix Designer SDK, no Linx. The
 engineer imports the new L5X into Studio 5000, which is the normal workflow, not a fallback; the SDK
 row is an optional extra for people who bought it.
 
 ## Studio and controller
 
-`studio_sdk_status`, `studio_capabilities`, `export_acd_to_l5x`, `verify_offline_l5x`,
-`build_acd_from_draft` and `studio_review_evidence` cover offline SDK work. The controller tools
-(`capture_controller_snapshot`, `go_online`, `read_controller_mode`, `read_live_tag`,
-`change_controller_mode`, `download_project`, `controller_approval_status`) are read-only unless the
+`l5x_studio_sdk_status`, `l5x_studio_capabilities`, `l5x_export_acd_to_l5x`, `l5x_verify_offline_l5x`,
+`l5x_build_acd_from_draft` and `l5x_studio_review_evidence` cover offline SDK work. The controller tools
+(`l5x_capture_controller_snapshot`, `l5x_go_online`, `l5x_read_controller_mode`, `l5x_read_live_tag`,
+`l5x_change_controller_mode`, `l5x_download_project`, `l5x_controller_approval_status`) are read-only unless the
 operation is an upload, mode change or download; those require per-call human approval and a
 `verification_id` from a passed build.
 
@@ -46,18 +46,18 @@ Reads need no approval and no Studio, Linx, ACD or SDK:
 
 | Tool | What it does |
 |---|---|
-| `poll_live_tags` | Timed sweeps of 1–16 declared scalar tags, with quality and controller identity |
-| `read_live_tags` | Up to 64 declared scalars in **one** request (CIP tag group) |
-| `read_controller_clock` | Identity plus the wall clock beside the workstation clock and their offset (L8x) |
-| `discover_controllers` | Bounded UDP broadcast discovery of EtherNet/IP devices on the LAN |
-| `start_plc_trend` | Session-owned trend job the chart follows without a model call per sample |
+| `l5x_poll_live_tags` | Timed sweeps of 1–16 declared scalar tags, with quality and controller identity |
+| `l5x_read_live_tags` | Up to 64 declared scalars in **one** request (CIP tag group) |
+| `l5x_read_controller_clock` | Identity plus the wall clock beside the workstation clock and their offset (L8x) |
+| `l5x_discover_controllers` | Bounded UDP broadcast discovery of EtherNet/IP devices on the LAN |
+| `l5x_start_plc_trend` | Session-owned trend job the chart follows without a model call per sample |
 
 Two writes exist and are **supervised**, not merely available:
 
 | Tool | What it changes |
 |---|---|
-| `write_live_tag` | One declared scalar, then read back over CIP |
-| `write_controller_clock` | The controller wall clock (L8x), then read back |
+| `l5x_write_live_tag` | One declared scalar, then read back over CIP |
+| `l5x_write_controller_clock` | The controller wall clock (L8x), then read back |
 
 A write needs the row's `allowWrites` switch **and** a human approving that exact operation: with
 `allowWrites` on and a `never` policy the tool refuses with `APPROVAL_UNAVAILABLE` before opening a

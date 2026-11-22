@@ -8,7 +8,7 @@ each inside the package. Nothing here changes the licence of the bundle itself.
 
 ### acadrust 0.6.8 — MPL-2.0, with ACadSharp code — MIT
 
-The ECAD component converts DWG to DXF through a compiled Rust module,
+The drawing viewer converts DWG to DXF through a compiled Rust module,
 `vendor/ecad/assets/acadrust.wasm`. `acadrust` is MPL-2.0 (file-level copyleft); its DWG codec is
 ported from ACadSharp (MIT, © 2021 Albert Domenech). The unmodified crate is the MPL-covered source
 form and stays available from upstream; the repository pins the exact version in

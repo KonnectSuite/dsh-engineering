@@ -10,7 +10,7 @@ export const inject = ['slots', 'locale', 'remote']
 export function apply(ctx: ClientScope): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'l5x-live: trend copy')
   ctx.slots.inject('tool.call.toolview', () => ctx.slots.register({
-    name: 'tool.call.toolview', key: 'start_plc_trend', locale: NS,
+    name: 'tool.call.toolview', key: 'l5x_start_plc_trend', locale: NS,
     inject: () => ({ trendJobs: ctx.remote.job }),
   }, TrendCard))
 }

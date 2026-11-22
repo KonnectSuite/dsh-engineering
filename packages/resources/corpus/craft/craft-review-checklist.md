@@ -21,7 +21,7 @@ Handover is a review, not a save. Walk the same list every time, and record what
 
 ## Apply
 
-Run the product's own checks first — `run_checks` for an L5X, `ftview_check` for a display export — then the human walkthrough with the
+Run the product's own checks first — `l5x_run_checks` for an L5X, `ftview_check` for a display export — then the human walkthrough with the
 operator.
 
 ## Anti-patterns

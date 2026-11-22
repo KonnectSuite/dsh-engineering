@@ -9,7 +9,8 @@ from .tasks import read_tasks
 from .program_checks import mask
 from .workflow import source_manifest
 
-# Exact native empty GB emitted by MotionWorks IEC 3 Pro / Ade 1.19.
+# Exact native empty GB emitted by MotionWorks IEC 3 Pro / Ade automation library 1.19.
+# (1.19 is the Ade/math-library version, not the product release; the v3 line is 3.0.3-3.7.5.)
 # Independently observed in two LD and two FBD creations. Unknown versions,
 # truncated bodies and populated bodies must not be inferred to be empty.
 EMPTY_GRAPH_SHA256 = '09985918e42e9108dd10f5d67cbafa125bd4938821c6c6efe160e735b49492bb'

@@ -63,7 +63,7 @@ export function withStagedTags(project: ProjectSnapshot, tags: readonly StagedTa
     name: tag.name,
     dataType: tag.data_type,
     scope: tag.scope,
-    description: 'Staged in this draft; nothing is written until draft_apply.',
+    description: 'Staged in this draft; nothing is written until l5x_draft_apply.',
     ...(tag.dimensions === undefined ? {} : { dimensions: tag.dimensions }),
   }))
   return { ...project, stagedTags: declared }

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "collection": "all",
+  "cases": [
+    { "id": "q01", "query": "How does an on-delay timer work?", "expect": ["rslogix500-instruction-set"], "kind": "answer" },
+    { "id": "q02", "query": "What does XIO do?", "expect": ["rslogix500-instruction-set"], "kind": "answer" },
+    { "id": "q03", "query": "How do I address input slot 1 bit 0?", "expect": ["rslogix500-io-configuration"], "kind": "answer" },
+    { "id": "q04", "query": "What is the S:2 fault code word?", "expect": ["rslogix500-processor-status"], "kind": "answer" },
+    { "id": "q05", "query": "What does the S:13 overflow trap mean?", "expect": ["rslogix500-processor-status"], "kind": "answer" },
+    { "id": "q06", "query": "How do I read a documentation export?", "expect": ["rslogix500-database-export-grammar"], "kind": "answer" },
+    { "id": "q07", "query": "What is an .RSS file?", "expect": ["rslogix500-legacy-file-formats"], "kind": "answer" },
+    { "id": "q08", "query": "Can I read an .ACH file?", "expect": ["rslogix500-legacy-file-formats"], "kind": "answer" },
+    { "id": "q09", "query": "How are data files numbered in an SLC 500 address?", "expect": ["rslogix500-addressing-data-files"], "kind": "answer" },
+    { "id": "q10", "query": "Which status word is the index register?", "expect": ["rslogix500-processor-status"], "kind": "answer" },
+    { "id": "q11", "query": "What happens on a watchdog fault?", "expect": ["rslogix500-common-faults"], "kind": "answer" },
+    { "id": "q12", "query": "Why does an .SLC symbol look truncated?", "expect": ["rslogix500-addressing-data-files"], "kind": "answer" },
+    { "id": "q13", "query": "How does the I/O census count slots?", "expect": ["rslogix500-io-configuration"], "kind": "answer" },
+    { "id": "q14", "query": "What is a timer preset field?", "expect": ["rslogix500-addressing-data-files"], "kind": "answer" },
+    { "id": "q15", "query": "How do I compare a project with an export?", "expect": ["rslogix500-database-export-grammar"], "kind": "answer" },
+    { "id": "q16", "query": "TON", "expect": ["rslogix500-instruction-set"], "kind": "exact" },
+    { "id": "q17", "query": "N7:0", "expect": ["rslogix500-addressing-data-files"], "kind": "exact" },
+    { "id": "q18", "query": "B3:0", "expect": ["rslogix500-addressing-data-files"], "kind": "exact" },
+    { "id": "q19", "query": ".RSS", "expect": ["rslogix500-legacy-file-formats"], "kind": "exact" },
+    { "id": "q20", "query": "How do I configure a ControlLogix producer and consumer tag?", "expect": [], "kind": "no-match" },
+    { "id": "q21", "query": "What is the FactoryTalk View alarm summary syntax?", "expect": [], "kind": "no-match" },
+    { "id": "q22", "query": "How do I flash a 1756-L83E controller firmware?", "expect": [], "kind": "no-match" }
+  ]
+}

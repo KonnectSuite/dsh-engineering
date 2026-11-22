@@ -17,6 +17,7 @@ import { checkTools } from './tools/checks.ts'
 import { documentTools } from './tools/document.ts'
 import { previewTools } from './tools/preview.ts'
 import { diagramTools } from './tools/diagram.ts'
+import { docsTools } from './docs.ts'
 
 /** Plugin name in a composition. */
 export const name = 'l5x-read'
@@ -48,7 +49,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   const policy = ctx.get?.('sandboxPolicy') as SandboxPolicyResolver | undefined
   const session = new ProjectSession(ctx.fs, maxFileBytes, policy)
   ctx.provide?.(PROJECTS_SERVICE, session)
-  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session), ...documentTools(session), ...previewTools(session), ...diagramTools(session)]) {
+  for (const definition of [...readTools(session), ...referenceTools(session), ...checkTools(session), ...documentTools(session), ...previewTools(session), ...diagramTools(session), ...docsTools(ctx)]) {
     ctx.tools.register(definition)
   }
 }
@@ -60,6 +61,7 @@ export { checkTools } from './tools/checks.ts'
 export { documentTools } from './tools/document.ts'
 export { previewTools } from './tools/preview.ts'
 export { diagramTools } from './tools/diagram.ts'
+export { docsTools, checkInstructionRevision, loadInstructionVersions, L5X_DOCS_TOOL_NAME } from './docs.ts'
 export { L5xError } from './core/errors.ts'
 export type { NextStep, Coverage, Success } from './core/result.ts'
 export type { ToolDefinition } from './core/tool.ts'

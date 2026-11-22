@@ -105,7 +105,7 @@ function tableOf(document: L5xDocument): SymbolTable {
  * operand behind an alias is not a declared `<Tag>` — module I/O such as
  * `FanFold_StraightCut_AENTR:2:I.7` — which is common in a real project: those
  * references are proven by the export, not missing. Fall back to the canonical
- * resolver (the one behind `resolve_tag`) before declaring a symbol unresolved.
+ * resolver (the one behind `l5x_resolve_tag`) before declaring a symbol unresolved.
  */
 /**
  * Scopes in which one symbol resolves.

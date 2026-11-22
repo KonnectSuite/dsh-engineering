@@ -1,8 +1,9 @@
 # FactoryTalk View ME
 
-`@aryacode/dsh-engineering` ships 51 tools that read a FactoryTalk View ME text export, check its
+`@aryacode/dsh-engineering` ships 52 tools that read a FactoryTalk View ME text export, check its
 structure, compare two exports, author displays and HMI tags into a new export folder, render the screens
-before anyone imports them, and package the result for Studio's Graphics Import Export Wizard.
+before anyone imports them, package the result for Studio's Graphics Import Export Wizard, and search the
+authored FactoryTalk View corpus.
 
 The component is a beta product: one ME application export is measured end to end, and the Studio import
 and PanelView Plus runtime remain the engineer's steps, not the bundle's.
@@ -14,7 +15,7 @@ and PanelView Plus runtime remain the engineer's steps, not the bundle's.
 | Component id | `ftview` — *FactoryTalk View ME* |
 | Capability class | `offline-file` (it reads an export folder; Studio is used only for discovery, export and import) |
 | Stability | beta, since `v0.4.4` |
-| Tools | 51 in the `ftview_` namespace — 23 read, 25 edit, 3 Studio |
+| Tools | 52 in the `ftview_` namespace — 23 read, 25 edit, 3 Studio, 1 documentation |
 | Package / entry | `packages/ftview` → `entries/ftview.js` and its edit and Studio rows |
 | Skill | `factorytalk-view` (`packages/ftview/SKILL.md`, 9,500-character budget) |
 | Probe | `ftview_capabilities` |
@@ -71,6 +72,7 @@ wrong one.
 | --- | --- | --- |
 | Read and navigate | `ftview_open`, `ftview_reload`, `ftview_list`, `ftview_get`, `ftview_find`, `ftview_compare`, `ftview_object_types`, `ftview_live_map` | open an export and keep the handle; list/read displays and tags; search names and text; compare two exports by display, tag field and object; map HMI tags to controller addresses |
 | Review | `ftview_check`, `ftview_design_check`, `ftview_theme_audit`, `ftview_alarm_report`, `ftview_cross_reference` | structural checks; the shared HMI design rules (`VIEW-HPM-01/02`, `VIEW-COLOR-01`, `VIEW-NAV-01`); house-palette use per display; an alarm review with actionable findings; the HMI-to-PLC join, on its [own page](cross-reference.md) |
+| Documentation | `ftview_docs` | `contents`, `search`, `read`, `status` and `lookup` over the authored corpus (workflow, tags, runtime, errors, what XML cannot prove) plus the installed ME and SE help indexes; installed-help pages are parsed from the local help at call time, never shipped |
 | Snapshots and handover | `ftview_tag_snapshot`, `ftview_alarm_snapshot`, `ftview_studio_export_prepare`, `ftview_studio_export_accept`, `ftview_document`, `ftview_capabilities`, `ftview_apps`, `ftview_export` | write the wizard-identical tag CSV or alarm XML without the wizard; the wizard fallback when the database cannot be read; a handover bundle (`overview.md`, `displays.csv`, `tags.csv`, `bindings.csv`) for a reviewer who never opens Studio |
 | Author | `ftview_draft_display_create`, `ftview_draft_display_add`, `ftview_draft_display_scaffold`, `ftview_draft_screen`, `ftview_draft_popup` | a new display, a copy of an existing one, the shared chrome, a whole screen from a card-and-navigation description, or a modal popup |
 | Edit objects | `ftview_draft_object_add`, `ftview_draft_object_set`, `ftview_draft_object_delete`, `ftview_draft_object_order`, `ftview_draft_display_set`, `ftview_draft_display_attrs`, `ftview_bulk_set`, `ftview_draft_restyle` | add, change, remove or reorder objects; change display settings; the same change across every match in one call; repaint a display in the house theme |

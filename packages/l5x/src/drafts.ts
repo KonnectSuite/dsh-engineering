@@ -130,7 +130,7 @@ export class DraftStore {
    *
    * @param exec - Calling context.
    * @param id - Draft handle.
-   * @param index - Zero-based position as `draft_list` reports it.
+   * @param index - Zero-based position as `l5x_draft_list` reports it.
    * @returns The updated draft.
    */
   removeAt(exec: ExecContext | undefined, id: string, index: number): Draft {
@@ -139,7 +139,7 @@ export class DraftStore {
       throw new L5xError(
         'UNKNOWN_OPERATION',
         `Draft ${draft.id} has no operation at index ${index}; it holds ${draft.operations.length}.`,
-        'Call draft_list to read the indices, then remove one of them.',
+        'Call l5x_draft_list to read the indices, then remove one of them.',
       )
     }
     const updated: Draft = { ...draft, operations: draft.operations.filter((_, position) => position !== index) }

@@ -1,59 +1,60 @@
 {
   "tools": [
-    "open_project",
-    "project_overview",
-    "list_components",
-    "get_component",
-    "search_logic",
-    "find_references",
-    "trace_dependencies",
-    "resolve_tag",
-    "usage_map",
-    "run_checks",
-    "compare_projects",
-    "list_instructions",
-    "document_project",
+    "l5x_open_project",
+    "l5x_project_overview",
+    "l5x_list_components",
+    "l5x_get_component",
+    "l5x_search_logic",
+    "l5x_find_references",
+    "l5x_trace_dependencies",
+    "l5x_resolve_tag",
+    "l5x_usage_map",
+    "l5x_run_checks",
+    "l5x_compare_projects",
+    "l5x_list_instructions",
+    "l5x_document_project",
     "l5x_rung_preview",
     "l5x_compose_logic",
     "l5x_routine_diagram",
     "l5x_diagram",
-    "draft_rung",
-    "draft_rung_comment",
-    "compose_rung",
-    "compose_batch",
-    "draft_st",
-    "draft_fbd",
-    "draft_sfc",
-    "draft_routine",
-    "draft_tag",
-    "draft_tag_description",
-    "draft_udt_member",
-    "draft_udt_description",
-    "draft_discard",
-    "draft_list",
-    "draft_remove_op",
-    "draft_validate",
-    "draft_apply",
-    "studio_sdk_status",
-    "studio_capabilities",
-    "export_acd_to_l5x",
-    "verify_offline_l5x",
-    "build_acd_from_draft",
-    "studio_review_evidence",
-    "controller_approval_status",
-    "capture_controller_snapshot",
-    "go_online",
-    "read_controller_mode",
-    "read_live_tag",
-    "change_controller_mode",
-    "download_project",
-    "poll_live_tags",
-    "read_live_tags",
-    "read_controller_clock",
-    "discover_controllers",
-    "write_live_tag",
-    "write_controller_clock",
-    "start_plc_trend",
+    "l5x_draft_rung",
+    "l5x_draft_rung_comment",
+    "l5x_compose_rung",
+    "l5x_compose_batch",
+    "l5x_draft_st",
+    "l5x_draft_fbd",
+    "l5x_draft_sfc",
+    "l5x_draft_routine",
+    "l5x_draft_tag",
+    "l5x_draft_tag_description",
+    "l5x_draft_udt_member",
+    "l5x_draft_udt_description",
+    "l5x_draft_discard",
+    "l5x_draft_list",
+    "l5x_draft_remove_op",
+    "l5x_draft_validate",
+    "l5x_draft_apply",
+    "l5x_studio_sdk_status",
+    "l5x_studio_capabilities",
+    "l5x_export_acd_to_l5x",
+    "l5x_verify_offline_l5x",
+    "l5x_build_acd_from_draft",
+    "l5x_studio_review_evidence",
+    "l5x_controller_approval_status",
+    "l5x_capture_controller_snapshot",
+    "l5x_go_online",
+    "l5x_read_controller_mode",
+    "l5x_read_live_tag",
+    "l5x_change_controller_mode",
+    "l5x_download_project",
+    "l5x_poll_live_tags",
+    "l5x_read_live_tags",
+    "l5x_read_controller_clock",
+    "l5x_discover_controllers",
+    "l5x_write_live_tag",
+    "l5x_write_controller_clock",
+    "l5x_start_plc_trend",
+    "l5x_docs",
     "migration_assess",
     "l5k_lint",
     "slc_read",
@@ -61,6 +62,7 @@
     "migration_resolve",
     "migration_report",
     "migration_plan",
+    "migration_docs",
     "plc5_capabilities",
     "plc5_open",
     "plc5_ladder",
@@ -69,20 +71,25 @@
     "plc5_io_config",
     "plc5_data_read",
     "plc5_processor",
+    "plc5_pc5",
+    "plc5_verify",
+    "plc5_instruction_inventory",
+    "plc5_rung_digest",
+    "plc5_indirect_census",
+    "plc5_diff",
+    "plc5_docs",
+    "slc500_capabilities",
+    "slc500_open",
+    "slc500_ladder",
+    "slc500_find",
+    "slc500_io_census",
+    "slc500_io_config",
+    "slc500_data_read",
+    "slc500_processor",
+    "slc500_database",
+    "slc500_docs",
     "engineering_reference",
     "engineering_profile",
-    "ecad_capabilities",
-    "ecad_profile",
-    "ecad_scan",
-    "ecad_open",
-    "ecad_overview",
-    "ecad_find",
-    "ecad_cross_reference",
-    "ecad_checks",
-    "ecad_render",
-    "ecad_compare",
-    "ecad_document",
-    "ecad_backup",
     "ftview_open",
     "ftview_reload",
     "ftview_list",
@@ -134,6 +141,7 @@
     "ftview_studio_status",
     "ftview_studio_preflight",
     "ftview_studio_handoff",
+    "ftview_docs",
     "mw_project_find",
     "mw_ide_status",
     "mw_project_stage",
@@ -164,42 +172,42 @@
       "product": "L5X",
       "group": "L5X read",
       "tools": [
-        "open_project",
-        "project_overview",
-        "list_components",
-        "get_component"
+        "l5x_open_project",
+        "l5x_project_overview",
+        "l5x_list_components",
+        "l5x_get_component"
       ],
-      "contextChars": 2786
+      "contextChars": 2818
     },
     {
       "product": "L5X",
       "group": "L5X references",
       "tools": [
-        "search_logic",
-        "find_references",
-        "trace_dependencies",
-        "resolve_tag",
-        "usage_map"
+        "l5x_search_logic",
+        "l5x_find_references",
+        "l5x_trace_dependencies",
+        "l5x_resolve_tag",
+        "l5x_usage_map"
       ],
-      "contextChars": 3869
+      "contextChars": 3917
     },
     {
       "product": "L5X",
       "group": "L5X checks",
       "tools": [
-        "run_checks",
-        "compare_projects"
+        "l5x_run_checks",
+        "l5x_compare_projects"
       ],
-      "contextChars": 2646
+      "contextChars": 2662
     },
     {
       "product": "L5X",
       "group": "L5X documentation",
       "tools": [
-        "list_instructions",
-        "document_project"
+        "l5x_list_instructions",
+        "l5x_document_project"
       ],
-      "contextChars": 3213
+      "contextChars": 3225
     },
     {
       "product": "L5X",
@@ -209,7 +217,7 @@
         "l5x_compose_logic",
         "l5x_routine_diagram"
       ],
-      "contextChars": 4407
+      "contextChars": 4411
     },
     {
       "product": "L5X",
@@ -223,66 +231,74 @@
       "product": "L5X",
       "group": "L5X drafts",
       "tools": [
-        "draft_rung",
-        "draft_rung_comment",
-        "compose_rung",
-        "compose_batch",
-        "draft_st",
-        "draft_fbd",
-        "draft_sfc",
-        "draft_routine",
-        "draft_tag",
-        "draft_tag_description",
-        "draft_udt_member",
-        "draft_udt_description",
-        "draft_discard",
-        "draft_list",
-        "draft_remove_op",
-        "draft_validate",
-        "draft_apply"
+        "l5x_draft_rung",
+        "l5x_draft_rung_comment",
+        "l5x_compose_rung",
+        "l5x_compose_batch",
+        "l5x_draft_st",
+        "l5x_draft_fbd",
+        "l5x_draft_sfc",
+        "l5x_draft_routine",
+        "l5x_draft_tag",
+        "l5x_draft_tag_description",
+        "l5x_draft_udt_member",
+        "l5x_draft_udt_description",
+        "l5x_draft_discard",
+        "l5x_draft_list",
+        "l5x_draft_remove_op",
+        "l5x_draft_validate",
+        "l5x_draft_apply"
       ],
-      "contextChars": 17682
+      "contextChars": 17878
     },
     {
       "product": "L5X",
       "group": "L5X Studio SDK",
       "tools": [
-        "studio_sdk_status",
-        "studio_capabilities",
-        "export_acd_to_l5x",
-        "verify_offline_l5x",
-        "build_acd_from_draft",
-        "studio_review_evidence"
+        "l5x_studio_sdk_status",
+        "l5x_studio_capabilities",
+        "l5x_export_acd_to_l5x",
+        "l5x_verify_offline_l5x",
+        "l5x_build_acd_from_draft",
+        "l5x_studio_review_evidence"
       ],
-      "contextChars": 4238
+      "contextChars": 4278
     },
     {
       "product": "L5X",
       "group": "L5X controller",
       "tools": [
-        "controller_approval_status",
-        "capture_controller_snapshot",
-        "go_online",
-        "read_controller_mode",
-        "read_live_tag",
-        "change_controller_mode",
-        "download_project"
+        "l5x_controller_approval_status",
+        "l5x_capture_controller_snapshot",
+        "l5x_go_online",
+        "l5x_read_controller_mode",
+        "l5x_read_live_tag",
+        "l5x_change_controller_mode",
+        "l5x_download_project"
       ],
-      "contextChars": 3987
+      "contextChars": 4027
     },
     {
       "product": "L5X",
       "group": "L5X live",
       "tools": [
-        "poll_live_tags",
-        "read_live_tags",
-        "read_controller_clock",
-        "discover_controllers",
-        "write_live_tag",
-        "write_controller_clock",
-        "start_plc_trend"
+        "l5x_poll_live_tags",
+        "l5x_read_live_tags",
+        "l5x_read_controller_clock",
+        "l5x_discover_controllers",
+        "l5x_write_live_tag",
+        "l5x_write_controller_clock",
+        "l5x_start_plc_trend"
       ],
-      "contextChars": 7026
+      "contextChars": 7070
+    },
+    {
+      "product": "L5X",
+      "group": "L5X knowledge",
+      "tools": [
+        "l5x_docs"
+      ],
+      "contextChars": 2302
     },
     {
       "product": "Migration",
@@ -294,9 +310,10 @@
         "migration_compare",
         "migration_resolve",
         "migration_report",
-        "migration_plan"
+        "migration_plan",
+        "migration_docs"
       ],
-      "contextChars": 9025
+      "contextChars": 10825
     },
     {
       "product": "PLC-5",
@@ -309,9 +326,33 @@
         "plc5_io_census",
         "plc5_io_config",
         "plc5_data_read",
-        "plc5_processor"
+        "plc5_processor",
+        "plc5_pc5",
+        "plc5_verify",
+        "plc5_instruction_inventory",
+        "plc5_rung_digest",
+        "plc5_indirect_census",
+        "plc5_diff",
+        "plc5_docs"
       ],
-      "contextChars": 5144
+      "contextChars": 10922
+    },
+    {
+      "product": "RSLogix 500",
+      "group": "RSLogix 500",
+      "tools": [
+        "slc500_capabilities",
+        "slc500_open",
+        "slc500_ladder",
+        "slc500_find",
+        "slc500_io_census",
+        "slc500_io_config",
+        "slc500_data_read",
+        "slc500_processor",
+        "slc500_database",
+        "slc500_docs"
+      ],
+      "contextChars": 6761
     },
     {
       "product": "Engineering resources",
@@ -320,33 +361,7 @@
         "engineering_reference",
         "engineering_profile"
       ],
-      "contextChars": 1470
-    },
-    {
-      "product": "ECAD",
-      "group": "ECAD read",
-      "tools": [
-        "ecad_capabilities",
-        "ecad_profile",
-        "ecad_scan",
-        "ecad_open",
-        "ecad_overview",
-        "ecad_find",
-        "ecad_cross_reference",
-        "ecad_checks",
-        "ecad_render",
-        "ecad_compare"
-      ],
-      "contextChars": 9752
-    },
-    {
-      "product": "ECAD",
-      "group": "ECAD deliverables",
-      "tools": [
-        "ecad_document",
-        "ecad_backup"
-      ],
-      "contextChars": 2190
+      "contextChars": 1474
     },
     {
       "product": "FactoryTalk View",
@@ -421,6 +436,14 @@
       "contextChars": 1692
     },
     {
+      "product": "FactoryTalk View",
+      "group": "FTView documentation",
+      "tools": [
+        "ftview_docs"
+      ],
+      "contextChars": 2284
+    },
+    {
       "product": "MotionWorks IEC",
       "group": "MWI session",
       "tools": [
@@ -446,7 +469,7 @@
         "mw_review",
         "mw_help"
       ],
-      "contextChars": 4352
+      "contextChars": 4688
     },
     {
       "product": "MotionWorks IEC",
@@ -474,15 +497,15 @@
     }
   ],
   "context": {
-    "characters": 139977,
+    "characters": 147732,
     "byProduct": {
-      "L5X": 50984,
-      "Migration": 9025,
-      "PLC-5": 5144,
-      "Engineering resources": 1470,
-      "ECAD": 11942,
-      "FactoryTalk View": 43260,
-      "MotionWorks IEC": 18152
+      "L5X": 53718,
+      "Migration": 10825,
+      "PLC-5": 10922,
+      "RSLogix 500": 6761,
+      "Engineering resources": 1474,
+      "FactoryTalk View": 45544,
+      "MotionWorks IEC": 18488
     }
   }
 }

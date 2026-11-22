@@ -75,7 +75,7 @@ export function uniqueRegion(parents: readonly XmlRegion[], kind: string, name?:
   // Absent and ambiguous are different repairs: a missing name needs the declared names, a
   // duplicated one needs a narrower scope. Reporting both as AMBIGUOUS_TARGET sent a reader
   // looking for duplicates that were never there.
-  if (matches.length === 0) throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${kind}${name === undefined ? '' : ' named ' + name} in this scope.`, 'Call list_components to see the names this scope declares, then retry with one of them.')
+  if (matches.length === 0) throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${kind}${name === undefined ? '' : ' named ' + name} in this scope.`, 'Call l5x_list_components to see the names this scope declares, then retry with one of them.')
   if (matches.length > 1) throw new EngineeringError('AMBIGUOUS_TARGET', `Expected one ${kind}${name === undefined ? '' : ` named ${name}`}; found ${matches.length}`, 'Narrow the scope: more than one ' + kind + ' matches this name.')
   return matches[0]!
 }

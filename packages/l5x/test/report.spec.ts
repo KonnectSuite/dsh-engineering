@@ -16,15 +16,15 @@ function fixtureText(): string {
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
 
-describe('document_project report', () => {
+describe('l5x_document_project report', () => {
   it('writes one printable report that carries every declared section', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs', include: ['report'] })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs', include: ['report'] })
     expect(result.error).toBeUndefined()
     const html = l5x.written.get('docs/report.html')
     expect(html, 'report.html was not written').toBeDefined()
@@ -42,7 +42,7 @@ describe('document_project report', () => {
 
   it('draws ladder in the pane\'s language rather than as coloured boxes', async () => {
     const l5x = await opened()
-    await l5x.call('document_project', { output_root: 'docs', include: ['report'] })
+    await l5x.call('l5x_document_project', { output_root: 'docs', include: ['report'] })
     const text = String(l5x.written.get('docs/report.html'))
     // The pane draws contacts as two bars, coils as an oval and block cards with
     // a header; the document used to draw a second picture in coloured boxes.
@@ -57,7 +57,7 @@ describe('document_project report', () => {
 
   it('reports PDF unavailability instead of silently skipping the PDF', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs', include: ['report'], report_format: 'pdf' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs', include: ['report'], report_format: 'pdf' })
     expect(result.error).toBeUndefined()
     const pdf = l5x.written.get('docs/report.pdf')
     const unavailable = result.data?.report?.unavailable

@@ -42,17 +42,17 @@ describe('safety detection', () => {
   })
 })
 
-describe('verify_offline_l5x on a safety controller', () => {
+describe('l5x_verify_offline_l5x on a safety controller', () => {
   it('refuses before the SDK imports it and names the evidence', async () => {
     const l5x = harness(new Map([
       ['base.l5x', fixtureBytes()],
       ['safety.l5x', safetyBytes()],
     ]), { studio: true })
-    const base = await l5x.call('open_project', { path: 'base.l5x' })
-    const safety = await l5x.call('open_project', { path: 'safety.l5x' })
+    const base = await l5x.call('l5x_open_project', { path: 'base.l5x' })
+    const safety = await l5x.call('l5x_open_project', { path: 'safety.l5x' })
     expect(safety.error).toBeUndefined()
     const output = join(mkdtempSync(join(tmpdir(), 'l5x-safety-')), 'Built.ACD')
-    const result: Envelope = await l5x.call('verify_offline_l5x', {
+    const result: Envelope = await l5x.call('l5x_verify_offline_l5x', {
       project_id: safety.data?.project_id as string,
       baseline_id: base.data?.project_id as string,
       output_path: output,

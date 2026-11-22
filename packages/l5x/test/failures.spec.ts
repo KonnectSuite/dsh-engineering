@@ -20,7 +20,7 @@ const REPAIRABLE = new Set([
 /** Open one export and return the harness. */
 async function opened(options: { editing?: boolean } = {}) {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), options)
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -35,14 +35,14 @@ describe('an export that cannot be used', () => {
 
   for (const [label, files] of cases) {
     it(`refuses a ${label} source as invalid L5X, not as a defect`, async () => {
-      const result = await harness(files).call('open_project', { path: 'x.l5x' })
+      const result = await harness(files).call('l5x_open_project', { path: 'x.l5x' })
       expect(result.error?.code).toBe('INVALID_L5X')
       expect(result.error?.fix.length).toBeGreaterThan(10)
     })
   }
 
   it('refuses a missing path as not found', async () => {
-    const result = await harness(new Map()).call('open_project', { path: 'nope.l5x' })
+    const result = await harness(new Map()).call('l5x_open_project', { path: 'nope.l5x' })
     expect(result.error?.code).toBe('FILE_NOT_FOUND')
   })
 })
@@ -59,7 +59,7 @@ describe('a composition spec', () => {
   for (const [label, spec] of cases) {
     it(`refuses ${label} as an invalid spec, not as a defect`, async () => {
       const l5x = await opened({ editing: true })
-      const result = await l5x.call('compose_rung', { spec_json: spec })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: spec })
       expect(result.error).toBeDefined()
       expect(result.error?.code).not.toBe('INTERNAL')
       expect(REPAIRABLE.has(result.error?.code ?? '')).toBe(true)
@@ -70,12 +70,12 @@ describe('a composition spec', () => {
 describe('a target that is not there', () => {
   it('says the routine is absent rather than calling it ambiguous', async () => {
     const l5x = await opened({ editing: true })
-    const staged = await l5x.call('draft_rung', {
+    const staged = await l5x.call('l5x_draft_rung', {
       program: 'MainProgram', routine: 'NoSuchRoutine', rung: 0, mode: 'insert',
       text: 'XIC(StartPB)OTE(SystemRunning);',
     })
     expect(staged.error).toBeUndefined()
-    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    const validated = await l5x.call('l5x_draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error?.code).toBe('COMPONENT_NOT_FOUND')
     expect(validated.error?.message).toContain('NoSuchRoutine')
   })
@@ -87,15 +87,15 @@ describe('verifying an export that is no longer on disk', () => {
     // The harness serves the export in memory, so nothing is on disk at its path. The refusal
     // must be local and deterministic: no Studio installation is required to reach it.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { studio: true })
-    const opened = await l5x.call('open_project', { path: 'sample.l5x' })
+    const opened = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     expect(opened.error).toBeUndefined()
-    const result = await l5x.call('verify_offline_l5x', {
+    const result = await l5x.call('l5x_verify_offline_l5x', {
       project_id: opened.data?.project_id,
       baseline_id: opened.data?.project_id,
       output_path: 'verify.ACD',
     })
     expect(result.error?.code).toBe('FILE_NOT_FOUND')
     expect(String(result.error?.message)).toContain('no longer on disk')
-    expect(String(result.error?.fix)).toContain('open_project')
+    expect(String(result.error?.fix)).toContain('l5x_open_project')
   })
 })

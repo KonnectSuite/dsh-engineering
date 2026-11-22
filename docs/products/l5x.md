@@ -15,14 +15,14 @@ and the Studio SDK and live-controller paths carry the narrower, honest limits r
 | Component id | `l5x` — *Studio 5000 L5X* |
 | Capability class | `offline-file` (it reads an export; seven tools also read a live controller over EtherNet/IP) |
 | Stability | beta, since `v0.4.4` |
-| Tools | 54, under the legacy unprefixed names (`open_project`, `draft_apply`) |
+| Tools | 54, under the legacy unprefixed names (`l5x_open_project`, `l5x_draft_apply`) |
 | Package / entry | `packages/l5x` → `entries/l5x.js` and its editing, Studio and live rows |
 | Skill | `rockwell-l5x` (`packages/l5x/SKILL.md`, 12,800-character budget) |
-| Evidence gate | `compare_projects` — an export claim is checked against a second export |
+| Evidence gate | `l5x_compare_projects` — an export claim is checked against a second export |
 | Switches | `editing`, `studio`, `live`, `allowWrites`, `allowedAddresses`, `maxFileBytes`, `maxDraftOperations` |
 
-The tool names are unprefixed on purpose: this row predates the `ftview_`/`mw_`/`ecad_` namespaces, and a
-prefixed rename is scheduled rather than done. `open_project` opens one export for the chat and returns a
+The tool names are unprefixed on purpose: this row predates the `ftview_`/`mw_` namespaces, and a
+prefixed rename is scheduled rather than done. `l5x_open_project` opens one export for the chat and returns a
 `project_id`; every other tool takes that handle, or omits it when exactly one project is open.
 
 Revisions are a compatibility surface, not a detail:
@@ -38,7 +38,7 @@ Revisions are a compatibility surface, not a detail:
 | Requirement | Version the repository records | Needed for | Optional |
 | --- | --- | --- | --- |
 | Studio 5000 Logix Designer | 37.11 verified | SDK builds, `.ACD` export, controller upload, mode change, download | yes |
-| A Logix controller | any EtherNet/IP family | `poll_live_tags`, `read_live_tags`, the clock tools, discovery, trends, and the two approval-gated writes | yes |
+| A Logix controller | any EtherNet/IP family | `l5x_poll_live_tags`, `l5x_read_live_tags`, the clock tools, discovery, trends, and the two approval-gated writes | yes |
 | Node and the host | see the bundle requirements | everything above | no |
 
 Nothing needs to be installed to read, review or draft: an `.L5X` exported from Studio is a text file and
@@ -59,18 +59,18 @@ the session uses.
 { "path": "C:/Projects/Line/Line.L5X" }
 ```
 
-Call `open_project` with that shape. You get a `project_id` and a structure summary: controller, revision,
+Call `l5x_open_project` with that shape. You get a `project_id` and a structure summary: controller, revision,
 tasks, programs and component counts. Then:
 
 | Step | Call | What you see |
 | --- | --- | --- |
-| 1. Orient | `project_overview` | controller with its saved route and serial, revision, task and program list, component counts, and an explicit limits list when routines are protected, types are vendor-owned or a safety task exists |
-| 2. Find the logic | `list_components {kind: "routine"}` then `get_component {kind: "routine", name: ...}` | paginated names, then one routine's rungs or ST body in full |
-| 3. Follow a symbol | `find_references {symbol: "Motor_1"}` | every read and write site with scope, access, confidence, and whether the site is safety code |
-| 4. Review | `run_checks` | findings with rule, severity, site evidence and, when known, a fix — 43 rules covering unused tags, scheduling, undocumented logic, latches, multiple writers, instruction spelling, FBD wiring, SFC charts, rungs Studio refuses and safety placement |
+| 1. Orient | `l5x_project_overview` | controller with its saved route and serial, revision, task and program list, component counts, and an explicit limits list when routines are protected, types are vendor-owned or a safety task exists |
+| 2. Find the logic | `l5x_list_components {kind: "routine"}` then `l5x_get_component {kind: "routine", name: ...}` | paginated names, then one routine's rungs or ST body in full |
+| 3. Follow a symbol | `l5x_find_references {symbol: "Motor_1"}` | every read and write site with scope, access, confidence, and whether the site is safety code |
+| 4. Review | `l5x_run_checks` | findings with rule, severity, site evidence and, when known, a fix — 43 rules covering unused tags, scheduling, undocumented logic, latches, multiple writers, instruction spelling, FBD wiring, SFC charts, rungs Studio refuses and safety placement |
 | 5. Look at it | `l5x_diagram` or `l5x_routine_diagram` | a rendered ladder page (SVG, plus PNG when Chrome or Edge is installed), not NeutralText |
 
-`run_checks` is the review this product exists for. Each finding names its rule (`UNUSED_TAG`,
+`l5x_run_checks` is the review this product exists for. Each finding names its rule (`UNUSED_TAG`,
 `RUNG_NO_OUTPUT`, …), and `rule`, `severity` and `limit` narrow the list without hiding the counts.
 Read the first page before changing anything: a check finding is evidence about the export, not a verdict
 about the machine.
@@ -78,13 +78,13 @@ about the machine.
 When the session is over, the draft path is the only one that writes:
 
 ```text
-draft_rung            # one rung: replace, insert or delete; text validated against the export
-draft_tag             # one new tag
-draft_validate        # resolve the whole draft against the project, write nothing
-draft_apply { "output_path": "C:/Projects/Line/Line-edited.L5X" }
+l5x_draft_rung            # one rung: replace, insert or delete; text validated against the export
+l5x_draft_tag             # one new tag
+l5x_draft_validate        # resolve the whole draft against the project, write nothing
+l5x_draft_apply { "output_path": "C:/Projects/Line/Line-edited.L5X" }
 ```
 
-`draft_apply` writes one new `.L5X` beside the source and refuses to overwrite anything. Paste that file
+`l5x_draft_apply` writes one new `.L5X` beside the source and refuses to overwrite anything. Paste that file
 into Studio yourself; whether the paste imports cleanly is Studio's answer, and the tool says so.
 
 ## What it does
@@ -93,15 +93,15 @@ The surface groups by the job, not by the alphabet.
 
 | Group | Tools | What it is for |
 | --- | --- | --- |
-| Read and navigate | `open_project`, `project_overview`, `list_components`, `get_component` | open one export; read structure, coverage and any one component in full |
-| Follow references | `search_logic`, `find_references`, `trace_dependencies`, `resolve_tag`, `usage_map` | literal search; read/write sites; what feeds a symbol; alias, member, bit and array resolution; which bits and elements of a tag are used and which are free |
-| Review | `run_checks`, `compare_projects` | 43 evidence-backed rules, with an optional baseline export for I/O change checks; a component-by-component export comparison that ignores timestamps, XML formatting and Studio-added defaults |
-| Document | `list_instructions`, `document_project` | the instruction catalog the composer validates, with operand kinds and ranges; a handover bundle in a new folder — project summary, I/O list, tag CSVs, per-program rung documentation, FBD/SFC decoding, AOI routines, and one printable report whose ladder is drawn inside the page |
+| Read and navigate | `l5x_open_project`, `l5x_project_overview`, `l5x_list_components`, `l5x_get_component` | open one export; read structure, coverage and any one component in full |
+| Follow references | `l5x_search_logic`, `l5x_find_references`, `l5x_trace_dependencies`, `l5x_resolve_tag`, `l5x_usage_map` | literal search; read/write sites; what feeds a symbol; alias, member, bit and array resolution; which bits and elements of a tag are used and which are free |
+| Review | `l5x_run_checks`, `l5x_compare_projects` | 43 evidence-backed rules, with an optional baseline export for I/O change checks; a component-by-component export comparison that ignores timestamps, XML formatting and Studio-added defaults |
+| Document | `l5x_list_instructions`, `l5x_document_project` | the instruction catalog the composer validates, with operand kinds and ranges; a handover bundle in a new folder — project summary, I/O list, tag CSVs, per-program rung documentation, FBD/SFC decoding, AOI routines, and one printable report whose ladder is drawn inside the page |
 | Preview and diagram | `l5x_rung_preview`, `l5x_compose_logic`, `l5x_routine_diagram`, `l5x_diagram` | paste-ready Studio ladder text for proposed rungs; chat-only composition when no project is open; drawn routines and whole-project schematic pages |
-| Draft edits | 17 `draft_*`, `compose_rung`, `compose_batch` tools | stage rungs, ST bodies, FBD sheets, SFC charts, routines, tags, UDT members and comments; validate; then write one new file |
-| Studio SDK | `studio_sdk_status`, `studio_capabilities`, `export_acd_to_l5x`, `verify_offline_l5x`, `build_acd_from_draft`, `studio_review_evidence` | prove the SDK service is there; export an `.ACD`; import an `.L5X` into a new offline `.ACD` and build it; edit one existing routine and build; quote the evidence behind a claim |
-| Controller | `controller_approval_status`, `capture_controller_snapshot`, `go_online`, `read_controller_mode`, `read_live_tag`, `change_controller_mode`, `download_project` | approval policy; an upload; a read-only online session; mode and live reads; a mode change and a download, both approval-gated |
-| Live EtherNet/IP | `poll_live_tags`, `read_live_tags`, `read_controller_clock`, `discover_controllers`, `start_plc_trend`, `write_live_tag`, `write_controller_clock` | sweeps of up to 64 declared scalars in one request, up to 16 tags per sweep with a 50 ms floor, a bounded trend job, broadcast discovery, the wall clock on L8x, and two writes that also need `allowWrites` |
+| Draft edits | 17 `draft_*`, `l5x_compose_rung`, `l5x_compose_batch` tools | stage rungs, ST bodies, FBD sheets, SFC charts, routines, tags, UDT members and comments; validate; then write one new file |
+| Studio SDK | `l5x_studio_sdk_status`, `l5x_studio_capabilities`, `l5x_export_acd_to_l5x`, `l5x_verify_offline_l5x`, `l5x_build_acd_from_draft`, `l5x_studio_review_evidence` | prove the SDK service is there; export an `.ACD`; import an `.L5X` into a new offline `.ACD` and build it; edit one existing routine and build; quote the evidence behind a claim |
+| Controller | `l5x_controller_approval_status`, `l5x_capture_controller_snapshot`, `l5x_go_online`, `l5x_read_controller_mode`, `l5x_read_live_tag`, `l5x_change_controller_mode`, `l5x_download_project` | approval policy; an upload; a read-only online session; mode and live reads; a mode change and a download, both approval-gated |
+| Live EtherNet/IP | `l5x_poll_live_tags`, `l5x_read_live_tags`, `l5x_read_controller_clock`, `l5x_discover_controllers`, `l5x_start_plc_trend`, `l5x_write_live_tag`, `l5x_write_controller_clock` | sweeps of up to 64 declared scalars in one request, up to 16 tags per sweep with a 50 ms floor, a bounded trend job, broadcast discovery, the wall clock on L8x, and two writes that also need `allowWrites` |
 
 The draft family is the largest group because each entry point validates against the specific thing it
 edits: a rung is checked for a driven right rail, operand count, operand types and resolvable tags; an
@@ -111,22 +111,22 @@ instances.
 ## Limits
 
 - Every read, reference, check and diagram is static. None of them runs the logic, and none proves that
-  the export matches what the controller is executing. `go_online` and the live tools read the controller;
+  the export matches what the controller is executing. `l5x_go_online` and the live tools read the controller;
   they do not prove the online logic equals the file either.
 - The 43 review rules are this bundle's rules, not a vendor sign-off. A clean result is a shorter review,
   not a passed one.
 - The instruction surface, controller families and Studio revisions beyond Logix Designer 37.11 are
   unmeasured; a wider instruction set can reach constructs the checks do not model.
 - FBD and SFC are decoded and wired-checked, but their execution semantics are not exercised.
-- `build_acd_from_draft` edits one existing RLL or ST routine. It refuses new routines, tag changes,
+- `l5x_build_acd_from_draft` edits one existing RLL or ST routine. It refuses new routines, tag changes,
   safety routines and protected targets, and each edit took about 18–26 s when verified on 2026-10-01
   against a generated 5069-L320ER project.
-- `verify_offline_l5x` wants a Studio-exported `.L5X`. An `.L5X` written by `export_acd_to_l5x` is
+- `l5x_verify_offline_l5x` wants a Studio-exported `.L5X`. An `.L5X` written by `l5x_export_acd_to_l5x` is
   refused on re-import with `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES` (observed 2026-10-23), so use it for
   reading and provenance, not as build input.
 - A hand-driven Studio import of a draft, a second application's export, and a PanelView-side workflow are
   not measured; the tools report the import and build they performed, not the one you performed.
-- `read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `write_controller_clock`
+- `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`
   has the same restriction.
 
 ## Safety
@@ -135,13 +135,13 @@ Three write paths exist, and each says where it writes.
 
 | Path | What it writes | What it needs |
 | --- | --- | --- |
-| Draft tools | nothing until `draft_apply`, which writes one new `.L5X` beside the source and never overwrites | `editing` switch; the output path must not exist |
-| Documentation and previews | a new folder (`document_project`) or an image file (diagram and preview tools) | nothing beyond the row; the export is never modified |
+| Draft tools | nothing until `l5x_draft_apply`, which writes one new `.L5X` beside the source and never overwrites | `editing` switch; the output path must not exist |
+| Documentation and previews | a new folder (`l5x_document_project`) or an image file (diagram and preview tools) | nothing beyond the row; the export is never modified |
 | SDK builds | a new `.ACD` and a new result `.L5X`; the source `.ACD` hash is unchanged | `studio` switch and an installed, licensed Logix Designer |
 | Controller traffic | an upload to a new `.ACD`; a mode change; a program download; one live tag or clock write | `allowWrites` for the two writes, plus per-call human approval; a download needs the `verification_id` of a build this chat produced and both hashes unchanged |
 
-Approval is a per-call decision, not a setting: `change_controller_mode`, `capture_controller_snapshot`
-and `download_project` refuse with `APPROVAL_UNAVAILABLE` unless the session policy is `ask`, and proceed
+Approval is a per-call decision, not a setting: `l5x_change_controller_mode`, `l5x_capture_controller_snapshot`
+and `l5x_download_project` refuse with `APPROVAL_UNAVAILABLE` unless the session policy is `ask`, and proceed
 only on an `allowed-once` answer. A live write is validated against the export before a socket opens —
 declared, not an alias, no dimensions, external access not `None`, value inside type and range — and then
 read back; a mismatch is reported `WRITE_NOT_VERIFIED`, not success.

@@ -14,6 +14,7 @@
  */
 
 import { migrationTools } from './tools.ts'
+import { docsTools } from './docs.ts'
 import * as skill from './skill.ts'
 import type { PluginContext, SandboxPolicyResolver } from './core/tool.ts'
 
@@ -39,6 +40,8 @@ export interface Config {
   readonly report?: boolean
   /** Whether the plan tool is registered. Defaults to true. */
   readonly plan?: boolean
+  /** Whether the authored `migration_docs` knowledge tool is registered. Defaults to true. */
+  readonly docs?: boolean
 }
 
 /**
@@ -59,6 +62,10 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
       if (definition.name === 'migration_plan' && config.plan === false) continue
       ctx.tools.register(definition)
     }
+    for (const definition of docsTools(ctx)) {
+      if (definition.name === 'migration_docs' && config.docs === false) continue
+      ctx.tools.register(definition)
+    }
     skill.apply(ctx)
   } catch (error) {
     try {
@@ -70,6 +77,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
 }
 
 export { migrationTools } from './tools.ts'
+export { docsTools, COLLECTION, DOCS_TOOL_NAME, DOCS_DESCRIPTION } from './docs.ts'
 export { SKILL } from './skill.ts'
 export { decodeL5k, readL5k, lintL5k } from './engine/l5k.ts'
 export { readSlcProject, readSlcText, SlcError } from './engine/rslogix500.ts'

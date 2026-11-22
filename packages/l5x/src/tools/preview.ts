@@ -4,7 +4,7 @@
  * A proposed rung is normally pasted into the reply as NeutralText, which the
  * reader has to assemble in their head. This tool writes the same rungs as a
  * minimal, schema-shaped L5X export in the workspace, so the project viewer draws
- * them as ladder logic. It validates every rung with the same parser `draft_rung`
+ * them as ladder logic. It validates every rung with the same parser `l5x_draft_rung`
  * uses and refuses to write a rung that does not parse; it never touches a real
  * project and never imports into Studio.
  *
@@ -68,7 +68,7 @@ function assertKnownInstructions(nodes: readonly LadderNode[], line: string): vo
       throw new L5xError(
         'INVALID_RUNG',
         `Unknown ladder instruction ${node.name} in "${line}".`,
-        'Use a catalogued mnemonic: call list_instructions for the exact names and slots; parallel branches are written [path1,path2].',
+        'Use a catalogued mnemonic: call l5x_list_instructions for the exact names and slots; parallel branches are written [path1,path2].',
       )
     }
     if (info.notModelled === true) continue
@@ -78,7 +78,7 @@ function assertKnownInstructions(nodes: readonly LadderNode[], line: string): vo
       throw new L5xError(
         'INVALID_RUNG',
         `${info.name} takes ${required}-${info.operands.length} operand(s), but ${node.operands.length} were written in "${line}".`,
-        `Call list_instructions with filter "${info.name}" for the operand order, then fix the rung.`,
+        `Call l5x_list_instructions with filter "${info.name}" for the operand order, then fix the rung.`,
       )
     }
   }
@@ -269,7 +269,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
   return [
     tool({
       name: 'l5x_rung_preview',
-      description: 'Return proposed ladder rungs as Studio 5000 ladder copy text (`paste_text`: mnemonics and operands space separated, parallel branches as BST/NXB/BND — the format Studio writes when you copy a routine), and write one minimal L5X preview document so the project viewer can show them. Accepts either format on input: this plugin\'s bracket NeutralText or text pasted out of Studio. Validates every rung with the same parser draft_rung uses and refuses a rung that does not parse. Nothing is imported and no project is modified.',
+      description: 'Return proposed ladder rungs as Studio 5000 ladder copy text (`paste_text`: mnemonics and operands space separated, parallel branches as BST/NXB/BND — the format Studio writes when you copy a routine), and write one minimal L5X preview document so the project viewer can show them. Accepts either format on input: this plugin\'s bracket NeutralText or text pasted out of Studio. Validates every rung with the same parser l5x_draft_rung uses and refuses a rung that does not parse. Nothing is imported and no project is modified.',
       parameters: object({
         rungs: string('NeutralText rungs, one per line, for example "XIC(Start)OTE(Run);". Pass this or rungs_file.'),
         rungs_file: string('Optional text file whose lines are the NeutralText rungs, one per line. Use it when the rungs are already written to disk.'),
@@ -407,7 +407,7 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
             notes: composed.notes,
             ...(composed.tags.length === 0 ? {} : { tag_hint: `Declare or confirm these tags in the target program: ${tagList}.` }),
           },
-          [{ tool: 'list_instructions', why: 'Check an instruction’s operand order before changing the returned rung.' }],
+          [{ tool: 'l5x_list_instructions', why: 'Check an instruction’s operand order before changing the returned rung.' }],
           {
             complete: false,
             unverified: [
@@ -440,19 +440,19 @@ export function previewTools(session: ProjectSession): readonly ToolDefinition[]
         // A missing program and a missing routine inside an existing program are different
         // conditions; one NOT_FOUND for both sent the reader to the wrong list.
         if (!project.document.programs.some(entry => entry.name === program)) {
-          throw new L5xError('NOT_FOUND', `No program named "${program}".`, 'Call list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
+          throw new L5xError('NOT_FOUND', `No program named "${program}".`, 'Call l5x_list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
         }
         const routine = getRoutine(project.document, program, routineName)
         if (routine === undefined) {
           throw new L5xError(
             'NOT_FOUND',
             `No routine is named "${routineName}" in ${program}.`,
-            'List the routines of that program with list_components, then pass one of those names.',
+            'List the routines of that program with l5x_list_components, then pass one of those names.',
             listRoutines(project.document, program).map(info => `${info.program}/${info.name} (${info.type})`),
           )
         }
         if (routine.body.type !== 'RLL') {
-          throw new L5xError('INVALID_ARGUMENT', `Routine ${program}/${routineName} is ${routine.body.type}, not ladder, so there are no rungs to draw.`, 'Read it with get_component; only RLL routines have a ladder diagram.')
+          throw new L5xError('INVALID_ARGUMENT', `Routine ${program}/${routineName} is ${routine.body.type}, not ladder, so there are no rungs to draw.`, 'Read it with l5x_get_component; only RLL routines have a ladder diagram.')
         }
         const rungs: PreviewRung[] = routine.body.rungs.map(rung => ({
           number: rung.number,

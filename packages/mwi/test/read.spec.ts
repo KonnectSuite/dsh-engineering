@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { ReadService, type ReadEngine } from '../src/read/service.ts'
+import { writeHelpTree } from '../src/read/help-tree.ts'
 import { readTools } from '../src/tools/read.ts'
 import type { EngineResult } from '../src/core/code-engine.ts'
 
@@ -125,5 +126,52 @@ describe('read tools', () => {
     const result = await call(root, withoutIde, 'mw_get', { kind: 'block', name: 'TON' })
     expect(result.error).toBeUndefined()
     expect(seen?.native_libraries).toEqual([])
+  })
+
+  it('reads one help topic by id from an extracted help tree', async () => {
+    const root = workspace()
+    const helpRoot = mkdtempSync(join(tmpdir(), 'mwi-help-'))
+    writeHelpTree(helpRoot, [
+      { id: 'timer-on', title: 'TON timer', text: 'The TON timer accumulates elapsed time while IN is TRUE.', keywords: ['timer', 'TON'] },
+      { id: 'counter', title: 'CTU counter', text: 'The CTU counter increments on a rising edge.', keywords: ['counter'] },
+    ])
+    const service = new ReadService(engine(), undefined, helpRoot)
+    const result = await call(root, service, 'mw_help', { id: 'timer-on' })
+    expect(result.data?.source).toBe('help')
+    const document = result.data?.document as { id?: string; title?: string; text?: string }
+    expect(document.id).toBe('timer-on')
+    expect(document.title).toBe('TON timer')
+    expect(document.text).toContain('accumulates elapsed time')
+    expect(result.summary).toContain('Read help topic timer-on')
+  })
+
+  it('searches the extracted help tree without the IDE', async () => {
+    const root = workspace()
+    const helpRoot = mkdtempSync(join(tmpdir(), 'mwi-help-'))
+    writeHelpTree(helpRoot, [
+      { id: 'timer-on', title: 'TON timer', text: 'The TON timer accumulates elapsed time while IN is TRUE.', keywords: ['timer', 'TON'] },
+      { id: 'counter', title: 'CTU counter', text: 'The CTU counter increments on a rising edge.', keywords: ['counter'] },
+    ])
+    const service = new ReadService(engine(), undefined, helpRoot)
+    const result = await call(root, service, 'mw_help', { source: 'help', query: 'timer' })
+    const document = result.data?.document as { source?: string; topics?: readonly { id: string }[]; scanned?: number; truncated?: boolean }
+    expect(document.source).toBe('help')
+    expect(document.scanned).toBe(2)
+    expect(document.topics?.map(topic => topic.id)).toEqual(['timer-on'])
+    expect(result.summary).toContain('Searched help')
+  })
+
+  it('answers help-by-id honestly when no help tree is configured', async () => {
+    const prior = process.env.MWI_HELP_TREE
+    delete process.env.MWI_HELP_TREE
+    try {
+      const root = workspace()
+      const service = new ReadService(engine())
+      const result = await call(root, service, 'mw_help', { id: 'timer-on' })
+      expect(result.error).toMatchObject({ code: 'NOT_INSTALLED' })
+      expect(String(result.error?.fix)).toContain('MWI_HELP_TREE')
+    } finally {
+      if (prior !== undefined) process.env.MWI_HELP_TREE = prior
+    }
   })
 })

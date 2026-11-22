@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "collection": "all",
+  "cases": [
+    {
+      "id": "q01",
+      "query": "PLC-5 instruction set families",
+      "expect": ["instruction-set"],
+      "kind": "answer"
+    },
+    {
+      "id": "q02",
+      "query": "neutral text rung grammar",
+      "expect": ["rung-grammar", "pc5-export"],
+      "kind": "answer"
+    },
+    {
+      "id": "q03",
+      "query": "PC5 EXPORT header record",
+      "expect": ["pc5-export", "rung-grammar"],
+      "kind": "answer"
+    },
+    {
+      "id": "q04",
+      "query": "data file declaration elements",
+      "expect": ["pc5-pitfalls", "pc5-export"],
+      "kind": "answer"
+    },
+    {
+      "id": "q05",
+      "query": "binary project container compound file",
+      "expect": ["pc5-pitfalls", "error-codes"],
+      "kind": "answer"
+    },
+    {
+      "id": "q06",
+      "query": "truncated export missing END",
+      "expect": ["error-codes", "pc5-export", "pc5-pitfalls"],
+      "kind": "answer"
+    },
+    {
+      "id": "q07",
+      "query": "text tools review order",
+      "expect": ["text-tools"],
+      "kind": "answer"
+    },
+    {
+      "id": "q08",
+      "query": "chassis remote I/O program-only racks",
+      "expect": ["io-configuration"],
+      "kind": "answer"
+    },
+    {
+      "id": "q09",
+      "query": "leading # file operand",
+      "expect": ["addressing", "rung-grammar"],
+      "kind": "answer"
+    },
+    {
+      "id": "q10",
+      "query": "XIC XIO OTE contact instructions",
+      "expect": ["instruction-set"],
+      "kind": "answer"
+    },
+    {
+      "id": "q11",
+      "query": "block transfer BTW BTR",
+      "expect": ["io-configuration", "instruction-set"],
+      "kind": "answer"
+    },
+    {
+      "id": "q12",
+      "query": "comment lines ignored",
+      "expect": ["pc5-export", "pc5-pitfalls"],
+      "kind": "answer"
+    },
+    {
+      "id": "q13",
+      "query": "whitespace stripped blank lines",
+      "expect": ["pc5-export"],
+      "kind": "answer"
+    },
+    {
+      "id": "q14",
+      "query": "duplicate rung numbers warning",
+      "expect": ["rung-grammar", "pc5-export", "pc5-pitfalls"],
+      "kind": "answer"
+    },
+    {
+      "id": "q15",
+      "query": "weather forecast rainfall tomorrow",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "q16",
+      "query": "baking sourdough starter schedule",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "q17",
+      "query": "PLC5_COM_UNAVAILABLE",
+      "expect": ["error-codes"],
+      "kind": "exact"
+    },
+    {
+      "id": "q18",
+      "query": "N7:[N10:0]",
+      "expect": ["addressing"],
+      "kind": "exact"
+    },
+    {
+      "id": "q19",
+      "query": "plc5_instruction_inventory",
+      "expect": ["text-tools", "overview"],
+      "kind": "exact"
+    },
+    {
+      "id": "q20",
+      "query": "plc5_verify",
+      "expect": ["text-tools", "overview"],
+      "kind": "exact"
+    },
+    {
+      "id": "q21",
+      "query": "PC5 EXPORT",
+      "expect": ["rung-grammar", "pc5-pitfalls", "pc5-export"],
+      "kind": "exact"
+    },
+    {
+      "id": "q22",
+      "query": "XIC",
+      "expect": ["instruction-set"],
+      "kind": "exact"
+    }
+  ]
+}

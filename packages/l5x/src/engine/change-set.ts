@@ -216,7 +216,7 @@ function externalAccess(row: Record<string, unknown>): string | undefined {
  */
 export function checkRungText(text: string): { nodes: readonly LadderNode[]; text: string } {
   const parsed = parseRung(text)
-  if (parsed.issues.length > 0) throw new EngineeringError('INVALID_LADDER', `Rung contains malformed structure: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}`, 'Write one complete rung. Either format is accepted: NeutralText such as "XIC(Start)OTE(Motor);", or text copied out of a Studio routine such as "XIC Start XIO Stop OTE Motor" with parallel branches as BST … NXB … BND. Pass one rung per call; compose_batch takes a block of them.')
+  if (parsed.issues.length > 0) throw new EngineeringError('INVALID_LADDER', `Rung contains malformed structure: ${parsed.issues[0]?.message ?? 'unknown syntax issue'}`, 'Write one complete rung. Either format is accepted: NeutralText such as "XIC(Start)OTE(Motor);", or text copied out of a Studio routine such as "XIC Start XIO Stop OTE Motor" with parallel branches as BST … NXB … BND. Pass one rung per call; l5x_compose_batch takes a block of them.')
   const placeholders = placeholderOperands(parsed.nodes)
   if (placeholders.length > 0) throw new EngineeringError('INVALID_LADDER', `The operand ? after ${placeholders.join(', ')} is how Studio's copy format marks an operand the engineer left unconnected`, 'Replace every ? with the tag or value the instruction should use, then retry.')
   const rail = rightRailReader(parsed.nodes)
@@ -247,8 +247,8 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
     case 'add_routine': {
       fields(row, ['operation', 'program', 'name', 'language', 'code'])
       if (row.language !== 'RLL' && row.language !== 'ST' && row.language !== 'FBD' && row.language !== 'SFC') throw new EngineeringError('INVALID_CHANGE_SET', 'language must be "RLL", "ST" or "FBD"')
-    if (row.language === 'FBD' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An FBD routine takes no code; create it empty and add sheets with draft_fbd')
-    if (row.language === 'SFC' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An SFC routine takes no code; create it empty and add the chart with draft_sfc')
+    if (row.language === 'FBD' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An FBD routine takes no code; create it empty and add sheets with l5x_draft_fbd')
+    if (row.language === 'SFC' && String(row.code ?? '').trim() !== '') throw new EngineeringError('INVALID_CHANGE_SET', 'An SFC routine takes no code; create it empty and add the chart with l5x_draft_sfc')
       return { operation: row.operation, program: identifier(row, 'program'), name: identifier(row, 'name'), language: row.language, code: text(row, 'code') }
     }
     case 'add_sfc_tag': {
@@ -282,7 +282,7 @@ function parseOne(value: unknown, declaredTypes: ReadonlySet<string>): Operation
     case 'add_tag': {
       fields(row, ['operation', 'scope', 'name', 'data_type', 'value', 'dimensions', 'external_access', 'description'])
       const dataType = text(row, 'data_type')
-      if (!declaredTypes.has(dataType.toLowerCase())) throw new EngineeringError('UNKNOWN_DATA_TYPE', `Data type "${dataType}" is not a scalar or declared type in this export; call get_component kind="udt" or project_overview to check names`)
+      if (!declaredTypes.has(dataType.toLowerCase())) throw new EngineeringError('UNKNOWN_DATA_TYPE', `Data type "${dataType}" is not a scalar or declared type in this export; call l5x_get_component kind="udt" or l5x_project_overview to check names`)
       const scalar = SCALAR_TYPES.has(dataType.toUpperCase())
       const dimensions = parseDimensions(row)
       const access = externalAccess(row)
@@ -599,7 +599,7 @@ function declaredTypeNames(project: ProjectSnapshot): ReadonlySet<string> {
   for (const name of BUILTIN_STRUCTURE_TYPES) names.add(name)
   for (const name of typeIndex(project.document).keys()) names.add(name)
   // An add-on instruction is a data type for tags: its instance tag is the first operand of every
-  // AOI call, so draft_tag must be able to declare one.
+  // AOI call, so l5x_draft_tag must be able to declare one.
   for (const aoi of project.document.aois) names.add(aoi.name.toLowerCase())
   return names
 }
@@ -648,7 +648,7 @@ function deltaChecks(project: ProjectSnapshot, draft: ProjectSnapshot): object {
     resolved_count: resolved.length,
     new_findings: added.slice(0, 25),
     truncated: added.length > 25,
-    note: 'Lists only findings this draft adds or resolves; call run_checks for the full project audit.',
+    note: 'Lists only findings this draft adds or resolves; call l5x_run_checks for the full project audit.',
   }
 }
 

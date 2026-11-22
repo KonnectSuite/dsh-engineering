@@ -1,5 +1,5 @@
 /**
- * The write contract: what `draft_apply` actually emits.
+ * The write contract: what `l5x_draft_apply` actually emits.
  *
  * Two shapes were observed correct while probing and had no test holding them: an array
  * tag carries the `Dimensions` attribute, and a multi-line Structured Text body becomes
@@ -12,14 +12,14 @@ import { fixtureBytes, harness } from './harness.ts'
 /** Open the fixture with the editing entry. */
 async function opened() {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
 
 /** Apply one staged draft and return the XML it wrote. */
 async function appliedXml(l5x: Awaited<ReturnType<typeof opened>>, draftId: string, path: string): Promise<string> {
-  const result = await l5x.call('draft_apply', { draft_id: draftId, output_path: path })
+  const result = await l5x.call('l5x_draft_apply', { draft_id: draftId, output_path: path })
   expect(result.error).toBeUndefined()
   return l5x.written.get(path) ?? ''
 }
@@ -40,7 +40,7 @@ function draftIdOf(staged: { data?: Record<string, unknown> }): string {
 describe('an array tag', () => {
   it('carries the Dimensions attribute the declaration needs', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_tag', { scope: 'controller', name: 'Recipe_Table', data_type: 'DINT', dimensions: '4 2', description: 'recipe rows' })
+    const staged = await l5x.call('l5x_draft_tag', { scope: 'controller', name: 'Recipe_Table', data_type: 'DINT', dimensions: '4 2', description: 'recipe rows' })
     expect(staged.error).toBeUndefined()
     const xml = await appliedXml(l5x, draftIdOf(staged), 'array.l5x')
     const declaration = /<Tag Name="Recipe_Table"[^>]*>/u.exec(xml)?.[0] ?? ''
@@ -50,7 +50,7 @@ describe('an array tag', () => {
 
   it('leaves Dimensions off a scalar tag', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_tag', { scope: 'controller', name: 'Recipe_Total', data_type: 'DINT', description: 'recipe total' })
+    const staged = await l5x.call('l5x_draft_tag', { scope: 'controller', name: 'Recipe_Total', data_type: 'DINT', description: 'recipe total' })
     expect(staged.error).toBeUndefined()
     const xml = await appliedXml(l5x, draftIdOf(staged), 'scalar.l5x')
     const declaration = /<Tag Name="Recipe_Total"[^>]*>/u.exec(xml)?.[0] ?? ''
@@ -61,7 +61,7 @@ describe('an array tag', () => {
 describe('a new Structured Text routine', () => {
   it('writes one Line element per source line, with no newline inside a CDATA', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_routine', {
+    const staged = await l5x.call('l5x_draft_routine', {
       program: 'MainProgram', name: 'Structured', language: 'ST',
       code: 'Total := Total + 1;\nIF Total > 10 THEN Total := 0; END_IF;',
     })
@@ -77,12 +77,12 @@ describe('a new Structured Text routine', () => {
 
   it('reopens what it wrote', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_routine', { program: 'MainProgram', name: 'Structured', language: 'ST', code: 'Total := 1;' })
+    const staged = await l5x.call('l5x_draft_routine', { program: 'MainProgram', name: 'Structured', language: 'ST', code: 'Total := 1;' })
     expect(staged.error).toBeUndefined()
     const xml = await appliedXml(l5x, draftIdOf(staged), 'st2.l5x')
     const reopened = harness(new Map([['st2.l5x', new TextEncoder().encode(xml)]]))
-    expect((await reopened.call('open_project', { path: 'st2.l5x' })).error).toBeUndefined()
-    const listing = await reopened.call('list_components', { kind: 'routine' })
+    expect((await reopened.call('l5x_open_project', { path: 'st2.l5x' })).error).toBeUndefined()
+    const listing = await reopened.call('l5x_list_components', { kind: 'routine' })
     const names = (listing.data?.rows as { name: string }[] | undefined)?.map(row => row.name) ?? []
     expect(names).toContain('Structured')
   })

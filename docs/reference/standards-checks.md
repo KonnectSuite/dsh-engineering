@@ -1,6 +1,6 @@
 # Standards checks
 
-Three review surfaces turn the engineering corpus into findings: `run_checks` over the
+Three review surfaces turn the engineering corpus into findings: `l5x_run_checks` over the
 open L5X project, `ftview_design_check` plus `ftview_validate` over the open HMI
 export and its draft, and `optix_design_check` over a screen in a live Optix project.
 Each finding carries a rule id, a severity and evidence, and some carry a `basis`
@@ -8,7 +8,7 @@ naming the corpus rule it encodes. Finding nothing is not proof
 of correctness: these are static heuristics over the exported text, not a compile,
 not a simulation and not a terminal test.
 
-## PLC standards (`run_checks`)
+## PLC standards (`l5x_run_checks`)
 
 | Rule | Severity | What it reports | Basis |
 |---|---|---|---|
@@ -99,7 +99,7 @@ so an export with no `Alarms.xml` is distinguishable from one whose alarms are a
 Call `ftview_check` first for structural health, then `ftview_design_check` for the
 design rules, then `ftview_validate` on a draft. On the Optix side the order is
 `optix_screen` with the dry run left on, `optix_design_check` on the screen it drafted, then the apply,
-then `optix_preview` and `optix_screenshot` to look at the result. For the PLC side call `run_checks`,
+then `optix_preview` and `optix_screenshot` to look at the result. For the PLC side call `l5x_run_checks`,
 filter with `rule` and `severity` when the unfiltered list is long, and read `basis`
 to cite the corpus page behind a finding. Every finding names the program, routine,
 rung, display or object it concerns so the fix is a local edit rather than a review

@@ -73,7 +73,7 @@ const CHECK_COVERAGE: Coverage = {
 export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'run_checks',
+      name: 'l5x_run_checks',
       description: `Run evidence-backed engineering checks on the open project: ${FINDING_RULES.length} rules covering unused and unresolved tags, scheduling and routines, undocumented logic, latches and multiple writers, instruction spelling for this revision, FBD wiring (dangling wires, wires to a pin the block does not show, duplicate destinations, IREF/OREF/ICON/OCON names and wires, feedback cycles), SFC charts (link targets, initial-step markers), rungs Studio refuses, serial-port support on the processor, I/O module changes against a baseline, and safety placement and writes. Each finding carries its rule, severity, site evidence and, when known, a fix saying what to change; the rule filter rejects a name that is not one of the ${FINDING_RULES.length}. Pass baseline_id to add I/O change checks against an earlier export.`,
       parameters: object({
         baseline_id: string('Optional second open project id to compare against, enabling I/O module change checks.'),
@@ -92,7 +92,7 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
         // A misspelled rule name would match no finding and read as a clean project.
         const rule = requestedRule === undefined ? undefined : requestedRule.trim().toUpperCase()
         if (rule !== undefined && !FINDING_RULES.includes(rule)) {
-          throw new L5xError('INVALID_ARGUMENT', `Unknown rule "${requestedRule}".`, 'Pass one of the rule names run_checks reports, for example "UNUSED_TAG".', FINDING_RULES)
+          throw new L5xError('INVALID_ARGUMENT', `Unknown rule "${requestedRule}".`, 'Pass one of the rule names l5x_run_checks reports, for example "UNUSED_TAG".', FINDING_RULES)
         }
         const severity = optionalString(args, 'severity')
         const rank: Record<string, number> = { critical: 0, warning: 1, info: 2 }
@@ -130,18 +130,18 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
           [
             ...(symbol === undefined
               ? []
-              : [{ tool: 'find_references', args: { symbol }, why: 'Inspect the evidence behind the first finding.' }]),
-            { tool: 'list_components', args: { kind: 'tag' }, why: 'Review declared tags before changing anything.' },
+              : [{ tool: 'l5x_find_references', args: { symbol }, why: 'Inspect the evidence behind the first finding.' }]),
+            { tool: 'l5x_list_components', args: { kind: 'tag' }, why: 'Review declared tags before changing anything.' },
           ],
           CHECK_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'compare_projects',
+      name: 'l5x_compare_projects',
       description: 'Compare two open exports by engineering component: the controller (processor, saved route, project serial), programs, tasks, tags, UDTs, AOIs, modules, alarms, routines, rungs, ST bodies and diagrams. Export timestamps and XML formatting are ignored, and Studio-added defaults are compared by effect: built-in types, the embedded Local module, the release patch revision, diagram node ids and ST padding are not reported as changes.',
       parameters: object({
-        before_id: string('Project id of the earlier export. Open both exports first with open_project.'),
+        before_id: string('Project id of the earlier export. Open both exports first with l5x_open_project.'),
         after_id: string('Project id of the later export.'),
         offset: integer('Zero-based index of the first change to return.', { minimum: 0, default: 0 }),
         limit: integer('Maximum changes to return.', { minimum: 1, maximum: 100, default: 20 }),
@@ -173,8 +173,8 @@ export function checkTools(session: ProjectSession): readonly ToolDefinition[] {
             changes: page,
           },
           [
-            { tool: 'run_checks', args: { baseline_id: before.id }, why: 'Check I/O module changes against the earlier export.' },
-            { tool: 'get_component', args: { kind: 'program', name: before.document.programs[0]?.name ?? '' }, why: 'Open a changed program in the later export.' },
+            { tool: 'l5x_run_checks', args: { baseline_id: before.id }, why: 'Check I/O module changes against the earlier export.' },
+            { tool: 'l5x_get_component', args: { kind: 'program', name: before.document.programs[0]?.name ?? '' }, why: 'Open a changed program in the later export.' },
           ],
           {
             complete: false,

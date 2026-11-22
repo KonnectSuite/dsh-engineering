@@ -25,7 +25,7 @@ export const inject = ['tools', 'fs']
 
 export const Config = z.object({
   editing: z.boolean().default(true).volatile().description(
-    'The staged draft tools (draft_rung, draft_apply, ...). On by default; a read-only profile can switch it off to drop these schemas.',
+    'The staged draft tools (l5x_draft_rung, l5x_draft_apply, ...). On by default; a read-only profile can switch it off to drop these schemas.',
   ),
   studio: z.boolean().default(true).volatile().description(
     'Logix Designer SDK and supervised controller tools. Needs Studio 5000 with the SDK service installed.',

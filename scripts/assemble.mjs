@@ -22,8 +22,55 @@ export const COMPONENTS = [
   "resources",
   "optix",
   "migration",
-  "ecad",
-  "plc5"
+  "plc5",
+  "slc"
+]
+
+/**
+ * Viewer payloads that are not component rows but still resolve files from
+ * `vendor/` at runtime. The DXF/DWG drawing preview's Remote service loads the
+ * engine from `vendor/ecad/lib/engine/index.js` (falling back to the checkout),
+ * so the viewer row needs its engine and assets in the tarball exactly like a
+ * component row does.
+ */
+export const VIEWER_PAYLOADS = ["ecad"]
+
+/**
+ * Payload entries copied from a component's package root into `vendor/<name>/`.
+ *
+ * One list serves every component and an absent entry is expected. `skills` is
+ * the Optix topic playbooks `optix_get_skill` reads, and `knowledge` is the
+ * authored docs corpus every product's `*_docs` tool resolves beside its built
+ * `lib/docs.js`. A payload a tool reads at runtime has to be here or the tool
+ * ships broken (0.99.0 shipped no `vendor/optix/skills/` and `optix_get_skill`
+ * refused every topic).
+ */
+export const PAYLOAD = [
+  'lib',
+  'assets',
+  'bin',
+  'rust',
+  'THIRD_PARTY_NOTICES.md',
+  'SKILL.md',
+  'README.md',
+  'LICENSE-CONTENT.md',
+  'corpus',
+  'index.json',
+  'SOURCE.json',
+  'studio-bridge',
+  'bridge',
+  'code',
+  'legacy',
+  'netlogic',
+  'schema',
+  'help',
+  'poll-worker.mjs',
+  'cip-worker.mjs',
+  'templates',
+  'skills',
+  'locale',
+  'icon.svg',
+  'knowledge',
 ]
 
 /** The newest modification time under a directory, or undefined when it is absent. */
@@ -83,7 +130,14 @@ async function vendor(name) {
   // list and `optix_get_skill` refused every topic. A payload a component resolves
   // at runtime has to be in this list or the tool that reads it ships broken, which
   // is what `test/components.spec.mjs` now checks by name.
-  for (const entry of ['lib', 'assets', 'bin', 'rust', 'THIRD_PARTY_NOTICES.md', 'SKILL.md', 'README.md', 'LICENSE-CONTENT.md', 'corpus', 'index.json', 'SOURCE.json', 'studio-bridge', 'bridge', 'code', 'legacy', 'netlogic', 'schema', 'help', 'poll-worker.mjs', 'cip-worker.mjs', 'templates', 'skills', 'locale', 'icon.svg']) {
+  // `knowledge` is the authored docs corpus every product's `*_docs` tool reads
+  // from `vendor/<product>/knowledge/` at runtime (`lib/docs.js` resolves
+  // `new URL('../knowledge/', import.meta.url)`). It is not source: the synced
+  // `src/knowledge/` copies compile into lib, while the page Markdown and
+  // `index.json` have to ride in the payload or every docs tool answers
+  // SOURCE_NOT_INSTALLED from the tarball. `test/components.spec.mjs` scans for
+  // runtime-resolved directories by name.
+  for (const entry of PAYLOAD) {
     const source = join(from, entry)
     // An absent entry is expected: one list serves every component. Any other
     // failure is not - `cp(...).catch(() => {})` used to swallow both, which is
@@ -106,4 +160,5 @@ async function vendor(name) {
 
 await rm(VENDOR, { recursive: true, force: true })
 for (const name of COMPONENTS) await vendor(name)
-console.log(`assembled ${COMPONENTS.length} components into vendor/`)
+for (const name of VIEWER_PAYLOADS) await vendor(name)
+console.log(`assembled ${COMPONENTS.length} components and ${VIEWER_PAYLOADS.length} viewer payloads into vendor/`)

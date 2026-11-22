@@ -1,5 +1,5 @@
 /**
- * `compare_projects` on the languages that are not ladder.
+ * `l5x_compare_projects` on the languages that are not ladder.
  *
  * It is the tool a reviewer uses to judge an edit, and a comparison that answers "no changes"
  * while a Structured Text body or a diagram changed is worse than one that fails. Probing showed
@@ -23,11 +23,11 @@ async function compare(before: string, after: string) {
     ['a.l5x', new TextEncoder().encode(before)],
     ['b.l5x', new TextEncoder().encode(after)],
   ]), { editing: true })
-  const one = await l5x.call('open_project', { path: 'a.l5x' })
-  const two = await l5x.call('open_project', { path: 'b.l5x' })
+  const one = await l5x.call('l5x_open_project', { path: 'a.l5x' })
+  const two = await l5x.call('l5x_open_project', { path: 'b.l5x' })
   expect(one.error).toBeUndefined()
   expect(two.error).toBeUndefined()
-  const result = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+  const result = await l5x.call('l5x_compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
   expect(result.error).toBeUndefined()
   return result.data as { count: number; by_component: Record<string, number> }
 }
@@ -142,9 +142,9 @@ describe('a change record', () => {
       ['old.l5x', new TextEncoder().encode(DIFF_OLD)],
       ['new.l5x', new TextEncoder().encode(DIFF_NEW)],
     ]))
-    const before = await l5x.call('open_project', { path: 'old.l5x' })
-    const after = await l5x.call('open_project', { path: 'new.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const before = await l5x.call('l5x_open_project', { path: 'old.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
     const tagChange = changes.find(change => change.component === 'tag')
     expect(tagChange).toBeDefined()
@@ -159,9 +159,9 @@ describe('a change record', () => {
       ['old.l5x', new TextEncoder().encode(before)],
       ['new.l5x', new TextEncoder().encode(after)],
     ]))
-    const oldProject = await l5x.call('open_project', { path: 'old.l5x' })
-    const newProject = await l5x.call('open_project', { path: 'new.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: oldProject.data?.project_id, after_id: newProject.data?.project_id })
+    const oldProject = await l5x.call('l5x_open_project', { path: 'old.l5x' })
+    const newProject = await l5x.call('l5x_open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: oldProject.data?.project_id, after_id: newProject.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
     const diagram = changes.find(change => change.component === 'diagram')
     expect(diagram).toBeDefined()
@@ -182,9 +182,9 @@ describe('one rung changed', () => {
       ['old.l5x', new TextEncoder().encode(RUNG_OLD)],
       ['new.l5x', new TextEncoder().encode(RUNG_NEW)],
     ]))
-    const before = await l5x.call('open_project', { path: 'old.l5x' })
-    const after = await l5x.call('open_project', { path: 'new.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const before = await l5x.call('l5x_open_project', { path: 'old.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; key: string; changed_fields?: string[] }[]
     const rungs = changes.filter(change => change.component === 'rung')
     expect(rungs.length).toBe(1)
@@ -205,8 +205,8 @@ describe('a sequential function chart', () => {
     // A real SFC export writes the chart directly under SFCContent. Decoding only Sheet children
     // returned zero nodes, so the chart was invisible to the reader and to the diff.
     const l5x = harness(new Map([['sfc.l5x', new TextEncoder().encode(SFC_OLD)]]))
-    await l5x.call('open_project', { path: 'sfc.l5x' })
-    const routine = await l5x.call('get_component', { kind: 'routine', name: 'R', scope: 'P' })
+    await l5x.call('l5x_open_project', { path: 'sfc.l5x' })
+    const routine = await l5x.call('l5x_get_component', { kind: 'routine', name: 'R', scope: 'P' })
     const body = (routine.data?.component?.body ?? {}) as { type?: string; nodes?: { kind: string }[] }
     expect(body.type).toBe('SFC')
     expect((body.nodes ?? []).length).toBeGreaterThanOrEqual(4)
@@ -218,9 +218,9 @@ describe('a sequential function chart', () => {
       ['old.l5x', new TextEncoder().encode(SFC_OLD)],
       ['new.l5x', new TextEncoder().encode(SFC_NEW)],
     ]))
-    const before = await l5x.call('open_project', { path: 'old.l5x' })
-    const after = await l5x.call('open_project', { path: 'new.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const before = await l5x.call('l5x_open_project', { path: 'old.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'new.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; key: string; changed_fields?: string[] }[]
     const diagram = changes.find(change => change.component === 'diagram' && change.key === 'P::R')
     expect(diagram).toBeDefined()
@@ -250,14 +250,14 @@ describe('alias and produce details', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['ai.l5x', new TextEncoder().encode(xml)]]))
-    await l5x.call('open_project', { path: 'ai.l5x' })
-    const alias = await l5x.call('get_component', { kind: 'tag', name: 'Short' })
+    await l5x.call('l5x_open_project', { path: 'ai.l5x' })
+    const alias = await l5x.call('l5x_get_component', { kind: 'tag', name: 'Short' })
     expect(alias.data?.component?.tagType).toBe('Alias')
     expect(alias.data?.component?.aliasFor).toBe('Base')
-    const produced = await l5x.call('get_component', { kind: 'tag', name: 'Sent' })
+    const produced = await l5x.call('l5x_get_component', { kind: 'tag', name: 'Sent' })
     expect(produced.data?.component?.produceCount).toBe(2)
     expect(produced.data?.component?.produceUnicast).toBe(true)
-    const listed = await l5x.call('list_components', { kind: 'tag', filter: 'Short' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'tag', filter: 'Short' })
     expect(((listed.data?.rows ?? [])[0] as { aliasFor?: string } | undefined)?.aliasFor).toBe('Base')
   })
 })
@@ -265,14 +265,14 @@ describe('alias and produce details', () => {
 describe('produced and consumed tags', () => {
   it('names the network role and the producer controller', async () => {
     const l5x = harness(new Map([['pc.l5x', new TextEncoder().encode(PROD_CONS_L5X)]]))
-    await l5x.call('open_project', { path: 'pc.l5x' })
-    const produced = await l5x.call('get_component', { kind: 'tag', name: 'FROM_FURN' })
+    await l5x.call('l5x_open_project', { path: 'pc.l5x' })
+    const produced = await l5x.call('l5x_get_component', { kind: 'tag', name: 'FROM_FURN' })
     expect(produced.data?.component?.tagType).toBe('Produced')
-    const consumed = await l5x.call('get_component', { kind: 'tag', name: 'CCI_Nutro_dints' })
+    const consumed = await l5x.call('l5x_get_component', { kind: 'tag', name: 'CCI_Nutro_dints' })
     expect(consumed.data?.component?.tagType).toBe('Consumed')
     expect(consumed.data?.component?.consumerOf).toBe('CCI_Ethernet_Port_Controller')
     expect(consumed.data?.component?.remoteTag).toBe('CCI_Nutro_dints')
-    const listed = await l5x.call('list_components', { kind: 'tag', filter: 'CCI_Nutro' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'tag', filter: 'CCI_Nutro' })
     const row = (listed.data?.rows ?? [])[0] as { tagType?: string; consumerOf?: string } | undefined
     expect(row?.tagType).toBe('Consumed')
     expect(row?.consumerOf).toBe('CCI_Ethernet_Port_Controller')
@@ -296,9 +296,9 @@ describe('an AOI definition compared between exports', () => {
     const before = project('Input')
     const after = project('InOut')
     const tool = harness(new Map([['before.l5x', new TextEncoder().encode(before)], ['after.l5x', new TextEncoder().encode(after)]]))
-    const a = await tool.call('open_project', { path: 'before.l5x' })
-    const b = await tool.call('open_project', { path: 'after.l5x' })
-    const compared = await tool.call('compare_projects', { before_id: a.data?.project_id, after_id: b.data?.project_id })
+    const a = await tool.call('l5x_open_project', { path: 'before.l5x' })
+    const b = await tool.call('l5x_open_project', { path: 'after.l5x' })
+    const compared = await tool.call('l5x_compare_projects', { before_id: a.data?.project_id, after_id: b.data?.project_id })
     expect(compared.error).toBeUndefined()
     const changes = (compared.data as { changes?: { kind: string; component: string; key: string; before?: { parameters?: { name: string; usage: string }[] }; after?: { parameters?: { name: string; usage: string }[] } }[] } | undefined)?.changes ?? []
     const change = changes.find(entry => entry.component === 'aoi' && entry.key === 'MyAoi')
@@ -312,8 +312,8 @@ describe('an AOI definition compared between exports', () => {
 describe('an AOI parameter that aliases', () => {
   it('names the tag array element it points at', async () => {
     const l5x = harness(new Map([['a.l5x', new TextEncoder().encode(AOI_ALIAS_L5X)]]))
-    await l5x.call('open_project', { path: 'a.l5x' })
-    const aoi = await l5x.call('get_component', { kind: 'aoi', name: 'AOI_PermCheck' })
+    await l5x.call('l5x_open_project', { path: 'a.l5x' })
+    const aoi = await l5x.call('l5x_get_component', { kind: 'aoi', name: 'AOI_PermCheck' })
     const parameters = (aoi.data?.component?.parameters ?? []) as { name: string; tagType?: string; aliasFor?: string }[]
     const input = parameters.find(parameter => parameter.name === 'INP_Perm0')
     expect(input?.tagType).toBe('Alias')
@@ -328,11 +328,11 @@ const MODULE_FAULT_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix50
 describe('a module recorded as faulted', () => {
   it('reports its fault and inhibit state from the export', async () => {
     const l5x = harness(new Map([['m.l5x', new TextEncoder().encode(MODULE_FAULT_L5X)]]))
-    await l5x.call('open_project', { path: 'm.l5x' })
-    const module = await l5x.call('get_component', { kind: 'module', name: 'Local:3' })
+    await l5x.call('l5x_open_project', { path: 'm.l5x' })
+    const module = await l5x.call('l5x_get_component', { kind: 'module', name: 'Local:3' })
     expect(module.data?.component?.majorFault).toBe(true)
     expect(module.data?.component?.inhibited).toBe(true)
-    const listed = await l5x.call('list_components', { kind: 'module', filter: 'Local:3' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'module', filter: 'Local:3' })
     const row = (listed.data?.rows ?? [])[0] as { majorFault?: boolean; inhibited?: boolean } | undefined
     expect(row?.majorFault).toBe(true)
     expect(row?.inhibited).toBe(true)
@@ -347,8 +347,8 @@ const UNUSED_READABLE = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix500
 describe('unused-tag analysis on an encrypted export', () => {
   it('is skipped and says so, instead of reporting every tag unused', async () => {
     const l5x = harness(new Map([['u.l5x', new TextEncoder().encode(UNUSED_ENCRYPTED)]]))
-    await l5x.call('open_project', { path: 'u.l5x' })
-    const checks = await l5x.call('run_checks', {})
+    await l5x.call('l5x_open_project', { path: 'u.l5x' })
+    const checks = await l5x.call('l5x_run_checks', {})
     const findings = (checks.data?.findings ?? []) as { rule: string }[]
     expect(findings.some(finding => finding.rule === 'UNUSED_TAG')).toBe(false)
     const skipped = (checks.data?.skipped_readings ?? []) as { rule: string; reason: string }[]
@@ -359,8 +359,8 @@ describe('unused-tag analysis on an encrypted export', () => {
 
   it('still reports an unused tag when the logic is readable', async () => {
     const l5x = harness(new Map([['u.l5x', new TextEncoder().encode(UNUSED_READABLE)]]))
-    await l5x.call('open_project', { path: 'u.l5x' })
-    const checks = await l5x.call('run_checks', {})
+    await l5x.call('l5x_open_project', { path: 'u.l5x' })
+    const checks = await l5x.call('l5x_run_checks', {})
     const findings = (checks.data?.findings ?? []) as { rule: string }[]
     expect(findings.some(finding => finding.rule === 'UNUSED_TAG')).toBe(true)
   })
@@ -373,7 +373,7 @@ const SIX_RUNGS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000C
 describe('a paginated routine diagram', () => {
   it('writes each page to its own absolute path', async () => {
     const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(SIX_RUNGS_L5X)]]), { editing: true })
-    await l5x.call('open_project', { path: 'p.l5x' })
+    await l5x.call('l5x_open_project', { path: 'p.l5x' })
     // Keep test artifacts out of the repository and remove them afterwards.
     const folder = '.l5x-preview-test'
     const first = await l5x.call('l5x_routine_diagram', { program: 'P', routine: 'R', max_rungs: 3, output: folder })
@@ -402,12 +402,12 @@ const TASK_CLASS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000
 describe('task class', () => {
   it('says which task is a safety task, in the reader and the listing', async () => {
     const l5x = harness(new Map([['t.l5x', new TextEncoder().encode(TASK_CLASS_L5X)]]))
-    await l5x.call('open_project', { path: 't.l5x' })
-    const safety = await l5x.call('get_component', { kind: 'task', name: 'SafetyTask' })
+    await l5x.call('l5x_open_project', { path: 't.l5x' })
+    const safety = await l5x.call('l5x_get_component', { kind: 'task', name: 'SafetyTask' })
     expect(safety.data?.component?.safety).toBe(true)
-    const main = await l5x.call('get_component', { kind: 'task', name: 'MainTask' })
+    const main = await l5x.call('l5x_get_component', { kind: 'task', name: 'MainTask' })
     expect(main.data?.component?.safety).toBe(false)
-    const listed = await l5x.call('list_components', { kind: 'task' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'task' })
     const rows = (listed.data?.rows ?? []) as { name: string; safety?: boolean }[]
     expect(rows.find(row => row.name === 'SafetyTask')?.safety).toBe(true)
     expect(rows.find(row => row.name === 'MainTask')?.safety).toBe(false)
@@ -421,10 +421,10 @@ const PROGRAM_CLASS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5
 describe('program class', () => {
   it('says which program is a safety program', async () => {
     const l5x = harness(new Map([['pc.l5x', new TextEncoder().encode(PROGRAM_CLASS_L5X)]]))
-    await l5x.call('open_project', { path: 'pc.l5x' })
-    const guard = await l5x.call('get_component', { kind: 'program', name: 'Guard' })
+    await l5x.call('l5x_open_project', { path: 'pc.l5x' })
+    const guard = await l5x.call('l5x_get_component', { kind: 'program', name: 'Guard' })
     expect(guard.data?.component?.safety).toBe(true)
-    const listed = await l5x.call('list_components', { kind: 'program' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'program' })
     const rows = (listed.data?.rows ?? []) as { name: string; safety?: boolean }[]
     expect(rows.find(row => row.name === 'Guard')?.safety).toBe(true)
     expect(rows.find(row => row.name === 'Standard')?.safety).toBe(false)
@@ -438,17 +438,17 @@ const SAFETY_KIT_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000
 describe('safety hardware and safety instructions', () => {
   it('names the safety module and the safety AOI in their listings', async () => {
     const l5x = harness(new Map([['sk.l5x', new TextEncoder().encode(SAFETY_KIT_L5X)]]))
-    await l5x.call('open_project', { path: 'sk.l5x' })
-    const safetyModule = await l5x.call('get_component', { kind: 'module', name: 'SA_DIG_IN_1' })
+    await l5x.call('l5x_open_project', { path: 'sk.l5x' })
+    const safetyModule = await l5x.call('l5x_get_component', { kind: 'module', name: 'SA_DIG_IN_1' })
     expect(safetyModule.data?.component?.safetyEnabled).toBe(true)
     expect(safetyModule.data?.component?.safetyNetwork).toContain('4bc3')
-    const modules = await l5x.call('list_components', { kind: 'module' })
+    const modules = await l5x.call('l5x_list_components', { kind: 'module' })
     const moduleRows = (modules.data?.rows ?? []) as { name: string; safetyEnabled?: boolean }[]
     expect(moduleRows.find(row => row.name === 'SA_DIG_IN_1')?.safetyEnabled).toBe(true)
     expect(moduleRows.find(row => row.name === 'Local:3')?.safetyEnabled).toBe(false)
-    const aoi = await l5x.call('get_component', { kind: 'aoi', name: 'FC_SFTY_SSOV' })
+    const aoi = await l5x.call('l5x_get_component', { kind: 'aoi', name: 'FC_SFTY_SSOV' })
     expect(aoi.data?.component?.safety).toBe(true)
-    const aois = await l5x.call('list_components', { kind: 'aoi' })
+    const aois = await l5x.call('l5x_list_components', { kind: 'aoi' })
     const aoiRows = (aois.data?.rows ?? []) as { name: string; safety?: boolean }[]
     expect(aoiRows.find(row => row.name === 'FC_SFTY_SSOV')?.safety).toBe(true)
     expect(aoiRows.find(row => row.name === 'FC_Adj_Ratio_SP')?.safety).toBe(false)
@@ -462,8 +462,8 @@ const ROUTED_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Cont
 describe('controller metadata', () => {
   it('carries the saved communication path and project serial number', async () => {
     const l5x = harness(new Map([['r.l5x', new TextEncoder().encode(ROUTED_L5X)]]))
-    await l5x.call('open_project', { path: 'r.l5x' })
-    const overview = await l5x.call('project_overview')
+    await l5x.call('l5x_open_project', { path: 'r.l5x' })
+    const overview = await l5x.call('l5x_project_overview')
     const controller = (overview.data?.controller ?? {}) as { commPath?: string; projectSerialNumber?: string }
     expect(controller.commPath).toContain('10.211.100.100')
     expect(controller.projectSerialNumber).toBe('16#0163_1759')
@@ -488,15 +488,15 @@ const NETWORK_TAGS_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('who writes a networked tag', () => {
   it('names the producer controller for a consumed tag and the consumer count for a produced one', async () => {
     const l5x = harness(new Map([['n.l5x', new TextEncoder().encode(NETWORK_TAGS_L5X)]]))
-    await l5x.call('open_project', { path: 'n.l5x' })
-    const consumed = await l5x.call('find_references', { symbol: 'CCI_Nutro_dints' })
+    await l5x.call('l5x_open_project', { path: 'n.l5x' })
+    const consumed = await l5x.call('l5x_find_references', { symbol: 'CCI_Nutro_dints' })
     expect(String(consumed.summary)).toContain('Consumed tag: written by CCI_Ethernet_Port_Controller as CCI_Nutro_dints')
-    const produced = await l5x.call('find_references', { symbol: 'FROM_FURN' })
+    const produced = await l5x.call('l5x_find_references', { symbol: 'FROM_FURN' })
     expect(String(produced.summary)).toContain('Produced tag: 2 consumer(s) declared')
     // An empty graph must not read as "nothing feeds this".
-    const upstream = await l5x.call('trace_dependencies', { symbol: 'CCI_Nutro_dints', direction: 'upstream' })
+    const upstream = await l5x.call('l5x_trace_dependencies', { symbol: 'CCI_Nutro_dints', direction: 'upstream' })
     expect(String(upstream.summary)).toContain('Value arrives from CCI_Ethernet_Port_Controller as CCI_Nutro_dints')
-    const downstream = await l5x.call('trace_dependencies', { symbol: 'FROM_FURN', direction: 'downstream' })
+    const downstream = await l5x.call('l5x_trace_dependencies', { symbol: 'FROM_FURN', direction: 'downstream' })
     expect(String(downstream.summary)).toContain('Value leaves to 2 consumer(s)')
   })
 })
@@ -517,9 +517,9 @@ describe('a controller-level change', () => {
       ['a.l5x', new TextEncoder().encode(CONTROLLER_VARIANT('1756-L81ES', 'CIM_Prep/10.211.100.100/Backplane/0'))],
       ['b.l5x', new TextEncoder().encode(CONTROLLER_VARIANT('1756-L82ES', 'CIM_Prep/10.211.100.101/Backplane/0'))],
     ]))
-    const one = await l5x.call('open_project', { path: 'a.l5x' })
-    const two = await l5x.call('open_project', { path: 'b.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const one = await l5x.call('l5x_open_project', { path: 'a.l5x' })
+    const two = await l5x.call('l5x_open_project', { path: 'b.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
     const controller = changes.find(change => change.component === 'controller')
     expect(controller).toBeDefined()
@@ -556,11 +556,11 @@ describe('changes below the component name', () => {
       ['a.l5x', new TextEncoder().encode(before)],
       ['b.l5x', new TextEncoder().encode(after)],
     ]))
-    const one = await l5x.call('open_project', { path: 'a.l5x' })
-    const two = await l5x.call('open_project', { path: 'b.l5x' })
+    const one = await l5x.call('l5x_open_project', { path: 'a.l5x' })
+    const two = await l5x.call('l5x_open_project', { path: 'b.l5x' })
     expect(one.error).toBeUndefined()
     expect(two.error).toBeUndefined()
-    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
     const all = changes.map(change => `${change.component} ${(change.changed_fields ?? []).join(' ')}`).join('\n')
     expect(all).toContain('module minor 11 to 12')
@@ -602,8 +602,8 @@ const SAFETY_CONTEXT_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('a safety instruction outside a safety program', () => {
   it('is reported in standard logic and not in the safety program', async () => {
     const l5x = harness(new Map([['sc.l5x', new TextEncoder().encode(SAFETY_CONTEXT_L5X)]]))
-    await l5x.call('open_project', { path: 'sc.l5x' })
-    const checks = await l5x.call('run_checks', { rule: 'SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM' })
+    await l5x.call('l5x_open_project', { path: 'sc.l5x' })
+    const checks = await l5x.call('l5x_run_checks', { rule: 'SAFETY_INSTRUCTION_OUTSIDE_SAFETY_PROGRAM' })
     const findings = (checks.data?.findings ?? []) as { message: string; severity: string; fix?: string }[]
     expect(findings.length).toBe(1)
     expect(findings[0]?.severity).toBe('warning')
@@ -638,15 +638,15 @@ const SAFETY_SCHEDULE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('safety scheduling and safety network', () => {
   it('reports a safety program in a standard task and a safety module without a network', async () => {
     const l5x = harness(new Map([['ss.l5x', new TextEncoder().encode(SAFETY_SCHEDULE_L5X)]]))
-    await l5x.call('open_project', { path: 'ss.l5x' })
-    const schedule = await l5x.call('run_checks', { rule: 'SAFETY_PROGRAM_NOT_IN_SAFETY_TASK' })
+    await l5x.call('l5x_open_project', { path: 'ss.l5x' })
+    const schedule = await l5x.call('l5x_run_checks', { rule: 'SAFETY_PROGRAM_NOT_IN_SAFETY_TASK' })
     const scheduleFindings = (schedule.data?.findings ?? []) as { message: string }[]
     expect(scheduleFindings.length).toBe(1)
     expect(String(scheduleFindings[0]?.message)).toContain('Misplaced')
     expect(String(scheduleFindings[0]?.message)).toContain('MainTask')
     expect(String(scheduleFindings[0]?.message)).not.toContain('Guard')
     expect(String(scheduleFindings[0]?.message)).toContain('move it to a safety task')
-    const network = await l5x.call('run_checks', { rule: 'SAFETY_MODULE_WITHOUT_SAFETY_NETWORK' })
+    const network = await l5x.call('l5x_run_checks', { rule: 'SAFETY_MODULE_WITHOUT_SAFETY_NETWORK' })
     const networkFindings = (network.data?.findings ?? []) as { message: string }[]
     expect(networkFindings.length).toBe(1)
     expect(String(networkFindings[0]?.message)).toContain('SA_BAD')
@@ -677,11 +677,11 @@ const AOI_ROUTINES_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('an AOI that owns routines', () => {
   it('lists and reads them by the AOI name', async () => {
     const l5x = harness(new Map([['ar.l5x', new TextEncoder().encode(AOI_ROUTINES_L5X)]]))
-    await l5x.call('open_project', { path: 'ar.l5x' })
-    const listed = await l5x.call('list_components', { kind: 'routine', scope: 'AOI_Step' })
+    await l5x.call('l5x_open_project', { path: 'ar.l5x' })
+    const listed = await l5x.call('l5x_list_components', { kind: 'routine', scope: 'AOI_Step' })
     const rows = (listed.data?.rows ?? []) as { name: string; type: string }[]
     expect(rows.map(row => row.name).sort()).toEqual(['Logic', 'Prescan'])
-    const routine = await l5x.call('get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
+    const routine = await l5x.call('l5x_get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
     expect(routine.error).toBeUndefined()
     expect(routine.data?.component?.name).toBe('Logic')
   })
@@ -710,9 +710,9 @@ describe('a user type member change', () => {
       ['a.l5x', new TextEncoder().encode(udtVariant('first description'))],
       ['b.l5x', new TextEncoder().encode(udtVariant('second description'))],
     ]))
-    const one = await l5x.call('open_project', { path: 'a.l5x' })
-    const two = await l5x.call('open_project', { path: 'b.l5x' })
-    const diff = await l5x.call('compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
+    const one = await l5x.call('l5x_open_project', { path: 'a.l5x' })
+    const two = await l5x.call('l5x_open_project', { path: 'b.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: one.data?.project_id, after_id: two.data?.project_id })
     const changes = (diff.data?.changes ?? []) as { component: string; changed_fields?: string[] }[]
     const udt = changes.find(change => change.component === 'udt')
     expect(udt).toBeDefined()
@@ -745,8 +745,8 @@ const AOI_BAD_REFERENCE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('logic inside an add-on instruction', () => {
   it('is in the reference scan, so an undeclared tag there is reported', async () => {
     const l5x = harness(new Map([['aoi.l5x', new TextEncoder().encode(AOI_BAD_REFERENCE_L5X)]]))
-    expect((await l5x.call('open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
-    const checks = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    expect((await l5x.call('l5x_open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
+    const checks = await l5x.call('l5x_run_checks', { rule: 'UNRESOLVED_REFERENCE' })
     const findings = (checks.data?.findings ?? []) as { message: string; evidence: { examples?: { scope?: string; routine?: string; rung?: number }[] } }[]
     expect(findings.length).toBe(1)
     expect(String(findings[0]?.message)).toContain('NoSuchTag')
@@ -754,7 +754,7 @@ describe('logic inside an add-on instruction', () => {
     expect(example?.scope).toBe('AOI_Bad')
     expect(example?.routine).toBe('Logic')
     expect(Number(example?.rung)).toBe(0)
-    const refs = await l5x.call('find_references', { symbol: 'NoSuchTag' })
+    const refs = await l5x.call('l5x_find_references', { symbol: 'NoSuchTag' })
     expect(Number(refs.data?.total)).toBe(1)
   })
 })
@@ -782,15 +782,15 @@ const AOI_PARAM_REFS_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('an AOI parameter as a symbol', () => {
   it('resolves plainly with the AOI as scope and qualified with AOI::Member', async () => {
     const l5x = harness(new Map([['ap.l5x', new TextEncoder().encode(AOI_PARAM_REFS_L5X)]]))
-    expect((await l5x.call('open_project', { path: 'ap.l5x' })).error).toBeUndefined()
-    const plain = await l5x.call('find_references', { symbol: 'P', scope: 'AOI_P' })
+    expect((await l5x.call('l5x_open_project', { path: 'ap.l5x' })).error).toBeUndefined()
+    const plain = await l5x.call('l5x_find_references', { symbol: 'P', scope: 'AOI_P' })
     expect(Number(plain.data?.total)).toBe(2)
-    const qualified = await l5x.call('find_references', { symbol: 'AOI_P::P' })
+    const qualified = await l5x.call('l5x_find_references', { symbol: 'AOI_P::P' })
     expect(Number(qualified.data?.total)).toBe(2)
-    const trace = await l5x.call('trace_dependencies', { symbol: 'AOI_P::P', direction: 'upstream' })
+    const trace = await l5x.call('l5x_trace_dependencies', { symbol: 'AOI_P::P', direction: 'upstream' })
     expect(trace.error).toBeUndefined()
-    // usage_map maps declared tags; an AOI member must be explained, not reported missing.
-    const usage = await l5x.call('usage_map', { tag: 'P', scope: 'AOI_P' })
+    // l5x_usage_map maps declared tags; an AOI member must be explained, not reported missing.
+    const usage = await l5x.call('l5x_usage_map', { tag: 'P', scope: 'AOI_P' })
     expect(usage.error?.code).toBe('INVALID_ARGUMENT')
     expect(String(usage.error?.message)).toContain('member of add-on instruction AOI_P')
     expect(String(usage.error?.fix)).toContain('AOI_P::P')

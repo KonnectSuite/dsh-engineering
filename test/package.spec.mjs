@@ -29,13 +29,13 @@ test('the licence notices travel with the code they cover', () => {
   for (const holder of ['acadrust', 'ACadSharp', 'MPL-2.0', 'StudioMCPBridge.cs', 'NetLogic']) {
     assert.ok(notice.includes(holder), `NOTICE.md does not name ${holder}`)
   }
-  assert.ok(notice.includes('vendor/ecad/THIRD_PARTY_NOTICES.md'), 'NOTICE.md does not point at the full ECAD notice')
+  assert.ok(notice.includes('vendor/ecad/THIRD_PARTY_NOTICES.md'), 'NOTICE.md does not point at the full drawing-viewer notice')
 })
 
 test('the manifest describes the bundle the docs describe', () => {
   // The description is the Plugins page text, the npm listing and the GitHub
   // repository line at once, so a stale one is stale in three public places.
-  for (const product of ['Studio 5000', 'FactoryTalk View', 'FactoryTalk Optix', 'MotionWorks', 'ECAD', 'RSLogix']) {
+  for (const product of ['Studio 5000', 'FactoryTalk View', 'FactoryTalk Optix', 'MotionWorks', 'DXF', 'RSLogix']) {
     assert.ok(manifest.description.includes(product), `description omits ${product}`)
   }
   assert.ok(manifest.keywords.includes('dsh-plugin'), 'keywords omit dsh-plugin')

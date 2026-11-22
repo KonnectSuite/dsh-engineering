@@ -76,7 +76,7 @@ test("the order page is in the corpus and applies to every product row", () => {
   assert.ok(page, "craft-engagement-order is not in the corpus");
   assert.equal(page.domain, "craft");
   assert.deepEqual(page.rules, ["CRAFT-ORD-01", "CRAFT-ORD-02", "CRAFT-ORD-03", "CRAFT-ORD-04"]);
-  const rows = components.map(component => component.id).filter(id => ["l5x", "ftview", "optix", "plc5", "mwi", "ecad", "migration"].includes(id));
+  const rows = components.map(component => component.id).filter(id => ["l5x", "ftview", "optix", "plc5", "mwi", "migration"].includes(id));
   assert.deepEqual(rows.filter(row => !page.applies_to.includes(row)), [], `the page does not apply to ${rows.filter(row => !page.applies_to.includes(row)).join(", ")}`);
   const markdown = file("packages/resources/corpus/craft/craft-engagement-order.md");
   for (const rule of page.rules) assert.ok(markdown.includes(rule), `${rule} is not written in the page`);

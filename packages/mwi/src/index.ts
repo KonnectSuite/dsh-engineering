@@ -35,3 +35,43 @@ export function apply(ctx: PluginContext): void {
 
 export { sessionTools } from './tools/session.ts'
 export { PowerShellSessionRuntime, runtimeFor } from './session/service.ts'
+export {
+  MWI_KNOWN_VERSIONS,
+  MWI_LATEST_KNOWN_VERSION,
+  MWI_PRODUCT,
+  MWI_VERSION_LINE,
+  MWI_VERSION_TABLE,
+  MwiEngineHost,
+  MwiHostAdapter,
+  createStubEngine,
+  mwiProbeStub,
+  normalizeMwiVersion,
+  probeMwiHost,
+  type EngineLike,
+  type MwiCapability,
+  type MwiCapabilityAnswer,
+  type MwiKnownVersion,
+  type MwiProbe,
+  type MwiProbeDeps,
+  type MwiProbeLocation,
+  type MwiUninstallEntry,
+  type MwiVersionInfo,
+  type StubEngineHandler,
+} from './core/host.ts'
+export {
+  HELP_TREE_ENV,
+  HELP_TREE_FORMAT,
+  helpTreeRootFromEnv,
+  probeHelpTree,
+  readHelpTopic,
+  searchHelpTopics,
+  writeHelpTree,
+  type HelpSearchResult,
+  type HelpTopic,
+  type HelpTopicDocument,
+  type HelpTopicMatch,
+  type HelpTreeProbe,
+} from './read/help-tree.ts'
+export { GET_KINDS, LIST_KINDS, ReadService, type CodeMatch, type ListRow, type ReadEngine } from './read/service.ts'
+export { readTools, type ReadFactory } from './tools/read.ts'
+export { verifyTools, type VerifyRuntimeFactory } from './tools/verify.ts'

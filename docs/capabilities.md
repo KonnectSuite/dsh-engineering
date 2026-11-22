@@ -54,13 +54,13 @@ reviewer can look at a routine instead of reading NeutralText.
 ![Seven rungs of a routine drawn on one page](figures/l5x-routine-diagram.png)
 
 FBD and SFC are authored through the draft surface and verified by the vendor engine, not by the
-bundle's own reader. Both captures below come from a project that built: `verify_offline_l5x`
+bundle's own reader. Both captures below come from a project that built: `l5x_verify_offline_l5x`
 returned 0 errors / 0 warnings from Logix Designer 37, and the figure is the export read back
 afterwards.
 
 ![An ADD block and three reference symbols on a built FBD sheet](figures/studio-fbd.png)
 
-The SFC pair is kept deliberately. `draft_sfc` wrote a valid chart, and every step defaulted to
+The SFC pair is kept deliberately. `l5x_draft_sfc` wrote a valid chart, and every step defaulted to
 `X=300, Y=100`, so the chart parsed, verified, and drew as one box on top of another. The first
 image is that project. The second is the same chart after the steps were laid out on a 200-pixel
 pitch in commit `8495915`.
@@ -156,15 +156,12 @@ The export, structural checks, staged edits and comparison are described in
 [FactoryTalk View](products/ftview/README.md), and the display-to-PLC join in
 [cross-reference](products/ftview/cross-reference.md).
 
-## ECAD
+## DXF/DWG drawing preview
 
-The drawing pane's own evidence is 11 headless captures: a DXF opened, panned, zoomed, laid out by
+The drawing preview's own evidence is 11 headless captures: a DXF opened, panned, zoomed, laid out by
 tab, filtered by layer, searched by text, and exported to SVG and PNG. They are not reproduced here
-because the pane is a workspace surface, not a document claim.
-
-One ECAD measurement is deliberately a negative result: the 34-sheet write-then-re-read round trip
-is a corpus specification that has **not** been run on this machine. The pane's coverage badge
-reports the conversion percentage it measured per sheet instead of implying full fidelity, and
+because the pane is a workspace surface, not a document claim. The pane's coverage badge reports the
+conversion percentage it measured per sheet instead of implying full fidelity, and
 [DXF/DWG](products/ecad/README.md) states which entities convert and which are reported as
 unsupported.
 
@@ -184,7 +181,7 @@ gap is the machine, and the page says so.
 | FactoryTalk View | authored display rendered by the bundle's own renderer; `ftview_check`, `ftview_compare` and the export tests | [FactoryTalk View](products/ftview/README.md) |
 | FactoryTalk Optix | 21 captures above, from a bridge-driven Studio and the runtime serving the project | [Optix](products/optix/README.md) |
 | MotionWorks IEC | none on this host | [MotionWorks IEC](products/mwi.md) |
-| ECAD | 11 headless pane captures; the 34-sheet round trip is specified and not run | [DXF/DWG](products/ecad/README.md) |
+| DXF/DWG drawing preview | 11 headless pane captures of the read-only drawing pane | [Drawing preview](products/ecad/README.md) |
 | Migration | the fixtures the comparison and resolver run against; no customer project | [Migration](products/migration.md) |
 | PLC-5 | read-only headless opens of the fixtures through the RSLogix 5 automation server | [RSLogix 5](products/plc5.md) |
 | Standards corpus | 70 pages, indexed and searched; the rule IDs cited across these pages | [Standards](products/resources.md) |
@@ -196,8 +193,8 @@ gap is the machine, and the page says so.
 | `figures/viewer-*.png/.svg` | `pnpm docs:figures` — the shipped `packages/viewer/lib/client.js` in headless Chrome | the built face rendering an export |
 | `figures/studio-neutral-text-paste.png` | Studio 5000 (Logix Designer 37.11) on this machine, after a paste | the vendor editor accepting the copied rung |
 | `figures/l5x-routine-diagram.png` | `l5x_routine_diagram` | one page of rungs drawn from the export |
-| `figures/studio-fbd.png` | `draft_fbd`, then `verify_offline_l5x`, then `export_acd_to_l5x` | a built FBD sheet, read back |
-| `figures/studio-sfc-before.png`, `figures/studio-sfc.png` | `draft_sfc` (defaults), then `draft_sfc` (laid out), `verify_offline_l5x` | the same chart before and after layout |
+| `figures/studio-fbd.png` | `l5x_draft_fbd`, then `l5x_verify_offline_l5x`, then `l5x_export_acd_to_l5x` | a built FBD sheet, read back |
+| `figures/studio-sfc-before.png`, `figures/studio-sfc.png` | `l5x_draft_sfc` (defaults), then `l5x_draft_sfc` (laid out), `l5x_verify_offline_l5x` | the same chart before and after layout |
 | `figures/ftview-authored-display.png` | `ftview_draft_*`, then the bundle's renderer | an authored ME display, not yet imported |
 | `port/optix-live-proof/01..08, 12, 15, 16` | the Web presentation engine serving the project | the project as an operator sees it |
 | `port/optix-live-proof/03` | Studio's own project tree | what the bridge created |
@@ -206,7 +203,7 @@ gap is the machine, and the page says so.
 | `port/optix-live-proof/17..21` | engagement replays of the same task | the trajectory, and the corpus changing it |
 
 Studio figures come from a Windows host with Logix Designer 37.11 and the SDK service installed;
-`studio_sdk_status` is the call that says whether this host can build at all.
+`l5x_studio_sdk_status` is the call that says whether this host can build at all.
 
 ## What an image cannot prove
 
@@ -215,10 +212,10 @@ proves:
 
 - that the rung is safe, or that the sequence it encodes is the one the machine needs;
 - that a project opened here matches the controller that runs the line — only an upload and a
-  `compare_projects` can say that (see [Live controllers](live-controller.md));
+  `l5x_compare_projects` can say that (see [Live controllers](live-controller.md));
 - that a converted drawing is geometrically exact — the coverage block is the honest answer to
   that, and it is a number, not a picture;
-- that a vendor compile succeeded on a machine it did not run on: `verify_offline_l5x` reports the
+- that a vendor compile succeeded on a machine it did not run on: `l5x_verify_offline_l5x` reports the
   build, and its result is attached to the file it produced.
 
 Every claim in these docs that depends on a number carries that number and the command that

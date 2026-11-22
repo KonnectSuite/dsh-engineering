@@ -25,7 +25,7 @@ async function opened(): Promise<Harness> {
     tasks: task('MainTask', ['MainProgram']),
   })
   const l5xTool = harness(new Map([['io.l5x', new TextEncoder().encode(source)]]), { editing: true })
-  const open = await l5xTool.call('open_project', { path: 'io.l5x' })
+  const open = await l5xTool.call('l5x_open_project', { path: 'io.l5x' })
   expect(open.error).toBeUndefined()
   return l5xTool
 }
@@ -33,7 +33,7 @@ async function opened(): Promise<Harness> {
 describe('aliases to module tags', () => {
   it('resolves an alias through the tag definition its module contributes', async () => {
     const l5xTool = await opened()
-    const resolved = await l5xTool.call('resolve_tag', { address: 'DI_Gate_Fault' })
+    const resolved = await l5xTool.call('l5x_resolve_tag', { address: 'DI_Gate_Fault' })
     expect(resolved.error).toBeUndefined()
     const data = resolved.data as Record<string, unknown>
     expect(data.resolved).toBe(true)
@@ -50,7 +50,7 @@ describe('aliases to module tags', () => {
 
   it('resolves an alias whose target the export does not carry, and names the gap', async () => {
     const l5xTool = await opened()
-    const resolved = await l5xTool.call('resolve_tag', { address: 'DI_NotExported' })
+    const resolved = await l5xTool.call('l5x_resolve_tag', { address: 'DI_NotExported' })
     expect(resolved.error).toBeUndefined()
     const data = resolved.data as Record<string, unknown>
     expect(data.resolved).toBe(true)
@@ -60,18 +60,18 @@ describe('aliases to module tags', () => {
 
   it('accepts a rung operand that walks an alias into an I/O image', async () => {
     const l5xTool = await opened()
-    const staged = await l5xTool.call('draft_rung', {
+    const staged = await l5xTool.call('l5x_draft_rung', {
       program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 1, text: 'XIC(DI_Gate_Fault)XIO(Start)OTE(Gate_Run);',
     })
     expect(staged.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'alias-rung.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'alias-rung.l5x' })
     expect(applied.error).toBeUndefined()
     expect(l5xTool.written.get('alias-rung.l5x')).toContain('<Text><![CDATA[XIC(DI_Gate_Fault)XIO(Start)OTE(Gate_Run);]]></Text>')
   })
 
   it('still refuses a member absent from a type the export does declare', async () => {
     const l5xTool = await opened()
-    const staged = await l5xTool.call('draft_rung', {
+    const staged = await l5xTool.call('l5x_draft_rung', {
       program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 1, text: 'XIC(Motor_1.Bogus)OTE(Gate_Run);',
     })
     expect(staged.error?.code).toBe('TAG_NOT_FOUND')

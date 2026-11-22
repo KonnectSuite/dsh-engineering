@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "collection": "rslogix-500",
+  "title": "RSLogix 500 (SLC 500 and MicroLogix) authored knowledge",
+  "source": "authored",
+  "revisions": [
+    "12.00.00"
+  ],
+  "pageCount": 7,
+  "pages": [
+    {
+      "id": "rslogix500-addressing-data-files",
+      "title": "SLC 500 addressing and data files",
+      "section": "Addressing",
+      "body": "pages/rslogix500-addressing-data-files.md",
+      "identifiers": [
+        "N7:0",
+        "B3:0",
+        "I:1/0",
+        "O:0/0",
+        "T4:0.PRE",
+        "C5:0.ACC",
+        "F8:0",
+        "R6:0",
+        "N7:0/5"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-common-faults",
+      "title": "SLC 500 common fault classes",
+      "section": "Faults",
+      "body": "pages/rslogix500-common-faults.md",
+      "identifiers": [
+        "fault",
+        "watchdog",
+        "overflow",
+        "I/O fault",
+        "power-up fault",
+        "runtime fault",
+        "scan fault"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-database-export-grammar",
+      "title": "RSLogix 500 documentation exports",
+      "section": "Documentation",
+      "body": "pages/rslogix500-database-export-grammar.md",
+      "identifiers": [
+        ".EAS",
+        ".ERP",
+        ".EIC",
+        ".ESG",
+        ".CSV",
+        "database export",
+        "documentation export",
+        "symbol",
+        "description"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-instruction-set",
+      "title": "SLC 500 instruction set orientation",
+      "section": "Instructions",
+      "body": "pages/rslogix500-instruction-set.md",
+      "identifiers": [
+        "XIC",
+        "XIO",
+        "OTE",
+        "OTL",
+        "OTU",
+        "ONS",
+        "TON",
+        "TOF",
+        "RTO",
+        "CTU",
+        "CTD",
+        "RES",
+        "MOV",
+        "MVM",
+        "ADD",
+        "SUB",
+        "MUL",
+        "DIV",
+        "JSR",
+        "JMP",
+        "LBL",
+        "MCR",
+        "AFI",
+        "NOP"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-io-configuration",
+      "title": "SLC 500 I/O configuration and slot addressing",
+      "section": "I/O",
+      "body": "pages/rslogix500-io-configuration.md",
+      "identifiers": [
+        "slot",
+        "chassis",
+        "1746",
+        "MicroLogix",
+        "slot addressing",
+        "I/O configuration"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-legacy-file-formats",
+      "title": "SLC 500 legacy file formats and what this row can read",
+      "section": "Legacy formats",
+      "body": "pages/rslogix500-legacy-file-formats.md",
+      "identifiers": [
+        ".RSS",
+        ".SLC",
+        ".ACH",
+        ".RS1",
+        ".APA",
+        ".PC5"
+      ],
+      "revision": "12.00.00"
+    },
+    {
+      "id": "rslogix500-processor-status",
+      "title": "SLC 500 processor status words",
+      "section": "Processor",
+      "body": "pages/rslogix500-processor-status.md",
+      "identifiers": [
+        "S:1",
+        "S:2",
+        "S:3",
+        "S:5",
+        "S:13",
+        "S:24",
+        "S:2",
+        "S:3",
+        "status file"
+      ],
+      "revision": "12.00.00"
+    }
+  ]
+}

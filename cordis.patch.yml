@@ -1,6 +1,6 @@
 # AryaCode engineering bundle.
 #
-# Six product rows, three support rows and one surface row, one switch each. A row mounts a product's whole surface —
+# Six product rows, two support rows and one surface row, one switch each. A row mounts a product's whole surface —
 # its read tools, its guidance and its optional parts — so the Plugins page
 # shows a product per row instead of a surface per row.
 #
@@ -10,13 +10,14 @@
 #   ftview → edit, studio                          (both on by default)
 #   mwi    → edit                                  (on by default)
 #   optix  → authoring, destructive, invoke, preview, netlogic (all on by default)
-#   ecad   → writes, bridgeServerName          (off; the row itself ships off)
 #   plc5   → (the row itself ships off)           (reads only; no writes switch)
+#   slc    → (the row itself ships off)           (reads only; no writes switch)
 #
-# Every product except ECAD ships on so a fresh install can use it. ECAD is a new,
-# large surface, so it ships listed and disabled until a person enables it. Turn
-# any row off from its Configure page when the profile is read-only or the request
-# budget is tight; the schemas are sent on every request.
+# Every product except PLC-5 and SLC 500 ships on so a fresh install can use it.
+# Both are new, read-only surfaces on a legacy platform, so they ship listed and
+# disabled until a person enables them. Turn any row off from its Configure page
+# when the profile is read-only or the request budget is tight; the schemas are
+# sent on every request.
 #
 # The patch only ever inserts. It must never target a row another bundle owns:
 # a profile without that row makes composition fail ("patch: entry ... not
@@ -35,20 +36,11 @@
     # MotionWorks IEC: session, reads, verify and guidance on; edits opt-in.
     - id: mwi
       name: '@aryacode/dsh-engineering/mwi'
-    # ECAD electrical prints: read, review, cross-reference, check, view and export DXF
-    # drawings through the twelve ecad_* tools and the ecad-review skill. The row ships
-    # OFF (a new, large surface) and its writes switch starts off: a mounted row reads,
-    # reviews and views, and its deliverables (a document bundle, a backup copy) are
-    # always NEW files. Drawing authoring is not this row's — it runs in AryaCAD
-    # Electrical, which the owner mounts as their own MCP row (overlays/aryacad-mcp.patch.yml);
-    # this bundle never ships or starts that application.
-    - id: ecad
-      name: '@aryacode/dsh-engineering/ecad'
-      disabled: true
-    # Both previews (the L5X ladder viewer and the FactoryTalk View ME display
-    # preview) are this bundle's own client face. A package registers exactly one
-    # browser bundle, so one row mounts both; a client face adds no model
-    # context, so this row is independent of every product row above.
+    # All three previews (the L5X ladder viewer, the FactoryTalk View ME display
+    # preview and the DXF/DWG drawing preview) are this bundle's own client faces.
+    # A package registers exactly one browser bundle, so one row mounts all three;
+    # a client face adds no model context, so this row is independent of every
+    # product row above.
     - id: viewers
       name: '@aryacode/dsh-engineering'
     # Cross-product engineering resources: a local standards corpus (IEC 61131-3,
@@ -75,6 +67,16 @@
     # OFF (a new surface on a legacy platform) and writes nothing at all.
     - id: plc5
       name: '@aryacode/dsh-engineering/plc5'
+      disabled: true
+
+    # RSLogix 500 (SLC 500 and MicroLogix) product row: the offline text-export
+    # reader, ladder and data-file reads, the I/O and processor census, the
+    # documentation-export parser, slc500_docs and the rslogix-500 skill. The
+    # automation-server path only reads a project hidden and never saves; the
+    # text reader answers from an export alone. The row ships OFF (a read-only
+    # surface on a legacy platform) and writes nothing at all.
+    - id: slc
+      name: '@aryacode/dsh-engineering/slc'
       disabled: true
 
     # FactoryTalk Optix: vendored like the other three products, so one install

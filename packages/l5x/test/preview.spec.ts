@@ -219,7 +219,7 @@ describe('l5x_routine_diagram', () => {
   /** A harness whose project is the open fixture. */
   async function opened() {
     const l5x = harness()
-    const result = await l5x.call('open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     expect(result.error).toBeUndefined()
     return l5x
   }
@@ -298,7 +298,7 @@ describe('l5x_routine_diagram', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['empty.l5x', new TextEncoder().encode(empty)]]))
-    expect((await l5xTool.call('open_project', { path: 'empty.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'empty.l5x' })).error).toBeUndefined()
     const result = await l5xTool.call('l5x_routine_diagram', { program: 'Main', routine: 'MainRoutine' })
     expect(result.error?.code).toBe('NO_RUNGS')
     expect(result.error?.message).toContain('exists but has no rungs')
@@ -317,7 +317,7 @@ describe('non-ladder routines', () => {
 
   it('refuses an FBD and an SFC routine, naming the language', async () => {
     const l5xTool = harness(new Map([['mixed.l5x', new TextEncoder().encode(project())]]))
-    expect((await l5xTool.call('open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
     for (const [routine, language] of [['Fb', 'FBD'], ['Sf', 'SFC']] as const) {
       const result = await l5xTool.call('l5x_routine_diagram', { program: 'Main', routine })
       expect(result.error?.code, routine).toBe('INVALID_ARGUMENT')
@@ -327,7 +327,7 @@ describe('non-ladder routines', () => {
 
   it('draws only the ladder rungs of a mixed-language program', async () => {
     const l5xTool = harness(new Map([['mixed.l5x', new TextEncoder().encode(project())]]))
-    expect((await l5xTool.call('open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'mixed.l5x' })).error).toBeUndefined()
     const diagram = await l5xTool.call('l5x_diagram', { program: 'Main' })
     expect(diagram.error).toBeUndefined()
     expect(diagram.data?.rungs).toBe(1)
@@ -340,7 +340,7 @@ describe('non-ladder routines', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['fbd-only.l5x', new TextEncoder().encode(fbdOnly)]]))
-    expect((await l5xTool.call('open_project', { path: 'fbd-only.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'fbd-only.l5x' })).error).toBeUndefined()
     const diagram = await l5xTool.call('l5x_diagram', { program: 'Main' })
     expect(diagram.error?.code).toBe('NO_LADDER_ROUTINES')
     expect(diagram.error?.message).toContain('has no ladder routines')

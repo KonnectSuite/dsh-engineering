@@ -27,7 +27,7 @@ export const ECAD_SERVICE_KEY = ECAD_NAMESPACE
 export const DEFAULT_MAX_FILE_BYTES = 64 * 1024 * 1024
 
 /**
- * Service key the ECAD row provides with its live write policy.
+ * Service key a pre-retirement profile's row provided with its live write policy.
  *
  * The package-root row mounts this Remote service and the `ecad` row mounts the
  * tools; sibling rows may be applied in either order. Reading the policy on
@@ -115,7 +115,7 @@ async function drawingDxfBytes(file) {
   }
   const converter = await dwg()
   if (converter === undefined) {
-    throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'DWG support is not installed in this build', 'Reinstall the engineering bundle with the ECAD converter, or convert the drawing to DXF.')
+    throw new EcadRemoteError('ECAD_DWG_UNAVAILABLE', 'DWG support is not installed in this build', 'Reinstall the engineering bundle with the embedded DWG converter, or convert the drawing to DXF.')
   }
   const info = await converter.converterInfo()
   if (info.kind === 'unavailable') {
@@ -273,7 +273,7 @@ function assertBinaryWriteAllowed(absolute, cwd, policy) {
  */
 async function readWorkspaceFile(ctx, cwd, path, signal) {
   const fs = ctx.get?.('fs')
-  if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Enable the ECAD row in a full AryaCode profile; the drawing cannot be read here.')
+  if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Run a full AryaCode profile with the engineering bundle mounted; the drawing cannot be read here.')
   const { absolute, relative: rel } = workspacePathOf(cwd, path)
   const target = await fs.resolve(absolute, { cwd })
   let info
@@ -290,7 +290,7 @@ async function readWorkspaceFile(ctx, cwd, path, signal) {
   }
   const bytes = await fs.readBytes(target, signal, DEFAULT_MAX_FILE_BYTES + 1)
   if (bytes.length > DEFAULT_MAX_FILE_BYTES) {
-    throw new EcadRemoteError('ECAD_TOO_LARGE', `"${rel}" is larger than ${DEFAULT_MAX_FILE_BYTES} bytes`, 'Raise the limit in the ECAD row configuration or split the drawing.')
+    throw new EcadRemoteError('ECAD_TOO_LARGE', `"${rel}" is larger than ${DEFAULT_MAX_FILE_BYTES} bytes`, 'Split the drawing; the viewer reads files up to 64 MiB in this build.')
   }
   return { bytes, absolute, relative: rel }
 }
@@ -306,7 +306,7 @@ async function readWorkspaceFile(ctx, cwd, path, signal) {
  */
 async function writeWorkspaceFile(ctx, session, cwd, path, data, kind) {
   const fs = ctx.get?.('fs')
-  if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Enable the ECAD row in a full AryaCode profile.')
+  if (fs === undefined) throw new EcadRemoteError('ECAD_NO_FS', 'the composition offers no filesystem service', 'Run a full AryaCode profile with the engineering bundle mounted.')
   const { absolute } = workspacePathOf(cwd, path)
   // The service owns `.ecad/`, including its directories; the fs service writes the file itself.
   mkdirSync(dirname(absolute), { recursive: true })
@@ -377,7 +377,7 @@ async function readTextTarget(fs, target) {
 }
 
 /**
- * Resolve the cached workspace index written by `ecad_scan`, when it exists.
+ * Resolve the cached workspace index, when it exists.
  * @param ctx - Host context.
  * @param session - live session.
  * @param cwd - workspace root.
@@ -402,9 +402,9 @@ async function cachedSheetSummaries(ctx, session, cwd) {
 /**
  * Read the confirmed workspace profile, falling back to the defaults.
  *
- * `ecad_profile` writes `.ecad/profile.json` when a person confirms the inferred
- * conventions; until then the panel and the service use the engine defaults and
- * report `profileSource: 'default'`.
+ * A pre-retirement profile could write `.ecad/profile.json` when a person confirmed
+ * the inferred conventions; until then the panel and the service use the engine
+ * defaults and report `profileSource: 'default'`.
  * @param ctx - Host context.
  * @param cwd - workspace root.
  * @param engineModule - the loaded engine module.
@@ -426,7 +426,7 @@ async function loadWorkspaceProfile(ctx, cwd, engineModule) {
     throw new EcadRemoteError(
       'ECAD_PROFILE_INVALID',
       `the workspace profile could not be read: ${error instanceof Error ? error.message : String(error)}`,
-      'Re-run the profile step (ecad_profile) to write .ecad/profile.json again, or delete that file to fall back to the defaults.',
+      'Delete .ecad/profile.json to fall back to the defaults; the drawing viewer never requires a profile.',
     )
   }
 }
@@ -488,9 +488,9 @@ async function listDrawings(cwd, limit, extensions = ['.dxf']) {
  * @returns the service object, so a composition test can configure it.
  */
 export function createEcadService(ctx) {
-  /** Writes stay off until the mounted ECAD row switches them on. */
+  /** Writes stay off in this viewer-only build. */
   let writesEnabled = false
-  /** The row's live policy, when the ECAD row is mounted beside this service. */
+  /** The legacy live policy, when an old profile still mounts the retired row. */
   const policyOf = () => {
     try {
       const policy = ctx.get?.(POLICY_SERVICE)
@@ -499,7 +499,7 @@ export function createEcadService(ctx) {
       return undefined
     }
   }
-  /** The effective `ecad` row config, read from the Loader that booted the app. */
+  /** The legacy config a pre-retirement profile may still carry, read from the Loader that booted the app. */
   const rowConfigOf = () => {
     try {
       const loader = ctx.loader ?? ctx.get?.('loader')
@@ -524,10 +524,10 @@ export function createEcadService(ctx) {
   const service = {
     /** The Cordis service key the descriptors name, exposed for tests. */
     serviceKey: ECAD_SERVICE_KEY,
-    /** Whether the row's deliverable writes are enabled. Read live from the ECAD row's policy. */
+    /** Whether deliverable writes are enabled. Read from the legacy policy when an old profile provides it. */
     get writes() { return writesNow() },
     /**
-     * Apply the ECAD row's policy.
+     * Apply the legacy write policy.
      * @param config - `{ writes?: boolean, maxFileBytes?: number }`.
      * @returns the stored policy.
      */

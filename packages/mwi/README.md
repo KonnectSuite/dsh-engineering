@@ -31,9 +31,37 @@ Session tools: `mw_project_find`, `mw_ide_status`, `mw_project_stage`, `mw_proje
 Edit tools: `mw_edit_code`, `mw_edit_variables`, `mw_edit_structure`, `mw_insert_block`,
 `mw_transfer_pou`, `mw_validate`, `mw_apply`.
 
+## Known versions
+
+MotionWorks IEC ships a v3 release line; this bundle recognises these product releases:
+
+| Version | Released | Note |
+|---|---|---|
+| 3.0.3 | 2015-03-09 | RN.MWIEC.19 |
+| 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0, 3.6.1, 3.7.0 | vendor v3 line | releases between 3.0.3 and 3.7.5 |
+| 3.7.5 | 2024-06-13 | RN.MWIEC.45, current v3 release |
+
+An installed build may carry a four-part version (for example `3.7.5.1`); the fourth part is the build,
+not a separate release. The "1.19" that appears in older bridge and engine notes is the Ade/math-library
+version, not a MotionWorks IEC product release — no MotionWorks IEC release numbered 1.19 exists.
+`mw_ide_status` reports the versions the host probe detected (`installed_versions`) and this known line.
+
+## This host
+
+MotionWorks IEC is **not installed on this host**; the vendor IDE runs on Windows only. On a host
+without the installation `mw_ide_status` reports the probe result — including every location the probe
+inspected — and `mw_compile`, `mw_diagnostics` and the profile work answer with an explicit
+`NOT_INSTALLED` / "not runnable on this host" envelope plus a fix; they never claim a pass. The fixture
+tests build a synthetic help tree under the OS temp directory and exercise the same code paths, so
+`mw_help` (search and read by id) is testable without the IDE. Compile, live and profile behavior is
+**not proved here**: only the fixture-tested logic is claimed.
+
 ## Live evidence
 
-Verified against MotionWorks IEC 3 Pro 1.19 with a copy of a real project in a temporary workspace:
+The rows below were recorded in an earlier development session against an installed MotionWorks IEC IDE
+with a copy of a real project in a temporary workspace. The exact product version and build that session
+used are not re-verified in this checkout, and this host has no MotionWorks IEC installation, so these
+steps are a record of that session rather than a result this host can re-run:
 
 1. `open` writes `backups/motionworks/<project>/<stamp>/` with `backup-manifest.json` and
    `.motionworks/attached/records/<id>.json`, verified before the IDE is asked to open anything, and
@@ -71,8 +99,11 @@ test/             contract tests and the live fixtures
 
 ## Requirements
 
-Windows, MotionWorks IEC 3 Pro (licensed or trial), Python 3 for the code engine, Windows 32-bit
-PowerShell for the COM bridge, and a computer-use companion for desktop-only operations.
+Windows, MotionWorks IEC 3 Pro (licensed or trial) for compile, live and profile work, Python 3 for the
+code engine, Windows 32-bit PowerShell for the COM bridge, and a computer-use companion for desktop-only
+operations. Offline saved-project reads and the help tree need no vendor installation. Set
+`MWI_HELP_TREE` to an extracted help tree to give `mw_help` a source without the IDE; otherwise it reads
+the packaged corpus and, when the IDE is present, the installed help.
 
 ## Develop
 
@@ -80,4 +111,10 @@ PowerShell for the COM bridge, and a computer-use companion for desktop-only ope
 pnpm install
 pnpm run build
 pnpm test
+```
+
+The IDE-free contract spec runs from the repository root after the build:
+
+```sh
+node --import tsx --test test/mwi-idefree.spec.mjs
 ```

@@ -6,8 +6,10 @@ and Structured Text or IL bodies, compile with the vendor engine, read its diagn
 changed.
 
 This is the one product in the bundle that works a **live IDE** rather than an export. The component is a
-beta product: it is verified against MotionWorks IEC 3 Pro 1.19 on one staged copy of a real project, and
-the IDE must be installed, licensed and running for any operation that touches it.
+beta product: the supported version is the MotionWorks IEC 3 Pro 3.x line (`3.0.3–3.7.5`), and the IDE
+must be installed, licensed and running for any operation that touches it. Live evidence against a
+staged copy of a real project was recorded on 2026-10-23, but it has not been re-verified on this host,
+which has no IDE; here the compile, live and profile paths answer `NOT_INSTALLED`.
 
 ## What it is
 
@@ -35,17 +37,19 @@ back. That is the guard against editing a body something else changed in between
 
 | Requirement | Version the repository records | Needed for | Optional |
 | --- | --- | --- | --- |
-| MotionWorks IEC 3 Pro | 1.19 verified | every session, read, edit and compile operation | no |
+| MotionWorks IEC 3 Pro | 3.0.3–3.7.5 (3.x line) | every session, read, edit and compile operation | no |
 | A licensed IDE, or the vendor trial | — | opening and saving a real project; the trial prompt is answered by the engineer | no |
 | Windows | — | the 32-bit PowerShell COM bridge and the vendor automation components | no |
 | A 32-bit PowerShell and the installed vendor automation components | installed with the IDE | the bridge | no |
 | Python 3 | any 3.x | the read engine that returns the object model; the bundle looks for its host's interpreter first and `MW_PYTHON` overrides it | no, for reads — a missing interpreter answers `PYTHON_UNAVAILABLE` with that fix |
 | A computer-use companion | — | the three desktop-only operations the bundle does not carry: an IDE dialog, the trial prompt, a screenshot | yes |
 
-The component's recorded verification is MotionWorks IEC 3 Pro 1.19, live, on 2026-10-23, against a
-**staged copy** of a real project. That matters twice: the numbers below come from a copy, and the path
-that writes a real workspace project was not what was measured. The staged copy is the default for that
-reason.
+The component's recorded verification is the MotionWorks IEC 3 Pro 3.x line (`3.0.3–3.7.5`), live on
+2026-10-23, against a **staged copy** of a real project. That evidence was recorded on a host with the
+IDE; this host has no MotionWorks install, so the compile, live and profile paths are not re-verified
+here and answer `NOT_INSTALLED` rather than claiming a result. The figures below come from that staged
+copy, and the path that writes a real workspace project was not what was measured. The staged copy is
+the default for that reason.
 
 ## First session
 
@@ -102,7 +106,8 @@ on a delete, `mw_edit_structure` requires approval and a reference review for a 
 
 ## Limits
 
-- The measured scope is one project — a staged copy of a real one — on MotionWorks IEC 3 Pro 1.19. Other
+- The measured scope is one project — a staged copy of a real one — on the MotionWorks IEC 3 Pro 3.x
+  line (`3.0.3–3.7.5`). Other
   IDE versions, other controller families and a download to real hardware are unmeasured.
 - The compile verdict is the vendor engine's. It is not a runtime test: the bundle never downloads, starts,
   stops or observes a controller.

@@ -53,7 +53,7 @@ const CONTROLLER_COVERAGE: Coverage = {
 export function controllerTools(session: ProjectSession, state: StudioState, ctx: PluginContext): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'controller_approval_status',
+      name: 'l5x_controller_approval_status',
       description: 'Read this session\'s permission preset and human-approval policy before upload, mode change or download. Full access normally cannot ask for approval. No SDK, file search or controller access.',
       parameters: object({}),
       async run(_args, exec) {
@@ -69,7 +69,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
       },
     }),
     tool({
-      name: 'capture_controller_snapshot',
+      name: 'l5x_capture_controller_snapshot',
       description: 'Upload from the supplied controller IP to a new local ACD. Resolve the exact FactoryTalk Linx route from a named ACD or L5X; requires per-call human approval.',
       parameters: object({
         ip_address: string('Controller IPv4 address the human named. Example: "192.168.1.10".'),
@@ -83,14 +83,14 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
         const outputPath = await session.resolvePath(requiredString(args, 'output_path'), exec)
         const commPath = await resolveControllerRoute(ip, routePath, exec.signal)
         const output = await controllerUploadPreflight(commPath, outputPath)
-        await requireHumanApproval(ctx, exec, 'capture_controller_snapshot', `Upload controller at user-supplied IP ${ip} using verified FactoryTalk Linx route ${commPath} into new local ACD ${output}`)
+        await requireHumanApproval(ctx, exec, 'l5x_capture_controller_snapshot', `Upload controller at user-supplied IP ${ip} using verified FactoryTalk Linx route ${commPath} into new local ACD ${output}`)
         const result = await captureControllerSnapshot(commPath, output, exec.signal) as { readonly output_path: string; readonly sha256: string }
         await rememberControllerRoute(ip, result.output_path, commPath)
         return success(`Uploaded controller at ${ip} to ${result.output_path}.`, { ip_address: ip, ...result }, [], CONTROLLER_COVERAGE)
       },
     }),
     tool({
-      name: 'go_online',
+      name: 'l5x_go_online',
       description: 'Connect a matching ACD to a controller for read-only diagnostics. Does not change mode or controller data.',
       parameters: object({
         snapshot_path: string('ACD uploaded from that controller. Example: "C:/Projects/Line/Upload.ACD".'),
@@ -103,7 +103,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
       },
     }),
     tool({
-      name: 'read_controller_mode',
+      name: 'l5x_read_controller_mode',
       description: 'Read controller mode for the explicitly supplied controller IP. Supply the matching snapshot ACD to avoid reimporting an L5X. Read-only.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -124,7 +124,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
       },
     }),
     tool({
-      name: 'read_live_tag',
+      name: 'l5x_read_live_tag',
       description: 'Read one controller-scoped scalar BOOL, INT, DINT or REAL from a matching uploaded ACD. Supply the declared data type; read-only.',
       parameters: object({
         snapshot_path: string('ACD uploaded from that controller.'),
@@ -145,7 +145,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
       },
     }),
     tool({
-      name: 'change_controller_mode',
+      name: 'l5x_change_controller_mode',
       description: 'Change controller mode to Program, Run or Test. Requires per-call human approval for the exact controller and target mode.',
       parameters: object({
         snapshot_path: string('Matching ACD for the controller.'),
@@ -169,7 +169,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
         await requireHumanApproval(
           ctx,
           exec,
-          'change_controller_mode',
+          'l5x_change_controller_mode',
           `Change controller at user-supplied IP ${ip} via ${commPath} from ${currentMode} to ${mode} mode using ${preflight.path} (SHA-256 ${preflight.sha256})`,
         )
         return success(
@@ -181,8 +181,8 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
       },
     }),
     tool({
-      name: 'download_project',
-      description: 'Download only an ACD built and reviewed by verify_offline_l5x or build_acd_from_draft in this chat, using its verification_id. Requires per-call human approval; never changes mode automatically.',
+      name: 'l5x_download_project',
+      description: 'Download only an ACD built and reviewed by l5x_verify_offline_l5x or l5x_build_acd_from_draft in this chat, using its verification_id. Requires per-call human approval; never changes mode automatically.',
       parameters: object({
         verification_id: string('Verification id returned by a passed offline build. Example: "b1f2...".'),
         ip_address: string('Controller IPv4 address the human named.'),
@@ -196,7 +196,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
           throw new L5xError(
             'UNVERIFIED_ACD',
             'No successful SDK build and baseline review exists for this verification_id in this chat.',
-            'Run verify_offline_l5x or build_acd_from_draft until it returns download_ready true, then use that verification_id.',
+            'Run l5x_verify_offline_l5x or l5x_build_acd_from_draft until it returns download_ready true, then use that verification_id.',
           )
         }
         const commPath = await resolveControllerRoute(ip, verified.baselinePath, exec.signal)
@@ -212,7 +212,7 @@ export function controllerTools(session: ProjectSession, state: StudioState, ctx
         await requireHumanApproval(
           ctx,
           exec,
-          'download_project',
+          'l5x_download_project',
           `Download ACD ${verified.path} (SHA-256 ${verified.sha256}) to controller at user-supplied IP ${ip} via ${commPath}; mode is not changed`,
         )
         return success(

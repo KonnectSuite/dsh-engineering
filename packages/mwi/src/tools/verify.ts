@@ -8,6 +8,7 @@
  */
 
 import { choice, integer, object, string } from '../core/params.ts'
+import { MwiHostAdapter } from '../core/host.ts'
 import { success } from '../core/result.ts'
 import { tool, type ToolDefinition } from '../core/tool.ts'
 import { workspaceOf } from '../session/workspace.ts'
@@ -31,9 +32,10 @@ const VERIFY_COVERAGE = {
  * The verify tools.
  *
  * @param runtimeOf - Workspace runtime factory; defaults to the PowerShell bridge.
+ * @param adapter - Host capability adapter; defaults to the real installation probe.
  * @returns Tool definitions in registration order.
  */
-export function verifyTools(runtimeOf: VerifyRuntimeFactory = runtimeFor): readonly ToolDefinition[] {
+export function verifyTools(runtimeOf: VerifyRuntimeFactory = runtimeFor, adapter: MwiHostAdapter = new MwiHostAdapter()): readonly ToolDefinition[] {
   return [
     tool({
       name: 'mw_compile',
@@ -42,6 +44,8 @@ export function verifyTools(runtimeOf: VerifyRuntimeFactory = runtimeFor): reado
         mode: choice('Compile operation: make, build or state.', ['make', 'build', 'state']),
       }),
       async run(args, exec) {
+        const blocked = adapter.notRunnable('compile')
+        if (blocked !== undefined) return blocked
         const workspace = workspaceOf(exec.cwd)
         const mode = (args.mode === 'make' || args.mode === 'build' ? args.mode : 'state') as 'make' | 'build' | 'state'
         const result = await runtimeOf(workspace).compile(mode)
@@ -64,6 +68,8 @@ export function verifyTools(runtimeOf: VerifyRuntimeFactory = runtimeFor): reado
         limit: integer('Most messages. Defaults to 200, maximum 500.', { minimum: 1, maximum: 500 }),
       }),
       async run(args, exec) {
+        const blocked = adapter.notRunnable('live')
+        if (blocked !== undefined) return blocked
         const workspace = workspaceOf(exec.cwd)
         const pane = typeof args.pane === 'string' && args.pane !== '' ? args.pane : 'Errors'
         const result = await runtimeOf(workspace).diagnostics(pane, typeof args.limit === 'number' ? args.limit : 200)

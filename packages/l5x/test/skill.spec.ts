@@ -46,9 +46,9 @@ describe('rockwell-l5x skill', () => {
     expect(content.length).toBeGreaterThan(500)
     // The numeric budget is a component policy: test/components.spec.mjs owns it.
     expect(content.startsWith('---')).toBe(false)
-    expect(content).toContain('open_project')
-    expect(content).toContain('find_references')
-    expect(content).toContain('trace_dependencies')
+    expect(content).toContain('l5x_open_project')
+    expect(content).toContain('l5x_find_references')
+    expect(content).toContain('l5x_trace_dependencies')
     expect(content).toContain('AOI_Name::Member')
   })
 

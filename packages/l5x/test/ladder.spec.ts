@@ -7,7 +7,7 @@ import { fixtureBytes, harness } from './harness.ts'
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -21,7 +21,7 @@ const textOf = (result: { data?: Record<string, unknown> }): string => {
 describe('patterns', () => {
   it('composes a start/stop latch in the export style', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'start_stop_latch',
       arguments_json: JSON.stringify({ start: 'StartPB', stop: 'StopPB', run: 'SystemRunning' }),
     })
@@ -32,7 +32,7 @@ describe('patterns', () => {
 
   it('composes a fault latch as two rungs and stages both', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'fault_latch',
       arguments_json: JSON.stringify({ fault: 'FaultActive', reset: 'StartPB', latched: 'FaultActive' }),
       program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 7,
@@ -40,13 +40,13 @@ describe('patterns', () => {
     expect(result.error).toBeUndefined()
     expect(result.data?.operation_count).toBe(2)
     expect((result.data?.rungs as unknown[]).length).toBe(2)
-    const validated = await l5x.call('draft_validate', {})
+    const validated = await l5x.call('l5x_draft_validate', {})
     expect(validated.error).toBeUndefined()
   })
 
   it('composes a TON delay with a literal preset', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'ton_delay',
       arguments_json: JSON.stringify({ enable: 'SystemRunning', timer: 'MainTimer', preset_ms: 1500 }),
     })
@@ -58,7 +58,7 @@ describe('patterns', () => {
 
   it('composes an interlock chain from named conditions', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'interlock',
       arguments_json: JSON.stringify({ conditions: ['SystemRunning', 'StartPB'], output: 'SystemRunning' }),
     })
@@ -70,7 +70,7 @@ describe('patterns', () => {
 describe('structure trees', () => {
   it('composes a series with a nested parallel branch', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({
         series: [
           { instr: 'XIC', args: ['StartPB'] },
@@ -85,7 +85,7 @@ describe('structure trees', () => {
 
   it('accepts an AOI declared by the export and reports its grounding', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'Motor_Control', args: ['Motor1_AOI', 'StartPB', 'StopPB', 'SystemRunning', 'VFD_Running', 'StartPB', 'StopPB', 'SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -94,19 +94,19 @@ describe('structure trees', () => {
 
   it('stages the composed rung and validates it', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
       program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 7, comment: 'Composed rung.',
     })
     expect(result.error).toBeUndefined()
     expect(result.data?.operation_count).toBe(1)
-    const validated = await l5x.call('draft_validate', {})
+    const validated = await l5x.call('l5x_draft_validate', {})
     expect(validated.error).toBeUndefined()
   })
 
   it('returns the text without a draft when no staging target is given', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['SystemRunning'] }, { instr: 'OTE', args: ['VFD_Running'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -117,35 +117,35 @@ describe('structure trees', () => {
 describe('refusals', () => {
   it('refuses an instruction the catalog does not know', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'NOTREAL', args: ['StartPB'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'NOTREAL', args: ['StartPB'] }] }) })
     expect(result.error?.code).toBe('UNKNOWN_INSTRUCTION')
     expect((result.error?.candidates ?? []).length).toBeGreaterThan(0)
   })
 
   it('refuses a BOOL slot given a REAL tag', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['LineSpeed'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['LineSpeed'] }] }) })
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('REAL')
   })
 
   it('refuses an undeclared tag with candidates', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartP'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartP'] }] }) })
     expect(result.error?.code).toBe('TAG_NOT_FOUND')
     expect(result.error?.candidates).toContain('StartPB')
   })
 
   it('refuses the wrong operand count', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB', 'StopPB'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB', 'StopPB'] }] }) })
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('XIC takes 1')
   })
 
   it('refuses a pattern and a tree in one call', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { pattern: 'ton_delay', spec_json: '{}' })
+    const result = await l5x.call('l5x_compose_rung', { pattern: 'ton_delay', spec_json: '{}' })
     expect(result.error?.code).toBe('INVALID_ARGUMENT')
   })
 
@@ -158,7 +158,7 @@ describe('refusals', () => {
       { instr: 'XIC', args: ['NoSuchTwo'] },
       { instr: 'OTE', args: ['MissingOut'] },
     ] }
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify(spec) })
     expect(result.error?.code).toBe('TAG_NOT_FOUND')
     expect(result.error?.message).toContain('NoSuchOne')
     expect(result.error?.message).toContain('NoSuchTwo')
@@ -168,11 +168,11 @@ describe('refusals', () => {
   it('names every required pattern argument at once', async () => {
     // A caller that omits two arguments should not need two round trips to learn both.
     const l5x = await opened()
-    const timer = await l5x.call('compose_rung', { pattern: 'ton_delay', arguments_json: '{}' })
+    const timer = await l5x.call('l5x_compose_rung', { pattern: 'ton_delay', arguments_json: '{}' })
     expect(timer.error?.code).toBe('INVALID_ARGUMENT')
     expect(timer.error?.message).toContain('ton_delay needs enable, timer')
     expect(timer.error?.message).toContain('missing: enable, timer')
-    const scale = await l5x.call('compose_rung', {
+    const scale = await l5x.call('l5x_compose_rung', {
       pattern: 'analog_scale',
       arguments_json: JSON.stringify({ source: 'SystemRunning', destination: 'SystemRunning', in_min: 0, in_max: 1, out_min: 0 }),
     })
@@ -182,7 +182,7 @@ describe('refusals', () => {
 
   it('refuses a timer slot given a BOOL tag', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'ton_delay', arguments_json: JSON.stringify({ enable: 'SystemRunning', timer: 'StartPB', preset_ms: 100 }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -191,7 +191,7 @@ describe('refusals', () => {
 
   it('refuses a rung that ends without an output instruction', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'XIC', args: ['SystemRunning'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_LADDER_SPEC')
@@ -221,8 +221,8 @@ describe('the analog_scale pattern', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['scale.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'scale.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', {
+    expect((await l5x.call('l5x_open_project', { path: 'scale.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'analog_scale',
       arguments_json: JSON.stringify({ source: 'raw', destination: 'scaled', in_min: 0, in_max: 100, out_min: 0, out_max: 50 }),
     })
@@ -252,8 +252,8 @@ describe('the totalizer pattern', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['total.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'total.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', {
+    expect((await l5x.call('l5x_open_project', { path: 'total.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'totalizer',
       arguments_json: JSON.stringify({ enable: 'run', rate: 'rate', total: 'total' }),
     })
@@ -283,8 +283,8 @@ describe('the run_hour_meter pattern', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['runhour.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'runhour.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', {
+    expect((await l5x.call('l5x_open_project', { path: 'runhour.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', {
       pattern: 'run_hour_meter',
       arguments_json: JSON.stringify({ run: 'run', timer: 'meter', hours: 'hours' }),
     })

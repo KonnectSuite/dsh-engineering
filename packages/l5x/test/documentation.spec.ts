@@ -9,7 +9,7 @@ import { l5x, member, module, program, rllRoutine, tag, task, userType, vendorTy
 /** Open the fixture with the editing entry mounted. */
 async function opened() {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -19,10 +19,10 @@ function writtenUnder(l5x: ReturnType<typeof harness>, root: string): string[] {
   return [...l5x.written.keys()].filter(path => path.startsWith(`${root}/`)).map(path => path.slice(root.length + 1)).sort()
 }
 
-describe('document_project', () => {
+describe('l5x_document_project', () => {
   it('writes the project, I/O, tag and rung documents', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs' })
     expect(result.error).toBeUndefined()
     const files = writtenUnder(l5x, 'docs')
     expect(files).toContain('PROJECT.md')
@@ -40,9 +40,9 @@ describe('document_project', () => {
     const withPin = before.replace('<Wire FromID="1" ToID="2"/>', '<Wire FromID="1" ToID="2" ToParam="SourceA"/>')
     expect(withPin).not.toBe(before)
     const l5x = harness(new Map([['synthetic.l5x', new TextEncoder().encode(withPin)]]), { editing: true })
-    const open = await l5x.call('open_project', { path: 'synthetic.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'synthetic.l5x' })
     expect(open.error).toBeUndefined()
-    const result = await l5x.call('document_project', { output_root: 'docs' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs' })
     expect(result.error).toBeUndefined()
     const text = l5x.written.get('docs/rungs/Main.md') ?? ''
     expect(text).toContain('From pin')
@@ -61,8 +61,8 @@ describe('document_project', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['pins.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'pins.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'pins.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs' })).error).toBeUndefined()
     const text = l5xTool.written.get('docs/rungs/Main.md') ?? ''
     expect(text).toContain('| Element | Reference | Pins | Initial | From | From pin | To | To pin |')
     expect(text).toContain('SourceA SourceB Dest')
@@ -79,8 +79,8 @@ describe('document_project', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['sfc.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'sfc.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'sfc.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs' })).error).toBeUndefined()
     const text = l5xTool.written.get('docs/rungs/Main.md') ?? ''
     expect(text).toMatch(/\| Step \| Step_1 \|[^\n]*\| yes \|/u)
     expect(text).toMatch(/\| Step \| Step_2 \|[^\n]*\| {2}\|/u)
@@ -88,7 +88,7 @@ describe('document_project', () => {
 
   it('summarises the project with its tasks and programs', async () => {
     const l5x = await opened()
-    await l5x.call('document_project', { output_root: 'docs' })
+    await l5x.call('l5x_document_project', { output_root: 'docs' })
     const project = l5x.written.get('docs/PROJECT.md') ?? ''
     expect(project).toContain('# SampleController project documentation')
     expect(project).toContain('| Program | Main routine | Routines | Safety | Description |')
@@ -98,7 +98,7 @@ describe('document_project', () => {
 
   it('writes a tag CSV with one row per declared tag and the Studio import shape', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs' })
     const tags = l5x.written.get('docs/tags.csv') ?? ''
     const studio = l5x.written.get('docs/tags-studio.csv') ?? ''
     const declared = (result.data?.counts as { tags: number }).tags
@@ -110,7 +110,7 @@ describe('document_project', () => {
 
   it('documents rungs with their comments and instructions', async () => {
     const l5x = await opened()
-    await l5x.call('document_project', { output_root: 'docs' })
+    await l5x.call('l5x_document_project', { output_root: 'docs' })
     const rungs = l5x.written.get('docs/rungs/MotorProgram.md') ?? ''
     expect(rungs).toContain('### Rung 0')
     expect(rungs).toContain('Child-element comment, the shape current Studio exports write.')
@@ -120,14 +120,14 @@ describe('document_project', () => {
 
   it('honours the include filter', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs', include: ['tags'] })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs', include: ['tags'] })
     expect(result.error).toBeUndefined()
     expect(writtenUnder(l5x, 'docs')).toEqual(['tags-studio.csv', 'tags.csv'])
   })
 
   it('restricts the bundle to one program', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs', programs: ['MotorProgram'] })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs', programs: ['MotorProgram'] })
     expect(result.error).toBeUndefined()
     expect(result.data?.counts).toMatchObject({ programs: 1, routines: 1, rungs: 4 })
     expect([...l5x.written.keys()].some(path => path.includes('MainProgram'))).toBe(false)
@@ -135,26 +135,26 @@ describe('document_project', () => {
 
   it('refuses an output folder that already exists', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'sample.l5x' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'sample.l5x' })
     expect(result.error?.code).toBe('OUTPUT_EXISTS')
   })
 
   it('refuses an unknown program with candidates', async () => {
     const l5x = await opened()
-    const result = await l5x.call('document_project', { output_root: 'docs', programs: ['NoSuchProgram'] })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs', programs: ['NoSuchProgram'] })
     expect(result.error?.code).toBe('COMPONENT_NOT_FOUND')
     expect(result.error?.message).toContain('NoSuchProgram')
   })
 
   it('refuses an unknown routine filter instead of writing an empty bundle', async () => {
     const unknownTool = await opened()
-    const unknown = await unknownTool.call('document_project', { output_root: 'docs', routines: ['NoSuchRoutine'] })
+    const unknown = await unknownTool.call('l5x_document_project', { output_root: 'docs', routines: ['NoSuchRoutine'] })
     expect(unknown.error?.code).toBe('COMPONENT_NOT_FOUND')
     expect(unknown.error?.message).toContain('No routine named NoSuchRoutine')
     expect(unknown.error?.candidates).toEqual(expect.arrayContaining(['MainRoutine']))
     expect(unknownTool.written.size).toBe(0)
     const knownTool = await opened()
-    const known = await knownTool.call('document_project', { output_root: 'docs', routines: ['MainRoutine'] })
+    const known = await knownTool.call('l5x_document_project', { output_root: 'docs', routines: ['MainRoutine'] })
     expect(known.error).toBeUndefined()
     expect(known.data?.counts?.routines).toBe(1)
   })
@@ -164,8 +164,8 @@ describe('document_project', () => {
 describe('documenting a routine that is not ladder', () => {
   it('writes a Structured Text routine as its source', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const bundle = await l5x.call('document_project', { output_root: 'docs' })
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const bundle = await l5x.call('l5x_document_project', { output_root: 'docs' })
     expect(bundle.error).toBeUndefined()
     const text = [...l5x.written].filter(([path]) => path.includes('rungs')).map(([, content]) => content).join(' | ')
     expect(text).toContain('## FaultHandler')
@@ -178,8 +178,8 @@ describe('documenting a routine that is not ladder', () => {
   it('writes a function block diagram as an element table', async () => {
     const synthetic = new Uint8Array(readFileSync(new URL('./fixtures/engineering-synthetic.l5x', import.meta.url)))
     const l5x = harness(new Map([['synthetic.l5x', synthetic]]))
-    await l5x.call('open_project', { path: 'synthetic.l5x' })
-    expect((await l5x.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    await l5x.call('l5x_open_project', { path: 'synthetic.l5x' })
+    expect((await l5x.call('l5x_document_project', { output_root: 'docs' })).error).toBeUndefined()
     const doc = l5x.written.get('docs/rungs/Main.md') ?? ''
     expect(doc).toContain('## Diagram')
     expect(doc).toContain('Function block diagram')
@@ -190,8 +190,8 @@ describe('documenting a routine that is not ladder', () => {
   it('writes a sequential function chart as an element table', async () => {
     const synthetic = new Uint8Array(readFileSync(new URL('./fixtures/engineering-synthetic.l5x', import.meta.url)))
     const l5x = harness(new Map([['synthetic.l5x', synthetic]]))
-    await l5x.call('open_project', { path: 'synthetic.l5x' })
-    expect((await l5x.call('document_project', { output_root: 'docs' })).error).toBeUndefined()
+    await l5x.call('l5x_open_project', { path: 'synthetic.l5x' })
+    expect((await l5x.call('l5x_document_project', { output_root: 'docs' })).error).toBeUndefined()
     const doc = l5x.written.get('docs/rungs/Main.md') ?? ''
     expect(doc).toContain('## Chart')
     expect(doc).toContain('Sequential function chart')
@@ -206,8 +206,8 @@ const DOC_PROTECTED_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5
 describe('documenting a source-protected export', () => {
   it('says how many bodies were encrypted rather than reporting zero routines', async () => {
     const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(DOC_PROTECTED_L5X)]]), { editing: true })
-    await l5x.call('open_project', { path: 'p.l5x' })
-    const result = await l5x.call('document_project', { output_root: 'docs-protected' })
+    await l5x.call('l5x_open_project', { path: 'p.l5x' })
+    const result = await l5x.call('l5x_document_project', { output_root: 'docs-protected' })
     expect(result.error).toBeUndefined()
     expect(String(result.summary)).toContain('2 source-protected')
     const all = [...l5x.written.values()].map(value => String(value)).join('\n')
@@ -231,8 +231,8 @@ const DOC_ROUTE_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('documenting a routed project', () => {
   it('states the project serial and saved path in the overview', async () => {
     const l5x = harness(new Map([['dr.l5x', new TextEncoder().encode(DOC_ROUTE_L5X)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'dr.l5x' })).error).toBeUndefined()
-    expect((await l5x.call('document_project', { output_root: 'docs-route' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'dr.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_document_project', { output_root: 'docs-route' })).error).toBeUndefined()
     const all = [...l5x.written.values()].map(value => String(value)).join('\n')
     expect(all).toContain('Project serial: 16#0163_1759')
     expect(all).toContain('saved path: CIM_Prep/10.211.100.100/Backplane/0')
@@ -262,8 +262,8 @@ const DOC_SAFETY_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('documenting a safety project', () => {
   it('names the safety task, program, I/O module and AOI', async () => {
     const l5x = harness(new Map([['ds.l5x', new TextEncoder().encode(DOC_SAFETY_L5X)]]), { editing: true })
-    await l5x.call('open_project', { path: 'ds.l5x' })
-    expect((await l5x.call('document_project', { output_root: 'docs-safety' })).error).toBeUndefined()
+    await l5x.call('l5x_open_project', { path: 'ds.l5x' })
+    expect((await l5x.call('l5x_document_project', { output_root: 'docs-safety' })).error).toBeUndefined()
     const all = [...l5x.written.values()].map(value => String(value)).join('\n')
     expect(all).toContain('## Safety')
     expect(all).toContain('| Safety task | SafetyTask |')
@@ -295,8 +295,8 @@ const DOC_AOI_LOGIC_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('documenting an AOI routine', () => {
   it('writes the AOI logic to its own rung file', async () => {
     const l5x = harness(new Map([['dl.l5x', new TextEncoder().encode(DOC_AOI_LOGIC_L5X)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'dl.l5x' })).error).toBeUndefined()
-    const documented = await l5x.call('document_project', { output_root: 'docs-aoi', include: ['rungs'] })
+    expect((await l5x.call('l5x_open_project', { path: 'dl.l5x' })).error).toBeUndefined()
+    const documented = await l5x.call('l5x_document_project', { output_root: 'docs-aoi', include: ['rungs'] })
     expect(documented.error).toBeUndefined()
     // The count must include what the bundle writes; "1 routine" alone hid the AOI's logic.
     expect(documented.data?.counts?.aois).toBe(1)
@@ -322,8 +322,8 @@ describe('vendor data types', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['vt.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'vt.l5x' })).error).toBeUndefined()
-    const documented = await l5xTool.call('document_project', { output_root: 'docs-vt', include: ['project'] })
+    expect((await l5xTool.call('l5x_open_project', { path: 'vt.l5x' })).error).toBeUndefined()
+    const documented = await l5xTool.call('l5x_document_project', { output_root: 'docs-vt', include: ['project'] })
     expect(documented.error).toBeUndefined()
     expect(Number(documented.data?.counts?.udts)).toBe(1)
     expect(Number(documented.data?.counts?.vendorTypes)).toBe(1)
@@ -343,8 +343,8 @@ describe('the data type table', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['ud.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'ud.l5x' })).error).toBeUndefined()
-    const documented = await l5xTool.call('document_project', { output_root: 'docs-udt', include: ['project'] })
+    expect((await l5xTool.call('l5x_open_project', { path: 'ud.l5x' })).error).toBeUndefined()
+    const documented = await l5xTool.call('l5x_document_project', { output_root: 'docs-udt', include: ['project'] })
     expect(documented.error).toBeUndefined()
     expect(Number(documented.data?.counts?.udts)).toBe(1)
     const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
@@ -366,8 +366,8 @@ describe('the I/O list', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['io.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'io.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs-io', include: ['io'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'io.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-io', include: ['io'] })).error).toBeUndefined()
     const all = [...l5xTool.written.values()].map(value => String(value)).join('\n')
     expect(all).toContain('| Safety | Safety network |')
     expect(all).toMatch(/\| SA_IN \| 1756-IB16S\/A \|[^|]*\|[^|]*\| false \| true \| 16#0000_4bc3 \|/)
@@ -384,8 +384,8 @@ describe('the review summary', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['rf.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'rf.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs-findings', include: ['project'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'rf.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-findings', include: ['project'] })).error).toBeUndefined()
     const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
     expect(project).toContain('## Review findings')
     expect(project).toContain('UNUSED_TAG')
@@ -407,21 +407,21 @@ describe('the tag CSV safety column', () => {
       tasks: [task('MainTask', ['Main']), task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' })].join(''),
     })
     const l5xTool = harness(new Map([['ts.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'ts.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs-tags', include: ['tags'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'ts.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-tags', include: ['tags'] })).error).toBeUndefined()
     const csv = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('tags.csv'))?.[1] ?? '')
     expect(csv.split('\n')[0]).toContain(',safety')
     expect(csv).toContain('Guard,SafeTag,')
     expect(csv).toMatch(/Guard,SafeTag,[^\n]*,true$/mu)
     expect(csv).toMatch(/Main,PlainTag,[^\n]*,false$/mu)
     // The listing and the reader must agree with the CSV.
-    const listed = await l5xTool.call('list_components', { kind: 'tag', limit: 20 })
+    const listed = await l5xTool.call('l5x_list_components', { kind: 'tag', limit: 20 })
     const rows = (listed.data?.rows ?? []) as { name: string; scope: string; safety?: boolean }[]
     expect(rows.find(row => row.name === 'SafeTag' && row.scope === 'Guard')?.safety).toBe(true)
     expect(rows.find(row => row.name === 'PlainTag' && row.scope === 'Main')?.safety).toBe(false)
-    const safe = await l5xTool.call('get_component', { kind: 'tag', name: 'SafeTag', scope: 'Guard' })
+    const safe = await l5xTool.call('l5x_get_component', { kind: 'tag', name: 'SafeTag', scope: 'Guard' })
     expect(safe.data?.component?.safety).toBe(true)
-    const plain = await l5xTool.call('get_component', { kind: 'tag', name: 'PlainTag', scope: 'Main' })
+    const plain = await l5xTool.call('l5x_get_component', { kind: 'tag', name: 'PlainTag', scope: 'Main' })
     expect(plain.data?.component?.safety).toBeUndefined()
   })
 })

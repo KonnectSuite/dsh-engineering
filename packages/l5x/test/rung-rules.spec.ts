@@ -1,7 +1,7 @@
 /**
  * Rung shapes Studio refuses, in an export that already contains them.
  *
- * `compose_rung` cannot emit either of these because it builds and checks the rung
+ * `l5x_compose_rung` cannot emit either of these because it builds and checks the rung
  * before staging. An export, a hand edit or an import has no such guard, so these
  * checks judge a rung the reader already has.
  */
@@ -67,11 +67,11 @@ describe('a subroutine instruction that does not open the routine', () => {
   })
 })
 
-describe('through run_checks', () => {
+describe('through l5x_run_checks', () => {
   it('stays silent on the committed export, whose rungs all drive an output', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
-    const result: Envelope = await l5x.call('run_checks', {})
+    expect((await l5x.call('l5x_open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result: Envelope = await l5x.call('l5x_run_checks', {})
     expect(result.error).toBeUndefined()
     // The fixture is a compiling export; these rules must stay silent on it.
     const invented = ((result.data?.findings ?? []) as { rule: string }[]).filter(finding => finding.rule === 'RUNG_NO_OUTPUT' || finding.rule === 'SBR_NOT_FIRST')

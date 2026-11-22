@@ -4,12 +4,17 @@
  * Six intents over one opened export folder: open, list, get, find, check and
  * compare. No Python engine, no Studio automation, no MER decoding.
  *
+ * The same plugin registers `ftview_docs`, the read-only knowledge tool over
+ * the authored ME corpus and the committed structural indexes of the installed
+ * ME and SE help.
+ *
  * @module dsh-engineering-ftview
  */
 
 import { stringFs, type PluginContext } from './core.ts'
 import { decodeText } from './model.ts'
 import { ViewSession } from './session.ts'
+import { docsTools } from './docs.ts'
 import { ftviewTools } from './tools.ts'
 import { vendorTools } from './vendor-tools.ts'
 import { displayRoute, globalsRoute, imageRoute, liveRoute } from './live-route.ts'
@@ -31,6 +36,8 @@ export interface Config {
   live?: boolean
   /** Optional IPv4 allowlist for live reads; empty permits any explicit address. */
   allowedAddresses?: string[]
+  /** Register the read-only `ftview_docs` knowledge tool. Defaults to true. */
+  docs?: boolean
 }
 
 /**
@@ -49,6 +56,9 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
   ctx.provide?.(VIEWS_SERVICE, session)
   const readText = async (path: string): Promise<string> => decodeText(await files.readBytes(path, undefined))
   for (const definition of [...ftviewTools(session, readText), ...vendorTools(files, session)]) ctx.tools.register(definition)
+  if (config.docs !== false) {
+    for (const definition of docsTools(ctx)) ctx.tools.register(definition)
+  }
   if (config.live !== false) {
     // The route is mounted only when the host offers a web server; a CLI host
     // without one keeps the tool surface and simply has no live preview.
@@ -135,6 +145,7 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
 }
 
 export { ViewSession } from './session.ts'
+export { docsTools } from './docs.ts'
 export { ftviewTools } from './tools.ts'
 export { vendorTools } from './vendor-tools.ts'
 export { EngineeringError } from './core.ts'

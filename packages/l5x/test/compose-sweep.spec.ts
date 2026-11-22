@@ -63,8 +63,8 @@ describe('the whole catalogue composes', () => {
       + tag('AlarmA', 'ALARM_ANALOG') + tag('AlarmD', 'ALARM_DIGITAL') + tag('Arr', 'DINT', ' Dimensions="10"')
     const base = l5x({ name: 'Sweep', tags, programs: program('Main', rllRoutine('MainRoutine', [])), tasks: task('MainTask', ['Main']) })
     const l5xTool = harness(new Map([['sweep.l5x', new TextEncoder().encode(base)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'sweep.l5x' })).error).toBeUndefined()
-    const listed = await l5xTool.call('list_instructions', { limit: 200 })
+    expect((await l5xTool.call('l5x_open_project', { path: 'sweep.l5x' })).error).toBeUndefined()
+    const listed = await l5xTool.call('l5x_list_instructions', { limit: 200 })
     const rows = (listed.data?.rows ?? []) as { name: string; operands?: readonly Slot[] }[]
     expect(rows.length).toBeGreaterThan(120)
     let composed = 0
@@ -78,7 +78,7 @@ describe('the whole catalogue composes', () => {
       const compose = async (withOutput: boolean) => {
         const series = [{ instr: row.name, args }]
         if (withOutput) series.push({ instr: 'OTE', args: ['B'] })
-        return l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series }) })
+        return l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series }) })
       }
       let result = await compose(false)
       if (result.error?.code === 'INVALID_LADDER_SPEC' && /right power rail/u.test(result.error.message)) result = await compose(true)

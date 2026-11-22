@@ -1,7 +1,7 @@
 /**
  * Build one self-contained HTML report for an export.
  *
- * This is the document, as opposed to `document_project`'s bundle: a cover, the identity of the
+ * This is the document, as opposed to `l5x_document_project`'s bundle: a cover, the identity of the
  * controller, what the export contains, the ladder drawn *inside* the page by the same renderer the
  * `l5x_routine_diagram` tool uses, the Structured Text bodies, the diagram elements as tables, the tag
  * list and the I/O modules — one file that prints to PDF from any browser.
@@ -56,7 +56,7 @@ export interface ReportOptions {
   readonly notes?: string
 }
 
-/** The report text and the counts a caller can compare with `project_overview`. */
+/** The report text and the counts a caller can compare with `l5x_project_overview`. */
 export interface ReportDocument {
   readonly html: string
   /** Sections this document carries, in page order. */

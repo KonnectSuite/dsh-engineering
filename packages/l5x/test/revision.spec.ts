@@ -3,7 +3,7 @@
  *
  * Logix Designer 36 renamed sixteen ladder instructions (EQU to EQ, SQR to SQRT,
  * …). The composer must accept either spelling and write the one the project
- * already uses, and `run_checks` must say so when a project mixes them — as a
+ * already uses, and `l5x_run_checks` must say so when a project mixes them — as a
  * warning, because the project still builds.
  *
  * The fixture is a v33 export whose rungs use the pre-v36 spelling. These tests
@@ -27,7 +27,7 @@ function fixtureWrittenInModernSpelling(): Uint8Array {
 /** Open one export and return the harness around it. */
 async function opened(bytes: () => Uint8Array, options: { editing?: boolean } = {}) {
   const l5x = harness(new Map([['sample.l5x', bytes()]]), options)
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -43,10 +43,10 @@ function findings(result: Envelope): { rule: string; severity: string; message: 
   return (result.data?.findings ?? []) as { rule: string; severity: string; message: string; evidence: { used: string; preferred: string } }[]
 }
 
-describe('run_checks names the revision mismatch', () => {
+describe('l5x_run_checks names the revision mismatch', () => {
   it('reports a legacy mnemonic inside a v36 project, with its modern spelling', async () => {
     const l5x = await opened(() => fixtureAt('36'))
-    const result = await l5x.call('run_checks', { rule: 'MNEMONIC_VERSION_MISMATCH' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MNEMONIC_VERSION_MISMATCH' })
     expect(result.error).toBeUndefined()
     const mov = findings(result).find(finding => finding.evidence?.used === 'MOV')
     expect(mov).toBeDefined()
@@ -58,16 +58,16 @@ describe('run_checks names the revision mismatch', () => {
 
   it('stays quiet when the project predates the rename', async () => {
     const l5x = await opened(() => fixtureAt('33'))
-    const result = await l5x.call('run_checks', { rule: 'MNEMONIC_VERSION_MISMATCH' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MNEMONIC_VERSION_MISMATCH' })
     expect(result.error).toBeUndefined()
     expect(findings(result)).toEqual([])
   })
 })
 
-describe('compose_rung writes the spelling the project uses', () => {
+describe('l5x_compose_rung writes the spelling the project uses', () => {
   it('keeps the legacy spelling an older project already reads', async () => {
     const l5x = await opened(fixtureBytes, { editing: true })
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'MOV', args: ['LineSpeed', 'FaultCount'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -77,7 +77,7 @@ describe('compose_rung writes the spelling the project uses', () => {
 
   it('follows a project that was written in the modern spelling', async () => {
     const l5x = await opened(fixtureWrittenInModernSpelling, { editing: true })
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'MOV', args: ['LineSpeed', 'FaultCount'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -86,7 +86,7 @@ describe('compose_rung writes the spelling the project uses', () => {
 
   it('accepts a modern spelling the catalog files under its legacy name', async () => {
     const l5x = await opened(fixtureBytes, { editing: true })
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'SQRT', args: ['LineSpeed', 'FaultCount'] }] }),
     })
     expect(result.error).toBeUndefined()

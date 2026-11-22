@@ -29,6 +29,8 @@
   },
   "files": [
     "SKILL.md",
+    "knowledge/**/index.json",
+    "knowledge/**/pages/**/*.md",
     "lib/**/*.js",
     "lib/**/*.d.ts"
   ],

@@ -1,7 +1,7 @@
 # Architecture
 
 `@aryacode/dsh-engineering` is one npm package that gives DeepSeek Harness (AryaCode) six products
-and three support components: ten rows in the bundle patch, 190 registered tools and eight skills,
+and two support components: nine rows in the bundle patch, 198 registered tools and eight skills,
 plus one browser bundle and one Remote service. This page owns the internal contract — the file
 layout, the row model, what an entry may declare, how `vendor/` and `lib/client.js` are produced, and
 what the packaged artifact contains.
@@ -26,20 +26,21 @@ package.json                    bundle manifest: dsh.bundle.patch, dsh.client, d
 cordis.patch.yml                the loader layer: nine inserted rows, inserts only
 components.json                 the component manifest: posture, maturity, tools, skill, docs, budgets
 entries/                        one composite entry per row, plus config.js and netlogic.js
-lib/index.js                    the host half the `viewers` row mounts: registers the `ecad` Remote service
-lib/client.js                   the bundle's one browser half: ladder, ME display, ECAD drawing, settings
+lib/index.js                    the host half the `viewers` row mounts: registers the drawing (`ecad`) Remote service
+lib/client.js                   the bundle's one browser half: ladder, ME display, DXF/DWG drawing, settings
 lib/typert.host.js              the Typert Remote artifact, rendered by the client build; src/remote/
                                 holds the wire contract and the Cordis service its endpoints dispatch to
 packages/{l5x,viewer}           L5X host tools, the rockwell-l5x skill, CIP workers, Studio bridge, ladder face
 packages/{ftview,ftview-viewer} FactoryTalk View host tools and skill; ME display preview face
-packages/ecad                   ECAD engine, tools, skill, DWG converter and the drawing pane
+packages/ecad                   the DXF/DWG engine, DWG converter and the drawing pane (viewer payload)
 packages/{mwi,resources}        MotionWorks host tools and skill; standards corpus, index and profile
-packages/{migration,plc5}       legacy assessment/lint/compare/resolver/report; RSLogix 5 headless reader
+packages/{migration,plc5,slc}    legacy assessment/lint/compare/resolver/report; RSLogix 5 and RSLogix 500 headless readers
 packages/optix                  the published Optix build, tracked as source: no source here
 presets/                        billion-context: the bili compaction gate adapter
 scripts/{build-client,assemble}.mjs  fold the four faces into lib/client.js and render the Typert
-                                artifact; copy eight built components into the gitignored vendor/ tree
-vendor/                         build output: eight components, written by `pnpm assemble`, gitignored
+                                artifact; copy eight built components, plus the drawing viewer payload,
+                                into the gitignored vendor/ tree
+vendor/                         build output: eight components plus the drawing viewer payload, written by `pnpm assemble`, gitignored
 ```
 
 `lib/client.js` is committed and a test fails when it is stale; `vendor/` is generated and ignored.
@@ -53,14 +54,14 @@ surface row:
 
 | id | entry | mounts | config (default) | tools |
 |---|---|---|---|---|
-| `l5x` | `entries/l5x.js` | read, `rockwell-l5x`, drafts, Studio SDK, live EtherNet/IP | `editing` on, `studio` on, `live` on, `allowWrites` on, `allowedAddresses` empty | 54 |
-| `ftview` | `entries/ftview.js` | read, guidance, staged edits, Studio handoff | `edit` on, `studio` on | 51 |
+| `l5x` | `entries/l5x.js` | read, `l5x_docs`, `rockwell-l5x`, drafts, Studio SDK, live EtherNet/IP | `editing` on, `studio` on, `live` on, `allowWrites` on, `allowedAddresses` empty | 55 |
+| `ftview` | `entries/ftview.js` | read, `ftview_docs`, guidance, staged edits, Studio handoff | `edit` on, `studio` on | 52 |
 | `mwi` | `entries/mwi.js` | session, read, verify, guidance, edits | `workspace` empty, `edit` on | 24 |
-| `ecad` | `entries/ecad.js` | drawing reads, review, cross-reference, checks, render/compare, the read-only drawing pane and export, deliverables, guidance. **Ships off**; authoring belongs to AryaCAD Electrical through the owner's MCP row | `writes` off, `bridgeServerName` `ocs`, `maxFiles` 2000, `maxFileBytes` 64 MiB, `maxEntities` 200000 | 12 |
-| `viewers` | package root (`lib/index.js`) | the three document previews, the settings pages, the `ecad` Remote service | — | 0 |
+| `viewers` | package root (`lib/index.js`) | the three document previews, the settings pages, the drawing Remote service | — | 0 |
 | `engineering-resources` | `entries/resources.js` | the corpus and house-style tools, `engineering-standards` | `reference` on | 2 |
-| `migration` | `entries/migration.js` | assessment, `.L5K` lint, comparison, marker resolution, report, plan, guidance | one flag per tool, all on | 7 |
-| `plc5` | `entries/plc5.js` | `.RSP` reader, ladder text, search, I/O census, chassis, data files, processor, guidance. **Ships off**; writes nothing | — | 8 |
+| `migration` | `entries/migration.js` | assessment, `.L5K` lint, comparison, marker resolution, report, plan, `migration_docs` | one flag per tool, all on | 8 |
+| `plc5` | `entries/plc5.js` | `.RSP` reader, ladder text, search, I/O census, chassis, data files, processor, six text readers, `plc5_docs`. **Ships off**; writes nothing | — | 15 |
+| `slc` | `entries/slc.js` | RSLogix 500 text reads, I/O census, database, processor, `slc500_docs`. **Ships off**; writes nothing | — | 10 |
 | `optix` | `entries/optix.js` | the prebuilt Studio engine (reads, authoring, preview, NetLogic) and the NetLogic reader | `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `netlogic` on; `bridgeUrls` `http://127.0.0.1:8768` | 32 |
 
 Ids are the contract: profiles, patches and the Plugins page address a row by id, so a row's
@@ -68,10 +69,9 @@ implementation can be rebuilt without resetting the user's enabled state. A **pr
 composite that mounts the whole surface (`ctx.plugin(part)`) and exposes its optional parts as the
 `Config` schema the page renders; a **support component** mounts one part. `viewers` carries no tools.
 
-**Every optional surface ships on except ECAD's writes.** L5X drafts, Studio SDK and live reads default
-on and a read-only profile turns them off; MotionWorks edits default on; ECAD is the exception because
-it is a new, large surface, so its row is inserted `disabled` and its writes are a second switch. A
-fresh install therefore pays for 170 tools, the recorded budget in
+**Every optional surface ships on.** L5X drafts, Studio SDK and live reads default on and a read-only
+profile turns them off, and MotionWorks edits default on. A fresh install therefore pays for 173 tools,
+the recorded budget in
 [components.json](../components.json).
 
 **Why not `cordis:group`.** The Plugins page skips group rows outright
@@ -79,11 +79,9 @@ fresh install therefore pays for 170 tools, the recorded budget in
 children carry the switches"*), and the schema couples `group: true` with `disabled: true`; one
 composite entry per product is the bundle-side equivalent.
 
-**Row switches that cross rows.** ECAD's `writes` switch reaches the row's tools and the package-root
-Remote service behind the drawing pane, and the rows can mount in either order. The service reads the
-policy on every call from the `ecadPolicy` service the row publishes (getters over its volatile
-config), and the row retries briefly when that service is not up yet.
-`test/ecad-policy.spec.mjs` covers the live change and both mount orders.
+**A service that outlives its row.** The drawing Remote service is mounted by the package-root
+`viewers` row and keeps reading the legacy `ecadPolicy` service and `ecad` row config when an older
+profile still provides them; the drawing face and the service therefore mount without a product row.
 
 ## The entry contract
 
@@ -113,7 +111,7 @@ export function apply(ctx, config = {}) {
 - **`loader/volatile-update`** is emitted when only volatile config changed: the loader commits the
   new values into the live references and does **not** re-run `apply`. An entry whose switches mount
   or unmount parts listens and re-syncs: the L5X row drafts, Studio and live; MotionWorks edits; Optix
-  the prebuilt plugin and the NetLogic reader. ECAD publishes live getters instead.
+  the prebuilt plugin and the NetLogic reader.
 
 Every tool entry declares `tools` and `fs`; a skill part declares `skills`; a draft or Studio part also
 declares the read part's handle service (`l5xProjects`, `ftviewViews`) so it reuses the open export
@@ -128,7 +126,6 @@ declares the seven `@deepseek-ai` packages in `package.json`.
 | live entry (mounted by `l5x`) | `enabled`, `minIntervalMs`, `defaultIntervalMs`, `maxTags`, `maxSamples`, `maxBatchTags` | true, 50, 200, 16, 1200, 64 |
 | `ftview` | `edit`, `studio` | true, true |
 | `mwi` | `workspace`, `edit` | empty, true |
-| `ecad` | `writes`, `bridgeServerName`, `maxFiles`, `maxFileBytes`, `maxEntities` | false, `ocs`, 2000, 64 MiB, 200000 |
 | `optix` | bridge URLs and token, `allowWrites`, `allowDestructive`, `allowInvoke`, `preview`, `netlogic`, browser selection, preview URL, OCR paths, request limits | loopback bridge, all switches on, launch a browser |
 | `migration`, `plc5`, `engineering-resources` | one flag per tool (`assess`, `lint`, `compare`, `resolve`, `report`, `plan`; `capabilities`, `open`, `ladder`, `find`, `ioCensus`, `ioConfig`, `dataRead`, `processor`; `reference`) | all true |
 
@@ -150,8 +147,8 @@ document it owns.
 change between releases, and `stabilityNote` says what is not proved yet. `since` is the first release
 whose patch carried the row id, not the last change.
 
-Two budgets come from it. `contextBudget.defaultOnTools` = **170** and
-`defaultOnSchemaCharacters` = **127423** are the measured default-on surface: one more default-on tool
+Two budgets come from it. `contextBudget.defaultOnTools` = **173** and
+`defaultOnSchemaCharacters` = **135251** are the measured default-on surface: one more default-on tool
 fails the suite until the count is raised with its measurement, or the component ships off.
 `skillPolicy.defaultBudget` = **8000** characters is the ceiling for a skill body, because a skill is
 injected into the request when it is invoked; depth belongs on `docs/` pages and is linked.
@@ -160,7 +157,7 @@ injected into the request when it is invoked; depth belongs on `docs/` pages and
 
 A row is a plugin, so a disabled row is an unloaded plugin and its tool schemas leave the request —
 that is the whole switch mechanism in this product line. A row is inserted `disabled: true` when a
-component ships off (`ecad`, `plc5`); the row is still listed, and enabling it writes the profile
+component ships off (`plc5`, `slc`); the row is still listed, and enabling it writes the profile
 overlay.
 
 The patch **only inserts**. An entry that targets another bundle's row is a hard failure when that
@@ -176,7 +173,7 @@ layer could only ever be skipped on an older harness or fail composition on the 
 
 The L5X row's `live` switch mounts `vendor/l5x/lib/live.js`, which owns every direct controller path.
 Two workers keep a controller problem off the host: `poll-worker.mjs` streams sweeps for
-`poll_live_tags` and the trend job, and `cip-worker.mjs` runs one transaction per worker and emits one
+`l5x_poll_live_tags` and the trend job, and `cip-worker.mjs` runs one transaction per worker and emits one
 reply. The engine's transaction module owns the deadline, the concurrency bound and strict decoding of
 a reply, so a hung socket is terminated and a malformed reply cannot be read as a value.
 
@@ -185,7 +182,7 @@ Reads are approval-free. Writes exist only in this entry and are supervised four
 | Gate | Where | Result when it fails |
 |---|---|---|
 | `allowWrites` row config | `entries/l5x.js` forwards it into the live entry | `WRITES_DISABLED` |
-| Per-call human approval | the same approval seam `download_project` uses | `APPROVAL_UNAVAILABLE` / `APPROVAL_DENIED` |
+| Per-call human approval | the same approval seam `l5x_download_project` uses | `APPROVAL_UNAVAILABLE` / `APPROVAL_DENIED` |
 | Declaration and value validation | before any socket is opened | `UNSUPPORTED_WRITE_TAG` / `INVALID_WRITE` |
 | Readback comparison | the tool, after the write | `WRITE_NOT_VERIFIED` |
 
@@ -201,11 +198,12 @@ engineering face ships in the single `./client` bundle:
 
 - the **ladder** face renders rungs for an L5X routine opened from the workspace;
 - the **FactoryTalk View** face draws an exported display instead of its XML;
-- the **ECAD** face is a read-only drawing pane: drag to pan, wheel zoom at the cursor, layout tabs, a
-  layer panel with entity counts, text search, a coverage and conversion badge, print through the host
-  dialog, and SVG/PNG export of the current sheet. Its CAD editing surface was retired in 0.93.0 —
-  authoring belongs to AryaCAD Electrical through the owner's own MCP row, and the Remote contract
-  dropped `apply` with it (`ECAD_CONTRACT_VERSION` 1 → 2, so face and service ship together);
+- the **DXF/DWG drawing** face is a read-only drawing pane: drag to pan, wheel zoom at the cursor,
+  layout tabs, a layer panel with entity counts, text search, a coverage and conversion badge, print
+  through the host dialog, and SVG/PNG export of the current sheet. The former ECAD product row and
+  its tool set are retired; this face and its Remote service stay. Its CAD editing surface was retired
+  in 0.93.0 — authoring belongs to AryaCAD Electrical through the owner's own MCP row, and the Remote
+  contract dropped `apply` with it (`ECAD_CONTRACT_VERSION` 1 → 2, so face and service ship together);
 - the **settings** face renders the rows' forms.
 
 `scripts/build-client.mjs` produces the bundle from the four committed face files —
@@ -254,10 +252,10 @@ Each component is published from this repository as its own package and vendored
 newest source file; deletes and recreates `vendor/`; copies a fixed entry list per component — `lib`,
 `assets`, `bin`, the Studio bridge, the MotionWorks engine, the corpus and its index, the skills, the
 workers, the notices, the locale files — into `vendor/<name>/`; and prints
-`assembled N components into vendor/` (eight today, in the order `l5x`, `ftview`, `mwi`, `resources`,
-`optix`, `migration`, `ecad`, `plc5`).
+`assembled N components and M viewer payloads into vendor/` (eight components in the order `l5x`,
+`ftview`, `mwi`, `resources`, `optix`, `migration`, `plc5`, `slc`, plus the drawing viewer payload `ecad`).
 
-`vendor/` is build output: gitignored, rebuilt by `prepack`. Why eight separate trees instead of one
+`vendor/` is build output: gitignored, rebuilt by `prepack`. Why separate trees instead of one
 flattened `lib/`: a skill module resolves `../SKILL.md` from its own package root, and the Studio
 bridge and the MotionWorks engine resolve asset folders relatively, so `vendor/<name>/` keeps those
 paths true with no source edits.
@@ -275,7 +273,7 @@ dsh-engineering-<version>.tgz
   ├── lib/                    client.js, index.js, typert.host.js
   ├── entries/                one entry per row, plus config.js and netlogic.js
   ├── presets/                the billion-context compaction gate adapter
-  └── vendor/<component>/     eight component trees (ECAD's engine and notices included)
+  └── vendor/<component>/     eight component trees plus the drawing viewer payload
 ```
 
 Measured on the 0.101.0 registry copy: 4,828,998 bytes packed, 921 files, 20,107,077 bytes unpacked;
@@ -303,7 +301,6 @@ Every product that edits in place backs up into one workspace tree, so "the back
 | FactoryTalk View | `ftview` | export folder name | on request; `ftview_apply` already writes a new folder |
 | MotionWorks IEC | `motionworks` | project name | on `mw_project_open`, once per project, and before an edit that finds none |
 | FactoryTalk Optix | `optix` | project name | on request, as a manual Studio project export copied into that folder |
-| ECAD | `ecad` | drawing set | on request, and before a change made in AryaCAD Electrical, so a comparison has a baseline |
 
 The manifest is `{ "files": [ { "path": "<relative path>", "sha256": "<hex>" }, … ] }`, the shape
 MotionWorks writes too; a restore re-hashes each file before using the copy. MotionWorks is the one

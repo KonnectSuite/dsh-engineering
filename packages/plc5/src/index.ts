@@ -13,6 +13,7 @@
  */
 
 import { plc5Tools } from './tools.ts'
+import { docsTools } from './docs.ts'
 import * as skill from './skill.ts'
 import type { PluginContext, SandboxPolicyResolver } from './core/tool.ts'
 
@@ -40,6 +41,20 @@ export interface Config {
   readonly dataRead?: boolean
   /** Whether the processor identity tool is registered. Defaults to true. */
   readonly processor?: boolean
+  /** Whether the .PC5 structure report is registered. Defaults to true. */
+  readonly pc5Export?: boolean
+  /** Whether the text-export consistency verdict is registered. Defaults to true. */
+  readonly verify?: boolean
+  /** Whether the text-export instruction census is registered. Defaults to true. */
+  readonly instructionInventory?: boolean
+  /** Whether the text-export rung digest is registered. Defaults to true. */
+  readonly rungDigest?: boolean
+  /** Whether the text-export indirect-address census is registered. Defaults to true. */
+  readonly indirectCensus?: boolean
+  /** Whether the text-export diff is registered. Defaults to true. */
+  readonly diff?: boolean
+  /** Whether the authored `plc5_docs` knowledge tool is registered. Defaults to true. */
+  readonly docs?: boolean
 }
 
 /**
@@ -59,6 +74,16 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
       if (definition.name === 'plc5_io_config' && config.ioConfig === false) continue
       if (definition.name === 'plc5_data_read' && config.dataRead === false) continue
       if (definition.name === 'plc5_processor' && config.processor === false) continue
+      if (definition.name === 'plc5_pc5' && config.pc5Export === false) continue
+      if (definition.name === 'plc5_verify' && config.verify === false) continue
+      if (definition.name === 'plc5_instruction_inventory' && config.instructionInventory === false) continue
+      if (definition.name === 'plc5_rung_digest' && config.rungDigest === false) continue
+      if (definition.name === 'plc5_indirect_census' && config.indirectCensus === false) continue
+      if (definition.name === 'plc5_diff' && config.diff === false) continue
+      ctx.tools.register(definition)
+    }
+    for (const definition of docsTools(ctx)) {
+      if (definition.name === 'plc5_docs' && config.docs === false) continue
       ctx.tools.register(definition)
     }
     skill.apply(ctx)
@@ -72,7 +97,29 @@ export function apply(ctx: PluginContext, config: Config = {}): void {
 }
 
 export { plc5Tools } from './tools.ts'
+export { pc5TextTools } from './tools/pc5-text.ts'
+export { docsTools, COLLECTION, DOCS_TOOL_NAME, DOCS_DESCRIPTION } from './docs.ts'
 export { SKILL } from './skill.ts'
+export {
+  BRANCH_TOKENS,
+  KNOWN_INSTRUCTIONS,
+  PC5_TEXT_EXTENSIONS,
+  Pc5TextError,
+  decodePc5Text,
+  parsePc5Text,
+  parseRungText,
+  sniffPc5Bytes,
+} from './engine/pc5-text.ts'
+export type {
+  Pc5ByteKind,
+  Pc5DataFile,
+  Pc5Export,
+  Pc5Header,
+  Pc5InstructionToken,
+  Pc5Issue,
+  Pc5ProgramFile,
+  Pc5Rung,
+} from './engine/pc5-text.ts'
 export { readPlc5Project, Plc5Error } from './engine/rslogix5.ts'
 export type { Plc5Chassis, Plc5DataFile, Plc5File, Plc5Processor, Plc5Project, Plc5Rung, Plc5Symbol } from './engine/rslogix5.ts'
 export { parseCfbf, readContainerIdentity, CfbfError } from './engine/container.ts'

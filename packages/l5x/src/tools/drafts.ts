@@ -120,7 +120,7 @@ function appended(draft: Draft, operation: DraftOperation, preview?: { path: str
     { draft_id: draft.id, operation_count: draft.operations.length, last_operation: operation, ...(preview === undefined ? {} : { preview_path: preview.path }) },
     [
       ...(preview === undefined ? [] : [{ tool: 'present', args: { files: [{ path: preview.path, description: `Preview of ${preview.title}` }] }, why: 'Show the composed logic as a document in the chat.' }]),
-      { tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
+      { tool: 'l5x_draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
     ],
   )
 }
@@ -129,9 +129,9 @@ function appended(draft: Draft, operation: DraftOperation, preview?: { path: str
  * Write the renderable preview for one staged operation.
  *
  * A staged draft is not a file yet, so the preview is the only thing the viewer can draw before
- * `draft_apply`. It is scratch output in `.l5x-preview/`; a read-only workspace, or a body the
+ * `l5x_draft_apply`. It is scratch output in `.l5x-preview/`; a read-only workspace, or a body the
  * builders refuse, returns undefined and the append still succeeds - staging is deliberately more
- * permissive than applying, and the refusal belongs to `draft_validate` and `draft_apply`.
+ * permissive than applying, and the refusal belongs to `l5x_draft_validate` and `l5x_draft_apply`.
  *
  * @param write - Workspace writer bound to this call.
  * @param title - Program-routine name the document is titled with.
@@ -202,8 +202,8 @@ function jsonArrayArg(args: Record<string, unknown>, field: string): readonly Re
 export function draftTools(session: ProjectSession, drafts: DraftStore, maxOperations: number, maxFileBytes: number): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'draft_rung',
-      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The rung text may be this plugin\'s NeutralText or text copied straight out of a Studio 5000 ladder routine (mnemonics and operands space separated, parallel branches as BST/NXB/BND) — both parse. The text is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags, controller-scope I/O alias tags and this draft\'s staged tags are visible; another program\'s local tag is not). Optionally carries the rung comment. Nothing is written until draft_apply.',
+      name: 'l5x_draft_rung',
+      description: 'Append one ladder rung operation to the chat draft: replace, insert or delete. An insert puts the rung at the number it is given and renumbers the rungs below it, so a rung can go in at the top. The rung text may be this plugin\'s NeutralText or text copied straight out of a Studio 5000 ladder routine (mnemonics and operands space separated, parallel branches as BST/NXB/BND) — both parse. The text is refused when it is malformed, when its right power rail is not driven by an output instruction, when a catalogued instruction supplies the wrong number of operands or a tag of the wrong type, or when it names a tag that does not resolve in this program (controller tags, controller-scope I/O alias tags and this draft\'s staged tags are visible; another program\'s local tag is not). Optionally carries the rung comment. Nothing is written until l5x_draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Routine the rung belongs to. Example: "MainRoutine".'),
@@ -264,8 +264,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_rung_comment',
-      description: 'Append one rung-comment change to the chat draft. Sets or clears the comment Studio shows above a rung; the logic is untouched. Nothing is written until draft_apply.',
+      name: 'l5x_draft_rung_comment',
+      description: 'Append one rung-comment change to the chat draft. Sets or clears the comment Studio shows above a rung; the logic is untouched. Nothing is written until l5x_draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Ladder routine the rung belongs to. Example: "MainRoutine".'),
@@ -286,8 +286,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'compose_rung',
-      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven. This tool needs an open project; for chat-only composition with no L5X/ACD and no file, use l5x_compose_logic instead and put its paste_text in a fenced code block.',
+      name: 'l5x_compose_rung',
+      description: 'Compose one validated ladder rung from a structure or a named pattern, checking every instruction and operand against the export and against tags the same draft stages, and optionally stage it in the draft. Writes the rung as a ladder preview document in .l5x-preview/ so the answer can draw it without a second call; the project itself is untouched until l5x_draft_apply. Never emits text that fails the ladder parser or leaves the right power rail undriven. This tool needs an open project; for chat-only composition with no L5X/ACD and no file, use l5x_compose_logic instead and put its paste_text in a fenced code block.',
       parameters: object({
         pattern: choice('Named pattern to expand. fault_latch produces two rungs.', PATTERNS),
         spec_json: string('Composition tree as JSON, for example {"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}. An add-on instruction call passes its instance tag first, then only the parameters marked Required in the AOI definition.'),
@@ -329,14 +329,14 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           return success(
             `Composed ${composed.rungs.length} rung(s)${composed.pattern === undefined ? '' : ` from ${composed.pattern}`}; paste_text is Studio 5000 ladder copy format, or pass program and routine to stage it.`,
             { ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs.map(rung => withStudio(rung)), paste_text: pasteBlock(composed.rungs) },
-            [{ tool: 'compose_rung', args: { spec_json: '{"series":[]}' }, why: 'Adjust the structure, or stage this text with draft_rung.' }],
+            [{ tool: 'l5x_compose_rung', args: { spec_json: '{"series":[]}' }, why: 'Adjust the structure, or stage this text with l5x_draft_rung.' }],
             COMPOSED_COVERAGE,
           )
         }
         if (program === undefined || routine === undefined || mode === undefined || rung === undefined) {
           throw invalid('program, routine, mode and rung', 'Staging needs all four.', 'Pass program, routine, mode and rung together, or none of them.')
         }
-        // The same safety refusal as draft_rung, draft_st and the rest: the composer is a staging tool.
+        // The same safety refusal as l5x_draft_rung, l5x_draft_st and the rest: the composer is a staging tool.
         safetyGuard(project, program)
         if (composed.rungs.length > 1 && mode === 'replace') throw invalid('mode', 'A two-rung pattern cannot replace one rung.', 'Use mode insert, or compose a single rung.')
         let draft: Draft | undefined
@@ -349,7 +349,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const stagedDraft = draft as Draft
         // The composed rungs are what the answer has to show, so the renderable document is produced here
         // rather than left to a second call. It is scratch output in `.l5x-preview/`, not a project file:
-        // draft_apply is still the only thing that writes one.
+        // l5x_draft_apply is still the only thing that writes one.
         const previewTitle = previewSlug(`${program}-${routine}`)
         const previewPath = `.l5x-preview/${previewTitle}.L5X`
         let previewWritten: string | undefined
@@ -363,15 +363,15 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           { draft_id: stagedDraft.id, operation_count: stagedDraft.operations.length, ...(composed.pattern === undefined ? {} : { pattern: composed.pattern }), rungs: composed.rungs.map(rung => withStudio(rung)), paste_text: pasteBlock(composed.rungs), ...(previewWritten === undefined ? {} : { preview_path: previewWritten }) },
           [
             ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed rungs' }] }, why: 'Show the composed rungs as ladder in the chat; paste_text is the Studio copy block.' }]),
-            { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' },
+            { tool: 'l5x_draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate the whole draft before writing anything.' },
           ],
           COMPOSED_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'compose_batch',
-      description: 'Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Writes the batch as one ladder preview document in .l5x-preview/ so the answer can draw it; the project itself is untouched until draft_apply.',
+      name: 'l5x_compose_batch',
+      description: 'Compose and stage many validated ladder rungs in one call: every rung is checked against the export and against tags the same draft stages, and the whole batch is refused if any rung is invalid. Writes the batch as one ladder preview document in .l5x-preview/ so the answer can draw it; the project itself is untouched until l5x_draft_apply.',
       parameters: object({
         rungs_json: string('Rungs as JSON, e.g. [{"spec":{"series":[{"instr":"XIC","args":["Start"]},{"instr":"OTE","args":["Run"]}]}},{"pattern":"ton_delay","arguments":{"tag":"Timer","seconds":5}}].'),
         program: string('Program to stage into. Example: "MainProgram".'),
@@ -416,7 +416,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           if (comment !== undefined && typeof comment !== 'string') throw invalid('rungs_json', `Entry ${index} comment must be text.`, 'Pass the rung comment as a string.')
           return comment
         })
-        if (composed.length !== entries.length) throw invalid('rungs_json', 'A pattern expanded to more than one rung; the batch would shift the rung numbers you asked for.', 'Stage that pattern with compose_rung, or place it last.')
+        if (composed.length !== entries.length) throw invalid('rungs_json', 'A pattern expanded to more than one rung; the batch would shift the rung numbers you asked for.', 'Stage that pattern with l5x_compose_rung, or place it last.')
         let draft: Draft | undefined
         for (const [index, rung] of composed.entries()) {
           try {
@@ -430,13 +430,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             }, maxOperations)
           } catch (error) {
             if (error instanceof L5xError && error.code === 'NAME_COLLISION') {
-              throw invalid('rung', `Rung ${first + index} already exists in ${program}/${routine}, so the batch cannot be staged there.`, `Pass a start rung past the last rung of the routine, or stage this rung on its own with compose_rung. Nothing was staged.`)
+              throw invalid('rung', `Rung ${first + index} already exists in ${program}/${routine}, so the batch cannot be staged there.`, `Pass a start rung past the last rung of the routine, or stage this rung on its own with l5x_compose_rung. Nothing was staged.`)
             }
             throw error
           }
         }
         const stagedDraft = draft as Draft
-        // Same rule as compose_rung: the batch just composed is what the answer has to show.
+        // Same rule as l5x_compose_rung: the batch just composed is what the answer has to show.
         const previewTitle = previewSlug(`${program}-${routine}`)
         const previewPath = `.l5x-preview/${previewTitle}.L5X`
         let previewWritten: string | undefined
@@ -456,14 +456,14 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           },
           [
             ...(previewWritten === undefined ? [] : [{ tool: 'present', args: { files: [{ path: previewWritten, description: 'Ladder preview of the composed batch' }] }, why: 'Show the batch as ladder in the chat; paste_text is the Studio copy block.' }]),
-            { tool: 'draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' },
+            { tool: 'l5x_draft_validate', args: { draft_id: stagedDraft.id }, why: 'Validate every staged rung before writing anything.' },
           ],
           COMPOSED_COVERAGE,
         )
       },
     }),    tool({
-      name: 'draft_st',
-      description: 'Append one Structured Text body replacement to the chat draft. Writes an ST preview document in .l5x-preview/ so the answer can draw it; the project is untouched until draft_apply.',
+      name: 'l5x_draft_st',
+      description: 'Append one Structured Text body replacement to the chat draft. Writes an ST preview document in .l5x-preview/ so the answer can draw it; the project is untouched until l5x_draft_apply.',
       parameters: object({
         program: string('Program that owns the routine. Example: "MainProgram".'),
         routine: string('Structured Text routine to replace. Example: "Calc".'),
@@ -484,8 +484,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_fbd',
-      description: 'Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Writes an FBD preview document in .l5x-preview/ carrying the same sheet XML the apply path writes; the project is untouched until draft_apply.',
+      name: 'l5x_draft_fbd',
+      description: 'Append one function block diagram sheet to the chat draft: blocks, references and wires. A block is an instance, so its tag must already be declared with the structure type Studio expects (FBD_MATH for ADD). Writes an FBD preview document in .l5x-preview/ carrying the same sheet XML the apply path writes; the project is untouched until l5x_draft_apply.',
       parameters: object({
         program: string('Program that owns the FBD routine. Example: "MainProgram".'),
         routine: string('Function block diagram routine to extend. Example: "LevelLoop".'),
@@ -508,8 +508,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           && String(operation.name).toLowerCase() === routineName.toLowerCase()
           && String(operation.language) === 'FBD')
         const routine = view.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
-        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine" and program to see the declared names, or stage the routine first with draft_routine language "FBD".')
-        if (routine !== undefined && routine.type !== 'FBD') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a function block diagram.`, 'Extend a routine that is already FBD, or create one with draft_routine language "FBD".')
+        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call l5x_list_components with kind "routine" and program to see the declared names, or stage the routine first with l5x_draft_routine language "FBD".')
+        if (routine !== undefined && routine.type !== 'FBD') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a function block diagram.`, 'Extend a routine that is already FBD, or create one with l5x_draft_routine language "FBD".')
 
         const blocks = jsonArrayArg(args, 'blocks')
         const refs = args.refs === undefined ? [] : jsonArrayArg(args, 'refs')
@@ -518,19 +518,19 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         // A block is an instance: its tag must exist in this scope and carry the structure type.
         for (const block of blocks) {
           const type = String((block as Record<string, unknown>).type ?? '').toUpperCase()
-          if (instructionByName(type) === undefined) throw new L5xError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction.`, 'Call list_instructions to see the catalogued names.')
+          if (instructionByName(type) === undefined) throw new L5xError('UNKNOWN_INSTRUCTION', `Block type "${type}" is not a catalogued instruction.`, 'Call l5x_list_instructions to see the catalogued names.')
           const tag = String((block as Record<string, unknown>).tag ?? '')
           const structure = String((block as Record<string, unknown>).structure ?? '')
           // withStagedTags puts staged declarations on project.stagedTags, not on document.tags; a
-          // draft_tag followed by draft_fbd in one chat must still resolve.
+          // l5x_draft_tag followed by l5x_draft_fbd in one chat must still resolve.
           const declared = [...view.document.tags, ...(view.stagedTags ?? [])]
             .find(entry => entry.name.toLowerCase() === tag.toLowerCase() && (entry.scope === program || entry.scope === 'controller'))
-          if (declared === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `The block's tag ${tag} is not declared in ${program} or controller scope.`, `Declare it first: draft_tag scope "${program}" name "${tag}" data_type "${structure}" — a block is an instance of its structure.`)
+          if (declared === undefined) throw new L5xError('COMPONENT_NOT_FOUND', `The block's tag ${tag} is not declared in ${program} or controller scope.`, `Declare it first: l5x_draft_tag scope "${program}" name "${tag}" data_type "${structure}" — a block is an instance of its structure.`)
           if (declared.dataType.toUpperCase() !== structure.toUpperCase()) throw new L5xError('TYPE_MISMATCH', `Tag ${tag} is ${declared.dataType}, but the block needs a ${structure} instance.`, 'Declare a tag whose data type is the block structure, for example FBD_MATH for ADD.')
         }
         for (const [index, ref] of refs.entries()) {
           const tag = String((ref as Record<string, unknown>).tag ?? '')
-          if (resolveSymbol(view.document, program, tag) === undefined) throw new L5xError('TAG_NOT_FOUND', `refs[${index}] names ${tag}, which does not resolve in scope ${program}.`, 'Reference a declared tag, or declare it with draft_tag first.')
+          if (resolveSymbol(view.document, program, tag) === undefined) throw new L5xError('TAG_NOT_FOUND', `refs[${index}] names ${tag}, which does not resolve in scope ${program}.`, 'Reference a declared tag, or declare it with l5x_draft_tag first.')
         }
 
         const operation: DraftOperation = {
@@ -549,8 +549,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_sfc',
-      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Writes an SFC preview document in .l5x-preview/ carrying the same chart XML the apply path writes; the project is untouched until draft_apply.',
+      name: 'l5x_draft_sfc',
+      description: 'Append one sequential function chart to the chat draft: steps, transitions and directed links. Exactly one step is initial, and each transition carries a Structured Text condition. Missing step tags (SFC_STEP), transition tags (BOOL) and action tags (SFC_ACTION) are created with the structure Studio writes. Writes an SFC preview document in .l5x-preview/ carrying the same chart XML the apply path writes; the project is untouched until l5x_draft_apply.',
       parameters: object({
         program: string('Program that owns the SFC routine. Example: "MainProgram".'),
         routine: string('Sequential function chart routine to extend. Example: "Chart".'),
@@ -570,8 +570,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
           && String(operation.name).toLowerCase() === routineName.toLowerCase()
           && String(operation.language) === 'SFC')
         const routine = project.document.routines.find(entry => entry.program === program && entry.name.toLowerCase() === routineName.toLowerCase())
-        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call list_components with kind "routine", or stage the routine first with draft_routine language "SFC".')
-        if (routine !== undefined && routine.type !== 'SFC') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a sequential function chart.`, 'Extend a routine that is already SFC, or create one with draft_routine language "SFC".')
+        if (routine === undefined && !stagedRoutine) throw new L5xError('COMPONENT_NOT_FOUND', `Program ${program} declares no routine named ${routineName}.`, 'Call l5x_list_components with kind "routine", or stage the routine first with l5x_draft_routine language "SFC".')
+        if (routine !== undefined && routine.type !== 'SFC') throw new L5xError('UNSUPPORTED_TARGET', `Routine ${routineName} is ${routine.type}, not a sequential function chart.`, 'Extend a routine that is already SFC, or create one with l5x_draft_routine language "SFC".')
         const steps = jsonArrayArg(args, 'steps')
         const transitions = jsonArrayArg(args, 'transitions')
         const links = jsonArrayArg(args, 'links')
@@ -604,7 +604,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
               throw new L5xError(
                 'TYPE_MISMATCH',
                 `The chart names ${name} as a ${kind}, and ${name} is declared ${found}; Studio needs ${wanted}.`,
-                'Use another name for the chart element, or declare it with draft_tag using the needed type.',
+                'Use another name for the chart element, or declare it with l5x_draft_tag using the needed type.',
               )
             }
             return
@@ -654,13 +654,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_routine',
-      description: 'Append one new routine to the chat draft. Nothing is written until draft_apply.',
+      name: 'l5x_draft_routine',
+      description: 'Append one new routine to the chat draft. Nothing is written until l5x_draft_apply.',
       parameters: object({
         program: string('Program that will own the new routine. Example: "MainProgram".'),
         name: string('New routine name, a Logix identifier of at most 40 characters. Example: "Calc".'),
         language: choice('Language of the new routine: RLL for ladder, ST for Structured Text, FBD for a function block diagram, SFC for a sequential function chart.', ['RLL', 'ST', 'FBD', 'SFC']),
-        code: string('Body: NeutralText rungs for RLL, statements for ST. An FBD routine takes no body; add sheets with draft_fbd.'),
+        code: string('Body: NeutralText rungs for RLL, statements for ST. An FBD routine takes no body; add sheets with l5x_draft_fbd.'),
         project_id: PROJECT_ID,
       }, ['program', 'name', 'language']),
       async run(args, exec) {
@@ -671,7 +671,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         const language = requiredString(args, 'language')
         if (language !== 'RLL' && language !== 'ST' && language !== 'FBD' && language !== 'SFC') throw new L5xError('INVALID_ARGUMENT', 'language must be "RLL", "ST", "FBD" or "SFC"', 'Pass "RLL" for ladder, "ST" for Structured Text, "FBD" for a function block diagram, or "SFC" for a sequential function chart.')
         const code = optionalString(args, 'code') ?? ''
-        if ((language === 'FBD' || language === 'SFC') && code.trim() !== '') throw new L5xError('INVALID_ARGUMENT', `An ${language} routine takes no body; create it and add the content with ${language === 'FBD' ? 'draft_fbd' : 'draft_sfc'}.`, 'Omit code and stage the content with the matching draft tool.')
+        if ((language === 'FBD' || language === 'SFC') && code.trim() !== '') throw new L5xError('INVALID_ARGUMENT', `An ${language} routine takes no body; create it and add the content with ${language === 'FBD' ? 'l5x_draft_fbd' : 'l5x_draft_sfc'}.`, 'Omit code and stage the content with the matching draft tool.')
         if (language !== 'FBD' && language !== 'SFC' && code.trim() === '') throw new L5xError('INVALID_ARGUMENT', 'RLL and ST routines need a body in code.', 'Pass the rungs or statements in code.')
         const operation: DraftOperation = {
           operation: 'add_routine',
@@ -684,8 +684,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_tag',
-      description: 'Append one new tag to the chat draft. Nothing is written until draft_apply.',
+      name: 'l5x_draft_tag',
+      description: 'Append one new tag to the chat draft. Nothing is written until l5x_draft_apply.',
       parameters: object({
         scope: string('Declaring scope: "controller" or a program name. Example: "controller".'),
         name: string('New tag name, a Logix identifier of at most 40 characters. Example: "SP_Start".'),
@@ -715,8 +715,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_tag_description',
-      description: 'Append one existing tag description change to the chat draft. Nothing is written until draft_apply.',
+      name: 'l5x_draft_tag_description',
+      description: 'Append one existing tag description change to the chat draft. Nothing is written until l5x_draft_apply.',
       parameters: object({
         scope: string('Declaring scope: "controller" or a program name.'),
         name: string('Existing tag name. Example: "LineSpeed".'),
@@ -735,8 +735,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_udt_member',
-      description: 'Append one new member to a standard data type in the chat draft. Refused later if the type already has instances. Nothing is written until draft_apply.',
+      name: 'l5x_draft_udt_member',
+      description: 'Append one new member to a standard data type in the chat draft. Refused later if the type already has instances. Nothing is written until l5x_draft_apply.',
       parameters: object({
         udt: string('Existing standard data type name. Example: "Motor_UDT".'),
         name: string('New member name. Example: "Speed".'),
@@ -757,8 +757,8 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_udt_description',
-      description: 'Append one standard data type description change, or one member description change when member is supplied. Nothing is written until draft_apply.',
+      name: 'l5x_draft_udt_description',
+      description: 'Append one standard data type description change, or one member description change when member is supplied. Nothing is written until l5x_draft_apply.',
       parameters: object({
         udt: string('Existing standard data type name.'),
         member: string('Member name to change. Omit to change the type description itself.'),
@@ -777,7 +777,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
       },
     }),
     tool({
-      name: 'draft_discard',
+      name: 'l5x_draft_discard',
       description: 'Throw away the staged draft, so edits that went the wrong way can be abandoned without writing a file. The project on disk is untouched.',
       parameters: object({
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
@@ -789,13 +789,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
         return success(
           removed ? `Discarded ${draft.operations.length} staged operation(s) from ${draft.id}.` : `No draft ${draft.id} was staged in this chat.`,
           { draft_id: draft.id, operations_dropped: removed ? draft.operations.length : 0, discarded: removed },
-          [{ tool: 'draft_tag', args: {}, why: 'Stage the replacement edits, or stop here.' }],
+          [{ tool: 'l5x_draft_tag', args: {}, why: 'Stage the replacement edits, or stop here.' }],
           DRAFT_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'draft_list',
+      name: 'l5x_draft_list',
       description: 'List the staged operations of the draft with the index each one occupies, so a wrong edit can be removed without discarding the rest. Writes nothing.',
       parameters: object({
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
@@ -812,35 +812,35 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             operations: draft.operations.map((operation, index) => describeOperation(index, operation)),
           },
           [
-            { tool: 'draft_remove_op', args: { draft_id: draft.id, index: 0 }, why: 'Remove one staged operation by its index.' },
-            { tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
+            { tool: 'l5x_draft_remove_op', args: { draft_id: draft.id, index: 0 }, why: 'Remove one staged operation by its index.' },
+            { tool: 'l5x_draft_validate', args: { draft_id: draft.id }, why: 'Validate the whole draft before writing anything.' },
           ],
           DRAFT_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'draft_remove_op',
-      description: 'Remove exactly one staged operation from the draft, keeping the others. Call draft_list first: the index is positional, not a rung number.',
+      name: 'l5x_draft_remove_op',
+      description: 'Remove exactly one staged operation from the draft, keeping the others. Call l5x_draft_list first: the index is positional, not a rung number.',
       parameters: object({
-        index: integer('Zero-based index as draft_list reports it.', { minimum: 0 }),
+        index: integer('Zero-based index as l5x_draft_list reports it.', { minimum: 0 }),
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
         project_id: PROJECT_ID,
       }, ['index']),
       async run(args, exec) {
         const index = optionalInteger(args, 'index')
-        if (index === undefined) throw invalid('index', 'remove_op needs the index of the operation to drop.', 'Call draft_list and pass one of its indices.')
+        if (index === undefined) throw invalid('index', 'remove_op needs the index of the operation to drop.', 'Call l5x_draft_list and pass one of its indices.')
         const draft = drafts.removeAt(exec, drafts.get(exec, optionalString(args, 'draft_id')).id, index)
         return success(
           `Removed operation ${index}; draft ${draft.id} now holds ${draft.operations.length}.`,
           { draft_id: draft.id, operation_count: draft.operations.length, operations: draft.operations.map((operation, position) => describeOperation(position, operation)) },
-          [{ tool: 'draft_validate', args: { draft_id: draft.id }, why: 'Validate the rest of the draft before writing anything.' }],
+          [{ tool: 'l5x_draft_validate', args: { draft_id: draft.id }, why: 'Validate the rest of the draft before writing anything.' }],
           DRAFT_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'draft_validate',
+      name: 'l5x_draft_validate',
       description: 'Validate the accumulated draft against the open project and return its hash, diff summary and check findings. Writes nothing.',
       parameters: object({
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
@@ -861,13 +861,13 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             checks: prepared.checks,
             diff: prepared.diff,
           },
-          [{ tool: 'draft_apply', args: { draft_id: draft.id }, why: 'Write the validated draft to a new L5X.' }],
+          [{ tool: 'l5x_draft_apply', args: { draft_id: draft.id }, why: 'Write the validated draft to a new L5X.' }],
           DRAFT_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'draft_apply',
+      name: 'l5x_draft_apply',
       description: 'Apply the validated draft to ONE new L5X file beside the source. Never overwrites, never imports into Studio, never contacts a controller.',
       parameters: object({
         draft_id: string('Draft handle returned by a draft_* tool. Omit when exactly one draft exists in this chat.'),
@@ -892,7 +892,7 @@ export function draftTools(session: ProjectSession, drafts: DraftStore, maxOpera
             // The applied file is a real export, so the viewer draws all four languages from it. Showing it is
             // the point at which a composed draft stops being text and becomes something to look at.
             { tool: 'present', args: { files: [{ path: target, description: 'The applied draft, opened as logic' }] }, why: 'Show the written export so the composed logic can be read as ladder, ST, FBD or SFC.' },
-            { tool: 'open_project', args: { path: target }, why: 'Reopen the written draft and review it.' },
+            { tool: 'l5x_open_project', args: { path: target }, why: 'Reopen the written draft and review it.' },
           ],
           DRAFT_COVERAGE,
         )

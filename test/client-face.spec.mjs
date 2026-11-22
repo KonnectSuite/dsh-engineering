@@ -24,12 +24,6 @@ const manifest = JSON.parse(read('package.json'))
 const LADDER_PREVIEW_ID = '@deepseek-ai/dsh-client-ui-logix-project-viewer'
 const FTVIEW_PREVIEW_ID = 'dsh-engineering-ftview-viewer/display'
 const ECAD_PREVIEW_ID = 'dsh-engineering-ecad/drawing'
-/** The wire tool names the face claims in the keyed tool-view slot. */
-const ECAD_CARD_KEYS = [
-  'ecad_capabilities', 'ecad_profile', 'ecad_scan', 'ecad_open', 'ecad_overview',
-  'ecad_find', 'ecad_cross_reference', 'ecad_checks', 'ecad_render', 'ecad_compare',
-  'ecad_document', 'ecad_backup',
-]
 
 /**
  * A require stub for the registering factory.
@@ -195,7 +189,7 @@ test('the factory materializes every face and merges their declared services', (
   assert.equal(new Set(plugin.inject).size, plugin.inject.length, 'inject repeats a service name')
 })
 
-test('apply mounts the ladder preview, the ME display preview, the ECAD drawing preview and the row settings pages', () => {
+test('apply mounts the ladder preview, the ME display preview, the drawing preview and the row settings pages', () => {
   const [registration] = loadBundle().registrations
   const plugin = registration.factory(stubModule)
   const { ctx, registrations } = fakeContext()
@@ -215,7 +209,6 @@ test('apply mounts the ladder preview, the ME display preview, the ECAD drawing 
     'slot:plugins.row.config#@aryacode/dsh-engineering#l5x',
     'slot:plugins.row.config#@aryacode/dsh-engineering#ftview',
     'slot:plugins.row.config#@aryacode/dsh-engineering#mwi',
-    'slot:plugins.row.config#@aryacode/dsh-engineering#ecad',
   ]) {
     assert.ok(registrations.includes(expected), `apply did not register ${expected} (got ${registrations.join(', ')})`)
   }
@@ -292,52 +285,6 @@ test('the ECAD face mounts its drawing preview without a Remote carrier or Bette
   assert.equal(body.apply, undefined, 'the ECAD body is still injected with a write bridge')
 })
 
-test('the ECAD conversation surfaces register on the host slots they were built for', async () => {
-  const registrations = loadFace('packages/ecad/lib/client.js')
-  const plugin = registrations[0].factory(stubModule)
-  const { ctx, entries } = fakeContext()
-  plugin.apply(ctx)
-  const slots = entries()
-  // One keyed card per ECAD wire tool name: the keyed dispatch has no wildcard,
-  // so a tool without its own key silently falls back to the generic row.
-  const cards = slots.filter(entry => entry.name === 'tool.call.toolview')
-  assert.deepEqual(cards.map(entry => entry.key).sort(), [...ECAD_CARD_KEYS].sort(),
-    'the ECAD face claims every one of its wire tool names in tool.call.toolview')
-  for (const card of cards) {
-    assert.equal(card.locale, 'sidebarEcad', `the ${card.key} card is registered without the face dictionary`)
-    assert.equal(card.children, undefined, `the ${card.key} card declares children it does not render`)
-  }
-  // The composer info bar was removed: it duplicated the panel/status facts and
-  // sat between the transcript and the input in every chat with drawings.
-  assert.equal(slots.some(entry => entry.name === 'conversation.input.dock'), false,
-    'the face still registers a composer dock')
-})
-
-test('the ECAD card keys cover the generated tool inventory', () => {
-  // docs/reference/tools.json is generated from the registered tools; a tool
-  // added without a card key would fall back to the generic row silently.
-  const inventory = JSON.parse(read('docs/reference/tools.json'))
-  const ecadTools = inventory.tools.filter(name => name.startsWith('ecad_')).sort()
-  assert.deepEqual([...ECAD_CARD_KEYS].sort(), ecadTools,
-    'every generated ECAD tool must have a keyed card registration')
-})
-
-test('a composition without the tool UI registers no card and still mounts', () => {
-  const registrations = loadFace('packages/ecad/lib/client.js')
-  const plugin = registrations[0].factory(stubModule)
-  const { ctx, entries } = fakeContext()
-  // The shell's tool UI owns tool.call.toolview; a composition without it never
-  // declares the slot, so slots.inject never runs that callback. The face must
-  // mount, register no card and register no composer dock.
-  const inject = ctx.slots.inject
-  ctx.slots.inject = (name, run) => (name === 'tool.call.toolview' ? () => {} : inject(name, run))
-  plugin.apply(ctx)
-  const slots = entries()
-  assert.equal(slots.filter(entry => entry.name === 'tool.call.toolview').length, 0)
-  assert.equal(slots.filter(entry => entry.name === 'conversation.input.dock').length, 0,
-    'the removed composer dock came back')
-})
-
 test('the ECAD dictionaries agree on keys, and the body only asks for keys they define', () => {
   assert.deepEqual(Object.keys(zh).sort(), Object.keys(en).sort(), 'en and zh disagree on the ECAD preview keys')
   for (const [key, value] of Object.entries(en)) {
@@ -347,7 +294,6 @@ test('the ECAD dictionaries agree on keys, and the body only asks for keys they 
   // Every literal key the UI asks the locale service for must exist.
   for (const file of [
     'packages/ecad/src/client/EcadBody.tsx',
-    'packages/ecad/src/client/EcadCards.tsx',
     'packages/ecad/src/client/index.tsx',
   ]) {
     const source = read(file)
@@ -376,7 +322,6 @@ test('the read-only viewer controls are in the committed face', () => {
     'data-ecad-focus',
     'data-ecad-id',
     'data-ecad-kind',
-    'data-ecad-card',
   ]) {
     assert.ok(source.includes(marker), `the committed ECAD face does not carry the ${marker} control`)
   }
@@ -395,7 +340,6 @@ test('every ECAD stylesheet defines exactly the classes its bodies read', () => 
   // Comments are removed first: prose such as "palette.ts" is not a selector.
   const pairs = [
     { css: 'packages/ecad/src/client/EcadBody.module.css', sources: ['packages/ecad/src/client/EcadBody.tsx'] },
-    { css: 'packages/ecad/src/client/EcadCards.module.css', sources: ['packages/ecad/src/client/EcadCards.tsx'] },
   ]
   for (const pair of pairs) {
     const css = read(pair.css).replaceAll(/\/\*[\s\S]*?\*\//gu, '')

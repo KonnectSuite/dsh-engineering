@@ -197,8 +197,8 @@ hit is a finding with the decision it needs.
   and because the wizard cannot emit 37+, its output is import-verified until it is retargeted.
 - The conversion is the wizard's. The SaveAs call through the automation API writes a native copy; the
   translator DLLs are undocumented, and this row does not reimplement them.
-- `migration_resolve` proposes, never writes. Applying a mechanical proposal is a `draft_rung` /
-  `compose_rung` call in this bundle's L5X tools, followed by a re-import to confirm the count fell.
+- `migration_resolve` proposes, never writes. Applying a mechanical proposal is a `l5x_draft_rung` /
+  `l5x_compose_rung` call in this bundle's L5X tools, followed by a re-import to confirm the count fell.
 - A made-up tag or operand fails the import. It cannot prove a conversion; that is the point.
 - `migration_report` writes the report and nothing else. The Word output carries no runtime claim the
   Markdown does not.

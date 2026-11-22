@@ -29,15 +29,15 @@ const tokens = [...new Set([...body.matchAll(/`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/
 // The Studio lane runs in the host as MCP tools, not in this plugin's registry; the skill documents
 // both lanes, so these names are expected to be absent from the plugin definitions.
 const HOST_TOOLS = new Set([
-  'build_acd_from_draft',
-  'controller_approval_status',
-  'export_acd_to_l5x',
-  'go_online',
-  'read_controller_mode',
-  'read_live_tag',
-  'studio_review_evidence',
-  'studio_sdk_status',
-  'verify_offline_l5x',
+  'l5x_build_acd_from_draft',
+  'l5x_controller_approval_status',
+  'l5x_export_acd_to_l5x',
+  'l5x_go_online',
+  'l5x_read_controller_mode',
+  'l5x_read_live_tag',
+  'l5x_studio_review_evidence',
+  'l5x_studio_sdk_status',
+  'l5x_verify_offline_l5x',
 ])
 const PARAMETERS = new Set(['project_id', 'spec_json', 'arguments_json', 'paste_text', 'neutral_text'])
 
@@ -49,7 +49,7 @@ describe('the skill surface', () => {
 
   it('names only real tools, patterns, host tools and parameters', () => {
     // A scanner that finds nothing would pass trivially; hold one known tool first.
-    expect(tokens).toContain('open_project')
+    expect(tokens).toContain('l5x_open_project')
     const registered = harness(undefined, { editing: true, live: { allowWrites: true } }).definitions.map(definition => definition.name)
     const known = new Set<string>([...registered, ...PATTERNS, ...HOST_TOOLS, ...PARAMETERS])
     expect(tokens.filter(token => !known.has(token))).toEqual([])

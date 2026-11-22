@@ -48,8 +48,8 @@ not a brief (`CRAFT-ORD-01`). Read `craft-engagement-order` for the order and th
 
 1. Read the profile (existing project) or the standard pages (new work).
 2. Author the change with the project's own names and visual language.
-3. The product's own review checks on the draft — `run_checks` for an L5X, `ftview_check` for a display export. Fix findings you agree with; explain the ones you do not.
-4. Then run the product's own validation (`draft_validate`, `ftview_validate`, `mw_compile`).
+3. The product's own review checks on the draft — `l5x_run_checks` for an L5X, `ftview_check` for a display export. Fix findings you agree with; explain the ones you do not.
+4. Then run the product's own validation (`l5x_draft_validate`, `ftview_validate`, `mw_compile`).
 
 ## Honesty rules
 

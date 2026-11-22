@@ -6,19 +6,19 @@ describe('registration', () => {
   it('registers the offline tools in a stable order', () => {
     const { definitions } = harness()
     expect(definitions.map(definition => definition.name)).toEqual([
-      'open_project',
-      'project_overview',
-      'list_components',
-      'get_component',
-      'search_logic',
-      'find_references',
-      'trace_dependencies',
-      'resolve_tag',
-      'usage_map',
-      'run_checks',
-      'compare_projects',
-      'list_instructions',
-      'document_project',
+      'l5x_open_project',
+      'l5x_project_overview',
+      'l5x_list_components',
+      'l5x_get_component',
+      'l5x_search_logic',
+      'l5x_find_references',
+      'l5x_trace_dependencies',
+      'l5x_resolve_tag',
+      'l5x_usage_map',
+      'l5x_run_checks',
+      'l5x_compare_projects',
+      'l5x_list_instructions',
+      'l5x_document_project',
       'l5x_rung_preview',
       'l5x_compose_logic',
       'l5x_routine_diagram',
@@ -50,18 +50,18 @@ describe('registration', () => {
 describe('open and overview', () => {
   it('opens the export and returns a handle, a summary and next calls', async () => {
     const { call } = harness()
-    const opened = await call('open_project', { path: 'sample.l5x' })
+    const opened = await call('l5x_open_project', { path: 'sample.l5x' })
     expect(opened.error).toBeUndefined()
     expect(opened.summary).toContain('SampleController')
     expect(opened.data?.project_id).toBeTypeOf('string')
     expect(opened.data?.counts).toMatchObject({ programs: 2 })
-    expect(opened.next?.[0]?.tool).toBe('project_overview')
+    expect(opened.next?.[0]?.tool).toBe('l5x_project_overview')
   })
 
   it('resolves the single open project when project_id is omitted', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const overview = await call('project_overview')
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const overview = await call('l5x_project_overview')
     expect(overview.error).toBeUndefined()
     expect(String(overview.data?.revision)).toMatch(/^\d+\.\d+$/u)
     expect(overview.data?.controller).toMatchObject({ name: 'SampleController' })
@@ -69,15 +69,15 @@ describe('open and overview', () => {
 
   it('refuses a read with no project open, and names the fix', async () => {
     const { call } = harness()
-    const overview = await call('project_overview')
+    const overview = await call('l5x_project_overview')
     expect(overview.error?.code).toBe('NO_PROJECT')
-    expect(overview.error?.fix).toContain('open_project')
+    expect(overview.error?.fix).toContain('l5x_open_project')
   })
 
   it('refuses an unknown handle and lists the open ones', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const overview = await call('project_overview', { project_id: 'nope' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const overview = await call('l5x_project_overview', { project_id: 'nope' })
     expect(overview.error?.code).toBe('UNKNOWN_PROJECT')
     expect(overview.error?.candidates).toHaveLength(1)
   })
@@ -86,19 +86,19 @@ describe('open and overview', () => {
 describe('components', () => {
   it('lists tags with a summary and a next page when more remain', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const listed = await call('list_components', { kind: 'tag', limit: 2 })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const listed = await call('l5x_list_components', { kind: 'tag', limit: 2 })
     expect(listed.error).toBeUndefined()
     expect(listed.summary).toContain('tags')
     expect(listed.data?.total).toBeTypeOf('number')
     expect((listed.data?.rows as unknown[]).length).toBe(2)
-    expect(listed.next?.some(step => step.tool === 'list_components')).toBe(true)
+    expect(listed.next?.some(step => step.tool === 'l5x_list_components')).toBe(true)
   })
 
   it('filters by name, case-insensitively', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const listed = await call('list_components', { kind: 'tag', filter: 'motor' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const listed = await call('l5x_list_components', { kind: 'tag', filter: 'motor' })
     const rows = listed.data?.rows as { name: string }[]
     expect(rows.length).toBeGreaterThan(0)
     expect(rows.every(row => row.name.toLowerCase().includes('motor'))).toBe(true)
@@ -106,16 +106,16 @@ describe('components', () => {
 
   it('reads one tag in full', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const tag = await call('get_component', { kind: 'tag', name: 'LineSpeed' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const tag = await call('l5x_get_component', { kind: 'tag', name: 'LineSpeed' })
     expect(tag.error).toBeUndefined()
     expect(tag.data?.component).toMatchObject({ name: 'LineSpeed', scope: 'controller' })
   })
 
   it('reads one routine with its body', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const routine = await call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'MainProgram' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const routine = await call('l5x_get_component', { kind: 'routine', name: 'MainRoutine', scope: 'MainProgram' })
     expect(routine.error).toBeUndefined()
     const component = routine.data?.component as { body?: { type?: string } }
     expect(component.body?.type).toBe('RLL')
@@ -123,10 +123,10 @@ describe('components', () => {
 
   it('refuses an unknown component with candidates and a fix', async () => {
     const { call } = harness()
-    await call('open_project', { path: 'sample.l5x' })
-    const missing = await call('get_component', { kind: 'tag', name: 'Motor_9' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
+    const missing = await call('l5x_get_component', { kind: 'tag', name: 'Motor_9' })
     expect(missing.error?.code).toBe('COMPONENT_NOT_FOUND')
-    expect(missing.error?.fix).toContain('list_components')
+    expect(missing.error?.fix).toContain('l5x_list_components')
     expect(missing.error?.candidates.length).toBeGreaterThan(0)
   })
 })
@@ -141,7 +141,7 @@ describe('revisions', () => {
 
   it('opens a revision below 37 and reports observed parsing', async () => {
     const { call } = harness()
-    const opened = await call('open_project', { path: 'sample.l5x' })
+    const opened = await call('l5x_open_project', { path: 'sample.l5x' })
     expect(opened.error).toBeUndefined()
     expect(opened.data?.export_revision).toBe('33.00')
     expect(opened.data?.verification).toBe('observed_parse')
@@ -149,14 +149,14 @@ describe('revisions', () => {
 
   it('refuses an export older than revision 19', async () => {
     const { call } = harness(() => withRevision('18.00'))
-    const opened = await call('open_project', { path: 'old.l5x' })
+    const opened = await call('l5x_open_project', { path: 'old.l5x' })
     expect(opened.error?.code).toBe('UNSUPPORTED_REVISION')
     expect(opened.error?.fix).toContain('revision 19')
   })
 
   it('reads an unobserved revision but flags it as untested', async () => {
     const { call } = harness(() => withRevision('40.00'))
-    const opened = await call('open_project', { path: 'new.l5x' })
+    const opened = await call('l5x_open_project', { path: 'new.l5x' })
     expect(opened.error).toBeUndefined()
     expect(opened.data?.verification).toBe('untested_revision')
   })
@@ -167,11 +167,11 @@ describe('chat isolation', () => {
     const l5x = harness()
     const chatA = {}
     const chatB = {}
-    const opened = await l5x.call('open_project', { path: 'sample.l5x' }, { agent: { session: chatA } })
+    const opened = await l5x.call('l5x_open_project', { path: 'sample.l5x' }, { agent: { session: chatA } })
     expect(opened.error).toBeUndefined()
-    const fromB = await l5x.call('project_overview', {}, { agent: { session: chatB } })
+    const fromB = await l5x.call('l5x_project_overview', {}, { agent: { session: chatB } })
     expect(fromB.error?.code).toBe('NO_PROJECT')
-    const fromA = await l5x.call('project_overview', {}, { agent: { session: chatA } })
+    const fromA = await l5x.call('l5x_project_overview', {}, { agent: { session: chatA } })
     expect(fromA.error).toBeUndefined()
   })
 })
@@ -189,7 +189,7 @@ describe('path resolution', () => {
       },
     }
     apply(ctx, {})
-    const open = definitions.find(definition => definition.name === 'open_project')
+    const open = definitions.find(definition => definition.name === 'l5x_open_project')
     expect(open).toBeTruthy()
     await open?.execute({ path: 'sample.L5X' }, { agent: { session: { header: { cwd: 'C:/work' } } } })
     expect(seen[0]).toMatchObject({ cwd: 'C:/work' })
@@ -200,10 +200,10 @@ describe('staleness', () => {
   it('refuses a read after the export changes on disk', async () => {
     let bytes = fixtureBytes()
     const { call } = harness(() => bytes)
-    await call('open_project', { path: 'sample.l5x' })
+    await call('l5x_open_project', { path: 'sample.l5x' })
     bytes = new Uint8Array([...bytes, 0x0A])
-    const overview = await call('project_overview')
+    const overview = await call('l5x_project_overview')
     expect(overview.error?.code).toBe('STALE_EXPORT')
-    expect(overview.error?.fix).toContain('open_project')
+    expect(overview.error?.fix).toContain('l5x_open_project')
   })
 })

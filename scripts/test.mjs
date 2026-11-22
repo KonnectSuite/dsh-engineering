@@ -2,7 +2,7 @@
 /**
  * The release-gate test runner: one child process per spec file, in order.
  *
- * The ECAD corpus and DWG converter specs load a Rust wasm module and convert
+ * The DXF/DWG engine specs load a Rust wasm module and convert
  * the owner's real print set; running them as sibling test files in one Node
  * test-runner process made the converter intermittently abort with "memory
  * access out of bounds" and sometimes reported only a file-level "test failed"
@@ -29,7 +29,6 @@ const BUNDLE = [
   'test/client-face.spec.mjs',
   'test/config.spec.mjs',
   'test/entries-schema.spec.mjs',
-  'test/ecad-policy.spec.mjs',
   'test/netlogic.spec.mjs',
   'test/optix-chain.spec.mjs',
   'test/optix-arm.spec.mjs',
@@ -71,6 +70,14 @@ const BUNDLE = [
   'test/diagram-face.spec.mjs',
   'test/billion-context.spec.mjs',
   'test/instruction-coverage.spec.mjs',
+  'test/knowledge-core.spec.mjs',
+  'test/knowledge-packaging.spec.mjs',
+  'test/handbook.spec.mjs',
+  'test/l5x-knowledge.spec.mjs',
+  'test/legacy-knowledge.spec.mjs',
+  'test/ftview-knowledge.spec.mjs',
+  'test/mwi-idefree.spec.mjs',
+  'test/slc500-tools.spec.mjs',
   'packages/l5x/test/dist-smoke.mjs',
   'packages/ftview-viewer/test/render.spec.mjs',
   'packages/ftview-viewer/test/face.spec.mjs',

@@ -58,7 +58,7 @@ export function approvalStatus(ctx: PluginContext, exec?: ExecContext): Record<s
     approval_service: typeof approval?.request === 'function',
     agent_context: session !== undefined,
     approved_controller_actions_requestable: requestable,
-    approval_required_per_call: ['capture_controller_snapshot', 'change_controller_mode', 'download_project'],
+    approval_required_per_call: ['l5x_capture_controller_snapshot', 'l5x_change_controller_mode', 'l5x_download_project'],
     ...(requestable
       ? { note: 'A human must still approve each exact operation; this does not confirm an answerer is online.' }
       : {

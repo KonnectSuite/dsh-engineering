@@ -1,0 +1,257 @@
+{
+  "schema": 1,
+  "collection": "migration-logix",
+  "title": "SLC 500 and PLC-5 to Logix migration",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 15,
+  "pages": [
+    {
+      "id": "addressing",
+      "title": "Address and tag translation",
+      "section": "Mapping",
+      "body": "pages/addressing.md",
+      "identifiers": [
+        "B3:0/0",
+        "F8:0",
+        "I:1.0/0",
+        "N7:0",
+        "O:2.0/0",
+        "R6:0",
+        "S:1/15",
+        "S:24",
+        "T4:0.PRE"
+      ]
+    },
+    {
+      "id": "assessment",
+      "title": "Assessing a legacy project without a controller",
+      "section": "Workflow",
+      "body": "pages/assessment.md",
+      "identifiers": [
+        "ACCESS_DENIED",
+        "ADDRESS_ONLY_DATABASE",
+        "FILE_MISSING",
+        "LEGACY_INSTRUCTION",
+        "NOT_A_FILE",
+        "RUNGS_SAMPLED",
+        "UNSUPPORTED_FORMAT",
+        "migration_assess",
+        "slc_read"
+      ]
+    },
+    {
+      "id": "compare",
+      "title": "Comparing the legacy program with the Logix export",
+      "section": "Workflow",
+      "body": "pages/compare.md",
+      "identifiers": [
+        "DATA_FILE_UNMAPPED",
+        "NO_ROUTINE_MATCHED",
+        "ROUTINE_ADDED",
+        "ROUTINE_MISSING",
+        "RUNG_LOST",
+        "RUNG_SPLIT",
+        "SYMBOL_MISSING",
+        "migration_compare",
+        "migration_resolve"
+      ]
+    },
+    {
+      "id": "data-files",
+      "title": "Data files, structures, and the symbol table",
+      "section": "Mapping",
+      "body": "pages/data-files.md",
+      "identifiers": [
+        "CONTROL",
+        "COUNTER",
+        "DATA_FILES_CARRIED",
+        "STRING",
+        "SYMBOL_TOO_LONG",
+        "TIMER"
+      ]
+    },
+    {
+      "id": "error-codes",
+      "title": "Migration error codes and fixes",
+      "section": "Reference",
+      "body": "pages/error-codes.md",
+      "identifiers": [
+        "ACCESS_DENIED",
+        "FILE_MISSING",
+        "INVALID_ARGUMENT",
+        "INVALID_DECISION",
+        "NOT_A_FILE",
+        "REPORT_EXISTS",
+        "REPORT_UNWRITABLE",
+        "SLC_COM_UNAVAILABLE",
+        "SLC_NO_PROJECT",
+        "SLC_OPEN_FAILED",
+        "SLC_POWERSHELL_MISSING",
+        "UNSUPPORTED_FORMAT"
+      ]
+    },
+    {
+      "id": "gates",
+      "title": "Acceptance gates: what counts as migrated",
+      "section": "Gates",
+      "body": "pages/gates.md",
+      "identifiers": [
+        "REVISION_BELOW_TARGET",
+        "RxCMP_E_AUDIT_OUTPUTS",
+        "acceptance"
+      ]
+    },
+    {
+      "id": "indirect-addressing",
+      "title": "Indirect addressing: census and rewrite",
+      "section": "Workflow",
+      "body": "pages/indirect-addressing.md",
+      "identifiers": [
+        "INDIRECT_ADDRESS",
+        "INDIRECT_LEFT",
+        "S:24"
+      ]
+    },
+    {
+      "id": "instruction-map",
+      "title": "Instruction mapping table: SLC 500 and PLC-5 to Logix",
+      "section": "Mapping",
+      "body": "pages/instruction-map.md",
+      "identifiers": [
+        "AFI",
+        "BSL",
+        "BSR",
+        "BTR",
+        "BTW",
+        "CLR",
+        "COP",
+        "CPT",
+        "CTD",
+        "CTU",
+        "DTR",
+        "FAL",
+        "FLL",
+        "FOR",
+        "HSC",
+        "IIM",
+        "INDIRECT_ADDRESS",
+        "IOM",
+        "JSR",
+        "MOV",
+        "MSG",
+        "MVM",
+        "NXT",
+        "ONS",
+        "OSF",
+        "OSR",
+        "PID",
+        "RES",
+        "RET",
+        "RTO",
+        "SBR",
+        "SCL",
+        "SQC",
+        "SQI",
+        "SQO",
+        "SVC",
+        "TOD",
+        "TOF",
+        "TON"
+      ]
+    },
+    {
+      "id": "io-configuration",
+      "title": "I/O: chassis, modules, and the three inventories",
+      "section": "Field devices",
+      "body": "pages/io-configuration.md",
+      "identifiers": [
+        "1747-AENTR",
+        "LEGACY_CHASSIS_DECLARED",
+        "MODULE_NAME_ILLEGAL",
+        "MODULE_UNNAMED",
+        "WIZARD_ANALOG_DEFAULT"
+      ]
+    },
+    {
+      "id": "markers",
+      "title": "Structured-text markers and the conversion census",
+      "section": "Workflow",
+      "body": "pages/markers.md",
+      "identifiers": [
+        "PCE",
+        "RESIDUAL_MARKERS",
+        "RxCMP_E_AUDIT_OUTPUTS",
+        "WIZARD_ARTIFACT"
+      ]
+    },
+    {
+      "id": "overview",
+      "title": "SLC 500 and PLC-5 to Logix migration overview",
+      "section": "Overview",
+      "body": "pages/overview.md",
+      "identifiers": [
+        "migration_assess",
+        "migration_plan",
+        "migration_report",
+        "slc_read"
+      ]
+    },
+    {
+      "id": "plan",
+      "title": "The migration plan: eight stages, five decisions",
+      "section": "Workflow",
+      "body": "pages/plan.md",
+      "identifiers": [
+        "INVALID_DECISION",
+        "PLAN_MISSING",
+        "PLAN_UNREADABLE",
+        "PLAN_UNWRITABLE",
+        "acceptance",
+        "hmi_scope",
+        "io_strategy",
+        "migration_plan",
+        "target_cpu",
+        "target_revision"
+      ]
+    },
+    {
+      "id": "report",
+      "title": "The migration report and its evidence",
+      "section": "Workflow",
+      "body": "pages/report.md",
+      "identifiers": [
+        "INTERNAL",
+        "REPORT_EXISTS",
+        "REPORT_UNWRITABLE",
+        "migration_report"
+      ]
+    },
+    {
+      "id": "sfc-routine-present",
+      "title": "SFC_ROUTINE_PRESENT: what the marker means",
+      "section": "Workflow",
+      "body": "pages/sfc-routine-present.md",
+      "identifiers": [
+        "ROUTINE_MISSING",
+        "SFC_ROUTINE_PRESENT"
+      ]
+    },
+    {
+      "id": "wizard-l5k",
+      "title": "Running the migration wizard and auditing the .L5K",
+      "section": "Workflow",
+      "body": "pages/wizard-l5k.md",
+      "identifiers": [
+        "DUPLICATE_TAG",
+        "PLACEHOLDER_TAG",
+        "REVISION_BELOW_TARGET",
+        "ROUTINE_PAREN",
+        "ROUTINE_UNBALANCED",
+        "TAG_NAME_TOO_LONG",
+        "TRAILING_COMMA",
+        "l5k_lint"
+      ]
+    }
+  ]
+}

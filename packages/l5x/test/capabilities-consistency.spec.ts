@@ -13,7 +13,7 @@ describe('the capability report', () => {
   it('advertises only tools that are registered', async () => {
     const l5x = harness(undefined, { editing: true, studio: true, live: true })
     const registered = new Set(l5x.definitions.map(definition => definition.name))
-    const result = await l5x.call('studio_capabilities')
+    const result = await l5x.call('l5x_studio_capabilities')
     expect(result.error).toBeUndefined()
 
     const advertised = new Set<string>()

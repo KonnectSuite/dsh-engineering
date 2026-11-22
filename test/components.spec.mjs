@@ -89,6 +89,20 @@ test('the assembler vendors exactly the components the manifest marks', () => {
     .map(component => packagesOf(component)[0].split('/').pop())
     .sort()
   assert.deepEqual(vendored, expected, 'scripts/assemble.mjs and components.json disagree on which components are vendored')
+  // The drawing preview is a surface, not a component row, but its Remote service
+  // resolves the engine and assets from `vendor/ecad/` at runtime. The assembler
+  // carries it from its own VIEWER_PAYLOADS list, and that list has to name a
+  // package the viewers component owns.
+  const viewers = components.find(component => component.id === 'viewers')
+  assert.ok(viewers, 'components.json declares no viewers component')
+  const viewerList = /export const VIEWER_PAYLOADS = \[([\s\S]*?)\]/u.exec(source)
+  assert.ok(viewerList, 'scripts/assemble.mjs has no VIEWER_PAYLOADS list')
+  const viewerPayloads = [...viewerList[1].matchAll(/"([^"]+)"/gu)].map(match => match[1]).sort()
+  const viewerPackages = packagesOf(viewers).map(packagePath => packagePath.split('/').pop()).sort()
+  assert.deepEqual(viewerPayloads, ['ecad'], 'the drawing viewer is the one viewer package that resolves files from vendor/')
+  for (const name of viewerPayloads) {
+    assert.ok(viewerPackages.includes(name), `scripts/assemble.mjs vendors viewer payload ${name}, which the viewers component does not own as a package`)
+  }
 })
 
 /** Every file under a directory, skipping what a package generates for itself. */
@@ -119,9 +133,22 @@ const RESOLVER_EXCEPTIONS = new Map([
 
 test('the assembler carries every payload directory a component resolves at runtime', () => {
   const source = read('scripts/assemble.mjs')
-  const list = /for \(const entry of \[([\s\S]*?)\]\) \{/u.exec(source)
+  const list = /export const PAYLOAD = \[([\s\S]*?)\]/u.exec(source)
   assert.ok(list, 'scripts/assemble.mjs has no payload copy list')
   const copied = new Set([...list[1].matchAll(/'([^']+)'/gu)].map(match => match[1]))
+
+  // Viewer payloads are vendored like components, so the same runtime resolution
+  // promise applies to them: `vendor/ecad/lib/engine/…` has to exist in the tarball.
+  const viewerList = /export const VIEWER_PAYLOADS = \[([\s\S]*?)\]/u.exec(source)
+  assert.ok(viewerList, 'scripts/assemble.mjs has no VIEWER_PAYLOADS list')
+  const viewers = components.find(component => component.id === 'viewers')
+  assert.ok(viewers, 'components.json declares no viewers component')
+  const viewerPackages = packagesOf(viewers)
+  const viewerPayloads = [...viewerList[1].matchAll(/"([^"]+)"/gu)].map(match => match[1]).map(name => {
+    const packagePath = viewerPackages.find(path => path.split('/').pop() === name)
+    assert.ok(packagePath, `scripts/assemble.mjs vendors viewer payload ${name}, which the viewers component does not name as a package`)
+    return { id: `viewers:${name}`, package: packagePath }
+  })
 
   // A module that reads a file or folder beside itself is a promise the packer has
   // to keep. Both forms resolve relative to the built file, so in
@@ -135,7 +162,7 @@ test('the assembler carries every payload directory a component resolves at runt
     /join\(\s*dirname\((?:fileURLToPath\(import\.meta\.url\)|import\.meta\.dirname)\)\s*,\s*((?:"\.\."(?:\s*,\s*"[^"]+")?)+)\)/gu,
   ]
 
-  for (const component of components.filter(candidate => candidate.vendor === true)) {
+  for (const component of [...components.filter(candidate => candidate.vendor === true), ...viewerPayloads]) {
     for (const packagePath of packagesOf(component)) {
       const name = packagePath.split('/').pop()
       const packageRoot = fileURLToPath(new URL(`../${packagePath}/`, import.meta.url))

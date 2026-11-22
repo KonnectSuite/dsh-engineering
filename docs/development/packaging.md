@@ -13,8 +13,8 @@ distribution model itself (one package, one row per product, vendored components
 | `cordis.patch.yml` | The bundle patch a profile mounts: nine rows, each naming an export of this package |
 | `entries/**/*` | One entry module per row — the plugin the row mounts |
 | `lib/**/*` | The package root (`index.js`, `typert.host.js`) and the one `client.js` browser bundle |
-| `src/remote/**/*` | The ECAD Remote service the viewer and the tools call |
-| `vendor/**/*` | The eight assembled component trees, including each component's `SKILL.md` |
+| `src/remote/**/*` | The drawing Remote service the viewer calls |
+| `vendor/**/*` | The eight assembled component trees, including each component's `SKILL.md`, plus the drawing viewer payload |
 | `locale/*.json` | The English and Chinese UI strings |
 | `presets/**/*` | The billion-context compaction gate adapter |
 | `README.md`, `LICENSE`, `NOTICE.md` | The public face and the third-party notices |
@@ -22,7 +22,7 @@ distribution model itself (one package, one row per product, vendored components
 Nothing else: `test/`, `scripts/`, `docs/`, `tmp/` and `artifacts/` are repository state, not payload.
 `pnpm check:package` proves it — every path a mount needs at run time is matched by `files` and exists on
 disk, every row's export target is present, and the unpacked size is reported against the market's
-64 MiB cap (17.6 MiB today, dominated by `vendor/ecad/assets/acadrust.wasm`).
+64 MiB cap (21.6 MiB today, dominated by `vendor/ecad/assets/acadrust.wasm`).
 
 It also reads every bare import the node-side payload makes — `entries/`, `lib/`, `presets/` and
 `vendor/`, minus the browser faces — and reports one the manifest does not declare. A copy that happens to
@@ -36,7 +36,7 @@ host provides them) plus a dev dependency at the version this repository resolve
 pnpm install
 pnpm -r build          # each workspace package's lib/ (gitignored build output)
 pnpm build:client      # lib/client.js from the four faces (committed; the suite fails when stale)
-pnpm assemble          # vendor/ from the eight components' build output
+pnpm assemble          # vendor/ from the eight components' build output, plus the drawing viewer payload
 pnpm test              # patch, docs agreement, packaging, tool reference, dependencies, client face
 pnpm check:package     # what npm would receive, and how big it is
 ```

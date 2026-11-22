@@ -1,7 +1,7 @@
 /**
  * Ladder rungs that Studio refuses, found in an export that already contains them.
  *
- * `compose_rung` cannot emit either of these, because it builds the rung and
+ * `l5x_compose_rung` cannot emit either of these, because it builds the rung and
  * checks it before staging. An export, a hand edit or an import has no such
  * guard: the export states no rule, so a rung that drives nothing looks like a
  * rung that does.

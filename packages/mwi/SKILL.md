@@ -59,7 +59,8 @@ A wrapper that points at the wrong directory is refused; repair it with consent,
 - `mw_search` — literal text across the open project's POU code.
 - `mw_references` — where one symbol is read or written across POUs.
 - `mw_review` — scope and type checks, integer bounds, unsupported constructs, graphical listing.
-- `mw_help` — installed help and reviewed references; the index sync is explicit.
+- `mw_help` — search the help source (an extracted tree via `MWI_HELP_TREE`, installed help, manuals,
+  references or patterns) and read one help topic by id without the IDE; the index sync is explicit.
 
 Saved code and the live IDE model are different sources. When they disagree, say which one you read.
 
@@ -106,5 +107,7 @@ Read the fix instead of retrying blindly:
 
 - wrong open project or stale wrapper — open the right project again;
 - modal dialog or minimized IDE — inspect `mw_ide_status`, resolve it deliberately, then retry;
+- no MotionWorks IEC installation on this host — the answer says `NOT_INSTALLED`, names the locations the
+  probe inspected, and gives the fix; do not claim a compile, live or profile result from it;
 - a missing row — say the surface is not enabled here;
 - a changed hash — re-read the body and retry.

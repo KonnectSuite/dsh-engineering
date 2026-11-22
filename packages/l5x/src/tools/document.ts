@@ -1,8 +1,8 @@
 /**
  * The documentation and generation-reference tools.
  *
- * `list_instructions` is the catalog the composer validates against, exposed so a
- * caller can read operand order instead of guessing it. `document_project` builds
+ * `l5x_list_instructions` is the catalog the composer validates against, exposed so a
+ * caller can read operand order instead of guessing it. `l5x_document_project` builds
  * the handover bundle into a new folder: it writes documents, never the project.
  *
  * @module dsh-engineering-l5x/tools/document
@@ -50,11 +50,11 @@ function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
     operands: instruction.operands.map(slot => ({ name: slot.name, kind: slot.kind, required: slot.optional !== true, ...(slot.writable === true ? { writable: true } : {}), ...(slot.tagOnly === true ? { tag_only: true } : {}), ...(slot.arrayElement === true ? { array_element: true } : {}), ...(slot.arrayTag === true ? { array_tag: true } : {}), ...(slot.noArray === true ? { no_array: true } : {}), ...(slot.minimum === undefined ? {} : { minimum: slot.minimum }), ...(slot.maximum === undefined ? {} : { maximum: slot.maximum }), ...(slot.types === undefined ? {} : { types: slot.types }), ...(slot.rest === true ? { rest: true } : {}) })),
     // Logix Designer 36 renamed sixteen instructions (EQU/EQ, SQR/SQRT, …). The row
     // carries the other published spelling so a caller does not have to know which
-    // one this export happens to read; compose_rung accepts either.
+    // one this export happens to read; l5x_compose_rung accepts either.
     ...(alternate === undefined ? {} : { also_published_as: alternate }),
     // A row whose operand list this catalogue cannot model says so, instead of listing zero
     // operands and letting a reader believe the instruction takes none.
-    ...(instruction.notModelled === true ? { operands_modelled: false, note: 'operands not modelled: compose this rung with draft_rung text instead' } : {}),
+    ...(instruction.notModelled === true ? { operands_modelled: false, note: 'operands not modelled: compose this rung with l5x_draft_rung text instead' } : {}),
   }
 }
 
@@ -67,7 +67,7 @@ function catalogRow(instruction: InstructionInfo): Record<string, unknown> {
 export function documentTools(session: ProjectSession): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'list_instructions',
+      name: 'l5x_list_instructions',
       description: 'List the ladder instructions the composer validates: mnemonic, category, summary and operand slots with their kinds, whether a slot must be a tag (writable, or tag_only when it is read rather than written), whether it must name an array element (array_element), a whole array tag (array_tag), or must not name a whole array (no_array), a minimum or maximum value where the vendor enforces one (minimum, maximum), an accepted type where the vendor restricts it (types), plus the other published spelling when Logix Designer 36 renamed the instruction (also_published_as). Read it before composing a rung instead of guessing operand order.',
       parameters: object({
         filter: string('Case-insensitive substring matched against the instruction name, category or summary.'),
@@ -90,13 +90,13 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
             categories: [...new Set(INSTRUCTIONS.map(instruction => instruction.category))],
             rows: rows.slice(0, limit).map(catalogRow),
           },
-          [{ tool: 'compose_rung', why: 'Compose a rung from the instruction and its operand order.' }],
+          [{ tool: 'l5x_compose_rung', why: 'Compose a rung from the instruction and its operand order.' }],
           CATALOG_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'document_project',
+      name: 'l5x_document_project',
       description: 'Write a documentation bundle for the open project into a NEW folder: project summary (with Safety and Add-On Instructions tables), I/O list, tag CSVs (including the Studio Tags and Comments shape) and logic documentation — per-program rungs with their comments and referenced tags, decoded function block and sequential function chart elements, and one file per add-on instruction documenting its own routines. Counts program and AOI routines separately, and writes one printable report whose ladder is drawn inside the page. Never writes to the export.',
       parameters: object({
         output_root: string('New folder for the bundle. It must not exist. Example: "C:/Projects/Line/documentation".'),
@@ -161,7 +161,7 @@ export function documentTools(session: ProjectSession): readonly ToolDefinition[
             excluded: bundle.excluded,
             report: { format, pdf: reportPdf ?? null, unavailable: reportPdfUnavailable ?? null },
           },
-          [{ tool: 'draft_rung_comment', why: 'Write the approved narrative back as rung comments, then apply the draft.' }],
+          [{ tool: 'l5x_draft_rung_comment', why: 'Write the approved narrative back as rung comments, then apply the draft.' }],
           DOCUMENT_COVERAGE,
         )
       },

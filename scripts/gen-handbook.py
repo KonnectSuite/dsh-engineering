@@ -1,325 +1,546 @@
 #!/usr/bin/env python3
-"""Build the Engineering Workflow Handbook in three formats from one content model.
+"""Build the engineering handbook from one Markdown content model.
 
-PDF: vector text, embedded PNG figures, for sharing and printing.
-DOCX: editable, same sections and figures, for anyone who wants to change it.
-HTML: browsable, print-friendly, for the repository.
+The source of truth is ``docs/handbook/src/*.md``. Each page opens with YAML-like
+front matter::
 
-The figures come from scripts/gen-diagrams.py; run that first.
+    ---
+    title: What this bundle is
+    order: 10
+    purpose: One line saying why the page exists.
+    audience: Who should read it.
+    ---
 
-Usage: python scripts/gen-handbook.py
+The rest of the page is a deliberately small Markdown subset: ``##``/``###``
+headings, paragraphs, bullet and numbered lists, fenced code blocks and pipe
+tables. Inline ``**bold**`` and `` `code` `` are supported.
+
+Three artifacts are built into ``docs/handbook/``:
+
+    engineering-handbook.html   (links docs/print.css)
+    engineering-handbook.docx   (python-docx, fixed core properties)
+    engineering-handbook.pdf    (HTML printed through scripts/print-pdf.mts)
+
+Commands::
+
+    python scripts/gen-handbook.py                  # build all three
+    python scripts/gen-handbook.py --formats html   # build only the HTML
+    python scripts/gen-handbook.py --out-dir DIR    # build somewhere else
+    python scripts/gen-handbook.py --check          # fail when stale or invalid
+
+``--check`` validates front matter and order values, requires the three built
+artifacts, compares the HTML ``handbook-source-hash`` meta and the DOCX
+``source-hash:`` keyword with the current sources, and fails when the PDF is
+older than the newest source page. Run it from the repository root.
 """
 
 from __future__ import annotations
 
+import argparse
+import datetime
+import hashlib
 import json
 import re
 import subprocess
 import sys
-from dataclasses import dataclass
-from datetime import date
+from dataclasses import dataclass, field
 from pathlib import Path
 
-from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches, Pt, RGBColor
-
 ROOT = Path(__file__).resolve().parent.parent
-DIAGRAMS = ROOT / "docs" / "diagrams"
+SRC = ROOT / "docs" / "handbook" / "src"
 OUT = ROOT / "docs" / "handbook"
-VERSION = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
-TODAY = date.today().isoformat()
-
+CSS = ROOT / "docs" / "print.css"
+PRINT_CLI = ROOT / "scripts" / "print-pdf.mts"
+VERSION_FILE = ROOT / "package.json"
+ARTIFACT_STEM = "engineering-handbook"
+FORMATS = ("html", "docx", "pdf")
+REQUIRED_FRONT_MATTER = ("title", "order", "purpose", "audience")
+# Fixed core-property timestamp so repeated DOCX builds are stable.
+EPOCH = datetime.datetime(2024, 1, 1, 0, 0, 0)
 
 
 @dataclass
-class Section:
-    id: str
+class Page:
+    path: Path
     title: str
-    lead: str
-    figure: str | None
-    body: list[tuple[str, list[str]]]
+    order: int
+    purpose: str
+    audience: str
+    blocks: list[dict] = field(default_factory=list)
 
 
-SECTIONS: list[Section] = [
-    Section(
-        "loop", "The loop every product follows",
-        "Four products, one discipline: read before writing, act in a copy, prove the result with the "
-        "vendor engine, and hand off the step only a person can perform.",
-        "loop",
-        [("The five steps", [
-            "**Point at the work** — a workspace folder holding an export or project, or an installed "
-            "FactoryTalk View ME application name.",
-            "**Read** — overview, structure, references and checks. The agent quotes what it read before "
-            "it changes anything.",
-            "**Act in a copy** — L5X and FactoryTalk View write a new file or folder; MotionWorks edits "
-            "the saved project after a verified backup.",
-            "**Verify** — re-read the written file, or let the vendor engine judge: an SDK build, an ME "
-            "re-export, an MWI compile, an emulator preview.",
-            "**Hand off** — importing displays in Studio, creating a runtime file, downloading to a "
-            "controller or terminal. These are named, not implied.",
-        ])],
-    ),
-    Section(
-        "l5x", "Studio 5000 L5X",
-        "An offline export is the unit of work. Logic is reviewed and changed offline; a build and a "
-        "controller download are separate, supervised steps.",
-        "l5x",
-        [("The agent does", [
-            "Opens the `.L5X` and reports programs, routines, tags, tasks and counts.",
-            "Follows symbols, resolves aliases and members, maps bit and array usage, and runs the "
-            "structural checks with findings and severities.",
-            "Composes ladder from an instruction catalog (`list_instructions`, `compose_rung`) so an "
-            "invalid rung cannot reach a draft, then validates the whole draft.",
-            "Writes one new `.L5X` and leaves the source untouched; with Studio 5000 and the SDK it can "
-            "build the result at project revision 37 or later.",
-        ]),
-         ("You do", [
-            "Import the new `.L5X` into Studio 5000 if you want it in a project.",
-            "Download to a controller. Any download is approval-gated and only accepts a verification "
-            "id from a build in the same chat.",
-        ]),
-         ("What it will not claim", [
-            "That online logic matches the export, that FBD/SFC semantics were exercised, or that a "
-            "machine is safe. Coverage fields say so on every result.",
-        ])],
-    ),
-    Section(
-        "ftview", "FactoryTalk View ME",
-        "The agent reaches the installed application itself, authors screens against the vendor schema, "
-        "and proves the Studio import object by object.",
-        "ftview",
-        [("The agent does", [
-            "Lists the ME applications on the host and exports one to a new folder through the vendor "
-            "export server, with no Studio window and no project change.",
-            "Authors displays and objects — geometry, captions, states and tag connections — on a "
-            "source-positioned tree, so untouched objects keep their exact bytes.",
-            "Validates every changed display against the installed `Gfx-ME*.xsd`; apply refuses a "
-            "document the schema rejects.",
-            "Writes the changed displays, `IMPORT.md` and the vendor's own `BatchImport_<app>.xml`, then "
-            "re-exports after the import and compares trees to prove what landed.",
-        ]),
-         ("You do", [
-            "Import the listed displays in FactoryTalk View Studio. Create the runtime application "
-            "(`.mer`) and download it to the terminal.",
-        ]),
-         ("What it will not claim", [
-            "That an import happened without the re-export proof, that a `.mer` was built, or that copied "
-            "alarms and tags are current when they are older than the application database — the export "
-            "reports that case as a warning.",
-        ])],
-    ),
-    Section(
-        "mwi", "MotionWorks IEC",
-        "The IDE stays in the loop. The saved project is edited in place after a verified backup, and "
-        "the vendor compiler is the verdict.",
-        "mwi",
-        [("The agent does", [
-            "Finds workspace projects, opens one with a complete backup under `backups/motionworks/`, and "
-            "attaches without reloading a project the IDE already has open.",
-            "Reads POUs, declarations, tasks and block interfaces, and records the body hash that a "
-            "change must match.",
-            "Applies hash-guarded code and declaration edits, compiles, and reads the vendor diagnostics.",
-        ]),
-         ("You do", [
-            "Keep MotionWorks IEC running. Confirm any close of another open project; that needs the "
-            "exact path.",
-        ]),
-         ("What it will not claim", [
-            "That a compile verdict proves runtime behaviour, or that an edit is safe because it "
-            "compiled.",
-        ])],
-    ),
-    Section(
-        "optix", "FactoryTalk Optix",
-        "The Studio bridge is the truth while Studio is open. Batches are validated dry first, then "
-        "written, then looked at.",
-        "optix",
-        [("The agent does", [
-            "Reads the live model — screens, widget types, variable members, CLR types — through the "
-            "bridge rather than trusting disk files.",
-            "Applies typed batches with `dry_run` first, and destructive or write operations only under "
-            "the row's switches.",
-            "Validates expressions, adds translations, reads NetLogic guidance from the pinned snapshot, "
-            "and drives the emulator preview when one is configured.",
-        ]),
-         ("You do", [
-            "Keep Studio open with the project loaded and the bridge attached. Save from Studio when the "
-            "model is right.",
-        ]),
-         ("What it will not claim", [
-            "That a model change was saved, or that a screen renders because the model accepted it.",
-        ])],
-    ),
-]
+# --------------------------------------------------------------------------
+# Markdown parsing
+# --------------------------------------------------------------------------
 
-VERIFICATION = [
-    ("Studio 5000 L5X", "SDK build at revision 37+, preservation and diff checks", "Does not prove runtime behaviour"),
-    ("FactoryTalk View ME", "Vendor schema validation, re-export object diff", "Studio import and `.mer` build are human"),
-    ("MotionWorks IEC", "Vendor compile and diagnostics", "Compile verdict is not runtime"),
-    ("FactoryTalk Optix", "Dry-run batch, expression validation, emulator preview", "Bridge state is not a saved project"),
-]
-
-REQUIREMENTS = [
-    ("Studio 5000 L5X", "Node only for reads and drafts", "Studio 5000 + SDK for builds; controller for online"),
-    ("FactoryTalk View ME", "Node only to read an export", "ME Studio to export an application and to import changes"),
-    ("MotionWorks IEC", "Node only for saved files", "MotionWorks IEC 3 Pro running for edits and compile"),
-    ("FactoryTalk Optix", "—", "Optix Studio open with the bridge attached"),
-]
+def split_front_matter(text: str) -> tuple[dict[str, str], str]:
+    if not text.startswith("---"):
+        raise ValueError("missing front matter (the file must start with ---)")
+    lines = text.splitlines()
+    if lines[0].strip() != "---":
+        raise ValueError("missing front matter (the first line must be ---)")
+    meta: dict[str, str] = {}
+    end = None
+    for i in range(1, len(lines)):
+        line = lines[i]
+        if line.strip() == "---":
+            end = i
+            break
+        if not line.strip():
+            continue
+        if ":" not in line:
+            raise ValueError(f"front matter line without ':': {line!r}")
+        key, value = line.split(":", 1)
+        meta[key.strip()] = value.strip()
+    if end is None:
+        raise ValueError("front matter is never closed with ---")
+    return meta, "\n".join(lines[end + 1:])
 
 
-PRINT_CSS = ROOT / "docs" / "print.css"
-PRINT_CLI = ROOT / "scripts" / "print-pdf.mts"
+def parse_blocks(text: str) -> list[dict]:
+    blocks: list[dict] = []
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            i += 1
+            continue
+        if stripped.startswith("```"):
+            fence = stripped[3:].strip()
+            code: list[str] = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code.append(lines[i])
+                i += 1
+            if i < len(lines):
+                i += 1
+            blocks.append({"type": "code", "lang": fence, "text": "\n".join(code)})
+            continue
+        heading = re.match(r"^(#{2,4})\s+(.*)$", stripped)
+        if heading:
+            blocks.append({"type": "heading", "level": len(heading.group(1)), "text": heading.group(2).strip()})
+            i += 1
+            continue
+        if stripped.startswith("|"):
+            table: list[list[str]] = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                row = [cell.strip() for cell in lines[i].strip().strip("|").split("|")]
+                table.append(row)
+                i += 1
+            if len(table) >= 2 and all(re.fullmatch(r":?-{3,}:?", cell or "-") for cell in table[1]):
+                blocks.append({"type": "table", "header": table[0], "rows": table[2:]})
+            else:
+                blocks.append({"type": "table", "header": table[0], "rows": table[1:]})
+            continue
+        bullet = re.match(r"^[-*]\s+(.*)$", stripped)
+        if bullet:
+            items: list[str] = []
+            while i < len(lines):
+                current = lines[i].strip()
+                if re.match(r"^[-*]\s+", current):
+                    items.append(re.sub(r"^[-*]\s+", "", current))
+                    i += 1
+                elif current == "":
+                    # A blank line ends the list unless the next non-blank is another bullet.
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines) and re.match(r"^[-*]\s+", lines[j].strip()):
+                        i = j
+                        continue
+                    break
+                else:
+                    break
+            blocks.append({"type": "list", "ordered": False, "items": items})
+            continue
+        numbered = re.match(r"^\d+[.)]\s+(.*)$", stripped)
+        if numbered:
+            items = []
+            while i < len(lines):
+                current = lines[i].strip()
+                match = re.match(r"^\d+[.)]\s+(.*)$", current)
+                if match:
+                    items.append(match.group(1))
+                    i += 1
+                elif current == "":
+                    j = i + 1
+                    while j < len(lines) and not lines[j].strip():
+                        j += 1
+                    if j < len(lines) and re.match(r"^\d+[.)]\s+", lines[j].strip()):
+                        i = j
+                        continue
+                    break
+                else:
+                    break
+            blocks.append({"type": "list", "ordered": True, "items": items})
+            continue
+        # Paragraph: gather until blank or the start of another block.
+        para: list[str] = []
+        while i < len(lines):
+            current = lines[i].strip()
+            if not current:
+                break
+            if re.match(r"^(#{2,4}\s|[-*]\s|\d+[.)]\s|```|\|)", current):
+                break
+            para.append(current)
+            i += 1
+        if para:
+            blocks.append({"type": "paragraph", "text": " ".join(para)})
+        else:
+            i += 1
+    return blocks
 
 
-def html() -> Path:
-    """Write the handbook HTML, styled by the same stylesheet a report uses."""
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / "Engineering-Handbook.html"
-    toc = [("what", "What this handbook covers")] + [(section.id, section.title) for section in SECTIONS] + [("proof", "What proves what")]
-    body: list[str] = []
-    body.append(f"""<section class="cover">
-  <h1>AryaCode Engineering — Workflow Handbook</h1>
-  <p class="sub">How the four engineering surfaces work, what the agent does, what stays with you, and what each result can and cannot prove.</p>
-  <dl>
-    <dt>Version</dt><dd>{VERSION}</dd>
-    <dt>Generated</dt><dd>{TODAY}</dd>
-    <dt>Package</dt><dd>@aryacode/dsh-engineering</dd>
-    <dt>Sections</dt><dd>{len(SECTIONS)}</dd>
-  </dl>
-</section>""")
-    body.append('<nav class="toc"><h2>Contents</h2><ol>')
-    for anchor, title in toc:
-        body.append(f'<li><a href="#{anchor}">{title}</a></li>')
-    body.append("</ol></nav>")
-    body.append('<h2 id="what">What this handbook covers</h2>')
-    body.append("<p>One install adds four products to AryaCode: Studio 5000 L5X, FactoryTalk View ME, "
-                "MotionWorks IEC and FactoryTalk Optix. Each is a row you can switch off, and each registers "
-                "a skill and tools. You never call a tool by name: you say what you want, and the agent "
-                "selects the surface.</p>")
-    body.append("<table><thead><tr><th>Product</th><th>Without vendor software</th><th>Needs for the rest</th></tr></thead><tbody>")
-    for row in REQUIREMENTS:
-        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-    body.append("</tbody></table>")
-    for section in SECTIONS:
-        body.append(f'<h2 class="section" id="{section.id}">{section.title}</h2>')
-        body.append(f'<p>{section.lead}</p>')
-        if section.figure:
-            body.append(f'<figure><img src="../diagrams/{section.figure}-figure.svg" alt="{section.title} workflow">'
-                        f'<figcaption>Figure — {section.title}</figcaption></figure>')
-        for heading, bullets in section.body:
-            body.append(f"<h3>{heading}</h3><ul>")
-            for bullet in bullets:
-                body.append(f"<li>{re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', bullet)}</li>")
-            body.append("</ul>")
-    body.append('<h2 class="section" id="proof">What proves what</h2>')
-    body.append('<p>A release claim is only as good as the step that checked it.</p>')
-    body.append("<table><thead><tr><th>Product</th><th>Proof the agent can produce</th><th>Still yours</th></tr></thead><tbody>")
-    for row in VERIFICATION:
-        body.append("<tr>" + "".join(f"<td>{cell}</td>" for cell in row) + "</tr>")
-    body.append("</tbody></table>")
-    body.append("<h3>Where to look next</h3><ul>"
-                "<li>docs/getting-started.md — the first session, with a paste-ready prompt per product.</li>"
-                "<li>docs/examples.md — end-to-end sessions with call shapes and results.</li>"
-                "<li>docs/reference/tools.md — every tool, parameter and description (generated).</li>"
-                "<li>docs/architecture.md — rows, services, client faces and packaging.</li></ul>")
-    body.append('<footer><p>Generated from this repository by <code>scripts/gen-handbook.py</code>. This page and a '
-                'generated report are printed with one stylesheet (<code>docs/print.css</code>) and one printer '
-                '(<code>scripts/print-pdf.mts</code>), so the two documents cannot drift apart in typography.</p></footer>')
-    path.write_text(
-        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f'<title>AryaCode Engineering — Workflow Handbook</title><link rel="stylesheet" href="../print.css"></head>'
-        f"<body>{''.join(body)}</body></html>", encoding="utf-8")
-    return path
+def load_pages(src: Path) -> list[Page]:
+    if not src.is_dir():
+        raise SystemExit(f"handbook source directory not found: {src}")
+    paths = sorted(src.glob("*.md"))
+    if not paths:
+        raise SystemExit(f"no Markdown pages under {src}")
+    pages: list[Page] = []
+    for path in paths:
+        raw = path.read_text(encoding="utf-8")
+        meta, body = split_front_matter(raw)
+        missing = [key for key in REQUIRED_FRONT_MATTER if not meta.get(key)]
+        if missing:
+            raise SystemExit(f"{path.relative_to(ROOT)}: front matter is missing {', '.join(missing)}")
+        try:
+            order = int(meta["order"])
+        except ValueError:
+            raise SystemExit(f"{path.relative_to(ROOT)}: front matter order must be an integer")
+        blocks = parse_blocks(body)
+        if not blocks:
+            raise SystemExit(f"{path.relative_to(ROOT)}: page body is empty")
+        pages.append(Page(path, meta["title"], order, meta["purpose"], meta["audience"], blocks))
+    orders = [page.order for page in pages]
+    duplicates = {value for value in orders if orders.count(value) > 1}
+    if duplicates:
+        raise SystemExit(f"duplicate page order values: {sorted(duplicates)}")
+    pages.sort(key=lambda page: page.order)
+    return pages
 
 
-def pdf() -> Path:
-    """Print that HTML with the same browser path a generated report uses."""
-    OUT.mkdir(parents=True, exist_ok=True)
-    source = html()
-    path = OUT / "Engineering-Handbook.pdf"
-    result = subprocess.run(
-        ["node", "--import", "tsx", str(PRINT_CLI), str(source), str(path)],
-        cwd=ROOT, capture_output=True, text=True,
+def source_hash(pages: list[Page]) -> str:
+    digest = hashlib.sha256()
+    for page in pages:
+        digest.update(page.path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(page.path.read_text(encoding="utf-8").encode("utf-8"))
+    return digest.hexdigest()[:16]
+
+
+# --------------------------------------------------------------------------
+# HTML
+# --------------------------------------------------------------------------
+
+def escape_html(text: str) -> str:
+    return (text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def inline_html(text: str) -> str:
+    escaped = escape_html(text)
+    escaped = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", escaped)
+    escaped = re.sub(r"`([^`]+)`", r"<code>\1</code>", escaped)
+    return escaped
+
+
+def render_html_blocks(blocks: list[dict]) -> str:
+    parts: list[str] = []
+    for block in blocks:
+        kind = block["type"]
+        if kind == "heading":
+            level = max(2, min(4, block["level"]))
+            parts.append(f"<h{level}>{inline_html(block['text'])}</h{level}>")
+        elif kind == "paragraph":
+            parts.append(f"<p>{inline_html(block['text'])}</p>")
+        elif kind == "list":
+            tag = "ol" if block["ordered"] else "ul"
+            items = "".join(f"<li>{inline_html(item)}</li>" for item in block["items"])
+            parts.append(f"<{tag}>{items}</{tag}>")
+        elif kind == "code":
+            language = f' class="language-{escape_html(block["lang"])}"' if block["lang"] else ""
+            parts.append(f"<pre><code{language}>{escape_html(block['text'])}</code></pre>")
+        elif kind == "table":
+            head = "".join(f"<th>{inline_html(cell)}</th>" for cell in block["header"])
+            rows = "".join(
+                "<tr>" + "".join(f"<td>{inline_html(cell)}</td>" for cell in row) + "</tr>"
+                for row in block["rows"]
+            )
+            parts.append(f"<table><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table>")
+    return "\n".join(parts)
+
+
+def build_html(pages: list[Page], digest: str) -> str:
+    version = json.loads(VERSION_FILE.read_text(encoding="utf-8"))["version"]
+    today = datetime.date.today().isoformat()
+    nav = "\n".join(
+        f'<li><a href="#page-{page.order}">{inline_html(page.title)}</a></li>' for page in pages
     )
-    if result.returncode != 0:
-        sys.stderr.write(result.stdout + result.stderr)
-        raise SystemExit("gen-handbook: the PDF was not printed; the HTML is the printable copy")
-    return path
+    sections = []
+    for page in pages:
+        sections.append(
+            "\n".join(
+                [
+                    f'<section class="page" id="page-{page.order}">',
+                    f"<h1>{inline_html(page.title)}</h1>",
+                    f'<p class="purpose">{inline_html(page.purpose)}</p>',
+                    f'<p class="audience">Audience: {inline_html(page.audience)}</p>',
+                    render_html_blocks(page.blocks),
+                    "</section>",
+                ]
+            )
+        )
+    return "\n".join(
+        [
+            "<!doctype html>",
+            '<html lang="en">',
+            "<head>",
+            '<meta charset="utf-8">',
+            '<meta name="viewport" content="width=device-width, initial-scale=1">',
+            f'<meta name="handbook-source-hash" content="{digest}">',
+            f"<title>Engineering handbook - {version}</title>",
+            '<link rel="stylesheet" href="../print.css">',
+            "</head>",
+            "<body>",
+            '<header class="cover">',
+            f"<h1>Engineering handbook</h1>",
+            f'<p class="subtitle">@aryacode/dsh-engineering {version}</p>',
+            f'<p>Generated {today} from docs/handbook/src/ - source hash {digest}.</p>',
+            "</header>",
+            '<nav class="toc"><h2>Contents</h2><ol>',
+            nav,
+            "</ol></nav>",
+            "\n".join(sections),
+            '<footer class="colophon"><p>One install, many surfaces. Every component is beta; '
+            "the known gaps chapter lists what is not proved.</p>",
+            f"<p>Source hash {digest} - generated {today}.</p></footer>",
+            "</body>",
+            "</html>",
+            "",
+        ]
+    )
 
 
-def docx() -> Path:
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / "Engineering-Handbook.docx"
+# --------------------------------------------------------------------------
+# DOCX
+# --------------------------------------------------------------------------
+
+def inline_docx(paragraph, text: str) -> None:
+    from docx.shared import Pt
+
+    for piece in re.split(r"(\*\*[^*]+\*\*|`[^`]+`)", text):
+        if not piece:
+            continue
+        if piece.startswith("**") and piece.endswith("**"):
+            run = paragraph.add_run(piece[2:-2])
+            run.bold = True
+        elif piece.startswith("`") and piece.endswith("`"):
+            run = paragraph.add_run(piece[1:-1])
+            run.font.name = "Consolas"
+            run.font.size = Pt(9.5)
+        else:
+            paragraph.add_run(piece)
+
+
+def render_docx_blocks(document: Document, blocks: list[dict]) -> None:
+    from docx.shared import Pt
+
+    for block in blocks:
+        kind = block["type"]
+        if kind == "heading":
+            level = max(1, min(3, block["level"] - 1))
+            document.add_heading(block["text"], level=level)
+        elif kind == "paragraph":
+            paragraph = document.add_paragraph()
+            inline_docx(paragraph, block["text"])
+            paragraph.paragraph_format.space_after = Pt(6)
+        elif kind == "list":
+            style = "List Number" if block["ordered"] else "List Bullet"
+            for item in block["items"]:
+                paragraph = document.add_paragraph(style=style)
+                inline_docx(paragraph, item)
+        elif kind == "code":
+            for line in block["text"].splitlines() or [""]:
+                paragraph = document.add_paragraph()
+                run = paragraph.add_run(line if line else " ")
+                run.font.name = "Consolas"
+                run.font.size = Pt(9)
+                paragraph.paragraph_format.space_after = Pt(0)
+        elif kind == "table":
+            table = document.add_table(rows=1, cols=len(block["header"]))
+            table.style = "Table Grid"
+            for index, cell in enumerate(block["header"]):
+                table.rows[0].cells[index].text = cell
+            for row in block["rows"]:
+                cells = table.add_row().cells
+                for index, value in enumerate(row[: len(block["header"])]):
+                    cells[index].text = value
+
+
+def build_docx(pages: list[Page], digest: str, out_path: Path) -> None:
+    try:
+        from docx import Document
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Pt, RGBColor
+    except ImportError as exc:  # noqa: BLE001 - say which dependency is missing
+        raise SystemExit(
+            "DOCX build needs python-docx (pip install python-docx); "
+            f"building only --formats html still works ({exc})"
+        )
+    version = json.loads(VERSION_FILE.read_text(encoding="utf-8"))["version"]
     document = Document()
     normal = document.styles["Normal"]
     normal.font.name = "Calibri"
     normal.font.size = Pt(10.5)
+    document.core_properties.title = "Engineering handbook"
+    document.core_properties.author = "dsh-engineering"
+    document.core_properties.subject = f"@aryacode/dsh-engineering {version}"
+    document.core_properties.keywords = f"source-hash:{digest}"
+    document.core_properties.created = EPOCH
+    document.core_properties.modified = EPOCH
+    document.core_properties.last_modified_by = "dsh-engineering"
+    document.core_properties.revision = 1
 
     cover = document.add_paragraph()
     cover.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = cover.add_run("AryaCode Engineering\nWorkflow Handbook")
+    run = cover.add_run("Engineering handbook")
     run.bold = True
-    run.font.size = Pt(30)
-    run.font.color.rgb = RGBColor(0x1F, 0x29, 0x33)
-    document.add_paragraph(f"How the four engineering surfaces work, what the agent does, what stays with you, and what each result can and cannot prove.")
-    document.add_paragraph(f"Version {VERSION} · {TODAY} · @aryacode/dsh-engineering")
+    run.font.size = Pt(26)
+    subtitle = document.add_paragraph()
+    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subtitle.add_run(f"@aryacode/dsh-engineering {version}")
+    note = document.add_paragraph()
+    note.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    note.add_run(
+        f"Generated {datetime.date.today().isoformat()} from docs/handbook/src/ "
+        f"- source hash {digest}."
+    )
     document.add_page_break()
 
-    document.add_heading("What this handbook covers", level=1)
-    document.add_paragraph(
-        "One install adds four products to AryaCode: Studio 5000 L5X, FactoryTalk View ME, MotionWorks IEC "
-        "and FactoryTalk Optix. Each is a row you can switch off, and each registers a skill and tools. You "
-        "never call a tool by name: you say what you want, and the agent selects the surface.")
-    table = document.add_table(rows=1, cols=3)
-    table.style = "Light Grid Accent 1"
-    header = table.rows[0].cells
-    header[0].text, header[1].text, header[2].text = "Product", "Without vendor software", "Needs for the rest"
-    for row in REQUIREMENTS:
-        cells = table.add_row().cells
-        cells[0].text, cells[1].text, cells[2].text = row
-    document.add_page_break()
-
-    for section in SECTIONS:
-        document.add_heading(section.title, level=1)
-        document.add_paragraph(section.lead).italic = True
-        image = DIAGRAMS / f"{section.figure}-figure.png" if section.figure else None
-        if image is not None and image.exists():
-            document.add_picture(str(image), width=Inches(6.4))
-            caption = document.add_paragraph(f"Figure — {section.title}")
-            caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for heading, bullets in section.body:
-            document.add_heading(heading, level=2)
-            for bullet in bullets:
-                document.add_paragraph(bullet.replace("**", ""), style="List Bullet")
-        document.add_page_break()
-
-    document.add_heading("What proves what", level=1)
-    document.add_paragraph("A release claim is only as good as the step that checked it.")
-    table = document.add_table(rows=1, cols=3)
-    table.style = "Light Grid Accent 1"
-    header = table.rows[0].cells
-    header[0].text, header[1].text, header[2].text = "Product", "Proof the agent can produce", "Still yours"
-    for row in VERIFICATION:
-        cells = table.add_row().cells
-        cells[0].text, cells[1].text, cells[2].text = row
-    document.add_heading("Where to look next", level=2)
-    for line in [
-        "docs/getting-started.md — the first session, with a paste-ready prompt per product.",
-        "docs/examples.md — end-to-end sessions with call shapes and results.",
-        "docs/reference/tools.md — every tool, parameter and description (generated).",
-        "docs/architecture.md — rows, services, client faces and packaging.",
-    ]:
-        document.add_paragraph(line, style="List Bullet")
-    document.save(str(path))
-    return path
+    for number, page in enumerate(pages, start=1):
+        heading = document.add_heading(page.title, level=0)
+        heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        purpose = document.add_paragraph()
+        run = purpose.add_run(page.purpose)
+        run.italic = True
+        audience = document.add_paragraph()
+        run = audience.add_run(f"Audience: {page.audience}")
+        run.font.size = Pt(9.5)
+        run.font.color.rgb = RGBColor(0x55, 0x55, 0x55)
+        render_docx_blocks(document, page.blocks)
+        if number != len(pages):
+            document.add_page_break()
+    document.save(out_path)
 
 
-def main() -> None:
-    for path in (html(), pdf(), docx()):
-        print(f"{path.relative_to(ROOT)} — {path.stat().st_size // 1024} KB")
+# --------------------------------------------------------------------------
+# Build + check
+# --------------------------------------------------------------------------
+
+def build(pages: list[Page], out_dir: Path, formats: tuple[str, ...]) -> dict[str, Path]:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    digest = source_hash(pages)
+    html_path = out_dir / f"{ARTIFACT_STEM}.html"
+    docx_path = out_dir / f"{ARTIFACT_STEM}.docx"
+    pdf_path = out_dir / f"{ARTIFACT_STEM}.pdf"
+    built: dict[str, Path] = {}
+    if "html" in formats:
+        html_path.write_text(build_html(pages, digest), encoding="utf-8")
+        built["html"] = html_path
+    if "docx" in formats:
+        build_docx(pages, digest, docx_path)
+        built["docx"] = docx_path
+    if "pdf" in formats:
+        if not html_path.is_file():
+            html_path.write_text(build_html(pages, digest), encoding="utf-8")
+        print(f"rendering {html_path.relative_to(ROOT) if out_dir == OUT else html_path} ...")
+        result = subprocess.run(
+            ["node", "--import", "tsx", str(PRINT_CLI), str(html_path), str(pdf_path)],
+            cwd=ROOT,
+        )
+        if result.returncode != 0 or not pdf_path.is_file():
+            raise SystemExit(
+                "PDF rendering failed: scripts/print-pdf.mts could not run a browser "
+                "(no Chrome or Edge on PATH, or the browser cannot start here). "
+                "The HTML and DOCX were still built; print the HTML from a normal "
+                "desktop browser, or run the generator where Chrome/Edge can start."
+            )
+        built["pdf"] = pdf_path
+    for path in built.values():
+        size = path.stat().st_size
+        print(f"{path.relative_to(ROOT) if path.is_relative_to(ROOT) else path} - {max(1, round(size / 1024))} KB")
+    print(f"handbook source hash {digest} ({len(pages)} pages)")
+    return built
+
+
+def read_docx_keywords(path: Path) -> str:
+    try:
+        from docx import Document
+    except ImportError as exc:  # noqa: BLE001 - the check cannot run without python-docx
+        raise SystemExit(f"{path.name}: python-docx is needed to read the DOCX core properties ({exc})")
+    try:
+        document = Document(str(path))
+        return document.core_properties.keywords or ""
+    except Exception as exc:  # noqa: BLE001 - report the shape failure, do not crash
+        raise SystemExit(f"{path.name}: cannot read DOCX core properties ({exc})")
+
+
+def check(pages: list[Page]) -> None:
+    digest = source_hash(pages)
+    html_path = OUT / f"{ARTIFACT_STEM}.html"
+    docx_path = OUT / f"{ARTIFACT_STEM}.docx"
+    pdf_path = OUT / f"{ARTIFACT_STEM}.pdf"
+    failures: list[str] = []
+    for path in (html_path, docx_path, pdf_path):
+        if not path.is_file():
+            failures.append(f"missing built artifact {path.relative_to(ROOT)}")
+        elif path.stat().st_size == 0:
+            failures.append(f"empty built artifact {path.relative_to(ROOT)}")
+    if html_path.is_file() and html_path.stat().st_size:
+        match = re.search(r'name="handbook-source-hash" content="([0-9a-f]+)"', html_path.read_text(encoding="utf-8"))
+        if not match:
+            failures.append("HTML has no handbook-source-hash meta tag")
+        elif match.group(1) != digest:
+            failures.append("HTML is stale: source hash differs from docs/handbook/src")
+    if docx_path.is_file() and docx_path.stat().st_size:
+        keywords = read_docx_keywords(docx_path)
+        if f"source-hash:{digest}" not in keywords:
+            failures.append("DOCX is stale: its source-hash keyword differs from docs/handbook/src")
+    if pdf_path.is_file() and pdf_path.stat().st_size:
+        newest = max(page.path.stat().st_mtime for page in pages)
+        if pdf_path.stat().st_mtime < newest:
+            failures.append("PDF is older than the newest source page")
+    if failures:
+        for failure in failures:
+            print(f"handbook check: {failure}", file=sys.stderr)
+        raise SystemExit(1)
+    print(f"handbook check: ok ({len(pages)} pages, source hash {digest})")
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Build the engineering handbook from Markdown.")
+    parser.add_argument("--check", action="store_true", help="fail when sources or artifacts are stale")
+    parser.add_argument("--out-dir", type=Path, default=OUT, help="directory for the built artifacts")
+    parser.add_argument(
+        "--formats",
+        default=",".join(FORMATS),
+        help="comma-separated subset of html,docx,pdf (default: all three)",
+    )
+    args = parser.parse_args(argv)
+    formats = tuple(part.strip() for part in args.formats.split(",") if part.strip())
+    unknown = [name for name in formats if name not in FORMATS]
+    if unknown:
+        raise SystemExit(f"unknown format(s): {', '.join(unknown)}")
+    pages = load_pages(SRC)
+    if args.check:
+        check(pages)
+        return 0
+    out_dir = args.out_dir if args.out_dir.is_absolute() else ROOT / args.out_dir
+    build(pages, out_dir, formats)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

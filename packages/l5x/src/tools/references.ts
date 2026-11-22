@@ -3,9 +3,9 @@
  * one tag's element usage.
  *
  * The old surface answered "where is this used" with five tools. This module
- * answers it with three names that state their intent - `find_references`,
- * `trace_dependencies`, `resolve_tag` - plus `usage_map` for element/bit
- * allocation, and `search_logic` for text that is not a symbol.
+ * answers it with three names that state their intent - `l5x_find_references`,
+ * `l5x_trace_dependencies`, `l5x_resolve_tag` - plus `l5x_usage_map` for element/bit
+ * allocation, and `l5x_search_logic` for text that is not a symbol.
  *
  * @module dsh-engineering-l5x/tools/references
  */
@@ -43,8 +43,8 @@ interface LogicMatch {
 export function referenceTools(session: ProjectSession): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'search_logic',
-      description: 'Find literal text in routine logic. Use it to locate a rung, ST line or operand when you do not know the exact symbol name; use find_references when you do.',
+      name: 'l5x_search_logic',
+      description: 'Find literal text in routine logic. Use it to locate a rung, ST line or operand when you do not know the exact symbol name; use l5x_find_references when you do.',
       parameters: object({
         query: string('Case-insensitive text to find, matched literally inside rung text, ST lines and diagram node labels. Example: "OTE(Motor_Run)".'),
         limit: integer('Maximum matches to return.', { minimum: 1, maximum: 100, default: 20 }),
@@ -77,16 +77,16 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           [
             ...(first === undefined || first.program.startsWith('AOI::')
               ? []
-              : [{ tool: 'get_component', args: { kind: 'routine', name: first.routine, scope: first.program }, why: 'Read the routine that contains the first match.' }]),
-            { tool: 'find_references', args: { symbol: query }, why: 'See every read and write of this name.' },
+              : [{ tool: 'l5x_get_component', args: { kind: 'routine', name: first.routine, scope: first.program }, why: 'Read the routine that contains the first match.' }]),
+            { tool: 'l5x_find_references', args: { symbol: query }, why: 'See every read and write of this name.' },
           ],
           COVERAGE,
         )
       },
     }),
     tool({
-      name: 'find_references',
-      description: 'Find where one symbol is read or written in exported logic, with scope, access, confidence and whether the site is safety code. Use trace_dependencies for what feeds a symbol.',
+      name: 'l5x_find_references',
+      description: 'Find where one symbol is read or written in exported logic, with scope, access, confidence and whether the site is safety code. Use l5x_trace_dependencies for what feeds a symbol.',
       parameters: object({
         symbol: string('Symbol to follow, as declared or as written in logic. Example: "Motor_1" or "Program:MainProgram.Motor_1".'),
         scope: string('Program scope to search. Omit to search every scope.'),
@@ -142,17 +142,17 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
             ...(detail === 'evidence' ? { returned: rows.length, truncated: evidence.length > rows.length, evidence: rows } : {}),
           },
           [
-            { tool: 'trace_dependencies', args: { symbol }, why: 'See what feeds this symbol, not just where it appears.' },
+            { tool: 'l5x_trace_dependencies', args: { symbol }, why: 'See what feeds this symbol, not just where it appears.' },
             ...(first === undefined
               ? []
-              : [{ tool: 'get_component', args: { kind: 'routine', name: first.routine, scope: first.scope }, why: 'Read the routine holding the first reference.' }]),
+              : [{ tool: 'l5x_get_component', args: { kind: 'routine', name: first.routine, scope: first.scope }, why: 'Read the routine holding the first reference.' }]),
           ],
           COVERAGE,
         )
       },
     }),
     tool({
-      name: 'trace_dependencies',
+      name: 'l5x_trace_dependencies',
       description: 'Follow what feeds a symbol (upstream) or what it feeds (downstream) through parsed operands. Static evidence only; it does not establish runtime causality.',
       parameters: object({
         symbol: string('Symbol to trace. Example: "Conveyor_Run" or "AOI_EncoderScale::Out_FPM".'),
@@ -174,7 +174,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         const direction = optionalString(args, 'direction') === 'downstream' ? 'downstream' : 'upstream'
         const depth = Math.min(Math.max(integerArg(args, 'depth', 3), 1), 6)
         // A tag declared in exactly one program is unambiguous: adopt that scope rather than make the
-        // caller retry. find_references already searches every scope; tracing should not be stricter.
+        // caller retry. l5x_find_references already searches every scope; tracing should not be stricter.
         let effectiveScope = scope
         let adoptedFrom = ''
         if (explicitScope === undefined && !qualified && scope === 'controller') {
@@ -233,15 +233,15 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           `${nodes.length} ${nodes.length === 1 ? 'symbol' : 'symbols'} and ${edges.length} ${edges.length === 1 ? 'edge' : 'edges'} ${direction} of ${requested}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}${graph.truncated === true ? ' (truncated)' : ''}.${networkNote}`,
           graph,
           [
-            { tool: 'find_references', args: { symbol: requested }, why: 'See every occurrence rather than the dependency graph.' },
-            ...(requested.includes('::') ? [] : [{ tool: 'usage_map', args: { tag: requested, scope }, why: 'Map element and bit usage for this tag.' }]),
+            { tool: 'l5x_find_references', args: { symbol: requested }, why: 'See every occurrence rather than the dependency graph.' },
+            ...(requested.includes('::') ? [] : [{ tool: 'l5x_usage_map', args: { tag: requested, scope }, why: 'Map element and bit usage for this tag.' }]),
           ],
           coverage,
         )
       },
     }),
     tool({
-      name: 'resolve_tag',
+      name: 'l5x_resolve_tag',
       description: 'Resolve one Logix address against exported declarations: alias chain, member, integer bit and array subscript, with the evidence that remains unverified.',
       parameters: object({
         address: string('Address as written in logic. Example: "Motor_1.Speed" or "Alarms[2].3".'),
@@ -273,10 +273,10 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
             : `${address} does not resolve: ${resolution.reason ?? 'not declared in this export'}.`,
           adoptedFrom === '' ? resolution : { ...resolution, adopted_from: adoptedFrom },
           [
-            { tool: 'find_references', args: { symbol: address }, why: 'See where this address is used.' },
+            { tool: 'l5x_find_references', args: { symbol: address }, why: 'See where this address is used.' },
             ...(canonical === undefined
               ? []
-              : [{ tool: 'find_references', args: { symbol: canonical.split(/[.[]/u)[0] ?? canonical }, why: 'Follow the base declaration this address resolves to.' }]),
+              : [{ tool: 'l5x_find_references', args: { symbol: canonical.split(/[.[]/u)[0] ?? canonical }, why: 'Follow the base declaration this address resolves to.' }]),
           ],
           resolution.indices_verified && resolution.type_unverified !== true
             ? COVERAGE
@@ -291,7 +291,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
       },
     }),
     tool({
-      name: 'usage_map',
+      name: 'l5x_usage_map',
       description: 'Map how one declared tag is used: which array elements and bits are read or written, which remain free, and where each appears.',
       parameters: object({
         tag: string('Declared tag name. Example: "Alarm_Bits".'),
@@ -317,7 +317,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
             declared = project.document.tags.find(entry => entry.name.toLowerCase() === tag.toLowerCase() && entry.scope.toLowerCase() === scope.toLowerCase())
           }
         }
-      // An AOI parameter or local tag is a symbol, but usage_map maps declared tags.
+      // An AOI parameter or local tag is a symbol, but l5x_usage_map maps declared tags.
       const aoiOwner = declared === undefined
         ? project.document.aois.find(aoi => aoi.name.toUpperCase() === scope.toUpperCase()
           && [...aoi.parameters, ...aoi.localTags].some(member => String(member.name).toLowerCase() === tag.toLowerCase()))
@@ -325,8 +325,8 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
       if (aoiOwner !== undefined) {
         throw new L5xError(
           'INVALID_ARGUMENT',
-          `${tag} is a member of add-on instruction ${aoiOwner.name}; usage_map maps declared tags, not AOI internals.`,
-          `Use find_references with symbol "${aoiOwner.name}::${tag}" to see where it is read and written.`,
+          `${tag} is a member of add-on instruction ${aoiOwner.name}; l5x_usage_map maps declared tags, not AOI internals.`,
+          `Use l5x_find_references with symbol "${aoiOwner.name}::${tag}" to see where it is read and written.`,
           [`${aoiOwner.name}::${tag}`],
         )
       }
@@ -335,7 +335,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
           .filter(entry => entry.scope.toLowerCase() === scope.toLowerCase())
           .map(entry => entry.name)
         // The same tag can be declared in another scope. On a real project a program-scoped read
-        // said "not declared in scope X" for a tag that trace_dependencies had just resolved.
+        // said "not declared in scope X" for a tag that l5x_trace_dependencies had just resolved.
         const elsewhere = [...new Set(project.document.tags
           .filter(entry => entry.name.toLowerCase() === tag.toLowerCase())
           .map(entry => entry.scope))]
@@ -345,7 +345,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
             ? `Tag ${JSON.stringify(tag)} is not declared in scope ${JSON.stringify(scope)}.`
             : `Tag ${JSON.stringify(tag)} is not declared in scope ${JSON.stringify(scope)}; it is declared in ${elsewhere.slice(0, 3).join(', ')}.`,
           elsewhere.length === 0
-            ? 'Call list_components with kind "tag" to see the declared names in this scope.'
+            ? 'Call l5x_list_components with kind "tag" to see the declared names in this scope.'
             : `Pass scope: ${JSON.stringify(elsewhere[0])}.`,
           elsewhere.length === 0 ? declaredHere.slice(0, 5) : elsewhere,
         )
@@ -360,7 +360,7 @@ export function referenceTools(session: ProjectSession): readonly ToolDefinition
         return success(
           `${declared.name}: ${indexes.length} indexed ${indexes.length === 1 ? 'element' : 'elements'} used${map.whole_element ? ', plus whole-tag use' : ''}${adoptedFrom === '' ? '' : ` (declared in ${adoptedFrom}; scope adopted)`}.`,
           map,
-          [{ tool: 'find_references', args: { symbol: declared.name, scope }, why: 'See every occurrence behind these counts.' }],
+          [{ tool: 'l5x_find_references', args: { symbol: declared.name, scope }, why: 'See every occurrence behind these counts.' }],
           {
             complete: false,
             unverified: ['external HMI, produced/consumed and driver consumers', 'dynamic indices are not expanded'],

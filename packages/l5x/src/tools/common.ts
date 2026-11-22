@@ -23,7 +23,7 @@ export const COVERAGE = {
 
 /** The handle every read can omit when one project is open. */
 export const PROJECT_ID = string(
-  'Handle returned by open_project. Omit when exactly one project is open in this chat.',
+  'Handle returned by l5x_open_project. Omit when exactly one project is open in this chat.',
   {},
 )
 

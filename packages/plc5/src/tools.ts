@@ -18,6 +18,7 @@ import { spawn } from 'node:child_process'
 
 import { readPlc5Project, Plc5Error, type Plc5Project } from './engine/rslogix5.ts'
 import { parseCfbf, readContainerIdentity, CfbfError } from './engine/container.ts'
+import { pc5TextTools } from './tools/pc5-text.ts'
 import { scanIoFootprint, coverageAgainst } from './engine/census.ts'
 import { jsonText, type FsService, type SandboxPolicyResolver, type ToolDefinition, type ToolExec } from './core/tool.ts'
 
@@ -637,7 +638,17 @@ export function plc5Tools(fs: FsService, _sandboxPolicy?: SandboxPolicyResolver)
     },
   }
 
-  return [capabilitiesTool, openTool, ladderTool, findTool, ioCensusTool, ioConfigTool, dataReadTool, processorTool]
+  return [
+    capabilitiesTool,
+    openTool,
+    ladderTool,
+    findTool,
+    ioCensusTool,
+    ioConfigTool,
+    dataReadTool,
+    processorTool,
+    ...pc5TextTools(fs, _sandboxPolicy),
+  ]
 }
 
 /** The model-facing name of a path. */

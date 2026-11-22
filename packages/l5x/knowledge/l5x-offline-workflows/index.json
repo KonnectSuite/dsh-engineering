@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "collection": "l5x-offline-workflows",
+  "title": "Offline L5X edit, compare and verify workflows",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 11,
+  "pages": [
+    {
+      "id": "offline-compose-logic",
+      "title": "Compose logic without a project at all",
+      "section": "Workflows",
+      "body": "pages/offline-compose-logic.md"
+    },
+    {
+      "id": "offline-draft-to-apply",
+      "title": "From a staged draft to a new L5X file",
+      "section": "Workflows",
+      "body": "pages/offline-draft-to-apply.md"
+    },
+    {
+      "id": "offline-edit-without-studio",
+      "title": "Editing logic without Studio 5000",
+      "section": "Workflows",
+      "body": "pages/offline-edit-without-studio.md"
+    },
+    {
+      "id": "offline-editing-overview",
+      "title": "What can be done offline, and what cannot",
+      "section": "Workflows",
+      "body": "pages/offline-editing-overview.md",
+      "identifiers": [
+        "OFFLINE EDIT"
+      ]
+    },
+    {
+      "id": "offline-open-and-inspect",
+      "title": "Open an export and inspect its structure",
+      "section": "Workflows",
+      "body": "pages/offline-open-and-inspect.md"
+    },
+    {
+      "id": "offline-troubleshooting",
+      "title": "Troubleshooting an offline edit that will not apply",
+      "section": "Workflows",
+      "body": "pages/offline-troubleshooting.md"
+    },
+    {
+      "id": "offline-acd-export",
+      "title": "Getting an L5X from an ACD with the Studio SDK",
+      "section": "Exports",
+      "body": "pages/offline-acd-export.md"
+    },
+    {
+      "id": "offline-documentation-bundle",
+      "title": "Write a documentation bundle from an export",
+      "section": "Exports",
+      "body": "pages/offline-documentation-bundle.md"
+    },
+    {
+      "id": "offline-rung-preview",
+      "title": "Turn composed logic into Studio-pasteable text",
+      "section": "Exports",
+      "body": "pages/offline-rung-preview.md"
+    },
+    {
+      "id": "offline-compare-exports",
+      "title": "Compare two exports by engineering difference",
+      "section": "Checks",
+      "body": "pages/offline-compare-exports.md"
+    },
+    {
+      "id": "offline-verify-checks",
+      "title": "Run checks and read the findings",
+      "section": "Checks",
+      "body": "pages/offline-verify-checks.md"
+    }
+  ]
+}

@@ -50,7 +50,7 @@ const STUDIO_COVERAGE: Coverage = {
 export function studioTools(session: ProjectSession, state: StudioState): readonly ToolDefinition[] {
   return [
     tool({
-      name: 'studio_sdk_status',
+      name: 'l5x_studio_sdk_status',
       description: 'Preflight the Logix Designer SDK service, FactoryTalk Linx services, SDK package, .NET and installed Studio versions. Call before any SDK tool; no project or controller operation.',
       parameters: object({}),
       async run(_args, _exec) {
@@ -58,13 +58,13 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         return success(
           status.available ? 'The Studio 5000 SDK is available for offline work.' : `The Studio 5000 SDK is unavailable: ${status.reason}`,
           status,
-          status.available ? [{ tool: 'studio_capabilities', why: 'See what this SDK release can do for the open project.' }] : [],
+          status.available ? [{ tool: 'l5x_studio_capabilities', why: 'See what this SDK release can do for the open project.' }] : [],
           STUDIO_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'studio_capabilities',
+      name: 'l5x_studio_capabilities',
       description: 'Report offline, SDK, revision-specific build, reference and live-read capabilities with next steps. Optional project_id checks the selected revision; no controller contact.',
       parameters: object({ project_id: PROJECT_ID }, []),
       async run(args, exec) {
@@ -74,13 +74,13 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         return success(
           `Studio capabilities for ${project?.document.controller.name ?? 'this machine'}.`,
           engineeringCapabilities(status, project),
-          [{ tool: 'studio_sdk_status', why: 'Inspect the SDK services in detail.' }],
+          [{ tool: 'l5x_studio_sdk_status', why: 'Inspect the SDK services in detail.' }],
           STUDIO_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'export_acd_to_l5x',
+      name: 'l5x_export_acd_to_l5x',
       description: 'Export one existing offline ACD to a new full L5X with the running Logix Designer SDK service. No controller connection or upload; refuses to overwrite.',
       parameters: object({
         acd_path: string('Existing offline ACD. Example: "C:/Projects/Line/Line.ACD".'),
@@ -104,13 +104,13 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         return success(
           `Exported ${result.source_acd} to ${result.output_path}.`,
           result,
-          [{ tool: 'open_project', args: { path: result.output_path }, why: 'Open the exported L5X to read it.' }],
+          [{ tool: 'l5x_open_project', args: { path: result.output_path }, why: 'Open the exported L5X to read it.' }],
           STUDIO_COVERAGE,
         )
       },
     }),
     tool({
-      name: 'verify_offline_l5x',
+      name: 'l5x_verify_offline_l5x',
       description: 'Import a full L5X into a new offline ACD and build it with the Studio SDK. The SDK opens a project with the Logix Designer release that matches the export revision, so that release must be installed — otherwise it answers STUDIO_VERSION_UNAVAILABLE and names the versions it has. A build then needs project revision 37+; probe=true attempts a lower revision and reports the SDK error. A safety controller is refused up front because the importer aborts it with XMLSrv_E_IMPORT_ABORTED_NO_CHANGES. No controller operation.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -139,7 +139,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         }
         const review = reviewDownloadSource(baseline, project)
         if (!existsSync(project.path)) {
-          throw new L5xError('FILE_NOT_FOUND', `The export ${project.path} is no longer on disk, so there is nothing to verify.`, 'Reopen the export with open_project — a draft applied in this chat has to be reopened — then retry with a new .ACD path.')
+          throw new L5xError('FILE_NOT_FOUND', `The export ${project.path} is no longer on disk, so there is nothing to verify.`, 'Reopen the export with l5x_open_project — a draft applied in this chat has to be reopened — then retry with a new .ACD path.')
         }
         const captured = state.forL5x(exec, baseline.path)
         const baselineVerified = captured?.l5xSha256 === baseline.sha256
@@ -147,7 +147,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           throw new L5xError(
             'BASELINE_NOT_EXPORTED_IN_CHAT',
             'The baseline is not an L5X exported from an ACD in this chat, so the SDK build would spend itself before this blocker was reported.',
-            'Export the source ACD with export_acd_to_l5x, open that exact L5X, and pass it as baseline_id. build_acd_from_draft requires the same provenance.',
+            'Export the source ACD with l5x_export_acd_to_l5x, open that exact L5X, and pass it as baseline_id. l5x_build_acd_from_draft requires the same provenance.',
           )
         }
         const outputPath = await session.resolvePath(requiredString(args, 'output_path'), exec)
@@ -160,7 +160,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
         }
         const blockers = [
           ...review.blockers,
-          ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat; export the ACD with export_acd_to_l5x and open that L5X']),
+          ...(baselineVerified ? [] : ['Baseline is not an L5X exported from an ACD in this chat; export the ACD with l5x_export_acd_to_l5x and open that L5X']),
         ]
         const abort = importAbortAdvice(`${build.sdk_error ?? ''}\n${build.log ?? ''}`)
         const advice = build.offline_build === 'failed'
@@ -197,7 +197,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
       },
     }),
     tool({
-      name: 'build_acd_from_draft',
+      name: 'l5x_build_acd_from_draft',
       description: 'Import one changed existing RLL or ST routine into a NEW offline ACD copy, build it, export it, and check preservation. No controller connection; requires the original ACD and a baseline exported in this chat.',
       parameters: object({
         acd_path: string('Original offline ACD the baseline was exported from.'),
@@ -221,7 +221,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
           throw new L5xError(
             'BASELINE_MISMATCH',
             'The baseline was not exported from this ACD in this chat, or either file has changed since.',
-            'Export the source ACD with export_acd_to_l5x, open that exact L5X, and keep both files unchanged.',
+            'Export the source ACD with l5x_export_acd_to_l5x, open that exact L5X, and keep both files unchanged.',
           )
         }
         const outputPath = await session.resolvePath(requiredString(args, 'output_path'), exec)
@@ -250,7 +250,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
             verification_id: verificationId,
             controller_operation: 'none',
             next_step: eligible
-              ? 'Download the built ACD with download_project and its verification_id after per-call approval.'
+              ? 'Download the built ACD with l5x_download_project and its verification_id after per-call approval.'
               : passed
                 ? 'Read the review blockers; the build is not eligible for download.'
                 : 'Read the build log; the source ACD was preserved and a failed output is not verified.',
@@ -261,7 +261,7 @@ export function studioTools(session: ProjectSession, state: StudioState): readon
       },
     }),
     tool({
-      name: 'studio_review_evidence',
+      name: 'l5x_studio_review_evidence',
       description: 'Before reporting Studio findings, verify exact program, routine and rung or ST line names with verbatim quotes. Does not verify interpretation or runtime behavior.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -309,7 +309,7 @@ export function isSafetyProject(xml: string): boolean {
 /**
  * Module Names that the Studio SDK importer refuses. A colon in a module Name
  * ("Local:1" as a label) aborted an import of a non-safety project with
- * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, and no run_checks rule saw it, so the
+ * XMLSrv_E_IMPORT_ABORTED_NO_CHANGES, and no l5x_run_checks rule saw it, so the
  * defect is named here before any build is spent.
  */
 export function moduleNameDefects(xml: string): string[] {
@@ -333,6 +333,6 @@ export function moduleNameDefects(xml: string): string[] {
  */
 export function importAbortAdvice(text: string): string | null {
   if (!/IMPORT_ABORTED_NO_CHANGES/iu.test(text)) return null
-  return 'The SDK importer aborted without changes (XMLSrv_E_IMPORT_ABORTED_NO_CHANGES). Observed causes: a safety controller; an L5X whose safety signature must be recomputed; a baseline that was not exported from an ACD in this chat; a module Name containing characters illegal in a Logix identifier (a colon was observed). A retry cannot change it: check the module Names, export the source ACD with export_acd_to_l5x and open that L5X as the baseline, then import the L5X in Studio 5000 and build there, or prove the change with run_checks plus a targeted read.'
+  return 'The SDK importer aborted without changes (XMLSrv_E_IMPORT_ABORTED_NO_CHANGES). Observed causes: a safety controller; an L5X whose safety signature must be recomputed; a baseline that was not exported from an ACD in this chat; a module Name containing characters illegal in a Logix identifier (a colon was observed). A retry cannot change it: check the module Names, export the source ACD with l5x_export_acd_to_l5x and open that L5X as the baseline, then import the L5X in Studio 5000 and build there, or prove the change with l5x_run_checks plus a targeted read.'
 }
 

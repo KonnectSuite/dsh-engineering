@@ -1,8 +1,8 @@
 # Contributing
 
 This repository is the AryaCode engineering bundle: one package that mounts a row per toolchain -
-Studio 5000 L5X, FactoryTalk View ME, FactoryTalk Optix, MotionWorks IEC, ECAD electrical prints,
-RSLogix 5 program reads, and SLC 500 / PLC-5 to Logix migration. It is MIT licensed. Contributions
+Studio 5000 L5X, FactoryTalk View ME, FactoryTalk Optix, MotionWorks IEC, RSLogix 5 program reads,
+and SLC 500 / PLC-5 to Logix migration. It is MIT licensed. Contributions
 are accepted under the same terms.
 
 Read `AGENTS.md` first; it is the binding rule set for this repository and this file only explains

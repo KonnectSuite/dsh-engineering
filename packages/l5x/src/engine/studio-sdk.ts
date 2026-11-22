@@ -252,13 +252,13 @@ export async function verifyOfflineL5x(project: ProjectSnapshot, outputPath: str
   // needs no SDK, and answering first means a missing or replaced file is reported as that
   // rather than surfacing as a plugin defect behind an SDK probe.
   const source = resolve(project.path)
-  if (!existsSync(source)) throw new EngineeringError('FILE_NOT_FOUND', `The export ${project.path} is no longer on disk, so there is nothing to verify.`, 'Reopen the export with open_project — a draft applied in this chat has to be reopened — then retry with a new .ACD path.')
+  if (!existsSync(source)) throw new EngineeringError('FILE_NOT_FOUND', `The export ${project.path} is no longer on disk, so there is nothing to verify.`, 'Reopen the export with l5x_open_project — a draft applied in this chat has to be reopened — then retry with a new .ACD path.')
   const output = resolve(outputPath)
   if (extname(output).toLowerCase() !== '.acd') throw new EngineeringError('INVALID_OUTPUT', 'Output path must end in .acd')
   if (source.toLowerCase() === output.toLowerCase()) throw new EngineeringError('SOURCE_OVERWRITE', 'Output must differ from source')
   if (existsSync(output)) throw new EngineeringError('OUTPUT_EXISTS', 'Output must be a new file')
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
-  if (sourceHash !== project.sha256) throw new EngineeringError('STALE_EXPORT', 'Source L5X changed since open_project')
+  if (sourceHash !== project.sha256) throw new EngineeringError('STALE_EXPORT', 'Source L5X changed since l5x_open_project')
   const availability = await studioSdkStatus()
   checkProject(project, availability)
   const revision = Number.parseInt(project.softwareRevision, 10)
@@ -312,7 +312,7 @@ export async function editOfflineAcd(acdPath: string, draft: ProjectSnapshot, pr
     await createOutputFolder(path)
   }
   const sourceHash = createHash('sha256').update(await readFile(source)).digest('hex')
-  if (createHash('sha256').update(await readFile(draft.path)).digest('hex') !== draft.sha256) throw new EngineeringError('STALE_EXPORT', 'Draft changed since open_project')
+  if (createHash('sha256').update(await readFile(draft.path)).digest('hex') !== draft.sha256) throw new EngineeringError('STALE_EXPORT', 'Draft changed since l5x_open_project')
   await ensureBridge(availability, signal)
   const result = await run('dotnet', [bridgeDll, 'edit-routine', source, resolve(draft.path), output, program, routine, exported, sourceHash, draft.sha256], 240_000, signal)
   const summary = /<Summary Warnings="(\d+)" Errors="(\d+)"\s*\/>/u.exec(result.output)

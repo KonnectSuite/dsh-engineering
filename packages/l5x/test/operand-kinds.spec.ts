@@ -14,7 +14,7 @@ import { instructionByName } from '../src/engine/instructions.ts'
 /** Open the fixture with the editing entry and return the harness. */
 async function opened() {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -28,7 +28,7 @@ function text(data: unknown): string {
 describe('a destination is a writable location, not a literal', () => {
   it('refuses a literal in the destination slot and states the written order', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', 'LineSpeed', '5'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', 'LineSpeed', '5'] }] }) })
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('literal where ADD needs a writable destination')
     expect(result.error?.fix).toContain('Source A, Source B, Destination')
@@ -36,23 +36,23 @@ describe('a destination is a writable location, not a literal', () => {
 
   it('composes the destination-last order Studio writes', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', '5', 'LineSpeed'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ADD', args: ['LineSpeed', '5', 'LineSpeed'] }] }) })
     expect(result.error).toBeUndefined()
     expect(text(result.data)).toBe('ADD(LineSpeed,5,LineSpeed);')
   })
   it('applies the same rule to MOV and CLR', async () => {
     const l5x = await opened()
-    const move = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['LineSpeed', '5'] }] }) })
+    const move = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['LineSpeed', '5'] }] }) })
     expect(move.error?.code).toBe('INVALID_OPERAND')
-    const clear = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CLR', args: ['5'] }] }) })
+    const clear = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CLR', args: ['5'] }] }) })
     expect(clear.error?.code).toBe('INVALID_OPERAND')
-    const good = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['5', 'LineSpeed'] }] }) })
+    const good = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MOV', args: ['5', 'LineSpeed'] }] }) })
     expect(good.error).toBeUndefined()
     expect(text(good.data)).toBe('MOV(5,LineSpeed);')
   })
   it('refuses a whole batch when one rung has a literal destination', async () => {
     const l5x = await opened()
-    const batch = await l5x.call('compose_batch', {
+    const batch = await l5x.call('l5x_compose_batch', {
       program: 'MainProgram',
       routine: 'MainRoutine',
       rung: 0,
@@ -63,7 +63,7 @@ describe('a destination is a writable location, not a literal', () => {
     })
     expect(batch.error?.code).toBe('INVALID_OPERAND')
     // Refused before staging anything: either no draft exists yet, or it holds zero operations.
-    const list = await l5x.call('draft_list')
+    const list = await l5x.call('l5x_draft_list')
     expect(list.error?.code === 'NO_DRAFT' || list.data?.operation_count === 0).toBe(true)
   })
 })
@@ -71,7 +71,7 @@ describe('a destination is a writable location, not a literal', () => {
 describe('a routine name is not a tag', () => {
   it('composes a JSR and keeps the routine spelling the export uses', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'JSR', args: ['mainroutine', '0'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -80,7 +80,7 @@ describe('a routine name is not a tag', () => {
 
   it('refuses a routine the export does not declare, and lists the ones it has', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['NoSuchRoutine', '0'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['NoSuchRoutine', '0'] }] }) })
     expect(result.error?.code).toBe('ROUTINE_NOT_FOUND')
     expect(result.error?.candidates).toContain('MainRoutine')
   })
@@ -89,10 +89,10 @@ describe('a routine name is not a tag', () => {
 describe('a label is not a tag', () => {
   it('composes JMP and LBL', async () => {
     const l5x = await opened()
-    const jump = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JMP', args: ['StartLabel'] }] }) })
+    const jump = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JMP', args: ['StartLabel'] }] }) })
     expect(jump.error).toBeUndefined()
     expect(text(jump.data)).toBe('JMP(StartLabel);')
-    const label = await l5x.call('compose_rung', {
+    const label = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'LBL', args: ['StartLabel'] }, { instr: 'XIC', args: ['StartPB'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
     })
     expect(label.error).toBeUndefined()
@@ -101,7 +101,7 @@ describe('a label is not a tag', () => {
 
   it('refuses a label that is not an identifier', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JMP', args: ['Start Label'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JMP', args: ['Start Label'] }] }) })
     expect(result.error?.code).toBe('INVALID_OPERAND')
     expect(result.error?.message).toContain('label')
   })
@@ -110,7 +110,7 @@ describe('a label is not a tag', () => {
 describe('an expression is not a tag', () => {
   it('composes a CPT with operators in the source', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'CPT', args: ['FaultCount', 'LineSpeed + 5.0'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -119,7 +119,7 @@ describe('an expression is not a tag', () => {
 
   it('composes a CMP comparison', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CMP', args: ['LineSpeed > 5.0'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -128,7 +128,7 @@ describe('an expression is not a tag', () => {
 
   it('refuses an unbalanced expression', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['FaultCount', '(LineSpeed + 5.0'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -137,7 +137,7 @@ describe('an expression is not a tag', () => {
 
   it('refuses an expression carrying a rung terminator', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CPT', args: ['FaultCount', 'LineSpeed;5'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -147,11 +147,11 @@ describe('an expression is not a tag', () => {
 describe('the listing names the kinds', () => {
   it('reports EXPRESSION, ROUTINE and LABEL', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'cpt' })).data?.rows as { name: string; operands: { kind: string }[] }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'cpt' })).data?.rows as { name: string; operands: { kind: string }[] }[]
     expect(rows.find(row => row.name === 'CPT')?.operands.map(slot => slot.kind)).toEqual(['NUMBER', 'EXPRESSION'])
-    const jsr = (await l5x.call('list_instructions', { filter: 'jsr' })).data?.rows as { name: string; operands: { kind: string }[] }[]
+    const jsr = (await l5x.call('l5x_list_instructions', { filter: 'jsr' })).data?.rows as { name: string; operands: { kind: string }[] }[]
     expect(jsr.find(row => row.name === 'JSR')?.operands[0]?.kind).toBe('ROUTINE')
-    const jmp = (await l5x.call('list_instructions', { filter: 'jmp' })).data?.rows as { name: string; operands: { kind: string }[] }[]
+    const jmp = (await l5x.call('l5x_list_instructions', { filter: 'jmp' })).data?.rows as { name: string; operands: { kind: string }[] }[]
     expect(jmp.find(row => row.name === 'JMP')?.operands[0]?.kind).toBe('LABEL')
   })
 })
@@ -169,7 +169,7 @@ describe('the operand counts the vendor fields give', () => {
 
   it('composes a masked move with its mask slot', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'MVM', args: ['LineSpeed', 'FaultCount', 'SystemClock'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -181,10 +181,10 @@ describe('the operand counts the vendor fields give', () => {
     // The sample has no array or CONTROL tag, and Studio refused a COUNTER control and a whole
     // destination array; declare a build-shaped fixture in the same draft.
     for (const [name, dataType, dimensions] of [['SeqArr', 'DINT', '10'], ['SeqDest', 'DINT', '10'], ['SeqCtl', 'CONTROL', undefined]] as const) {
-      const added = await l5x.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: name, ...(dimensions === undefined ? {} : { dimensions }) })
+      const added = await l5x.call('l5x_draft_tag', { scope: 'controller', name, data_type: dataType, description: name, ...(dimensions === undefined ? {} : { dimensions }) })
       expect(added.error).toBeUndefined()
     }
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['SeqArr', '5', 'SeqDest[0]', 'SeqCtl', '10', '0'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -197,7 +197,7 @@ describe('the operand counts the vendor fields give', () => {
     // RxCMP_E_AUDIT_INVALIDOPKIND, or crashed the compiler. Refusing beats emitting a rung Studio
     // rejects, so the entry is marked not modelled until a real export shows the accepted form.
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FAL', args: ['CycleCounter', '10', '0', '1', 'LineSpeed + 1.0', 'FaultCount'] }] }),
     })
     expect(result.error?.code).toBe('INSTRUCTION_NOT_MODELLED')
@@ -208,7 +208,7 @@ describe('the operand counts the vendor fields give', () => {
 describe('a keyword is not a tag', () => {
   it('composes a GSV whose class, instance and attribute are keywords', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'GSV', args: ['Program', 'MainProgram', 'LastScanTime', 'SystemClock'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -217,7 +217,7 @@ describe('a keyword is not a tag', () => {
 
   it('refuses a keyword that is not an identifier', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'GSV', args: ['Program Class', 'Main', 'X', 'SystemClock'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -238,7 +238,7 @@ describe('nine more operand counts, from the systematic audit', () => {
 
   it('composes a masked compare', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'MEQ', args: ['FaultCount', '255', 'LineSpeed'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -247,7 +247,7 @@ describe('nine more operand counts, from the systematic audit', () => {
 
   it('composes a one-shot with its storage and output bit', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: 'OSR', args: ['StartPB', 'SystemRunning'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -279,7 +279,7 @@ describe('the motion family', () => {
 
   it('composes a motion instruction through the ordinary operand path', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'MSO', args: ['Motor_1', 'SystemClock'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -297,12 +297,12 @@ describe('a loop instruction names its routine', () => {
   it('refuses a literal index and composes a tag index over a routine that exists', async () => {
     const l5x = await opened()
     // Studio refused FOR(MainRoutine,0,1,10,1) at build with RxCMP_E_AUDIT_INVALIDOPKIND.
-    const bad = await l5x.call('compose_rung', {
+    const bad = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['MainRoutine', '0', '1', '10', '1'] }] }),
     })
     expect(bad.error?.code).toBe('INVALID_OPERAND')
     expect(bad.error?.message).toContain('writable index')
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['MainRoutine', 'SystemClock', '1', '10', '1'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -315,16 +315,16 @@ describe('a JSR carries its return parameter', () => {
     // Ground truth from a production export: JSR(A01_Inputs,0). One operand is refused by Studio
     // with RxCMP_E_AUDIT_INVALIDNOOFOPS.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0'] }] }) })
+    expect((await l5x.call('l5x_open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0'] }] }) })
     expect(result.error).toBeUndefined()
     expect(text(result.data)).toBe('JSR(MainRoutine,0);')
   })
 
   it('refuses a third operand, because input parameters are not modelled', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0', 'StartPB'] }] }) })
+    expect((await l5x.call('l5x_open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'JSR', args: ['MainRoutine', '0', 'StartPB'] }] }) })
     expect(result.error).toBeDefined()
   })
 })
@@ -332,7 +332,7 @@ describe('a JSR carries its return parameter', () => {
 describe('a declaration in another scope', () => {
   it('names the scope that declares it instead of calling it absent', async () => {
     const l5x = await opened()
-    const result = await l5x.call('resolve_tag', { address: 'MainTimer' })
+    const result = await l5x.call('l5x_resolve_tag', { address: 'MainTimer' })
     // One program declares it, so the resolution adopts that scope and says so.
     expect(result.data?.resolved).toBe(true)
     expect(result.data?.adopted_from).toBe('MainProgram')
@@ -340,14 +340,14 @@ describe('a declaration in another scope', () => {
 
   it('resolves the same name when the program scope is given', async () => {
     const l5x = await opened()
-    const result = await l5x.call('resolve_tag', { address: 'MainTimer', scope: 'MainProgram' })
+    const result = await l5x.call('l5x_resolve_tag', { address: 'MainTimer', scope: 'MainProgram' })
     expect(result.data?.resolved).toBe(true)
     expect(result.data?.data_type).toBe('TIMER')
   })
 
   it('still reports a name no scope declares as absent', async () => {
     const l5x = await opened()
-    const result = await l5x.call('resolve_tag', { address: 'NoSuchTag' })
+    const result = await l5x.call('l5x_resolve_tag', { address: 'NoSuchTag' })
     expect(String(result.data?.reason)).toBe('Declaration is absent from the export')
     expect(result.data?.scopes).toBeUndefined()
   })
@@ -357,23 +357,23 @@ describe('a declaration in another scope', () => {
 describe('an instruction whose operands are not modelled', () => {
   it('refuses to compose it rather than claiming an arity', async () => {
     const l5x = await opened()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SFP', args: ['MainRoutine', '2'] }] }) })
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SFP', args: ['MainRoutine', '2'] }] }) })
     expect(result.error?.code).toBe('INSTRUCTION_NOT_MODELLED')
     expect(result.error?.message).toContain('SFP')
     // The refusal has to leave a way forward, or a model loops on it.
-    expect(result.error?.fix).toContain('draft_rung')
+    expect(result.error?.fix).toContain('l5x_draft_rung')
   })
 
   it('says so in the listing instead of listing zero operands', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'sfp' })).data?.rows as { name: string; operands_modelled?: boolean }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'sfp' })).data?.rows as { name: string; operands_modelled?: boolean }[]
     const row = rows.find(entry => entry.name === 'SFP')
     expect(row?.operands_modelled).toBe(false)
   })
 
   it('still lets the rung text path carry it', async () => {
     const l5x = await opened()
-    const staged = await l5x.call('draft_rung', { program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace', text: 'XIC(StartPB)SFP(MainRoutine,2);' })
+    const staged = await l5x.call('l5x_draft_rung', { program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace', text: 'XIC(StartPB)SFP(MainRoutine,2);' })
     expect(staged.error).toBeUndefined()
   })
 })
@@ -399,9 +399,9 @@ describe('instructions verified by a Studio build', () => {
   for (const [name, args, output] of cases) {
     it(`composes ${name} in the operand order Studio accepted`, async () => {
       const l5x = harness(new Map([['composer.l5x', new TextEncoder().encode(COMPOSER_L5X)]]), { editing: true })
-      await l5x.call('open_project', { path: 'composer.l5x' })
+      await l5x.call('l5x_open_project', { path: 'composer.l5x' })
       const series = [{ instr: 'XIC', args: ['a1'] }, { instr: name, args }, ...(output ? [] : [{ instr: 'OTE', args: ['a2'] }])]
-      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series }) })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series }) })
       expect(result.error).toBeUndefined()
       const expected = `XIC(a1)${name}(${args.join(',')})${output ? '' : 'OTE(a2)'};`
       expect(result.data?.rungs?.[0]?.neutral_text).toBe(expected)
@@ -432,12 +432,12 @@ describe('operand order confirmed by build', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['seq.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'seq.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'seq.l5x' })).error).toBeUndefined()
     for (const [spec, expected] of [
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SQO', args: ['arr[0]', 'mask', 'dest[0]', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SQO(arr[0],mask,dest[0],ctl,10,0)OTE(a2);'],
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SQL', args: ['arr[0]', 'src[0]', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SQL(arr[0],src[0],ctl,10,0)OTE(a2);'],
     ] as const) {
-      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify(spec) })
       expect(result.error).toBeUndefined()
       const rungs = result.data?.rungs as { neutral_text: string }[]
       expect(rungs[0]?.neutral_text).toBe(expected)

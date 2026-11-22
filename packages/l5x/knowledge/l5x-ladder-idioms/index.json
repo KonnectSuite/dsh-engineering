@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "collection": "l5x-ladder-idioms",
+  "title": "Ladder and rung idioms for offline edits",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 11,
+  "pages": [
+    {
+      "id": "rung-anatomy",
+      "title": "Anatomy of a rung: condition on the left, output on the right",
+      "section": "Rung structure",
+      "body": "pages/rung-anatomy.md",
+      "identifiers": [
+        "RUNG"
+      ]
+    },
+    {
+      "id": "rung-branches",
+      "title": "Parallel branches in NeutralText",
+      "section": "Rung structure",
+      "body": "pages/rung-branches.md",
+      "identifiers": [
+        "BST",
+        "NXB",
+        "BND",
+        "BRANCH"
+      ]
+    },
+    {
+      "id": "rung-contacts-coils",
+      "title": "Contacts, coils and one-shots",
+      "section": "Rung structure",
+      "body": "pages/rung-contacts-coils.md",
+      "identifiers": [
+        "XIC",
+        "XIO",
+        "OTE",
+        "ONS"
+      ]
+    },
+    {
+      "id": "rung-editing-safety",
+      "title": "Editing a rung without changing behaviour by accident",
+      "section": "Rung structure",
+      "body": "pages/rung-editing-safety.md",
+      "identifiers": [
+        "SAFE EDIT"
+      ]
+    },
+    {
+      "id": "rung-analog-scale",
+      "title": "Scaling an analog input",
+      "section": "Common idioms",
+      "body": "pages/rung-analog-scale.md",
+      "identifiers": [
+        "SCALE",
+        "ANALOG",
+        "ANALOG_SCALE"
+      ]
+    },
+    {
+      "id": "rung-counters",
+      "title": "Counters: up, down and the reset rung",
+      "section": "Common idioms",
+      "body": "pages/rung-counters.md",
+      "identifiers": [
+        "CTU",
+        "CTD",
+        "RES"
+      ]
+    },
+    {
+      "id": "rung-idiom-index",
+      "title": "Idiom index: which page answers which question",
+      "section": "Common idioms",
+      "body": "pages/rung-idiom-index.md",
+      "identifiers": [
+        "IDIOM INDEX"
+      ]
+    },
+    {
+      "id": "rung-interlocks",
+      "title": "Interlocks that are visible and testable",
+      "section": "Common idioms",
+      "body": "pages/rung-interlocks.md",
+      "identifiers": [
+        "INTERLOCK"
+      ]
+    },
+    {
+      "id": "rung-seal-latch",
+      "title": "Seal-in and latch patterns",
+      "section": "Common idioms",
+      "body": "pages/rung-seal-latch.md",
+      "identifiers": [
+        "SEAL",
+        "LATCH",
+        "START_STOP_LATCH",
+        "FAULT_LATCH"
+      ]
+    },
+    {
+      "id": "rung-style-conventions",
+      "title": "Style conventions that survive review",
+      "section": "Common idioms",
+      "body": "pages/rung-style-conventions.md",
+      "identifiers": [
+        "STYLE",
+        "CONVENTIONS"
+      ]
+    },
+    {
+      "id": "rung-timers",
+      "title": "Timers: delay, retained state and reset",
+      "section": "Common idioms",
+      "body": "pages/rung-timers.md",
+      "identifiers": [
+        "TON",
+        "TOF",
+        "RTO",
+        "RES"
+      ]
+    }
+  ]
+}

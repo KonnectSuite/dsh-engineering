@@ -33,7 +33,7 @@ export const DOCUMENT_PARTS: readonly DocumentPart[] = ['project', 'io', 'tags',
 export interface DocumentBundle {
   /** Relative path to file text. */
   readonly files: ReadonlyMap<string, string>
-  /** Counts a caller can compare with project_overview. */
+  /** Counts a caller can compare with l5x_project_overview. */
   counts: {
     programs: number
     /** AOI routines documented alongside the program routines. */
@@ -230,7 +230,7 @@ function projectMarkdown(project: ProjectSnapshot, counts: DocumentBundle['count
     }
     const severityRow = [...bySeverity].sort().map(([severity, count]) => mdRow(severity, count)).join('')
     const rules = [...byRule].sort((left, right) => right[1] - left[1]).slice(0, 8).map(([rule, count]) => `${rule} (${count})`).join(', ')
-    text += '\n## Review findings\n\nHeuristic; absence of findings does not prove controller safety. Run run_checks for sites.\n\n| Severity | Count |\n|---|---|\n'
+    text += '\n## Review findings\n\nHeuristic; absence of findings does not prove controller safety. Run l5x_run_checks for sites.\n\n| Severity | Count |\n|---|---|\n'
     text += severityRow
     text += `\nTop rules: ${rules}.${byRule.size > 8 ? ` And ${byRule.size - 8} more rule(s).` : ''}\n`
     const topRule = [...byRule].sort((left, right) => right[1] - left[1])[0]?.[0]
@@ -331,7 +331,7 @@ function rungFiles(project: ProjectSnapshot, options: { programs: readonly strin
       let documented = 0
       for (const routine of aoi.routines) {
         if (routine.body.type !== 'RLL') {
-          section += `\n## ${routine.name}\n\nLanguage: ${routine.body.type}; read it with get_component kind="routine", scope="${aoi.name}".\n`
+          section += `\n## ${routine.name}\n\nLanguage: ${routine.body.type}; read it with l5x_get_component kind="routine", scope="${aoi.name}".\n`
           continue
         }
         section += `\n## ${routine.name}\n\n${routine.description || 'No routine description.'}\n`
@@ -366,7 +366,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
   const routines = options.routines === undefined ? undefined : [...options.routines]
   if (programs !== undefined) {
     const unknown = programs.filter(name => !document.programs.some(program => program.name === name))
-    if (unknown.length > 0) throw new L5xError('COMPONENT_NOT_FOUND', `No program named ${unknown.join(', ')}.`, 'Call list_components kind="program" for the declared names.', document.programs.map(program => program.name).slice(0, 5))
+    if (unknown.length > 0) throw new L5xError('COMPONENT_NOT_FOUND', `No program named ${unknown.join(', ')}.`, 'Call l5x_list_components kind="program" for the declared names.', document.programs.map(program => program.name).slice(0, 5))
   }
   // A mistyped routine filter used to match nothing and still report success, which reads as a
   // complete bundle. Refuse it with the routine names the selected programs declare.
@@ -376,7 +376,7 @@ export function buildDocumentation(project: ProjectSnapshot, options: DocumentOp
     const unknown = routines.filter(name => !declared.includes(name))
     if (unknown.length > 0) {
       const where = programs === undefined ? '' : ` in ${programs.join(', ')}`
-      throw new L5xError('COMPONENT_NOT_FOUND', `No routine named ${unknown.join(', ')}${where}.`, 'Call list_components kind="routine" for the declared names.', declared.slice(0, 5))
+      throw new L5xError('COMPONENT_NOT_FOUND', `No routine named ${unknown.join(', ')}${where}.`, 'Call l5x_list_components kind="routine" for the declared names.', declared.slice(0, 5))
     }
   }
   const counts: DocumentBundle['counts'] = {

@@ -14,7 +14,7 @@ import { fixtureBytes, harness } from './harness.ts'
 /** A harness with the fixture project and a fresh output folder. */
 async function opened(program?: string) {
   const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
   const result = await l5x.call('l5x_diagram', {
@@ -53,7 +53,7 @@ describe('l5x_diagram', () => {
 
   it('caps the page and says how many rungs were left off', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-cap-'))
     const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 2 })
     expect(result.error).toBeUndefined()
@@ -64,7 +64,7 @@ describe('l5x_diagram', () => {
 
   it('pages a long project with start_rung', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     expect(open.error).toBeUndefined()
     const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
     const first = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 1 })
@@ -79,7 +79,7 @@ describe('l5x_diagram', () => {
 
   it('restricts the page to one routine', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
     const one = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, routine: 'MainRoutine' })
     expect(one.error).toBeUndefined()
@@ -99,7 +99,7 @@ describe('l5x_diagram', () => {
 
   it('captions the page with the range it covers', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     const output = mkdtempSync(join(tmpdir(), 'l5x-diagram-'))
     const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, output, max_rungs: 1 })
     expect(result.error).toBeUndefined()
@@ -123,7 +123,7 @@ describe('l5x_diagram', () => {
 describe('paging a project diagram', () => {
   it('gives each page its own image path', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     const first = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 2 })
     const second = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 2, start_rung: 2 })
     expect(first.error).toBeUndefined()
@@ -142,7 +142,7 @@ describe('paging a project diagram', () => {
 describe('a defaulted output folder', () => {
   it('writes the page to an absolute path instead of reporting a relative one', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const open = await l5x.call('open_project', { path: 'sample.l5x' })
+    const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     expect(open.error).toBeUndefined()
     // No output argument: this tool defaults it, and this harness resolves paths relatively.
     const result = await l5x.call('l5x_diagram', { project_id: open.data?.project_id as string, max_rungs: 3 })

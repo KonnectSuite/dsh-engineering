@@ -11,6 +11,7 @@ import { createHash } from 'node:crypto'
 import { MwiError } from '../core/errors.ts'
 import type { CodeEngine, EngineResult } from '../core/code-engine.ts'
 import type { ProjectRef } from '../session/project.ts'
+import { HELP_TREE_ENV, probeHelpTree, readHelpTopic, searchHelpTopics, type HelpTopicDocument } from './help-tree.ts'
 
 /** The engine surface the reads use; injectable for tests. */
 export interface ReadEngine {
@@ -44,10 +45,14 @@ export class ReadService {
    *   saved project, so without it a vendor block cannot be resolved. Reads stay
    *   usable without an IDE: the provider returns nothing and the engine answers
    *   for the project's own registry alone.
+   * @param helpRoot - Extracted help tree, when the host has one. It makes the
+   *   `help` source readable without the IDE; without it the engine path answers
+   *   with whatever help corpus the package carries.
    */
   constructor(
     private readonly engine: ReadEngine,
     private readonly nativeLibraries?: () => Promise<readonly Record<string, unknown>[]>,
+    private readonly helpRoot: string | undefined = process.env[HELP_TREE_ENV],
   ) {}
 
   /** Confirm the engine can read one project. */
@@ -197,6 +202,17 @@ export class ReadService {
    * @returns The engine document with its source named.
    */
   async help(project: ProjectRef, source: string, query: string | undefined, limit = 10): Promise<EngineResult> {
+    if (source === 'help' && this.helpRoot !== undefined) {
+      const tree = searchHelpTopics(this.helpRoot, query ?? '', limit)
+      return {
+        ok: true,
+        source: 'help',
+        topics: tree.matches,
+        scanned: tree.scanned,
+        truncated: tree.truncated,
+        tree: probeHelpTree(this.helpRoot),
+      }
+    }
     if (source === 'help') {
       return await this.engine.run('installed_help', {
         ...(query === undefined ? {} : { query }),
@@ -210,6 +226,23 @@ export class ReadService {
       return await this.engine.run('reference', { ...(query === undefined ? {} : { query }) }, 120_000)
     }
     return await this.engine.run('pattern', { ...(query === undefined ? {} : { name: query }) }, 60_000)
+  }
+
+  /**
+   * Read one extracted help topic by id, without the IDE.
+   *
+   * @param id - Topic id returned by a `help` search.
+   * @returns The topic with plain text.
+   */
+  async helpTopic(id: string): Promise<HelpTopicDocument> {
+    if (this.helpRoot === undefined) {
+      throw new MwiError(
+        'NOT_INSTALLED',
+        'No MotionWorks IEC help tree is available on this host.',
+        `Set ${HELP_TREE_ENV} to an extracted MotionWorks IEC help tree, or install MotionWorks IEC 3 Pro so its CHMs exist under %ProgramData%\\Yaskawa\\MotionWorks IEC 3 Pro\\<version>\\plc\\FW_LIB\\<library>; this host has no installed help tree.`,
+      )
+    }
+    return readHelpTopic(this.helpRoot, id)
   }
 
   /** Read every POU body, capped. */

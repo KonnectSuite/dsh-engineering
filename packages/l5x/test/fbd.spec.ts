@@ -7,7 +7,7 @@
  * other side, a loop that cannot be scheduled.
  *
  * Half of these run the pure checker over hand-built nodes, because that is where
- * the rule lives. The rest go through `run_checks` on the committed synthetic
+ * the rule lives. The rest go through `l5x_run_checks` on the committed synthetic
  * export, which already carries one FBD routine and one SFC routine.
  */
 import { readFileSync } from 'node:fs'
@@ -29,7 +29,7 @@ function synthetic(): Uint8Array {
 /** Open one export and return the harness around it. */
 async function opened(bytes: Uint8Array) {
   const l5x = harness(new Map([['synthetic.l5x', bytes]]))
-  const open = await l5x.call('open_project', { path: 'synthetic.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'synthetic.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -42,7 +42,7 @@ function findings(result: Envelope, prefix: string): { rule: string; severity: s
 describe('a well-formed diagram', () => {
   it('reports nothing for a reference wired to an output reference', async () => {
     const l5x = await opened(synthetic())
-    const result = await l5x.call('run_checks', {})
+    const result = await l5x.call('l5x_run_checks', {})
     expect(result.error).toBeUndefined()
     expect(findings(result, 'FBD_')).toEqual([])
     expect(findings(result, 'ICON_')).toEqual([])
@@ -61,7 +61,7 @@ describe('broken diagrams', () => {
   it('refuses a wire that names an element the sheet does not contain', async () => {
     const broken = new TextDecoder().decode(synthetic()).replace('<Wire FromID="1" ToID="2"/>', '<Wire FromID="1" ToID="9"/>')
     const l5x = await opened(new TextEncoder().encode(broken))
-    const result = await l5x.call('run_checks', { rule: 'FBD_DANGLING_WIRE' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'FBD_DANGLING_WIRE' })
     const rows = findings(result, 'FBD_DANGLING_WIRE')
     expect(rows.length).toBe(1)
     expect(rows[0]?.severity).toBe('critical')
@@ -74,14 +74,14 @@ describe('broken diagrams', () => {
   it('refuses an output reference with no operand', async () => {
     const broken = new TextDecoder().decode(synthetic()).replace('<ORef ID="2" Operand="Drive.RunCmd"/>', '<ORef ID="2"/>')
     const l5x = await opened(new TextEncoder().encode(broken))
-    const result = await l5x.call('run_checks', { rule: 'OREF_TAG_NOT_PROVIDED' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'OREF_TAG_NOT_PROVIDED' })
     expect(findings(result, 'OREF_TAG_NOT_PROVIDED').length).toBe(1)
   })
 
   it('refuses two output references writing one tag on a sheet', async () => {
     const broken = new TextDecoder().decode(synthetic()).replace('<ORef ID="2" Operand="Drive.RunCmd"/>', '<ORef ID="2" Operand="Drive.RunCmd"/><ORef ID="3" Operand="drive.runcmd"/>')
     const l5x = await opened(new TextEncoder().encode(broken))
-    const result = await l5x.call('run_checks', { rule: 'OREF_DUPLICATE_DESTINATION' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'OREF_DUPLICATE_DESTINATION' })
     const rows = findings(result, 'OREF_DUPLICATE_DESTINATION')
     expect(rows.length).toBe(1)
     // Logix names are case-insensitive, so the two spellings are one destination.

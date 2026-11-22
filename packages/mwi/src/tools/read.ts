@@ -8,6 +8,7 @@
  */
 
 import { choice, integer, object, string } from '../core/params.ts'
+import { MwiError } from '../core/errors.ts'
 import { success } from '../core/result.ts'
 import { tool, type ToolDefinition } from '../core/tool.ts'
 import { defaultProject, resolveProject, type ProjectRef } from '../session/project.ts'
@@ -180,17 +181,30 @@ export function readTools(readsOf: ReadFactory = workspace => runtimeFor(workspa
     }),
     tool({
       name: 'mw_help',
-      description: 'Search installed MotionWorks help, the installed manuals, reviewed Yaskawa references or the versioned ST patterns.',
+      description: 'Search installed MotionWorks help (an extracted help tree when MWI_HELP_TREE is set, otherwise the packaged help corpus), the installed manuals, reviewed Yaskawa references or the versioned ST patterns. Pass id to read one help topic by its exact id without the IDE.',
       parameters: object({
-        source: choice('Where to search.', ['help', 'manual', 'reference', 'pattern']),
+        source: choice('Where to search: help, manual, reference or pattern. Required unless id is passed.', ['help', 'manual', 'reference', 'pattern']),
+        id: string('Exact help-topic id to read from the extracted help tree; takes precedence over source.'),
         query: string('Search term or pattern name; omit to list what is available.'),
         limit: integer('Most rows. Defaults to 10, maximum 50.', { minimum: 1, maximum: 50 }),
         project: string('Project directory or .mwt inside the workspace. Omit to use the single staged project.'),
-      }, ['source']),
+      }),
       async run(args, exec) {
         const workspace = workspaceOf(exec.cwd)
+        if (typeof args.id === 'string' && args.id !== '') {
+          const document = await readsOf(workspace).helpTopic(args.id)
+          return success(
+            `Read help topic ${args.id}.`,
+            { source: 'help', document },
+            [{ tool: 'mw_help', why: 'Search the help tree for related topics.', args: { source: 'help', query: document.title } }],
+            READ_COVERAGE,
+          )
+        }
+        const source = typeof args.source === 'string' ? args.source : ''
+        if (source === '') {
+          throw new MwiError('INVALID_ARGUMENT', 'mw_help needs source (help, manual, reference or pattern) or an exact help-topic id.', 'Pass source, or pass id after a help search returned one.')
+        }
         const project = projectOf(args, workspace)
-        const source = String(args.source)
         const document = await readsOf(workspace).help(project, source, typeof args.query === 'string' ? args.query : undefined, typeof args.limit === 'number' ? args.limit : 10)
         return success(`Searched ${source} for ${typeof args.query === 'string' ? args.query : 'available topics'}.`, { project: project.directory, source, document }, [], READ_COVERAGE)
       },

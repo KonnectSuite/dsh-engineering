@@ -1,0 +1,156 @@
+{
+  "schema": 1,
+  "collection": "all",
+  "cases": [
+    {
+      "id": "q01",
+      "query": "instruction mapping timer TON",
+      "expect": ["instruction-map"],
+      "kind": "answer"
+    },
+    {
+      "id": "q02",
+      "query": "addressing N7:0 SLC 500",
+      "expect": ["addressing", "indirect-addressing"],
+      "kind": "answer"
+    },
+    {
+      "id": "q03",
+      "query": "data file letter mapping",
+      "expect": ["data-files"],
+      "kind": "answer"
+    },
+    {
+      "id": "q04",
+      "query": "three inventories I/O chassis",
+      "expect": ["io-configuration"],
+      "kind": "answer"
+    },
+    {
+      "id": "q05",
+      "query": ".L5K lint trailing comma",
+      "expect": ["wizard-l5k"],
+      "kind": "answer"
+    },
+    {
+      "id": "q06",
+      "query": "structured text markers conversion census",
+      "expect": ["markers"],
+      "kind": "answer"
+    },
+    {
+      "id": "q07",
+      "query": "indirect addressing rewrite",
+      "expect": ["indirect-addressing"],
+      "kind": "answer"
+    },
+    {
+      "id": "q08",
+      "query": "assessment risks without controller",
+      "expect": ["assessment"],
+      "kind": "answer"
+    },
+    {
+      "id": "q09",
+      "query": "compare legacy program Logix export",
+      "expect": ["compare"],
+      "kind": "answer"
+    },
+    {
+      "id": "q10",
+      "query": "eight stages five decisions migration plan",
+      "expect": ["plan"],
+      "kind": "answer"
+    },
+    {
+      "id": "q11",
+      "query": "migration report evidence grades",
+      "expect": ["report"],
+      "kind": "answer"
+    },
+    {
+      "id": "q12",
+      "query": "acceptance gates what counts migrated",
+      "expect": ["gates"],
+      "kind": "answer"
+    },
+    {
+      "id": "q13",
+      "query": "error codes and fixes migration",
+      "expect": ["error-codes"],
+      "kind": "answer"
+    },
+    {
+      "id": "q14",
+      "query": "1747-AENTR bridge strategy",
+      "expect": ["io-configuration"],
+      "kind": "answer"
+    },
+    {
+      "id": "q15",
+      "query": "REVISION_BELOW_TARGET build gate",
+      "expect": ["gates", "wizard-l5k"],
+      "kind": "answer"
+    },
+    {
+      "id": "q16",
+      "query": "wizard artifact byte swap S:24",
+      "expect": ["indirect-addressing", "addressing"],
+      "kind": "answer"
+    },
+    {
+      "id": "q17",
+      "query": "SYMBOL_TOO_LONG fifteen characters",
+      "expect": ["data-files", "assessment"],
+      "kind": "answer"
+    },
+    {
+      "id": "q18",
+      "query": "PCE marker audit empty rung",
+      "expect": ["markers"],
+      "kind": "answer"
+    },
+    {
+      "id": "q19",
+      "query": "kernel panic concurrency thread",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "q20",
+      "query": "quantum battery recharge",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "q21",
+      "query": "SFC_ROUTINE_PRESENT",
+      "expect": ["sfc-routine-present"],
+      "kind": "exact"
+    },
+    {
+      "id": "q22",
+      "query": "migration_assess",
+      "expect": ["assessment", "overview"],
+      "kind": "exact"
+    },
+    {
+      "id": "q23",
+      "query": "TON",
+      "expect": ["instruction-map"],
+      "kind": "exact"
+    },
+    {
+      "id": "q24",
+      "query": "INDIRECT_LEFT",
+      "expect": ["indirect-addressing"],
+      "kind": "exact"
+    },
+    {
+      "id": "q25",
+      "query": "S:24",
+      "expect": ["addressing", "indirect-addressing"],
+      "kind": "exact"
+    }
+  ]
+}

@@ -50,10 +50,10 @@ describe('catalog', () => {
   })
 })
 
-describe('list_instructions', () => {
+describe('l5x_list_instructions', () => {
   it('lists the catalog with operand kinds', async () => {
     const l5x = harness(fixtureBytes)
-    const result = await l5x.call('list_instructions', {})
+    const result = await l5x.call('l5x_list_instructions', {})
     expect(result.error).toBeUndefined()
     const rows = result.data?.rows as { name: string; operands: { name: string; kind: string; required: boolean }[] }[]
     const ton = rows.find(row => row.name === 'TON')
@@ -62,17 +62,17 @@ describe('list_instructions', () => {
 
   it('marks the slots that must be tags', async () => {
     const l5x = harness(fixtureBytes)
-    const add = ((await l5x.call('list_instructions', { filter: 'ADD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'ADD')
+    const add = ((await l5x.call('l5x_list_instructions', { filter: 'ADD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'ADD')
     expect(add?.operands.find(slot => slot.name === 'Destination')?.writable).toBe(true)
     expect(add?.operands.find(slot => slot.name === 'Source A')?.writable).toBeUndefined()
-    const forRow = ((await l5x.call('list_instructions', { filter: 'FOR' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'FOR')
+    const forRow = ((await l5x.call('l5x_list_instructions', { filter: 'FOR' })).data?.rows as { name: string; operands: { name: string; writable?: boolean }[] }[]).find(row => row.name === 'FOR')
     expect(forRow?.operands.find(slot => slot.name === 'Index')?.writable).toBe(true)
     expect(forRow?.operands.find(slot => slot.name === 'Initial value')?.writable).toBeUndefined()
   })
 
   it('states the vendor type restriction on a slot', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'STD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean; types?: string[] }[] }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'STD' })).data?.rows as { name: string; operands: { name: string; writable?: boolean; types?: string[] }[] }[]
     const destination = rows.find(row => row.name === 'STD')?.operands.find(slot => slot.name === 'Destination')
     expect(destination?.writable).toBe(true)
     expect(destination?.types).toEqual(['REAL'])
@@ -80,26 +80,26 @@ describe('list_instructions', () => {
 
   it('filters by name and by category', async () => {
     const l5x = harness(fixtureBytes)
-    const byName = await l5x.call('list_instructions', { filter: 'ton' })
+    const byName = await l5x.call('l5x_list_instructions', { filter: 'ton' })
     expect((byName.data?.rows as { name: string }[]).some(row => row.name === 'TON')).toBe(true)
-    const byCategory = await l5x.call('list_instructions', { category: 'Comparison' })
+    const byCategory = await l5x.call('l5x_list_instructions', { category: 'Comparison' })
     const names = (byCategory.data?.rows as { name: string }[]).map(row => row.name)
     expect(names).toContain('EQU')
     expect(names).not.toContain('TON')
   })
 })
 
-describe('list_instructions names the other spelling', () => {
+describe('l5x_list_instructions names the other spelling', () => {
   it('carries the alternate published spelling of a renamed instruction', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'sqr' })).data?.rows as { name: string; also_published_as?: string }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'sqr' })).data?.rows as { name: string; also_published_as?: string }[]
     expect(rows.find(row => row.name === 'SQR')?.also_published_as).toBe('SQRT')
     expect(rows.find(row => row.name === 'SQR')?.name).toBe('SQR')
   })
 
   it('omits the field for an instruction that was never renamed', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'ton' })).data?.rows as { name: string }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'ton' })).data?.rows as { name: string }[]
     expect(rows.find(row => row.name === 'TON')).not.toHaveProperty('also_published_as')
   })
 })
@@ -133,9 +133,9 @@ describe('composing with a newly catalogued instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const tool = harness(new Map([['fll.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await tool.call('open_project', { path: 'fll.l5x' })).error).toBeUndefined()
+    expect((await tool.call('l5x_open_project', { path: 'fll.l5x' })).error).toBeUndefined()
     // Studio answered MUSTBEDISCRETE for the array tag; the element form built 0/0.
-    const result = await tool.call('compose_rung', {
+    const result = await tool.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['FillValue', 'FaultCount[0]', '5'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -167,7 +167,7 @@ describe('composing with a newly catalogued instruction', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['ascii.l5x', new TextEncoder().encode(ascii)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'ascii.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'ascii.l5x' })).error).toBeUndefined()
     for (const [spec, expected] of [
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ABL', args: ['chan', 'ctl', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ABL(chan,ctl,cnt)OTE(a2);'],
       [{ series: [{ instr: 'ARD', args: ['chan', 'text', 'ctl', 'len', 'cnt'] }, { instr: 'OTE', args: ['a2'] }] }, 'ARD(chan,text,ctl,len,cnt)OTE(a2);'],
@@ -175,7 +175,7 @@ describe('composing with a newly catalogued instruction', () => {
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ACL', args: ['chan', 'clrR', 'clrW'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ACL(chan,clrR,clrW)OTE(a2);'],
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'AHL', args: ['chan', 'andMask', 'orMask', 'ctl', 'chStatus'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)AHL(chan,andMask,orMask,ctl,chStatus)OTE(a2);'],
     ] as const) {
-      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify(spec) })
       expect(result.error).toBeUndefined()
       const rungs = result.data?.rungs as { neutral_text: string }[]
       expect(rungs[0]?.neutral_text).toBe(expected)
@@ -185,12 +185,12 @@ describe('composing with a newly catalogued instruction', () => {
   it('composes the float comparisons Studio built', async () => {
     // Verified by a Logix Designer build: passed, 0 warnings, 0 errors, ACD written.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'sample.l5x' })).error).toBeUndefined()
     for (const [mnemonic, expected] of [
       ['ISINF', 'XIC(StartPB)ISINF(LineSpeed)OTE(SystemRunning);'],
       ['ISNAN', 'XIC(StartPB)ISNAN(LineSpeed)OTE(SystemRunning);'],
     ] as const) {
-      const result = await l5x.call('compose_rung', {
+      const result = await l5x.call('l5x_compose_rung', {
         spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['StartPB'] }, { instr: mnemonic, args: ['LineSpeed'] }, { instr: 'OTE', args: ['SystemRunning'] }] }),
       })
       expect(result.error).toBeUndefined()
@@ -203,8 +203,8 @@ describe('composing with a newly catalogued instruction', () => {
     // Build evidence: SBR(); alone fails inside the SDK (LgxSrv_E_FATAL_ERROR), and beside a RET rung
     // the compiler answers AUDIT_OUTPUTS because SBR does not drive the right rail.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'sample.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SBR' }] }) })
+    expect((await l5x.call('l5x_open_project', { path: 'sample.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SBR' }] }) })
     expect(result.error?.code).toBe('INVALID_LADDER_SPEC')
     expect(String(result.error?.message)).toContain('SBR')
   })
@@ -237,7 +237,7 @@ const STRING_EXPORT = `<?xml version="1.0" encoding="UTF-8"?>
 /** Open the STRING export and return the harness. */
 async function openedStrings() {
   const l5x = harness(new Map([['strings.l5x', new TextEncoder().encode(STRING_EXPORT)]]), { editing: true })
-  const open = await l5x.call('open_project', { path: 'strings.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'strings.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
@@ -245,13 +245,13 @@ async function openedStrings() {
 describe('string operands are typed', () => {
   it('reports the string slots as STRING in the listing', async () => {
     const l5x = harness(fixtureBytes)
-    const rows = (await l5x.call('list_instructions', { filter: 'concat' })).data?.rows as { name: string; operands: { name: string; kind: string }[] }[]
+    const rows = (await l5x.call('l5x_list_instructions', { filter: 'concat' })).data?.rows as { name: string; operands: { name: string; kind: string }[] }[]
     expect(rows.find(row => row.name === 'CONCAT')?.operands.map(slot => slot.kind)).toEqual(['STRING', 'STRING', 'STRING'])
   })
 
   it('composes a string instruction when the tags are strings', async () => {
     const l5x = await openedStrings()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['TextA', 'TextB', 'TextOut'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -260,7 +260,7 @@ describe('string operands are typed', () => {
 
   it('refuses a BOOL tag in a string slot, and names the type it needs', async () => {
     const l5x = await openedStrings()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['Start', 'TextB', 'TextOut'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -269,7 +269,7 @@ describe('string operands are typed', () => {
 
   it('refuses a number in a string slot', async () => {
     const l5x = await openedStrings()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'CONCAT', args: ['5', 'TextB', 'TextOut'] }] }),
     })
     expect(result.error?.code).toBe('INVALID_OPERAND')
@@ -278,7 +278,7 @@ describe('string operands are typed', () => {
 
   it('still accepts a number in the count slot next to a string slot', async () => {
     const l5x = await openedStrings()
-    const result = await l5x.call('compose_rung', {
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['TextA', 'Count', 'Count', 'TextOut'] }] }),
     })
     expect(result.error).toBeUndefined()
@@ -333,21 +333,21 @@ describe('arities a Studio build proved', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['pid.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'pid.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('compose_rung', {
+    expect((await l5x.call('l5x_open_project', { path: 'pid.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pid1', 'pv', 'tieback', 'cv', '0', 'inholdBit', 'inholdVal'] }] }),
     })
     expect(result.error).toBeUndefined()
     const rungs = result.data?.rungs as { neutral_text: string }[]
     expect(rungs[0]?.neutral_text).toBe('XIC(a1)PID(pid1,pv,tieback,cv,0,inholdBit,inholdVal);')
     // PID(tieback,...) with a REAL in the structure slot failed Studio with INVALIDOPTYPE.
-    const wrong = await l5x.call('compose_rung', {
+    const wrong = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pv', 'pv', 'tieback', 'cv', '0', 'inholdBit', 'inholdVal'] }] }),
     })
     expect(wrong.error?.code).toBe('INVALID_OPERAND')
     expect(wrong.error?.message).toContain('must be PID')
     // PID(...,tieback,...) with a REAL in the optional master-loop slot also failed INVALIDOPTYPE.
-    const wrongMaster = await l5x.call('compose_rung', {
+    const wrongMaster = await l5x.call('l5x_compose_rung', {
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'PID', args: ['pid1', 'pv', 'tieback', 'cv', 'tieback', 'inholdBit', 'inholdVal'] }] }),
     })
     expect(wrongMaster.error?.code).toBe('INVALID_OPERAND')
@@ -374,12 +374,12 @@ describe('arities a Studio build proved', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['alarm.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
     for (const [spec, expected] of [
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ALMD', args: ['almD', 'progAck', 'progReset', 'progDisable', 'progEnable'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ALMD(almD,progAck,progReset,progDisable,progEnable)OTE(a2);'],
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'ALMA', args: ['almA', 'inVal', 'ackAll', 'progDisable', 'progEnable'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)ALMA(almA,inVal,ackAll,progDisable,progEnable)OTE(a2);'],
     ] as const) {
-      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify(spec) })
       expect(result.error).toBeUndefined()
       const rungs = result.data?.rungs as { neutral_text: string }[]
       expect(rungs[0]?.neutral_text).toBe(expected)
@@ -419,13 +419,13 @@ describe('arities a Studio build proved', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5x = harness(new Map([['audit.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5x.call('open_project', { path: 'audit.l5x' })).error).toBeUndefined()
+    expect((await l5x.call('l5x_open_project', { path: 'audit.l5x' })).error).toBeUndefined()
     for (const [spec, expected] of [
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SRT', args: ['arr', '0', 'ctl', '10', '0'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SRT(arr,0,ctl,10,0)OTE(a2);'],
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'SWPB', args: ['d1', '0', 'd2'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)SWPB(d1,0,d2)OTE(a2);'],
       [{ series: [{ instr: 'XIC', args: ['a1'] }, { instr: 'STOR', args: ['text', 'r1'] }, { instr: 'OTE', args: ['a2'] }] }, 'XIC(a1)STOR(text,r1)OTE(a2);'],
     ] as const) {
-      const result = await l5x.call('compose_rung', { spec_json: JSON.stringify(spec) })
+      const result = await l5x.call('l5x_compose_rung', { spec_json: JSON.stringify(spec) })
       expect(result.error).toBeUndefined()
       const rungs = result.data?.rungs as { neutral_text: string }[]
       expect(rungs[0]?.neutral_text).toBe(expected)

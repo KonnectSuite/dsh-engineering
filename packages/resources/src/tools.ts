@@ -150,7 +150,7 @@ export function profileTool(getService: (name: string) => unknown) {
     parameters: {
       type: 'object',
       properties: {
-        project_id: { type: 'string', description: 'L5X project handle from open_project. Omit when exactly one project is open.' },
+        project_id: { type: 'string', description: 'L5X project handle from l5x_open_project. Omit when exactly one project is open.' },
         view_id: { type: 'string', description: 'FactoryTalk View handle from ftview_open. Provide this or project_id.' },
       },
       additionalProperties: false,
@@ -173,7 +173,7 @@ export function profileTool(getService: (name: string) => unknown) {
               message: `No ${target.name} project service is available in this composition, so a profile cannot be read.`,
               fix: viewId !== undefined
                 ? 'Open the export with ftview_open first, and make sure the ftview row is enabled.'
-                : 'Open the project with open_project first, and make sure the l5x row is enabled.',
+                : 'Open the project with l5x_open_project first, and make sure the l5x row is enabled.',
               candidates: [],
             },
           }

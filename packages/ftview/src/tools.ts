@@ -263,7 +263,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
           report,
           [
             { tool: 'ftview_cross_reference', args: { view_id: view.id, l5x_path: path, include_memory: 'yes' }, why: 'Include the memory tags to see every HMI tag at once.' },
-            { tool: 'find_references', args: { symbol: 'PLC_TAG' }, why: 'Read the rungs behind one PLC tag in the L5X project.' },
+            { tool: 'l5x_find_references', args: { symbol: 'PLC_TAG' }, why: 'Read the rungs behind one PLC tag in the L5X project.' },
           ],
           {
             complete: false,

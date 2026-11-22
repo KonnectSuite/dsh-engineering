@@ -1,9 +1,9 @@
 {
   "catalog": 1,
   "contextBudget": {
-    "defaultOnTools": 170,
-    "defaultOnSchemaCharacters": 127423,
-    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-17 after optix_render_check landed: l5x 54 + ftview 51 + mwi 24 + optix 32 (31 vendored engine tools registered in packages/optix/lib/index.js, including the preview-gated optix_preview, optix_screenshot, optix_ocr and optix_render_check, plus optix_netlogic which the reader registers separately) + engineering-resources 2 + migration 7 = 170 (ecad 12 and plc5 8 ship off). defaultOnSchemaCharacters is the measured 122522 characters of the default-on generated definitions plus a 4% allowance for wording changes; ECAD (12 tools) ships off and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
+    "defaultOnTools": 173,
+    "defaultOnSchemaCharacters": 135251,
+    "note": "A fresh install mounts every row whose component default is on. defaultOnTools is exact: one more default-on tool fails the suite until the count is raised here with its measurement, or the component ships off. Measured 2026-11-22 after the knowledge-plane docs tools and the L5X l5x_ prefix rename landed: l5x 55 + ftview 52 + mwi 24 + optix 32 (31 vendored engine tools registered in packages/optix/lib/index.js, including the preview-gated optix_preview, optix_screenshot, optix_ocr and optix_render_check, plus optix_netlogic which the reader registers separately) + engineering-resources 2 + migration 8 = 173 (plc5 15 and slc 10 ship off; viewers has no tools). defaultOnSchemaCharacters is the measured 130049 characters of the default-on generated definitions (L5X 53718 + FactoryTalk View 45544 + MotionWorks IEC 18488 + Engineering resources 1474 + Migration 10825) plus a 4% allowance for wording changes; the DXF/DWG drawing viewer is a face with no tools and is excluded, and the Optix tools are not generated from source and are bounded by the tool count instead."
   },
   "skillPolicy": {
     "defaultBudget": 8000,
@@ -30,9 +30,9 @@
       "verified": { "against": "Logix Designer 37.11 (SDK build, 0 errors) on a real project, with a composed rung pasted as Neutral Text and built clean", "where": "docs/capabilities.md" },
       "stabilityNote": "Proven with Logix Designer 37.11 on a small number of projects; other Studio revisions, other controller families, the wider instruction surface and a hand-driven Studio import of a draft are not measured.",
       "namespace": {
-        "prefixes": [],
-        "legacy": true,
-        "note": "L5X is the first product: its tool names (open_project, draft_apply, ...) predate multi-product composition. A prefixed rename is scheduled; this exemption cannot be copied to a new component."
+        "prefixes": ["l5x_"],
+        "legacy": false,
+        "note": "L5X tools carried the bundle's first unprefixed names; 0.104.0 renamed every tool to the l5x_ prefix in a single release, with a migration table in CHANGELOG.md and no aliases."
       },
       "row": "l5x",
       "rowName": "@aryacode/dsh-engineering/l5x",
@@ -40,7 +40,7 @@
       "package": "packages/l5x",
       "tools": {
         "product": "L5X",
-        "count": 54,
+        "count": 55,
         "inReference": true
       },
       "skill": {
@@ -60,13 +60,14 @@
           "analog_scale",
           "run_hour_meter",
           "live_logic_matches_export",
-          "untested_revision"
+          "untested_revision",
+          "l5x_docs"
         ]
       },
       "probe": null,
       "gate": {
-        "tool": "compare_projects",
-        "why": "the written L5X differs from the source by exactly the draft's operations and run_checks passes on it, which proves the edit offline without any Studio install"
+        "tool": "l5x_compare_projects",
+        "why": "the written L5X differs from the source by exactly the draft's operations and l5x_run_checks passes on it, which proves the edit offline without any Studio install"
       },
       "docs": [
           "docs/products/l5x.md"
@@ -93,7 +94,7 @@
       "package": "packages/ftview",
       "tools": {
         "product": "FactoryTalk View",
-        "count": 51,
+        "count": 52,
         "inReference": true
       },
       "skill": {
@@ -106,7 +107,8 @@
           "export_root",
           "states_json",
           "animations_json",
-          "current_export"
+          "current_export",
+          "ftview_docs"
         ]
       },
       "probe": "ftview_capabilities",
@@ -129,10 +131,10 @@
       "stability": "beta",
       "since": "v0.4.4",
       "requires": [
-        { "of": "MotionWorks IEC 3 Pro", "version": "1.19", "for": "every session, read, edit and compile", "optional": false }
+        { "of": "MotionWorks IEC 3 Pro", "version": "3.0.3–3.7.5", "for": "compile, live and profile paths; this host has no IDE, so those paths answer NOT_INSTALLED", "optional": false }
       ],
-      "verified": { "against": "MotionWorks IEC 3 Pro 1.19, live-verified on 2026-10-23 against a staged copy of a real project", "where": "docs/products/mwi.md" },
-      "stabilityNote": "Proven on MotionWorks IEC 3 Pro 1.19 with one staged project; other IDE versions, other controller families and a download to real hardware are not measured.",
+      "verified": { "against": "MotionWorks IEC 3 Pro (3.x line), live evidence recorded on 2026-10-23 against a staged copy of a real project — not re-verified on this host", "where": "docs/products/mwi.md" },
+      "stabilityNote": "MotionWorks IEC is not installed on this host; compile, live and profile paths are not proved here — only fixture-tested logic, with honest NOT_INSTALLED answers.",
       "namespace": { "prefixes": ["mw_"], "legacy": false },
       "row": "mwi",
       "rowName": "@aryacode/dsh-engineering/mwi",
@@ -160,59 +162,6 @@
       },
       "docs": [
           "docs/products/mwi.md"
-        ],
-      "vendor": true
-    },
-    {
-      "id": "ecad",
-      "title": "ECAD electrical prints",
-      "kind": "product",
-      "capability": "offline-file",
-      "default": "off",
-      "stability": "beta",
-      "since": "v0.86.0",
-      "requires": [
-        { "of": "AryaCAD Electrical", "version": null, "for": "drawing authoring, which runs in that application through its own MCP row; this row only reads and renders", "optional": true }
-      ],
-      "verified": { "against": "AryaCAD Electrical's own sample and template drawings read out of tree, and the read face driven in headless Chrome with zero page errors", "where": "docs/capabilities.md" },
-      "stabilityNote": "The 34-sheet write and re-read round trip is not run in this pass, a real DWG was verified only in the Dev pass, and the row ships off by default.",
-      "namespace": { "prefixes": ["ecad_"], "legacy": false },
-      "row": "ecad",
-      "rowName": "@aryacode/dsh-engineering/ecad",
-      "entry": "entries/ecad.js",
-      "package": "packages/ecad",
-      "tools": {
-        "product": "ECAD",
-        "count": 12,
-        "inReference": true
-      },
-      "skill": {
-        "name": "ecad-review",
-        "file": "packages/ecad/SKILL.md",
-        "budget": 8000,
-        "allow": [
-          "ecad_capabilities",
-          "ecad_profile",
-          "ecad_scan",
-          "ecad_open",
-          "ecad_overview",
-          "ecad_find",
-          "ecad_cross_reference",
-          "ecad_checks",
-          "ecad_render",
-          "ecad_compare",
-          "ecad_document",
-          "ecad_backup"
-        ]
-      },
-      "probe": "ecad_capabilities",
-      "gate": {
-        "tool": "ecad_compare",
-        "why": "a drawing changed in AryaCAD Electrical is only accepted once a re-read here compares it against the kept copy and names what moved"
-      },
-      "docs": [
-          "docs/products/ecad/README.md",
-          "docs/products/ecad/aryacad-bridge.md"
         ],
       "vendor": true
     },
@@ -354,7 +303,7 @@
       "package": "packages/migration",
       "tools": {
         "product": "Migration",
-        "count": 7,
+        "count": 8,
         "inReference": true
       },
       "skill": {
@@ -368,7 +317,8 @@
           "migration_plan",
           "migration_report",
           "migration_resolve",
-          "slc_read"
+          "slc_read",
+          "migration_docs"
         ]
       },
       "probe": "migration_assess",
@@ -398,7 +348,7 @@
       "package": "packages/plc5",
       "tools": {
         "product": "PLC-5",
-        "count": 8,
+        "count": 15,
         "inReference": true
       },
       "skill": {
@@ -413,7 +363,14 @@
           "plc5_io_census",
           "plc5_io_config",
           "plc5_data_read",
-          "plc5_processor"
+          "plc5_processor",
+          "plc5_pc5",
+          "plc5_verify",
+          "plc5_instruction_inventory",
+          "plc5_rung_digest",
+          "plc5_indirect_census",
+          "plc5_diff",
+          "plc5_docs"
         ]
       },
       "probe": "plc5_capabilities",
@@ -424,8 +381,55 @@
       "vendor": true
     },
     {
+      "id": "slc",
+      "title": "RSLogix 500 (SLC 500 and MicroLogix) program reads",
+      "kind": "product",
+      "capability": "offline-file",
+      "default": "off",
+      "stability": "beta",
+      "since": "v0.104.0",
+      "requires": [
+        { "of": "RSLogix 500", "version": "12.00.00", "for": "automation-server read path and .SLC export; the text reader works without it", "optional": true }
+      ],
+      "verified": null,
+      "stabilityNote": "The offline text and documentation readers are tested against synthetic exports; reading a .RSS project through the RSLogix 500 automation server is unproven on this host (registered COM class, no recorded transcript), so coverage.unverified says so. The row ships off and writes nothing.",
+      "namespace": { "prefixes": ["slc500_"], "legacy": false },
+      "row": "slc",
+      "rowName": "@aryacode/dsh-engineering/slc",
+      "entry": "entries/slc.js",
+      "package": "packages/slc",
+      "tools": {
+        "product": "RSLogix 500",
+        "count": 10,
+        "inReference": true
+      },
+      "skill": {
+        "name": "rslogix-500",
+        "file": "packages/slc/SKILL.md",
+        "budget": 8000,
+        "allow": [
+          "slc500_capabilities",
+          "slc500_open",
+          "slc500_ladder",
+          "slc500_find",
+          "slc500_io_census",
+          "slc500_io_config",
+          "slc500_data_read",
+          "slc500_processor",
+          "slc500_database",
+          "slc500_docs"
+        ]
+      },
+      "probe": "slc500_capabilities",
+      "gate": null,
+      "docs": [
+          "docs/products/slc.md"
+        ],
+      "vendor": true
+    },
+    {
       "id": "viewers",
-      "title": "Ladder and display previews",
+      "title": "Ladder, display and drawing previews",
       "kind": "surface",
       "capability": "none",
       "default": "on",
@@ -440,7 +444,8 @@
       "entry": null,
       "package": [
         "packages/viewer",
-        "packages/ftview-viewer"
+        "packages/ftview-viewer",
+        "packages/ecad"
       ],
       "tools": {
         "product": null,
@@ -451,7 +456,8 @@
       "probe": null,
       "gate": null,
       "docs": [
-          "docs/architecture.md"
+          "docs/architecture.md",
+          "docs/products/ecad/README.md"
         ],
       "vendor": false
     }

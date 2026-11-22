@@ -1,104 +1,131 @@
 # Handoff
 
-State of the bundle for the next person who picks it up. The rules live in
-[AGENTS.md](AGENTS.md); this page is the record of where it stands.
+The bundle after the 0.104.0 knowledge-and-legacy batch. This file is the current state:
+version, what the batch changes, what was verified and how, what could not be run on this
+host, and the next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not here.
 
 ## Right now
 
 | | |
-|---|---|
-| Branch | `main` — the preset retirement shipped as **0.103.0** |
-| Last release | **0.103.0**, published 2026-11-20 from `9841f1f` (retirement commit `5d55c6b`) |
-| Release tag | `v0.103.0` (on the remote, at the release commit) |
-| GitHub release | `https://github.com/KonnectSuite/dsh-engineering/releases/tag/v0.103.0` — created by `release.yml` from the tag, body is the changelog section |
-| npm tarball | `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.103.0.tgz` |
-| npm shasum (sha1) | `92a84b5b64350ed389041e5e497a50143658b770` |
-| npm sha256 (what the catalogue records) | `2e9d14720d7d1c21bca2e9d566d7db8b479959287c8b12ab0424b5d591032419` |
-| Tarball size | 896 files, 18,480,029 bytes unpacked (4,763,737 packed) |
-| Market | `releases[0]` = 0.103.0 in `dsh-arya-market` branch `catalog`, commit `3c96506`; 44 releases; `check-catalogue-parity.mjs` green |
-| CI | `ci.yml` green on `9841f1f`; `release.yml` published the tag's release from the same commit |
+| --- | --- |
+| Branch | `main`; this batch is one local commit (the commit that contains this file). No tag, no publish, no market step. |
+| Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-22` heading in `CHANGELOG.md`. |
+| Release state | **Verified locally and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,267,841 B packed, SHA256 `732086063C7C1BADCD5232EE4CBA7AC5F2191F63DE7B276AFDFF77084A8B4766`, SHA1 `966B25B89673AF156A5153CA1B84B44E937C84D4`; `check:package` reports 21.6 MiB in 1,094 files unpacked. |
+| Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **198 registered tools**, **173 default-on**, 8 skills, 6 product documents. |
+| Generated reference | `docs/reference/tools.md` and `tools.json`: **166 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
+| Context budget | **173 tools / 135,251 schema characters** — measured 130,049 + 4% (L5X 53,718 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825). |
+| Verified | `pnpm test` **79/79 spec files pass** (48,343 ms on this tree); `pnpm docs:check`, `pnpm check:package`, `node scripts/eval-knowledge.mjs --check`, `node scripts/sync-knowledge-lib.mjs --check` all green; clean Dev profile boots the installed tarball with 173 tools and the designed nine rows. |
+| ECM-software reality | MotionWorks IEC is not installed on this host, and the ECAD product was retired. Those paths are **not-runnable**, never pass — see the table below. |
 
-Nothing is pending on `main` beyond 0.103.0. Two things are known gaps rather than
-work in progress: the two Plugins-page figures in `docs/getting-started.md` were
-captured on the 0.102.0 install — ten rows, `ecad` and `plc5` off — and still show
-the `preset` row that this release removed, so both need a re-shoot; and the
-retirement is proved by the suite, the packaging gate and the payload listing
-(`tar -tzf` on the published tarball names no `lib/preset.js` and no path under
-`presets/arya-*`; the one `presets/` file it does carry is `presets/billion-context.js`,
-which this release keeps on purpose), not on a host — no Dev AryaCode boot has yet
-composed a profile without the `engineering-preset` row.
+## What 0.104.0 changes
 
-Measured on this machine: `pnpm test` 77 spec files in about 34 s, `pnpm check:package`
-17.6 MiB in 893 files (limit 64 MiB), `npm pack --ignore-scripts` 4.7 MB packed, 896 files,
-18.5 MB unpacked.
-
-## What the overhaul changes
-
-- **One public surface.** The README is rewritten for a person who has never installed the bundle: what
-  each of the nine rows adds, what it needs installed, where it appears, one paste-ready prompt per
-  product, the switch table, safety, known limits, and a documentation map whose links work on npmjs
-  (absolute GitHub URLs, because npm renders the README without the rest of the repository).
-- **A documentation tree with one home per fact**: `docs/getting-started.md` (first session),
-  `docs/index.md` (the map), `docs/products/**` (one page per product), `docs/reference/**`
-  (components, tools, HMI design, standards checks), `docs/capabilities.md` (the evidence), and
-  `docs/port/**` kept as design history.
-- **A packaging contract** (`scripts/check-package.mjs`, `test/package.spec.mjs`): identity fields, the
-  `dsh` block, every path a mount needs actually shipped by `files`, each row's export target present,
-  dependency hygiene, and the unpacked size against the market's 64 MiB cap.
-- **Publication-ready identity** in `package.json`: new description (also the Plugins-page and repository
-  text), extended keywords, `author`, `publishConfig.access: public`, `NOTICE.md` shipped, `prepack`
-  builds the workspace first, `@deepseek-ai/schemastery` declared once, `esbuild` declared.
-- **Changelog headings are `## 0.101.0 — 2026-11-18`**, the form the market's release parser reads. The
-  old bracketed form silently degraded every market release body to "Published 0.101.0.".
-- **GitHub scaffolding**: issue forms, pull-request template, `CONTRIBUTING.md`, `SECURITY.md`, a CI
-  workflow (Windows matrix) and a release workflow that turns a `v*` tag into a GitHub Release whose
-  body is that version's changelog section.
-- **Repository hygiene**: generated previews and harness output (`artifacts/**`, `.l5x-preview/**`) are
-  untracked and ignored; the scaffolded Optix template no longer carries SQLite journals;
-  `scripts/assemble.mjs` reports a failed copy instead of swallowing it.
+- **Knowledge plane.** A shared retrieval core (BM25 `k1=1.2`, `b=0.75`; exact identifiers and
+  aliases always included and ranked by score; deterministic order; a scope floor that answers
+  no-match instead of five weak hits) and five documentation tools — `l5x_docs`, `ftview_docs`,
+  `migration_docs`, `plc5_docs`, `slc500_docs`. Each has exactly five actions: `contents`,
+  `search`, `read`, `status`, `lookup`. Authored pages ship in the tarball; installed vendor
+  help is indexed structurally and parsed locally at read time, never shipped.
+- **L5X knowledge and the prefix rename.** 7 L5X collections (2,774,491 B, 127 files), including
+  structural indexes of the installed Studio 5000 v37.05.00 and v36.00.00 help (5,493 and 6,581
+  pages), `instruction-versions.json` (328 mnemonics) and revision guards
+  (`INSTRUCTION_NOT_IN_REVISION`, fail-open `REVISION_UNVERIFIED`, `SOURCE_NOT_INSTALLED`).
+  All 55 L5X tools now carry the `l5x_` prefix — **50 renamed, 5 already prefixed**, no aliases;
+  the migration table is in the 0.104.0 changelog section.
+- **FTView knowledge.** Authored ME pages (9) plus structural indexes of the installed ME and SE
+  help (1,544 and 2,603 pages) behind `ftview_docs`.
+- **Migration and PLC-5 knowledge.** `migration_docs` (15 authored pages) and `plc5_docs`
+  (9 pages); six new read-only PLC-5 text tools — `plc5_pc5`, `plc5_verify`,
+  `plc5_instruction_inventory`, `plc5_rung_digest`, `plc5_indirect_census`, `plc5_diff` — so
+  PLC-5 is 15 tools, off by default.
+- **New RSLogix 500 row (`slc`).** Ten read-only `slc500_*` tools (`capabilities`, `open`,
+  `ladder`, `find`, `io_census`, `io_config`, `data_read`, `processor`, `database`, `docs`),
+  skill `rslogix-500`, ships **off**. Text exports and `.SLC` exports are read offline; `.RSS`
+  through the automation server is honest about not being proved (`NOT_LICENSED`/`SOURCE_NOT_INSTALLED`).
+- **MotionWorks IEC honest IDE-free behaviour.** Known version line **3.0.3–3.7.5**; a host probe
+  that inspects 7 locations; `mw_ide_status` reports `installed:false`, 7 looked-for locations and
+  `NOT_INSTALLED`; compile/live/profile paths answer `not-runnable` with a fix instead of a false
+  result. The tool surface stays 24 `mw_*` tools.
+- **ECAD product retired, drawing preview kept.** The `ecad` row, its 12 tools and the
+  `ecad-review` skill are gone; the DXF/DWG drawing preview remains part of the `viewers` surface
+  (root ECAD Remote service, engine and client face retained; `vendor/ecad` is now a viewer
+  payload, not a component).
+- **Handbook and scaffold.** `docs/handbook/` is built from 15 Markdown pages (docx/html/pdf),
+  `packages/_scaffold/` is a compilable new-component skeleton, and the generators are checked.
+- **Evaluation harness.** `scripts/eval-knowledge.mjs` runs every product's `goldens.json`
+  (124 cases total), checks Recall@5/MRR@5/nDCG@10 against per-product thresholds, exact and
+  no-match shares, the read/hit caps, latency p95 and determinism (sha256 over two runs), and
+  writes `artifacts/eval-knowledge.json`.
 
 ## Verified, and how
 
-| What | Evidence |
-|---|---|
-| The suite | `pnpm test` — 77 spec files, one child process each |
-| The tarball contract | `pnpm check:package` — "the tarball is conforming", 17.6 MiB in 893 files |
-| What npm received | the published 0.103.0 tarball, downloaded from the registry — 4,763,737 B packed, 18,480,029 B unpacked per `dist.unpackedSize`, sha1 `92a84b5b…`, sha256 `2e9d1472…` equal to what the `catalog` branch records. A fresh `npm pack --ignore-scripts --dry-run` on this tree gives 896 files / 18.5 MB with a **different** shasum (`c6944f63…`): the payload is not byte-reproducible, so the catalogue records the registry copy |
-| The Dev profile install | the packed tarball unpacked over `…\AryaCode-dev\home\profiles\desktop\node_modules\@aryacode\dsh-engineering` (`0.101.0`, `cordis.patch.yml` and `vendor/optix/skills/` present). `pnpm add` cannot run there: the profile pins `@deepseek-ai/dsh-host-webserver@>=0.2.1 <0.3.0-0` and the registry publishes no release in that range, so the install is a file swap over the existing tree |
-| The docs agree with the code | `test/docs.spec.mjs`, `test/components.spec.mjs` (row ids, counts, switches, maturity, budgets, owned documents) |
-| The tool reference is current | `pnpm docs:check` |
-| The catalogue still matches npm | `node ../dsh-arya-market/scripts/check-catalogue-parity.mjs` |
-| The Dev activation | `GET /dsh-market/installed` on the Dev host: `installed` resolves to the overhaul tarball, `activation.state` = `live` ("live via its bundle patch"), `diagnostics.findings` = 0 |
-| The rendered rows | [docs/images/dev-components.png](docs/images/dev-components.png) — the Plugins page reports `Components 10 total · 8 running · 2 off`; `ecad` and `plc5` are the two that ship off. That figure is from the 0.102.0 install, which still carried the `preset` row |
-| The README on the surface | [docs/images/dev-components-rows.png](docs/images/dev-components-rows.png) — the plugin page renders the installed build's README ("Where it appears") |
+All commands below were run on this tree; the tree then carried the evidence into this commit.
 
-The Dev host was started from `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode` (branch `rebrand/identity`,
-`@deepseek-ai/dsh-root` 0.2.2-alpha.3) with `ARYACODE_HOME`/`DSH_HOME` pointing at
-`%LOCALAPPDATA%\AryaCode-dev\home`. Its Electron **desktop** window cannot start inside an agent
-sandbox — the GPU process fails (`error_code=18`) and the renderer exits `launch-failed`; launching
-`electron.exe` directly with `--disable-gpu --disable-gpu-sandbox` starts the host and serves the Web
-presentation, which is what the evidence above was taken from. Still unproved: the desktop window
-itself, and one tool per product exercised end to end. Both need a shell outside the agent sandbox.
+| Area | Command / evidence | Result |
+| --- | --- | --- |
+| Suite | `pnpm test` (with `HANDBOOK_PYTHON` set to the bundled Python) | **79 file(s) passed in 48,343 ms**; includes knowledge core/packaging, per-product knowledge, legacy, MWI IDE-free, SLC and handbook specs. |
+| Generated docs | `pnpm docs:check` | `gen-tool-reference: reference is up to date.` / `gen-print-css: docs/print.css is up to date.` |
+| Packaging | `pnpm check:package` | `the tarball is conforming`; PKG-06 21.6 MiB in 1,094 files; largest entries the ECAD wasm (6.11 MiB) and the L5X/optix indexes. |
+| Knowledge eval | `node scripts/eval-knowledge.mjs --check` | **all products pass**, determinism true, no problems. |
+| Retrieval figures | `artifacts/eval-knowledge.json` | L5X 32 cases R@5 .957 / MRR .891 / nDCG .900 (p95 43.7 ms); FTView 23 .933/.967/.942 (18.5 ms); migration 25 1/.972/.979 (3.3 ms); PLC-5 22 1/1/.991 (2.0 ms); SLC 22 1/.817/.864 (1.3 ms). Exact share 1, no-match 1, hit cap true, determinism true. |
+| Knowledge sync | `node scripts/sync-knowledge-lib.mjs --check` | Current; 5 consumers byte-equal to `packages/knowledge/src`. |
+| Generators | l5x/ftview/migration/plc5/slc knowledge generators `--check` | All current; two clean L5X runs byte-identical (5,493 v37.05 pages + 6,581 v36.00 pages, 328 mnemonics). |
+| Handbook | bundled Python + `scripts/gen-handbook.py`, then `--check` | 15 pages; docx/html/pdf regenerated; source hash `105186b902a2f2ae`; check ok. |
+| Clean install | fresh Dev profile `verify-0104b` from the 0.104.0 tarball | Boots: **173 tools**; engineering 170 = `engineering_` 2 + `ftview_` 52 + `l5x_` 55 + `migration_` 6 + `mw_` 24 + `optix_` 31; nine rows — l5x, ftview, mwi, viewers, engineering-resources, migration, optix `active`, plc5 and slc `disabled`; `l5xProjects` provided and the five sample `l5x_*` names executable. |
+| Changed-tool packaged smoke | from the installed profile, on `packages/l5x/test/fixtures/sample.l5x` | `l5x_open_project` parsed the project (rev 33.1/export 33.00; 1769-L33ER; 2 programs, 19 tags, 3 routines, 3 modules); `l5x_run_checks` 3 INFO findings; `l5x_docs search` 91 hits with `instruction-ton` first; `l5x_document_project` wrote 3 files (5 rung comments, 11 rungs). |
+| Cross-product | installed profile | `ftview_capabilities` (6 applications, schemas 1–16) and `ftview_docs` (38 hits, authored export-import first) work; `migration_assess` on the L5X sample succeeds (3 modules, 0 findings) and `migration_docs` searches; `slc500_open`/`ladder`/`docs` work on a text export; `plc5_docs` searches; `optix_status` reports the local bridge/Studio unavailable honestly; `mw_ide_status` reports `NOT_INSTALLED` honestly. |
+| Upgrade / rollback (N-1) | 0.103.0 tarball (`npm pack @aryacode/dsh-engineering@0.103.0`, 4,763,737 B) → 0.104.0 local tarball, then back | 0.103 composition: 170 tools, legacy L5X names, `ecad` row present/disabled, no `slc` row. Update: 990 ms `pnpm install`, 173 tools, all 55 names prefixed, `entries/ecad.js` absent, `vendor/ecad` viewer payload + L5X knowledge present, nine rows. Rollback: 170 tools and the 0.103 composition. Profile finally left on 0.104.0. |
+| No-vendor source | installed profile with `L5X_HELP_ROOT_V37_05`/`V36_00` = `Z:/no-such-help-root` | `l5x_docs read` of `help/clinset/timer-counter/timer-on-delay--ton-` returns `SOURCE_NOT_INSTALLED` naming the searched root; with the real install the same read returns the real TON page body. Structural `search`/`status` still answer from the shipped index — by design. |
+| Offline / no-network | static grep over the knowledge core, five `docs.ts` adapters and the eval script | No `fetch`, `node:http(s)`, `axios`, `child_process`, `net.connect` or `WebSocket`; the eval is local only. |
+| Licensing | NOTICE/README/`docs/reference/knowledge.md` | MIT posture: authored pages ship; the installed-help bodies are parsed from the user's own installation at read time and are never in the tarball. |
+
+### Not runnable on this host — three-state evidence, never "pass"
+
+`docs/decisions/verification-evidence.md` defines the rule: a check is `pass`, `fail`, or
+`not-runnable`; **not-runnable is never recorded as a pass** and needs substitute evidence.
+
+| Item | State | Substitute evidence recorded |
+| --- | --- | --- |
+| MotionWorks IEC compile / profile / live | **not-runnable** — the IDE is not installed | `mw_ide_status` answers `NOT_INSTALLED` (7 probed locations, known line 3.0.3–3.7.5); `test/mwi-idefree.spec.mjs` 10/10 and the package `vitest` suite 81/81 prove the IDE-free logic with a stub host/help tree. |
+| ECAD product / live AryaCAD bridge | **not-runnable** — component retired; no AryaCAD surface on this host | The row, 12 tools and skill are removed; the DXF/DWG drawing preview face still builds and mounts; the bridge's live path is not claimed anywhere. |
+| PLC-5 live COM read | **not-runnable** — RSLogix 5's automation server is not registered (`powershell32` present, COM server absent) | Read-only text tools are covered by the package tests and negative drills. There is no real `.PC5` export fixture in the repo, so the positive `.pc5` text path is proved at parser/unit level, not live. |
+| SLC 500 `.RSS` automation read | **not-runnable** — automation class registered, but no recorded transcript and the edition is unrecorded | `slc500_open` on a text export works end to end; `.RSS` returns `NOT_LICENSED` with the export-text/record-transcript fix. |
+| FTView attended import round-trip | **not run** — needs an attended Studio import step | `ftview_capabilities` reports `import requires studio`; the authored FTView corpus records the measured export and the attended rules. |
+| Ten scripted tasks per product on a weaker model | **not run** — no weaker-model harness in this environment | Tool-level drills for every product were recorded here instead; the owner/agent walkthrough remains the intended check. |
+| Desktop Electron window and refreshed Plugins screenshots | **not run** — composition booted through the CLI/web probe path | The installed tarball's composition is proved; `docs/images/dev-components*.png` are still 0.102.0 screenshots. |
+| Publish / tag / market catalogue | **not run** — owner-only | This batch is local and uncommitted to the registry; release is a separate, explicit request. |
 
 ## Known gaps
 
-- Every component is `beta`; each one records in `components.json` (`stabilityNote`) what is not proved.
-- The vendored Optix tools (32) are not in the generated reference, because their source is not in this
-  repository; the Optix pages document them.
-- `CHANGELOG.md` still carries pre-overhaul mojibake in historical entries; `scripts/repair-encoding.mjs`
-  declines the file ("not a mis-decoding this can undo"), so it is left as written rather than mangled.
-- The GitHub Releases before this overhaul (v0.1.0–v0.3.0, 0.73.0) have no changelog body; only releases
-  cut from a `v*` tag after this workflow exists will.
-- `docs/images/dev-components.png` and `docs/images/dev-components-rows.png` are from the 0.102.0 install
-  and still show the `preset` row; both need a re-shoot on a Dev host running the current payload.
-- The preset removal is proved by the suite and the packaging gate, not on a host: no Dev AryaCode boot has
-  yet composed a profile without the `engineering-preset` row.
+- Every component is `beta`; each `components.json` `stabilityNote` records what is not proved.
+- The 32 vendored Optix tools are not in the generated reference; the Optix pages own them.
+- `CHANGELOG.md` still carries pre-overhaul mojibake in historical entries;
+  `scripts/repair-encoding.mjs` declines the file, so it is left as written.
+- The GitHub Releases before this overhaul have no changelog body; only releases cut from a
+  `v*` tag after the release workflow exists will.
+- `docs/images/dev-components.png` and `docs/images/dev-components-rows.png` are from the 0.102.0
+  install and need a re-shoot on a Dev host running the current payload.
+- PLC-5 has no positive `.PC5` text-export fixture; the text tools are parser-tested only.
+- SLC 500's `.RSS` automation path needs a recorded transcript (and a Professional/Developer
+  edition) before it can be called proved; the text-export path is proved.
+- MWI's compile/profile/live paths need a machine with MotionWorks IEC 3 Pro installed.
+- Dense retrieval v2 was deliberately not added; v1 is lexical BM25 + exact identifiers only.
 
 ## Picking it up
 
 1. `git switch main`, `pnpm install`, `pnpm -r build`.
-2. `pnpm test` (needs a full-access shell: the runner spawns a child process per spec).
-3. Read [AGENTS.md](AGENTS.md) before changing behaviour; docs are updated in the same change.
-4. Install into the Dev home when the release is being tested —
-   [docs/development/packaging.md](docs/development/packaging.md) and the release section of
-   [AGENTS.md](AGENTS.md) carry the exact commands.
+2. `pnpm test` — needs a full-access shell because the runner spawns one process per spec; set
+   `HANDBOOK_PYTHON` to the bundled Python if the handbook determinism check should run.
+3. Regenerate/verify what the tests check when behaviour changes: `pnpm docs:tools`,
+   `pnpm docs:check`, `pnpm resources:build`, `pnpm knowledge:sync` and
+   `node scripts/eval-knowledge.mjs --check`.
+4. Install into the Dev home when testing the release: pack with
+   `pnpm pack --pack-destination artifacts`, create a profile under
+   `%LOCALAPPDATA%\AryaCode-dev\home\profiles\`, point its `@aryacode/dsh-engineering`
+   dependency at the tarball, `pnpm install --prefer-offline --ignore-scripts`, then boot the
+   profile. Never modify the installed AryaCode (`%LOCALAPPDATA%\Programs\AryaCode` or
+   `~/.aryacode`); read only.
+5. The batch commit is the release candidate. When the owner says ship, follow the release
+   section of [AGENTS.md](AGENTS.md): `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`,
+   tag `v0.104.0`, wait for the registry, then run the market catalogue step. Do not bump the
+   version for a registry-lag 404/409.

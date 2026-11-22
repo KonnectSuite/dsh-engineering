@@ -1,4 +1,139 @@
-## [Unreleased]
+## 0.104.0 — 2026-11-22
+
+### Added
+
+- **A knowledge plane, and five documentation tools on the product rows.** `packages/knowledge` is a
+  shared retrieval source library (BM25 with `k1=1.2`, `b=0.75`, an exact-identifier layer whose pages
+  are always included and marked `exact: true`, deterministic ordering and 4-decimal scores) whose
+  `src/core.ts` and `src/html.ts` are copied into `packages/{l5x,ftview,migration,plc5,slc}/src/knowledge/` by
+  `scripts/sync-knowledge-lib.mjs --check`. Each product exposes one tool — `l5x_docs`, `ftview_docs`,
+  `migration_docs`, `plc5_docs`, `slc500_docs` — with exactly five actions: `contents`, `search`
+  (≤8 hits, 200-character snippets), `read` (one page, ≤8,000 characters), `status` and `lookup`.
+  Authored pages ship in the bundle; installed vendor help is indexed as structure only (titles, paths,
+  sections, identifiers — never page bodies) and a `read` parses the local install at call time, so a
+  machine without the vendor help answers `SOURCE_NOT_INSTALLED` rather than shipping vendor text.
+  Revision guards answer `REVISION_REQUIRED`, `REVISION_UNVERIFIED` and `INSTRUCTION_NOT_IN_REVISION`;
+  the L5X corpus adds two structural help shards (`l5x-help-37-05`, 5,493 pages; `l5x-help-36-00`,
+  6,581 pages), a 328-mnemonic `instruction-versions.json` and a fail-open guard so an offline edit is
+  never blocked by a missing versions file. `docs/reference/knowledge.md` is the contract and
+  `docs/decisions/knowledge-plane.md` records why the package is a source library rather than a fourth
+  workspace dependency.
+- **The SLC 500 / MicroLogix read row.** A tenth component, `slc`, ships **off** by default with ten
+  read-only tools (`slc500_capabilities`, `_open`, `_ladder`, `_find`, `_io_census`, `_io_config`,
+  `_data_read`, `_processor`, `_database`, `_docs`), a 7-page authored `rslogix-500` corpus, a skill of
+  the same name and a `.RSS` automation path that answers `SOURCE_NOT_INSTALLED`/`NOT_LICENSED` instead
+  of inventing a read. The text and `.SLC` export readers parse local files; `.ACH`/`.RS1` are refused;
+  documentation exports route to `slc500_database`. Verified against synthetic exports and replayed
+  goldens; the RSLogix 500 automation-server read is recorded as unproven.
+- **Six read-only PLC-5 text-export tools and `plc5_docs`.** `plc5_pc5`, `plc5_verify`,
+  `plc5_instruction_inventory`, `plc5_rung_digest`, `plc5_indirect_census` and `plc5_diff` read a
+  `.PC5` text export deterministically and report `UNSUPPORTED_FORMAT`, `SOURCE_NOT_INSTALLED`,
+  `EMPTY_EXPORT`, `PARSE_ERROR` or `TRUNCATED_EXPORT` honestly. PLC-5 goes from 8 to 15 tools; the row
+  still ships off.
+- **MotionWorks IEC without the IDE.** The MWI row keeps its 24 tools and now states what it cannot do:
+  `core/host.ts` carries the known version line (3.0.3–3.7.5) and probes `Mwt.exe`, the
+  `%ProgramData%\Yaskawa` install tree and the uninstall registry; `mw_ide_status` returns the detected
+  and known versions; `mw_help` gains read-by-id over a synthetic help tree; compile, live and profile
+  paths answer `NOT_INSTALLED` with the probes they ran ("no installation was detected, and no vendor
+  result is claimed"). `mw_ide_status`, `mw_help`, `mw_verify_*` and the install requirement are the
+  only surfaces changed — fixture-tested, no vendor result claimed.
+- **The workflow handbook and a component scaffold.** `docs/handbook/src/` holds 15 Markdown pages
+  (bundle and component model, the shared loop, one quick reference per product, the five docs actions,
+  safety, troubleshooting, known gaps); `scripts/gen-handbook.py` now reads that Markdown and writes
+  `docs/handbook/engineering-handbook.{docx,html,pdf}` with front-matter/order/artifact/source-hash
+  checks and `--check`. `packages/_scaffold/` is a compilable component skeleton (README wiring
+  checklist, package.json, tsconfig, `src/index.ts`, `SKILL.md`, smoke spec) that no row mounts.
+- **An evaluation harness.** `scripts/eval-knowledge.mjs` (`pnpm eval:knowledge`) replays each corpus'
+  `goldens.json` (32 L5X, 23 FTView, 25 migration, 22 PLC-5, 22 SLC cases), measures Recall@5, MRR@5,
+  nDCG@10, exact and no-match shares, the read contract, hit cap and p95 search/read latency, and fails
+  on a deterministic-envelope mismatch. Per-product thresholds and the global exact 1.00, no-match
+  0.80, revision-sensitivity 1.00, 150 ms/120 ms p95 and 8/8,000 caps are recorded in the script.
+
+### Removed
+
+- **The ECAD product component, while the DXF/DWG drawing preview stays.** The `ecad` row,
+  `entries/ecad.js`, its 12 `ecad_*` tools, the `ecad-review` skill (`packages/ecad/SKILL.md`), the row's
+  Configure page, the AryaCAD Electrical bridge overlay (`overlays/aryacad-mcp.patch.yml`) and the
+  product/bridge pages are gone. Removing it took the registered total from 190 to 178, the generated
+  reference from 158 to 146 and the component count from 9 to 8; the knowledge tools and the SLC row in
+  this release bring the bundle to 9 components, 198 registered and 166 generated. The DXF/DWG drawing
+  preview is kept as a `viewers` face: the engine, the embedded DWG converter, the drawing pane and the
+  package root's `ecad` Remote service stay, `packages/ecad` becomes a viewer library (no entry, no
+  skill, no tools) and `scripts/assemble.mjs` vendors it as a viewer payload instead of a component.
+  `docs/products/ecad/README.md` is now the drawing-preview page. A future ECAD plan starts from that
+  viewer.
+
+### Changed
+
+- **The bundle is 9 component rows, 198 registered tools, 173 default-on, 166 generated and 8 skills.**
+  `components.json` records `defaultOnTools: 173` and `defaultOnSchemaCharacters: 135251` (measured
+  130,049 characters plus the 4% allowance) with the per-row arithmetic in its note. The generated
+  reference gains RSLogix 500, `l5x_docs`, `ftview_docs`, `migration_docs`, `plc5_docs` and `slc500_docs`
+  and loses the ECAD group. README, `docs/getting-started.md`, `docs/index.md`, `docs/products/README.md`,
+  `docs/architecture.md`, `docs/capabilities.md`, `docs/reference/components.md` and `package.json` carry
+  the new rows and counts.
+- **Every L5X tool carries the `l5x_` prefix.** The bundle's first product had kept its original
+  unprefixed names (`open_project`, `draft_apply`, ...) as the only namespace exemption. 0.104.0 renames
+  all 50 remaining names in one release — the release's only breaking change — with no aliases. The
+  mapping is: `build_acd_from_draft`→`l5x_build_acd_from_draft`, `capture_controller_snapshot`→`l5x_capture_controller_snapshot`,
+  `change_controller_mode`→`l5x_change_controller_mode`, `compare_projects`→`l5x_compare_projects`,
+  `compose_batch`→`l5x_compose_batch`, `compose_rung`→`l5x_compose_rung`,
+  `controller_approval_status`→`l5x_controller_approval_status`, `discover_controllers`→`l5x_discover_controllers`,
+  `document_project`→`l5x_document_project`, `download_project`→`l5x_download_project`,
+  `draft_apply`→`l5x_draft_apply`, `draft_discard`→`l5x_draft_discard`, `draft_fbd`→`l5x_draft_fbd`,
+  `draft_list`→`l5x_draft_list`, `draft_remove_op`→`l5x_draft_remove_op`, `draft_routine`→`l5x_draft_routine`,
+  `draft_rung`→`l5x_draft_rung`, `draft_rung_comment`→`l5x_draft_rung_comment`, `draft_sfc`→`l5x_draft_sfc`,
+  `draft_st`→`l5x_draft_st`, `draft_tag`→`l5x_draft_tag`, `draft_tag_description`→`l5x_draft_tag_description`,
+  `draft_udt_description`→`l5x_draft_udt_description`, `draft_udt_member`→`l5x_draft_udt_member`,
+  `draft_validate`→`l5x_draft_validate`, `export_acd_to_l5x`→`l5x_export_acd_to_l5x`,
+  `find_references`→`l5x_find_references`, `get_component`→`l5x_get_component`, `go_online`→`l5x_go_online`,
+  `list_components`→`l5x_list_components`, `list_instructions`→`l5x_list_instructions`,
+  `open_project`→`l5x_open_project`, `poll_live_tags`→`l5x_poll_live_tags`,
+  `project_overview`→`l5x_project_overview`, `read_controller_clock`→`l5x_read_controller_clock`,
+  `read_controller_mode`→`l5x_read_controller_mode`, `read_live_tag`→`l5x_read_live_tag`,
+  `read_live_tags`→`l5x_read_live_tags`, `resolve_tag`→`l5x_resolve_tag`, `run_checks`→`l5x_run_checks`,
+  `search_logic`→`l5x_search_logic`, `start_plc_trend`→`l5x_start_plc_trend`,
+  `studio_capabilities`→`l5x_studio_capabilities`, `studio_review_evidence`→`l5x_studio_review_evidence`,
+  `studio_sdk_status`→`l5x_studio_sdk_status`, `trace_dependencies`→`l5x_trace_dependencies`,
+  `usage_map`→`l5x_usage_map`, `verify_offline_l5x`→`l5x_verify_offline_l5x`,
+  `write_controller_clock`→`l5x_write_controller_clock`, `write_live_tag`→`l5x_write_live_tag`.
+  The five names that already carried the prefix (`l5x_compose_logic`, `l5x_diagram`, `l5x_docs`,
+  `l5x_routine_diagram`, `l5x_rung_preview`) are unchanged. `components.json` drops the `legacy`
+  exemption, the L5X skill, product docs and examples quote the prefixed names, and the generated
+  reference is regenerated so the reference, `/dsh-market/installed` and the composed profile agree.
+- **The assembly copies each product's knowledge payload.** `scripts/assemble.mjs` adds `knowledge` to
+  the copied payload list (a docs tool resolves `../knowledge/` from its built `lib/docs.js`) and keeps
+  `VIEWER_PAYLOADS = ["ecad"]` for the drawing viewer. `pnpm check:package` reports the tarball at
+  **21.6 MiB in 1,094 files**, still inside the market's 64 MiB unpacked cap.
+- **The default-on budget is raised with its measurement.** 170 → 173 tools and 127,423 → 135,251
+  characters, recorded in `components.json` with the l5x/ftview/migration/optix/resources arithmetic.
+- **The documentation tells the truth about what this host cannot run.** `docs/decisions/verification-evidence.md`
+  defines the three-state gate evidence (`pass`/`fail`/`not-runnable`), the substitute-evidence table for
+  MotionWorks IEC (no IDE installed) and the ECAD bridge/live paths, and the rule that `not-runnable`
+  never counts as a pass. `HANDOFF.md`, the handbook's known-gaps page and the README limits repeat it.
+- **The tests grow with the surfaces.** New root specs `knowledge-core`, `knowledge-packaging`,
+  `l5x-knowledge`, `ftview-knowledge`, `legacy-knowledge`, `slc500-tools`, `mwi-idefree` and `handbook`
+  run in the release gate; `test/components.spec.mjs`, `test/patch.spec.mjs`, `test/tool-reference.spec.mjs`
+  and `test/docs.spec.mjs` move to the 9-row/198-tool contract; the lockfile is regenerated for the ECAD
+  dependency removal.
+- **Knowledge search refuses out-of-scope queries and ranks exact identifiers by score.** The shared
+  core adds `MIN_MATCHED_TERM_FRACTION = 0.6`: a query that matches fewer than 3/5 of its own terms
+  anywhere in the selected pages answers the empty no-match envelope instead of five weak BM25 hits,
+  while an exact identifier or alias match always answers. Exact hits are no longer forced ahead of
+  better textual matches; they are always included, flagged `exact`, and ranked by score with the exact
+  flag as the tie-break (score desc, exact desc, page id codepoint asc). The FTView authored overview
+  gains the `application folder` and `project settings` identifiers, and its `q15` golden names the two
+  authored pages that answer it. `packages/knowledge/CONTRACT.md` and `docs/reference/knowledge.md`
+  record the new ordering and the scope floor.
+
+### Fixed
+
+- **The MotionWorks IEC requirement no longer names a version that does not exist.** The component said
+  "MotionWorks IEC 3 Pro 1.19"; the 3 line runs 3.0.3–3.7.5, so `components.json` and the README state
+  the measured line and that the IDE is absent from this host.
+- **Stale row counts in getting-started and the index.** "Ten rows, ecad and plc5 off" and "six products
+  plus three support components and one surface" described a composition the patch no longer had;
+  both now state the nine rows and two off rows.
 
 ## 0.103.0 — 2026-11-20
 

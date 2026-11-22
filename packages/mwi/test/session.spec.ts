@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { MwiError } from '../src/core/errors.ts'
+import { mwiProbeStub, type MwiProbe } from '../src/core/host.ts'
 import { sessionTools } from '../src/tools/session.ts'
 import type { SessionRuntime } from '../src/session/service.ts'
 import type { StageRecord } from '../src/session/stage.ts'
@@ -30,7 +31,7 @@ function fakeRuntime(overrides: Partial<SessionRuntime> = {}): SessionRuntime {
     async ideState() { return { ide_running: true, blocked: false } },
     async stage() { return RECORD },
     async open() { return { active_project: RECORD.staged_mwt, matches_request: true } },
-    async start() { return { ide_window: '0x1', version: '1.19' } },
+    async start() { return { ide_window: '0x1', version: '3.7.5' } },
     async worksheet() { return { accepted: true } },
     async close() { return { closed: true } },
     stagedAt() { return RECORD },
@@ -38,8 +39,8 @@ function fakeRuntime(overrides: Partial<SessionRuntime> = {}): SessionRuntime {
   }
 }
 
-async function call(runtime: SessionRuntime, name: string, args: Record<string, unknown> = {}, cwd = process.cwd()): Promise<Envelope> {
-  const definition = sessionTools(() => runtime).find(tool => tool.name === name)
+async function call(runtime: SessionRuntime, name: string, args: Record<string, unknown> = {}, cwd = process.cwd(), probe: MwiProbe = mwiProbeStub()): Promise<Envelope> {
+  const definition = sessionTools(() => runtime, () => probe).find(tool => tool.name === name)
   if (definition === undefined) throw new Error(`no tool ${name}`)
   return await definition.execute(args, { cwd }) as Envelope
 }
@@ -72,6 +73,35 @@ describe('session tools', () => {
     expect(result.error).toBeUndefined()
     expect(result.data?.ide_running).toBe(false)
     expect(result.next?.[0]?.tool).toBe('mw_ide_start')
+  })
+
+  it('reports the installed versions the probe detected', async () => {
+    const runtime = fakeRuntime({
+      async status() { throw new MwiError('IDE_NOT_RUNNING', 'No IDE.', 'Start it.') },
+    })
+    const probe: MwiProbe = {
+      ...mwiProbeStub(),
+      installed: true,
+      versions: ['3.7.5'],
+      displays: ['3.7.5.1'],
+    }
+    const result = await call(runtime, 'mw_ide_status', {}, process.cwd(), probe)
+    expect(result.data?.installed_versions).toEqual(['3.7.5.1'])
+    expect(result.data?.known_versions).toContain('3.0.3')
+    expect(result.data?.known_line).toBe('3.0.3–3.7.5')
+    expect(result.summary).toContain('Installed MotionWorks IEC v3 version')
+  })
+
+  it('says no installation was detected and names the probe locations', async () => {
+    const runtime = fakeRuntime({
+      async status() { throw new MwiError('IDE_NOT_RUNNING', 'No IDE.', 'Start it.') },
+    })
+    const result = await call(runtime, 'mw_ide_status', {}, process.cwd(), mwiProbeStub())
+    expect(result.data?.ide_running).toBe(false)
+    expect(result.data?.code).toBe('NOT_INSTALLED')
+    const installation = result.data?.installation as { looked_for?: readonly { where: string; found: boolean }[] }
+    expect(installation.looked_for?.length).toBeGreaterThan(0)
+    expect(result.summary).toContain('No MotionWorks IEC 3 Pro installation was detected')
   })
 
   it('reports the open project and any blocking dialog', async () => {

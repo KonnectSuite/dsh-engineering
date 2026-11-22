@@ -41,6 +41,11 @@ A change is not finished until the documentation it invalidates is updated in th
 | `NOTICE.md` | Third-party notices: the embedded acadrust/ACadSharp, the Optix bridge, the upstream snapshots and every dependency licence |
 | `docs/development/packaging.md` | Build order, the vendor step, what the tarball ships and the packaging gate |
 | `docs/development/retirement.md` | How a component leaves: rows, packages, entries, tests and documents together |
+| `docs/development/handbook.md` | The handbook source model (Markdown in `docs/handbook/src/`), the DOCX/HTML/PDF formats, the `--check` and how to add a page |
+| `docs/development/scaffold.md` | The copyable component skeleton in `packages/_scaffold/` and why it is never mounted |
+| `docs/reference/knowledge.md` | The docs-tool contract: one source many compiled copies, the five actions, envelopes, BM25 constants, revision rules and licensing posture |
+| `docs/decisions/knowledge-plane.md` · `docs/decisions/verification-evidence.md` | Why the knowledge library is a source library with synced copies; the three-state gate evidence rule (`pass`/`fail`/`not-runnable`) and its substitute-evidence table |
+| `packages/_scaffold/**` | A compilable component skeleton; not a component, not in the patch, never assembled |
 | `docs/port/*.md` | Port decisions and measurements, kept as design history (`packaging-record.md` is the pre-registry packing record; `optix-template-library-handoff.md` is the Optix lane handoff) |
 | `HANDOFF.md` | The current state: version, commit, tarball digest, what was verified and how, known gaps, how to pick the work up |
 | `CONTRIBUTING.md` Â· `SECURITY.md` | How to contribute and how to report a vulnerability privately |

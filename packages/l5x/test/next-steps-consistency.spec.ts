@@ -15,19 +15,19 @@ describe('next-step suggestions', () => {
   it('name only tools that are registered', async () => {
     const l5x = harness(undefined, { editing: true })
     const registered = new Set(l5x.definitions.map(definition => definition.name))
-    const opened = await l5x.call('open_project', { path: 'sample.l5x' })
+    const opened = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
     expect(opened.error).toBeUndefined()
 
     const envelopes = [
       opened,
-      await l5x.call('project_overview'),
-      await l5x.call('run_checks', { limit: 1 }),
-      await l5x.call('list_components', { kind: 'program' }),
-      await l5x.call('find_references', { symbol: 'SystemRunning' }),
-      await l5x.call('get_component', { kind: 'program', name: 'MainProgram' }),
-      await l5x.call('document_project', { output_root: 'docs-next' }),
-      await l5x.call('trace_dependencies', { symbol: 'SystemRunning' }),
-      await l5x.call('usage_map', { tag: 'SystemRunning' }),
+      await l5x.call('l5x_project_overview'),
+      await l5x.call('l5x_run_checks', { limit: 1 }),
+      await l5x.call('l5x_list_components', { kind: 'program' }),
+      await l5x.call('l5x_find_references', { symbol: 'SystemRunning' }),
+      await l5x.call('l5x_get_component', { kind: 'program', name: 'MainProgram' }),
+      await l5x.call('l5x_document_project', { output_root: 'docs-next' }),
+      await l5x.call('l5x_trace_dependencies', { symbol: 'SystemRunning' }),
+      await l5x.call('l5x_usage_map', { tag: 'SystemRunning' }),
     ]
 
     const phantom = new Set<string>()

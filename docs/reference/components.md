@@ -136,7 +136,7 @@ component that ships off still appears in both without moving a ceiling.
    (`ftview_capabilities`, `mw_ide_status`, `optix_status`); it answers "can this work here?" and
    the tool results stay honest when it cannot. A product that works on plain files declares none:
    naming one invites the caller to treat an optional extra as a prerequisite, which is why the
-   L5X row dropped its `studio_sdk_status` probe.
+   L5X row dropped its `l5x_studio_sdk_status` probe.
 6. **Name the evidence gate** — the tool whose verdict proves a change, using only what the
    product's default surface already has. A gate that needs an optional license is not a gate. A
    component whose change cannot be proven is `read-only`, and the README says so.

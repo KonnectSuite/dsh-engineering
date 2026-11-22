@@ -25,7 +25,7 @@ export interface VerifiedBuild {
   readonly review: Pick<DownloadReview, 'baseline_sha256' | 'source_sha256'>
 }
 
-/** One L5X produced by `export_acd_to_l5x`, with the hashes that bind it. */
+/** One L5X produced by `l5x_export_acd_to_l5x`, with the hashes that bind it. */
 export interface AcdExportRecord {
   /** Resolved ACD that was exported. */
   readonly acdPath: string

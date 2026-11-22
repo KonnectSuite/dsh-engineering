@@ -56,7 +56,7 @@ Ask what is in the corpus before asking a question of it, so the domain names ar
 | 2. Find a rule | `engineering_reference {query}` | ranked pages; exact id, rule ID or title first, then tags, then substring matches, then a body scan for every query token |
 | 3. Read one | `engineering_reference {id: "view-hpm-01"}` | the page body, its rules, its basis and the corpus digest |
 | 4. Read this project | `engineering_profile {project_id}` or `{view_id}` | naming, idioms, HMI conventions, comment density, evidence counts, confidence, source and a `profile_id` |
-| 5. Use it | the product's own tool | author with the profile's names and palette, then verify with `draft_validate`, `ftview_validate`, `mw_compile`, the Optix read-back or `run_checks` |
+| 5. Use it | the product's own tool | author with the profile's names and palette, then verify with `l5x_draft_validate`, `ftview_validate`, `mw_compile`, the Optix read-back or `l5x_run_checks` |
 
 Ranking is deterministic and local: the same query returns the same order on every machine, because there
 is no model call in the path.
@@ -156,9 +156,9 @@ starts in the plant's own style instead of the tool's defaults.
 
 ## Limits
 
-- Profile extraction exists for Studio 5000 L5X and FactoryTalk View ME only. MotionWorks IEC, FactoryTalk
-  Optix and ECAD have no house-style profile in this release; for those, use the corpus and the product's
-  design checks.
+- Profile extraction exists for Studio 5000 L5X and FactoryTalk View ME only. MotionWorks IEC and
+  FactoryTalk Optix have no house-style profile in this release; for those, use the corpus and the
+  product's design checks.
 - The corpus is this repository's writing, not a copy of any standard. Where a rule depends on a standard's
   clause number, the page names the standard and the basis; it does not quote it.
 - `engineering_reference` returns pages, not answers. Composing the answer from the pages is the session's

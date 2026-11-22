@@ -566,7 +566,7 @@ export function buildMigrationReport(input: ReportInput): ReportResult {
         'Runtime behaviour: no scan was run, no value was compared against the legacy program in motion.',
         'I/O wiring: a tag, a placeholder and a module are described, not energised.',
         'HMI: panel and alarm configuration are outside this row.',
-        "A build verdict: `verify_offline_l5x` gives the vendor's word, and only for a revision it supports.",
+        "A build verdict: `l5x_verify_offline_l5x` gives the vendor's word, and only for a revision it supports.",
       ],
     }],
   })

@@ -7,8 +7,10 @@
       Ade.Application.550  ->  LocalServer32 = <install>\Mwt.exe
   It can ONLY be instantiated from a 32-bit client, and on this machine the
   DSH agent sandbox blocks that activation (CO_E_SERVER_EXEC_FAILURE 0x80080005).
-  Launched from outside the sandbox, the same call succeeds and reports
-  Version 1.19 with a clean IsProjectOpen.
+  Launched from outside the sandbox, the same call succeeded in the recorded
+  session and reported Version 1.19 with a clean IsProjectOpen. That number is
+  the Ade/math-library version the IDE reports, not the MotionWorks IEC product
+  release (the product's v3 line is 3.0.3-3.7.5).
 
   So the agent does not click the IDE at all: it asks this bridge, which talks to
   the IDE through the IDE's own automation API. No synthetic input is involved,

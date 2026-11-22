@@ -19,8 +19,6 @@
 import { createElement, useState, type ReactNode } from 'react'
 import { ECAD_CONTRACT_VERSION, buildClientContribution } from '../../../../src/remote/ecad-contract.js'
 import { EcadBody, type EcadBodyProps, type EcadBodyInjected, type Translate } from './EcadBody.tsx'
-import { EcadToolCardView } from './EcadCards.tsx'
-import { ECAD_TOOL_NAMES } from './toolCards.ts'
 import {
   EcadArtifactError,
   readPreviewArtifact,
@@ -340,17 +338,5 @@ export function apply(ctx: ClientContext): void {
     locale: NS,
     inject: () => injected,
   }, EcadBody)), 'ecad-preview: document body')
-
-  // -- conversation intelligence -----------------------------------------------
-  // One transcript card per ECAD wire tool name. The keyed dispatch hands the
-  // card the tool's own result text, which the card parses; a card that cannot
-  // read its payload prints the plain summary instead of failing the row. The
-  // tool UI owns this slot and is loaded by the shell's own web composition, so
-  // a composition without it simply never declares the slot and no card mounts.
-  ctx.effect(() => ctx.slots.inject('tool.call.toolview', () => ECAD_TOOL_NAMES.map(name =>
-    ctx.slots.register(
-      { name: 'tool.call.toolview', key: name, locale: NS },
-      EcadToolCardView,
-    ))), 'ecad-preview: tool cards')
 
 }

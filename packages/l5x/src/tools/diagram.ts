@@ -175,15 +175,15 @@ export function diagramTools(session: ProjectSession): readonly ToolDefinition[]
           // Three different conditions answered one NOT_FOUND: a missing program, a missing routine,
           // and a program that exists but has no ladder. A reader needs the one that is true.
           if (program !== undefined && !project.document.programs.some(entry => entry.name === program)) {
-            throw new L5xError('NOT_FOUND', `No program named ${program}.`, 'Call list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
+            throw new L5xError('NOT_FOUND', `No program named ${program}.`, 'Call l5x_list_components kind="program" for the declared programs.', project.document.programs.map(entry => entry.name))
           }
           if (routineName !== undefined && !allRoutines.some(info => info.name === routineName && (program === undefined || info.program === program))) {
-            throw new L5xError('NOT_FOUND', `No routine named ${routineName}${program === undefined ? '' : ` in program ${program}`}.`, 'Call list_components kind="routine" for the declared routines and their languages.', candidates)
+            throw new L5xError('NOT_FOUND', `No routine named ${routineName}${program === undefined ? '' : ` in program ${program}`}.`, 'Call l5x_list_components kind="routine" for the declared routines and their languages.', candidates)
           }
           throw new L5xError(
             'NO_LADDER_ROUTINES',
             program === undefined ? 'The project has no ladder routines to draw.' : `Program ${program} exists but has no ladder routines.`,
-            'Pass a program or routine that owns RLL content; list_components shows each routine language.',
+            'Pass a program or routine that owns RLL content; l5x_list_components shows each routine language.',
             candidates,
           )
         }

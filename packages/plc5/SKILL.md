@@ -33,10 +33,24 @@ A PLC-5 project is a legacy artifact: the machine it describes is usually runnin
 - `plc5_data_read` — the data-file table: number, type, name, element count. Data-file values are not stored readably and are never claimed.
 - `plc5_processor` — the controller: type string, author, memory words, type code, series, driver, RSWho route with IP, online/faulted flags — each labelled with its source.
 
+## The .PC5 text readers
+
+A project can be exported as neutral text; `.PC5` here is that line-oriented text export, never the binary `.RSP` container. Seven readers work on it offline:
+
+- `plc5_pc5` — the structure report: header, program files, data files, every issue with its line and fix.
+- `plc5_verify` — one verdict (`ok`, `warnings`, `errors`) over header/schema, the closing `END`, duplicate declarations, rung numbering, data-file references, unknown mnemonics, `?` operands and empty files.
+- `plc5_instruction_inventory` — mnemonic census with a per-file distribution; an unknown mnemonic is listed, not guessed.
+- `plc5_rung_digest` — per-file rung and instruction counts, branches, first/last rung, numbered gaps, duplicates.
+- `plc5_indirect_census` — every operand that is not a plain address: `N7:[N10:0]`, `#N7:0`, `?`.
+- `plc5_diff` — two exports compared: header, program and data files, rungs added, removed and changed.
+- `plc5_docs` — the authored corpus: instruction set, rung/address grammar, I/O configuration, the `.PC5` export grammar and its pitfalls, error codes.
+
+A binary project renamed `.pc5` fails with `SOURCE_NOT_INSTALLED` because no text export exists. A `.RSP`, `.L5X`, `.RSS` or `.ACH` path fails with `UNSUPPORTED_FORMAT`. Truncated or malformed text is refused or reported by line, never half-read.
+
 ## The shape of a good answer
 
 An inventory answer names: the processor as the project records it (type string, not a catalog), the program census (files/rungs/data files), the chassis table with adapter parts, the footprint split (configured vs program-only racks), and the explicit gap — "the point cards are not in the project; an online read, the panel drawings, or the nameplates carry them." A BOM built without that sentence is a defect, not a report.
 
 ## Failure codes to expect
 
-`PLC5_COM_UNAVAILABLE` (RSLogix 5 not installed/activated), `PLC5_POWERSHELL_MISSING` (no SysWOW64 host), `PLC5_OPEN_FAILED` (locked/corrupt file or a dialog waiting), `PLC5_NO_PROJECT` (not an .RSP this installation can open), `PLC5_TIMEOUT` (a hidden dialog is usually waiting — close stray RSLogix windows and retry), `NOT_AN_RSP` (an .RSS/.ACH belongs to RSLogix 500, not this row).
+`PLC5_COM_UNAVAILABLE` (RSLogix 5 not installed/activated), `PLC5_POWERSHELL_MISSING` (no SysWOW64 host), `PLC5_OPEN_FAILED` (locked/corrupt file or a dialog waiting), `PLC5_NO_PROJECT` (not an .RSP this installation can open), `PLC5_TIMEOUT` (a hidden dialog is usually waiting — close stray RSLogix windows and retry), `NOT_AN_RSP` (an .RSS/.ACH belongs to RSLogix 500, not this row). The text readers add `UNSUPPORTED_FORMAT`, `SOURCE_NOT_INSTALLED`, `PARSE_ERROR`, `TRUNCATED_EXPORT`, `EMPTY_EXPORT`, `FILE_MISSING`, `NOT_A_FILE`, `ACCESS_DENIED` and `INVALID_ARGUMENT`; each answer carries the fix, not only the code.

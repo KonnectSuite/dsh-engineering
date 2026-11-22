@@ -5,15 +5,15 @@ import { fixtureBytes, harness } from './harness.ts'
 /** Open the fixture and return the harness. */
 async function opened() {
   const l5x = harness()
-  const open = await l5x.call('open_project', { path: 'sample.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
   expect(open.error).toBeUndefined()
   return l5x
 }
 
-describe('run_checks', () => {
+describe('l5x_run_checks', () => {
   it('returns findings with counts and a review caveat', async () => {
     const l5x = await opened()
-    const checks = await l5x.call('run_checks', {})
+    const checks = await l5x.call('l5x_run_checks', {})
     expect(checks.error).toBeUndefined()
     expect(Number(checks.data?.total)).toBeGreaterThan(0)
     expect(checks.data?.by_severity).toBeTypeOf('object')
@@ -23,24 +23,24 @@ describe('run_checks', () => {
 
   it('filters by the rule the caller learned from the unfiltered answer', async () => {
     const l5x = await opened()
-    const all = await l5x.call('run_checks', {})
+    const all = await l5x.call('l5x_run_checks', {})
     const findings = all.data?.findings as { rule: string }[]
     const rule = findings[0]?.rule
     expect(rule).toBeTypeOf('string')
-    const filtered = await l5x.call('run_checks', { rule })
+    const filtered = await l5x.call('l5x_run_checks', { rule })
     const rows = filtered.data?.findings as { rule: string }[]
     expect(rows.every(row => row.rule === rule)).toBe(true)
   })
 
   it('refuses a misspelled rule instead of reporting a clean project', async () => {
     const l5x = await opened()
-    const unknown = await l5x.call('run_checks', { rule: 'UNUSED_TAGS' })
+    const unknown = await l5x.call('l5x_run_checks', { rule: 'UNUSED_TAGS' })
     expect(unknown.error?.code).toBe('INVALID_ARGUMENT')
     expect(unknown.error?.message).toContain('Unknown rule "UNUSED_TAGS"')
     expect(unknown.error?.candidates).toEqual(expect.arrayContaining(['UNUSED_TAG']))
     // The rule name is matched without case; the summary states the canonical spelling.
-    const upper = await l5x.call('run_checks', { rule: 'UNUSED_TAG' })
-    const lower = await l5x.call('run_checks', { rule: 'unused_tag' })
+    const upper = await l5x.call('l5x_run_checks', { rule: 'UNUSED_TAG' })
+    const lower = await l5x.call('l5x_run_checks', { rule: 'unused_tag' })
     expect(lower.error).toBeUndefined()
     expect(lower.data?.total).toBe(upper.data?.total)
     expect(lower.summary).toContain('rule UNUSED_TAG')
@@ -48,7 +48,7 @@ describe('run_checks', () => {
 
   it('filters by severity', async () => {
     const l5x = await opened()
-    const filtered = await l5x.call('run_checks', { severity: 'warning' })
+    const filtered = await l5x.call('l5x_run_checks', { severity: 'warning' })
     const rows = filtered.data?.findings as { severity: string }[]
     expect(rows.every(row => row.severity === 'warning')).toBe(true)
   })
@@ -57,8 +57,8 @@ describe('run_checks', () => {
     const text = Buffer.from(fixtureBytes()).toString('utf8')
       .replace('XIC(Start) ,XIC(RunLatch)', 'XIC(S:FS) XIC(NotDeclared) ,XIC(RunLatch)')
     const l5x = harness(new Map([['sample.l5x', new TextEncoder().encode(text)]]))
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const checks = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const checks = await l5x.call('l5x_run_checks', { rule: 'UNRESOLVED_REFERENCE' })
     const messages = (checks.data?.findings as { message: string }[]).map(row => row.message).join('\n')
     expect(messages).not.toContain('S:FS')
     expect(messages).toContain('NotDeclared')
@@ -70,8 +70,8 @@ describe('run_checks', () => {
       '<Tag Name="Local:1:C" TagType="Base" DataType="DINT" Radix="Decimal" Constant="false" ExternalAccess="Read/Write" Description="Module I/O counter" />\n            <Tag Name="SystemClock"',
     )
     const l5x = harness(new Map([['sample.l5x', new TextEncoder().encode(text)]]))
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const checks = await l5x.call('run_checks', { rule: 'UNUSED_TAG' })
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const checks = await l5x.call('l5x_run_checks', { rule: 'UNUSED_TAG' })
     const messages = (checks.data?.findings as { message: string }[]).map(row => row.message).join('\n')
     expect(messages).not.toContain('Local:1:C')
   })
@@ -82,9 +82,9 @@ describe('run_checks', () => {
       ['after.l5x', fixtureBytes()],
     ])
     const l5x = harness(files)
-    const before = await l5x.call('open_project', { path: 'before.l5x' })
-    const after = await l5x.call('open_project', { path: 'after.l5x' })
-    const checks = await l5x.call('run_checks', {
+    const before = await l5x.call('l5x_open_project', { path: 'before.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'after.l5x' })
+    const checks = await l5x.call('l5x_run_checks', {
       project_id: after.data?.project_id,
       baseline_id: before.data?.project_id,
     })
@@ -93,16 +93,16 @@ describe('run_checks', () => {
   })
 })
 
-describe('compare_projects', () => {
+describe('l5x_compare_projects', () => {
   it('reports no changes between two opens of the same bytes', async () => {
     const files = new Map<string, Uint8Array>([
       ['before.l5x', fixtureBytes()],
       ['after.l5x', fixtureBytes()],
     ])
     const l5x = harness(files)
-    const before = await l5x.call('open_project', { path: 'before.l5x' })
-    const after = await l5x.call('open_project', { path: 'after.l5x' })
-    const diff = await l5x.call('compare_projects', {
+    const before = await l5x.call('l5x_open_project', { path: 'before.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'after.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', {
       before_id: before.data?.project_id,
       after_id: after.data?.project_id,
     })
@@ -119,9 +119,9 @@ describe('compare_projects', () => {
       ['after.l5x', new TextEncoder().encode(edited)],
     ])
     const l5x = harness(files)
-    const before = await l5x.call('open_project', { path: 'before.l5x' })
-    const after = await l5x.call('open_project', { path: 'after.l5x' })
-    const diff = await l5x.call('compare_projects', {
+    const before = await l5x.call('l5x_open_project', { path: 'before.l5x' })
+    const after = await l5x.call('l5x_open_project', { path: 'after.l5x' })
+    const diff = await l5x.call('l5x_compare_projects', {
       before_id: before.data?.project_id,
       after_id: after.data?.project_id,
     })
@@ -134,7 +134,7 @@ describe('compare_projects', () => {
 
   it('refuses an unknown handle', async () => {
     const l5x = await opened()
-    const diff = await l5x.call('compare_projects', { before_id: 'nope', after_id: 'nope' })
+    const diff = await l5x.call('l5x_compare_projects', { before_id: 'nope', after_id: 'nope' })
     expect(diff.error?.code).toBe('UNKNOWN_PROJECT')
   })
 })
@@ -166,9 +166,9 @@ const STANDARD_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 /** The rules reported for one document. */
 async function rules(xml: string): Promise<readonly string[]> {
   const l5x = harness(new Map([['std.l5x', new TextEncoder().encode(xml)]]))
-  const open = await l5x.call('open_project', { path: 'std.l5x' })
+  const open = await l5x.call('l5x_open_project', { path: 'std.l5x' })
   expect(open.error).toBeUndefined()
-  const checks = await l5x.call('run_checks', {})
+  const checks = await l5x.call('l5x_run_checks', {})
   const findings = (checks.data?.findings ?? []) as readonly { rule: string }[]
   return findings.map(finding => finding.rule)
 }
@@ -189,15 +189,15 @@ describe('standards rules', () => {
 
   it('names the craft basis so the reference can be cited', async () => {
     const l5x = harness(new Map([['std.l5x', new TextEncoder().encode(STANDARD_L5X)]]))
-    await l5x.call('open_project', { path: 'std.l5x' })
-    const checks = await l5x.call('run_checks', { rule: 'DUPLICATE_OUTPUT' })
+    await l5x.call('l5x_open_project', { path: 'std.l5x' })
+    const checks = await l5x.call('l5x_run_checks', { rule: 'DUPLICATE_OUTPUT' })
     const findings = (checks.data?.findings ?? []) as readonly { evidence: { basis?: string } }[]
     expect(findings[0]?.evidence.basis).toBeTypeOf('string')
   })
 })
 
 
-describe('a run_checks baseline', () => {
+describe('a l5x_run_checks baseline', () => {
   /** Two exports that differ in one module catalog number. */
   function pair() {
     const before = new TextDecoder().decode(fixtureBytes())
@@ -211,9 +211,9 @@ describe('a run_checks baseline', () => {
 
   it('names the module field that changed, not just that it changed', async () => {
     const l5x = pair()
-    const one = await l5x.call('open_project', { path: 'before.l5x' })
-    const two = await l5x.call('open_project', { path: 'after.l5x' })
-    const result = await l5x.call('run_checks', {
+    const one = await l5x.call('l5x_open_project', { path: 'before.l5x' })
+    const two = await l5x.call('l5x_open_project', { path: 'after.l5x' })
+    const result = await l5x.call('l5x_run_checks', {
       project_id: two.data?.project_id,
       baseline_id: one.data?.project_id,
       rule: 'IO_MODULE_CHANGED',
@@ -227,8 +227,8 @@ describe('a run_checks baseline', () => {
 
   it('reports no I/O change when the two exports match', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    const one = await l5x.call('open_project', { path: 'sample.l5x' })
-    const result = await l5x.call('run_checks', { baseline_id: one.data?.project_id, rule: 'IO_MODULE_CHANGED' })
+    const one = await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('l5x_run_checks', { baseline_id: one.data?.project_id, rule: 'IO_MODULE_CHANGED' })
     expect((result.data?.findings as unknown[]).length).toBe(0)
   })
 })
@@ -240,8 +240,8 @@ const SITES_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Cont
 describe('findings name the places they found', () => {
   it('names the tasks a program is scheduled in', async () => {
     const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
-    await l5x.call('open_project', { path: 'sites.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_SCHEDULES' })
+    await l5x.call('l5x_open_project', { path: 'sites.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MULTIPLE_SCHEDULES' })
     const rows = result.data?.findings as { message: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('Fast')
@@ -250,12 +250,12 @@ describe('findings name the places they found', () => {
 
   it('names the rungs an output is driven from, and keeps the tag casing', async () => {
     const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
-    await l5x.call('open_project', { path: 'sites.l5x' })
-    const duplicate = await l5x.call('run_checks', { rule: 'DUPLICATE_OUTPUT' })
+    await l5x.call('l5x_open_project', { path: 'sites.l5x' })
+    const duplicate = await l5x.call('l5x_run_checks', { rule: 'DUPLICATE_OUTPUT' })
     const outputRows = duplicate.data?.findings as { message: string }[]
     expect(outputRows[0]?.message).toContain('0, 1')
 
-    const latch = await l5x.call('run_checks', { rule: 'LATCH_WITHOUT_RESET' })
+    const latch = await l5x.call('l5x_run_checks', { rule: 'LATCH_WITHOUT_RESET' })
     const latchRows = latch.data?.findings as { message: string }[]
     expect(latchRows[0]?.message).toContain('Latch')
     expect(latchRows[0]?.message).toContain('rung 2')
@@ -263,8 +263,8 @@ describe('findings name the places they found', () => {
 
   it('names the sites an output-like symbol is written from', async () => {
     const l5x = harness(new Map([['sites.l5x', new TextEncoder().encode(SITES_L5X)]]))
-    await l5x.call('open_project', { path: 'sites.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    await l5x.call('l5x_open_project', { path: 'sites.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
     const rows = result.data?.findings as { message: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('2 sites')
@@ -279,8 +279,8 @@ const UNCATALOGUED_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5
 describe('logic the catalogue could not check', () => {
   it('names the instruction it could not arity-check, and says why that is not an error', async () => {
     const l5x = harness(new Map([['coverage.l5x', new TextEncoder().encode(UNCATALOGUED_L5X)]]))
-    await l5x.call('open_project', { path: 'coverage.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    await l5x.call('l5x_open_project', { path: 'coverage.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
     const rows = result.data?.findings as { message: string; severity: string; evidence: { catalogue_size?: number; note?: string } }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.severity).toBe('info')
@@ -292,8 +292,8 @@ describe('logic the catalogue could not check', () => {
   it('stays quiet for catalogued instructions and for a declared AOI call', async () => {
     // The fixture calls Motor_Control, which is an AOI it declares, so it must not be flagged.
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
     expect(result.data?.findings).toEqual([])
   })
 })
@@ -302,13 +302,13 @@ describe('logic the catalogue could not check', () => {
 describe('a staged rung the catalogue cannot check', () => {
   it('says so when the draft is validated', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]), { editing: true })
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const staged = await l5x.call('draft_rung', {
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const staged = await l5x.call('l5x_draft_rung', {
       program: 'MainProgram', routine: 'MainRoutine', rung: 0, mode: 'replace',
       text: 'XIC(StartPB)FROB(FaultCount,5);',
     })
     expect(staged.error).toBeUndefined()
-    const validated = await l5x.call('draft_validate', { draft_id: staged.data?.draft_id })
+    const validated = await l5x.call('l5x_draft_validate', { draft_id: staged.data?.draft_id })
     expect(validated.error).toBeUndefined()
     const checks = validated.data?.checks as { new_findings?: { rule: string }[] } | undefined
     const rules = (checks?.new_findings ?? []).map(finding => finding.rule)
@@ -323,8 +323,8 @@ const TRANSFER_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000C
 describe('control transfer', () => {
   it('reports a jump to a routine its own program does not declare, and says where that name lives', async () => {
     const l5x = harness(new Map([['transfer.l5x', new TextEncoder().encode(TRANSFER_L5X)]]))
-    await l5x.call('open_project', { path: 'transfer.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'UNRESOLVED_ROUTINE' })
+    await l5x.call('l5x_open_project', { path: 'transfer.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'UNRESOLVED_ROUTINE' })
     const rows = result.data?.findings as { message: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('Ghost')
@@ -335,8 +335,8 @@ describe('control transfer', () => {
 
   it('reports a jump to a label no LBL in the routine uses', async () => {
     const l5x = harness(new Map([['transfer.l5x', new TextEncoder().encode(TRANSFER_L5X)]]))
-    await l5x.call('open_project', { path: 'transfer.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'LABEL_NOT_FOUND' })
+    await l5x.call('l5x_open_project', { path: 'transfer.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'LABEL_NOT_FOUND' })
     const rows = result.data?.findings as { message: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('Nowhere')
@@ -352,8 +352,8 @@ const BINDING_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Co
 describe('named bindings that point at nothing', () => {
   async function findingsFor(rule: string) {
     const l5x = harness(new Map([['binding.l5x', new TextEncoder().encode(BINDING_L5X)]]))
-    await l5x.call('open_project', { path: 'binding.l5x' })
-    const result = await l5x.call('run_checks', { rule })
+    await l5x.call('l5x_open_project', { path: 'binding.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule })
     return (result.data?.findings ?? []) as { message: string }[]
   }
 
@@ -379,8 +379,8 @@ describe('named bindings that point at nothing', () => {
 
   it('stays quiet on a project whose bindings all resolve', async () => {
     const l5x = harness(new Map([['sample.l5x', fixtureBytes()]]))
-    await l5x.call('open_project', { path: 'sample.l5x' })
-    const result = await l5x.call('run_checks', {})
+    await l5x.call('l5x_open_project', { path: 'sample.l5x' })
+    const result = await l5x.call('l5x_run_checks', {})
     const noisy = ((result.data?.findings ?? []) as { rule: string }[]).filter(finding => ['MAIN_ROUTINE_MISSING', 'DUPLICATE_ROUTINE_NAME', 'SCHEDULED_PROGRAM_MISSING'].includes(finding.rule))
     expect(noisy).toEqual([])
   })
@@ -393,8 +393,8 @@ const NOISE_L5X = ["<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5000Cont
 describe('the noise a real project produced', () => {
   async function findings(rule: string) {
     const l5x = harness(new Map([['noise.l5x', new TextEncoder().encode(NOISE_L5X)]]))
-    await l5x.call('open_project', { path: 'noise.l5x' })
-    const result = await l5x.call('run_checks', { rule, limit: 50 })
+    await l5x.call('l5x_open_project', { path: 'noise.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule, limit: 50 })
     return (result.data?.findings ?? []) as { message: string }[]
   }
 
@@ -438,10 +438,10 @@ describe('a serial-port instruction on a processor without one', () => {
   </Controller>
 </RSLogix5000Content>`
 
-  it('reports the instruction through run_checks on a 5069', async () => {
+  it('reports the instruction through l5x_run_checks on a 5069', async () => {
     const l5x = harness(new Map([['serial.l5x', new TextEncoder().encode(project('5069-L320ERMS2'))]]))
-    expect((await l5x.call('open_project', { path: 'serial.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
+    expect((await l5x.call('l5x_open_project', { path: 'serial.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
     expect(result.error).toBeUndefined()
     const findings = result.data?.findings as { rule: string; message: string }[]
     expect(findings.length).toBe(1)
@@ -450,8 +450,8 @@ describe('a serial-port instruction on a processor without one', () => {
 
   it('reports nothing on a 1756-L73', async () => {
     const l5x = harness(new Map([['serial.l5x', new TextEncoder().encode(project('1756-L73'))]]))
-    expect((await l5x.call('open_project', { path: 'serial.l5x' })).error).toBeUndefined()
-    const result = await l5x.call('run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
+    expect((await l5x.call('l5x_open_project', { path: 'serial.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_run_checks', { rule: 'SERIAL_PORT_INSTRUCTION_UNSUPPORTED' })
     expect(result.error).toBeUndefined()
     expect((result.data?.findings as unknown[]).length).toBe(0)
   })
@@ -479,8 +479,8 @@ const JSR_MISSING_L5X = `<?xml version="1.0" encoding="UTF-8"?>
 describe('a JSR naming a routine the program does not declare', () => {
   it('reports only the missing target', async () => {
     const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
-    await l5x.call('open_project', { path: 'calls.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'JSR_ROUTINE_MISSING' })
+    await l5x.call('l5x_open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'JSR_ROUTINE_MISSING' })
     const rows = (result.data?.findings ?? []) as { message: string; severity: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('Nope')
@@ -492,8 +492,8 @@ describe('a JSR naming a routine the program does not declare', () => {
     // The same project carries an unused tag, which is informational. The page must lead with the
     // call that cannot build.
     const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
-    await l5x.call('open_project', { path: 'calls.l5x' })
-    const result = await l5x.call('run_checks', { limit: 5 })
+    await l5x.call('l5x_open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('l5x_run_checks', { limit: 5 })
     const rows = (result.data?.findings ?? []) as { rule: string; severity: string }[]
     expect(rows.length).toBeGreaterThan(0)
     expect(rows[0]?.severity).toBe('critical')
@@ -502,8 +502,8 @@ describe('a JSR naming a routine the program does not declare', () => {
 
   it('reports the severity split in the summary', async () => {
     const l5x = harness(new Map([['calls.l5x', new TextEncoder().encode(JSR_MISSING_L5X)]]))
-    await l5x.call('open_project', { path: 'calls.l5x' })
-    const result = await l5x.call('run_checks', { limit: 1 })
+    await l5x.call('l5x_open_project', { path: 'calls.l5x' })
+    const result = await l5x.call('l5x_run_checks', { limit: 1 })
     expect(result.summary).toContain('critical')
     expect(result.summary).toContain('warning')
     expect(result.summary).toContain('info')
@@ -533,8 +533,8 @@ describe('a string literal in a rung', () => {
   it('is not reported as an unresolved tag', async () => {
     // A real project produced eight unresolved references, one per letter moved out of a literal.
     const l5x = harness(new Map([['literals.l5x', new TextEncoder().encode(STRING_LITERAL_L5X)]]))
-    await l5x.call('open_project', { path: 'literals.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'UNRESOLVED_REFERENCE' })
+    await l5x.call('l5x_open_project', { path: 'literals.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'UNRESOLVED_REFERENCE' })
     const rows = (result.data?.findings ?? []) as { message: string }[]
     expect(rows).toEqual([])
   })
@@ -550,15 +550,15 @@ const TWO_WRITERS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix500
 describe('an output written more than once', () => {
   it('stays quiet for the AOI preset routines', async () => {
     const l5x = harness(new Map([['preset.l5x', new TextEncoder().encode(AOI_PRESET_L5X)]]))
-    await l5x.call('open_project', { path: 'preset.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    await l5x.call('l5x_open_project', { path: 'preset.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
     expect(result.data?.findings).toEqual([])
   })
 
   it('still reports two ordinary routines', async () => {
     const l5x = harness(new Map([['two.l5x', new TextEncoder().encode(TWO_WRITERS_L5X)]]))
-    await l5x.call('open_project', { path: 'two.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    await l5x.call('l5x_open_project', { path: 'two.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
     const rows = (result.data?.findings ?? []) as { message: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.message).toContain('Valve_Output')
@@ -572,8 +572,8 @@ const PROTECTED_AOI_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix5
 describe('a source-protected AOI', () => {
   it('counts as a declared instruction, not an uncatalogued one', async () => {
     const l5x = harness(new Map([['protected.l5x', new TextEncoder().encode(PROTECTED_AOI_L5X)]]))
-    await l5x.call('open_project', { path: 'protected.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
+    await l5x.call('l5x_open_project', { path: 'protected.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'UNCATALOGUED_INSTRUCTION' })
     expect(result.data?.findings).toEqual([])
   })
 })
@@ -585,8 +585,8 @@ const AOI_WRITERS_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogix500
 describe('an output parameter written inside an AOI', () => {
   it('is not a multiple-writer finding', async () => {
     const l5x = harness(new Map([['aoi.l5x', new TextEncoder().encode(AOI_WRITERS_L5X)]]))
-    await l5x.call('open_project', { path: 'aoi.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
+    await l5x.call('l5x_open_project', { path: 'aoi.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MULTIPLE_OUTPUT_WRITES' })
     expect(result.data?.findings).toEqual([])
   })
 })
@@ -600,8 +600,8 @@ describe('a partial export', () => {
     // Seco_Cooler.L5X lists 11 programs and zero routine bodies; reporting MAIN_ROUTINE_MISSING for
     // each one blamed the project for what the export never carried.
     const l5x = harness(new Map([['partial.l5x', new TextEncoder().encode(PARTIAL_L5X)]]))
-    await l5x.call('open_project', { path: 'partial.l5x' })
-    const result = await l5x.call('run_checks', { rule: 'MAIN_ROUTINE_MISSING' })
+    await l5x.call('l5x_open_project', { path: 'partial.l5x' })
+    const result = await l5x.call('l5x_run_checks', { rule: 'MAIN_ROUTINE_MISSING' })
     expect(result.data?.findings).toEqual([])
   })
 })
@@ -613,17 +613,17 @@ const PROTECTED_LOGIC_L5X = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<RSLogi
 describe('an export with encrypted routine bodies', () => {
   it('says how many are protected instead of implying the project has no logic', async () => {
     const l5x = harness(new Map([['p.l5x', new TextEncoder().encode(PROTECTED_LOGIC_L5X)]]))
-    const opened = await l5x.call('open_project', { path: 'p.l5x' })
+    const opened = await l5x.call('l5x_open_project', { path: 'p.l5x' })
     expect(String(opened.summary)).toContain('2 source-protected')
     expect((opened.data?.counts as { protected_routines?: number })?.protected_routines).toBe(2)
   })
 })
 
-describe('the run_checks description', () => {
+describe('the l5x_run_checks description', () => {
   it('states the rule count the tool actually has, twice', () => {
     // The count used to be hand-written prose: it said 41 while the tool carried 42, and no test could see it
     // because generated documentation copies the description verbatim. It is now derived, and pinned here.
-    const definition = harness().definitions.find(entry => entry.name === 'run_checks')
+    const definition = harness().definitions.find(entry => entry.name === 'l5x_run_checks')
     const description = definition?.description ?? ''
     expect(description).toContain(`${FINDING_RULES.length} rules`)
     expect(description).toContain(`one of the ${FINDING_RULES.length}`)

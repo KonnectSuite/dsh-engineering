@@ -9,16 +9,16 @@ seven on the live group. The calls themselves are documented in
 
 | Lane | Tools | Needs | Does |
 |---|---|---|---|
-| Direct CIP | `poll_live_tags`, `read_live_tags`, `write_live_tag`, `start_plc_trend`, `discover_controllers`, `read_controller_clock`, `write_controller_clock` | IPv4 address and slot; no Studio, no Linx, no SDK | read and write declared scalar tags and members, sample a trend, name controllers on the LAN, read or set an L8x clock |
-| Studio SDK | `studio_sdk_status`, `capture_controller_snapshot`, `go_online`, `read_controller_mode`, `change_controller_mode`, `download_project`, `controller_approval_status` | Studio 5000 and the SDK service; a saved Linx route for the controller | upload a project, build offline, change mode, download |
+| Direct CIP | `l5x_poll_live_tags`, `l5x_read_live_tags`, `l5x_write_live_tag`, `l5x_start_plc_trend`, `l5x_discover_controllers`, `l5x_read_controller_clock`, `l5x_write_controller_clock` | IPv4 address and slot; no Studio, no Linx, no SDK | read and write declared scalar tags and members, sample a trend, name controllers on the LAN, read or set an L8x clock |
+| Studio SDK | `l5x_studio_sdk_status`, `l5x_capture_controller_snapshot`, `l5x_go_online`, `l5x_read_controller_mode`, `l5x_change_controller_mode`, `l5x_download_project`, `l5x_controller_approval_status` | Studio 5000 and the SDK service; a saved Linx route for the controller | upload a project, build offline, change mode, download |
 
 The direct lane is the one for checking a value: no licence, no route, no save dialog. The SDK lane
 is the one for changing what the controller holds, and it is gated on purpose.
 
 ## Find the route
 
-Direct reads do not need a route. `capture_controller_snapshot`, `go_online`, the mode calls and
-`download_project` do: the SDK resolves the controller through a saved route in RSLinx Enterprise,
+Direct reads do not need a route. `l5x_capture_controller_snapshot`, `l5x_go_online`, the mode calls and
+`l5x_download_project` do: the SDK resolves the controller through a saved route in RSLinx Enterprise,
 not from the IP passed in the call.
 
 ```
@@ -38,15 +38,15 @@ does not match you get `No module was found using the supplied encoded route str
 
 ## Capture before changing anything
 
-1. `capture_controller_snapshot` — uploads the controller to a new ACD. It needs the IP and a
+1. `l5x_capture_controller_snapshot` — uploads the controller to a new ACD. It needs the IP and a
    project that already knows the route; the upload is read-only.
-2. `export_acd_to_l5x` — exports that ACD to an export the tools can read. Keep both: the ACD is the
+2. `l5x_export_acd_to_l5x` — exports that ACD to an export the tools can read. Keep both: the ACD is the
    restore point, the export is the working copy.
 3. Keep the ACD. A project you captured can be downloaded back unchanged; nothing else in these
    docs is a restore plan.
 
-`go_online` connects read-only for diagnostics. It does not change mode and does not write
-controller data. `read_controller_mode` answers Program, Run or Test without a mode change, and it
+`l5x_go_online` connects read-only for diagnostics. It does not change mode and does not write
+controller data. `l5x_read_controller_mode` answers Program, Run or Test without a mode change, and it
 is the call to make before proposing one.
 
 ## Verify and download
@@ -54,19 +54,19 @@ is the call to make before proposing one.
 The chain is offline until the last step, and the last step is the only one that reaches the
 controller with new code:
 
-1. `verify_offline_l5x` imports the finished export into a **new** ACD, builds it with the running
+1. `l5x_verify_offline_l5x` imports the finished export into a **new** ACD, builds it with the running
    Logix Designer release, and exports the result. Its result carries the build and a
    `download_ready` verdict; that verdict needs all of: the build passed, the offline import
    changed engineering content, no import abort, and the export is a qualified baseline of the
    same project. A build is refused for a project below revision 37, and `probe: true` reports the
    SDK's own refusal for a lower revision rather than refusing early.
-2. `build_acd_from_draft` is the same machinery for one changed routine against a baseline.
-3. `change_controller_mode` puts the controller in Program.
-4. `download_project` accepts exactly one credential: the `verification_id` returned by a **passed**
-   `verify_offline_l5x` or `build_acd_from_draft` in this chat. A hand-built ACD path is not
+2. `l5x_build_acd_from_draft` is the same machinery for one changed routine against a baseline.
+3. `l5x_change_controller_mode` puts the controller in Program.
+4. `l5x_download_project` accepts exactly one credential: the `verification_id` returned by a **passed**
+   `l5x_verify_offline_l5x` or `l5x_build_acd_from_draft` in this chat. A hand-built ACD path is not
    accepted, an export that never built is not accepted, and the id is consumed by the attempt. The
    call never changes mode for you.
-5. `change_controller_mode` puts the controller back in Run, once the download reports done.
+5. `l5x_change_controller_mode` puts the controller back in Run, once the download reports done.
 
 A passed `download_ready` is not proof the logic is correct; it is proof the file built and imports
 cleanly. That distinction is the whole point of the offline step.
@@ -74,7 +74,7 @@ cleanly. That distinction is the whole point of the offline step.
 ## Approval-gated writes
 
 Every SDK call that changes the controller asks for human approval for that exact operation:
-`download_project`, `change_controller_mode` and `capture_controller_snapshot` (which only uploads)
+`l5x_download_project`, `l5x_change_controller_mode` and `l5x_capture_controller_snapshot` (which only uploads)
 all go through it, and an unavailable approval means the call fails closed — it is not retried, and
 nothing is attempted without a yes.
 
@@ -82,8 +82,8 @@ The direct lane has two write tools, and each is supervised twice:
 
 | Write | Gate 1 | Gate 2 | Readback |
 |---|---|---|---|
-| `write_live_tag` | row `allowWrites` must be on | per-write human approval | reads the tag back and compares |
-| `write_controller_clock` | row `allowWrites` must be on | per-write human approval | reads the clock back (L8x only) |
+| `l5x_write_live_tag` | row `allowWrites` must be on | per-write human approval | reads the tag back and compares |
+| `l5x_write_controller_clock` | row `allowWrites` must be on | per-write human approval | reads the clock back (L8x only) |
 
 The row config is the profile-level switch: `allowWrites` on the `l5x` row decides whether the live
 write tools are mounted at all. Human approval is per call and per value — approving one write does
@@ -93,7 +93,7 @@ not approve the next. The tool results are explicit about which gate failed:
 set on the row, is a third gate: a target outside the list is refused before any socket is opened.
 
 The same two-stage gate applies to the clock: reading is approval-free, writing is not, and only
-L8x controllers have one — `read_controller_clock` reports `clock_supported: false` rather than
+L8x controllers have one — `l5x_read_controller_clock` reports `clock_supported: false` rather than
 guessing on other models. Reads and writes cover whole declared scalar tags and one scalar member
 (`Timer.PRE`, `Timer.ACC`), not arrays or structures.
 
@@ -101,18 +101,18 @@ guessing on other models. Reads and writes cover whole declared scalar tags and 
 
 After a download, the SDK says the file was accepted; it does not say the controller is running it.
 The direct lane can answer the narrower question: read the declared tags you care about with
-`read_live_tags` (one request, up to 64 scalars) or `poll_live_tags` (repeated sweeps with quality
+`l5x_read_live_tags` (one request, up to 64 scalars) or `l5x_poll_live_tags` (repeated sweeps with quality
 and controller identity), and report `live_logic_matches_export` only when you also uploaded the
-project back and compared rungs with `compare_projects`. A tag whose value happens to match proves a
+project back and compared rungs with `l5x_compare_projects`. A tag whose value happens to match proves a
 moment, not that the controller is executing the export.
 
-`start_plc_trend` is the same read path as a bounded background job: it samples up to 16 tags for a
+`l5x_start_plc_trend` is the same read path as a bounded background job: it samples up to 16 tags for a
 fixed count, and the chart follows the job. It is stopped through the job controls, not by a tool
 call, and it writes nothing.
 
 ## Safety controllers
 
-A safety controller is outside every path on this page. `verify_offline_l5x` refuses it before
+A safety controller is outside every path on this page. `l5x_verify_offline_l5x` refuses it before
 attempting a build, because the SDK importer aborts a safety import
 (`XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`); a bench upload answers `RxE_NOT_FOUND`; and there is no
 download path for a safety project in this bundle. Use Studio 5000's own safety workflow, with its
@@ -125,6 +125,6 @@ project.
   change nothing until the request names the controller and the change.
 - A successful download is not a commissioning. The five-step loop, the gates and the hand-off
   steps are in [the loop every product follows](getting-started.md#3-the-loop-every-product-follows).
-- The machine's capabilities come first: `studio_sdk_status` reports whether this host can drive the
-  SDK at all, and `controller_approval_status` reports whether approval is available before a call
+- The machine's capabilities come first: `l5x_studio_sdk_status` reports whether this host can drive the
+  SDK at all, and `l5x_controller_approval_status` reports whether approval is available before a call
   needs it.

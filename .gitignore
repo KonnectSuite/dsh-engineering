@@ -38,3 +38,7 @@ __pycache__/
 # Session scratch: exported-session extracts, live-verification logs and probe output.
 .scratch/
 .tmp-visual*.png
+
+# A workspace-local pnpm store created by a tool run; pnpm's real store lives
+# outside the checkout and this directory is empty scratch.
+/.pnpm-store/

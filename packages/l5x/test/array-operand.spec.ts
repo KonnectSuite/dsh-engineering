@@ -25,14 +25,14 @@ function project(): Map<string, Uint8Array> {
 
 async function opened() {
   const l5x = harness(project(), { editing: true })
-  const open = await l5x.call('open_project', { path: 'array.L5X' })
+  const open = await l5x.call('l5x_open_project', { path: 'array.L5X' })
   expect(open.error).toBeUndefined()
   return l5x
 }
 
 /** Compose one rung from a contact and a coil. */
 async function compose(l5x: Awaited<ReturnType<typeof opened>>, operand: string) {
-  return await l5x.call('compose_rung', {
+  return await l5x.call('l5x_compose_rung', {
     spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: [operand] }, { instr: 'OTE', args: ['Run'] }] }),
   })
 }

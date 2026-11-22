@@ -28,21 +28,21 @@ const built = l5x({
 describe('the fixture builder', () => {
   it('produces an export that opens and exposes every part', async () => {
     const l5xTool = harness(new Map([['built.l5x', new TextEncoder().encode(built)]]))
-    const opened = await l5xTool.call('open_project', { path: 'built.l5x' })
+    const opened = await l5xTool.call('l5x_open_project', { path: 'built.l5x' })
     expect(opened.error).toBeUndefined()
     expect(Number(opened.data?.counts?.aois)).toBe(1)
     expect(Number(opened.data?.counts?.modules)).toBe(2)
 
-    const instruction = await l5xTool.call('get_component', { kind: 'aoi', name: 'AOI_Step' })
+    const instruction = await l5xTool.call('l5x_get_component', { kind: 'aoi', name: 'AOI_Step' })
     expect(instruction.data?.component?.safety).toBe(true)
     const parameters = (instruction.data?.component?.parameters ?? []) as { name: string; aliasFor?: string }[]
     expect(parameters.find(entry => entry.name === 'P')?.aliasFor).toBe('Start')
 
     // The AOI's own routine is reachable by the AOI name, which rounds 120 and 129 established.
-    const routines = await l5xTool.call('list_components', { kind: 'routine', scope: 'AOI_Step' })
+    const routines = await l5xTool.call('l5x_list_components', { kind: 'routine', scope: 'AOI_Step' })
     expect(((routines.data?.rows ?? []) as { name: string }[]).map(entry => entry.name)).toEqual(['Logic'])
 
-    const modules = await l5xTool.call('list_components', { kind: 'module' })
+    const modules = await l5xTool.call('l5x_list_components', { kind: 'module' })
     const safetyModules = ((modules.data?.rows ?? []) as { name: string; safetyEnabled?: boolean }[])
       .filter(entry => entry.safetyEnabled === true)
       .map(entry => entry.name)
@@ -52,7 +52,7 @@ describe('the fixture builder', () => {
     const logicRow = ((routines.data?.rows ?? []) as { name: string; safety?: boolean }[])
       .find(entry => entry.name === 'Logic')
     expect(logicRow?.safety).toBe(true)
-    const logic = await l5xTool.call('get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
+    const logic = await l5xTool.call('l5x_get_component', { kind: 'routine', name: 'Logic', scope: 'AOI_Step' })
     expect((logic.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
   })
 })
@@ -66,10 +66,10 @@ describe('adding a UDT member', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['um.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'um.l5x' })).error).toBeUndefined()
-    const staged = await l5xTool.call('draft_udt_member', { udt: 'MY_UDT', name: 'B', data_type: 'DINT', description: 'second member' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'um.l5x' })).error).toBeUndefined()
+    const staged = await l5xTool.call('l5x_draft_udt_member', { udt: 'MY_UDT', name: 'B', data_type: 'DINT', description: 'second member' })
     expect(staged.error).toBeUndefined()
-    expect((await l5xTool.call('draft_apply', { output_path: 'um-edited.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_apply', { output_path: 'um-edited.l5x' })).error).toBeUndefined()
     const text = String(l5xTool.written.get('um-edited.l5x') ?? '')
     // Studio logs XMLSrv_W_INVALID_ATTRIBUTE and drops an attribute Description.
     expect(text).toContain('<Description><![CDATA[second member]]></Description>')
@@ -87,10 +87,10 @@ describe('descriptions added to existing components', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['do.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'do.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_udt_description', { udt: 'MY_UDT', description: 'type description' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_tag_description', { scope: 'controller', name: 'T', description: 'tag description' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_apply', { output_path: 'do-edited.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'do.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_udt_description', { udt: 'MY_UDT', description: 'type description' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag_description', { scope: 'controller', name: 'T', description: 'tag description' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_apply', { output_path: 'do-edited.l5x' })).error).toBeUndefined()
     const text = String(l5xTool.written.get('do-edited.l5x') ?? '')
     const udt = text.slice(text.indexOf('<DataType Name="MY_UDT"'), text.indexOf('</DataType>'))
     expect(udt.indexOf('<Description>')).toBeLessThan(udt.indexOf('<Members>'))
@@ -109,15 +109,15 @@ describe('a finding remedy', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['fx.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'fx.l5x' })).error).toBeUndefined()
-    const checks = await l5xTool.call('run_checks', { rule: 'UNUSED_TAG' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'fx.l5x' })).error).toBeUndefined()
+    const checks = await l5xTool.call('l5x_run_checks', { rule: 'UNUSED_TAG' })
     const findings = (checks.data?.findings ?? []) as { rule: string; fix?: string }[]
     expect(findings.length).toBe(1)
     expect(String(findings[0]?.fix)).toContain('delete')
   })
 })
 
-describe('usage_map and find_references', () => {
+describe('l5x_usage_map and l5x_find_references', () => {
   it('agree on how many times a tag is read and written', async () => {
     const built = l5x({
       name: 'UsageAgree',
@@ -126,10 +126,10 @@ describe('usage_map and find_references', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['ua.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'ua.l5x' })).error).toBeUndefined()
-    const refs = await l5xTool.call('find_references', { symbol: 'T' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'ua.l5x' })).error).toBeUndefined()
+    const refs = await l5xTool.call('l5x_find_references', { symbol: 'T' })
     const access = refs.data?.by_access ?? {}
-    const usage = await l5xTool.call('usage_map', { tag: 'T' })
+    const usage = await l5xTool.call('l5x_usage_map', { tag: 'T' })
     const whole = usage.data?.whole_element ?? {}
     expect(Number(whole.reads)).toBe(Number(access.read ?? 0))
     expect(Number(whole.writes)).toBe(Number(access.write ?? 0))
@@ -146,8 +146,8 @@ describe('safety in the rung documentation', () => {
       tasks: task('SafetyTask', ['Guard'], { safety: true, type: 'PERIODIC', rate: '20', priority: '10' }),
     })
     const l5xTool = harness(new Map([['sd.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'sd.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('document_project', { output_root: 'docs-sd', include: ['rungs'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'sd.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-sd', include: ['rungs'] })).error).toBeUndefined()
     const files = [...l5xTool.written.entries()].map(([key, value]) => [String(key), String(value)] as const)
     const programFile = files.find(([key]) => key.endsWith('rungs/Guard.md'))
     expect(programFile?.[1]).toContain('SAFETY program')
@@ -170,14 +170,14 @@ describe('a routine in a safety program', () => {
       ].join(''),
     })
     const l5xTool = harness(new Map([['sr.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'sr.l5x' })).error).toBeUndefined()
-    const guard = await l5xTool.call('list_components', { kind: 'routine', scope: 'Guard' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'sr.l5x' })).error).toBeUndefined()
+    const guard = await l5xTool.call('l5x_list_components', { kind: 'routine', scope: 'Guard' })
     const guardRows = (guard.data?.rows ?? []) as { name: string; safety?: boolean }[]
     expect(guardRows.length).toBe(1)
     expect(guardRows[0]?.safety).toBe(true)
-    const main = await l5xTool.call('list_components', { kind: 'routine', scope: 'Main' })
+    const main = await l5xTool.call('l5x_list_components', { kind: 'routine', scope: 'Main' })
     expect(((main.data?.rows ?? []) as { safety?: boolean }[])[0]?.safety).toBe(false)
-    const read = await l5xTool.call('get_component', { kind: 'routine', name: 'MainRoutine', scope: 'Guard' })
+    const read = await l5xTool.call('l5x_get_component', { kind: 'routine', name: 'MainRoutine', scope: 'Guard' })
     expect((read.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
   })
 })
@@ -191,16 +191,16 @@ describe('a tag marked Class=Safety', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['st.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'st.l5x' })).error).toBeUndefined()
-    const listed = await l5xTool.call('list_components', { kind: 'tag', scope: 'controller' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'st.l5x' })).error).toBeUndefined()
+    const listed = await l5xTool.call('l5x_list_components', { kind: 'tag', scope: 'controller' })
     const ctrl = ((listed.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'CTRL_SAFE')
     expect(ctrl?.safety).toBe(true)
-    const prog = await l5xTool.call('list_components', { kind: 'tag', scope: 'Main' })
+    const prog = await l5xTool.call('l5x_list_components', { kind: 'tag', scope: 'Main' })
     expect(((prog.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'PROG_SAFE')?.safety).toBe(true)
     expect(((prog.data?.rows ?? []) as { name: string; safety?: boolean }[]).find(row => row.name === 'PLAIN')?.safety).toBe(false)
-    const record = await l5xTool.call('get_component', { kind: 'tag', name: 'CTRL_SAFE' })
+    const record = await l5xTool.call('l5x_get_component', { kind: 'tag', name: 'CTRL_SAFE' })
     expect((record.data?.component as { safety?: boolean } | undefined)?.safety).toBe(true)
-    expect((await l5xTool.call('document_project', { output_root: 'docs-st', include: ['tags'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-st', include: ['tags'] })).error).toBeUndefined()
     const csv = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('tags.csv'))?.[1] ?? '')
     expect(csv).toMatch(/controller,CTRL_SAFE,[^\n]*,true$/mu)
     expect(csv).toMatch(/Main,PROG_SAFE,[^\n]*,true$/mu)
@@ -222,12 +222,12 @@ describe('reference rows', () => {
       ].join(''),
     })
     const l5xTool = harness(new Map([['rs.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'rs.l5x' })).error).toBeUndefined()
-    const safe = await l5xTool.call('find_references', { symbol: 'SafeTag', scope: 'Guard', detail: 'evidence' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'rs.l5x' })).error).toBeUndefined()
+    const safe = await l5xTool.call('l5x_find_references', { symbol: 'SafeTag', scope: 'Guard', detail: 'evidence' })
     const safeRows = (safe.data?.evidence ?? []) as { safety?: boolean }[]
     expect(safeRows.length).toBeGreaterThan(0)
     expect(safeRows.every(row => row.safety === true)).toBe(true)
-    const plain = await l5xTool.call('find_references', { symbol: 'PlainTag', scope: 'Main', detail: 'evidence' })
+    const plain = await l5xTool.call('l5x_find_references', { symbol: 'PlainTag', scope: 'Main', detail: 'evidence' })
     const plainRows = (plain.data?.evidence ?? []) as { safety?: boolean }[]
     expect(plainRows.length).toBeGreaterThan(0)
     expect(plainRows.every(row => row.safety === undefined)).toBe(true)
@@ -239,8 +239,8 @@ describe('reference rows', () => {
       tasks: task('MainTask', ['Main']),
     })
     const aoiTool = harness(new Map([['rsa.l5x', new TextEncoder().encode(aoiBuilt)]]))
-    expect((await aoiTool.call('open_project', { path: 'rsa.l5x' })).error).toBeUndefined()
-    const member = await aoiTool.call('find_references', { symbol: 'AOI_SAFE::P', detail: 'evidence' })
+    expect((await aoiTool.call('l5x_open_project', { path: 'rsa.l5x' })).error).toBeUndefined()
+    const member = await aoiTool.call('l5x_find_references', { symbol: 'AOI_SAFE::P', detail: 'evidence' })
     const memberRows = (member.data?.evidence ?? []) as { scope: string; safety?: boolean }[]
     expect(memberRows.length).toBeGreaterThan(0)
     expect(memberRows.every(row => row.scope === 'AOI_SAFE')).toBe(true)
@@ -260,7 +260,7 @@ describe('the listing and the reader', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['lr.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'lr.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'lr.l5x' })).error).toBeUndefined()
     const cases: [string, string | undefined][] = [
       ['program', undefined], ['task', undefined], ['udt', undefined], ['aoi', undefined],
       ['module', undefined], ['tag', 'controller'], ['routine', 'Main'], ['tag', 'Main'],
@@ -268,10 +268,10 @@ describe('the listing and the reader', () => {
     const failures: string[] = []
     let checked = 0
     for (const [kind, scope] of cases) {
-      const listed = await l5xTool.call('list_components', { kind, ...(scope === undefined ? {} : { scope }), limit: 50 })
+      const listed = await l5xTool.call('l5x_list_components', { kind, ...(scope === undefined ? {} : { scope }), limit: 50 })
       for (const row of (listed.data?.rows ?? [])) {
         checked += 1
-        const read = await l5xTool.call('get_component', { kind, name: row.name, ...(scope === undefined ? {} : { scope }) })
+        const read = await l5xTool.call('l5x_get_component', { kind, name: row.name, ...(scope === undefined ? {} : { scope }) })
         if (read.error !== undefined) failures.push(kind + ' ' + (scope ?? 'controller') + '/' + row.name + ': ' + read.error.code)
       }
     }
@@ -294,12 +294,12 @@ describe('searching safety logic', () => {
       ].join(''),
     })
     const l5xTool = harness(new Map([['ss.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'ss.l5x' })).error).toBeUndefined()
-    const safety = await l5xTool.call('search_logic', { query: 'SafeTag' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'ss.l5x' })).error).toBeUndefined()
+    const safety = await l5xTool.call('l5x_search_logic', { query: 'SafeTag' })
     const safetyMatches = (safety.data?.matches ?? []) as { safety?: boolean }[]
     expect(safetyMatches.length).toBeGreaterThan(0)
     expect(safetyMatches.every(match => match.safety === true)).toBe(true)
-    const plain = await l5xTool.call('search_logic', { query: 'PlainTag' })
+    const plain = await l5xTool.call('l5x_search_logic', { query: 'PlainTag' })
     const plainMatches = (plain.data?.matches ?? []) as { safety?: boolean }[]
     expect(plainMatches.length).toBeGreaterThan(0)
     expect(plainMatches.every(match => match.safety === undefined)).toBe(true)
@@ -315,13 +315,13 @@ describe('a module with no Name', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['um.l5x', new TextEncoder().encode(built)]]))
-    expect((await l5xTool.call('open_project', { path: 'um.l5x' })).error).toBeUndefined()
-    const listed = await l5xTool.call('list_components', { kind: 'module' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'um.l5x' })).error).toBeUndefined()
+    const listed = await l5xTool.call('l5x_list_components', { kind: 'module' })
     const rows = (listed.data?.rows ?? []) as { name: string; unnamed?: boolean; slot: string }[]
     expect(rows.length).toBe(1)
     expect(rows[0]?.name).toBe('DRIVE_1:4')
     expect(rows[0]?.unnamed).toBe(true)
-    const read = await l5xTool.call('get_component', { kind: 'module', name: 'DRIVE_1:4' })
+    const read = await l5xTool.call('l5x_get_component', { kind: 'module', name: 'DRIVE_1:4' })
     expect(read.error).toBeUndefined()
     expect((read.data?.component as { catalogNumber?: string } | undefined)?.catalogNumber).toBe('RHINOBP-DRIVE-PERIPHERAL-MODULE')
   })
@@ -342,16 +342,16 @@ describe('a safety tag written from standard logic', () => {
       ].join(''),
     })
     const bad = harness(new Map([['sw.l5x', new TextEncoder().encode(base('XIC(SAFE_TAG)OTE(SAFE_TAG);'))]]))
-    expect((await bad.call('open_project', { path: 'sw.l5x' })).error).toBeUndefined()
-    const findings = await bad.call('run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
+    expect((await bad.call('l5x_open_project', { path: 'sw.l5x' })).error).toBeUndefined()
+    const findings = await bad.call('l5x_run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
     const rows = (findings.data?.findings ?? []) as { message: string; fix?: string; evidence: { program?: string; tag?: string } }[]
     expect(rows.length).toBe(1)
     expect(String(rows[0]?.message)).toContain('written from standard program Main')
     expect(String(rows[0]?.fix)).toContain('safety program')
     expect(rows[0]?.evidence?.tag).toBe('SAFE_TAG')
     const good = harness(new Map([['sw.l5x', new TextEncoder().encode(base('NOP();'))]]))
-    await good.call('open_project', { path: 'sw.l5x' })
-    const silent = await good.call('run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
+    await good.call('l5x_open_project', { path: 'sw.l5x' })
+    const silent = await good.call('l5x_run_checks', { rule: 'SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC' })
     expect(Number(silent.data?.total)).toBe(0)
   })
 })
@@ -365,17 +365,17 @@ describe('an encrypted add-on instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['ea.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    const opened = await l5xTool.call('open_project', { path: 'ea.l5x' })
+    const opened = await l5xTool.call('l5x_open_project', { path: 'ea.l5x' })
     expect(opened.error).toBeUndefined()
     expect(Number(opened.data?.counts?.aois)).toBe(1)
-    const aoi = await l5xTool.call('get_component', { kind: 'aoi', name: 'VEND_AOI' })
+    const aoi = await l5xTool.call('l5x_get_component', { kind: 'aoi', name: 'VEND_AOI' })
     expect((aoi.data?.component as { protected?: boolean } | undefined)?.protected).toBe(true)
-    const overview = await l5xTool.call('project_overview')
+    const overview = await l5xTool.call('l5x_project_overview')
     expect(JSON.stringify(overview.data?.limits ?? [])).toContain('encrypted (vendor)')
-    const routines = await l5xTool.call('list_components', { kind: 'routine', scope: 'VEND_AOI' })
+    const routines = await l5xTool.call('l5x_list_components', { kind: 'routine', scope: 'VEND_AOI' })
     expect(String(routines.summary)).toContain('definition encrypted')
     expect(Number(routines.data?.total)).toBe(0)
-    expect((await l5xTool.call('document_project', { output_root: 'docs-enc', include: ['project'] })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_document_project', { output_root: 'docs-enc', include: ['project'] })).error).toBeUndefined()
     const project = String([...l5xTool.written.entries()].find(([key]) => String(key).endsWith('PROJECT.md'))?.[1] ?? '')
     expect(project).toMatch(/\| VEND_AOI \|[^\n]*\| encrypted \|/u)
   })
@@ -391,15 +391,15 @@ describe('data type classes', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['uc.l5x', new TextEncoder().encode(built)]]))
-    const opened = await l5xTool.call('open_project', { path: 'uc.l5x' })
+    const opened = await l5xTool.call('l5x_open_project', { path: 'uc.l5x' })
     expect(opened.error).toBeUndefined()
     // A string type is user-defined even though its family is not NoFamily.
     expect(Number(opened.data?.counts?.udts)).toBe(1)
-    const listed = await l5xTool.call('list_components', { kind: 'udt' })
+    const listed = await l5xTool.call('l5x_list_components', { kind: 'udt' })
     const names = ((listed.data?.rows ?? []) as { name: string }[]).map(row => row.name)
     expect(names).toContain('MY_STR')
     expect(names).not.toContain('VENDOR_T')
-    const type = await l5xTool.call('get_component', { kind: 'udt', name: 'MY_STR' })
+    const type = await l5xTool.call('l5x_get_component', { kind: 'udt', name: 'MY_STR' })
     const members = (type.data?.component?.members ?? []) as { name: string; dimension?: number }[]
     expect(members.map(entry => entry.name)).toEqual(['LEN', 'DATA'])
     expect(members.find(entry => entry.name === 'DATA')?.dimension).toBe(50)
@@ -417,10 +417,10 @@ describe('a project with no Tags element', () => {
     const controllerHead = built.slice(built.indexOf('<Controller'), built.indexOf('<Programs>'))
     expect(controllerHead).not.toContain('<Tags>')
     const l5xTool = harness(new Map([['nt.l5x', new TextEncoder().encode(built)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'nt.l5x' })).error).toBeUndefined()
-    const staged = await l5xTool.call('draft_tag', { scope: 'controller', name: 'FirstTag', data_type: 'BOOL', description: 'first', value: 0 })
+    expect((await l5xTool.call('l5x_open_project', { path: 'nt.l5x' })).error).toBeUndefined()
+    const staged = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'FirstTag', data_type: 'BOOL', description: 'first', value: 0 })
     expect(staged.error).toBeUndefined()
-    expect((await l5xTool.call('draft_apply', { output_path: 'nt-edited.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_apply', { output_path: 'nt-edited.l5x' })).error).toBeUndefined()
     const text = String(l5xTool.written.get('nt-edited.l5x') ?? '')
     expect(text).toContain('<Tags><Tag Name="FirstTag"')
     // Tags must precede Programs for Studio's element order.
@@ -437,12 +437,12 @@ describe('a FOR loop index', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['for.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'for.l5x' })).error).toBeUndefined()
-    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', '5', '0', '10', '1'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'for.l5x' })).error).toBeUndefined()
+    const bad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', '5', '0', '10', '1'] }] }) })
     expect(bad.error?.code).toBe('INVALID_OPERAND')
     expect(bad.error?.message).toContain('writable index')
     expect(bad.error?.fix).toContain('DINT tag')
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', 'Count', '0', '10', '1'] }] }) })
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FOR', args: ['Loop', 'Count', '0', '10', '1'] }] }) })
     expect(good.error).toBeUndefined()
     const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
     expect(rungs?.[0]?.neutral_text).toBe('FOR(Loop,Count,0,10,1);')
@@ -458,11 +458,11 @@ describe('a SIZE result', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['size.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'size.l5x' })).error).toBeUndefined()
-    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', '5'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'size.l5x' })).error).toBeUndefined()
+    const bad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', '5'] }] }) })
     expect(bad.error?.code).toBe('INVALID_OPERAND')
     expect(bad.error?.message).toContain('writable size')
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', 'Arr[0]'] }] }) })
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '0', 'Arr[0]'] }] }) })
     expect(good.error).toBeUndefined()
     const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
     expect(rungs?.[0]?.neutral_text).toBe('SIZE(Arr,0,Arr[0]);')
@@ -478,16 +478,16 @@ describe('a slot that takes a tag of any type', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['std.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'std.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'std.l5x' })).error).toBeUndefined()
     // Studio refused STD(Arr,0,Dest,5,10,0) at build with RxCMP_E_AUDIT_INVALIDOPKIND while
     // STD(Arr,0,Dest,Ctrl,10,0) built 0/0.
-    const bad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', '5', '10', '0'] }] }) })
+    const bad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', '5', '10', '0'] }] }) })
     expect(bad.error?.code).toBe('INVALID_OPERAND')
     expect(bad.error?.message).toContain('needs a writable control')
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', 'Ctrl', '10', '0'] }] }) })
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', 'Ctrl', '10', '0'] }] }) })
     expect(good.error).toBeUndefined()
     // A DINT destination fails Studio's type check (RxCMP_E_AUDIT_INVALIDOPTYPE); the composer names it.
-    const wrongType = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Count', 'Ctrl', '10', '0'] }] }) })
+    const wrongType = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Count', 'Ctrl', '10', '0'] }] }) })
     expect(wrongType.error?.code).toBe('INVALID_OPERAND')
     expect(wrongType.error?.message).toContain('must be REAL')
     const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
@@ -506,8 +506,8 @@ describe('an arithmetic slot that accepts integers', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['sqrt.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'sqrt.l5x' })).error).toBeUndefined()
-    const composed = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQR', args: ['Count', 'Count'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'sqrt.l5x' })).error).toBeUndefined()
+    const composed = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQR', args: ['Count', 'Count'] }] }) })
     expect(composed.error).toBeUndefined()
     const rungs = (composed.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
     expect(rungs?.[0]?.neutral_text).toBe('SQRT(Count,Count);')
@@ -526,36 +526,36 @@ describe('an add-on instruction call', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['aoi.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'aoi.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1'] }] }) })
     expect(good.error).toBeUndefined()
     const rungs = (good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs
     expect(rungs?.[0]?.neutral_text).toBe('MyAoi(MyAoi_1,In1,Out1);')
-    const noInstance = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['In1', 'Out1'] }] }) })
+    const noInstance = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['In1', 'Out1'] }] }) })
     expect(noInstance.error?.code).toBe('INVALID_OPERAND')
     expect(noInstance.error?.message).toContain('needs an instance tag of type MyAoi')
-    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['5', 'In1', 'Out1'] }] }) })
+    const literal = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['5', 'In1', 'Out1'] }] }) })
     expect(literal.error?.code).toBe('INVALID_OPERAND')
     expect(literal.error?.message).toContain('needs an instance tag')
     // Studio accepted exactly the instance plus the parameters marked Required="true" in real
     // project calls; a missing or extra parameter fails the build with INVALIDNOOFOPS.
-    const missing = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1'] }] }) })
+    const missing = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1'] }] }) })
     expect(missing.error?.code).toBe('INVALID_OPERAND')
     expect(missing.error?.message).toContain('2 required parameter')
-    const extra = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1', 'Num'] }] }) })
+    const extra = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', 'Out1', 'Num'] }] }) })
     expect(extra.error?.code).toBe('INVALID_OPERAND')
     expect(extra.error?.message).toContain('2 required parameter')
-    const wrongType = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'Num', 'Out1'] }] }) })
+    const wrongType = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'Num', 'Out1'] }] }) })
     expect(wrongType.error?.code).toBe('INVALID_OPERAND')
     expect(wrongType.error?.message).toContain('BOOL')
-    // The instance tag itself has to be declarable: an AOI name is a data type for draft_tag.
-    const instanceDraft = await l5xTool.call('draft_tag', { scope: 'controller', name: 'MyAoi_2', data_type: 'MyAoi', description: 'second instance' })
+    // The instance tag itself has to be declarable: an AOI name is a data type for l5x_draft_tag.
+    const instanceDraft = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'MyAoi_2', data_type: 'MyAoi', description: 'second instance' })
     expect(instanceDraft.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'aoi-instance.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'aoi-instance.l5x' })
     expect(applied.error).toBeUndefined()
     expect(String(l5xTool.written.get('aoi-instance.l5x'))).toContain('<Tag Name="MyAoi_2"')
     // A literal cannot stand in for an Output pin.
-    const literalOutput = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', '5'] }] }) })
+    const literalOutput = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyAoi', args: ['MyAoi_1', 'In1', '5'] }] }) })
     expect(literalOutput.error?.code).toBe('INVALID_OPERAND')
     expect(literalOutput.error?.message).toContain('BOOL tag is required')
   })
@@ -572,17 +572,17 @@ describe('a destination slot named Dest', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['dest.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'dest.l5x' })).error).toBeUndefined()
-    const swpbBad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', '5'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'dest.l5x' })).error).toBeUndefined()
+    const swpbBad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', '5'] }] }) })
     expect(swpbBad.error?.code).toBe('INVALID_OPERAND')
     expect(swpbBad.error?.message).toContain('writable dest')
-    const swpbGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', 'D'] }] }) })
+    const swpbGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SWPB', args: ['5', '0', 'D'] }] }) })
     expect(swpbGood.error).toBeUndefined()
     expect((swpbGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SWPB(5,0,D);')
-    const mvmBad = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', '5'] }] }) })
+    const mvmBad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', '5'] }] }) })
     expect(mvmBad.error?.code).toBe('INVALID_OPERAND')
     expect(mvmBad.error?.message).toContain('writable dest')
-    const mvmGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', 'D'] }] }) })
+    const mvmGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MVM', args: ['1', '255', 'D'] }] }) })
     expect(mvmGood.error).toBeUndefined()
     expect((mvmGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MVM(1,255,D);')
   })
@@ -598,11 +598,11 @@ describe('a mnemonic that is not in the Logix set', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['nomnemonic.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'nomnemonic.l5x' })).error).toBeUndefined()
-    const composed = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'EXP', args: ['R', 'R'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'nomnemonic.l5x' })).error).toBeUndefined()
+    const composed = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'EXP', args: ['R', 'R'] }] }) })
     expect(composed.error?.code).toBe('UNKNOWN_INSTRUCTION')
     expect(composed.error?.message).toContain('neither a catalogued instruction nor an AOI')
-    const listed = await l5xTool.call('list_instructions', { filter: 'EXP' })
+    const listed = await l5xTool.call('l5x_list_instructions', { filter: 'EXP' })
     const names = ((listed.data?.rows ?? []) as { name: string }[]).map(row => row.name)
     expect(names).not.toContain('EXP')
   })
@@ -619,14 +619,14 @@ describe('a sequencer instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['sqo.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'sqo.l5x' })).error).toBeUndefined()
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Ctrl', '10', '0'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'sqo.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Ctrl', '10', '0'] }] }) })
     expect(good.error).toBeUndefined()
     expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SQO(Arr,Mask,Dest[0],Ctrl,10,0);')
-    const wholeDest = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest', 'Ctrl', '10', '0'] }] }) })
+    const wholeDest = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest', 'Ctrl', '10', '0'] }] }) })
     expect(wholeDest.error?.code).toBe('INVALID_OPERAND')
     expect(wholeDest.error?.message).toContain('must name one element or a scalar tag')
-    const wrongControl = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Mask', '10', '0'] }] }) })
+    const wrongControl = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Arr', 'Mask', 'Dest[0]', 'Mask', '10', '0'] }] }) })
     expect(wrongControl.error?.code).toBe('INVALID_OPERAND')
     expect(wrongControl.error?.message).toContain('must be CONTROL')
   })
@@ -642,17 +642,17 @@ describe('an alarm instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['alarm.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
-    const almaWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmD', 'D', 'B1', 'B2', 'B3'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'alarm.l5x' })).error).toBeUndefined()
+    const almaWrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmD', 'D', 'B1', 'B2', 'B3'] }] }) })
     expect(almaWrong.error?.code).toBe('INVALID_OPERAND')
     expect(almaWrong.error?.message).toContain('must be ALARM_ANALOG')
-    const almaGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmA', 'D', 'B1', 'B2', 'B3'] }] }) })
+    const almaGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMA', args: ['AlarmA', 'D', 'B1', 'B2', 'B3'] }] }) })
     expect(almaGood.error).toBeUndefined()
     expect((almaGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ALMA(AlarmA,D,B1,B2,B3);')
-    const almdWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmA', 'B1', 'B2', 'B3', 'B4'] }] }) })
+    const almdWrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmA', 'B1', 'B2', 'B3', 'B4'] }] }) })
     expect(almdWrong.error?.code).toBe('INVALID_OPERAND')
     expect(almdWrong.error?.message).toContain('must be ALARM_DIGITAL')
-    const almdGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmD', 'B1', 'B2', 'B3', 'B4'] }] }) })
+    const almdGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ALMD', args: ['AlarmD', 'B1', 'B2', 'B3', 'B4'] }] }) })
     expect(almdGood.error).toBeUndefined()
     expect((almdGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ALMD(AlarmD,B1,B2,B3,B4);')
   })
@@ -669,18 +669,18 @@ describe('a file statistic', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['stats.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'stats.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'stats.l5x' })).error).toBeUndefined()
     const good = [
       ['SRT', ['Arr', '0', 'Ctrl', '10', '0'], 'SRT(Arr,0,Ctrl,10,0);'],
       ['STD', ['Arr', '0', 'Dest', 'Ctrl', '10', '0'], 'STD(Arr,0,Dest,Ctrl,10,0);'],
     ] as const
     for (const [instr, args, expected] of good) {
-      const result = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
+      const result = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
       expect(result.error).toBeUndefined()
       expect((result.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe(expected)
     }
     // SRT(Arr[0],0,Ctrl,10,0) built 0/0, so the array slot accepts one element as well.
-    const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SRT', args: ['Arr[0]', '0', 'Ctrl', '10', '0'] }] }) })
+    const element = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SRT', args: ['Arr[0]', '0', 'Ctrl', '10', '0'] }] }) })
     expect(element.error).toBeUndefined()
     expect((element.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SRT(Arr[0],0,Ctrl,10,0);')
     const wrong = [
@@ -688,7 +688,7 @@ describe('a file statistic', () => {
       ['STD', ['Arr', '0', 'Dest', 'Ctl2', '10', '0']],
     ] as const
     for (const [instr, args] of wrong) {
-      const result = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
+      const result = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args }] }) })
       expect(result.error?.code).toBe('INVALID_OPERAND')
       expect(result.error?.message).toContain('must be CONTROL')
     }
@@ -705,27 +705,27 @@ describe('an array dimension', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['dim.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'dim.l5x' })).error).toBeUndefined()
-    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['5', '0', 'Pos'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'dim.l5x' })).error).toBeUndefined()
+    const literal = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['5', '0', 'Pos'] }] }) })
     expect(literal.error?.code).toBe('INVALID_OPERAND')
     expect(literal.error?.message).toContain('needs a tag for Source')
-    const three = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '3', 'Pos'] }] }) })
+    const three = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '3', 'Pos'] }] }) })
     expect(three.error?.code).toBe('INVALID_OPERAND')
     expect(three.error?.message).toContain('maximum 2')
     // SIZE(D,0,Pos) with a scalar tag failed MUSTBEARRAY; an element is not the whole array either.
-    const scalar = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['D', '0', 'Pos'] }] }) })
+    const scalar = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['D', '0', 'Pos'] }] }) })
     expect(scalar.error?.code).toBe('INVALID_OPERAND')
     expect(scalar.error?.message).toContain('array tag')
-    const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr[0]', '0', 'Pos'] }] }) })
+    const element = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr[0]', '0', 'Pos'] }] }) })
     expect(element.error?.code).toBe('INVALID_OPERAND')
     expect(element.error?.message).toContain('must name a declared array tag')
     // A tag staged in the same draft carries its dimensions, so the array slot sees an array.
-    const stagedTag = await l5xTool.call('draft_tag', { scope: 'controller', name: 'StagedArr', data_type: 'DINT', dimensions: '10', description: 'staged array' })
+    const stagedTag = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'StagedArr', data_type: 'DINT', dimensions: '10', description: 'staged array' })
     expect(stagedTag.error).toBeUndefined()
-    const staged = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['StagedArr', '0', 'Pos'] }] }) })
+    const staged = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['StagedArr', '0', 'Pos'] }] }) })
     expect(staged.error).toBeUndefined()
     expect((staged.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SIZE(StagedArr,0,Pos);')
-    const two = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '2', 'Pos'] }] }) })
+    const two = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SIZE', args: ['Arr', '2', 'Pos'] }] }) })
     expect(two.error).toBeUndefined()
     expect((two.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('SIZE(Arr,2,Pos);')
   })
@@ -741,34 +741,34 @@ describe('draft tag validation', () => {
     })
     const open = async () => {
       const tool = harness(new Map([['tags.l5x', new TextEncoder().encode(project)]]), { editing: true })
-      expect((await tool.call('open_project', { path: 'tags.l5x' })).error).toBeUndefined()
+      expect((await tool.call('l5x_open_project', { path: 'tags.l5x' })).error).toBeUndefined()
       return tool
     }
     const tool = await open()
     // The apply message carries the specific identifier code, and a single failed operation keeps its repair.
-    const space = await tool.call('draft_tag', { scope: 'controller', name: 'Start PB', data_type: 'DINT', description: 'x' })
+    const space = await tool.call('l5x_draft_tag', { scope: 'controller', name: 'Start PB', data_type: 'DINT', description: 'x' })
     expect(space.error).toBeUndefined()
-    const spaceApplied = await tool.call('draft_apply', { output_path: 'space.l5x' })
+    const spaceApplied = await tool.call('l5x_draft_apply', { output_path: 'space.l5x' })
     expect(spaceApplied.error?.code).toBe('INVALID_CHANGE_SET')
     expect(spaceApplied.error?.message).toContain('[NAME_INVALID_CHARACTERS]')
     expect(spaceApplied.error?.message).toContain('a space')
     const digitTool = await open()
-    expect((await digitTool.call('draft_tag', { scope: 'controller', name: '1Pump', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
-    const digitApplied = await digitTool.call('draft_apply', { output_path: 'digit.l5x' })
+    expect((await digitTool.call('l5x_draft_tag', { scope: 'controller', name: '1Pump', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const digitApplied = await digitTool.call('l5x_draft_apply', { output_path: 'digit.l5x' })
     expect(digitApplied.error?.message).toContain('[NAME_STARTS_WITH_DIGIT]')
     expect(digitApplied.error?.fix).toContain('_1Pump')
     const longTool = await open()
-    expect((await longTool.call('draft_tag', { scope: 'controller', name: 'A'.repeat(41), data_type: 'DINT', description: 'x' })).error).toBeUndefined()
-    const longApplied = await longTool.call('draft_apply', { output_path: 'long.l5x' })
+    expect((await longTool.call('l5x_draft_tag', { scope: 'controller', name: 'A'.repeat(41), data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const longApplied = await longTool.call('l5x_draft_apply', { output_path: 'long.l5x' })
     expect(longApplied.error?.message).toContain('[NAME_TOO_LONG]')
     // Scope and duplicate checks run at apply, against the export being edited.
     const scopeTool = await open()
-    const scope = await scopeTool.call('draft_tag', { scope: 'Nope', name: 'X', data_type: 'DINT', description: 'x' })
-    const scopeApplied = scope.error === undefined ? await scopeTool.call('draft_apply', { output_path: 'scope.l5x' }) : scope
+    const scope = await scopeTool.call('l5x_draft_tag', { scope: 'Nope', name: 'X', data_type: 'DINT', description: 'x' })
+    const scopeApplied = scope.error === undefined ? await scopeTool.call('l5x_draft_apply', { output_path: 'scope.l5x' }) : scope
     expect(scopeApplied.error?.code).toBe('COMPONENT_NOT_FOUND')
     const duplicateTool = await open()
-    const duplicate = await duplicateTool.call('draft_tag', { scope: 'controller', name: 'Existing', data_type: 'DINT', description: 'x' })
-    const duplicateApplied = duplicate.error === undefined ? await duplicateTool.call('draft_apply', { output_path: 'duplicate.l5x' }) : duplicate
+    const duplicate = await duplicateTool.call('l5x_draft_tag', { scope: 'controller', name: 'Existing', data_type: 'DINT', description: 'x' })
+    const duplicateApplied = duplicate.error === undefined ? await duplicateTool.call('l5x_draft_apply', { output_path: 'duplicate.l5x' }) : duplicate
     expect(duplicateApplied.error?.code).toBe('NAME_COLLISION')
   })
 })
@@ -784,10 +784,10 @@ describe('two output instructions in series', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['outputs.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'outputs.l5x' })).error).toBeUndefined()
-    const raw = await l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(B)OTE(B)OTE(C);' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'outputs.l5x' })).error).toBeUndefined()
+    const raw = await l5xTool.call('l5x_draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(B)OTE(B)OTE(C);' })
     expect(raw.error).toBeUndefined()
-    const composed = await l5xTool.call('compose_rung', {
+    const composed = await l5xTool.call('l5x_compose_rung', {
       program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 1,
       spec_json: JSON.stringify({ series: [{ instr: 'XIC', args: ['B'] }, { instr: 'OTE', args: ['B'] }, { instr: 'OTE', args: ['C'] }] }),
     })
@@ -808,22 +808,22 @@ describe('comparing alarm definitions', () => {
   it('lists and reads one alarm definition', async () => {
     const xml = withAlarm('old alarm text')
     const l5xTool = harness(new Map([['alarms.L5X', new TextEncoder().encode(xml)]]), {})
-    const opened = await l5xTool.call('open_project', { path: 'alarms.L5X' })
+    const opened = await l5xTool.call('l5x_open_project', { path: 'alarms.L5X' })
     expect(opened.error).toBeUndefined()
     expect((opened.data?.counts as { alarms: number }).alarms).toBe(1)
-    const listed = await l5xTool.call('list_components', { kind: 'alarm', limit: 10 })
+    const listed = await l5xTool.call('l5x_list_components', { kind: 'alarm', limit: 10 })
     const rows = listed.data?.rows as { name: string; kind: string; description: string }[]
     expect(rows[0]).toEqual({ name: 'HiTemp', kind: 'Alarm', description: 'old alarm text' })
-    const read = await l5xTool.call('get_component', { kind: 'alarm', name: 'HiTemp' })
+    const read = await l5xTool.call('l5x_get_component', { kind: 'alarm', name: 'HiTemp' })
     expect((read.data?.component as { name: string } | undefined)?.name).toBe('HiTemp')
-    const missing = await l5xTool.call('get_component', { kind: 'alarm', name: 'Nope' })
+    const missing = await l5xTool.call('l5x_get_component', { kind: 'alarm', name: 'Nope' })
     expect(missing.error?.code).toBe('COMPONENT_NOT_FOUND')
   })
 
   it('documents alarm definitions in PROJECT.md', async () => {
     const l5xTool = harness(new Map([['alarm-doc.L5X', new TextEncoder().encode(withAlarm('old alarm text'))]]), {})
-    expect((await l5xTool.call('open_project', { path: 'alarm-doc.L5X' })).error).toBeUndefined()
-    const documented = await l5xTool.call('document_project', { output_root: 'alarm-docs' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'alarm-doc.L5X' })).error).toBeUndefined()
+    const documented = await l5xTool.call('l5x_document_project', { output_root: 'alarm-docs' })
     expect(documented.error).toBeUndefined()
     expect(documented.data?.counts?.alarms).toBe(1)
     const project = String([...l5xTool.written.entries()].find(([path]) => String(path).endsWith('PROJECT.md'))?.[1] ?? '')
@@ -836,12 +836,12 @@ describe('comparing alarm definitions', () => {
     const before = withAlarm('old alarm text')
     const after = withAlarm('new alarm text')
     const l5xTool = harness(new Map([['alarm-before.L5X', new TextEncoder().encode(before)], ['alarm-after.L5X', new TextEncoder().encode(after)]]), {})
-    const openedBefore = await l5xTool.call('open_project', { path: 'alarm-before.L5X' })
-    const openedAfter = await l5xTool.call('open_project', { path: 'alarm-after.L5X' })
+    const openedBefore = await l5xTool.call('l5x_open_project', { path: 'alarm-before.L5X' })
+    const openedAfter = await l5xTool.call('l5x_open_project', { path: 'alarm-after.L5X' })
     expect(openedBefore.error).toBeUndefined()
     expect(openedAfter.error).toBeUndefined()
     expect((openedBefore.data?.counts as { alarms: number }).alarms).toBe(1)
-    const compared = await l5xTool.call('compare_projects', { before_id: openedBefore.data?.project_id, after_id: openedAfter.data?.project_id })
+    const compared = await l5xTool.call('l5x_compare_projects', { before_id: openedBefore.data?.project_id, after_id: openedAfter.data?.project_id })
     expect(compared.error).toBeUndefined()
     expect(compared.data?.count).toBe(1)
     const changes = compared.data?.changes as { component: string; kind: string; key?: string }[]
@@ -850,11 +850,11 @@ describe('comparing alarm definitions', () => {
     expect(changes[0]?.kind).toBe('changed')
     // An alarm only in the later export is an addition, not a silent difference.
     const addedTool = harness(new Map([['alarm-none.L5X', new TextEncoder().encode(baseProject())], ['alarm-one.L5X', new TextEncoder().encode(withAlarm('first'))]]), {})
-    const none = await addedTool.call('open_project', { path: 'alarm-none.L5X' })
-    const one = await addedTool.call('open_project', { path: 'alarm-one.L5X' })
+    const none = await addedTool.call('l5x_open_project', { path: 'alarm-none.L5X' })
+    const one = await addedTool.call('l5x_open_project', { path: 'alarm-one.L5X' })
     expect(none.error).toBeUndefined()
     expect(one.error).toBeUndefined()
-    const added = await addedTool.call('compare_projects', { before_id: none.data?.project_id, after_id: one.data?.project_id })
+    const added = await addedTool.call('l5x_compare_projects', { before_id: none.data?.project_id, after_id: one.data?.project_id })
     expect(added.data?.count).toBe(1)
     expect((added.data?.changes as { component: string; kind: string }[])[0]).toMatchObject({ component: 'alarm', kind: 'added' })
   })
@@ -877,11 +877,11 @@ describe('comparing diagram pins', () => {
       ['pins-before.L5X', new TextEncoder().encode(project('SourceA SourceB Dest'))],
       ['pins-after.L5X', new TextEncoder().encode(project('SourceA SourceB'))],
     ]), {})
-    const before = await l5xTool.call('open_project', { path: 'pins-before.L5X' })
-    const after = await l5xTool.call('open_project', { path: 'pins-after.L5X' })
+    const before = await l5xTool.call('l5x_open_project', { path: 'pins-before.L5X' })
+    const after = await l5xTool.call('l5x_open_project', { path: 'pins-after.L5X' })
     expect(before.error).toBeUndefined()
     expect(after.error).toBeUndefined()
-    const compared = await l5xTool.call('compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
+    const compared = await l5xTool.call('l5x_compare_projects', { before_id: before.data?.project_id, after_id: after.data?.project_id })
     expect(compared.data?.count).toBe(1)
     expect((compared.data?.changes as { component: string; kind: string }[])[0]).toMatchObject({ component: 'diagram', kind: 'changed' })
   })
@@ -895,9 +895,9 @@ describe('a denied draft write', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['denied.l5x', new TextEncoder().encode(project)]]), { editing: true, denyWrite: true })
-    expect((await l5xTool.call('open_project', { path: 'denied.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_tag', { scope: 'controller', name: 'X', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'denied-out.L5X' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'denied.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'X', data_type: 'DINT', description: 'x' })).error).toBeUndefined()
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'denied-out.L5X' })
     expect(applied.error?.code).toBe('WRITE_DENIED')
     expect(applied.error?.message).toContain('refused to write')
     expect(applied.error?.message).toContain('denied')
@@ -907,8 +907,8 @@ describe('a denied draft write', () => {
 
   it('reports a denied documentation write the same way', async () => {
     const l5xTool = harness(new Map([['docs.l5x', fixtureBytes()]]), { denyWrite: true })
-    expect((await l5xTool.call('open_project', { path: 'docs.l5x' })).error).toBeUndefined()
-    const documented = await l5xTool.call('document_project', { output_root: 'denied-docs' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'docs.l5x' })).error).toBeUndefined()
+    const documented = await l5xTool.call('l5x_document_project', { output_root: 'denied-docs' })
     expect(documented.error?.code).toBe('WRITE_DENIED')
     expect(documented.error?.message).toContain('refused to write')
     expect(l5xTool.written.size).toBe(0)
@@ -925,13 +925,13 @@ describe('creating a routine', () => {
     })
     const open = async () => {
       const tool = harness(new Map([['routines.l5x', new TextEncoder().encode(project)]]), { editing: true })
-      expect((await tool.call('open_project', { path: 'routines.l5x' })).error).toBeUndefined()
+      expect((await tool.call('l5x_open_project', { path: 'routines.l5x' })).error).toBeUndefined()
       return tool
     }
     const tool = await open()
-    expect((await tool.call('draft_routine', { program: 'Main', name: 'Calc', language: 'ST', code: 'Counter := 1;' })).error).toBeUndefined()
-    expect((await tool.call('draft_routine', { program: 'Main', name: 'Sub', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
-    const applied = await tool.call('draft_apply', { output_path: 'routines-out.l5x' })
+    expect((await tool.call('l5x_draft_routine', { program: 'Main', name: 'Calc', language: 'ST', code: 'Counter := 1;' })).error).toBeUndefined()
+    expect((await tool.call('l5x_draft_routine', { program: 'Main', name: 'Sub', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
+    const applied = await tool.call('l5x_draft_apply', { output_path: 'routines-out.l5x' })
     expect(applied.error).toBeUndefined()
     const written = String(tool.written.get('routines-out.l5x'))
     expect(written).toContain('<Routine Name="Calc" Type="ST"><STContent>')
@@ -940,14 +940,14 @@ describe('creating a routine', () => {
     expect(written).toContain('XIC(B)OTE(C);')
     // The same guards the other draft tools use apply here too.
     const badRll = await open()
-    expect((await badRll.call('draft_routine', { program: 'Main', name: 'Bad', language: 'RLL', code: 'XIC(B);' })).error).toBeUndefined()
-    expect((await badRll.call('draft_apply', { output_path: 'routines-bad.l5x' })).error?.code).toBe('INVALID_LADDER')
+    expect((await badRll.call('l5x_draft_routine', { program: 'Main', name: 'Bad', language: 'RLL', code: 'XIC(B);' })).error).toBeUndefined()
+    expect((await badRll.call('l5x_draft_apply', { output_path: 'routines-bad.l5x' })).error?.code).toBe('INVALID_LADDER')
     const badSt = await open()
-    expect((await badSt.call('draft_routine', { program: 'Main', name: 'Bad', language: 'ST', code: '(* open' })).error).toBeUndefined()
-    expect((await badSt.call('draft_apply', { output_path: 'routines-badst.l5x' })).error?.code).toBe('INVALID_ST')
+    expect((await badSt.call('l5x_draft_routine', { program: 'Main', name: 'Bad', language: 'ST', code: '(* open' })).error).toBeUndefined()
+    expect((await badSt.call('l5x_draft_apply', { output_path: 'routines-badst.l5x' })).error?.code).toBe('INVALID_ST')
     const duplicate = await open()
-    expect((await duplicate.call('draft_routine', { program: 'Main', name: 'MainRoutine', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
-    expect((await duplicate.call('draft_apply', { output_path: 'routines-dupe.l5x' })).error?.code).toBe('NAME_COLLISION')
+    expect((await duplicate.call('l5x_draft_routine', { program: 'Main', name: 'MainRoutine', language: 'RLL', code: 'XIC(B)OTE(C);' })).error).toBeUndefined()
+    expect((await duplicate.call('l5x_draft_apply', { output_path: 'routines-dupe.l5x' })).error?.code).toBe('NAME_COLLISION')
   })
 })
 
@@ -962,24 +962,24 @@ describe('a Structured Text draft', () => {
     })
     const open = async () => {
       const tool = harness(new Map([['st.l5x', new TextEncoder().encode(project)]]), { editing: true })
-      expect((await tool.call('open_project', { path: 'st.l5x' })).error).toBeUndefined()
+      expect((await tool.call('l5x_open_project', { path: 'st.l5x' })).error).toBeUndefined()
       return tool
     }
     const missingTool = await open()
-    expect((await missingTool.call('draft_st', { program: 'Main', routine: 'Nope', code: 'A := 1;' })).error).toBeUndefined()
-    expect((await missingTool.call('draft_apply', { output_path: 'st-missing.l5x' })).error).toBeDefined()
+    expect((await missingTool.call('l5x_draft_st', { program: 'Main', routine: 'Nope', code: 'A := 1;' })).error).toBeUndefined()
+    expect((await missingTool.call('l5x_draft_apply', { output_path: 'st-missing.l5x' })).error).toBeDefined()
     const wrongTool = await open()
-    expect((await wrongTool.call('draft_st', { program: 'Main', routine: 'MainRoutine', code: 'A := 1;' })).error).toBeUndefined()
-    const wrong = await wrongTool.call('draft_apply', { output_path: 'st-wrong.l5x' })
+    expect((await wrongTool.call('l5x_draft_st', { program: 'Main', routine: 'MainRoutine', code: 'A := 1;' })).error).toBeUndefined()
+    const wrong = await wrongTool.call('l5x_draft_apply', { output_path: 'st-wrong.l5x' })
     expect(wrong.error?.code).toBe('UNSUPPORTED_TARGET')
     const badTool = await open()
-    expect((await badTool.call('draft_st', { program: 'Main', routine: 'Calc', code: '(* open comment' })).error).toBeUndefined()
-    const bad = await badTool.call('draft_apply', { output_path: 'st-bad.l5x' })
+    expect((await badTool.call('l5x_draft_st', { program: 'Main', routine: 'Calc', code: '(* open comment' })).error).toBeUndefined()
+    const bad = await badTool.call('l5x_draft_apply', { output_path: 'st-bad.l5x' })
     expect(bad.error?.code).toBe('INVALID_ST')
     const goodTool = await open()
     const code = 'Counter := Counter + 1;\nIF Counter > 10 THEN Counter := 0; END_IF;'
-    expect((await goodTool.call('draft_st', { program: 'Main', routine: 'Calc', code })).error).toBeUndefined()
-    const good = await goodTool.call('draft_apply', { output_path: 'st-good.l5x' })
+    expect((await goodTool.call('l5x_draft_st', { program: 'Main', routine: 'Calc', code })).error).toBeUndefined()
+    const good = await goodTool.call('l5x_draft_apply', { output_path: 'st-good.l5x' })
     expect(good.error).toBeUndefined()
     const written = String(goodTool.written.get('st-good.l5x'))
     expect(written).toContain('Counter := Counter + 1;')
@@ -997,8 +997,8 @@ describe('a raw rung operand count', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['arity.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'arity.l5x' })).error).toBeUndefined()
-    const draft = (text: string) => l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text })
+    expect((await l5xTool.call('l5x_open_project', { path: 'arity.l5x' })).error).toBeUndefined()
+    const draft = (text: string) => l5xTool.call('l5x_draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text })
     const short = await draft('XIC(B)TON(T,500);')
     expect(short.error?.code).toBe('INVALID_OPERAND')
     expect(short.error?.message).toContain('TON takes 3 operand(s)')
@@ -1034,8 +1034,8 @@ describe('a program scope', () => {
       tasks: task('MainTask', ['Alpha', 'Beta']),
     })
     const l5xTool = harness(new Map([['scope.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'scope.l5x' })).error).toBeUndefined()
-    const compose = (spec: unknown) => l5xTool.call('compose_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify(spec) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'scope.l5x' })).error).toBeUndefined()
+    const compose = (spec: unknown) => l5xTool.call('l5x_compose_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify(spec) })
     const wrong = await compose({ series: [{ instr: 'XIC', args: ['LocalA'] }, { instr: 'OTE', args: ['LocalB'] }] })
     expect(wrong.error?.code).toBe('TAG_NOT_FOUND')
     expect(wrong.error?.message).toContain('not declared in program Beta')
@@ -1046,19 +1046,19 @@ describe('a program scope', () => {
     const shared = await compose({ series: [{ instr: 'XIC', args: ['Shared'] }, { instr: 'OTE', args: ['LocalB'] }] })
     expect(shared.error).toBeUndefined()
     // The same rule holds for a tag staged in another program in this draft.
-    expect((await l5xTool.call('draft_tag', { scope: 'Alpha', name: 'StagedA', data_type: 'BOOL', description: 'a' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag', { scope: 'Alpha', name: 'StagedA', data_type: 'BOOL', description: 'a' })).error).toBeUndefined()
     const stagedWrong = await compose({ series: [{ instr: 'XIC', args: ['StagedA'] }, { instr: 'OTE', args: ['LocalB'] }] })
     expect(stagedWrong.error?.code).toBe('TAG_NOT_FOUND')
-    expect((await l5xTool.call('draft_tag', { scope: 'Beta', name: 'StagedB', data_type: 'BOOL', description: 'b' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag', { scope: 'Beta', name: 'StagedB', data_type: 'BOOL', description: 'b' })).error).toBeUndefined()
     const stagedRight = await compose({ series: [{ instr: 'XIC', args: ['StagedB'] }, { instr: 'OTE', args: ['LocalB'] }] })
     expect(stagedRight.error).toBeUndefined()
     // Raw NeutralText takes the same rule: a pasted rung from another program is refused.
-    const rawWrong = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(LocalA)OTE(LocalB);' })
+    const rawWrong = await l5xTool.call('l5x_draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(LocalA)OTE(LocalB);' })
     expect(rawWrong.error?.code).toBe('TAG_NOT_FOUND')
     expect(rawWrong.error?.message).toContain('declared in Alpha')
-    const rawStagedWrong = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedA)OTE(LocalB);' })
+    const rawStagedWrong = await l5xTool.call('l5x_draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedA)OTE(LocalB);' })
     expect(rawStagedWrong.error?.code).toBe('TAG_NOT_FOUND')
-    const rawRight = await l5xTool.call('draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedB)OTE(LocalB);' })
+    const rawRight = await l5xTool.call('l5x_draft_rung', { program: 'Beta', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(StagedB)OTE(LocalB);' })
     expect(rawRight.error).toBeUndefined()
   })
 })
@@ -1077,12 +1077,12 @@ describe('a program without a Tags region', () => {
   </Controller>
 </RSLogix5000Content>`
     const l5xTool = harness(new Map([['programtags.l5x', new TextEncoder().encode(xml)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'programtags.l5x' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Local', data_type: 'BOOL', description: 'local' })).error).toBeUndefined()
-    expect((await l5xTool.call('draft_tag', { scope: 'Main', name: 'Flag', data_type: 'BOOL', description: 'flag' })).error).toBeUndefined()
-    const rung = await l5xTool.call('draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(Local)OTE(Flag);' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'programtags.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag', { scope: 'Main', name: 'Local', data_type: 'BOOL', description: 'local' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_draft_tag', { scope: 'Main', name: 'Flag', data_type: 'BOOL', description: 'flag' })).error).toBeUndefined()
+    const rung = await l5xTool.call('l5x_draft_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, text: 'XIC(Local)OTE(Flag);' })
     expect(rung.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'programtags-out.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'programtags-out.l5x' })
     expect(applied.error).toBeUndefined()
     const output = String(l5xTool.written.get('programtags-out.l5x'))
     const program = output.slice(output.indexOf('<Program Name="Main"'), output.indexOf('</Program>'))
@@ -1092,8 +1092,8 @@ describe('a program without a Tags region', () => {
     expect(program).toContain('Name="Flag"')
     expect(program).toContain('XIC(Local)OTE(Flag)')
     const reopened = harness(new Map([['programtags-out.l5x', new TextEncoder().encode(output)]]), { editing: false })
-    expect((await reopened.call('open_project', { path: 'programtags-out.l5x' })).error).toBeUndefined()
-    const tags = await reopened.call('list_components', { kind: 'tag', scope: 'Main' })
+    expect((await reopened.call('l5x_open_project', { path: 'programtags-out.l5x' })).error).toBeUndefined()
+    const tags = await reopened.call('l5x_list_components', { kind: 'tag', scope: 'Main' })
     const names = ((tags.data?.rows ?? []) as { name: string }[]).map(row => row.name)
     expect(names).toContain('Local')
     expect(names).toContain('Flag')
@@ -1122,9 +1122,9 @@ describe('tag initial value bounds', () => {
     ]
     for (const [name, dataType, value, fits] of cases) {
       const tool = harness(new Map([['values.l5x', new TextEncoder().encode(project)]]), { editing: true })
-      expect((await tool.call('open_project', { path: 'values.l5x' })).error).toBeUndefined()
-      const added = await tool.call('draft_tag', { scope: 'controller', name, data_type: dataType, value, description: name })
-      const applied = added.error === undefined ? await tool.call('draft_apply', { output_path: `${name}.l5x` }) : added
+      expect((await tool.call('l5x_open_project', { path: 'values.l5x' })).error).toBeUndefined()
+      const added = await tool.call('l5x_draft_tag', { scope: 'controller', name, data_type: dataType, value, description: name })
+      const applied = added.error === undefined ? await tool.call('l5x_draft_apply', { output_path: `${name}.l5x` }) : added
       if (fits) {
         expect(applied.error, `${name}`).toBeUndefined()
       } else {
@@ -1143,30 +1143,30 @@ describe('tag array dimensions', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
-    const valid = await l5xTool.call('draft_tag', { scope: 'controller', name: 'Grid', data_type: 'DINT', dimensions: '4 2', description: 'grid' })
+    expect((await l5xTool.call('l5x_open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+    const valid = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'Grid', data_type: 'DINT', dimensions: '4 2', description: 'grid' })
     expect(valid.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'dims-out.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'dims-out.l5x' })
     expect(applied.error).toBeUndefined()
     expect(String(l5xTool.written.get('dims-out.l5x'))).toContain('Dimensions="4 2"')
     for (const dimensions of ['0', '10 0', 'abc', '1 2 3 4', '1000001', '4000 4000']) {
       const badTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
-      expect((await badTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
-      const added = await badTool.call('draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions, description: 'bad' })
-      const appliedBad = added.error === undefined ? await badTool.call('draft_apply', { output_path: 'bad-dims.l5x' }) : added
+      expect((await badTool.call('l5x_open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+      const added = await badTool.call('l5x_draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions, description: 'bad' })
+      const appliedBad = added.error === undefined ? await badTool.call('l5x_draft_apply', { output_path: 'bad-dims.l5x' }) : added
       expect(appliedBad.error?.code, dimensions).toBe('INVALID_CHANGE_SET')
     }
     const valueTool = harness(new Map([['dims.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await valueTool.call('open_project', { path: 'dims.l5x' })).error).toBeUndefined()
-    const withValue = await valueTool.call('draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions: '4', value: 0, description: 'bad' })
-    const appliedValue = withValue.error === undefined ? await valueTool.call('draft_apply', { output_path: 'bad-value.l5x' }) : withValue
+    expect((await valueTool.call('l5x_open_project', { path: 'dims.l5x' })).error).toBeUndefined()
+    const withValue = await valueTool.call('l5x_draft_tag', { scope: 'controller', name: 'Bad', data_type: 'DINT', dimensions: '4', value: 0, description: 'bad' })
+    const appliedValue = withValue.error === undefined ? await valueTool.call('l5x_draft_apply', { output_path: 'bad-value.l5x' }) : withValue
     expect(appliedValue.error?.code).toBe('INVALID_CHANGE_SET')
   })
 })
 
 describe('tag types the catalogue needs', () => {
-  it('can be declared through draft_tag', async () => {
-    // draft_tag answered UNKNOWN_DATA_TYPE for TIMER, COUNTER, PID, STRING and MESSAGE, although the
+  it('can be declared through l5x_draft_tag', async () => {
+    // l5x_draft_tag answered UNKNOWN_DATA_TYPE for TIMER, COUNTER, PID, STRING and MESSAGE, although the
     // catalogue and its patterns use all five. They are built-in Logix structures, not project UDTs.
     const project = l5x({
       name: 'BuiltinTypes',
@@ -1174,15 +1174,15 @@ describe('tag types the catalogue needs', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['types.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'types.l5x' })).error).toBeUndefined()
+    expect((await l5xTool.call('l5x_open_project', { path: 'types.l5x' })).error).toBeUndefined()
     for (const [name, dataType] of [['T1', 'TIMER'], ['C1', 'COUNTER'], ['P1', 'PID'], ['S1', 'STRING'], ['M1', 'MESSAGE'], ['F1', 'FBD_TIMER'], ['F2', 'FBD_COUNTER'], ['F3', 'FBD_COMPARE'], ['F4', 'FBD_LOGICAL'], ['F5', 'FBD_MATH']]) {
-      const added = await l5xTool.call('draft_tag', { scope: 'controller', name, data_type: dataType, description: dataType })
+      const added = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name, data_type: dataType, description: dataType })
       expect(added.error).toBeUndefined()
     }
     // The draft-created TIMER is directly usable by the composer, not just present in the export.
-    const ton = await l5xTool.call('compose_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify({ series: [{ instr: 'TON', args: ['T1', '1000', '0'] }] }) })
+    const ton = await l5xTool.call('l5x_compose_rung', { program: 'Main', routine: 'MainRoutine', mode: 'insert', rung: 0, spec_json: JSON.stringify({ series: [{ instr: 'TON', args: ['T1', '1000', '0'] }] }) })
     expect(ton.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'builtin-types.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'builtin-types.l5x' })
     expect(applied.error).toBeUndefined()
     const output = String(l5xTool.written.get('builtin-types.l5x'))
     for (const type of ['TIMER', 'COUNTER', 'PID', 'STRING', 'MESSAGE', 'FBD_TIMER', 'FBD_COUNTER', 'FBD_COMPARE', 'FBD_LOGICAL', 'FBD_MATH']) expect(output).toContain(`DataType="${type}"`)
@@ -1200,17 +1200,17 @@ describe('a message instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['msg.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'msg.l5x' })).error).toBeUndefined()
-    const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['N'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'msg.l5x' })).error).toBeUndefined()
+    const wrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['N'] }] }) })
     expect(wrong.error?.code).toBe('INVALID_OPERAND')
     expect(wrong.error?.message).toContain('must be MESSAGE')
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['Msg'] }] }) })
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MSG', args: ['Msg'] }] }) })
     expect(good.error).toBeUndefined()
     expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MSG(Msg);')
     // A MESSAGE tag has to be declarable through the tools, or MSG cannot be composed from scratch.
-    const messageTag = await l5xTool.call('draft_tag', { scope: 'controller', name: 'Msg2', data_type: 'MESSAGE', description: 'second message' })
+    const messageTag = await l5xTool.call('l5x_draft_tag', { scope: 'controller', name: 'Msg2', data_type: 'MESSAGE', description: 'second message' })
     expect(messageTag.error).toBeUndefined()
-    const applied = await l5xTool.call('draft_apply', { output_path: 'msg-tag.l5x' })
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'msg-tag.l5x' })
     expect(applied.error).toBeUndefined()
     expect(String(l5xTool.written.get('msg-tag.l5x'))).toContain('<Tag Name="Msg2"')
   })
@@ -1227,21 +1227,21 @@ describe('a one-based start position', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['start.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'start.l5x' })).error).toBeUndefined()
-    const findZero = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '0', 'Pos'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'start.l5x' })).error).toBeUndefined()
+    const findZero = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '0', 'Pos'] }] }) })
     expect(findZero.error?.code).toBe('INVALID_OPERAND')
     expect(findZero.error?.message).toContain('1-based')
-    const findOne = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Pos'] }] }) })
+    const findOne = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Pos'] }] }) })
     expect(findOne.error).toBeUndefined()
     expect((findOne.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('FIND(Str1,Str2,1,Pos);')
     // A STRING Result failed INVALIDOPTYPE; the position is a DINT.
-    const findWrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Str2'] }] }) })
+    const findWrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FIND', args: ['Str1', 'Str2', '1', 'Str2'] }] }) })
     expect(findWrong.error?.code).toBe('INVALID_OPERAND')
     expect(findWrong.error?.message).toContain('must be DINT')
-    const midZero = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '0', 'Str2'] }] }) })
+    const midZero = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '0', 'Str2'] }] }) })
     expect(midZero.error?.code).toBe('INVALID_OPERAND')
     expect(midZero.error?.message).toContain('1-based')
-    const midOne = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '1', 'Str2'] }] }) })
+    const midOne = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MID', args: ['Str1', '1', '1', 'Str2'] }] }) })
     expect(midOne.error).toBeUndefined()
     expect((midOne.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MID(Str1,1,1,Str2);')
   })
@@ -1258,25 +1258,25 @@ describe('a bit shift', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['bsl.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'bsl.l5x' })).error).toBeUndefined()
-    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', '0', '10'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'bsl.l5x' })).error).toBeUndefined()
+    const literal = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', '0', '10'] }] }) })
     expect(literal.error?.code).toBe('INVALID_OPERAND')
     expect(literal.error?.message).toContain('BOOL tag')
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSL', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
     expect(good.error).toBeUndefined()
     expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('BSL(Arr,Ctrl,Bit,10);')
-    const right = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSR', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
+    const right = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'BSR', args: ['Arr', 'Ctrl', 'Bit', '10'] }] }) })
     expect(right.error).toBeUndefined()
     expect((right.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('BSR(Arr,Ctrl,Bit,10);')
     // BSL(Arr,Ctl2,Bit,8) with a COUNTER control failed Studio with INVALIDOPTYPE.
     for (const instr of ['BSL', 'BSR']) {
-      const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr', 'Ctl2', 'Bit', '10'] }] }) })
+      const wrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr', 'Ctl2', 'Bit', '10'] }] }) })
       expect(wrong.error?.code).toBe('INVALID_OPERAND')
       expect(wrong.error?.message).toContain('must be CONTROL')
     }
     // The array slot accepts one element: BSL(Arr[0],Ctrl,Bit,8) built 0/0, so no whole-array rule.
     for (const instr of ['BSL', 'BSR']) {
-      const element = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr[0]', 'Ctrl', 'Bit', '10'] }] }) })
+      const element = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr, args: ['Arr[0]', 'Ctrl', 'Bit', '10'] }] }) })
       expect(element.error).toBeUndefined()
       expect((element.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe(`${instr}(Arr[0],Ctrl,Bit,10);`)
     }
@@ -1294,17 +1294,17 @@ describe('an input-type logic instruction', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['rail.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'rail.l5x' })).error).toBeUndefined()
-    const andRail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'rail.l5x' })).error).toBeUndefined()
+    const andRail = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }] }) })
     expect(andRail.error?.code).toBe('INVALID_LADDER_SPEC')
     expect(andRail.error?.message).toContain('ends in AND')
-    const andDriven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }, { instr: 'OTE', args: ['Bit'] }] }) })
+    const andDriven = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'AND', args: ['A', 'B', 'D'] }, { instr: 'OTE', args: ['Bit'] }] }) })
     expect(andDriven.error).toBeUndefined()
     expect((andDriven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('AND(A,B,D)OTE(Bit);')
-    const dtrRail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }] }) })
+    const dtrRail = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }] }) })
     expect(dtrRail.error?.code).toBe('INVALID_LADDER_SPEC')
     expect(dtrRail.error?.message).toContain('ends in DTR')
-    const dtrDriven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }, { instr: 'OTE', args: ['Bit'] }] }) })
+    const dtrDriven = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'DTR', args: ['Src', 'Mask', 'Ref'] }, { instr: 'OTE', args: ['Bit'] }] }) })
     expect(dtrDriven.error).toBeUndefined()
     expect((dtrDriven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('DTR(Src,Mask,Ref)OTE(Bit);')
   })
@@ -1321,14 +1321,14 @@ describe('an infinite or NaN check', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['isinf.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'isinf.l5x' })).error).toBeUndefined()
-    const driven = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }, { instr: 'OTE', args: ['B'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'isinf.l5x' })).error).toBeUndefined()
+    const driven = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }, { instr: 'OTE', args: ['B'] }] }) })
     expect(driven.error).toBeUndefined()
     expect((driven.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('ISINF(R)OTE(B);')
-    const rail = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }] }) })
+    const rail = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['R'] }] }) })
     expect(rail.error?.code).toBe('INVALID_LADDER_SPEC')
     expect(rail.error?.message).toContain('ends in ISINF')
-    const intSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['D'] }, { instr: 'OTE', args: ['B'] }] }) })
+    const intSource = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'ISINF', args: ['D'] }, { instr: 'OTE', args: ['B'] }] }) })
     expect(intSource.error?.code).toBe('INVALID_OPERAND')
     expect(intSource.error?.message).toContain('must be REAL')
   })
@@ -1345,38 +1345,38 @@ describe('a tag-only operand slot', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['tagonly.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'tagonly.l5x' })).error).toBeUndefined()
-    const cpsGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'tagonly.l5x' })).error).toBeUndefined()
+    const cpsGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
     expect(cpsGood.error).toBeUndefined()
     expect((cpsGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('CPS(Arr[0],Arr2[0],10);')
     // Studio answered MUSTBEDISCRETE for CPS(Arr,Arr2,10); the element form above built 0/0.
-    const cpsWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr', 'Arr2', '10'] }] }) })
+    const cpsWhole = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr', 'Arr2', '10'] }] }) })
     expect(cpsWhole.error?.code).toBe('INVALID_OPERAND')
     expect(cpsWhole.error?.message).toContain('array element')
-    const cpsSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['5', 'Arr2', '10'] }] }) })
+    const cpsSource = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['5', 'Arr2', '10'] }] }) })
     expect(cpsSource.error?.code).toBe('INVALID_OPERAND')
     expect(cpsSource.error?.message).toContain('needs a tag for Source')
-    const cpsDest = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', '5', '10'] }] }) })
+    const cpsDest = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'CPS', args: ['Arr[0]', '5', '10'] }] }) })
     expect(cpsDest.error?.code).toBe('INVALID_OPERAND')
     expect(cpsDest.error?.message).toContain('writable dest')
-    const neg = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'NEG', args: ['5', '5'] }] }) })
+    const neg = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'NEG', args: ['5', '5'] }] }) })
     expect(neg.error?.code).toBe('INVALID_OPERAND')
     expect(neg.error?.message).toContain('writable dest')
-    const copSource = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['5', 'Arr2', '10'] }] }) })
+    const copSource = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['5', 'Arr2', '10'] }] }) })
     expect(copSource.error?.code).toBe('INVALID_OPERAND')
     expect(copSource.error?.message).toContain('needs a tag for Source')
     // Studio answered MUSTBEDISCRETE for COP(Arr,Arr2,10); COP(Arr[0],Arr2[0],10) built 0/0.
-    const copWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr', 'Arr2', '10'] }] }) })
+    const copWhole = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr', 'Arr2', '10'] }] }) })
     expect(copWhole.error?.code).toBe('INVALID_OPERAND')
     expect(copWhole.error?.message).toContain('array element')
-    const copGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
+    const copGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'COP', args: ['Arr[0]', 'Arr2[0]', '10'] }] }) })
     expect(copGood.error).toBeUndefined()
     expect((copGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('COP(Arr[0],Arr2[0],10);')
     // Studio answered MUSTBEDISCRETE for FLL(5,Arr,10); FLL(5,Arr[0],10) built 0/0.
-    const fllWhole = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr', '10'] }] }) })
+    const fllWhole = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr', '10'] }] }) })
     expect(fllWhole.error?.code).toBe('INVALID_OPERAND')
     expect(fllWhole.error?.message).toContain('array element')
-    const fllGood = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr[0]', '10'] }] }) })
+    const fllGood = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FLL', args: ['5', 'Arr[0]', '10'] }] }) })
     expect(fllGood.error).toBeUndefined()
     expect((fllGood.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('FLL(5,Arr[0],10);')
   })
@@ -1395,14 +1395,14 @@ describe('an AOI structure parameter', () => {
       tasks: task('MainTask', ['Main']),
     })
     const l5xTool = harness(new Map([['struct.l5x', new TextEncoder().encode(project)]]), { editing: true })
-    expect((await l5xTool.call('open_project', { path: 'struct.l5x' })).error).toBeUndefined()
-    const good = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'Axis'] }] }) })
+    expect((await l5xTool.call('l5x_open_project', { path: 'struct.l5x' })).error).toBeUndefined()
+    const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'Axis'] }] }) })
     expect(good.error).toBeUndefined()
     expect((good.data as { rungs?: { neutral_text: string }[] } | undefined)?.rungs?.[0]?.neutral_text).toBe('MyStructAoi(MyStructAoi_1,Axis);')
-    const wrong = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'NotAxis'] }] }) })
+    const wrong = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', 'NotAxis'] }] }) })
     expect(wrong.error?.code).toBe('INVALID_OPERAND')
     expect(wrong.error?.message).toContain('needs MyUdt')
-    const literal = await l5xTool.call('compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', '5'] }] }) })
+    const literal = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'MyStructAoi', args: ['MyStructAoi_1', '5'] }] }) })
     expect(literal.error?.code).toBe('INVALID_OPERAND')
     expect(literal.error?.message).toContain('needs a tag')
   })

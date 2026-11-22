@@ -1,0 +1,574 @@
+{
+  "schema": 1,
+  "collection": "l5x-instruction-families",
+  "title": "L5X instruction families",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 74,
+  "pages": [
+    {
+      "id": "family-advanced-math",
+      "title": "Advanced math instructions",
+      "section": "Instruction families",
+      "body": "pages/family-advanced-math.md"
+    },
+    {
+      "id": "family-alarm",
+      "title": "Alarm instructions",
+      "section": "Instruction families",
+      "body": "pages/family-alarm.md"
+    },
+    {
+      "id": "family-arrayfilemisc",
+      "title": "Array file-misc instructions",
+      "section": "Instruction families",
+      "body": "pages/family-arrayfilemisc.md"
+    },
+    {
+      "id": "family-arrayfileshift",
+      "title": "Array (file) shift instructions",
+      "section": "Instruction families",
+      "body": "pages/family-arrayfileshift.md"
+    },
+    {
+      "id": "family-ascii-conversion",
+      "title": "ASCII conversion instructions",
+      "section": "Instruction families",
+      "body": "pages/family-ascii-conversion.md"
+    },
+    {
+      "id": "family-ascii-string",
+      "title": "ASCII string instructions",
+      "section": "Instruction families",
+      "body": "pages/family-ascii-string.md"
+    },
+    {
+      "id": "family-bit",
+      "title": "Bit instructions",
+      "section": "Instruction families",
+      "body": "pages/family-bit.md"
+    },
+    {
+      "id": "family-cip-motion-exceptions",
+      "title": "CIP Motion exceptions instructions",
+      "section": "Instruction families",
+      "body": "pages/family-cip-motion-exceptions.md"
+    },
+    {
+      "id": "family-compare",
+      "title": "Compare instructions",
+      "section": "Instruction families",
+      "body": "pages/family-compare.md"
+    },
+    {
+      "id": "family-compute",
+      "title": "Compute/Math instructions",
+      "section": "Instruction families",
+      "body": "pages/family-compute.md"
+    },
+    {
+      "id": "family-debug",
+      "title": "Debug instructions",
+      "section": "Instruction families",
+      "body": "pages/family-debug.md"
+    },
+    {
+      "id": "family-drive-safety",
+      "title": "Drive safety instructions",
+      "section": "Instruction families",
+      "body": "pages/family-drive-safety.md"
+    },
+    {
+      "id": "family-drives",
+      "title": "Drives instructions",
+      "section": "Instruction families",
+      "body": "pages/family-drives.md"
+    },
+    {
+      "id": "family-embedded-instruction-topics",
+      "title": "Embedded instruction topics instructions",
+      "section": "Instruction families",
+      "body": "pages/family-embedded-instruction-topics.md"
+    },
+    {
+      "id": "family-equipment-phase",
+      "title": "Equipment phase instructions",
+      "section": "Instruction families",
+      "body": "pages/family-equipment-phase.md"
+    },
+    {
+      "id": "family-equipment-sequence",
+      "title": "Equipment sequence diagram instructions",
+      "section": "Instruction families",
+      "body": "pages/family-equipment-sequence.md"
+    },
+    {
+      "id": "family-fault-and-error-topics",
+      "title": "Fault and error topics instructions",
+      "section": "Instruction families",
+      "body": "pages/family-fault-and-error-topics.md"
+    },
+    {
+      "id": "family-filter",
+      "title": "Filter instructions",
+      "section": "Instruction families",
+      "body": "pages/family-filter.md"
+    },
+    {
+      "id": "family-forbreak",
+      "title": "For/Break instructions",
+      "section": "Instruction families",
+      "body": "pages/family-forbreak.md"
+    },
+    {
+      "id": "family-hmi",
+      "title": "HMI instructions",
+      "section": "Instruction families",
+      "body": "pages/family-hmi.md"
+    },
+    {
+      "id": "family-immediate",
+      "title": "Immediate instructions",
+      "section": "Instruction families",
+      "body": "pages/family-immediate.md"
+    },
+    {
+      "id": "family-input-output",
+      "title": "Input/output instructions",
+      "section": "Instruction families",
+      "body": "pages/family-input-output.md"
+    },
+    {
+      "id": "family-license",
+      "title": "License instructions",
+      "section": "Instruction families",
+      "body": "pages/family-license.md"
+    },
+    {
+      "id": "family-logical-and-move",
+      "title": "Logical and move instructions",
+      "section": "Instruction families",
+      "body": "pages/family-logical-and-move.md"
+    },
+    {
+      "id": "family-math-conversion",
+      "title": "Math conversion instructions",
+      "section": "Instruction families",
+      "body": "pages/family-math-conversion.md"
+    },
+    {
+      "id": "family-metal-form",
+      "title": "Metal form instructions",
+      "section": "Instruction families",
+      "body": "pages/family-metal-form.md"
+    },
+    {
+      "id": "family-motion-configuration",
+      "title": "Motion configuration instructions",
+      "section": "Instruction families",
+      "body": "pages/family-motion-configuration.md"
+    },
+    {
+      "id": "family-motion-event",
+      "title": "Motion event instructions",
+      "section": "Instruction families",
+      "body": "pages/family-motion-event.md"
+    },
+    {
+      "id": "family-motion-group",
+      "title": "Motion group instructions",
+      "section": "Instruction families",
+      "body": "pages/family-motion-group.md"
+    },
+    {
+      "id": "family-motion-move",
+      "title": "Motion move instructions",
+      "section": "Instruction families",
+      "body": "pages/family-motion-move.md"
+    },
+    {
+      "id": "family-motion-state",
+      "title": "Motion state instructions",
+      "section": "Instruction families",
+      "body": "pages/family-motion-state.md"
+    },
+    {
+      "id": "family-move-logical",
+      "title": "Move/logical instructions",
+      "section": "Instruction families",
+      "body": "pages/family-move-logical.md"
+    },
+    {
+      "id": "family-multiaxis-coordinated-motion",
+      "title": "Multi-axis coordinated motion instructions",
+      "section": "Instruction families",
+      "body": "pages/family-multiaxis-coordinated-motion.md"
+    },
+    {
+      "id": "family-plantpax",
+      "title": "PlantPAx instructions",
+      "section": "Instruction families",
+      "body": "pages/family-plantpax.md"
+    },
+    {
+      "id": "family-process-control",
+      "title": "Process control instructions",
+      "section": "Instruction families",
+      "body": "pages/family-process-control.md"
+    },
+    {
+      "id": "family-program-control",
+      "title": "Program control instructions",
+      "section": "Instruction families",
+      "body": "pages/family-program-control.md"
+    },
+    {
+      "id": "family-safety",
+      "title": "Safety instructions",
+      "section": "Instruction families",
+      "body": "pages/family-safety.md"
+    },
+    {
+      "id": "family-select-limit",
+      "title": "Select/limit instructions",
+      "section": "Instruction families",
+      "body": "pages/family-select-limit.md"
+    },
+    {
+      "id": "family-sequencer",
+      "title": "Sequencer instructions",
+      "section": "Instruction families",
+      "body": "pages/family-sequencer.md"
+    },
+    {
+      "id": "family-sfc",
+      "title": "SFC instructions",
+      "section": "Instruction families",
+      "body": "pages/family-sfc.md"
+    },
+    {
+      "id": "family-shared-instruction-topics",
+      "title": "Shared instruction topics instructions",
+      "section": "Instruction families",
+      "body": "pages/family-shared-instruction-topics.md"
+    },
+    {
+      "id": "family-special",
+      "title": "Special instructions",
+      "section": "Instruction families",
+      "body": "pages/family-special.md"
+    },
+    {
+      "id": "family-statistical",
+      "title": "Statistical instructions",
+      "section": "Instruction families",
+      "body": "pages/family-statistical.md"
+    },
+    {
+      "id": "family-structured-text",
+      "title": "Structured text instructions",
+      "section": "Instruction families",
+      "body": "pages/family-structured-text.md"
+    },
+    {
+      "id": "family-timer-counter",
+      "title": "Timer and counter instructions",
+      "section": "Instruction families",
+      "body": "pages/family-timer-counter.md"
+    },
+    {
+      "id": "family-trigonometric",
+      "title": "Trigonometric instructions",
+      "section": "Instruction families",
+      "body": "pages/family-trigonometric.md"
+    },
+    {
+      "id": "instruction-set-overview",
+      "title": "The Logix instruction set and the two installed help indexes",
+      "section": "Instruction families",
+      "body": "pages/instruction-set-overview.md",
+      "identifiers": [
+        "INSTRUCTION SET"
+      ]
+    },
+    {
+      "id": "instruction-abs",
+      "title": "Absolute value (ABS)",
+      "section": "Common instructions",
+      "body": "pages/instruction-abs.md",
+      "identifiers": [
+        "ABS"
+      ]
+    },
+    {
+      "id": "instruction-add",
+      "title": "Add (ADD)",
+      "section": "Common instructions",
+      "body": "pages/instruction-add.md",
+      "identifiers": [
+        "ADD"
+      ]
+    },
+    {
+      "id": "instruction-bsl",
+      "title": "Bit shift left (BSL)",
+      "section": "Common instructions",
+      "body": "pages/instruction-bsl.md",
+      "identifiers": [
+        "BSL"
+      ]
+    },
+    {
+      "id": "instruction-bsr",
+      "title": "Bit shift right (BSR)",
+      "section": "Common instructions",
+      "body": "pages/instruction-bsr.md",
+      "identifiers": [
+        "BSR"
+      ]
+    },
+    {
+      "id": "instruction-concat",
+      "title": "Concatenate (CONCAT)",
+      "section": "Common instructions",
+      "body": "pages/instruction-concat.md",
+      "identifiers": [
+        "CONCAT"
+      ]
+    },
+    {
+      "id": "instruction-cop",
+      "title": "Copy (COP)",
+      "section": "Common instructions",
+      "body": "pages/instruction-cop.md",
+      "identifiers": [
+        "COP"
+      ]
+    },
+    {
+      "id": "instruction-ctd",
+      "title": "Count down (CTD)",
+      "section": "Common instructions",
+      "body": "pages/instruction-ctd.md",
+      "identifiers": [
+        "CTD"
+      ]
+    },
+    {
+      "id": "instruction-ctu",
+      "title": "Count up (CTU)",
+      "section": "Common instructions",
+      "body": "pages/instruction-ctu.md",
+      "identifiers": [
+        "CTU"
+      ]
+    },
+    {
+      "id": "instruction-eq",
+      "title": "Equal to (EQ)",
+      "section": "Common instructions",
+      "body": "pages/instruction-eq.md",
+      "identifiers": [
+        "EQ",
+        "EQU"
+      ]
+    },
+    {
+      "id": "instruction-fal",
+      "title": "File arithmetic and logic (FAL)",
+      "section": "Common instructions",
+      "body": "pages/instruction-fal.md",
+      "identifiers": [
+        "FAL"
+      ]
+    },
+    {
+      "id": "instruction-fll",
+      "title": "File fill (FLL)",
+      "section": "Common instructions",
+      "body": "pages/instruction-fll.md",
+      "identifiers": [
+        "FLL"
+      ]
+    },
+    {
+      "id": "instruction-fsc",
+      "title": "File search and compare (FSC)",
+      "section": "Common instructions",
+      "body": "pages/instruction-fsc.md",
+      "identifiers": [
+        "FSC"
+      ]
+    },
+    {
+      "id": "instruction-jsr",
+      "title": "Jump to subroutine (JSR)",
+      "section": "Common instructions",
+      "body": "pages/instruction-jsr.md",
+      "identifiers": [
+        "JSR"
+      ]
+    },
+    {
+      "id": "instruction-lfl",
+      "title": "Load FIFO with load (LFL)",
+      "section": "Common instructions",
+      "body": "pages/instruction-lfl.md",
+      "identifiers": [
+        "LFL"
+      ]
+    },
+    {
+      "id": "instruction-limit",
+      "title": "Limit (LIMIT)",
+      "section": "Common instructions",
+      "body": "pages/instruction-limit.md",
+      "identifiers": [
+        "LIMIT",
+        "LIM"
+      ]
+    },
+    {
+      "id": "instruction-move",
+      "title": "Move (MOVE)",
+      "section": "Common instructions",
+      "body": "pages/instruction-move.md",
+      "identifiers": [
+        "MOVE",
+        "MOV"
+      ]
+    },
+    {
+      "id": "instruction-msg",
+      "title": "Message (MSG)",
+      "section": "Common instructions",
+      "body": "pages/instruction-msg.md",
+      "identifiers": [
+        "MSG"
+      ]
+    },
+    {
+      "id": "instruction-ote",
+      "title": "Output energize (OTE)",
+      "section": "Common instructions",
+      "body": "pages/instruction-ote.md",
+      "identifiers": [
+        "OTE"
+      ]
+    },
+    {
+      "id": "instruction-otl",
+      "title": "Output latch (OTL)",
+      "section": "Common instructions",
+      "body": "pages/instruction-otl.md",
+      "identifiers": [
+        "OTL"
+      ]
+    },
+    {
+      "id": "instruction-otu",
+      "title": "Output unlatch (OTU)",
+      "section": "Common instructions",
+      "body": "pages/instruction-otu.md",
+      "identifiers": [
+        "OTU"
+      ]
+    },
+    {
+      "id": "instruction-sqr",
+      "title": "Square root (SQR/SQRT)",
+      "section": "Common instructions",
+      "body": "pages/instruction-sqr.md",
+      "identifiers": [
+        "SQR",
+        "SQRT"
+      ]
+    },
+    {
+      "id": "instruction-sub",
+      "title": "Subtract (SUB)",
+      "section": "Common instructions",
+      "body": "pages/instruction-sub.md",
+      "identifiers": [
+        "SUB"
+      ]
+    },
+    {
+      "id": "instruction-tof",
+      "title": "Timer off delay (TOF)",
+      "section": "Common instructions",
+      "body": "pages/instruction-tof.md",
+      "identifiers": [
+        "TOF"
+      ]
+    },
+    {
+      "id": "instruction-ton",
+      "title": "Timer on delay (TON)",
+      "section": "Common instructions",
+      "body": "pages/instruction-ton.md",
+      "identifiers": [
+        "TON"
+      ]
+    },
+    {
+      "id": "instruction-xic",
+      "title": "Examine if closed (XIC)",
+      "section": "Common instructions",
+      "body": "pages/instruction-xic.md",
+      "identifiers": [
+        "XIC"
+      ]
+    },
+    {
+      "id": "instruction-xio",
+      "title": "Examine if open (XIO)",
+      "section": "Common instructions",
+      "body": "pages/instruction-xio.md",
+      "identifiers": [
+        "XIO"
+      ]
+    },
+    {
+      "id": "instruction-xpy",
+      "title": "X to power Y (XPY/EXPT)",
+      "section": "Common instructions",
+      "body": "pages/instruction-xpy.md",
+      "identifiers": [
+        "XPY",
+        "EXPT"
+      ]
+    }
+  ],
+  "aliases": {
+    "absolute": "instruction-abs",
+    "addition": "instruction-add",
+    "bit shift left": "instruction-bsl",
+    "bit shift right": "instruction-bsr",
+    "concatenate": "instruction-concat",
+    "copy file": "instruction-cop",
+    "count down": "instruction-ctd",
+    "count up": "instruction-ctu",
+    "equal": "instruction-eq",
+    "examine if closed": "instruction-xic",
+    "examine if open": "instruction-xio",
+    "exponent": "instruction-xpy",
+    "file arithmetic and logic": "instruction-fal",
+    "file fill": "instruction-fll",
+    "file search": "instruction-fsc",
+    "jump to subroutine": "instruction-jsr",
+    "limit": "instruction-limit",
+    "load fifo": "instruction-lfl",
+    "message": "instruction-msg",
+    "move": "instruction-move",
+    "output coil": "instruction-ote",
+    "output energize": "instruction-ote",
+    "output latch": "instruction-otl",
+    "output unlatch": "instruction-otu",
+    "square root": "instruction-sqr",
+    "subtraction": "instruction-sub",
+    "timer off delay": "instruction-tof",
+    "timer on delay": "instruction-ton",
+    "x to power y": "instruction-xpy"
+  }
+}

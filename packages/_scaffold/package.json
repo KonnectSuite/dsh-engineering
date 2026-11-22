@@ -1,0 +1,33 @@
+{
+  "name": "@aryacode/dsh-engineering-scaffold",
+  "version": "0.1.0",
+  "description": "Copyable component skeleton. Not mounted and not part of the bundle until wired.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "files": [
+    "SKILL.md",
+    "lib/**/*.js",
+    "lib/**/*.d.ts"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/smoke.spec.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  },
+  "license": "MIT",
+  "private": true
+}

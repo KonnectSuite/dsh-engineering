@@ -20,6 +20,7 @@ import { StageService, type StageOptions, type StageRecord } from './stage.ts'
 import { ensureBackup, findBackup, listBackups, type BackupRecord } from './backup.ts'
 import { compareVariables } from '../edit/compare.ts'
 import { ReadService } from '../read/service.ts'
+import { helpTreeRootFromEnv } from '../read/help-tree.ts'
 import { stageRootOf, workspaceOf, isInside } from './workspace.ts'
 
 /** The bridge directory shipped with this package. */
@@ -173,10 +174,12 @@ export class PowerShellSessionRuntime implements SessionRuntime {
     // A block interface is decoded against the installed libraries as well as the
     // saved project. That inventory is a live IDE read; when no IDE answers, the
     // read service falls back to the project's own registry instead of failing.
+    // The same service reads an extracted help tree when MWI_HELP_TREE names one,
+    // so mw_help stays exercisable on a host without the IDE.
     this.reads = new ReadService(this.engine, async () => {
       const snapshot = await this.bridge.run('library_snapshot', {}, 30_000) as { libraries?: readonly Record<string, unknown>[] }
       return (snapshot.libraries ?? []).map(row => ({ name: String(row.name ?? ''), full_name: String(row.full_name ?? '') }))
-    })
+    }, helpTreeRootFromEnv())
   }
 
   /** @returns The bridge's status document. */

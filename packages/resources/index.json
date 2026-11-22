@@ -77,7 +77,6 @@
         "optix",
         "plc5",
         "mwi",
-        "ecad",
         "migration"
       ],
       "rules": [
@@ -87,7 +86,7 @@
         "CRAFT-ORD-04"
       ],
       "words": 682,
-      "bytes": 4496,
+      "bytes": 4490,
       "sha256": "24fc6017529a422b196001dee56394f74a08479a059dade99c8c60bfe2dd10da"
     },
     {
@@ -168,8 +167,8 @@
         "CRAFT-REVIEW-02"
       ],
       "words": 112,
-      "bytes": 926,
-      "sha256": "8139406d769f5b4a85ae78bb30238c8d608b7231dd05991a0922cea3c1370817"
+      "bytes": 930,
+      "sha256": "74d5cf41baeb6a2355065c4d6e0ce89b8d2455a14e494e8cd963c0750058021b"
     },
     {
       "id": "craft-units-and-ranges",

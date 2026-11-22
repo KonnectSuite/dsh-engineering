@@ -155,7 +155,7 @@ export function compareProjects(before: ProjectSnapshot, after: ProjectSnapshot)
 /** What to change for rules whose remedy is short enough to state here. */
 const REMEDIES: Record<string, string> = {
   UNUSED_TAG: 'Use the tag in logic or delete it in Studio; an exported tag with no reader may be HMI-only, so check the HMI first.',
-  UNRESOLVED_REFERENCE: 'Declare the tag or correct the spelling; find_references lists every site of the symbol.',
+  UNRESOLVED_REFERENCE: 'Declare the tag or correct the spelling; l5x_find_references lists every site of the symbol.',
   UNDOCUMENTED_RUNG: 'Add a rung comment stating what the rung does and why it exists.',
   UNDOCUMENTED_ROUTINE: 'Add a routine description saying what it does and when it runs.',
   UNDOCUMENTED_PROGRAM: 'Add a program description naming the equipment and mode it controls.',
@@ -163,12 +163,12 @@ const REMEDIES: Record<string, string> = {
   LATCH_WITHOUT_RESET: 'Add a reset path (XIO condition driving OTU) or confirm the latch is reset outside this export.',
   MULTIPLE_OUTPUT_WRITES: 'Confirm one writer is intended; merge the writers or move the second to another tag.',
   DUPLICATE_OUTPUT: 'Confirm intent and keep a single writer per tag, or split the tag.',
-  MNEMONIC_VERSION_MISMATCH: 'Use the instruction spelling this project revision builds; list_instructions gives both spellings.',
+  MNEMONIC_VERSION_MISMATCH: 'Use the instruction spelling this project revision builds; l5x_list_instructions gives both spellings.',
   RUNG_NO_OUTPUT: 'Give the rung an output instruction, or delete it.',
   SAFETY_TAG_WRITTEN_FROM_STANDARD_LOGIC: 'Move the write into a safety program, or have standard logic write a standard tag that safety logic consumes.',
   DUPLICATE_ROUTINE_NAME: 'Two routines share a name in one scope; rename one in Studio - the draft tools do not rename.',
   IO_MODULE_CHANGED: 'This is a baseline difference, not a defect; confirm the module change was intended before applying it.',
-  JSR_ROUTINE_MISSING: 'Declare the routine the JSR names, or correct the target; list_components kind "routine" shows the declared names.',
+  JSR_ROUTINE_MISSING: 'Declare the routine the JSR names, or correct the target; l5x_list_components kind "routine" shows the declared names.',
   LABEL_NOT_FOUND: 'Declare the label with LBL, or correct the jump target.',
   MAIN_ROUTINE_MISSING: 'Set the program main routine to a routine that exists, or create that routine.',
   MULTIPLE_SCHEDULES: 'Remove the program from all but one task; a program scheduled twice runs twice per scan.',

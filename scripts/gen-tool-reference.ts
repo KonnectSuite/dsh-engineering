@@ -26,18 +26,23 @@ import { draftTools } from '../packages/l5x/src/tools/drafts.ts'
 import { studioTools as l5xStudioTools } from '../packages/l5x/src/tools/studio.ts'
 import { controllerTools } from '../packages/l5x/src/tools/controller.ts'
 import { liveTools } from '../packages/l5x/src/tools/live.ts'
+import { docsTools as l5xDocsTools } from '../packages/l5x/src/docs.ts'
 import { ftviewTools } from '../packages/ftview/src/tools.ts'
 import { resourceTools } from '../packages/resources/src/tools.ts'
 import { migrationTools } from '../packages/migration/src/tools.ts'
+import { docsTools as migrationDocsTools } from '../packages/migration/src/docs.ts'
 import { plc5Tools } from '../packages/plc5/src/tools.ts'
+import { docsTools as plc5DocsTools } from '../packages/plc5/src/docs.ts'
+import { slc500Tools } from '../packages/slc/src/tools/index.ts'
+import { docsTools as slcDocsTools } from '../packages/slc/src/docs.ts'
 import { vendorTools } from '../packages/ftview/src/vendor-tools.ts'
 import { editTools } from '../packages/ftview/src/edit/tools.ts'
 import { studioTools as ftviewStudioTools } from '../packages/ftview/src/studio/tools.ts'
+import { docsTools as ftviewDocsTools } from '../packages/ftview/src/docs.ts'
 import { sessionTools as mwiSessionTools } from '../packages/mwi/src/tools/session.ts'
 import { readTools as mwiReadTools } from '../packages/mwi/src/tools/read.ts'
 import { verifyTools as mwiVerifyTools } from '../packages/mwi/src/tools/verify.ts'
 import { editTools as mwiEditTools } from '../packages/mwi/src/tools/edit.ts'
-import { ecadDeliverTools, ecadReadTools } from '../packages/ecad/src/tools/index.ts'
 import type { Parameters } from '../packages/l5x/src/core/params.ts'
 import type { ToolDefinition } from '../packages/l5x/src/core/tool.ts'
 
@@ -51,31 +56,32 @@ export interface ToolRow {
 /** One section of the reference. */
 export interface ToolGroup {
   readonly group: string
-  readonly product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'ECAD' | 'Engineering resources' | 'Migration'
+  readonly product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'Engineering resources' | 'Migration' | 'PLC-5' | 'RSLogix 500'
   readonly blurb: string
   readonly tools: readonly ToolRow[]
 }
 
 /** Group metadata, in registration order. */
-const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'ECAD' | 'Engineering resources' | 'Migration' | 'PLC-5'; blurb: string }[] = [
+const GROUPS: readonly { group: string; product: 'L5X' | 'FactoryTalk View' | 'MotionWorks IEC' | 'Engineering resources' | 'Migration' | 'PLC-5' | 'RSLogix 500'; blurb: string }[] = [
   { group: 'L5X read', product: 'L5X', blurb: 'Open a Studio 5000 L5X export and read its structure and components.' },
   { group: 'L5X references', product: 'L5X', blurb: 'Follow a symbol through exported logic without opening every routine.' },
   { group: 'L5X checks', product: 'L5X', blurb: 'Evidence-backed structural checks and export comparison.' },
   { group: 'L5X documentation', product: 'L5X', blurb: 'The instruction catalog the composer validates, and the handover bundle written to a new folder.' },
   { group: 'L5X preview', product: 'L5X', blurb: 'Render proposed rungs as a viewer document so a chat answer shows ladder, not NeutralText.' },
   { group: 'L5X diagrams', product: 'L5X', blurb: 'Draw existing routines, or the whole project, as a schematic page.' },
-  { group: 'L5X drafts', product: 'L5X', blurb: 'Stage edits in a chat draft. `draft_apply` writes one new L5X beside the source and never overwrites it.' },
+  { group: 'L5X drafts', product: 'L5X', blurb: 'Stage edits in a chat draft. `l5x_draft_apply` writes one new L5X beside the source and never overwrites it.' },
   { group: 'L5X Studio SDK', product: 'L5X', blurb: 'Logix Designer SDK: export, verify, build and evidence review. Requires Studio 5000 and the SDK service.' },
   { group: 'L5X controller', product: 'L5X', blurb: 'Supervised controller access. Upload, mode changes and downloads require per-call human approval.' },
   { group: 'L5X live', product: 'L5X', blurb: 'Direct EtherNet/IP reads with no Studio, FactoryTalk Linx or ACD snapshot.' },
+  { group: 'L5X knowledge', product: 'L5X', blurb: 'Search and read the authored L5X corpus and the installed Studio 5000 help index, with revision guards that refuse a page from another revision.' },
   { group: 'Migration', product: 'Migration', blurb: 'Assess a legacy RSLogix 500 export and lint the .L5K a migration wizard writes. Offline file readers; no controller and no claim that a file is migrated.' },
   { group: 'PLC-5', product: 'PLC-5', blurb: 'Read an RSLogix 5 (PLC-5) .RSP project headlessly through the vendor automation server — ladder in neutral text, I/O footprint, chassis configuration, data-file table, processor identity. Read-only; no controller, and the container reader answers from the file alone when RSLogix 5 is absent.' },
+  { group: 'RSLogix 500', product: 'RSLogix 500', blurb: 'Read an RSLogix 500 (SLC 500 and MicroLogix) export — ladder in neutral text, data files, I/O footprint, chassis configuration, processor identity and documentation. Read-only; the text reader answers from the export alone, and nothing is written or downloaded.' },
   { group: 'Engineering resources', product: 'Engineering resources', blurb: 'The local standards corpus and the house-style profile read from the open project. No network, no model calls.' },
-  { group: 'ECAD read', product: 'ECAD', blurb: 'Probe the drawing engine, confirm the set profile, index the sheets, then open, read, review, cross-reference, render and compare DXF (and DWG through the embedded converter) drawings with stated coverage. Editing belongs to AryaCAD Electrical, which the `ecad_capabilities` row reports as mounted or not.' },
-  { group: 'ECAD deliverables', product: 'ECAD', blurb: 'Write a review/documentation bundle and back up source drawings into the shared `backups/ecad/` tree. Both name their own new output.' },
   { group: 'FTView read', product: 'FactoryTalk View', blurb: 'Open a FactoryTalk View ME export and read displays and HMI tags.' },
   { group: 'FTView edit', product: 'FactoryTalk View', blurb: 'Stage display and tag edits. `ftview_apply` writes a new export folder and leaves the source untouched.' },
   { group: 'FTView Studio', product: 'FactoryTalk View', blurb: 'Plan the manual FactoryTalk View Studio import for changed displays.' },
+  { group: 'FTView documentation', product: 'FactoryTalk View', blurb: 'Search and read the FactoryTalk View corpus — the authored workflow pages, plus the installed ME and SE help indexes when the product records them.' },
   { group: 'MWI session', product: 'MotionWorks IEC', blurb: 'Find and stage a workspace project, then start, inspect and close the IDE.' },
   { group: 'MWI read', product: 'MotionWorks IEC', blurb: 'Read the saved project model, code, references, review evidence and installed help.' },
   { group: 'MWI verify', product: 'MotionWorks IEC', blurb: 'Compile, read the IDE output panes and compare saved-source baselines.' },
@@ -101,14 +107,15 @@ export function collectTools(): readonly ToolGroup[] {
     ['L5X Studio SDK', l5xStudioTools(stub, stub)],
     ['L5X controller', controllerTools(stub, stub, stub)],
     ['L5X live', liveTools(stub, stub, stub, { transactions: stub, allowWrites: false, maxBatchTags: 64 })],
+    ['L5X knowledge', l5xDocsTools(stub)],
     ['Engineering resources', resourceTools(() => undefined)],
-    ['ECAD read', ecadReadTools(stub)],
-    ['ECAD deliverables', ecadDeliverTools(stub)],
-    ['Migration', migrationTools(stub)],
-    ['PLC-5', plc5Tools(stub)],
+    ['Migration', [...migrationTools(stub), ...migrationDocsTools(stub)]],
+    ['PLC-5', [...plc5Tools(stub), ...plc5DocsTools(stub)]],
+    ['RSLogix 500', [...slc500Tools(stub), ...slcDocsTools(stub)]],
     ['FTView read', [...ftviewTools(stub), ...vendorTools(stub)]],
     ['FTView edit', editTools(stub, stub, stub, 100)],
     ['FTView Studio', ftviewStudioTools(stub, [])],
+    ['FTView documentation', ftviewDocsTools(stub)],
     ['MWI session', mwiSessionTools(stub)],
     ['MWI read', mwiReadTools(stub)],
     ['MWI verify', mwiVerifyTools(stub)],

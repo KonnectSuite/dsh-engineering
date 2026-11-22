@@ -23,7 +23,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)))
 const entriesDir = join(root, 'entries')
 
 /** Entries that mount product tools and must therefore register at least one. */
-const ENTRIES_WITH_TOOLS = ['resources', 'l5x', 'ftview', 'optix', 'mwi', 'plc5', 'migration', 'ecad']
+const ENTRIES_WITH_TOOLS = ['resources', 'l5x', 'ftview', 'optix', 'mwi', 'plc5', 'migration']
 
 /**
  * Mount one entry the way the harness does, rejecting what it rejects.
@@ -96,7 +96,7 @@ describe('every entry honours the harness tool contract', () => {
 
   it('every product tool definition in the built packages declares output.render', () => {
     const offenders = []
-    const packages = ['resources', 'l5x', 'ftview', 'optix', 'mwi', 'plc5', 'migration', 'ecad']
+    const packages = ['resources', 'l5x', 'ftview', 'optix', 'mwi', 'plc5', 'migration']
     for (const pkg of packages) {
       const libDir = join(root, 'vendor', pkg, 'lib')
       let files

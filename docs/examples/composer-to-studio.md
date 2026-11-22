@@ -1,13 +1,13 @@
 # Example: composing a rung, seeing it, and getting it into Studio
 
 One rung, end to end. The Studio screenshots are captured evidence from this repository's test controller; the tool
-answers are the shape `compose_rung` returns, which `packages/l5x/test/compose-program.spec.ts` asserts — not a
+answers are the shape `l5x_compose_rung` returns, which `packages/l5x/test/compose-program.spec.ts` asserts — not a
 transcript pasted from a session, and labelled as such rather than dressed up as one.
 
 ## 1. Compose
 
 ```
-compose_rung(
+l5x_compose_rung(
   program: "Main", routine: "MainRoutine", mode: "insert", rung: 4,
   spec_json: {"series":[{"instr":"XIC","args":["Run"]},{"instr":"TON","args":["Timer","2000"]}]}
 )
@@ -26,7 +26,7 @@ Two operands for the timer, because a caller composing a timer writes two. What 
   },
   "next": [
     { "tool": "present", "why": "Show the composed rungs as ladder in the chat, with the NeutralText ready to copy." },
-    { "tool": "draft_validate", "why": "Validate the whole draft before writing anything." }
+    { "tool": "l5x_draft_validate", "why": "Validate the whole draft before writing anything." }
   ]
 }
 ```
@@ -36,8 +36,8 @@ Three things to read carefully:
 - **The emitted text is `TON(Timer,2000,0)`, not `TON(Timer,2000)`.** Studio's NeutralText carries the accumulator; the
   composer writes it for you. The short form is what Studio rejects — proved the hard way below.
 - **`preview_path` is a real file**, written in the same call, so the ladder is in the conversation rather than something
-  you have to ask for separately. It is scratch output: the project file still waits for `draft_apply`.
-- **Nothing was written to the project.** One operation is staged; `draft_apply` is the only thing that writes.
+  you have to ask for separately. It is scratch output: the project file still waits for `l5x_draft_apply`.
+- **Nothing was written to the project.** One operation is staged; `l5x_draft_apply` is the only thing that writes.
 
 ## 2. See it
 

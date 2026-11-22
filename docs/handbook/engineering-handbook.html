@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="handbook-source-hash" content="105186b902a2f2ae">
+<title>Engineering handbook - 0.104.0</title>
+<link rel="stylesheet" href="../print.css">
+</head>
+<body>
+<header class="cover">
+<h1>Engineering handbook</h1>
+<p class="subtitle">@aryacode/dsh-engineering 0.104.0</p>
+<p>Generated 2026-11-22 from docs/handbook/src/ - source hash 105186b902a2f2ae.</p>
+</header>
+<nav class="toc"><h2>Contents</h2><ol>
+<li><a href="#page-10">What this bundle is</a></li>
+<li><a href="#page-20">How a session works</a></li>
+<li><a href="#page-30">Studio 5000 L5X</a></li>
+<li><a href="#page-40">FactoryTalk View ME and SE</a></li>
+<li><a href="#page-50">MotionWorks IEC</a></li>
+<li><a href="#page-60">FactoryTalk Optix and NetLogic</a></li>
+<li><a href="#page-70">Legacy migration</a></li>
+<li><a href="#page-80">RSLogix 5 and PLC-5 reads</a></li>
+<li><a href="#page-90">SLC 500</a></li>
+<li><a href="#page-100">Engineering resources</a></li>
+<li><a href="#page-110">Documentation tools and the knowledge plane</a></li>
+<li><a href="#page-120">Drawing and display previews</a></li>
+<li><a href="#page-130">Safety, approvals, and where work happens</a></li>
+<li><a href="#page-140">Troubleshooting</a></li>
+<li><a href="#page-150">Known gaps and what is not proved</a></li>
+</ol></nav>
+<section class="page" id="page-10">
+<h1>What this bundle is</h1>
+<p class="purpose">Explain what the engineering bundle adds to AryaCode, how rows and components fit together, and which surfaces this handbook covers.</p>
+<p class="audience">Audience: Readers new to the bundle</p>
+<h2>One install, many surfaces</h2>
+<p><code>@aryacode/dsh-engineering</code> is one AryaCode plugin bundle. It adds engineering tools to the agent's toolbox and the matching preview surfaces to the workbench: a ladder viewer, FactoryTalk View displays, Optix screens and a read-only drawing pane. A compatible AryaCode profile mounts the bundle; the bundle then composes the products it ships.</p>
+<p>The source repository is <code>KonnectSuite/dsh-engineering</code>. Nothing in the bundle edits the installed AryaCode app or the installer payload. Rows load at boot, and every write lands in a workspace the user chooses.</p>
+<h2>Rows and components</h2>
+<p>A row is one entry in the bundle patch, <code>cordis.patch.yml</code>. Loading a row loads a component, and there are two shapes:</p>
+<ul><li><strong>Product rows</strong> mount a whole product: tools, a skill, and previews when the product has a preview.</li><li><strong>Support components</strong> mount one smaller thing: the engineering resources corpus, the document previews, and the migration machinery.</li></ul>
+<p>Every component is described in <code>components.json</code>: default posture, maturity, tool count, skill budget, the evidence gate, and the documents that own it. The manifest and the patch are checked against each other in <code>test/components.spec.mjs</code>, so a row that exists in only one of them fails the suite.</p>
+<h2>What ships switched on</h2>
+<p>The patch ships most rows on. At 0.103.0 two rows, ECAD (12 tools) and PLC-5 (8), shipped switched off: their tools were compiled and tested but did not add to a fresh install's default context or profile. A switched-off row is unloaded, not hidden, until a profile switches it on. This change retires the ECAD product row - its read-only drawing preview moves to the previews surface - and adds a read-only SLC 500 row (10 tools, <code>slc500_</code> namespace), which also ships switched off.</p>
+<p>Every row adds a slice of tool schemas to the model context. <code>components.json</code> records a default-on budget (<code>defaultOnTools</code>, <code>defaultOnSchemaCharacters</code>) so a release cannot quietly grow the context a fresh install pays.</p>
+<h2>Maturity</h2>
+<p>Every component is <strong>beta</strong>. In this bundle that means tested, with a <code>stabilityNote</code> that states exactly what is not proved. The component reference, <code>docs/reference/components.md</code>, owns the field definitions and the checks. This handbook describes what a session feels like; it does not replace that reference.</p>
+<h2>How to read this handbook</h2>
+<ul><li>Chapters 2-11 cover the shared loop and each product.</li><li>Chapters 12-13 cover previews, safety and approvals.</li><li>Chapters 14-15 cover troubleshooting and what is not proved.</li></ul>
+<p>Where a chapter names a measurement, the figure comes from the repository's recorded evidence (<code>docs/capabilities.md</code>, the product pages and <code>HANDOFF.md</code>). Anything not recorded there is marked unverified, and a claim that has not been measured on the current host stays a claim.</p>
+</section>
+<section class="page" id="page-20">
+<h1>How a session works</h1>
+<p class="purpose">Describe the shared loop, the read/write gate, and what a result can and cannot prove.</p>
+<p class="audience">Audience: Anyone starting a first session</p>
+<h2>The five surfaces</h2>
+<p>A session has five kinds of surface, shared by every product:</p>
+<ol><li><strong>Tools</strong> the agent calls, grouped by job: read, draft, verify, and where a product allows it, a gated write.</li><li><strong>A skill</strong>, loaded when the product is involved, that states the order of work and the product's own rules.</li><li><strong>A capability or status probe</strong> that reports what is installed and reachable before any claim is made.</li><li><strong>Documentation tools</strong> that look up installed help and authored pages, without shipping vendor bytes.</li><li><strong>Preview faces</strong> in the workbench that render a local file; they do not launch vendor software.</li></ol>
+<h2>Inspect, decide, call, verify</h2>
+<ol><li><strong>Inspect.</strong> List what exists before acting: projects, apps, displays, screens. A capability or status tool reports the installed software and any missing piece.</li><li><strong>Decide.</strong> Pick the smallest tool that answers the question. Reading is the default; a draft is a new file, not an edit in place.</li><li><strong>Call.</strong> Tools return an envelope. On success it carries the result; on failure it carries a code, a message, and a fix. A refusal is information, not an error to work around.</li><li><strong>Verify.</strong> Trust the vendor engine, not the agent's intent. A Studio SDK build, a re-export from Studio, a MotionWorks compile, an Optix build or a schema validation is proof that the artifact was accepted. "The tool ran" is not proof.</li><li><strong>Hand off.</strong> Where Studio or the IDE must act, produce a plan the engineer can follow, then stop.</li></ol>
+<h2>Read-only and write gated</h2>
+<p>Every product has a read path that needs no license and touches no project: parse a file, render a display, search installed help. Write paths are narrower:</p>
+<ul><li>A draft tool writes a <strong>new</strong> artifact beside the source and refuses to overwrite.</li><li>An apply or save tool is a gated write with per-call approval. If the session policy cannot ask for approval, the call returns <code>APPROVAL_UNAVAILABLE</code> and nothing is written.</li><li>A few writes go to a device or IDE. Those are the most gated and are never the default.</li></ul>
+<p>Read-only rows are read-only by construction: they ship no write tool and no write switch. A profile switch can remove a capability; it cannot add one the build does not carry.</p>
+<h2>What a result proves</h2>
+<p>A green check proves the artifact passed that check. It does not prove the line will run on a controller, the screen is safe to deploy, or the vendor would accept the project. Every entry on the workbench is a preview, not a replacement for the vendor's own environment. For a claim about behavior, the evidence is a test or a recorded measurement, and the evidence page (<code>docs/capabilities.md</code>) says which image proves what and — more importantly — what an image cannot prove.</p>
+<h2>Where your work lands</h2>
+<ul><li><strong>L5X</strong>: drafts are new <code>.L5X</code> files; an SDK build creates a new ACD and records the source hash.</li><li><strong>FactoryTalk View</strong>: a draft is a new ME export folder; the batch import XML is validated, then Studio imports it.</li><li><strong>Optix</strong>: the file channel writes the saved project; only one save is automated, and one build remains a human action.</li><li><strong>MotionWorks IEC</strong>: a staged copy is edited; the real project is backed up on open.</li><li><strong>Migration / PLC-5 / SLC</strong>: reads only, or a report written to a new file.</li></ul>
+</section>
+<section class="page" id="page-30">
+<h1>Studio 5000 L5X</h1>
+<p class="purpose">Cover the offline-first L5X workflow, revision guards, SDK builds, and the controller boundary.</p>
+<p class="audience">Audience: Controls engineers reviewing or drafting L5X</p>
+<h2>What the row does</h2>
+<p>The L5X row is the largest product surface; the generated tool reference counts its tools and is the count of record. It reads, reviews, drafts and (with the SDK) builds Studio 5000 projects. It is offline-file by default: open an <code>.L5X</code> export, inspect it, review it, draft a change, and compile a new ACD where Studio and the SDK are installed.</p>
+<p>No install is needed to read, review or draft. The SDK build needs a licensed Studio 5000 installation with the Logix Designer SDK, and a live-controller session needs an address and an approval.</p>
+<h2>Open, inspect, review</h2>
+<p>The first call is <code>l5x_open_project</code>, which returns a <code>project_id</code> for the rest of the session. From there: <code>l5x_project_overview</code>, <code>l5x_list_components</code>, <code>l5x_get_component</code>, <code>l5x_find_references</code>, and <code>l5x_run_checks</code> with the bundle's own rule set (43 rules at 0.103.0: unused tags, scheduling, undocumented logic, latches, multiple writers, instruction problems, FBD wiring, SFC charts, refused rungs, safety placement). The rules are ours, not a vendor sign-off; a clean run means this rule set found nothing.</p>
+<p>Ladder previews and routine diagrams read the project's neutral text. They are views of the file, not an emulator.</p>
+<h2>Revisions and the two guards</h2>
+<p>The row is revision-aware. It reads <code>.L5X</code> from revision 19 upward. Revisions the build has seen are marked known; any other revision opens with the verification note <code>untested_revision</code>; below 19 the file is refused with <code>UNSUPPORTED_REVISION</code>. An ACD goes through the SDK, which supports revision 31 and up.</p>
+<p>Two documentation-tool guards keep revision lookups honest:</p>
+<ul><li><strong>REVISION_REQUIRED</strong> — a revision-sensitive question named no revision, so the tool asks for one instead of silently serving the newest shard.</li><li><strong>INSTRUCTION_NOT_IN_REVISION</strong> — you asked at a revision where that instruction or page is not recorded; the tool refuses rather than serve another revision's text.</li></ul>
+<p>A page with no revision evidence comes back with <code>revision: null</code>; the tool does not imply it matches. If a lookup is revision-sensitive, name the revision.</p>
+<h2>Drafts and the build boundary</h2>
+<p>Draft tools (<code>l5x_draft_rung</code>, <code>l5x_draft_tag</code>, <code>l5x_draft_validate</code>) work on one new <code>.L5X</code> beside the source; <code>l5x_draft_apply</code> writes that file and refuses to overwrite. Paste it into Studio yourself. <code>l5x_build_acd_from_draft</code> compiles one new ACD from a draft with the offline engine: revision 37 and up, one existing RLL or ST routine, refuses new routines, tag changes, safety and protected routines, and takes roughly 18-26 seconds on the recorded host. On Studio 5000 v36 the engine refuses Build with "Operation not supported on Logix Designer version 36.0".</p>
+<p><code>l5x_verify_offline_l5x</code> expects a Studio-exported L5X. <code>l5x_export_acd_to_l5x</code> can produce a file Studio refuses to re-import (<code>XMLSrv_E_IMPORT_ABORTED_NO_CHANGES</code>, observed 2026-10-23); treat it as an export for reading, not a round-trip.</p>
+<h2>The controller boundary</h2>
+<p>Controller tools upload, read mode and tags, change mode, and download. Each is approval-gated per call. Live writes validate the tag and read it back; a mismatch returns <code>WRITE_NOT_VERIFIED</code>. A download needs a <code>verification_id</code> for a build from the same chat and both hashes unchanged. Live work is the operator's decision, not the agent's default.</p>
+<h2>What this row will not claim</h2>
+<p>All reads are static. The 43 rules are not a vendor sign-off. Instruction, revision and controller coverage beyond the recorded 37.11 verification is unmeasured. FBD and SFC execution semantics are not exercised. And no offline artifact proves a machine's online logic is safe or matches the export.</p>
+</section>
+<section class="page" id="page-40">
+<h1>FactoryTalk View ME and SE</h1>
+<p class="purpose">Read ME exports, author displays against the installed schema, prove an import, and know where SE help fits.</p>
+<p class="audience">Audience: HMI engineers</p>
+<h2>The product row</h2>
+<p>FactoryTalk View ME is a product row; the generated tool reference counts its tools and is the count of record. Its read path works on a Studio ME text export: it copies the display XML, the HMI tag CSV when Studio exported one, and the alarm XML into a new folder, then reads them. It never decodes the native <code>.med</code>/<code>.mer</code>, never contacts a PanelView terminal, and never launches Studio to answer a read.</p>
+<p>The row needs Studio ME on Windows for three things only: listing applications, producing an export, and the import wizard at the end. A read session needs just an export folder. SQL Server Express and <code>sqlcmd</code> are optional, for tag snapshots. Chrome or Edge is needed only for PNG rendering; SVG needs none.</p>
+<h2>Where SE help fits</h2>
+<p>FactoryTalk View SE is not a separate product row in this bundle. Its installed help is a <strong>documentation source</strong>: the knowledge plane indexes the SE help pages that Studio installs and parses their bodies locally when a documentation tool reads one. Nothing from the SE help tree is shipped, and a missing SE install produces <code>SOURCE_NOT_INSTALLED</code>, not a broken page.</p>
+<h2>First session</h2>
+<ol><li><code>ftview_apps</code> lists the applications Studio knows.</li><li><code>ftview_export</code> copies a fresh export into a new folder and records whether the alarm and tag files are fresh, stale or missing.</li><li><code>ftview_open</code> opens the export; <code>ftview_check</code> looks for unbound tags, missing images and alarm setup problems, and lists checks it did not run.</li><li><code>ftview_object_types</code> reports the schema versions installed; <code>ftview_render</code> draws displays to SVG and, with a browser, PNG, reporting objects off-canvas or overflowing.</li></ol>
+<h2>Draft, import, prove</h2>
+<p>Draft tools write a new export folder. A draft writes the schema attributes the export declared - ME 17 in the recorded case; an ME 10-16 display declares a different <code>Gfx-ME*.xsd</code>, so validation reports the declared version first and refuses to pretend it is ME 17. <code>ftview_apply</code> writes text files only; it does not rewrite binary <code>Images/</code>.</p>
+<p>To get the draft into Studio: <code>ftview_studio_handoff</code> returns the ordered steps, the Studio Graphics Import Export Wizard imports <code>BatchImport_&lt;app&gt;.xml</code>, and <code>ftview_verify_import</code> re-exports and compares the imported result object by object. Building the <code>.mer</code> and downloading it to a terminal remain Studio steps.</p>
+<h2>Limits recorded at 0.103.0</h2>
+<ul><li>One ME export has been measured on the recorded host; other ME versions, a second application, PanelView terminals and the Studio import step remain unmeasured.</li><li>The alarm decoder reads 34 of 66 applications measured on that host; the rest fall back to the wizard snapshot and write the reason into export warnings. Tag decoding succeeds on 64 of 66.</li><li>The ApplicationManagerServer backup path fails with "Class not registered" for ME, so the bundle claims no ME backup.</li><li><code>ftview_check</code> is structural, not an XSD validation.</li><li>A missing alarm or tag file means the export did not carry it, not that the application is broken.</li></ul>
+<h2>What this row will not claim</h2>
+<p>It will not decode native project files, touch a terminal, automate the Studio import, or promise that an export copied yesterday describes the application running today. The snapshot's age is reported, and stale means stale.</p>
+</section>
+<section class="page" id="page-50">
+<h1>MotionWorks IEC</h1>
+<p class="purpose">Explain the IDE-bound MotionWorks workflow, its backup rule, and the honest state of verification on this host.</p>
+<p class="audience">Audience: Engineers with a MotionWorks IEC installation</p>
+<h2>The product row</h2>
+<p>MotionWorks IEC is a 24-tool live-IDE row. It reads and edits a project through the MotionWorks automation bridge: one session is opened per chat and the rest of the calls carry its handle. It never automates windows; a handful of desktop-only actions are handed to a computer-use companion with a stated step.</p>
+<p>The row needs MotionWorks IEC 3 Pro on the 3.x line (<code>3.0.3–3.7.5</code>), a licensed IDE that is running, Windows, 32-bit PowerShell with the vendor automation components, and a Python 3 interpreter (<code>MW_PYTHON</code> overrides the one it finds; without one the call returns <code>PYTHON_UNAVAILABLE</code>).</p>
+<h2>The staged copy rule</h2>
+<p>MotionWorks edits a real project in place once saved, so the row never starts there:</p>
+<ol><li><code>mw_project_find</code> finds the project; <code>mw_ide_status</code> reports the IDE.</li><li><code>mw_project_stage</code> writes a copy under <code>.motionworks/stage</code> and the session works on the copy.</li><li><code>mw_project_open</code> takes one verified backup of a real project under the shared backup tree before opening it.</li><li>Edits go through <code>mw_edit_code</code>, which returns the body hash, then <code>mw_validate</code>, <code>mw_compile</code>, <code>mw_diagnostics</code> and <code>mw_verify</code> against a baseline. <code>mw_apply</code> saves the open project in place, with the backup as the undo.</li></ol>
+<p>The compile verdict is the vendor engine's, not a runtime test. Downloading to a controller is not part of this row.</p>
+<h2>The verification gap on this machine</h2>
+<p>This host has no MotionWorks IEC installation with a reachable IDE bridge. The repository records live evidence for the 3.x line (<code>3.0.3–3.7.5</code>) against a staged copy of a real project on 2026-10-23, but that evidence cannot be reproduced here: on this machine the compile, live-IDE and profile paths are <strong>unproved</strong>. They are fixture-tested only - the automation contract, the session handling and the backup rules have tests, but no project has been edited on a running IDE on this host.</p>
+<p>Treat every MotionWorks claim in this handbook as a claim about tested code, not about a project this machine edited. The capability page states the same in <code>docs/capabilities.md</code>.</p>
+<h2>What this row will not claim</h2>
+<ul><li>That other MotionWorks IEC versions, controller families, downloads or a real-workspace write path work: none of those were measured.</li><li>That a compile proves a program runs: the vendor engine accepts it; runtime needs a controller.</li><li>That the IDE can be skipped: it must be running, licensed, and connected to the bridge.</li><li>That the bundle supplies a house style for MotionWorks: it does not in this release.</li></ul>
+</section>
+<section class="page" id="page-60">
+<h1>FactoryTalk Optix and NetLogic</h1>
+<p class="purpose">Work on a live Optix model through the Studio bridge, dry-run first, and never mistake a saved project for a build.</p>
+<p class="audience">Audience: Optix engineers</p>
+<h2>The product row</h2>
+<p>FactoryTalk Optix is a 32-tool live-IDE row. Its bridge is a small C# NetLogic class that the bundle writes into the Studio project and the engineer loads in Studio. The bridge answers on loopback HTTP; the bundle does not run the upstream MCP server. <code>optix_bridge_arm</code> writes the bridge into <code>ProjectFiles/NetSolution</code> and backs up the previous files first.</p>
+<p>The row needs Optix Studio 1.8.1 (the repository records 1.8.1.27), a running Studio with the project open, and - for the bridge only - the .NET 8 SDK. The bundled dotnet is a runtime; it cannot compile the bridge. Tesseract is optional, for OCR of screenshots, and Chrome or Edge is needed for preview.</p>
+<h2>Two things no tool does</h2>
+<p>No tool can compile the bridge class, and no tool can run StartBridge. Both are Studio actions: the engineer opens the <code>.optix</code>, builds the project, right-clicks StartBridge and answers the Studio security prompt with Proceed. Until then the bridge tools report that the bridge is not reachable.</p>
+<p>That is deliberate. The bundle's tests do not pretend to replace a vendor IDE step.</p>
+<h2>Three states, and save is not build</h2>
+<p>Optix has three states and the row keeps them apart:</p>
+<ul><li><strong>live model</strong> - the model Studio has open, read through the bridge;</li><li><strong>saved project</strong> - what is on disk after <code>optix_save</code>, which alone raises the Studio window for one Ctrl+S and refuses if the foreground cannot be taken;</li><li><strong>rendered screen</strong> - <code>optix_preview</code>/<code>optix_screenshot</code> render what the saved project says, not what an unsaved buffer says.</li></ul>
+<p>A save is not a build. Measured on 2026-11-18, a save moved 29 sources while the compiled DLL's timestamp stayed older; an unchanged build can mean the build did not run, not that the change is equivalent.</p>
+<h2>The seven phases</h2>
+<p>Brief, scaffold, open and arm, connect, author, persist, look and release. Tools are grouped the same way: session (<code>optix_status</code>, <code>optix_bridge_arm</code>), read and research, authoring and screens, NetLogic scripts, project and build, preview, and release. <code>optix_read</code> is the evidence gate: it reports what the bridge sees before a claim is made.</p>
+<p>Writes default to <code>dry_run</code>; the switches <code>allowWrites</code>, <code>allowDestructive</code> and <code>allowInvoke</code> gate the real ones. The file channel refuses to write while a live session has unflushed changes, and it refuses a second writer. An apply is all-or-nothing and keeps <code>.dsh-backups</code>.</p>
+<h2>What this row will not claim</h2>
+<ul><li>That an empty <code>.optix</code> can be created: none of the tools does that; start from a template.</li><li>That the project can be built from the bundle: build is Studio's.</li><li>That a saved project is a running screen: the emulator preview is a preview.</li><li>That screenshots prove behavior: an image cannot prove a click works.</li></ul>
+</section>
+<section class="page" id="page-70">
+<h1>Legacy migration</h1>
+<p class="purpose">Assess a legacy project against a target, lint it, compare it, and report - with the wizard's boundary stated.</p>
+<p class="audience">Audience: Migration engineers</p>
+<h2>The product row</h2>
+<p>Migration is a support row (7 tools at 0.103.0, plus <code>migration_docs</code> in this change) that turns a legacy control project into a reviewed migration story. It reads <code>.L5K</code>, <code>.SLC</code>, <code>.RSS</code>, <code>.ACH</code>, <code>.RSP</code> and <code>.L5X</code> inputs, assesses them against a five-decision plan, lints ladder, compares expected with real logic, and writes a report. It never drives Studio and never contacts a controller.</p>
+<p>One tool starts another program: <code>slc_read</code> opens RSLogix 500 or 5 hidden, reads, and closes without saving. Everything else parses files. <code>.SLC</code> text exports and <code>.L5K</code> files need neither vendor application.</p>
+<h2>The workflow</h2>
+<ol><li><code>migration_plan</code> records five decisions - target CPU, target revision, I/O strategy, HMI scope and acceptance - across eight stages in <code>.migration/plan.json</code>. It refuses to advance while a decision is unanswered.</li><li><code>migration_assess</code> reads the project and reports scope, instruction use and risks. An imported <code>.L5X</code> gets the wizard-defaults audit; a native <code>.L5X</code> is refused with <code>ALREADY_LOGIX</code>.</li><li><code>slc_read</code> reads a project through the vendor server when the input is <code>.SLC</code>/<code>.RSS</code>/<code>.ACH</code> and the tools are installed.</li><li><code>l5k_lint</code> flags structural problems (<code>TRAILING_COMMA</code>, <code>DUPLICATE_TAG</code>, <code>TAG_NAME_TOO_LONG</code>, <code>ROUTINE_PAREN</code>, <code>ROUTINE_UNBALANCED</code>, <code>PLACEHOLDER_TAG</code>, <code>INDIRECT_ADDRESS</code>, <code>REVISION_BELOW_TARGET</code>, <code>BOM</code>).</li><li><code>migration_compare</code> compares expected and real logic and separates expected differences from real ones; a terminal <code>END</code> rung is not logic.</li><li><code>migration_resolve</code> proposes resolutions with citations; it never writes.</li><li><code>migration_report</code> writes Markdown or <code>.docx</code> to a new path.</li></ol>
+<p>The instruction map cites the vendor manuals it draws on; it is a reading aid, not a licence to claim a conversion is safe.</p>
+<h2>The wizard boundary</h2>
+<p>RSLogix 500's Project Migrator, and RSLogix 5's equivalent, cannot emit a project newer than the wizard ships - version 30-31 for RSLogix 500 and 30-32 for RSLogix 5 in the recorded material. So an imported project must be retargeted in Studio 5000 to revision 37 or later before an offline build proof is meaningful. The wizard's I/O choice is Keep Existing or Update All; modules that cannot convert take a <code>PLACEHOLDER_TAG</code>, and leftover <code>?</code>/PCE addresses are recorded as review items rather than silently fixed.</p>
+<h2>Recorded coverage</h2>
+<p>Four projects were measured: Slitter 8 (3,409 symbols and 209 data files, 1,398 of 1,426 rungs matched, 259 indirect addresses), an EN049 PLC-5 project (34 files, 306 of 320 rungs, 90 data files, 131 indirect addresses), the EN049 marker census (214 sites, 201 answerable, 35 for review), and SLITTER10 <code>.RSS</code> (15 markers across 55 rungs).</p>
+<h2>What this row will not claim</h2>
+<ul><li>That every legacy instruction converts: the map covers 58 mnemonics with citations, and uncovered instructions are review items.</li><li>That a comparison result equals acceptance: <code>migration_resolve</code> proposes; a person approves.</li><li>That the wizard's output is build-ready: retarget first, then prove the build.</li></ul>
+</section>
+<section class="page" id="page-80">
+<h1>RSLogix 5 and PLC-5 reads</h1>
+<p class="purpose">Read a PLC-5 project through RSLogix 5 or the container parser, and know what remains unread.</p>
+<p class="audience">Audience: Legacy PLC-5 engineers</p>
+<h2>The product row</h2>
+<p>PLC-5 is a product row: 8 read tools at 0.103.0, with a documentation tool and six more read tools in this change. It ships switched off. It is read-only by construction: there is no write tool, no write switch and no controller session.</p>
+<p>The row has two independent read paths:</p>
+<ol><li><strong>Vendor automation</strong> - <code>RSLogix5.Application</code>, a 32-bit local COM server driven from 32-bit PowerShell. The server is opened with <code>Visible=False</code> and <code>PromptForRevNote=False</code>, and every exit calls <code>Quit(0, false)</code> so no hidden instance is left behind. The server is single-instance, so a stray hidden <code>RSLGX5.exe</code> can make the next open fail with <code>CO_E_SERVER_EXEC_FAILURE</code>; the error names the process to end.</li><li><strong>Container parser</strong> - a dependency-free reader for the <code>.RSP</code> OLE2 compound file. It answers without RSLogix 5 installed, but it knows less.</li></ol>
+<p>Both paths were measured on one project, <code>F00607.RSP</code>, through RSLogix 5 v10. Other versions, SFC and sequential files, and point-card part numbers were not tested.</p>
+<h2>What a read reports</h2>
+<p><code>plc5_open</code> returns the project inventory measured for that project: 52 program files, 2,168 rungs, 226 data files, 4,189 symbol records, 10 configured chassis and 443 I/O cells. The container named the same project and processor (<code>MML10PF3PX3R9</code>) and its route (<code>045_VIM\10.164.108.113\Backplane\1\CH A\1</code>) across 53 streams and 38 ladder files.</p>
+<p>Three inventories, and they deliberately do not pretend to be one:</p>
+<ul><li><strong>configured chassis</strong> - from the project configuration;</li><li><strong>point cards</strong> - not recorded in this project, so absent rather than empty;</li><li><strong>referenced addresses</strong> - what the logic actually names.</li></ul>
+<p>The gap between the second and third is a finding, not a bug.</p>
+<h2>What a read does not prove</h2>
+<ul><li><strong>Data-file values are not readable</strong> through these paths, so tag values are out of scope.</li><li><strong>No online state</strong>: the row reads a saved file and never contacts a controller.</li><li><strong>No point-card part numbers</strong>: a configured chassis is not a bill of materials.</li><li><strong>The container's answer says it knows less</strong>: its coverage reports <code>coverage.unverified</code>, and the read-only contract is only as strong as the recorded project.</li></ul>
+<p>Treat a PLC-5 read as evidence of what the file says, not of what the machine does.</p>
+</section>
+<section class="page" id="page-90">
+<h1>SLC 500</h1>
+<p class="purpose">The new read-only SLC 500 row: what it reads, what it needs, and what is not proved yet.</p>
+<p class="audience">Audience: SLC 500 engineers</p>
+<h2>The row</h2>
+<p>The SLC 500 row is new in this change and ships switched off. It is read-only by construction: ten tools in the <code>slc500_</code> namespace and a <code>rslogix-500</code> skill, with no write tool, no write switch and no controller session. It never edits a project, never writes an <code>.RSS</code>, <code>.SLC</code> or documentation export, and never goes online to a processor.</p>
+<h2>The read paths</h2>
+<ul><li><strong>Text export.</strong> An <code>.SLC</code> text export is the neutral-text path and works with no RSLogix 500 installation. The tools parse it for processor identity, program files, ladder rungs, data-file layout and referenced I/O addresses.</li><li><strong>Documentation export.</strong> An RSLogix 500 documentation export (<code>.EAS</code>, <code>.ERP</code>, <code>.EIC</code>, <code>.ESG</code>, <code>.CSV</code>) is the highest-fidelity machine-readable description of symbols, addresses and comments. The text export truncates symbols to 15 printable ASCII characters; the documentation export keeps the full symbol and description, so a cut-off symbol is a prompt to ask for it.</li><li><strong>Binary <code>.RSS</code>.</strong> Reading the binary container needs the RSLogix 500 automation server, and only the Professional or Developer edition exposes the read methods. When the server is absent the answer is <code>SOURCE_NOT_INSTALLED</code>; when it is registered but the edition or a transcript is missing the answer is <code>NOT_LICENSED</code>. A redacted transcript fixture proves the boundary, not a live vendor session.</li><li><strong><code>.ACH</code>.</strong> APS-era material is detected, named and refused; re-save it from the era's tool or export a text version. No best-effort decode.</li></ul>
+<h2>The ten tools</h2>
+<p><code>slc500_capabilities</code> reports what the host has; <code>slc500_open</code> opens a project path and returns identity and inventory, optionally comparing a second source; <code>slc500_ladder</code> reads one program file's rungs in neutral text; <code>slc500_find</code> searches symbols, data-file values and rung text; <code>slc500_io_census</code> counts referenced I/O by rack/slot cell, word and bit; <code>slc500_io_config</code> reports the processor chassis and modules or the honest limitation; <code>slc500_data_read</code> returns a value window from one data file; <code>slc500_processor</code> reads identity and status words; <code>slc500_database</code> parses a documentation export into address, symbol and description rows; <code>slc500_docs</code> serves the authored knowledge collection through the five documentation actions.</p>
+<h2>Limits stated plainly</h2>
+<ul><li>The text export does not carry point-card identities, wiring or analog scaling. What it does not prove is reported under <code>coverage.unverified</code>, never filled in.</li><li>Status words are read from the file or automation snapshot and explained by a <code>slc500_docs</code> page; the row does not recite a bit table from memory.</li><li>When two sources disagree - a binary read and a text export, or two exports - the row returns both values and names both paths. A conflict is evidence to show the operator.</li><li>The row describes SLC 500 semantics; it does not convert a project. Conversion belongs to the migration row, which owns the plan and the report.</li></ul>
+<h2>What is not proved yet</h2>
+<p>The parser and the automation boundary are covered by repository fixtures, including a redacted transcript. A full project read from an owner-licensed RSLogix 500 session is still the evidence that closes real-project coverage; until that transcript exists, treat the parser's coverage of an unfamiliar export as unproven rather than assume it. The product page owns the definitive scope once the row is wired into the release; this chapter describes the row as built.</p>
+</section>
+<section class="page" id="page-100">
+<h1>Engineering resources</h1>
+<p class="purpose">Use the authored standards corpus and the profile extractor without mistaking judgement for vendor text.</p>
+<p class="audience">Audience: Reviewers and style reviewers</p>
+<h2>Two tools, two jobs</h2>
+<p>The engineering resources row carries two tools:</p>
+<ul><li><code>engineering_reference</code> searches the authored corpus. It has four ways in: <code>contents</code>, <code>query</code>, <code>id</code> and <code>domain</code>.</li><li><code>engineering_profile</code> extracts a style profile from an L5X project (<code>project_id</code>) or a FactoryTalk View ME view (<code>view_id</code>).</li></ul>
+<p>Both work locally. No model, no network and no vendor document is consulted at call time.</p>
+<h2>The corpus</h2>
+<p>The corpus is 70 Markdown pages with 233 rule IDs across 8 domains: IEC, Rockwell, migration, Yaskawa, view, Optix, HMI and craft. A page declares its id, title, domain, level, basis, tags, target products and the rules it states; rule IDs are unique and follow <code>&lt;AREA&gt;-&lt;TOPIC&gt;-&lt;NN&gt;</code>.</p>
+<p>The levels are intro, practitioner and specialist, and the corpus is deliberately small: it is judgement, written in the repository's own words and citing the standard or practice it rests on. It reproduces no standard text; the content licence is <code>packages/resources/LICENSE-CONTENT.md</code>.</p>
+<p>Search ranking is deterministic and local: exact rule or title matches first, then tags, then substring, then a body scan. The generated index is built by <code>scripts/gen-resources.mjs</code> (<code>pnpm resources:build</code>), and <code>pnpm resources:check</code> fails when it is stale. Front matter, domains, levels, rule IDs and size budgets are validated; a page over 900 words or 12 KB fails.</p>
+<h2>The profile</h2>
+<p><code>engineering_profile</code> reads naming, idiom, HMI and comment habits plus evidence, confidence and source fields. It is extracted only from L5X and FactoryTalk View ME today; Optix and MotionWorks are not covered. The profile can be passed into the FTView display-drafting tools as a style input - it is a suggestion set, not a rule the vendor enforces.</p>
+<h2>What these tools will not claim</h2>
+<ul><li>They return pages and profiles, not answers. A page states what the repository's practice is; it is not a vendor specification.</li><li>A clean profile is not a review. It describes habits; it does not judge whether a line is correct.</li><li>The corpus is not exhaustive: a missing topic is a gap in the authored set, not evidence that no rule exists.</li></ul>
+</section>
+<section class="page" id="page-110">
+<h1>Documentation tools and the knowledge plane</h1>
+<p class="purpose">The five documentation actions, the licensing posture, and the revision rules that keep lookups honest.</p>
+<p class="audience">Audience: Anyone looking up a vendor manual through the agent</p>
+<h2>The idea</h2>
+<p>Every product row that has a documentation surface exposes a documentation tool: <code>l5x_docs</code>, <code>ftview_docs</code>, <code>migration_docs</code>, <code>plc5_docs</code> and, with the SLC 500 row, <code>slc500_docs</code>. The tool answers five actions and nothing else.</p>
+<h2>The five actions</h2>
+<table><thead><tr><th>Action</th><th>Question it answers</th><th>Result</th></tr></thead><tbody><tr><td><code>contents</code></td><td>What collections are there, and what sections does one have?</td><td>Collections with page counts, source kind, revisions and readiness; or a section table of contents.</td></tr><tr><td><code>search</code></td><td>Where is this topic discussed?</td><td>Up to 8 hits with id, title, section, score and a short snippet.</td></tr><tr><td><code>read</code></td><td>Give me the page.</td><td>The page text (up to 8,000 characters) plus source and revision fields.</td></tr><tr><td><code>status</code></td><td>Is this collection usable here?</td><td>Ready, index-only or absent, with the installed root and page count.</td></tr><tr><td><code>lookup</code></td><td>Is this identifier defined?</td><td>Exact identifier matches with the pages that define them.</td></tr></tbody></table>
+<p>Errors are part of the contract: <code>INVALID_ACTION</code>, <code>QUERY_REQUIRED</code>, <code>NOT_FOUND</code> (with the closest ids), <code>SOURCE_NOT_INSTALLED</code> when the vendor help a collection describes is not on this machine, <code>REVISION_REQUIRED</code> when a revision-sensitive question names no revision, and <code>INSTRUCTION_NOT_IN_REVISION</code> when the named revision does not carry the page. A failed call names a fix.</p>
+<h2>Licensing posture</h2>
+<p>The line is firm and easy to state:</p>
+<ul><li><strong>Authored pages ship.</strong> They are written in the repository's own words and may be redistributed.</li><li><strong>Vendor help is never shipped.</strong> A committed index carries ids, titles, sections and paths only - metadata, not page bodies.</li><li><strong>A read of installed help happens locally</strong>, at call time, against the vendor help installed on the machine. If the help is missing, the call reports <code>SOURCE_NOT_INSTALLED</code>; it does not substitute a cached copy.</li><li>No network call is made to answer a documentation question.</li></ul>
+<p>This is why the bundle can search a 5,500-topic Studio 5000 help tree without carrying its 200 MB into the package.</p>
+<h2>Revisions are not a footnote</h2>
+<p>A documentation answer that silently serves the wrong revision is worse than no answer. The tools therefore:</p>
+<ul><li>accept an optional revision on <code>search</code> and <code>lookup</code>, and never silently fall back to the newest shard when a revision was named;</li><li>return <code>REVISION_REQUIRED</code> when a revision-sensitive question names no revision, instead of implying the newest one matches;</li><li>refuse with <code>INSTRUCTION_NOT_IN_REVISION</code> when a requested page or instruction is not recorded at the named revision;</li><li>return a page whose index carries no revision with <code>revision: null</code>, rather than implying it matches.</li></ul>
+<p>The engineering resources corpus is a separate authored surface: <code>engineering_reference</code> remains the standards search tool, while the product documentation tools serve vendor-manual lookups.</p>
+<h2>What the tools will not do</h2>
+<p>They will not answer a question the indexed text does not contain, will not fetch a manual from the internet, and will not decide whether a page applies to the project in front of you. That decision stays with the engineer.</p>
+</section>
+<section class="page" id="page-120">
+<h1>Drawing and display previews</h1>
+<p class="purpose">What the viewer surfaces show, what they do not prove, and what changed when the ECAD product row retired.</p>
+<p class="audience">Audience: Anyone using the workbench previews</p>
+<h2>Three preview faces</h2>
+<p>The workbench has three engineering preview faces, each rendering a local file:</p>
+<ul><li><strong>Ladder viewer</strong> - a routine rendered from L5X neutral text, with contacts, coils and branches laid out for reading.</li><li><strong>FactoryTalk View display</strong> - a display rendered from the ME export XML, including the object bounds the exporter wrote.</li><li><strong>Drawing pane</strong> - a read-only electrical drawing preview for DXF/DWG files: drag to pan, wheel to zoom, layout tabs, a layer panel, text search, a coverage badge, print, and SVG or PNG export.</li></ul>
+<p>A fourth, the <strong>settings</strong> face, reports the bundle's configuration. Optix screens are previewed through the Optix row's emulator and screenshot tools rather than a separate workbench face.</p>
+<h2>The ECAD change</h2>
+<p>The ECAD product row is retired in this change. Its drawing pane remains as a preview because reading a drawing is still useful; what leaves is the product surface - the deliverable tools and their editing-adjacent workflow. Electrical authoring stays with AryaCAD Electrical, which the owner runs separately; the bundle does not create or edit drawings.</p>
+<p>If a session needs drawing tools and the ECAD row is off or absent after this change, that is expected: the viewer is not the row.</p>
+<h2>What a preview proves</h2>
+<p>A preview proves that a local file parsed and rendered. It does not prove:</p>
+<ul><li>that the file came from the machine that is running now - an export has an age;</li><li>that the drawing is correct, current or approved;</li><li>that a display will deploy to a terminal;</li><li>that a rendering matches the vendor runtime's rendering.</li></ul>
+<p>For display behavior, the vendor runtime is the evidence. For a drawing, the issued file is. An image is a reading aid; <code>docs/capabilities.md</code> records which images were captured and what they cannot show.</p>
+<h2>Practical notes</h2>
+<p>Previews are read-only by construction: they open a file and produce an image, and never write back into it. Renders that need a browser report clearly when Chrome or Edge is missing instead of producing a blank image. Both workbench faces follow the host's theme tokens, so light and dark themes show the same content.</p>
+</section>
+<section class="page" id="page-130">
+<h1>Safety, approvals, and where work happens</h1>
+<p class="purpose">The write gate, the approval rules, the backup tree, and the rule that keeps the installed app untouched.</p>
+<p class="audience">Audience: Operators, approvers and reviewers</p>
+<h2>The default is read</h2>
+<p>Every product starts read-only. Reading a project, rendering a display, searching installed help and reading a saved project file are all safe in the sense that they write nothing. A write happens only when a tool named for writing is called, and only when its gate is open.</p>
+<p>Read-only rows (PLC-5, SLC 500) are read-only by construction: no write tool, no write switch. A profile cannot add a capability the build does not carry.</p>
+<h2>The write gate</h2>
+<p>A write path passes through these controls in order:</p>
+<ol><li><strong>A draft, not an overwrite.</strong> Draft tools write a new artifact beside the source and refuse to replace an existing one. Output paths that already exist are refused unless the tool explicitly allows an overwrite.</li><li><strong>An explicit apply or save.</strong> The draft must be applied or saved by its own tool call; nothing writes on the way past.</li><li><strong>Per-call approval.</strong> A gated write asks for approval for this call. When the session policy cannot ask - a non-interactive run, for example - the call returns <code>APPROVAL_UNAVAILABLE</code> and nothing is written. Approval design assumes a person sees what is about to happen.</li><li><strong>A verify step.</strong> Where the product has a vendor engine, the result is verified by that engine, not by the bundle: an SDK build, a re-export, a MotionWorks compile, an Optix build. A read-back check catches a write that landed differently.</li></ol>
+<h2>The installed app is not a workspace</h2>
+<p>The bundle runs inside AryaCode. It never edits the installed application under <code>%LOCALAPPDATA%\Programs\AryaCode</code>, it never edits the <code>app.asar</code>, and it never rewrites a profile's <code>package.json</code> to work around a bug. Development and testing happen on a Dev AryaCode home, never on the installed instance.</p>
+<p>When a fix seems to need a change to the installed shell, that is the signal the change belongs upstream in the harness, not here.</p>
+<h2>The backup tree</h2>
+<p>One place holds undo material: <code>&lt;workspace&gt;/backups/&lt;product&gt;/&lt;subject&gt;/&lt;UTC stamp&gt;/</code>, with <code>backup-manifest.json</code> listing every file and its SHA-256. MotionWorks keeps its attached-project records under <code>.motionworks/attached/records/</code> because the IDE owns that layout; migration and PLC-5 write nothing and therefore back up nothing.</p>
+<h2>Vendor bytes and the network</h2>
+<p>Vendor help pages and vendor sample projects are never committed. Fixtures are either synthetic, authored by the repository, or generated on the owner's machine and kept local. The bundle makes no network call in a normal session; the only network use is a live-controller or bridge connection the user configured, and a network block in the drill suite proves the rest still works.</p>
+<h2>When in doubt</h2>
+<p>If a call would change anything a person cares about - a controller, a live project, a shared file - stop and ask. The bundle's job is to make that decision visible, not to make it quietly.</p>
+</section>
+<section class="page" id="page-140">
+<h1>Troubleshooting</h1>
+<p class="purpose">The first checks when a row, tool, bridge or built artifact is missing.</p>
+<p class="audience">Audience: Anyone stuck</p>
+<h2>A row or tool is missing</h2>
+<ol><li><strong>Check whether the row is switched on.</strong> PLC-5 and SLC 500 ship off by default; a profile that switched a row off gets no tools from it. The settings face reports the mounted rows. (The ECAD row that earlier releases shipped off has been retired; its drawing preview remains on the viewers row.)</li><li><strong>Check the build.</strong> The tools come from the installed bundle version. <code>package.json</code> names the version; the workbench shows it. A profile that kept an older copy of the bundle shadows the new payload.</li><li><strong>Check the product install.</strong> Product rows need their vendor software for parts of their surface: Studio ME for FTView export/import, Studio 5000 plus the SDK for L5X builds, Optix Studio for the bridge, MotionWorks IEC for the IDE path, RSLogix 5 for the PLC-5 vendor path. A capability or status tool names what is missing; a read path that parses files may still work.</li></ol>
+<h2>A documentation lookup fails</h2>
+<ul><li><code>SOURCE_NOT_INSTALLED</code> means the vendor help the collection describes is not on this machine. The error names the roots it searched; install the help or use the authored corpus.</li><li><code>NOT_FOUND</code> carries the closest ids. The page exists in the index only if the vendor help was indexed at build time.</li><li><code>REVISION_UNVERIFIED</code> and <code>INSTRUCTION_NOT_IN_REVISION</code> are honesty guards, not failures to work around. Name the revision or accept the generic page.</li></ul>
+<h2>The generator fails</h2>
+<p><code>python scripts/gen-handbook.py --check</code> verifies the Markdown sources and built artifacts. Common causes:</p>
+<ul><li>a page is missing <code>title</code>, <code>order</code>, <code>purpose</code> or <code>audience</code> front matter, or two pages share an order;</li><li>the built files are stale relative to the sources (run the generator);</li><li>PDF rendering cannot find Chrome or Edge. The HTML and DOCX still build; the PDF step exits with a message naming the missing browser.</li></ul>
+<h2>A preview is blank</h2>
+<p>A drawing or display preview renders a local file. A blank face usually means the file did not parse, the display is empty, or the browser needed for PNG rendering is missing. SVG output needs no browser; PNG does.</p>
+<h2>A vendor step is pending</h2>
+<p>The bundle produces plans and drafts; Studio and the IDE still act. If the next step is "open Studio and use the import wizard", that is expected, not a failure. The handoff tool lists the exact steps.</p>
+<h2>Reporting a problem</h2>
+<p>Include the row, the tool, the error code, the version and what was installed. The error envelope's <code>fix</code> field usually names the next check; the product page's limits section says whether the case is known.</p>
+</section>
+<section class="page" id="page-150">
+<h1>Known gaps and what is not proved</h1>
+<p class="purpose">The claims this release does not make, by product, so no reader mistakes beta for finished.</p>
+<p class="audience">Audience: Reviewers and release engineers</p>
+<h2>Every component is beta</h2>
+<p>Every row and support component in this bundle is <strong>beta</strong>, and every component records a <code>stabilityNote</code> saying what is not proved. Beta means the surface is tested and usable; it does not mean every vendor version, controller family or host combination has been measured.</p>
+<h2>MotionWorks IEC</h2>
+<p>The repository records live evidence for the MotionWorks IEC 3 Pro 3.x line (<code>3.0.3–3.7.5</code>) against a staged copy of a real project on 2026-10-23, but that evidence was recorded on a host with the IDE. This host has no MotionWorks IEC install with a reachable bridge, so on this machine the compile, live-IDE and profile paths are unproved and fixture-tested only. Other IDE versions, controller families, downloads and the real-workspace write path are unmeasured.</p>
+<h2>FactoryTalk View</h2>
+<p>One ME export has been measured. The alarm decoder covers 34 of 66 applications on the recorded host, tag decoding 64 of 66, with the reason written into export warnings. The Studio import step, other ME versions and a second application are unmeasured. SE is a documentation source, not a product row.</p>
+<h2>Studio 5000 L5X</h2>
+<p>The recorded SDK verification is a 37.11 build with zero errors plus a neutral-text paste; the current host has Studio 5000 v37.05.00 and SDK 2.02.00, and the build is re-verified locally as part of this work. Instruction, revision and controller coverage beyond the recorded case is unmeasured. FBD and SFC execution semantics are not exercised. <code>l5x_export_acd_to_l5x</code> output can be refused on re-import.</p>
+<h2>Optix and NetLogic</h2>
+<p>Two steps stay manual: compiling the bridge class and running StartBridge. A save is not a build, and a rendered screen is a preview of the saved project. The bridge has been exercised on Studio 1.8.1.27 with a system .NET 8 and on a 1.7.4.32 emulator.</p>
+<h2>Legacy migration and PLC-5</h2>
+<p>Migration's instruction map covers 58 mnemonics with citations; uncovered instructions are review items. The wizard cannot emit newer than it ships, so a build proof needs a retarget first. PLC-5 was measured on one <code>.RSP</code> through both paths; data-file values, point cards and online state are outside the row.</p>
+<h2>SLC 500</h2>
+<p>The row is new. Its <code>.SLC</code> text grammar and its automation boundary are covered by repository fixtures, including a redacted transcript, but a full project read from an owner-licensed RSLogix 500 session is still the evidence that closes real-project coverage. The row ships off, writes nothing and never goes online.</p>
+<h2>ECAD</h2>
+<p>The product row is retired; the read-only drawing preview stays. Electrical authoring is AryaCAD Electrical's job, not the bundle's.</p>
+<h2>Evidence and the repository</h2>
+<p>The authoritative list is the capability page (<code>docs/capabilities.md</code>) plus each product page's Limits section. Generated figures that are stale against the current release - for example screenshots from the previous preset layout - are replaced by the release that changes them. The generated tool reference excludes the 32 vendored Optix tools by design, so a missing Optix row there is not a missing tool.</p>
+</section>
+<footer class="colophon"><p>One install, many surfaces. Every component is beta; the known gaps chapter lists what is not proved.</p>
+<p>Source hash 105186b902a2f2ae - generated 2026-11-22.</p></footer>
+</body>
+</html>

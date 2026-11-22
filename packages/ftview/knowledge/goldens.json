@@ -1,0 +1,207 @@
+{
+  "schema": 1,
+  "collection": "all",
+  "cases": [
+    {
+      "id": "c01",
+      "query": "",
+      "expect": [
+        "ftview-me",
+        "ftview-me-help",
+        "ftview-se-help"
+      ],
+      "kind": "contents"
+    },
+    {
+      "id": "e01",
+      "query": "BatchImport",
+      "expect": [
+        "export-import"
+      ],
+      "kind": "exact"
+    },
+    {
+      "id": "e02",
+      "query": "ggfx",
+      "expect": [
+        "global-objects"
+      ],
+      "kind": "exact"
+    },
+    {
+      "id": "e03",
+      "query": "importType",
+      "expect": [
+        "export-import"
+      ],
+      "kind": "exact"
+    },
+    {
+      "id": "e04",
+      "query": "701",
+      "expect": [
+        "errors-and-fixes"
+      ],
+      "kind": "exact"
+    },
+    {
+      "id": "e05",
+      "query": "2228370",
+      "expect": [
+        "me/help/meproj/define-global-object-parameters",
+        "se/help/graphiceditor/define-global-object-parameters"
+      ],
+      "kind": "exact"
+    },
+    {
+      "id": "n01",
+      "query": "quantum flux capacitor",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "n02",
+      "query": "xylophone marmalade",
+      "expect": [],
+      "kind": "no-match"
+    },
+    {
+      "id": "q01",
+      "query": "global object parameters",
+      "expect": [
+        "me/help/meproj/define-global-object-parameters",
+        "me/help/meproj/global-object-parameters",
+        "se/help/graphiceditor/define-global-object-parameters"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q02",
+      "query": "import an application",
+      "expect": [
+        "me/help/meproj/import-an-application",
+        "me/help/meproj/import-and-conversion-of-app"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q03",
+      "query": "HMI tag database tag types",
+      "expect": [
+        "me/help/meproj/about-hmi-tag-types",
+        "se/help/devmod/hmi-tag-types"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q04",
+      "query": "ME Transfer Utility fonts",
+      "expect": [
+        "me/help/metransfer/about-me-transfer-utility",
+        "me/help/metransfer/font-files"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q05",
+      "query": "CSV export insufficient disk space",
+      "expect": [
+        "me/help/actxobj/about-csv-export",
+        "me/help/actxobj/csv-export-setup-editor-options",
+        "me/help/actxobj/set-up-csv-export"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q06",
+      "query": "what an XML export cannot prove",
+      "expect": [
+        "se/help/graphiceditor/import-and-export-graphic-xml-files",
+        "what-xml-cannot-prove"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q07",
+      "query": "export displays XML batch import",
+      "expect": [
+        "me/help/meproj/import-displays-with-xml-batch-file",
+        "se/help/graphiceditor/import-xml-files-using-batch-file"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q08",
+      "query": "create runtime application validation report",
+      "expect": [
+        "me/help/meproj/create-a-runtime-application",
+        "me/help/meproj/options-on-the-runtime-tab"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q09",
+      "query": "project settings startup display",
+      "expect": [
+        "me/help/meproj/configure-startup-settings",
+        "se/help/displayclient/startup-component-settings"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q10",
+      "query": "on top display replace display",
+      "expect": [
+        "me/help/meproj/close-an-on-top-display",
+        "me/help/meproj/replace-display-number"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q11",
+      "query": "tag placeholder parameter file",
+      "expect": [
+        "me/help/meproj/parameter-file-and-parameter-list",
+        "se/help/devmod/tag-placeholder"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q12",
+      "query": "ME Station runtime file",
+      "expect": [
+        "me/help/meproj/legacy-me-application-error-causes",
+        "me/help/meproj/start-ftvmes-on-a-pc"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q13",
+      "query": "global object base object reference object",
+      "expect": [
+        "se/help/graphiceditor/break-link-between-ref-base-object",
+        "se/help/graphiceditor/working-with-base-ref-global-object"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q14",
+      "query": "display XML schema validation",
+      "expect": [
+        "me/help/mexml/xml-schema-file-embed",
+        "se/help/xmlse/xml-schema-file",
+        "what-xml-cannot-prove"
+      ],
+      "kind": "answer"
+    },
+    {
+      "id": "q15",
+      "query": "application folder .med project settings",
+      "expect": [
+        "overview",
+        "project-workflow"
+      ],
+      "kind": "answer"
+    }
+  ]
+}

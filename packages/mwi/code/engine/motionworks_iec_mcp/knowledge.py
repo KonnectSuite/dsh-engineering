@@ -196,7 +196,7 @@ def diagnose(message):
             'confidence':'candidate_not_confirmed',
             'mapping':'plugin_authored_from_live_observation_and_installed_help',
             'evidence':{'kind':'installed_help_and_live_compile',
-                        'observed_ide':'MotionWorks IEC 3 Pro, automation version 1.19',
+                        'observed_ide':'MotionWorks IEC 3 Pro (v3 line 3.0.3-3.7.5; the old "1.19" is the Ade/math-library version, not a product release)',
                         'installed_help':{'tool':'mw_code_installed_help','module':'ST001','topic':'callingfunctionblocksinst.htm'}},
             'suggested_checks':[
                 'Read the exact offending ST line before diagnosing the token.',

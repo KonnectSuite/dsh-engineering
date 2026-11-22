@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "collection": "l5x-revision-deltas",
+  "title": "L5X revision deltas",
+  "source": "authored",
+  "revisions": [],
+  "pageCount": 9,
+  "pages": [
+    {
+      "id": "revision-check-procedure",
+      "title": "Checking an instruction against a project revision",
+      "section": "Revisions",
+      "body": "pages/revision-check-procedure.md"
+    },
+    {
+      "id": "revision-export-software-revision",
+      "title": "The export software revision and the verification state",
+      "section": "Revisions",
+      "body": "pages/revision-export-software-revision.md"
+    },
+    {
+      "id": "revision-guard-rules",
+      "title": "Revision guard codes and when they apply",
+      "section": "Revisions",
+      "body": "pages/revision-guard-rules.md",
+      "identifiers": [
+        "REVISION_REQUIRED",
+        "INSTRUCTION_NOT_IN_REVISION",
+        "REVISION_UNVERIFIED"
+      ]
+    },
+    {
+      "id": "revision-installed-help-36-vs-37",
+      "title": "How the v36.00 and v37.05 installed help differ structurally",
+      "section": "Revisions",
+      "body": "pages/revision-installed-help-36-vs-37.md"
+    },
+    {
+      "id": "revision-instructions-36-vs-37",
+      "title": "Instructions documented in only one of the two revisions",
+      "section": "Revisions",
+      "body": "pages/revision-instructions-36-vs-37.md"
+    },
+    {
+      "id": "revision-matrix-summary",
+      "title": "Revision matrix: worked examples",
+      "section": "Revisions",
+      "body": "pages/revision-matrix-summary.md"
+    },
+    {
+      "id": "revision-overview",
+      "title": "Which revision a project, a page and a tool call mean",
+      "section": "Revisions",
+      "body": "pages/revision-overview.md",
+      "identifiers": [
+        "REVISION"
+      ]
+    },
+    {
+      "id": "revision-project-major-rev",
+      "title": "Reading the controller major revision from an export",
+      "section": "Revisions",
+      "body": "pages/revision-project-major-rev.md"
+    },
+    {
+      "id": "revision-36-rename-table",
+      "title": "The revision 36 ladder mnemonic rename",
+      "section": "Instruction spelling",
+      "body": "pages/revision-36-rename-table.md",
+      "identifiers": [
+        "MNEMONIC RENAME",
+        "LEGACY MNEMONIC"
+      ]
+    }
+  ]
+}

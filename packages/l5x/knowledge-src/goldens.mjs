@@ -1,0 +1,56 @@
+/**
+ * Retrieval goldens for the L5X documentation tool.
+ *
+ * The generator validates every expected id against the committed indexes and
+ * writes `knowledge/goldens.json`. The evaluation harness imports that file
+ * directly, so the cases must stay realistic: they are questions a person
+ * would actually ask while editing an L5X export, answered by ids that exist
+ * in the indexes this package commits.
+ *
+ * kind:
+ *   answer  - a normal query whose expected pages must appear in the hits.
+ *   exact   - the query is an identifier a lookup/search must resolve exactly.
+ *   no-match - the query must return no hits.
+ */
+
+export default {
+  collection: 'all',
+  cases: [
+    // Answer questions over the authored corpus.
+    { id: 'q01', kind: 'answer', query: 'absolute value instruction', expect: ['instruction-abs'] },
+    { id: 'q02', kind: 'answer', query: 'timer done bit never times out reset', expect: ['rung-timers'] },
+    { id: 'q03', kind: 'answer', query: 'compare two exports ignore timestamps', expect: ['offline-compare-exports'] },
+    { id: 'q04', kind: 'answer', query: 'rung never drives the right rail', expect: ['error-rung-not-output', 'rung-anatomy'] },
+    { id: 'q05', kind: 'answer', query: 'how do I write a parallel branch in rung text', expect: ['rung-branches'] },
+    { id: 'q06', kind: 'answer', query: 'controller major revision decides instruction spelling', expect: ['revision-project-major-rev', 'revision-36-rename-table'] },
+    { id: 'q07', kind: 'answer', query: 'message instruction communication path', expect: ['instruction-msg'] },
+    { id: 'q08', kind: 'answer', query: 'revision guard fails open when the artifact is missing', expect: ['revision-guard-rules'] },
+    { id: 'q09', kind: 'answer', query: 'documentation bundle from an export', expect: ['offline-documentation-bundle'] },
+    { id: 'q10', kind: 'answer', query: 'counter reset every scan', expect: ['rung-counters', 'family-timer-counter'] },
+    { id: 'q11', kind: 'answer', query: 'analog input scaling clamp', expect: ['rung-analog-scale'] },
+    { id: 'q12', kind: 'answer', query: 'safety placement finding', expect: ['family-safety', 'error-evidence-gaps'] },
+    { id: 'q13', kind: 'answer', query: 'offline tools cannot prove a drive connection', expect: ['error-evidence-gaps'] },
+    { id: 'q14', kind: 'answer', query: 'JSR without a return path', expect: ['error-jsr-without-return'] },
+    { id: 'q15', kind: 'answer', query: 'which installed help revision answers for a v36 export', expect: ['revision-export-software-revision'] },
+    { id: 'q16', kind: 'answer', query: 'start stop seal in branch', expect: ['rung-seal-latch'] },
+    { id: 'q17', kind: 'answer', query: 'instruction families grouped by alarm', expect: ['family-alarm'] },
+    { id: 'q18', kind: 'answer', query: 'how many instruction pages does the v37 help index', expect: ['instruction-set-overview', 'revision-installed-help-36-vs-37'] },
+    // Exact identifiers the search and lookup surfaces must resolve.
+    { id: 'q20', kind: 'exact', query: 'ABS', expect: ['instruction-abs'] },
+    { id: 'q21', kind: 'exact', query: 'TON', expect: ['instruction-ton'] },
+    { id: 'q22', kind: 'exact', query: 'MOV', expect: ['instruction-move'] },
+    { id: 'q23', kind: 'exact', query: 'LIMIT', expect: ['instruction-limit'] },
+    { id: 'q24', kind: 'exact', query: 'JSR', expect: ['instruction-jsr'] },
+    { id: 'q25', kind: 'exact', query: 'INSTRUCTION_NOT_IN_REVISION', expect: ['error-instruction-not-in-revision'] },
+    // No-match queries.
+    { id: 'q30', kind: 'no-match', query: 'capacitive dowsing pendulum', expect: [] },
+    { id: 'q31', kind: 'no-match', query: 'holographic telemetry sensor', expect: [] },
+    // Revision-sensitive questions over the installed-help indexes.
+    { id: 'q40', kind: 'answer', revision: '37.05.00', query: 'square root', expect: ['help/clinset/Compute/square-root--sqrt-'] },
+    { id: 'q41', kind: 'answer', revision: '36.00.00', query: 'square root', expect: ['14617', '19517', '346235'] },
+    { id: 'q42', kind: 'answer', revision: '36.00.00', query: 'absolute value', expect: ['14598', '19149', '19151'] },
+    { id: 'q43', kind: 'answer', revision: '37.05.00', query: 'absolute value', expect: ['help/clinset/Compute/absolute-value--abs-'] },
+    { id: 'q44', kind: 'exact', revision: '37.05.00', query: 'TON', expect: ['help/clinset/timer-counter/timer-on-delay--ton-'] },
+    { id: 'q45', kind: 'answer', revision: '36.00.00', query: 'jump to subroutine', expect: ['14612'] },
+  ],
+}

@@ -25,7 +25,7 @@ export type FeatureLevel = 'analyzed' | 'partial' | 'unsupported' | 'not_present
 
 /** One parsed export, identified by the handle the reader passes back. */
 export interface ProjectSnapshot {
-  /** Handle returned by `open_project`. */
+  /** Handle returned by `l5x_open_project`. */
   readonly id: string
   /** Path as the caller supplied it. */
   readonly requestedPath: string
@@ -68,7 +68,7 @@ export class EngineeringError extends L5xError {
    * @param message - What failed, in the reader's terms.
    * @param fix - The next call or check; defaults to re-reading the project state.
    */
-  constructor(code: string, message: string, fix = 'Call project_overview to confirm the project state, then retry.') {
+  constructor(code: string, message: string, fix = 'Call l5x_project_overview to confirm the project state, then retry.') {
     super(code, message, fix)
   }
 }
@@ -186,7 +186,7 @@ export class ProjectSession {
         'UNKNOWN_PROJECT',
         `No project is open with project_id ${JSON.stringify(projectId)} in this chat.`,
         ids.length === 0
-          ? 'Call open_project with the L5X path, then retry.'
+          ? 'Call l5x_open_project with the L5X path, then retry.'
           : `Pass one of this chat's open project ids: ${ids.join(', ')}.`,
         ids,
       )
@@ -196,8 +196,8 @@ export class ProjectSession {
     if (sha256 !== project.sha256) {
       throw new L5xError(
         'STALE_EXPORT',
-        `The export changed since open_project: ${project.requestedPath}`,
-        'Call open_project again on the same path, then repeat the read.',
+        `The export changed since l5x_open_project: ${project.requestedPath}`,
+        'Call l5x_open_project again on the same path, then repeat the read.',
       )
     }
     return project
@@ -371,7 +371,7 @@ export class ProjectSession {
       throw new L5xError(
         'NO_PROJECT',
         'No project is open in this chat.',
-        'Open an export with open_project when the task is about an existing project; for chat-only ladder composition with no file, call l5x_compose_logic and paste its paste_text.',
+        'Open an export with l5x_open_project when the task is about an existing project; for chat-only ladder composition with no file, call l5x_compose_logic and paste its paste_text.',
       )
     }
     if (ids.length > 1) {

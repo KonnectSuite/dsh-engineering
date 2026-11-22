@@ -116,7 +116,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
   const { transactions } = extensions
   return [
     tool({
-      name: 'poll_live_tags',
+      name: 'l5x_poll_live_tags',
       description: 'Read declared scalar PLC tags or scalar members directly over EtherNet/IP without Studio, FactoryTalk Linx, an ACD upload or the SDK. Explicit controller IPv4 and slot required. Returns timestamped sweeps, quality and controller identity; no writes.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -159,7 +159,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'read_live_tags',
+      name: 'l5x_read_live_tags',
       description: 'Read up to 64 declared scalar tags or scalar members in ONE EtherNet/IP request (CIP tag group). Faster than polling for a one-shot snapshot; no writes, no Studio, no Linx, no SDK.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -206,7 +206,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'read_controller_clock',
+      name: 'l5x_read_controller_clock',
       description: 'Read controller identity and, on L8x controllers, the wall clock beside the workstation clock. Reports unsupported instead of guessing on other models. No writes.',
       parameters: object({ ...target }, ['ip_address']),
       async run(args, exec) {
@@ -236,7 +236,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'discover_controllers',
+      name: 'l5x_discover_controllers',
       description: 'Discover EtherNet/IP controllers on this LAN by UDP broadcast for a bounded window: address, product, revision, serial, status. No address needed, no writes, no Studio or Linx.',
       parameters: object({
         duration_seconds: integer('How long to listen for replies, 1 to 15. Default 3.', { minimum: 1, maximum: 15, default: 3 }),
@@ -258,7 +258,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'write_live_tag',
+      name: 'l5x_write_live_tag',
       description: 'Write ONE declared scalar PLC tag over EtherNet/IP, then read it back and report the controller\'s own value. Requires the row\'s writes switch AND human approval for this exact write. Destructive: it changes a running machine.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -286,7 +286,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
         const address = (request.tag as { name: string; program?: string }).program === undefined
           ? (request.tag as { name: string }).name
           : `Program:${String((request.tag as { program: string }).program)}.${String((request.tag as { name: string }).name)}`
-        await requireHumanApproval(ctx, exec, 'write_live_tag',
+        await requireHumanApproval(ctx, exec, 'l5x_write_live_tag',
           `Write ${JSON.stringify(args.value)} to ${address} on controller ${request.ip} slot ${String(request.slot)}. This changes a running machine.`)
         const result = decodeWriteResult(await transactions.run(request, exec.signal))
         await session.require(project.id, exec)
@@ -315,7 +315,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'write_controller_clock',
+      name: 'l5x_write_controller_clock',
       description: 'Set the controller wall clock (L8x only), then read it back. Requires the row\'s writes switch AND human approval for this exact change.',
       parameters: object({
         ...target,
@@ -330,7 +330,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
           )
         }
         const request = { op: 'write-clock', ...controllerTarget(args, polling.config), iso: optionalString(args, 'time') ?? new Date().toISOString() }
-        await requireHumanApproval(ctx, exec, 'write_controller_clock',
+        await requireHumanApproval(ctx, exec, 'l5x_write_controller_clock',
           `Set the wall clock of controller ${request.ip} slot ${String(request.slot)} to ${String(request.iso)}.`)
         const result = decodeWriteClockResult(await transactions.run(request, exec.signal))
         if (!result.verified) {
@@ -349,7 +349,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
       },
     }),
     tool({
-      name: 'start_plc_trend',
+      name: 'l5x_start_plc_trend',
       description: 'Start a bounded, read-only PLC trend as a session-owned background job. Explicit IPv4, slot and declared scalars or scalar members required. SDK-independent EtherNet/IP; the chart follows the job without a model call per sample.',
       parameters: object({
         project_id: PROJECT_ID,
@@ -373,7 +373,7 @@ export function liveTools(session: ProjectSession, polling: DirectPolling, ctx: 
           throw new L5xError(
             'TREND_JOBS_UNAVAILABLE',
             'Live trends require the session-owned job service.',
-            'Use poll_live_tags for a foreground read, or run in a session with the jobs service.',
+            'Use l5x_poll_live_tags for a foreground read, or run in a session with the jobs service.',
           )
         }
         const jobId = jobs.start({

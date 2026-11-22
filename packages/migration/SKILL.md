@@ -16,15 +16,14 @@ is which before anyone commissions the machine.
 This row knows the subject without a network round trip: `migration_assess` names
 the Logix candidate for each legacy instruction it flags, `migration_resolve`
 appends the instruction's row (replacement, operand shape, citation) to the advice
-for every review site, and `engineering_reference` answers with the nine migration
-pages — `migration-pce-markers`, `migration-wizard-and-revisions`,
-`migration-placeholder-tags`, `migration-unknown-operands`,
-`migration-indirect-addressing`, `migration-instruction-map`,
-`migration-arrival-points`, `migration-analog-scaling`,
-`migration-wizard-defaults-to-audit`. Read the page before reasoning about a marker; cite the
-manual section the page names, never a remembered paragraph. The pages rest on 1756-RM085I (logic
-conversion, including the `S:24 → S24` table), 5069-AP001A (the SLC wizard) and 1746-RM003F
-(hardware replacement); the PDFs live in `packages/resources/evidence/migration/`.
+for every review site, and `migration_docs` answers from the authored migration
+corpus — instruction maps, addressing and data files, the wizard and `.L5K` audit,
+the marker and indirect-addressing census, `SFC_ROUTINE_PRESENT`, assessment, plan,
+compare, report and error codes. Search it before reasoning about a marker, read
+one page for the details, and look an exact identifier up rather than recalling a
+paragraph. The corpus rests on 1756-RM085I (logic conversion, including the
+`S:24 → S24` table), 5069-AP001A (the SLC wizard) and 1746-RM003F (hardware
+replacement).
 
 ## 1. Interview and start the plan
 
@@ -93,8 +92,8 @@ edit the customer's `.RSS` or the wizard's first output.
   legacy chassis modules still declared, unnamed modules, `+ S24` byte-swap
   tokens, and residual `?` and PCE sites. Each one is a plan exception with a
   decision, not a note.
-- A verification baseline must be exported in this chat: `export_acd_to_l5x` the
-  `.ACD`, `open_project` that `.L5X`, then verify against it. A file handed over
+- A verification baseline must be exported in this chat: `l5x_export_acd_to_l5x` the
+  `.ACD`, `l5x_open_project` that `.L5X`, then verify against it. A file handed over
   from a previous session is not a baseline.
 - Run `migration_compare` with the legacy `.RSS` and the imported `.L5X`. It
   matches ladder file names to routines, counts rungs (a terminal `END` is not
@@ -119,7 +118,7 @@ with the legacy rung it came from and says what that legacy rung still records:
 - **mechanical** — a marker on a rung that already carries the legacy
   instructions in order (delete it), a timer or counter `?` whose preset and
   accumulator the legacy operand list still names, and any rung the tool offers
-  as whole text. Apply these with `draft_rung`; this is the easy half, and the
+  as whole text. Apply these with `l5x_draft_rung`; this is the easy half, and the
   proposal comes from the legacy rung, not from imagination.
 - **review** — `PCE(150,…)` or `PCE(210,…)` before `MSG` (set the block
   transfer's rack, group, slot, control, table and length on the MSG),
