@@ -9,14 +9,14 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
 
 | | |
 | --- | --- |
-| Branch | `main`; this batch is local commits (the commit that contains this file). No tag, no publish, no market step. |
+| Branch | `main`, pushed to `origin`; `v0.104.0` is a lightweight tag on the release commit `7fbf495`. |
 | Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-23` heading in `CHANGELOG.md`. |
-| Release state | **Verified locally, against installed vendor software, and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
-| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,280,597 B packed, SHA256 `53B1E749028835F5A5917FC757341F88F725184FF6ED1F9F854CE8939C8A28B1`, SHA1 `2CD878F1782577D56669B149946ED1D6008FF1ED`. Repacked from this tree, so it **includes** the unreleased ladder-import, structure-family and motion-family work; the version is still 0.104.0 because nothing has been published or tagged. `check:package` on the current tree reports 21.7 MiB in 1,096 files unpacked. |
+| Release state | **Shipped as 0.104.0 on 2026-11-23, on the owner's request**: published to npm (`dist-tags.latest` = 0.104.0), tagged `v0.104.0`, the tag push made the GitHub Release whose body is this version's changelog section, and the market catalogue's `releases[0]` points at 0.104.0 with the registry copy's sha256. |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,280,649 B packed, SHA256 `67D2E5866587B9B00B25E8B1340C339E31363D5EAFFCB38AF3440EF18791B6B0`, SHA1 `C64A2D2193934BA92C34BD2EA81B99568B504936`. Packed from the release tree, so it **includes** the ladder-import, structure-family and motion-family work and the skill-brief fix. The registry copy is **byte-identical** — downloaded from `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.104.0.tgz` and hashed to the same 5,280,649 B and SHA256, and `npm view` reports the same SHA1 as `dist.shasum`. `check:package` on this tree reports 21.7 MiB in 1,096 files unpacked. |
 | Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **199 registered tools**, **174 default-on**, 8 skills, 6 product documents. |
 | Generated reference | `docs/reference/tools.md` and `tools.json`: **167 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
 | Context budget | **174 tools / 136,828 schema characters** — the ceiling is the 2026-11-22 measurement 131,565 + 4%; re-measured **131,784** on 2026-11-23 (L5X 55,453 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825) after the structure- and motion-family operand wording landed. |
-| Verified | `pnpm test` **79/79 spec files pass** on this tree (51,124 ms); the l5x package vitest suite **585/585** (45 files); `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming", 21.7 MiB in 1,096 files), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` and the L5X knowledge generator check all green. Fresh Dev profile `verify-0104f` from the original 0.104.0 tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled); the unreleased tree registers 199 tools / 174 default-on. |
+| Verified | `pnpm test` **79/79 spec files pass** on the release tree `7fbf495` (56,295 ms; 51,124 ms on the pre-fold tree); the l5x package vitest suite **585/585** (45 files); `pnpm -r build` and `pnpm assemble` ("assembled 8 components and 1 viewer payloads into vendor/") and `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming", 21.7 MiB in 1,096 files), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` and the L5X knowledge generator check all green. Fresh Dev profile `verify-0104f` from the **earlier** 0.104.0 tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled); the unreleased tree registers 199 tools / 174 default-on. **Packaged release smoke on the published payload** (Dev profile `verify-0104h`, whose `@aryacode/dsh-engineering` dependency is the tarball downloaded from the registry, `67d2e586…`): `node --import tsx/esm apps/cli/release-0104-smoke.mjs` boots **174 default-on tools** (56 `l5x_`), `l5x_export_rungs` writes a 1,004,886 B rung-target file (`TargetType="Rung"`, three `Use="Target"` rungs) and returns `paste_text`, `l5x_compose_rung` refuses `MDF(Axis1,…)` with "Axis1 is AXIS_VIRTUAL; MDF Axis must be AXIS_SERVO" and composes `MDF(AxisS,MdfInstr);`, and the shipped `vendor/l5x/SKILL.md` names `l5x_export_rungs` and `l5x_docs`. Driver and log: `AryaCode\tmp\release-0104-smoke.mjs`, `release-0104-smoke2.log`. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 
 ## What 0.104.0 changes
@@ -120,7 +120,7 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
 | FTView imported display in the Studio tree | **not-run** — the imported display appears as an unnamed tree row (UIA name blank) and an OCR/find search cannot select it | The import itself is proved object-for-object by `ftview_verify_import` (1/1, 87 defaults normalised). Candidate fix recorded: write display-name metadata so Studio labels the new display. |
 | Ten scripted tasks per product on a weaker model | **not run** — no weaker-model harness in this environment | Tool-level drills for every product were recorded here instead; the owner/agent walkthrough remains the intended check. |
 | Desktop Electron window and refreshed Plugins screenshots | **not run** — composition booted through the CLI/web probe path | The installed tarball's composition is proved; `docs/images/dev-components*.png` are still 0.102.0 screenshots. |
-| Publish / tag / market catalogue | **not run** — owner-only | This batch is local; release is a separate, explicit request. |
+| Publish / tag / market catalogue | **run on 2026-11-23, on the owner's request** | `pnpm publish --no-git-checks` → "✅ Published package @aryacode/dsh-engineering@0.104.0"; `v0.104.0` tagged at the release commit `7fbf495` and pushed with `main`; the tag push made the GitHub Release (body = this version's changelog section, 22,660 chars); `node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests` → "released @aryacode/dsh-engineering@0.104.0 · npm ok · catalogue ok · sha256 67d2e5866587". The registry lagged as documented (packument 404 for ~6 min, the tarball URL ~14 min); the script's github step warned `HTTP 422 Release.tag_name already exists`, which is the release the tag push had already created. No version was bumped. |
 
 ## Known gaps
 
@@ -186,12 +186,14 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
    dependency at the tarball, `pnpm install --prefer-offline --ignore-scripts`, then boot the
    profile. Never modify the installed AryaCode (`%LOCALAPPDATA%\Programs\AryaCode` or
    `~/.aryacode`); read only.
-5. The batch commits are the release candidate. When the owner says ship, follow the release
-   section of [AGENTS.md](AGENTS.md): `pnpm test`, `pnpm -r build`, `pnpm assemble`, `pnpm publish`,
-   tag `v0.104.0`, wait for the registry, then run the market catalogue step. Do not bump the
-   version to work around registry lag.
+5. **Shipped on 2026-11-23.** The owner said ship: the unreleased entries were folded under
+   `## 0.104.0 — 2026-11-23`, `pnpm test` / `-r build` / `assemble` / `check:package` were run, the
+   package was published, `v0.104.0` was tagged at the release commit `7fbf495` and pushed, and the
+   market catalogue step recorded the registry copy's sha256. Versions are immutable — never
+   republish or bump to work around registry lag.
 6. The installed-software drivers live under `AryaCode\tmp\` in the harness checkout and are not
    part of the bundle: `studio-e2e-full.mjs`, `ftview-e2e.mjs`/`ftview-author-e2e.mjs`/
    `ftview-verify-import.mjs`, `slc-installed-e2e.mjs`/`slc-real-check.mjs`, `plc5-installed-e2e.mjs`,
-   `optix-e2e-run.mjs`/`optix-author-e2e.mjs`/`optix-runtime-e2e.mjs`, `dev-ui` screenshots and a
+   `optix-e2e-run.mjs`/`optix-author-e2e.mjs`/`optix-runtime-e2e.mjs`, `release-0104-smoke.mjs` (the
+   packaged release smoke on the published payload), `dev-ui` screenshots and a
    `verify-0104*` Dev profile.
