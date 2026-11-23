@@ -150,10 +150,15 @@ instances.
   tag into a pseudo-operand slot: `Length`, `Position`, `Dimension` and the bit-number fields of
   `FFL`/`FFU`/`LFL`/`LFU`, `SQO`/`SQL`/`SQI`, `AVE`/`SRT`/`STD` and `BTD` are compiled into the
   instruction word and must be immediates, with a CONTROL tag for the control operand. The operation
-  list was corrected from the installed v37 help, and the corrected routine then passed the Logix
-  Designer SDK's import-and-build ("Offline build passed; 0 blocker(s)", 0 import warnings, 0 import
-  errors) on a full baseline exported with `l5x_export_acd_to_l5x`; the Studio GUI re-import of the
-  same files was blocked on this host by a screen-share dialog holding the desktop foreground.
+  list was corrected from the installed v37 help. The corrected content then passed both routes:
+  the full routine (including PID, `SBR`/`RET` and the JSR call) imported and built through the
+  Logix Designer SDK ("Offline build passed; 0 blocker(s)", 0 import warnings, 0 import errors) on
+  a full baseline exported with `l5x_export_acd_to_l5x`, and a 22-rung subset imported through the
+  Studio GUI with Import Routine (Import Configuration read `Number of Rungs: 22`, Operation
+  Overwrite) verified as `Complete - 0 error(s), 0 warning(s)`. The GUI subset leaves out PID
+  because Studio's dialog Verify demands explicit optional-argument placeholders the draft treats
+  as optional, and leaves out the subroutine because an `SBR`-only first rung is reported as
+  "Missing output instruction" in this import path; both stay covered by the SDK build.
   Serial ASCII (`ABL`/`ARD`/`AWA`/...) is catalogued but unmodelled: the v37 help set has no page and
   a 1756-L71 build answers "Unknown instruction", so the composer refuses it and names the raw-text
   path instead of claiming operands.

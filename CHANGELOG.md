@@ -49,7 +49,10 @@
   sequencer/file array slots accept the array tag or one element but not a scalar (`arrayOrElement`),
   matching the builds that accepted both spellings. The corrected routine then passed the Logix
   Designer SDK's own import-and-build ("Offline build passed; 0 blocker(s)", import warnings 0, import
-  errors 0) on a full `LadderReliability` baseline exported through `l5x_export_acd_to_l5x`.
+  errors 0) on a full `LadderReliability` baseline exported through `l5x_export_acd_to_l5x`. A 22-rung
+  subset of the same corrected routine (PID, the subroutine and the JSR call left out) was then imported
+  through the Studio 37.05 GUI with Import Routine and verified as "Complete - 0 error(s),
+  0 warning(s)".
   `l5x_list_instructions` reports the new `immediate` and `array_or_element` flags.
 - **The serial-ASCII family is catalogued but unmodelled instead of claimed.** `ABL`/`ACB`/`ARD`/`ACL`/
   `AHL`/`ARL`/`AWA`/`AWT` have no page in the installed v37 help set and a 1756-L71 build answers
