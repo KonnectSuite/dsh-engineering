@@ -10,12 +10,12 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
 | | |
 | --- | --- |
 | Branch | `main`; this batch is local commits (the commit that contains this file). No tag, no publish, no market step. |
-| Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-22` heading in `CHANGELOG.md`. |
+| Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-23` heading in `CHANGELOG.md`. |
 | Release state | **Verified locally, against installed vendor software, and committed; not published and not tagged.** Publishing happens only when the owner asks to ship. |
 | Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,280,597 B packed, SHA256 `53B1E749028835F5A5917FC757341F88F725184FF6ED1F9F854CE8939C8A28B1`, SHA1 `2CD878F1782577D56669B149946ED1D6008FF1ED`. Repacked from this tree, so it **includes** the unreleased ladder-import, structure-family and motion-family work; the version is still 0.104.0 because nothing has been published or tagged. `check:package` on the current tree reports 21.7 MiB in 1,096 files unpacked. |
 | Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **199 registered tools**, **174 default-on**, 8 skills, 6 product documents. |
 | Generated reference | `docs/reference/tools.md` and `tools.json`: **167 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
-| Context budget | **174 tools / 136,828 schema characters** — measured 131,565 + 4% (L5X 55,234 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825). |
+| Context budget | **174 tools / 136,828 schema characters** — the ceiling is the 2026-11-22 measurement 131,565 + 4%; re-measured **131,784** on 2026-11-23 (L5X 55,453 + FTView 45,544 + MWI 18,488 + resources 1,474 + migration 10,825) after the structure- and motion-family operand wording landed. |
 | Verified | `pnpm test` **79/79 spec files pass** on this tree (51,124 ms); the l5x package vitest suite **585/585** (45 files); `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming", 21.7 MiB in 1,096 files), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` and the L5X knowledge generator check all green. Fresh Dev profile `verify-0104f` from the original 0.104.0 tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled); the unreleased tree registers 199 tools / 174 default-on. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 

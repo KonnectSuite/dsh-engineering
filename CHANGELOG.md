@@ -1,97 +1,6 @@
 ## [Unreleased]
 
-### Added
-
-- **`l5x_export_rungs` writes a rung-target export for Studio's Import Rungs.** The offline ladder
-  workflow could only produce a routine-target export, which Studio's Ladder Editor refuses in Import
-  Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0). The new tool
-  writes the same `TargetType="Rung"` shape Studio's own Export Rungs produces: a selected rung list,
-  `Use="Target"` rungs, `Use="Context"` controller/program/routine/rung content and the source
-  export's revision and tag context. `l5x_draft_apply` now names its Import Routine route and points
-  at `l5x_export_rungs` when only some rungs change or when the import must respect pending edits.
-  The rung shape was derived from a real Studio 5000 v37.05 Export Rungs file and both routes were
-  attended-verified on a generated ladder project: Studio Import Routine with Overwrite, Studio
-  Import Rungs reading the rung-target file as Imported Rungs: 1, and Studio Verify reporting
-  0 errors/0 warnings after each; the routine route's re-export matched the applied draft.
-- **Multi-operation ladder round-trip and paste-ready text.** A two-rung replacement/insert draft
-  (rung 0 replace with a Fault interlock, rung 1 parallel start/run branch, both rung comments, six
-  BOOL tags, and one rung inserted then deleted in the same draft so numbering stayed contiguous)
-  was applied offline, exported with `l5x_export_rungs` as `Imported Rungs: 2`, imported through
-  Studio's Import Rungs on Logix Designer 37.05, and verified with Studio Verify 0 errors. The
-  operation appended the imported rungs after the selected rung rather than replacing it, so the
-  superseded rung was deleted before the clean verify; that Studio behaviour is documented on the
-  offline-editing page. `l5x_export_rungs` now also returns each rung's Studio copy text
-  (`paste_text`) with a note that plain-text Ctrl+V does not create rungs in 37.05 and the file is
-  the import path.
-- **The whole instruction catalogue exercised through Studio, not just contacts and coils.** A
-  43-rung routine and 32 typed tags (`TIMER`/`COUNTER`/DINT/REAL/STRING/DINT arrays and BOOL lamps)
-  covering timers (`TON`/`TOF`/`RTO`/`RES`), counters (`CTU`/`CTD`), all eight compares
-  (`EQ`/`NE`/`LT`/`GT`/`LE`/`GE`/`LIMIT`/`CMP`), arithmetic and moves
-  (`ADD`/`SUB`/`MUL`/`DIV`/`MOD`/`SQRT`/`CPT`/`NEG`/`ABS`/`EXPT`/`MOVE`/`CLR`/`COP`/`FLL`/`MVM`),
-  bitwise (`AND`/`OR`/`XOR`/`NOT`), latches and one-shots (`OTL`/`OTU`/`ONS`/`AFI`), strings
-  (`CONCAT`/`DTOS`) and program control (`JMP`/`LBL`) was drafted offline, imported through Studio
-  37.05 Import Routine (Import Configuration read Number of Rungs: 43, Overwrite) and verified with
-  Studio Verify "Complete - 0 error(s), 1 warning(s)"; the only warning is `Rung 38: AFI detected`,
-  which is what an intentionally always-false rung produces. The pass found and fixed two defects:
-  a zero-operand instruction lost its parentheses when written (`AFI()OTE(...)` became
-  `AFIOTE(...)`), and a component export with no `Controller MajorRev` fell back to pre-v36 mnemonics
-  (`EQU`/`MOV`/`SQR`) that Studio v37 refuses, so the composer now reads the root `SoftwareRevision`.
-
-### Fixed
-
-- **File/array and sequencer pseudo-operands are modelled as immediates, the way Studio 37 compiles
-  them.** A Studio Verify of a control-structure routine rejected twelve operands with "Invalid kind of
-  operand or argument i.e. tag, literal, or expression": the FIFO/LIFO, sequencer (`SQO`/`SQL`/`SQI`),
-  file-statistic (`AVE`/`SRT`/`STD`) and `BTD` entries accepted a tag in `Length`, `Position`,
-  `Dimension` and the bit-number slots. The installed v37 help states those fields are DINT immediates
-  and the control operand is a CONTROL tag, so `InstructionOperand` now carries an `immediate` flag that
-  `checkSlot` enforces, and the catalogue uses `lit(...)`/`control()` helpers for those slots; the
-  sequencer/file array slots accept the array tag or one element but not a scalar (`arrayOrElement`),
-  matching the builds that accepted both spellings. The corrected routine then passed the Logix
-  Designer SDK's own import-and-build ("Offline build passed; 0 blocker(s)", import warnings 0, import
-  errors 0) on a full `LadderReliability` baseline exported through `l5x_export_acd_to_l5x`. A 22-rung
-  subset of the same corrected routine (PID, the subroutine and the JSR call left out) was then imported
-  through the Studio 37.05 GUI with Import Routine and verified as "Complete - 0 error(s),
-  0 warning(s)".
-  `l5x_list_instructions` reports the new `immediate` and `array_or_element` flags.
-- **Motion pseudo-operands and axis data types are modelled the way Studio compiles them.** A Studio
-  Verify of an 11-instruction motion routine (`MAH`, `MSO`, `MSF`, `MDF`, `MDW`, `MAJ`, `MAS`, `MAM`,
-  `MRP`, `MGS`, `MGSP`) exposed two kinds of rule the SDK import-and-build had not caught: enumerated
-  operand fields (move type, direction, profile, stop type, stop mode, execution mode and schedule, cam
-  type, and every speed/accel/decel/jerk unit field) must be DINT immediates, and the servo-state
-  instructions accept only servo axes — `MSO`/`MSF`/`MDW` take `AXIS_SERVO` or `AXIS_SERVO_DRIVE`,
-  `MDF` takes `AXIS_SERVO` only, while `MAH`/`MAJ`/`MAM`/`MAS`/`MRP`/`MGS`/`MGSP` also accept
-  `AXIS_VIRTUAL`. The catalogue now carries those slots and types (`axis()`, `motionControl()`,
-  `motionGroup()`, `cam()`, `lit()`); the MDF rule comes from the installed v37 help page ("Motion axis
-  of data type AXIS_SERVO only"). Neither an axis nor a group needs hardware: they are controller-scoped
-  tags, so the routine passed Studio's controller Verify with **0 errors**; the nine remaining warnings
-  are offline axis-configuration gaps (zero maximum speed/deceleration/jerk limits, no motion
-  group/module/amplifier association) plus one left-over structure rung's message tag.
-- **The serial-ASCII family is catalogued but unmodelled instead of claimed.** `ABL`/`ACB`/`ARD`/`ACL`/
-  `AHL`/`ARL`/`AWA`/`AWT` have no page in the installed v37 help set and a 1756-L71 build answers
-  "Unknown instruction"; the catalogue now marks them `notModelled`, so `l5x_compose_rung` refuses with
-  `INSTRUCTION_NOT_MODELLED` and names the raw-text path instead of emitting operands it cannot check.
-- **A zero-operand instruction keeps its parentheses when written.** `neutralText` rendered
-  `AFI` as a bare name, so a rung `AFI()OTE(NeverOn);` was written as `AFIOTE(NeverOn);` — two
-  instructions fused into one unparseable name. The composer and the draft writer now emit `AFI()`,
-  and a regression test applies such a rung and inspects the written export.
-- **A component export without a `Controller MajorRev` no longer falls back to legacy mnemonics.**
-  Routine and rung exports state only the root `SoftwareRevision`; the composer read the missing
-  controller revision as pre-v36 and emitted `EQU`/`MOV`/`SQR`, which Studio v37 refuses. The parsed
-  document now records `softwareRevision`, and `emittedMnemonic` uses the controller revision when
-  present and the root revision otherwise, so a v37 export composes `EQ`/`MOVE`/`SQRT`.
-- **The L5X skill brief names both import routes and the knowledge plane.** The brief claimed
-  `paste_text` "pastes straight into a routine in the ladder editor", which the v37.05 GUI disproved:
-  Ctrl+V there edits the selected instruction or does nothing. It now states what the offline workflow
-  page states — `l5x_draft_apply` writes a routine export for right-click → Import Routine,
-  `l5x_export_rungs` writes a rung export for the Ladder Editor's Import Rungs, and they are not
-  interchangeable (Import Rungs on a routine export answers 5078-0) — and points at `l5x_docs` for the
-  workflow pages. The operand-flag list it quotes was refreshed to the flags `l5x_list_instructions`
-  emits (`array_tag`, `array_element`, `array_or_element`, `no_array`, `immediate`, `minimum`/`maximum`,
-  `types`). Four restatements of "the engineer imports it in Studio" were cut to pay for the addition, so
-  the brief stays inside its recorded 12,800-character skill budget (measured 12,799).
-
-## 0.104.0 — 2026-11-22
+## 0.104.0 — 2026-11-23
 
 ### Added
 
@@ -141,6 +50,41 @@
   nDCG@10, exact and no-match shares, the read contract, hit cap and p95 search/read latency, and fails
   on a deterministic-envelope mismatch. Per-product thresholds and the global exact 1.00, no-match
   0.80, revision-sensitivity 1.00, 150 ms/120 ms p95 and 8/8,000 caps are recorded in the script.
+
+- **`l5x_export_rungs` writes a rung-target export for Studio's Import Rungs.** The offline ladder
+  workflow could only produce a routine-target export, which Studio's Ladder Editor refuses in Import
+  Rungs with "The specified L5X file does not contain a Rung export" (error 5078-0). The new tool
+  writes the same `TargetType="Rung"` shape Studio's own Export Rungs produces: a selected rung list,
+  `Use="Target"` rungs, `Use="Context"` controller/program/routine/rung content and the source
+  export's revision and tag context. `l5x_draft_apply` now names its Import Routine route and points
+  at `l5x_export_rungs` when only some rungs change or when the import must respect pending edits.
+  The rung shape was derived from a real Studio 5000 v37.05 Export Rungs file and both routes were
+  attended-verified on a generated ladder project: Studio Import Routine with Overwrite, Studio
+  Import Rungs reading the rung-target file as Imported Rungs: 1, and Studio Verify reporting
+  0 errors/0 warnings after each; the routine route's re-export matched the applied draft.
+- **Multi-operation ladder round-trip and paste-ready text.** A two-rung replacement/insert draft
+  (rung 0 replace with a Fault interlock, rung 1 parallel start/run branch, both rung comments, six
+  BOOL tags, and one rung inserted then deleted in the same draft so numbering stayed contiguous)
+  was applied offline, exported with `l5x_export_rungs` as `Imported Rungs: 2`, imported through
+  Studio's Import Rungs on Logix Designer 37.05, and verified with Studio Verify 0 errors. The
+  operation appended the imported rungs after the selected rung rather than replacing it, so the
+  superseded rung was deleted before the clean verify; that Studio behaviour is documented on the
+  offline-editing page. `l5x_export_rungs` now also returns each rung's Studio copy text
+  (`paste_text`) with a note that plain-text Ctrl+V does not create rungs in 37.05 and the file is
+  the import path.
+- **The whole instruction catalogue exercised through Studio, not just contacts and coils.** A
+  43-rung routine and 32 typed tags (`TIMER`/`COUNTER`/DINT/REAL/STRING/DINT arrays and BOOL lamps)
+  covering timers (`TON`/`TOF`/`RTO`/`RES`), counters (`CTU`/`CTD`), all eight compares
+  (`EQ`/`NE`/`LT`/`GT`/`LE`/`GE`/`LIMIT`/`CMP`), arithmetic and moves
+  (`ADD`/`SUB`/`MUL`/`DIV`/`MOD`/`SQRT`/`CPT`/`NEG`/`ABS`/`EXPT`/`MOVE`/`CLR`/`COP`/`FLL`/`MVM`),
+  bitwise (`AND`/`OR`/`XOR`/`NOT`), latches and one-shots (`OTL`/`OTU`/`ONS`/`AFI`), strings
+  (`CONCAT`/`DTOS`) and program control (`JMP`/`LBL`) was drafted offline, imported through Studio
+  37.05 Import Routine (Import Configuration read Number of Rungs: 43, Overwrite) and verified with
+  Studio Verify "Complete - 0 error(s), 1 warning(s)"; the only warning is `Rung 38: AFI detected`,
+  which is what an intentionally always-false rung produces. The pass found and fixed two defects:
+  a zero-operand instruction lost its parentheses when written (`AFI()OTE(...)` became
+  `AFIOTE(...)`), and a component export with no `Controller MajorRev` fell back to pre-v36 mnemonics
+  (`EQU`/`MOV`/`SQR`) that Studio v37 refuses, so the composer now reads the root `SoftwareRevision`.
 
 ### Removed
 
@@ -256,6 +200,57 @@
 - **Stale row counts in getting-started and the index.** "Ten rows, ecad and plc5 off" and "six products
   plus three support components and one surface" described a composition the patch no longer had;
   both now state the nine rows and two off rows.
+- **File/array and sequencer pseudo-operands are modelled as immediates, the way Studio 37 compiles
+  them.** A Studio Verify of a control-structure routine rejected twelve operands with "Invalid kind of
+  operand or argument i.e. tag, literal, or expression": the FIFO/LIFO, sequencer (`SQO`/`SQL`/`SQI`),
+  file-statistic (`AVE`/`SRT`/`STD`) and `BTD` entries accepted a tag in `Length`, `Position`,
+  `Dimension` and the bit-number slots. The installed v37 help states those fields are DINT immediates
+  and the control operand is a CONTROL tag, so `InstructionOperand` now carries an `immediate` flag that
+  `checkSlot` enforces, and the catalogue uses `lit(...)`/`control()` helpers for those slots; the
+  sequencer/file array slots accept the array tag or one element but not a scalar (`arrayOrElement`),
+  matching the builds that accepted both spellings. The corrected routine then passed the Logix
+  Designer SDK's own import-and-build ("Offline build passed; 0 blocker(s)", import warnings 0, import
+  errors 0) on a full `LadderReliability` baseline exported through `l5x_export_acd_to_l5x`. A 22-rung
+  subset of the same corrected routine (PID, the subroutine and the JSR call left out) was then imported
+  through the Studio 37.05 GUI with Import Routine and verified as "Complete - 0 error(s),
+  0 warning(s)".
+  `l5x_list_instructions` reports the new `immediate` and `array_or_element` flags.
+- **Motion pseudo-operands and axis data types are modelled the way Studio compiles them.** A Studio
+  Verify of an 11-instruction motion routine (`MAH`, `MSO`, `MSF`, `MDF`, `MDW`, `MAJ`, `MAS`, `MAM`,
+  `MRP`, `MGS`, `MGSP`) exposed two kinds of rule the SDK import-and-build had not caught: enumerated
+  operand fields (move type, direction, profile, stop type, stop mode, execution mode and schedule, cam
+  type, and every speed/accel/decel/jerk unit field) must be DINT immediates, and the servo-state
+  instructions accept only servo axes — `MSO`/`MSF`/`MDW` take `AXIS_SERVO` or `AXIS_SERVO_DRIVE`,
+  `MDF` takes `AXIS_SERVO` only, while `MAH`/`MAJ`/`MAM`/`MAS`/`MRP`/`MGS`/`MGSP` also accept
+  `AXIS_VIRTUAL`. The catalogue now carries those slots and types (`axis()`, `motionControl()`,
+  `motionGroup()`, `cam()`, `lit()`); the MDF rule comes from the installed v37 help page ("Motion axis
+  of data type AXIS_SERVO only"). Neither an axis nor a group needs hardware: they are controller-scoped
+  tags, so the routine passed Studio's controller Verify with **0 errors**; the nine remaining warnings
+  are offline axis-configuration gaps (zero maximum speed/deceleration/jerk limits, no motion
+  group/module/amplifier association) plus one left-over structure rung's message tag.
+- **The serial-ASCII family is catalogued but unmodelled instead of claimed.** `ABL`/`ACB`/`ARD`/`ACL`/
+  `AHL`/`ARL`/`AWA`/`AWT` have no page in the installed v37 help set and a 1756-L71 build answers
+  "Unknown instruction"; the catalogue now marks them `notModelled`, so `l5x_compose_rung` refuses with
+  `INSTRUCTION_NOT_MODELLED` and names the raw-text path instead of emitting operands it cannot check.
+- **A zero-operand instruction keeps its parentheses when written.** `neutralText` rendered
+  `AFI` as a bare name, so a rung `AFI()OTE(NeverOn);` was written as `AFIOTE(NeverOn);` — two
+  instructions fused into one unparseable name. The composer and the draft writer now emit `AFI()`,
+  and a regression test applies such a rung and inspects the written export.
+- **A component export without a `Controller MajorRev` no longer falls back to legacy mnemonics.**
+  Routine and rung exports state only the root `SoftwareRevision`; the composer read the missing
+  controller revision as pre-v36 and emitted `EQU`/`MOV`/`SQR`, which Studio v37 refuses. The parsed
+  document now records `softwareRevision`, and `emittedMnemonic` uses the controller revision when
+  present and the root revision otherwise, so a v37 export composes `EQ`/`MOVE`/`SQRT`.
+- **The L5X skill brief names both import routes and the knowledge plane.** The brief claimed
+  `paste_text` "pastes straight into a routine in the ladder editor", which the v37.05 GUI disproved:
+  Ctrl+V there edits the selected instruction or does nothing. It now states what the offline workflow
+  page states — `l5x_draft_apply` writes a routine export for right-click → Import Routine,
+  `l5x_export_rungs` writes a rung export for the Ladder Editor's Import Rungs, and they are not
+  interchangeable (Import Rungs on a routine export answers 5078-0) — and points at `l5x_docs` for the
+  workflow pages. The operand-flag list it quotes was refreshed to the flags `l5x_list_instructions`
+  emits (`array_tag`, `array_element`, `array_or_element`, `no_array`, `immediate`, `minimum`/`maximum`,
+  `types`). Four restatements of "the engineer imports it in Studio" were cut to pay for the addition, so
+  the brief stays inside its recorded 12,800-character skill budget (measured 12,799).
 
 ## 0.103.0 — 2026-11-20
 
