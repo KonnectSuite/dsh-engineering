@@ -30,7 +30,7 @@ test('the built engine emits the modern spelling for a v37 project', { skip }, a
 
 test('the built catalog marks the slots that must be tags', { skip }, async () => {
   const { instructionByName } = await load('engine/instructions.js')
-  for (const [name, slotName] of [['ADD', 'Destination'], ['FOR', 'Index'], ['SIZE', 'Size'], ['STD', 'Control'], ['SWPB', 'Dest'], ['MVM', 'Dest'], ['NEG', 'Dest']]) {
+  for (const [name, slotName] of [['ADD', 'Destination'], ['FOR', 'Index'], ['SIZE', 'Size'], ['SWPB', 'Dest'], ['MVM', 'Dest'], ['NEG', 'Dest']]) {
     const slot = instructionByName(name)?.operands.find(operand => operand.name === slotName)
     assert.equal(slot?.writable, true, `${name} ${slotName}`)
   }
@@ -38,6 +38,18 @@ test('the built catalog marks the slots that must be tags', { skip }, async () =
   // The vendor restricts STD's Destination to REAL; the built slot must carry that type.
   const destination = instructionByName('STD')?.operands.find(operand => operand.name === 'Destination')
   assert.deepEqual(destination?.types, ['REAL'])
+  // STD's control operand is a CONTROL structure tag: read by the instruction, never written.
+  const stdControl = instructionByName('STD')?.operands.find(operand => operand.name === 'Control')
+  assert.equal(stdControl?.tagOnly, true)
+  assert.deepEqual(stdControl?.types, ['CONTROL'])
+  // Pseudo-operands compile into the instruction word and must be immediates, not tags.
+  const fflPosition = instructionByName('FFL')?.operands.find(operand => operand.name === 'Position')
+  assert.equal(fflPosition?.immediate, true)
+  const btdDestBit = instructionByName('BTD')?.operands.find(operand => operand.name === 'Dest bit')
+  assert.equal(btdDestBit?.immediate, true)
+  // A sequencer array accepts the array tag or one element, never a scalar.
+  const sqoArray = instructionByName('SQO')?.operands.find(operand => operand.name === 'Array')
+  assert.equal(sqoArray?.arrayOrElement, true)
   // CPS and COP copy between array elements: Source is tag-only, Dest writable, both element-addressed.
   for (const name of ['CPS', 'COP']) {
     const copy = instructionByName(name)?.operands ?? []

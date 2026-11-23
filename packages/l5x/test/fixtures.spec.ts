@@ -483,7 +483,7 @@ describe('a slot that takes a tag of any type', () => {
     // STD(Arr,0,Dest,Ctrl,10,0) built 0/0.
     const bad = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', '5', '10', '0'] }] }) })
     expect(bad.error?.code).toBe('INVALID_OPERAND')
-    expect(bad.error?.message).toContain('needs a writable control')
+    expect(bad.error?.message).toContain('needs a tag for Control')
     const good = await l5xTool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'STD', args: ['Arr', '0', 'Dest', 'Ctrl', '10', '0'] }] }) })
     expect(good.error).toBeUndefined()
     // A DINT destination fails Studio's type check (RxCMP_E_AUDIT_INVALIDOPTYPE); the composer names it.

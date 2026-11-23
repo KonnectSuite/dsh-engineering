@@ -39,7 +39,23 @@
 
 ### Fixed
 
-- **A zero-operand instruction keeps its parentheses in written ladder text.** `neutralText` rendered
+- **File/array and sequencer pseudo-operands are modelled as immediates, the way Studio 37 compiles
+  them.** A Studio Verify of a control-structure routine rejected twelve operands with "Invalid kind of
+  operand or argument i.e. tag, literal, or expression": the FIFO/LIFO, sequencer (`SQO`/`SQL`/`SQI`),
+  file-statistic (`AVE`/`SRT`/`STD`) and `BTD` entries accepted a tag in `Length`, `Position`,
+  `Dimension` and the bit-number slots. The installed v37 help states those fields are DINT immediates
+  and the control operand is a CONTROL tag, so `InstructionOperand` now carries an `immediate` flag that
+  `checkSlot` enforces, and the catalogue uses `lit(...)`/`control()` helpers for those slots; the
+  sequencer/file array slots accept the array tag or one element but not a scalar (`arrayOrElement`),
+  matching the builds that accepted both spellings. The corrected routine then passed the Logix
+  Designer SDK's own import-and-build ("Offline build passed; 0 blocker(s)", import warnings 0, import
+  errors 0) on a full `LadderReliability` baseline exported through `l5x_export_acd_to_l5x`.
+  `l5x_list_instructions` reports the new `immediate` and `array_or_element` flags.
+- **The serial-ASCII family is catalogued but unmodelled instead of claimed.** `ABL`/`ACB`/`ARD`/`ACL`/
+  `AHL`/`ARL`/`AWA`/`AWT` have no page in the installed v37 help set and a 1756-L71 build answers
+  "Unknown instruction"; the catalogue now marks them `notModelled`, so `l5x_compose_rung` refuses with
+  `INSTRUCTION_NOT_MODELLED` and names the raw-text path instead of emitting operands it cannot check.
+ `neutralText` rendered
   `AFI` as a bare name, so a rung `AFI()OTE(NeverOn);` was written as `AFIOTE(NeverOn);` — two
   instructions fused into one unparseable name. The composer and the draft writer now emit `AFI()`,
   and a regression test applies such a rung and inspects the written export.

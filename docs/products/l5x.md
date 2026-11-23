@@ -146,6 +146,17 @@ instances.
   reported "Complete - 0 error(s), 1 warning(s)" - the warning being `Rung 38: AFI detected`, the
   expected notice for an intentionally always-false rung. That pass also caught the two writing
   defects listed under Fixed in the changelog.
+- A later control-structure pass found twelve operands that Studio refuses because the catalogue let a
+  tag into a pseudo-operand slot: `Length`, `Position`, `Dimension` and the bit-number fields of
+  `FFL`/`FFU`/`LFL`/`LFU`, `SQO`/`SQL`/`SQI`, `AVE`/`SRT`/`STD` and `BTD` are compiled into the
+  instruction word and must be immediates, with a CONTROL tag for the control operand. The operation
+  list was corrected from the installed v37 help, and the corrected routine then passed the Logix
+  Designer SDK's import-and-build ("Offline build passed; 0 blocker(s)", 0 import warnings, 0 import
+  errors) on a full baseline exported with `l5x_export_acd_to_l5x`; the Studio GUI re-import of the
+  same files was blocked on this host by a screen-share dialog holding the desktop foreground.
+  Serial ASCII (`ABL`/`ARD`/`AWA`/...) is catalogued but unmodelled: the v37 help set has no page and
+  a 1756-L71 build answers "Unknown instruction", so the composer refuses it and names the raw-text
+  path instead of claiming operands.
   Online Pending/Accepted/Finalized import against a live controller, a second application's export and
   a PanelView-side workflow are unmeasured.
 - `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`

@@ -151,8 +151,10 @@ truth. Never write to `<workspace>/_backups`.
   tag while `Step_1.DN` builds. `l5x_draft_sfc` creates the `SFC_STEP`, `SFC_ACTION` and BOOL tags itself.
 - `l5x_draft_tag` also accepts `TIMER`, `COUNTER`, `PID`, `STRING`, `CONTROL`, `SERIAL_PORT_CONTROL`, `ALARM_ANALOG`, `ALARM_DIGITAL`, `MESSAGE` and any **AOI name**.
 - AOI call: instance tag first, then only the parameters whose `Required` is true.
-- Serial ASCII (`ABL`, `ARD`, ...) needs a controller **with a serial port**: it builds on a 1756-L73 and is refused
-  on a 5069 or 1756-L8x whatever the operands. `l5x_run_checks` reports it before any build.
+- Serial ASCII (`ABL`, `ARD`, ...) is **catalogued but unmodelled**: the installed v37 help set has no
+  page for it and a 1756-L71 build answers "Unknown instruction", so `l5x_compose_rung` refuses with
+  `INSTRUCTION_NOT_MODELLED`. Pass raw rung text to `l5x_draft_rung` only when the target controller
+  and Studio revision are known to support it; no build proved one here.
 - String positioning operands are **1-based**: `MID(s,5,1,d)` builds, and `0` fails with
   `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
 - Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or

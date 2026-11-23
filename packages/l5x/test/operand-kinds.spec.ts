@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest'
 import { fixtureBytes, harness } from './harness.ts'
 import { instructionByName } from '../src/engine/instructions.ts'
+import { l5x, program, rllRoutine, tag, task } from './l5x-build.ts'
 
 /** Open the fixture with the editing entry and return the harness. */
 async function opened() {
@@ -442,5 +443,42 @@ describe('operand order confirmed by build', () => {
       const rungs = result.data?.rungs as { neutral_text: string }[]
       expect(rungs[0]?.neutral_text).toBe(expected)
     }
+  })
+})
+
+describe('pseudo-operands are immediate literals', () => {
+  function project(): string {
+    return l5x({
+      name: 'ImmGuard',
+      tags: tag('Start', 'BOOL') + tag('Count', 'DINT') + tag('Fifo', 'DINT', ' Dimensions="8"') + tag('Ctrl', 'CONTROL') + tag('Dest', 'DINT') + tag('Pos', 'DINT'),
+      programs: program('Main', rllRoutine('MainRoutine', [])),
+      tasks: task('MainTask', ['Main']),
+    })
+  }
+
+  it('refuses a tag in FFL Position and states the written order', async () => {
+    const tool = harness(new Map([['imm.l5x', new TextEncoder().encode(project())]]), { editing: true })
+    expect((await tool.call('l5x_open_project', { path: 'imm.l5x' })).error).toBeUndefined()
+    // Studio answered "Invalid kind of operand or argument i.e. tag, literal, or expression."
+    // for FFL(...,Index): Length and Position compile into the instruction word.
+    const bad = await tool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FFL', args: ['Count', 'Fifo', 'Ctrl', '8', 'Pos'] }] }) })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('immediate literal')
+    expect(bad.error?.fix).toContain('Source, FIFO, Control, Length, Position')
+    // The build that proved the vendor shape: literal 0 in Position.
+    const good = await tool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'FFL', args: ['Count', 'Fifo', 'Ctrl', '8', '0'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect(text(good.data)).toBe('FFL(Count,Fifo,Ctrl,8,0);')
+  })
+
+  it('refuses a scalar tag where a sequencer takes an array or element', async () => {
+    const tool = harness(new Map([['seq2.l5x', new TextEncoder().encode(project())]]), { editing: true })
+    expect((await tool.call('l5x_open_project', { path: 'seq2.l5x' })).error).toBeUndefined()
+    const bad = await tool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Count', 'Count', 'Dest', 'Ctrl', '8', '0'] }] }) })
+    expect(bad.error?.code).toBe('INVALID_OPERAND')
+    expect(bad.error?.message).toContain('array tag or one of its elements')
+    const good = await tool.call('l5x_compose_rung', { spec_json: JSON.stringify({ series: [{ instr: 'SQO', args: ['Fifo', 'Count', 'Dest', 'Ctrl', '8', '0'] }] }) })
+    expect(good.error).toBeUndefined()
+    expect(text(good.data)).toBe('SQO(Fifo,Count,Dest,Ctrl,8,0);')
   })
 })

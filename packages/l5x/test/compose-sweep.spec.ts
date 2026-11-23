@@ -5,7 +5,7 @@
  * the whole catalogue with slot-shaped arguments so a future operand edit cannot
  * make an instruction emit text the parser rejects, or fail with an unexpected
  * error. Two refusals are expected and named: the catalogue deliberately does
- * not model eight instructions, and SBR() alone is refused (Studio aborts it).
+ * not model sixteen instructions, and SBR() alone is refused (Studio aborts it).
  */
 import { describe, expect, it } from 'vitest'
 import { harness } from './harness.ts'
@@ -17,12 +17,14 @@ interface Slot {
   readonly writable?: boolean
   readonly tag_only?: boolean
   readonly array_tag?: boolean
+  readonly array_or_element?: boolean
+  readonly immediate?: boolean
   readonly array_element?: boolean
   readonly no_array?: boolean
   readonly types?: readonly string[]
 }
 
-const UNMODELLED = new Set(['FAL', 'FSC', 'DCM', 'DCS', 'CROUT', 'EOT', 'SFR', 'SFP'])
+const UNMODELLED = new Set(['FAL', 'FSC', 'DCM', 'DCS', 'CROUT', 'EOT', 'SFR', 'SFP', 'ABL', 'ACB', 'ARD', 'ACL', 'AHL', 'ARL', 'AWA', 'AWT'])
 
 function argumentFor(slot: Slot): string | undefined {
   const type = slot.types?.[0]
@@ -32,6 +34,8 @@ function argumentFor(slot: Slot): string | undefined {
   if (type === 'ALARM_DIGITAL') return 'AlarmD'
   if (type === 'CONTROL') return 'Ctrl'
   if (type === 'REAL') return 'R'
+  if (slot.immediate === true) return '1'
+  if (slot.array_or_element === true) return 'Arr'
   if (slot.array_tag === true) return 'Arr'
   if (slot.array_element === true) return 'Arr[0]'
   if (slot.no_array === true) return 'D'
@@ -94,6 +98,6 @@ describe('the whole catalogue composes', () => {
       composed += 1
     }
     expect(skipped).toBeLessThanOrEqual(3)
-    expect(composed).toBeGreaterThanOrEqual(120)
+    expect(composed).toBeGreaterThanOrEqual(115)
   })
 })

@@ -357,6 +357,12 @@ function checkOperand(project: ProjectSnapshot, text: string, kind: InstructionI
  * @param operand - The checked operand (resolved type and array dimensions when declared).
  */
 function checkSlot(instruction: InstructionInfo, slot: InstructionInfo['operands'][number], text: string, operand: ComposedOperand): void {
+  // Length, Position, Dimension and the bit-number fields of the file/array instructions are
+  // pseudo-operands: Studio compiles them into the instruction word and refuses a tag with
+  // "Invalid kind of operand or argument i.e. tag, literal, or expression." and no operand position.
+  if (slot.immediate === true && !isLiteral(text)) {
+    throw new L5xError('INVALID_OPERAND', `${text} must be an immediate literal for ${instruction.name} ${slot.name}; Studio answers "Invalid kind of operand or argument i.e. tag, literal, or expression." for a tag in that pseudo-operand slot.`, `Write a number there. That slot is compiled into the instruction word, not addressed as a tag. Operands are written in this order: ${instruction.operands.map(entry => entry.name).join(', ')}.`)
+  }
   // Studio refuses a literal in a writable slot only at build time, with
   // RxCMP_E_AUDIT_INVALIDOPKIND and no operand position. The catalog marks those slots so the
   // composer can refuse them and state the written order instead. A slot of kind ANY is not
@@ -380,6 +386,11 @@ function checkSlot(instruction: InstructionInfo, slot: InstructionInfo['operands
   // and SIZE(Arr,2,Pos) built.
   if (slot.arrayTag === true && operand.resolved && (text.includes('[') || (operand.dimensions?.length ?? 0) === 0)) {
     throw new L5xError('INVALID_OPERAND', `${text} must name a declared array tag for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag itself (Arr), not one element or a scalar tag.')
+  }
+  // Studio built SRT(Arr[0],...) and SQO(arr[0],...) as well as the whole-array spelling, but
+  // answers MUSTBEARRAY for a scalar tag. Accept both spellings and refuse only the scalar.
+  if (slot.arrayOrElement === true && operand.resolved && !text.includes('[') && (operand.dimensions?.length ?? 0) === 0) {
+    throw new L5xError('INVALID_OPERAND', `${text} must name an array tag or one of its elements for ${instruction.name} ${slot.name}; Studio answers RxCMP_E_AUDIT_MUSTBEARRAY for a scalar.`, 'Pass the array tag (Arr) or one element (Arr[0]); a scalar tag is refused.')
   }
   // SQO(...,Dest,...) with the whole destination array failed MUSTBEDISCRETE; Dest[0] built.
   if (slot.noArray === true && operand.resolved && !text.includes('[') && (operand.dimensions?.length ?? 0) > 0) {
