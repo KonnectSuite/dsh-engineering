@@ -44,6 +44,18 @@ describe('text copied out of Studio', () => {
     expect(l5xTool.written.get('branch.l5x')).toContain('<Text><![CDATA[[XIC(A),XIC(B)]XIO(C)OTE(Run);]]></Text>')
   })
 
+  it('keeps the parentheses of a zero-operand instruction', async () => {
+    const l5xTool = await opened()
+    const staged = await l5xTool.call('l5x_draft_rung', {
+      program: 'MainProgram', routine: 'MainRoutine', mode: 'insert', rung: 1, text: 'AFI()OTE(Run);',
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5xTool.call('l5x_draft_apply', { output_path: 'afi.l5x' })
+    expect(applied.error).toBeUndefined()
+    // Without the parentheses the concatenated series reads as AFIOTE(Run), which neither side parses.
+    expect(l5xTool.written.get('afi.l5x')).toContain('<Text><![CDATA[AFI()OTE(Run);]]></Text>')
+  })
+
   it('keeps an expression with operators as one operand', async () => {
     const l5xTool = await opened()
     const staged = await l5xTool.call('l5x_draft_rung', {

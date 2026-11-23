@@ -329,7 +329,10 @@ export function neutralText(source: string, nodes: readonly LadderNode[]): strin
     : source.slice(tokens[0]!.start, tokens[tokens.length - 1]!.end).trim()
   const series = (items: readonly LadderNode[]): string => items.map(node => {
     if (node.kind === 'branch') return `[${node.paths.map(path => series(path)).join(',')}]`
-    return node.operands.length === 0 ? node.name : `${node.name}(${node.operands.map(operandText).join(',')})`
+    // A zero-operand instruction must keep its parentheses: the series is concatenated with no
+    // separator, so a bare name would fuse with the next instruction (`AFIOTE(Run)`), which is
+    // neither parseable here nor importable by Studio.
+    return node.operands.length === 0 ? `${node.name}()` : `${node.name}(${node.operands.map(operandText).join(',')})`
   }).join('')
   return `${series(nodes)};`
 }

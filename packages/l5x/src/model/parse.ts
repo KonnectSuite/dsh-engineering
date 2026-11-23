@@ -36,6 +36,7 @@ export function loadL5x(xml: string): L5xDocument {
   const controller = controllerElement(root)
   const document: L5xDocument = {
     controller: controllerSummary(controller),
+    softwareRevision: optionalAttribute(root, 'SoftwareRevision', ''),
     programs: buildPrograms(controller),
     tasks: buildTasks(controller),
     routines: buildRoutines(controller),

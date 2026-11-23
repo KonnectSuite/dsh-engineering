@@ -137,6 +137,15 @@ instances.
   rather than replacing it, so the superseded rung had to be deleted first; that behaviour, not the file,
   produced the only transient duplicate-destructive-bit warning. `l5x_export_rungs` also returns each
   rung's Studio copy text (`paste_text`) for review; it is not an import path.
+- The whole instruction catalogue was exercised through the same non-SDK route on 2026-11-22: a
+  43-rung routine with 32 typed tags (`TIMER`, `COUNTER`, DINT/REAL/STRING and DINT arrays) covered
+  TON/TOF/RTO/RES, CTU/CTD, all eight compares, the arithmetic and move family
+  (ADD/SUB/MUL/DIV/MOD/SQRT/CPT/NEG/ABS/EXPT/MOVE/CLR/COP/FLL/MVM), bitwise AND/OR/XOR/NOT,
+  OTL/OTU/ONS/AFI, CONCAT/DTOS and JMP/LBL. Import Routine read `Number of Rungs: 43`; after import
+  Studio rendered the timer/counter structures and the compare/math operands, and Studio Verify
+  reported "Complete - 0 error(s), 1 warning(s)" - the warning being `Rung 38: AFI detected`, the
+  expected notice for an intentionally always-false rung. That pass also caught the two writing
+  defects listed under Fixed in the changelog.
   Online Pending/Accepted/Finalized import against a live controller, a second application's export and
   a PanelView-side workflow are unmeasured.
 - `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`

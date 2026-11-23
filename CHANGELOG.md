@@ -23,6 +23,31 @@
   offline-editing page. `l5x_export_rungs` now also returns each rung's Studio copy text
   (`paste_text`) with a note that plain-text Ctrl+V does not create rungs in 37.05 and the file is
   the import path.
+- **The whole instruction catalogue exercised through Studio, not just contacts and coils.** A
+  43-rung routine and 32 typed tags (`TIMER`/`COUNTER`/DINT/REAL/STRING/DINT arrays and BOOL lamps)
+  covering timers (`TON`/`TOF`/`RTO`/`RES`), counters (`CTU`/`CTD`), all eight compares
+  (`EQ`/`NE`/`LT`/`GT`/`LE`/`GE`/`LIMIT`/`CMP`), arithmetic and moves
+  (`ADD`/`SUB`/`MUL`/`DIV`/`MOD`/`SQRT`/`CPT`/`NEG`/`ABS`/`EXPT`/`MOVE`/`CLR`/`COP`/`FLL`/`MVM`),
+  bitwise (`AND`/`OR`/`XOR`/`NOT`), latches and one-shots (`OTL`/`OTU`/`ONS`/`AFI`), strings
+  (`CONCAT`/`DTOS`) and program control (`JMP`/`LBL`) was drafted offline, imported through Studio
+  37.05 Import Routine (Import Configuration read Number of Rungs: 43, Overwrite) and verified with
+  Studio Verify "Complete - 0 error(s), 1 warning(s)"; the only warning is `Rung 38: AFI detected`,
+  which is what an intentionally always-false rung produces. The pass found and fixed two defects:
+  a zero-operand instruction lost its parentheses when written (`AFI()OTE(...)` became
+  `AFIOTE(...)`), and a component export with no `Controller MajorRev` fell back to pre-v36 mnemonics
+  (`EQU`/`MOV`/`SQR`) that Studio v37 refuses, so the composer now reads the root `SoftwareRevision`.
+
+### Fixed
+
+- **A zero-operand instruction keeps its parentheses in written ladder text.** `neutralText` rendered
+  `AFI` as a bare name, so a rung `AFI()OTE(NeverOn);` was written as `AFIOTE(NeverOn);` — two
+  instructions fused into one unparseable name. The composer and the draft writer now emit `AFI()`,
+  and a regression test applies such a rung and inspects the written export.
+- **A component export without a `Controller MajorRev` no longer falls back to legacy mnemonics.**
+  Routine and rung exports state only the root `SoftwareRevision`; the composer read the missing
+  controller revision as pre-v36 and emitted `EQU`/`MOV`/`SQR`, which Studio v37 refuses. The parsed
+  document now records `softwareRevision`, and `emittedMnemonic` uses the controller revision when
+  present and the root revision otherwise, so a v37 export composes `EQ`/`MOVE`/`SQRT`.
 
 ## 0.104.0 — 2026-11-22
 

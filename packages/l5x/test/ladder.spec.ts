@@ -294,3 +294,21 @@ describe('the run_hour_meter pattern', () => {
     expect(rungs[1]?.neutral_text).toBe('XIC(meter.DN)ADD(hours,1,hours);')
   })
 })
+
+describe('component exports without a controller revision', () => {
+  it('follows the root SoftwareRevision and writes the v36+ mnemonic spelling', async () => {
+    // A routine or rung export has no Controller MajorRev; Studio's root SoftwareRevision is the
+    // only revision it states. A v37 export publishes EQ where a pre-v36 export writes EQU, and a
+    // build of a fresh v37 project refused the legacy spelling, so the composed rung must follow it.
+    const text = new TextDecoder().decode(fixtureBytes())
+      .replace('SoftwareRevision="33.00"', 'SoftwareRevision="37.05"')
+      .replace(' MajorRev="33"', '')
+    const l5x = harness(new Map([['component.l5x', new TextEncoder().encode(text)]]), { editing: true })
+    expect((await l5x.call('l5x_open_project', { path: 'component.l5x' })).error).toBeUndefined()
+    const result = await l5x.call('l5x_compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'EQU', args: ['FaultCount', '5'] }, { instr: 'OTE', args: ['VFD_Running'] }] }),
+    })
+    expect(result.error).toBeUndefined()
+    expect(textOf(result)).toBe('EQ(FaultCount,5)OTE(VFD_Running);')
+  })
+})

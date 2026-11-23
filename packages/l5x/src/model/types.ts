@@ -289,6 +289,14 @@ export interface L5xControllerSummary {
 export interface L5xDocument {
   /** Controller metadata. */
   readonly controller: L5xControllerSummary
+  /**
+   * `SoftwareRevision` from the root element, e.g. `37.05`.
+   *
+   * A component export (a routine or a rung) carries no `Controller MajorRev`,
+   * so this is the only revision its mnemonics can be read against. Empty when
+   * the export omits it.
+   */
+  readonly softwareRevision?: string
   /** Programs in the export's order. */
   readonly programs: readonly L5xProgram[]
   /** Tasks in the export's order. */

@@ -560,7 +560,12 @@ function spellingsOf(project: ProjectSnapshot): ReadonlySet<string> {
  * @returns The spelling to write into the rung.
  */
 function emittedMnemonic(project: ProjectSnapshot, name: string): string {
-  return spellingForProject(name, spellingsOf(project), project.document.controller.majorRev)
+  // A component export (routine or rung) carries no Controller MajorRev. Its root
+  // SoftwareRevision is the only revision the export states, and a v36+ export writes
+  // the modern spellings in its rungs, so a composed rung must follow it rather than
+  // fall back to the pre-v36 legacy spelling.
+  const revision = project.document.controller.majorRev || project.document.softwareRevision || ''
+  return spellingForProject(name, spellingsOf(project), revision)
 }
 
 function composeNode(project: ProjectSnapshot, node: LadderNodeSpec, operands: ComposedOperand[], counter: { instructions: number }, depth: number, grounds: Set<'catalog' | 'aoi'>): string {
