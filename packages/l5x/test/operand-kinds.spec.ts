@@ -281,10 +281,26 @@ describe('the motion family', () => {
   it('composes a motion instruction through the ordinary operand path', async () => {
     const l5x = await opened()
     const result = await l5x.call('l5x_compose_rung', {
-      spec_json: JSON.stringify({ series: [{ instr: 'MSO', args: ['Motor_1', 'SystemClock'] }] }),
+      spec_json: JSON.stringify({ series: [{ instr: 'MSO', args: ['AxisS', 'MotionInstr'] }] }),
     })
     expect(result.error).toBeUndefined()
-    expect(text(result.data)).toBe('MSO(Motor_1,SystemClock);')
+    expect(text(result.data)).toBe('MSO(AxisS,MotionInstr);')
+  })
+
+  it('restricts MDF to an AXIS_SERVO axis', async () => {
+    // The installed MDF help page says: "Axis AXIS_SERVO Tag ... AXIS_SERVO only."
+    // Studio Verify refused an AXIS_VIRTUAL and an AXIS_SERVO_DRIVE axis at that operand.
+    const l5x = await opened()
+    const virtual = await l5x.call('l5x_compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'MDF', args: ['Axis1', 'MotionInstr'] }] }),
+    })
+    expect(virtual.error?.code).toBe('INVALID_OPERAND')
+    expect(virtual.error?.message).toContain('MDF Axis must be AXIS_SERVO')
+    const servo = await l5x.call('l5x_compose_rung', {
+      spec_json: JSON.stringify({ series: [{ instr: 'MDF', args: ['AxisS', 'MotionInstr'] }] }),
+    })
+    expect(servo.error).toBeUndefined()
+    expect(text(servo.data)).toBe('MDF(AxisS,MotionInstr);')
   })
 })
 

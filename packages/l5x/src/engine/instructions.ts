@@ -97,6 +97,19 @@ const lit = (name: string, minimum?: number, maximum?: number): InstructionOpera
 })
 /** A CONTROL structure tag: a tag, never an element, and not written by the instruction. */
 const control = (): InstructionOperand => ({ name: 'Control', kind: 'ANY', tagOnly: true, types: ['CONTROL'] })
+/** An AXIS tag. The vendor accepts the axis data types and never an element. */
+const axis = (name = 'Axis'): InstructionOperand => ({
+  name,
+  kind: 'ANY',
+  tagOnly: true,
+  types: ['AXIS_CIP_DRIVE', 'AXIS_VIRTUAL', 'AXIS_GENERIC_DRIVE', 'AXIS_SERVO', 'AXIS_SERVO_DRIVE', 'AXIS_CONSUMED', 'AXIS_GENERIC'],
+})
+/** A MOTION_INSTRUCTION control tag. */
+const motionControl = (): InstructionOperand => ({ name: 'MotionControl', kind: 'ANY', tagOnly: true, types: ['MOTION_INSTRUCTION'] })
+/** A MOTION_GROUP tag. */
+const motionGroup = (name = 'Group'): InstructionOperand => ({ name, kind: 'ANY', tagOnly: true, types: ['MOTION_GROUP'] })
+/** A CAM or CAM_EXTENDED tag. */
+const cam = (name = 'CamProfile'): InstructionOperand => ({ name, kind: 'ANY', tagOnly: true, types: ['CAM_PROFILE', 'CAM_PROFILE_EXTENDED'] })
 const str = (name: string): InstructionOperand => ({ name, kind: 'STRING' })
 /** A computed expression: text with operators, not an address. */
 const expression = (name = 'Expression'): InstructionOperand => ({ name, kind: 'EXPRESSION' })
@@ -235,22 +248,23 @@ export const INSTRUCTIONS: readonly InstructionInfo[] = [  // Contacts and coils
   { name: 'BTD', category: 'Move', summary: 'Bit distribute: copy Length bits from the source bit position to the destination bit position.', operands: [num('Source'), lit('Source bit', 0, 31), { name: 'Dest', kind: 'NUMBER', writable: true }, lit('Dest bit', 0, 31), lit('Length', 1, 32)] },
   { name: 'AVE', category: 'File and array', summary: 'Average: average the array along one dimension into the destination.', operands: [{ name: 'Array', kind: 'ANY', tagOnly: true }, lit('Dimension', 0, 2), { name: 'Dest', kind: 'NUMBER', writable: true }, control(), lit('Length'), lit('Position')] },
 
-  // Motion. Every operand is a field of the instruction box, in the order the vendor
-  // metadata writes them, so the count and order are right and the type is left open: this
-  // catalogue cannot verify AXIS, MOTION_GROUP or the enumerated unit types.
-  { name: 'MAJ', category: 'Motion', summary: 'Motion axis jog: run the axis continuously at a speed until a stop.', operands: [any('Axis'), any('MotionControl'), any('Direction'), any('Speed'), any('SpeedUnits'), any('AccelRate'), any('AccelUnits'), any('DecelRate'), any('DecelUnits'), any('Profile'), any('AccelJerk'), any('DecelJerk'), any('JerkUnits'), any('Merge'), any('MergeSpeed'), any('LockPosition'), any('LockDirection')] },
-  { name: 'MAM', category: 'Motion', summary: 'Motion axis move: one positioning move with the given type, speed, acceleration and merge.', operands: [any('Axis'), any('MotionControl'), any('MoveType'), any('Position'), any('Speed'), any('SpeedUnits'), any('AccelRate'), any('AccelUnits'), any('DecelRate'), any('DecelUnits'), any('Profile'), any('AccelJerk'), any('DecelJerk'), any('JerkUnits'), any('Merge'), any('MergeSpeed'), any('LockPosition'), any('LockDirection'), any('EventDistance'), any('CalculatedData')] },
-  { name: 'MAPC', category: 'Motion', summary: 'Motion axis position cam: slave the axis to a master through a cam profile.', operands: [any('SlaveAxis'), any('MasterAxis'), any('MotionControl'), any('Direction'), any('CamProfile'), any('SlaveScaling'), any('MasterScaling'), any('ExecutionMode'), any('ExecutionSchedule'), any('MasterLockPosition'), any('CamLockPosition'), any('CamType'), any('MasterReference'), any('MasterDirection')] },
-  { name: 'MAS', category: 'Motion', summary: 'Motion axis stop: stop the axis with the given stop type and deceleration.', operands: [any('Axis'), any('MotionControl'), any('StopType'), any('ChangeDecel'), any('DecelRate'), any('DecelUnits'), any('ChangeDecelJerk'), any('DecelJerk'), any('JerkUnits')] },
-  { name: 'MATC', category: 'Motion', summary: 'Motion axis time cam: drive the axis from a cam profile against time.', operands: [any('Axis'), any('MotionControl'), any('Direction'), any('CamProfile'), any('DistanceScaling'), any('TimeScaling'), any('ExecutionMode'), any('ExecutionSchedule'), any('LockPosition'), any('CamType'), any('LockDirection'), any('InstructionMode')] },
-  { name: 'MAH', category: 'Motion', summary: 'Motion axis home: home the axis using the configured home sequence.', operands: [any('Axis'), any('MotionControl')] },
-  { name: 'MDF', category: 'Motion', summary: 'Motion axis disarm: disarm the axis so motion is no longer commanded.', operands: [any('Axis'), any('MotionControl')] },
-  { name: 'MDW', category: 'Motion', summary: 'Motion axis dwell: hold the axis at its position for a time.', operands: [any('Axis'), any('MotionControl')] },
-  { name: 'MGS', category: 'Motion', summary: 'Motion group stop: stop every axis in the group.', operands: [any('Group'), any('MotionControl'), any('StopMode')] },
-  { name: 'MGSP', category: 'Motion', summary: 'Motion group shutdown: shut the group down.', operands: [any('Group'), any('MotionControl')] },
-  { name: 'MRP', category: 'Motion', summary: 'Motion redefinition of position: redefine the axis position.', operands: [any('Axis'), any('MotionControl'), any('Type'), any('PositionSelect'), any('Position')] },
-  { name: 'MSF', category: 'Motion', summary: 'Motion axis shutdown: shut the axis down.', operands: [any('Axis'), any('MotionControl')] },
-  { name: 'MSO', category: 'Motion', summary: 'Motion servo on: turn the axis servo drive on.', operands: [any('Axis'), any('MotionControl')] },
+  // Motion. Every operand is a field of the instruction box, in the order the vendor help
+  // writes them. The axis, control-structure and group slots are typed tags; the enumerated
+  // direction, unit, profile and stop fields are immediates, which is what the Logix Designer
+  // compiler requires (a tag in an immediate slot builds as "Invalid kind of operand").
+  { name: 'MAJ', category: 'Motion', summary: 'Motion axis jog: run the axis continuously at a speed until a stop.', operands: [axis(), motionControl(), lit('Direction'), num('Speed'), lit('SpeedUnits'), num('AccelRate'), lit('AccelUnits'), num('DecelRate'), lit('DecelUnits'), lit('Profile'), num('AccelJerk'), num('DecelJerk'), lit('JerkUnits'), lit('Merge'), lit('MergeSpeed'), num('LockPosition'), num('LockDirection')] },
+  { name: 'MAM', category: 'Motion', summary: 'Motion axis move: one positioning move with the given type, speed, acceleration and merge.', operands: [axis(), motionControl(), lit('MoveType'), num('Position'), num('Speed'), lit('SpeedUnits'), num('AccelRate'), lit('AccelUnits'), num('DecelRate'), lit('DecelUnits'), lit('Profile'), num('AccelJerk'), num('DecelJerk'), lit('JerkUnits'), lit('Merge'), lit('MergeSpeed'), num('LockPosition'), lit('LockDirection'), any('EventDistance'), any('CalculatedData')] },
+  { name: 'MAPC', category: 'Motion', summary: 'Motion axis position cam: slave the axis to a master through a cam profile.', operands: [axis('SlaveAxis'), axis('MasterAxis'), motionControl(), lit('Direction'), cam('CamProfile'), num('SlaveScaling'), num('MasterScaling'), lit('ExecutionMode'), lit('ExecutionSchedule'), num('MasterLockPosition'), num('CamLockPosition'), lit('CamType'), lit('MasterReference'), lit('MasterDirection')] },
+  { name: 'MAS', category: 'Motion', summary: 'Motion axis stop: stop the axis with the given stop type and deceleration.', operands: [axis(), motionControl(), lit('StopType'), lit('ChangeDecel'), num('DecelRate'), lit('DecelUnits'), lit('ChangeDecelJerk'), num('DecelJerk'), lit('JerkUnits')] },
+  { name: 'MATC', category: 'Motion', summary: 'Motion axis time cam: drive the axis from a cam profile against time.', operands: [axis(), motionControl(), lit('Direction'), cam('CamProfile'), num('DistanceScaling'), num('TimeScaling'), lit('ExecutionMode'), lit('ExecutionSchedule'), lit('LockPosition'), lit('CamType'), lit('LockDirection'), lit('InstructionMode')] },
+  { name: 'MAH', category: 'Motion', summary: 'Motion axis home: home the axis using the configured home sequence.', operands: [axis(), motionControl()] },
+  { name: 'MDF', category: 'Motion', summary: 'Motion direct drive off: deactivate the servo drive and hold the output offset voltage; the axis operand is AXIS_SERVO only.', operands: [{ name: 'Axis', kind: 'ANY', tagOnly: true, types: ['AXIS_SERVO'] }, motionControl()] },
+  { name: 'MDW', category: 'Motion', summary: 'Motion axis dwell: hold the axis at its position for a time.', operands: [{ name: 'Axis', kind: 'ANY', tagOnly: true, types: ['AXIS_SERVO', 'AXIS_SERVO_DRIVE'] }, motionControl()] },
+  { name: 'MGS', category: 'Motion', summary: 'Motion group stop: stop every axis in the group.', operands: [motionGroup(), motionControl(), lit('StopMode')] },
+  { name: 'MGSP', category: 'Motion', summary: 'Motion group shutdown: shut the group down.', operands: [motionGroup(), motionControl()] },
+  { name: 'MRP', category: 'Motion', summary: 'Motion redefinition of position: redefine the axis position.', operands: [axis(), motionControl(), lit('Type'), lit('PositionSelect'), num('Position')] },
+  { name: 'MSF', category: 'Motion', summary: 'Motion axis shutdown: shut the axis down.', operands: [{ name: 'Axis', kind: 'ANY', tagOnly: true, types: ['AXIS_SERVO', 'AXIS_SERVO_DRIVE'] }, motionControl()] },
+  { name: 'MSO', category: 'Motion', summary: 'Motion servo on: turn the axis servo drive on.', operands: [{ name: 'Axis', kind: 'ANY', tagOnly: true, types: ['AXIS_SERVO', 'AXIS_SERVO_DRIVE'] }, motionControl()] },
 
   // FOR runs a named routine until the index passes the terminal value, so its first
   // operand is a routine, not an address. The compact table had a routine name, a source

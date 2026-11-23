@@ -33,6 +33,11 @@ function argumentFor(slot: Slot): string | undefined {
   if (type === 'ALARM_ANALOG') return 'AlarmA'
   if (type === 'ALARM_DIGITAL') return 'AlarmD'
   if (type === 'CONTROL') return 'Ctrl'
+  if (type === 'AXIS_CIP_DRIVE') return 'Axis1'
+  if (type === 'AXIS_SERVO') return 'AxisS'
+  if (type === 'MOTION_INSTRUCTION') return 'MI'
+  if (type === 'MOTION_GROUP') return 'MG1'
+  if (type === 'CAM_PROFILE') return 'Cam'
   if (type === 'REAL') return 'R'
   if (slot.immediate === true) return '1'
   if (slot.array_or_element === true) return 'Arr'
@@ -64,7 +69,7 @@ describe('the whole catalogue composes', () => {
   it('emits parseable text for every modelled instruction', async () => {
     const tags = tag('B', 'BOOL') + tag('D', 'DINT') + tag('R', 'REAL') + tag('T', 'TIMER') + tag('C', 'COUNTER')
       + tag('Str', 'STRING') + tag('Ctrl', 'CONTROL') + tag('Msg', 'MESSAGE') + tag('Pid', 'PID')
-      + tag('AlarmA', 'ALARM_ANALOG') + tag('AlarmD', 'ALARM_DIGITAL') + tag('Arr', 'DINT', ' Dimensions="10"')
+      + tag('AlarmA', 'ALARM_ANALOG') + tag('AlarmD', 'ALARM_DIGITAL') + tag('Arr', 'DINT', ' Dimensions="10"') + tag('Axis1', 'AXIS_VIRTUAL') + tag('AxisS', 'AXIS_SERVO') + tag('MI', 'MOTION_INSTRUCTION') + tag('MG1', 'MOTION_GROUP') + tag('Cam', 'CAM_PROFILE')
     const base = l5x({ name: 'Sweep', tags, programs: program('Main', rllRoutine('MainRoutine', [])), tasks: task('MainTask', ['Main']) })
     const l5xTool = harness(new Map([['sweep.l5x', new TextEncoder().encode(base)]]), { editing: true })
     expect((await l5xTool.call('l5x_open_project', { path: 'sweep.l5x' })).error).toBeUndefined()

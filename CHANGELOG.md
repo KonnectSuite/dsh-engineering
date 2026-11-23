@@ -54,11 +54,24 @@
   through the Studio 37.05 GUI with Import Routine and verified as "Complete - 0 error(s),
   0 warning(s)".
   `l5x_list_instructions` reports the new `immediate` and `array_or_element` flags.
+- **Motion pseudo-operands and axis data types are modelled the way Studio compiles them.** A Studio
+  Verify of an 11-instruction motion routine (`MAH`, `MSO`, `MSF`, `MDF`, `MDW`, `MAJ`, `MAS`, `MAM`,
+  `MRP`, `MGS`, `MGSP`) exposed two kinds of rule the SDK import-and-build had not caught: enumerated
+  operand fields (move type, direction, profile, stop type, stop mode, execution mode and schedule, cam
+  type, and every speed/accel/decel/jerk unit field) must be DINT immediates, and the servo-state
+  instructions accept only servo axes — `MSO`/`MSF`/`MDW` take `AXIS_SERVO` or `AXIS_SERVO_DRIVE`,
+  `MDF` takes `AXIS_SERVO` only, while `MAH`/`MAJ`/`MAM`/`MAS`/`MRP`/`MGS`/`MGSP` also accept
+  `AXIS_VIRTUAL`. The catalogue now carries those slots and types (`axis()`, `motionControl()`,
+  `motionGroup()`, `cam()`, `lit()`); the MDF rule comes from the installed v37 help page ("Motion axis
+  of data type AXIS_SERVO only"). Neither an axis nor a group needs hardware: they are controller-scoped
+  tags, so the routine passed Studio's controller Verify with **0 errors**; the nine remaining warnings
+  are offline axis-configuration gaps (zero maximum speed/deceleration/jerk limits, no motion
+  group/module/amplifier association) plus one left-over structure rung's message tag.
 - **The serial-ASCII family is catalogued but unmodelled instead of claimed.** `ABL`/`ACB`/`ARD`/`ACL`/
   `AHL`/`ARL`/`AWA`/`AWT` have no page in the installed v37 help set and a 1756-L71 build answers
   "Unknown instruction"; the catalogue now marks them `notModelled`, so `l5x_compose_rung` refuses with
   `INSTRUCTION_NOT_MODELLED` and names the raw-text path instead of emitting operands it cannot check.
- `neutralText` rendered
+- **A zero-operand instruction keeps its parentheses when written.** `neutralText` rendered
   `AFI` as a bare name, so a rung `AFI()OTE(NeverOn);` was written as `AFIOTE(NeverOn);` — two
   instructions fused into one unparseable name. The composer and the draft writer now emit `AFI()`,
   and a regression test applies such a rung and inspects the written export.

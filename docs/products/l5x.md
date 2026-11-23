@@ -162,6 +162,17 @@ instances.
   Serial ASCII (`ABL`/`ARD`/`AWA`/...) is catalogued but unmodelled: the v37 help set has no page and
   a 1756-L71 build answers "Unknown instruction", so the composer refuses it and names the raw-text
   path instead of claiming operands.
+- A motion pass then exercised the eleven motion instructions the catalogue carries (`MAH`, `MSO`,
+  `MSF`, `MDF`, `MDW`, `MAJ`, `MAS`, `MAM`, `MRP`, `MGS`, `MGSP`) against a controller-scoped
+  `MOTION_GROUP` tag and real axis tags, with no hardware involved. Two further Studio rules were
+  missing: enumerated motion operands (move type, direction, profile, stop type/stop mode, execution
+  mode/schedule, cam type and every unit field) must be DINT immediates, and the servo-state
+  instructions require servo axes — `MSO`/`MSF`/`MDW` accept `AXIS_SERVO` or `AXIS_SERVO_DRIVE`,
+  `MDF` accepts `AXIS_SERVO` only (installed v37 help: "Motion axis of data type AXIS_SERVO only"),
+  while the other seven accept `AXIS_VIRTUAL`. The corrected routine built through the SDK
+  ("Offline build passed; 0 blocker(s)", 0 import errors) and Studio's controller Verify reported
+  **0 errors**; the nine warnings left are offline axis configuration (unset maximum limits, no
+  motion group/module association) and one legacy message tag, not instruction encoding.
   Online Pending/Accepted/Finalized import against a live controller, a second application's export and
   a PanelView-side workflow are unmeasured.
 - `l5x_read_controller_clock` is L8x-only and answers `supported: false` elsewhere. `l5x_write_controller_clock`
