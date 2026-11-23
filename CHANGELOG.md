@@ -80,6 +80,16 @@
   controller revision as pre-v36 and emitted `EQU`/`MOV`/`SQR`, which Studio v37 refuses. The parsed
   document now records `softwareRevision`, and `emittedMnemonic` uses the controller revision when
   present and the root revision otherwise, so a v37 export composes `EQ`/`MOVE`/`SQRT`.
+- **The L5X skill brief names both import routes and the knowledge plane.** The brief claimed
+  `paste_text` "pastes straight into a routine in the ladder editor", which the v37.05 GUI disproved:
+  Ctrl+V there edits the selected instruction or does nothing. It now states what the offline workflow
+  page states — `l5x_draft_apply` writes a routine export for right-click → Import Routine,
+  `l5x_export_rungs` writes a rung export for the Ladder Editor's Import Rungs, and they are not
+  interchangeable (Import Rungs on a routine export answers 5078-0) — and points at `l5x_docs` for the
+  workflow pages. The operand-flag list it quotes was refreshed to the flags `l5x_list_instructions`
+  emits (`array_tag`, `array_element`, `array_or_element`, `no_array`, `immediate`, `minimum`/`maximum`,
+  `types`). Four restatements of "the engineer imports it in Studio" were cut to pay for the addition, so
+  the brief stays inside its recorded 12,800-character skill budget (measured 12,799).
 
 ## 0.104.0 — 2026-11-22
 

@@ -12,37 +12,37 @@ inside an existing project (`CRAFT-ORD-01`).
 
 ## Boundary
 
-This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports into
-Studio, or touches a controller. The engineer imports that new file into Studio 5000 themselves — that is the
-normal workflow, not a fallback. Reads, drafts and `l5x_draft_apply` need Node only: no Studio, no Logix Designer SDK,
-no Linx. Live reads are read-only; controller writes need per-call human approval.
+This surface reads and drafts. A draft writes only a new L5X file: it never overwrites the source, imports
+into Studio, or touches a controller — the engineer imports it there, the normal workflow, not a fallback.
+Reads, drafts and `l5x_draft_apply` need Node only: no Studio, no Logix Designer SDK, no Linx. Live reads
+are read-only; controller writes need per-call human approval.
 
 ## Compose in chat without a project
 
 - When the person asks for ladder logic — a start/stop circuit, a seal-in, a timer, an interlock,
-  a scale, a totalizer, an hour meter — **compose it in the answer**. Do not ask for an L5X/ACD, do
-  not call `l5x_open_project`, and do not make a file the deliverable.
-- Use `l5x_compose_logic`: pass a named pattern with `arguments_json`, or pass the NeutralText
-  `rungs` directly. It needs no project and writes nothing. It returns `paste_text` and the tag
-  declarations the rung expects.
+  a scale, a totalizer, an hour meter — **compose it in the answer**: no L5X/ACD request, no
+  `l5x_open_project`, no file as the deliverable.
+- Use `l5x_compose_logic`: a named pattern with `arguments_json`, or NeutralText `rungs` directly. No
+  project, writes nothing; it returns `paste_text` and the tag declarations the rung expects.
 - **Put `paste_text` in a fenced code block** in the answer: it is Studio's own copy format — mnemonics
-  and operands space separated, parallel branches `BST` … `NXB` … `BND`, no parentheses, no semicolon —
-  so it pastes straight into a routine in the ladder editor. List the tags to declare.
+  and operands space separated, parallel branches `BST` … `NXB` … `BND`, no parentheses, no semicolon.
+  It is a review form: a plain Ctrl+V on the v37.05 ladder canvas edits the selected instruction or does
+  nothing, so apply the change through the import routes below. List the tags to declare.
 - NeutralText grammar: one rung per line ending in `;`; instructions are `MNEMONIC(operands)`;
   **parallel branches are `[path1,path2]`**, for example
   `[XIC(Start),XIC(Run)]XIO(Stop)OTE(Run);`. `l5x_compose_logic` validates syntax and catalogued
-  instruction names; it cannot check tag existence/types without a project, and it says so.
+  instruction names; it cannot check tag existence/types without a project.
 - **Both formats parse.** Text copied out of a Studio routine is accepted by `l5x_compose_logic`,
   `l5x_draft_rung` and `l5x_compose_rung`, so a rung the engineer pasted can be staged as-is. `paste_text`
   always returns the Studio format; `neutral_text` beside it is the bracket form.
-- Only when the person also wants the change applied to an export should you open that project and
-  use the `draft_*`/`l5x_compose_rung` path. A pasted rung is a complete answer on its own.
+- A pasted rung is a complete answer on its own; open the project and use the
+  `draft_*`/`l5x_compose_rung` path only when the change must land in an export.
 
 ## Backups
 
-`<workspace>/backups/<product>/<subject>/<UTC stamp>/` holds `backup-manifest.json` (relative path + SHA-256 per
-file) and the copy. Studio is the `l5x` product: the copy is the `.ACD`, or the `.L5X` when that is the source of
-truth. Never write to `<workspace>/_backups`.
+`<workspace>/backups/<product>/<subject>/<UTC stamp>/` holds the copy and `backup-manifest.json`
+(relative path + SHA-256 per file). Studio is the `l5x` product: the copy is the `.ACD`, or the `.L5X`
+when that is the source of truth. Never write to `<workspace>/_backups`.
 
 ## Start
 
@@ -64,8 +64,8 @@ truth. Never write to `<workspace>/_backups`.
   `l5x_list_components` lists them only with `include_vendor: true`.
 - An unresolved symbol is refused with `UNRESOLVED_SYMBOL` plus candidate scopes. Fix the scope, do not guess.
 - A controller-scope tag resolves from every program rung, including an I/O alias such as
-  `DI_Gate_Fault` → `Local:1:I.Pt12.Data`; the alias target lives in the module, not in the tag list.
-  A `TAG_NOT_FOUND` on such a name means the spelling is wrong, not that the scope is missing.
+  `DI_Gate_Fault` → `Local:1:I.Pt12.Data`; the alias target lives in the module. A `TAG_NOT_FOUND` on
+  such a name means the spelling is wrong, not a missing scope.
 
 ## Checks and comparison
 
@@ -79,7 +79,7 @@ truth. Never write to `<workspace>/_backups`.
 ## Live reads
 
 - `l5x_poll_live_tags`, `l5x_read_live_tags` (IPv4, 1-16 scalars or members) and `l5x_start_plc_trend` read over
-  EtherNet/IP with no Studio, Linx or SDK.
+  EtherNet/IP: no Studio, Linx or SDK.
 - Reads are safe. Writes (`l5x_write_live_tag`, `l5x_write_controller_clock`) need allowWrites and human approval; never
   force tags or edit online. A read proves a moment, not that the controller runs this export.
 - SDK route: `WORKSTATION!DRIVER\IP` (RSLinxNG.xml).
@@ -96,19 +96,19 @@ truth. Never write to `<workspace>/_backups`.
 - Reading accepts revision 19+; outside the observed matrix reports `verification: unverified`.
 - Reading never needs Studio. `l5x-studio` is an **optional** extra that some sites license: do not
   probe it, install .NET, or treat a missing SDK as a blocker before editing — reads and drafts work
-  without it, and the engineer imports the result in Studio.
+  without it.
 
 ## Studio (optional — most sites have no SDK license)
 
-- Nothing in read, draft or `l5x_draft_apply` needs the SDK. When `l5x_studio_sdk_status` reports it
-  unavailable, say so once and continue offline; never install a runtime to satisfy it.
+- When `l5x_studio_sdk_status` reports the SDK unavailable, say so once and continue offline; never
+  install a runtime to satisfy it.
 - `l5x_export_acd_to_l5x` writes a new full L5X from an ACD; no controller contact.
 - `l5x_verify_offline_l5x` imports and builds; it needs revision 37+ and the matching Studio release.
   Its baseline must be exported in this chat: export the `.ACD`, `l5x_open_project` that L5X, verify
   against it. A file from a previous session is refused before any build is spent.
-- A module Name with punctuation — a colon is the observed case — aborts the import as
-  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`. Names carry letters, digits and underscores; the label
-  belongs in the Description. `l5x_run_checks` names the site (`MODULE_NAME_ILLEGAL`) before the build.
+- A module Name with punctuation (a colon: the observed case) aborts the import as
+  `XMLSrv_E_IMPORT_ABORTED_NO_CHANGES`; names carry letters, digits and underscores, and the label
+  belongs in the Description. `l5x_run_checks` reports `MODULE_NAME_ILLEGAL` before the build.
 - `l5x_build_acd_from_draft` imports one changed routine into a new ACD, builds it and exports.
 - `l5x_studio_review_evidence` checks names and verbatim quotes before you report.
 - `l5x_controller_approval_status` says whether this session can ask. `l5x_go_online`, `l5x_read_controller_mode` and
@@ -119,19 +119,23 @@ truth. Never write to `<workspace>/_backups`.
 - `draft_*`, one operation per call: rung, rung comment, ST, routine, tag, tag description, UDT member, UDT
   description, FBD, SFC.
 - `l5x_draft_validate` prepares the draft against the project; `l5x_draft_apply` writes ONE new L5X and never overwrites.
-- Reopen the written file to review it. Drafts belong to this chat.
+- **Two shapes, two menus.** `l5x_draft_apply` writes a *routine export* — in Studio, right-click the
+  program, Import Routine. `l5x_export_rungs` writes a *rung export* — in the Ladder Editor, Import
+  Rungs. Not interchangeable: Import Rungs on a routine export answers 5078-0. `l5x_docs` carries
+  the offline and online workflow pages. Drafts belong to this chat.
 - **Prove the edit offline, then hand it over.** Reopen the written file, `l5x_run_checks` it, and
   `l5x_compare_projects` the source against it: the diff must be exactly the draft's operations. That is
-  the evidence, and it needs no Studio. The engineer imports the new file into Studio 5000.
+  the evidence, and it needs no Studio.
 - **When the composer cannot express the change** (`FAL`/`FSC`, or a shape it refuses), edit the
   export at text level: copy the source into the backup folder, edit the **copy** with the harness
   file tools, then `l5x_open_project` + `l5x_run_checks` + `l5x_compare_projects` on it. Never edit the engineer's
-  source in place, and name the file to import.
+  source in place; name the file to import.
 
 ## Compose
 
-- `l5x_list_instructions` lists slots and kinds; read it first. Its flags are enforced: array_tag, no_array,
-  minimum/maximum, types (MESSAGE, alarms, PID, CONTROL).
+- `l5x_list_instructions` lists slots and kinds; read it first. Its flags are enforced: array_tag,
+  array_element, array_or_element, no_array, immediate, minimum/maximum, types (MESSAGE, alarms, PID,
+  CONTROL).
 - For a chat-only answer, `l5x_compose_logic` is the no-project/no-file path.
 - `l5x_compose_rung` builds a rung from `spec_json` or one of these patterns, whose arguments are exact:
   `start_stop_latch` start/stop/run; `fault_latch` fault/reset/latched (two rungs);
@@ -139,9 +143,9 @@ truth. Never write to `<workspace>/_backups`.
   `analog_scale` source/destination/in_min/in_max/out_min/out_max;
   `totalizer` enable/rate/total; `run_hour_meter` run/timer/hours (plus preset_ms, default one hour; two rungs).
   Stage with `program`, `routine`, `mode` and `rung`.
-- `l5x_compose_rung` and `l5x_compose_batch` write the rungs they composed to `.l5x-preview/<program>-<routine>.L5X`; `present`
-  that file so the reader sees ladder and can copy the whole block, instead of reading NeutralText.
-  `l5x_rung_preview` draws any other rungs; `l5x_routine_diagram` draws existing logic.
+- `l5x_compose_rung` and `l5x_compose_batch` write their rungs to `.l5x-preview/<program>-<routine>.L5X`; `present`
+  that file so the reader sees the ladder and copies the whole block. `l5x_rung_preview` draws other
+  rungs; `l5x_routine_diagram` draws existing logic.
 - Legacy names (`XPY`, `ASN`, `ACS`, `ATN`) are `EXPT`, `ASIN`, `ACOS`, `ATAN` in v36+. `l5x_compose_rung` writes the project's spelling.
 - `l5x_draft_routine` takes RLL, ST, FBD or SFC. **FBD and SFC take no body**: create the routine, then `l5x_draft_fbd`/`l5x_draft_sfc`.
 - FBD: a block **is an instance** - its first operand names a tag of the block's structure (`FBD_MATH` for `ADD`).
@@ -153,8 +157,8 @@ truth. Never write to `<workspace>/_backups`.
 - AOI call: instance tag first, then only the parameters whose `Required` is true.
 - Serial ASCII (`ABL`, `ARD`, ...) is **catalogued but unmodelled**: the installed v37 help set has no
   page for it and a 1756-L71 build answers "Unknown instruction", so `l5x_compose_rung` refuses with
-  `INSTRUCTION_NOT_MODELLED`. Pass raw rung text to `l5x_draft_rung` only when the target controller
-  and Studio revision are known to support it; no build proved one here.
+  `INSTRUCTION_NOT_MODELLED`. Raw rung text through `l5x_draft_rung` only where the controller and
+  Studio revision are known to support it; no build proved one here.
 - String positioning operands are **1-based**: `MID(s,5,1,d)` builds, and `0` fails with
   `RxCMP_E_AUDIT_OUTOFRANGE`. `STOD` and `DTOS` convert between STRING and a number.
 - Bit instructions (`AND`, `OR`, `XOR`, `NOT`, `BTD`, `MEQ`) are **input-type**: end the rung with an output, or
@@ -171,7 +175,7 @@ truth. Never write to `<workspace>/_backups`.
 - A rung whose only instruction is `SBR()` is refused (`LgxSrv_E_FATAL_ERROR`; `AUDIT_OUTPUTS` beside `RET`). Write
   the body without a header rung, or declare parameters.
 - Repair: `l5x_run_checks` names it, `l5x_compose_rung` with `mode: "replace"` rewrites the rung, `l5x_draft_apply` writes a new
-  export. The engineer imports and verifies it in Studio; `l5x_verify_offline_l5x` builds it only where the SDK is licensed.
+  export. Verify in Studio; `l5x_verify_offline_l5x` builds it only where the SDK is licensed.
 - If a previously imported export now aborts, the controller **name is registered** with the SDK; import the same bytes under a new name.
 
 ## Documentation
@@ -179,4 +183,4 @@ truth. Never write to `<workspace>/_backups`.
 `l5x_document_project` writes a NEW folder: `PROJECT.md`, `io.md`/`io.csv`, `tags.csv` and `tags-studio.csv` (the
 `Tag Name,Description` shape Studio imports), and `rungs/<program>.md`. Structure and citations, not prose.
 `PROJECT.md` also carries Safety, Add-On Instructions and Alarms tables; `rungs/AOI-<name>.md` documents an AOI's own
-routines; the summary counts program and AOI routines separately.
+routines; the summary counts program and AOI routines apart.
