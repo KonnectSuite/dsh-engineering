@@ -10,7 +10,9 @@ import { alarmFindings, findingsOf } from './checks.ts'
 import { diffObjects } from './objects-diff.ts'
 import { tagDiff } from './tag-diff.ts'
 import { liveMapOf } from './live.ts'
-import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from './catalog.ts'
+import { PHANTOM_HINTS, TYPE_GUIDE, observeObjects } from './catalog.ts'
+import { vocabulary } from './schema.ts'
+import { displayType, nearNames, valueList } from './xsd.ts'
 import { documentApplication } from './document.ts'
 import { designFindings } from './design.ts'
 import { themeAudit } from './theme-audit.ts'
@@ -434,39 +436,64 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
     }),
     tool({
       name: 'ftview_object_types',
-      description: 'Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.',
+      description: 'Catalog the object types the schema declares and the export uses, with each type’s attributes, enumerated values, allowed child elements and how often they occur. Read-only; the answer agents need before authoring an object.',
       parameters: object({
         view_id: VIEW_ID,
-        type: string('Optional exact element type, e.g. "momentaryButton", to list its attributes.'),
-        all: string('Pass "true" to list every element type drafting accepts, including ones this export does not use.'),
+        type: string('Optional exact element type, e.g. "momentaryButton", to list the attributes and children the schema declares for it.'),
+        all: string('Pass "true" to list every element type the installed schema declares for a display, including ones this export does not use.'),
         limit: integer('Most types to return. Defaults to 20.', { minimum: 1, maximum: 200 }),
       }, []),
       async run(args, exec) {
         const view = session.require(optionalString(args, 'view_id'), exec)
-        const catalog = observeObjects(view.app)
+        const vocab = vocabulary()
+        const catalog = observeObjects(view.app, new Set(vocab.model.displayChildren))
         const wanted = optionalString(args, 'type')
         const limit = optionalInteger(args, 'limit') ?? 20
         if (optionalString(args, 'all') === 'true') {
           return success(
-            `${ELEMENT_TYPES.size} element types are drawable; ${catalog.length} occur in this export.`,
+            `${vocab.model.displayChildren.length} element types are declared by ${vocab.schema}; ${catalog.length} occur in this export.`,
             {
-              all_types: [...ELEMENT_TYPES].sort(),
+              schema: vocab.schema,
+              all_types: vocab.model.displayChildren,
               guide: TYPE_GUIDE,
               used_types: catalog.map(entry => entry.type),
-              unused_types: [...ELEMENT_TYPES].filter(type => !catalog.some(entry => entry.type === type)).sort(),
+              unused_types: vocab.model.displayChildren.filter(type => !catalog.some(entry => entry.type === type)),
             },
             [],
             COVERAGE,
           )
         }
         if (wanted !== undefined) {
-          const entry = catalog.find(candidate => candidate.type === wanted)
-          if (entry === undefined) {
-            throw new EngineeringError('COMPONENT_NOT_FOUND', `No ${wanted} objects are present in this export.`, 'Call ftview_object_types without a type to see what the export uses, or with all="true" for every drawable type.')
+          const declared = displayType(vocab.model, wanted)
+          if (declared === undefined) {
+            const near = nearNames(wanted, vocab.model.displayChildren)
+            throw new EngineeringError(
+              'COMPONENT_NOT_FOUND',
+              `${JSON.stringify(wanted)} is not an element ${vocab.schema} declares for a display.`,
+              PHANTOM_HINTS[wanted] ?? `ftview_object_types with all="true" lists the ${vocab.model.displayChildren.length} element names the schema declares. ${near.length > 0 ? `Nearest: ${near.join(', ')}.` : ''}`,
+              near,
+            )
           }
+          const entry = catalog.find(candidate => candidate.type === wanted)
+          const attributes = Object.entries(declared.attributes).map(([name, attribute]) => ({
+            name,
+            required: attribute.required,
+            ...(attribute.values === undefined || attribute.values.length === 0 ? {} : { values: valueList(attribute.values) }),
+            ...(attribute.default === undefined ? {} : { default: attribute.default }),
+          }))
           return success(
-            `${entry.type}: ${entry.used} object(s); ${entry.attributes.length} attribute(s).`,
-            { type: entry.type, used: entry.used, names: entry.names, attributes: entry.attributes },
+            `${wanted}: ${vocab.schema} declares ${attributes.length} attribute(s) and ${declared.children.length} child element(s); ${entry === undefined ? 'this export has none of them yet' : `${entry.used} present`}.`,
+            {
+              type: wanted,
+              schema: vocab.schema,
+              present: entry?.used ?? 0,
+              ...(entry === undefined ? {} : { names: entry.names }),
+              children: declared.children,
+              ...(declared.requiredChildren.length === 0 ? {} : { required_children: declared.requiredChildren }),
+              required_attributes: attributes.filter(attribute => attribute.required).map(attribute => attribute.name),
+              attributes,
+              ...(TYPE_GUIDE[wanted] === undefined ? {} : { craft: TYPE_GUIDE[wanted] }),
+            },
             [],
             COVERAGE,
           )

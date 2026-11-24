@@ -11,7 +11,7 @@
  *   paths, identifiers) are committed; the page bodies are read from the local
  *   install at call time and never ship.
  *
- * The suite reads `packages/ftview/lib/` — the same output the bundle mounts —
+ * The suite reads `packages/ftview/lib/` â€” the same output the bundle mounts â€”
  * so a green run here is evidence about the shipped tool, not about a parallel
  * source tree. The installed-help reads are skipped on a machine without the
  * product help; everything else (authored knowledge, the committed indexes, the
@@ -51,7 +51,7 @@ const knowledgeDir = join(root, 'packages', 'ftview', 'knowledge')
 const generator = join(root, 'scripts', 'gen-ftview-knowledge.mjs')
 
 const COLLECTION_IDS = ['ftview-me', 'ftview-me-help', 'ftview-se-help']
-const PAGE_COUNTS = { 'ftview-me': 9, 'ftview-me-help': 1544, 'ftview-se-help': 2603 }
+const PAGE_COUNTS = { 'ftview-me': 10, 'ftview-me-help': 1544, 'ftview-se-help': 2603 }
 const SOURCES = {
   'ftview-me': 'authored',
   'ftview-me-help': 'installed-help',
@@ -61,6 +61,7 @@ const SOURCES = {
 /** The authored page ids, in the codepoint order the index records them. */
 const AUTHORED_IDS = [
   'display-workflow',
+  'editor-rewrites',
   'errors-and-fixes',
   'export-import',
   'global-objects',

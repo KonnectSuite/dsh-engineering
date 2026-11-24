@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { harness } from './harness.ts'
 import { addObject, renameDisplay, setObject } from '../src/edit/operations.ts'
 import { targetPath } from '../src/core.ts'
 import type { Application } from '../src/model.ts'
 import type { EditDraft } from '../src/edit/drafts.ts'
+import type { SchemaModel } from '../src/xsd.ts'
 import { verifyDraft } from '../src/edit/verify-draft.ts'
+
+/** The snapshot the package ships, for the tests that call the writer directly. */
+const model = JSON.parse(readFileSync(new URL('../schema/me-schema.json', import.meta.url), 'utf8')) as SchemaModel
 
 /** A six-column tag CSV with one duplicate name. */
 const CSV = [
@@ -117,14 +122,16 @@ describe('stage, validate, apply', () => {
     expect(l5x.written.get('out/Displays/New.xml') ?? '').toContain('xsi:noNamespaceSchemaLocation="Gfx-ME16.xsd"')
   })
 
-  it('clears the draft after applying', async () => {
+  it('keeps the applied draft and refuses to write it twice', async () => {
     const { l5x, view } = await opened()
     const staged = await l5x.call('ftview_draft_tag_upsert', { view_id: view, name: 'StopPB', type: 'A' })
     const draftId = staged.data?.draft_id as string
     const first = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'out' })
     expect(first.error).toBeUndefined()
+    // Kept so ftview_verify_import can compare it with a fresh export after the
+    // vendor import; applying it a second time is refused instead.
     const second = await l5x.call('ftview_apply', { draft_id: draftId, output_root: 'out2' })
-    expect(second.error?.code).toBe('UNKNOWN_DRAFT')
+    expect(second.error?.code).toBe('DRAFT_ALREADY_APPLIED')
   })
 })
 
@@ -172,7 +179,7 @@ describe('stateful controls', () => {
     const xml = addObject('<gfx><displaySettings width="100" height="100"/></gfx>', {
       kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'Start', attributes: { left: '0', top: '0', width: '10', height: '10' },
       caption: 'START', connections: { Value: 'AutoManual' },
-    })
+    }, model)
     expect(xml).toContain('<states>')
     expect(xml).toContain('caption="START"')
     expect(xml).not.toContain('caption="START" backColor')
@@ -182,7 +189,7 @@ describe('stateful controls', () => {
   it('writes gotoButton captions as a caption child', () => {
     const xml = addObject('<gfx><displaySettings/></gfx>', {
       kind: 'object_add', file: 'x', type: 'gotoButton', name: 'Nav', attributes: { left: '0', top: '0', width: '10', height: '10', display: 'Setup Screen' }, caption: 'SETUP',
-    })
+    }, model)
     expect(xml).toContain('<caption ')
     expect(xml).toContain('caption="SETUP"')
   })
@@ -191,9 +198,101 @@ describe('stateful controls', () => {
     const xml = addObject('<gfx><displaySettings/></gfx>', {
       kind: 'object_add', file: 'x', type: 'panel', name: 'Banner', attributes: { left: '0', top: '0', width: '10', height: '10' },
       animations: { visibility: { expression: '{AutoRunning} = 0', expressionTrueState: 'visible' } },
-    })
+    }, model)
     expect(xml).toContain('<animateVisibility')
     expect(xml).toContain('expressionTrueState="visible"')
+  })
+})
+describe('faces written where each control declares them', () => {
+  // The 142 vendor errors on a draft of the whole object library came from one
+  // face shape — the push button's — applied to every stateful control. The
+  // installed editor refused the four list and control selectors and the symbol:
+  // 141 of the 142. These pins are what that fix has to keep true.
+  const fullFace = { stateId: '0', value: 0, caption: 'AUTO', fontSize: 14, color: 'white', backColor: '#24384A', borderColor: '#0E1620', blink: false }
+
+  it('keeps a push button face in the shape the vendor ships', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'Start', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      states: [fullFace],
+    }, model)
+    expect(xml).toMatch(/<state [^>]*backColor="#24384A"/u)
+    expect(xml).toMatch(/<caption [^>]*caption="AUTO"/u)
+    expect(xml).toMatch(/<caption [^>]*fontFamily="Arial Unicode MS"/u)
+    expect(xml).toMatch(/<caption [^>]*alignment="middleCenter"/u)
+    // A field belongs on one element only, never repeated onto both.
+    expect(xml).not.toMatch(/<state [^>]*fontFamily/u)
+  })
+
+  it('gives a list indicator face only what its own state type declares', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'listIndicator', name: 'Mode', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      states: [fullFace],
+    }, model)
+    // listIndicatorStateType declares value and stateId alone; its caption takes
+    // the words and colours with an alignment of left|center|right, and no font.
+    expect(xml).toMatch(/<state [^>]*stateId="0"/u)
+    expect(xml).not.toMatch(/<state [^>]*(backColor|borderColor|blink)/u)
+    expect(xml).toMatch(/<caption [^>]*caption="AUTO"/u)
+    expect(xml).toMatch(/<caption [^>]*backColor="#24384A"/u)
+    expect(xml).toMatch(/<caption [^>]*alignment="center"/u)
+    expect(xml).not.toMatch(/<caption [^>]*(fontFamily|fontSize|wordWrap)/u)
+  })
+
+  it('writes a symbol face as image settings, which is all its schema has', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'symbol', name: 'Valve', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      states: [{ stateId: '0', value: 0, color: 'white', backColor: '#24384A', blink: false }],
+    }, model)
+    expect(xml).toMatch(/<imageSettings [^>]*color="white"/u)
+    expect(xml).not.toContain('<caption')
+    // Asking this control for words is refused where the draft is staged, rather
+    // than written and then rejected on import — the old failure mode.
+    expect(() => addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'symbol', name: 'Valve', attributes: { left: '0', top: '0', width: '10', height: '10' }, caption: 'OPEN',
+    }, model)).toThrow(/faces declare no <caption> child/u)
+  })
+
+  it('writes a required part, which is the content model polyPolygon could not satisfy', () => {
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'polyPolygon', name: 'Star', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      children: [{ element: 'innerPolygon', attributes: { polygon: '0,0 100,0 100,100' } }],
+    }, model)
+    expect(xml).toMatch(/<innerPolygon [^>]*polygon="0,0 100,0 100,100"/u)
+    expect(() => addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'Start', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      children: [{ element: 'innerPolygon', attributes: {} }],
+    }, model)).toThrow(/declares no <innerPolygon> child/u)
+  })
+
+  it('writes every repeat of a part, in the caller order', () => {
+    // Measured on the installed editor: a plan whose polyPolygon carried two
+    // <innerPolygon> rows still failed to import — "A polyPolygon must contain
+    // at least 2 innerPolygons" — because the writer collected children in a map
+    // keyed by element name and kept only the last row. The draft's own checks
+    // passed, so nothing before the import could see the loss.
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'polyPolygon', name: 'Ring', attributes: { left: '0', top: '0', width: '10', height: '10' },
+      children: [
+        { element: 'innerPolygon', attributes: { polygon: '0 0 100 0 100 100' } },
+        { element: 'innerPolygon', attributes: { polygon: '10 10 90 10 90 90' } },
+      ],
+    }, model)
+    expect(xml.match(/<innerPolygon /gu)).toHaveLength(2)
+    expect(xml).toMatch(/polygon="0 0 100 0 100 100"/u)
+    expect(xml).toMatch(/polygon="10 10 90 10 90 90"/u)
+    // Inside a repeat the caller's order is the order: the schema declares the
+    // element once, so there is nothing else to sort the two rows by.
+    expect(xml.indexOf('0 0 100 0 100 100')).toBeLessThan(xml.indexOf('10 10 90 10 90 90'))
+  })
+
+  it('writes a group, the vendor element the hand-kept contract refused outright', () => {
+    // groupType is schema-declared and the most-used object in Rockwell's own
+    // demos; the old RESERVED set called it "part of a display, not an object
+    // type", which made a drafted panel group impossible.
+    const xml = addObject('<gfx><displaySettings/></gfx>', {
+      kind: 'object_add', file: 'x', type: 'group', name: 'Frame', attributes: { left: '0', top: '0', width: '100', height: '60' },
+    }, model)
+    expect(xml).toMatch(/<group [^>]*name="Frame"/u)
   })
 })
 describe('indicator binding', () => {
@@ -202,23 +301,23 @@ describe('indicator binding', () => {
       kind: 'object_add', file: 'x', type: 'multistateIndicator', name: 'Lamp', attributes: { left: '0', top: '0', width: '10', height: '10' },
       states: [{ stateId: '0', value: 0, backColor: '#F5E11B' }, { stateId: '1', value: 1, backColor: '#45D483' }],
       connections: { Value: 'AutoManual' },
-    })
+    }, model)
     expect(xml).toContain('name="Indicator"')
     expect(xml).not.toContain('name="Value"')
   })
 })
 describe('changing a caption', () => {
   it('updates a button caption inside its states, not as an attribute', () => {
-    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'B', attributes: { left: '0', top: '0', width: '10', height: '10' }, caption: 'OLD' })
-    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'B', caption: 'NEW', attributes: {} })
+    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'momentaryButton', name: 'B', attributes: { left: '0', top: '0', width: '10', height: '10' }, caption: 'OLD' }, model)
+    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'B', caption: 'NEW', attributes: {} }, model)
     expect(xml).toContain('caption="NEW"')
     expect(xml).not.toContain('caption="OLD"')
     expect(xml).not.toMatch(/<momentaryButton[^>]*caption=/u)
   })
 
   it('updates a gotoButton caption child', () => {
-    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'gotoButton', name: 'N', attributes: { left: '0', top: '0', width: '10', height: '10', display: 'Main' }, caption: 'OLD' })
-    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'N', caption: 'NEW', attributes: {} })
+    let xml = addObject('<gfx><displaySettings/></gfx>', { kind: 'object_add', file: 'x', type: 'gotoButton', name: 'N', attributes: { left: '0', top: '0', width: '10', height: '10', display: 'Main' }, caption: 'OLD' }, model)
+    xml = setObject(xml, { kind: 'object_set', file: 'x', object: 'N', caption: 'NEW', attributes: {} }, model)
     expect(xml).toContain('caption="NEW"')
     expect(xml).not.toContain('caption="OLD"')
   })

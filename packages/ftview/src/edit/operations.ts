@@ -11,6 +11,8 @@
 import { EngineeringError } from '../core.ts'
 import { splitCsv } from '../model.ts'
 import { decodeEntities, findNamed, firstChildOfType, insertChild, parseDisplayTree, removeNode, renderElement, setAttribute as setNodeAttribute, type DisplayNode, type DisplayTree } from '../display-tree.ts'
+import { defaultSchemaVersion } from '../schema.ts'
+import { displayType, domainText, FACE_FIELDS, faceFieldHome, objectFamily, stateIdAllowed, type ObjectFamily, type SchemaAttribute, type SchemaModel, type SchemaType } from '../xsd.ts'
 
 /** Set one attribute on a display or one of its named objects. */
 export interface DisplaySetOperation {
@@ -96,25 +98,51 @@ export interface ObjectAddOperation {
   readonly caption?: string
   readonly states?: readonly ObjectState[]
   readonly animations?: ObjectAnimations
+  /** Part children the schema declares inside this object, e.g. an `innerPolygon`. */
+  readonly children?: readonly ObjectPart[]
 }
 
-/** One face of a button or indicator, written as `<states><state>`. */
+/**
+ * One part child written inside an object, before the children the tool manages.
+ *
+ * A `polyPolygon` is not complete without an `<innerPolygon>`, and a `gauge`
+ * carries its `<threshold>` rows, so an object cannot be authored without a way
+ * to write a part. The element must be one the schema declares on this type.
+ */
+export interface ObjectPart {
+  /** The child element name, as the schema declares it on the parent type. */
+  readonly element: string
+  /** Attributes to write on it, in insertion order. */
+  readonly attributes?: Readonly<Record<string, string>>
+}
+
+/**
+ * One face of a button or indicator, written as `<states><state>`.
+ *
+ * Each field is written where THIS control's schema declares it: on `<state>`, on
+ * its `<caption>` child, or on its `<imageSettings>` child. A symbol's face has no
+ * caption at all and a list indicator's caption declares no font, so a field with
+ * nowhere to go is left out rather than written where the vendor rejects it. The
+ * tool used to write the push-button face — the font set, `backStyle`,
+ * `wordWrap` and `alignment="middleCenter"` — onto every control's faces, which
+ * is what made the installed editor refuse the list and control selectors.
+ */
 export interface ObjectState {
   /** State id as the export writes it: "0", "1" or "Error" for buttons. */
   readonly stateId?: string
   /** Value that selects this state on a value-triggered indicator. */
   readonly value?: number
-  /** Caption drawn on the face. */
+  /** Caption drawn on the face, where this control's face declares one. */
   readonly caption?: string
-  /** Caption font size, default 14. */
+  /** Caption font size, where its caption declares one. */
   readonly fontSize?: number
-  /** Caption colour, default "white". */
+  /** Face colour, on the caption or image child the face declares. */
   readonly color?: string
-  /** Face background colour. */
+  /** Face background colour, where the face or its child declares one. */
   readonly backColor?: string
-  /** Face border colour. */
+  /** Face border colour, where the face declares one. */
   readonly borderColor?: string
-  /** Blink the face. */
+  /** Blink the face, where the face or its child declares it. */
   readonly blink?: boolean
 }
 
@@ -126,24 +154,6 @@ export interface ObjectAnimations {
     readonly expressionTrueState?: 'visible' | 'invisible'
   }
 }
-
-/**
- * Controls whose face is a `<states>` child rather than a `caption` attribute.
- *
- * `Gfx-ME17.xsd` rejects `caption` on these elements; their captions and colours
- * live in per-state `<caption>` children.
- */
-const STATEFUL_TYPES = new Set([
-  'momentaryButton', 'maintainButton', 'maintainedButton', 'latchedButton', 'multistateButton',
-  'rampButton', 'multistateIndicator',
-])
-
-/** Controls whose caption is a <caption> child rather than a states face. */
-const CAPTION_CHILD_TYPES = new Set([
-  'gotoButton', 'closeButton', 'clearAlarmBannerButton', 'acknowledgeAlarmButton', 'silenceAlarmsButton',
-  'diagnosticsClearButton', 'diagnosticsClearAllButton', 'informationAckButton',
-  'moveUpKey', 'moveDownKey', 'moveLeftKey', 'moveRightKey',
-])
 
 /** Change attributes, caption or connections on an existing object. */
 export interface ObjectSetOperation {
@@ -304,11 +314,22 @@ export function upsertTag(csv: string, tag: TagUpsertOperation): string {
   return lines.join(eol)
 }
 
-/** Elements that are parts of an object, never objects themselves. */
+/**
+ * Elements that are parts of an object, never objects themselves.
+ *
+ * `group` is deliberately NOT here. It is a display child the schema declares
+ * (groupType, twelve attributes) and the element Rockwell's own displays use
+ * most — 465 of them across the shipped ME demos — and the `parent` parameter
+ * of this very tool presupposes groups exist by letting a caller add inside
+ * one. Refusing to create it while offering to add into it meant a draft could
+ * stage a group cleanly and only fail at `ftview_apply`. An empty group is
+ * written self-closing and `insertChild` expands it when the first child
+ * arrives, so nesting works without a second pass.
+ */
 const RESERVED = new Set([
   'gfx', 'display', 'displaySettings', 'connections', 'connection', 'states', 'state', 'caption',
   'imageSettings', 'animations', 'parameters', 'parameter', 'font', 'color',
-  'animateVisibility', 'animateColor', 'confirm', 'group', 'vbaProject', 'vbaItem', 'vbaCode',
+  'animateVisibility', 'animateColor', 'confirm', 'vbaProject', 'vbaItem', 'vbaCode',
 ])
 
 /** Depth of one node below the root. */
@@ -362,13 +383,15 @@ function connectionsXml(connections: Readonly<Record<string, string>>, depth: nu
  * installed. A display written as `Gfx-ME17.xsd` on a Studio release whose
  * newest schema is `Gfx-ME16.xsd` imports with "schema could not be found" and
  * drops every object, leaving an empty display. The caller therefore passes
- * the version found in the opened export's existing display files.
+ * the version found in the opened export's existing display files; when none
+ * declares one the default is the newest schema this host can see, never a
+ * release number written into the source.
  *
  * @param op - Display identity and size.
  * @param schemaVersion - ME major version for `xsi:noNamespaceSchemaLocation`, e.g. "16".
  * @returns Whole XML text.
  */
-export function createDisplay(op: DisplayCreateOperation, schemaVersion = '17'): string {
+export function createDisplay(op: DisplayCreateOperation, schemaVersion = defaultSchemaVersion()): string {
   const settings: Record<string, string> = {}
   if (op.displayType !== undefined) settings.displayType = op.displayType
   settings.width = String(op.width)
@@ -382,32 +405,67 @@ export function createDisplay(op: DisplayCreateOperation, schemaVersion = '17'):
 /**
  * Add one object to a display.
  *
+ * The schema model decides the shape: whether the element carries its words in
+ * `<states>` faces, in a `<caption>` child, or in a `caption` attribute, and
+ * what state ids the family declares. A caption requested on an element the
+ * schema gives no caption mechanism is refused here rather than written as an
+ * attribute Studio will reject.
+ *
  * @param xml - Display XML.
  * @param op - Object type, name, geometry and connections.
+ * @param model - The schema model for the export's schema version.
  * @returns The modified XML.
  */
-export function addObject(xml: string, op: ObjectAddOperation): string {
+export function addObject(xml: string, op: ObjectAddOperation, model: SchemaModel): string {
   assertObjectStyle(op.type, op.name)
+  const family = objectFamily(model, op.type)
+  if (family === undefined) throw new EngineeringError('UNKNOWN_OBJECT_TYPE', `${op.type} is not an element the schema declares for a display.`, 'ftview_object_types lists the element names the schema declares.')
   const tree = parseDisplayTree(xml)
+  const declared = displayType(model, op.type)
   const build = (depth: number): string => {
     const attributes: Record<string, string> = { name: escapeAttribute(op.name), ...op.attributes }
-    const stateful = STATEFUL_TYPES.has(op.type)
-    const captionChild = CAPTION_CHILD_TYPES.has(op.type)
-    if (op.caption !== undefined && !stateful && !captionChild && attributes.caption === undefined) attributes.caption = escapeAttribute(op.caption)
-    const children: string[] = []
-    if (captionChild) {
-      if (op.caption !== undefined) children.push(captionXml(op.caption, op.attributes, depth))
-      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
-      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
-    } else if (stateful) {
-      const states = op.states ?? defaultStates(op.caption, op.attributes)
-      if (states !== undefined && states.length > 0) children.push(statesXml(states, depth, op.type))
-      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
-      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
-    } else {
-      if (op.connections !== undefined) children.push(connectionsXml(connectionNamesFor(op.type, op.connections), depth))
-      if (op.animations?.visibility !== undefined) children.push(animationsXml(op.animations.visibility, depth))
+    const stateful = family.states
+    const captionChild = family.captionChild
+    if (op.caption !== undefined && !stateful && !captionChild) {
+      if (!family.captionAttribute) throw new EngineeringError('INVALID_CAPTION', `${op.type} has no caption: the schema declares neither a caption attribute nor a <caption> child for it.`, 'Write the words on a text object, or drop the caption.')
+      if (attributes.caption === undefined) attributes.caption = escapeAttribute(op.caption)
     }
+    // Each child is written where this control's schema declares it, and in the
+    // order the schema declares them, because an `xs:sequence` is ordered: a
+    // `gauge` wants `<threshold>` before its animations, and a push button wants
+    // `<states>` before them. Everything is collected by element name first so
+    // the order comes from the schema and not from the branch that wrote it.
+    //
+    // A name maps to a LIST of lines, not one line. The schema repeats some
+    // parts — `polyPolygon` carries an unbounded number of `<innerPolygon>` rows
+    // — and keying by name alone kept only the last repeat. The draft's own
+    // checks could not see it: the plan carried two rings, validation passed,
+    // and the render dropped one, so the editor refused the whole object with
+    // "A polyPolygon must contain at least 2 innerPolygons." Order inside a
+    // repeat is the caller's, not the schema's.
+    const written = new Map<string, string[]>()
+    const write = (element: string, text: string): void => {
+      const existing = written.get(element)
+      if (existing === undefined) written.set(element, [text])
+      else existing.push(text)
+    }
+    for (const part of op.children ?? []) {
+      if (declared === undefined || !declared.children.includes(part.element)) throw new EngineeringError('INVALID_CHILD', `${op.type} declares no <${part.element}> child.`, declared === undefined ? 'ftview_object_types lists the element names the schema declares.' : `ftview_object_types with type=${op.type} lists the children this control declares.`)
+      write(part.element, partXml(part, depth))
+    }
+    if (captionChild) {
+      if (op.caption !== undefined) write('caption', captionXml(op.caption, op.attributes, depth))
+    } else if (stateful) {
+      if (op.caption !== undefined && family.faceCaptionType === undefined && op.states === undefined) throw new EngineeringError('INVALID_CAPTION', `${op.type} carries its words on state faces, and this control's faces declare no <caption> child to hold them.`, 'Write the words on a text object, or choose a control whose faces take captions.')
+      const states = op.states ?? defaultStates(op.caption, op.attributes)
+      if (states !== undefined && states.length > 0) write('states', statesXml(states, depth, family))
+    }
+    if (op.connections !== undefined) write('connections', connectionsXml(connectionNamesFor(op.type, op.connections), depth))
+    if (op.animations?.visibility !== undefined) write('animations', animationsXml(op.animations.visibility, depth))
+    const order = new Map((declared?.children ?? []).map((name, index) => [name, index]))
+    const children = [...written.entries()]
+      .sort((left, right) => (order.get(left[0]) ?? Number.MAX_SAFE_INTEGER) - (order.get(right[0]) ?? Number.MAX_SAFE_INTEGER))
+      .flatMap(([, texts]) => texts)
     const inner = children.join('')
     return renderElement(op.type, attributes, inner === '' ? undefined : inner, depth)
   }
@@ -438,32 +496,143 @@ function defaultStates(caption: string | undefined, attributes: Readonly<Record<
 }
 
 /**
- * Render `<states>` with one `<state>` and `<caption>` per face.
+ * Render `<states>` with one `<state>` per face, carrying only what THIS control
+ * declares for a face.
+ *
+ * The legal ids come from the family's declared domain, which the schema states
+ * differently per control: a push button allows `0`, `1` or `Error`; an
+ * interlocked button allows `0` and `1` with no `Error` face; a multistate
+ * button runs to 254; a symbol or indicator to 1999; the list and control
+ * selectors to 255, again with no `Error` face. The old blanket rule — three
+ * faces, `0|1|Error` for everything except multistateIndicator — refused legal
+ * faces and wrote an `Error` face where the schema forbids one.
+ *
+ * The face content was blanket too: one hard-coded push-button caption — font
+ * family, size, bold, italic, underline, strikethrough, `backStyle`, `wordWrap`
+ * and `alignment="middleCenter"` — on every control. A list indicator's face
+ * declares five attributes and an alignment of `left|center|right`, and a
+ * symbol's face has no caption child at all, only `<imageSettings>`; the
+ * installed editor refused all four selectors and the symbol, 141 of the 142
+ * errors it reported for a draft of the whole object library. Each field now
+ * goes where the schema declares it, and a field the control does not declare
+ * is left out for Studio to default.
  *
  * @param states - Faces to write.
  * @param depth - Indentation depth of the control element.
- * @param type - Control type, used for the state-id rules.
+ * @param family - The schema family, which carries the state-id domain and the face types.
  * @returns XML for the states child.
  */
-function statesXml(states: readonly ObjectState[], depth: number, type: string): string {
+function statesXml(states: readonly ObjectState[], depth: number, family: ObjectFamily): string {
   const pad = '    '.repeat(depth)
   const statePad = '    '.repeat(depth + 1)
-  const captionPad = '    '.repeat(depth + 2)
-  const indicator = type === 'multistateIndicator'
-  if (!indicator && states.length > 3) throw new EngineeringError('INVALID_STATES', 'A button accepts at most three states (0, 1 and Error).', 'Pass at most three states, or use multistateIndicator for many values.')
+  const facePad = '    '.repeat(depth + 2)
+  const domain = family.stateId
+  if (domain === undefined) throw new EngineeringError('INVALID_STATES', 'This element declares no state faces, so states cannot be written for it.', 'Choose a control whose schema family has a <states> child; ftview_object_types lists the children.')
+  const stateType = family.stateType
+  if (stateType === undefined) throw new EngineeringError('INVALID_STATES', 'This element declares a state id but no <state> type, so the schema cannot say what its faces hold.', 'Check the installed schema version; ftview_object_types with all="true" lists what it declares.')
   const rendered = states.map((state, index) => {
     const stateId = state.stateId ?? String(index)
-    if (!indicator && !/^(0|1|Error)$/u.test(stateId)) throw new EngineeringError('INVALID_STATES', `${JSON.stringify(stateId)} is not a button state id.`, 'Use "0", "1" or "Error" for a button state.')
-    if (indicator && !/^(\d+|Error)$/u.test(stateId)) throw new EngineeringError('INVALID_STATES', `${JSON.stringify(stateId)} is not an indicator state id.`, 'Use a number (0, 1, 2 …) or "Error" for an indicator state.')
-    const face = state.backColor ?? '#24384A'
-    const border = state.borderColor ?? face
-    const attrs = [`stateId="${escapeAttribute(stateId)}"`]
-    if (state.value !== undefined) attrs.push(`value="${Math.trunc(state.value)}"`)
-    attrs.push(`backColor="${escapeAttribute(face)}"`, `borderColor="${escapeAttribute(border)}"`, `blink="${state.blink === true ? 'true' : 'false'}"`)
-    const caption = `<caption fontFamily="Arial Unicode MS" fontSize="${state.fontSize ?? 14}" bold="false" italic="false" underline="false" strikethrough="false" caption="${escapeAttribute(state.caption ?? '')}" color="${escapeAttribute(state.color ?? 'white')}" backColor="${escapeAttribute(face)}" backStyle="transparent" alignment="middleCenter" wordWrap="true" blink="false"/>`
-    return `${statePad}<state ${attrs.join(' ')}>\n${captionPad}${caption}\n${statePad}</state>\n`
+    if (!stateIdAllowed(family, stateId)) throw new EngineeringError('INVALID_STATES', `${JSON.stringify(stateId)} is not a state id this control declares. The schema allows ${domainText(domain)}.`, domain.values?.includes('Error') === true ? 'Use a number inside the declared range, or "Error".' : 'Use a number inside the declared range; this family declares no "Error" face.')
+    const given: Record<FaceChild, Map<string, string>> = { state: new Map([['stateId', escapeAttribute(stateId)]]), caption: new Map(), image: new Map() }
+    for (const field of FACE_FIELDS) {
+      if (field === 'stateId') continue
+      const value = state[field]
+      if (value === undefined) continue
+      const home = faceFieldHome(family, field)
+      if (home === undefined) continue
+      given[home.where].set(field, faceValue(value))
+    }
+    // Attributes are written in the order this control's schema declares them, so
+    // two drafts of the same request produce the same file.
+    const stateAttrs = faceAttributes(stateType, given.state)
+    const imageAttrs = given.image.size === 0 || family.faceImageType === undefined ? [] : faceAttributes(family.faceImageType, given.image)
+    if (family.faceCaptionType === undefined && imageAttrs.length === 0) return `${statePad}<state ${stateAttrs.join(' ')}/>\n`
+    const lines: string[] = []
+    if (family.faceCaptionType !== undefined) lines.push(`${facePad}<caption ${faceAttributes(family.faceCaptionType, given.caption).join(' ')}/>\n`)
+    if (imageAttrs.length > 0) lines.push(`${facePad}<imageSettings ${imageAttrs.join(' ')}/>\n`)
+    return `${statePad}<state ${stateAttrs.join(' ')}>\n${lines.join('')}${statePad}</state>\n`
   })
   return `${pad}<states>\n${rendered.join('')}${pad}</states>\n`
+}
+
+/** Which element of a state face carries an attribute. */
+type FaceChild = 'state' | 'caption' | 'image'
+
+/**
+ * One declared part of an object, written as a self-closing child.
+ *
+ * The tool validates the part's element against the control's declared children
+ * before it gets here, and `ftview_draft_object_add` validates its attributes
+ * against the part's own declared type, so this only formats.
+ *
+ * @param part - The element name and the attributes to write on it.
+ * @param depth - Nesting depth for indentation.
+ * @returns The element line.
+ */
+function partXml(part: ObjectPart, depth: number): string {
+  const pad = '    '.repeat(depth)
+  const attributes = Object.entries(part.attributes ?? {}).map(([name, value]) => ` ${name}="${escapeAttribute(value)}"`).join('')
+  return `${pad}<${part.element}${attributes}/>\n`
+}
+
+/** One face value, formatted the way the export writes it. */
+function faceValue(value: string | number | boolean): string {
+  if (typeof value === 'number') return String(Math.trunc(value))
+  if (typeof value === 'boolean') return value ? 'true' : 'false'
+  return escapeAttribute(value)
+}
+
+/**
+ * The attributes to write on one face element: what the caller set, plus the
+ * tool's vendor-shaped defaults, each applied only where this control declares it.
+ *
+ * Rockwell's own displays carry the full face — font family and size, bold,
+ * colours, alignment — so the defaults keep a drafted button looking like a vendor
+ * one. They are no longer blanket: a list indicator's caption declares five
+ * attributes and an alignment of `left|center|right`, so it gets those and not the
+ * font set, and a symbol's face has no caption at all, so it gets none.
+ *
+ * @param type - The declared type of the face element.
+ * @param given - The attributes the caller set, already escaped.
+ * @returns The attributes in declaration order.
+ */
+function faceAttributes(type: SchemaType, given: Map<string, string>): string[] {
+  const out: string[] = []
+  for (const [name, declared] of Object.entries(type.attributes)) {
+    const value = given.get(name)
+    if (value !== undefined) {
+      out.push(`${name}="${value}"`)
+      continue
+    }
+    const fallback = name === 'alignment' ? faceAlignment(declared) : FACE_DEFAULTS[name]
+    if (fallback === undefined) continue
+    out.push(`${name}="${escapeAttribute(String(fallback))}"`)
+  }
+  return out
+}
+
+/** The caption alignment to default to, from what this control declares. */
+function faceAlignment(declared: SchemaAttribute): string | undefined {
+  const values = declared.values
+  if (values === undefined || values.length === 0) return undefined
+  if (values.includes('middleCenter')) return 'middleCenter'
+  if (values.includes('center')) return 'center'
+  return values[0]
+}
+
+/** The face attributes the tool fills in when the caller does not, vendor-shaped. */
+const FACE_DEFAULTS: Readonly<Record<string, string | number | boolean>> = {
+  fontFamily: 'Arial Unicode MS',
+  fontSize: 14,
+  bold: false,
+  italic: false,
+  underline: false,
+  strikethrough: false,
+  color: 'white',
+  backColor: '#24384A',
+  backStyle: 'transparent',
+  blink: false,
+  wordWrap: true,
 }
 
 /**
@@ -487,9 +656,10 @@ function animationsXml(visibility: NonNullable<ObjectAnimations['visibility']>, 
  *
  * @param xml - Display XML.
  * @param op - Target object and the changes.
+ * @param model - The schema model, which decides the caption shape the target's element expects.
  * @returns The modified XML.
  */
-export function setObject(xml: string, op: ObjectSetOperation): string {
+export function setObject(xml: string, op: ObjectSetOperation, model: SchemaModel): string {
   let current = xml
   for (const [name, value] of Object.entries(op.attributes)) {
     if (!/^[A-Za-z_][\w.:-]*$/u.test(name)) throw new EngineeringError('INVALID_ATTRIBUTE', `${JSON.stringify(name)} is not an XML attribute name.`, 'Pass a plain attribute name such as "visible" or "left".')
@@ -503,7 +673,7 @@ export function setObject(xml: string, op: ObjectSetOperation): string {
     const tree = parseDisplayTree(current)
     const node = findNamed(tree.root, op.object)
     if (node === undefined) throw new EngineeringError('COMPONENT_NOT_FOUND', `No object is named ${JSON.stringify(op.object)} in this display.`, 'Call ftview_get to see the object names.')
-    current = setCaption(tree, node, op.caption)
+    current = setCaption(tree, node, op.caption, objectFamily(model, node.type))
   }
   if (op.connections !== undefined) {
     for (const name of Object.keys(op.connections)) {
@@ -605,29 +775,43 @@ function connectionNamesFor(type: string, connections: Readonly<Record<string, s
 /**
  * Set the caption of an existing object in the shape its element expects.
  *
- * Stateful controls keep captions in `<states><state><caption>`; simple buttons
- * in a `<caption>` child; everything else in a `caption` attribute. Writing the
- * attribute on a button is what Studio rejects.
+ * The schema family decides which shape that is: a control with a `<states>`
+ * child keeps its words in the per-state `<caption>`, a control with a
+ * `<caption>` child uses that child, and the rest take a `caption` attribute.
+ * Writing the attribute where the schema declares neither is what Studio
+ * rejects, so it is refused here.
  *
  * @param tree - Parsed display.
  * @param node - Target object.
  * @param caption - New caption text.
+ * @param family - The element's schema family, undefined when the vocabulary does not declare it.
  * @returns The modified display XML.
  */
-function setCaption(tree: DisplayTree, node: DisplayNode, caption: string): string {
+function setCaption(tree: DisplayTree, node: DisplayNode, caption: string, family: ObjectFamily | undefined): string {
   const escaped = escapeAttribute(caption)
-  if (STATEFUL_TYPES.has(node.type)) {
+  if (family === undefined) {
+    // An older export keeps its displays in a <display> document whose objects
+    // are generic elements the ME schema never described, so there is no family
+    // to consult and the file's own shape is the only contract. A <gfx> document
+    // is different: the schema governs it, and an element the host vocabulary
+    // does not declare means the host schema is older than the export — guessing
+    // the caption shape there can write content the newer Studio rejects.
+    if (tree.root.type.toLowerCase() !== 'gfx') return setNodeAttribute(tree, node, 'caption', caption)
+    throw new EngineeringError('SCHEMA_VOCABULARY_MISSING', `The schema vocabulary does not declare ${node.type}, so the shape of its caption cannot be chosen.`, 'Point FTVIEW_SCHEMA_DIR at the Schemas folder of the Studio release that wrote this export, or re-export the display from that release.')
+  }
+  if (family.states) {
     const inner = tree.xml.slice(node.tagEnd, node.contentEnd)
     if (!/<states[\s>]/u.test(inner)) throw new EngineeringError('INVALID_CAPTION', `${node.type} has no states to caption.`, 'Add the element with ftview_draft_object_add and states_json, or set states in Studio.')
     const replaced = inner.replace(/<caption\b[^>]*>/gu, tag => (/\bcaption="/u.test(tag) ? tag.replace(/\bcaption="[^"]*"/u, `caption="${escaped}"`) : tag))
     return tree.xml.slice(0, node.tagEnd) + replaced + tree.xml.slice(node.contentEnd)
   }
-  if (CAPTION_CHILD_TYPES.has(node.type)) {
+  if (family.captionChild) {
     const inner = tree.xml.slice(node.tagEnd, node.contentEnd)
     const replaced = inner.replace(/<caption\b[^>]*>/u, tag => (/\bcaption="/u.test(tag) ? tag.replace(/\bcaption="[^"]*"/u, `caption="${escaped}"`) : tag))
     if (replaced === inner) throw new EngineeringError('INVALID_CAPTION', `${node.type} has no caption child to change.`, 'Add the caption child in Studio, then retry.')
     return tree.xml.slice(0, node.tagEnd) + replaced + tree.xml.slice(node.contentEnd)
   }
+  if (!family.captionAttribute) throw new EngineeringError('INVALID_CAPTION', `${node.type} has no caption: the schema declares neither a caption attribute nor a caption child for it.`, 'Write the words on a text object, or change an attribute this element does declare.')
   return setNodeAttribute(tree, node, 'caption', caption)
 }
 

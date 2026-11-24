@@ -4,7 +4,7 @@
   "title": "FactoryTalk View ME operator knowledge",
   "source": "authored",
   "revisions": [],
-  "pageCount": 9,
+  "pageCount": 10,
   "pages": [
     {
       "id": "display-workflow",
@@ -17,6 +17,24 @@
         "display settings",
         "display type",
         "graphic display"
+      ]
+    },
+    {
+      "id": "editor-rewrites",
+      "title": "What the editor rewrites on import",
+      "section": "Authoring",
+      "body": "pages/editor-rewrites.md",
+      "identifiers": [
+        "charHeight",
+        "cornerRadius",
+        "fontSize",
+        "geometry",
+        "innerPolygon",
+        "line",
+        "path",
+        "percent of the object box",
+        "polyline",
+        "re-export"
       ]
     },
     {

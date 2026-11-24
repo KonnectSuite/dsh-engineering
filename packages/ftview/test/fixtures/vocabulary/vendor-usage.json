@@ -1,0 +1,6573 @@
+{
+ "note": "Attribute names, values and child elements harvested from Rockwell-authored FactoryTalk View ME displays: the Displays folder of every installed ME demo application as ftview_export wrote it. The replay feeds each pair through checkDraftObject and expects no finding, so the draft-time vocabulary check cannot refuse content the vendor software itself writes. Values are kept only where the schema declares an enumeration, a pattern or numeric bounds, and at most two distinct values per attribute.",
+ "schema": "Gfx-ME16.xsd",
+ "files": 125,
+ "skipped": 0,
+ "types": 75,
+ "pairs": 2555,
+ "objects": [
+  {
+   "type": "acknowledgeAlarmButton",
+   "objects": 8,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "2",
+     "5"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "44",
+     "90"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F1"
+    ],
+    "name": [
+     "AcknowledgeAlarmButton1",
+     "AcknowledgeAlarmButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "80"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "acknowledgeAllAlarmsButton",
+   "objects": 3,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "filteredTriggers",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "#3F3F3F"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "silver",
+     "gray"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "3"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "45",
+     "66"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "AcknowledgeAllAlarmsButton1",
+     "AcknowledgeAllAlarmsButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "52"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "activeX",
+   "objects": 41,
+   "names": [
+    "focusHighlight",
+    "isReferenceObject",
+    "keyNavigation",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "classId": [
+     "{BEEBFD2E-2F3A-4307-BC48-B4E73E81A3A7}",
+     "{CCAB159C-0AE6-434E-AE04-3A24014788D0}"
+    ],
+    "height": [
+     "25",
+     "435"
+    ],
+    "name": [
+     "ME_EmailSenderControl1",
+     "MECaseStatementControl1"
+    ],
+    "width": [
+     "25",
+     "660"
+    ]
+   },
+   "children": [
+    "connections",
+    "data"
+   ]
+  },
+  {
+   "type": "addUserGroupButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "AddUserGroupButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "alarmBanner",
+   "objects": 5,
+   "names": [
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "displayAlarmState",
+    "displayAlarmTime",
+    "displayInactiveAlarms",
+    "displayTriggerLabel",
+    "displayTriggerValue",
+    "filteredTriggers",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "queueNewAlarms",
+    "strikethrough",
+    "top",
+    "underline",
+    "useAlarmColors",
+    "useAlarmIdentifier",
+    "visible",
+    "wallpaper",
+    "wordWrap"
+   ],
+   "values": {
+    "alignment": [
+     "middleCenter"
+    ],
+    "backColor": [
+     "maroon",
+     "#001C38"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "maroon",
+     "#001C38"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "line"
+    ],
+    "borderWidth": [
+     "10",
+     "1"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fontSize": [
+     "12",
+     "10"
+    ],
+    "foreColor": [
+     "white"
+    ],
+    "formatAlarmTime": [
+     "timeShortDate"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "133",
+     "58"
+    ],
+    "name": [
+     "AlarmBanner1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "760",
+     "664"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "alarmList",
+   "objects": 3,
+   "names": [
+    "ackSymbol",
+    "activeAckedBlink",
+    "activeAckedUseAlarmColors",
+    "activeSymbol",
+    "activeUnackedBlink",
+    "activeUnackedUseAlarmColors",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "displayAckSymbol",
+    "displayAckTime",
+    "displayActiveAckedAlarms",
+    "displayActiveSymbol",
+    "displayActiveUnackedAlarms",
+    "displayAlarmTime",
+    "displayHeader",
+    "displayInactiveAckedAlarms",
+    "displayInactiveUnackedAlarms",
+    "filteredTriggers",
+    "fontFamily",
+    "gradientStop",
+    "headerTextAckTime",
+    "headerTextAlarmTime",
+    "headerTextMessage",
+    "inactiveAckedBlink",
+    "inactiveAckedUseAlarmColors",
+    "inactiveUnackedBlink",
+    "inactiveUnackedUseAlarmColors",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "useAlarmIdentifier",
+    "visible",
+    "wallpaper",
+    "wordWrap",
+    "wrapAround"
+   ],
+   "values": {
+    "activeAckedBackColor": [
+     "red"
+    ],
+    "activeAckedForeColor": [
+     "white"
+    ],
+    "activeUnackedBackColor": [
+     "red"
+    ],
+    "activeUnackedForeColor": [
+     "white"
+    ],
+    "backColor": [
+     "#0088C8",
+     "#8C0000"
+    ],
+    "borderColor": [
+     "maroon"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "8"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "10"
+    ],
+    "formatAckTime": [
+     "shortDateTime"
+    ],
+    "formatAlarmTime": [
+     "shortDateTime"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "headerBackColor": [
+     "#21829E",
+     "gray"
+    ],
+    "headerForeColor": [
+     "white",
+     "black"
+    ],
+    "height": [
+     "224",
+     "461"
+    ],
+    "inactiveAckedBackColor": [
+     "red"
+    ],
+    "inactiveAckedForeColor": [
+     "white"
+    ],
+    "inactiveUnackedBackColor": [
+     "red"
+    ],
+    "inactiveUnackedForeColor": [
+     "white"
+    ],
+    "linesPerAlarm": [
+     "1",
+     "2"
+    ],
+    "name": [
+     "AlarmList1"
+    ],
+    "selectedAlarmIndicator": [
+     "highlightBar"
+    ],
+    "selectionBackColor": [
+     "silver",
+     "navy"
+    ],
+    "selectionForeColor": [
+     "black",
+     "white"
+    ],
+    "width": [
+     "636",
+     "675"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "arc",
+   "objects": 587,
+   "names": [
+    "endAngle",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "startAngle",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "#263051",
+     "white"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "8",
+     "10"
+    ],
+    "lineStyle": [
+     "none",
+     "solid"
+    ],
+    "lineWidth": [
+     "1"
+    ],
+    "name": [
+     "Ellipse63",
+     "Ellipse64"
+    ],
+    "patternColor": [
+     "black",
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "22",
+     "25"
+    ]
+   },
+   "children": [
+    "animations",
+    "transform"
+   ]
+  },
+  {
+   "type": "auditTrailDetail",
+   "objects": 1,
+   "names": [
+    "bold",
+    "borderUsesBackColor",
+    "displayAuditLocation",
+    "displayAuditMessage",
+    "displayAuditOccurredTime",
+    "displayAuditResource",
+    "displayAuditSource",
+    "displayAuditUsername",
+    "fontFamily",
+    "gradientStop",
+    "headerTextAuditLocation",
+    "headerTextAuditMessage",
+    "headerTextAuditOccurredTime",
+    "headerTextAuditResource",
+    "headerTextAuditSource",
+    "headerTextAuditUsername",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "receiveSelectionFrom",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wordWrap",
+    "wrapAround"
+   ],
+   "values": {
+    "backColor": [
+     "#F0F0F0"
+    ],
+    "borderColor": [
+     "#F0F0F0"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "8"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "10"
+    ],
+    "foreColor": [
+     "black"
+    ],
+    "formatAuditOccurredTime": [
+     "shortDateTime"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "headerBackColor": [
+     "silver"
+    ],
+    "headerForeColor": [
+     "black"
+    ],
+    "height": [
+     "133"
+    ],
+    "name": [
+     "AuditTrailDetail1"
+    ],
+    "width": [
+     "722"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "auditTrailList",
+   "objects": 1,
+   "names": [
+    "bold",
+    "borderUsesBackColor",
+    "displayAuditLocation",
+    "displayAuditMessage",
+    "displayAuditOccurredTime",
+    "displayAuditResource",
+    "displayAuditSource",
+    "displayAuditUsername",
+    "displayHeader",
+    "fontFamily",
+    "gradientStop",
+    "headerTextAuditLocation",
+    "headerTextAuditMessage",
+    "headerTextAuditOccurredTime",
+    "headerTextAuditResource",
+    "headerTextAuditSource",
+    "headerTextAuditUsername",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wordWrap",
+    "wrapAround"
+   ],
+   "values": {
+    "backColor": [
+     "#F0F0F0"
+    ],
+    "borderColor": [
+     "#F0F0F0"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "8"
+    ],
+    "columnWidthAuditLocation": [
+     "90"
+    ],
+    "columnWidthAuditResource": [
+     "90"
+    ],
+    "columnWidthAuditSource": [
+     "90"
+    ],
+    "columnWidthAuditUsername": [
+     "90"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "10"
+    ],
+    "foreColor": [
+     "black"
+    ],
+    "formatAuditOccurredTime": [
+     "shortDateTime"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "headerBackColor": [
+     "silver"
+    ],
+    "headerForeColor": [
+     "black"
+    ],
+    "height": [
+     "376"
+    ],
+    "linesPerAudit": [
+     "5"
+    ],
+    "name": [
+     "AuditTrailList1"
+    ],
+    "selectionBackColor": [
+     "#80FFFF"
+    ],
+    "selectionForeColor": [
+     "black"
+    ],
+    "width": [
+     "722"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "barGraph",
+   "objects": 3,
+   "names": [
+    "borderUsesBackColor",
+    "description",
+    "fillGradientStop",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "maxValue",
+    "minValue",
+    "thresh1GradientStop",
+    "thresh2GradientStop",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "lime",
+     "#809DBB"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "4",
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillColor": [
+     "#40FF10",
+     "#008C00"
+    ],
+    "fillDirection": [
+     "bottomToTop",
+     "leftToRight"
+    ],
+    "fillEndColor": [
+     "white"
+    ],
+    "fillGradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "fillGradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "163",
+     "17"
+    ],
+    "name": [
+     "BarGraph1"
+    ],
+    "numberOfThresholds": [
+     "2",
+     "0"
+    ],
+    "thresh1EndColor": [
+     "white"
+    ],
+    "thresh1GradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "thresh1GradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "thresh2EndColor": [
+     "white"
+    ],
+    "thresh2GradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "thresh2GradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "thresholdType": [
+     "percentage"
+    ],
+    "width": [
+     "14",
+     "109"
+    ]
+   },
+   "children": [
+    "connections",
+    "threshold"
+   ]
+  },
+  {
+   "type": "changeUserPropertiesButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ChangeUserPropertiesButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "clearAlarmBannerButton",
+   "objects": 4,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#002952"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "90",
+     "72"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F3"
+    ],
+    "name": [
+     "ClearAlarmButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "80",
+     "64"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "clearAlarmHistoryButton",
+   "objects": 3,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "filteredTriggers",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "resetAlarmStatus",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "#3F3F3F"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "gray"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "3"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "45",
+     "59"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ClearAlarmHistoryButton1",
+     "ClearAlarmHistoryButton3"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "53"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "clearAuditTrailButton",
+   "objects": 1,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "60"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ClearAuditTrailButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "60"
+    ]
+   },
+   "children": [
+    "animations",
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "closeButton",
+   "objects": 76,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "closeValue",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper",
+    "writeOnClose"
+   ],
+   "values": {
+    "backColor": [
+     "#FF8080",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "black"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "3",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "26",
+     "50"
+    ],
+    "highlightColor": [
+     "lime",
+     "black"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F4",
+     "F5"
+    ],
+    "name": [
+     "CloseDisplayButton1",
+     "CloseDisplayButton2"
+    ],
+    "patternColor": [
+     "white",
+     "black"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "26",
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "connections",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "deleteUserGroupButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "DeleteUserGroupButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "diagnosticsClearAllButton",
+   "objects": 7,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#002952"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "90",
+     "72"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F2"
+    ],
+    "name": [
+     "DiagnosticsClearAllButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "80",
+     "64"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "diagnosticsClearButton",
+   "objects": 7,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#002952"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "90",
+     "72"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F1"
+    ],
+    "name": [
+     "DiagnosticsClearButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "80",
+     "64"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "diagnosticsList",
+   "objects": 7,
+   "names": [
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wrapAround"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#001C38"
+    ],
+    "borderColor": [
+     "navy",
+     "#001C38"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "line"
+    ],
+    "borderWidth": [
+     "10",
+     "1"
+    ],
+    "fontSize": [
+     "12",
+     "10"
+    ],
+    "foreColor": [
+     "white"
+    ],
+    "height": [
+     "85",
+     "68"
+    ],
+    "name": [
+     "DiagnosticsList"
+    ],
+    "selectionBackColor": [
+     "white",
+     "#CCE5FF"
+    ],
+    "selectionForeColor": [
+     "navy",
+     "black"
+    ],
+    "width": [
+     "778",
+     "623"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "disableUserButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "DisableUserButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "ellipse",
+   "objects": 496,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "yellow",
+     "black"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "#3F3F3F"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "7",
+     "10"
+    ],
+    "lineStyle": [
+     "solid",
+     "none"
+    ],
+    "lineWidth": [
+     "1",
+     "2"
+    ],
+    "name": [
+     "ROCAlarmIndicator_Ellipse",
+     "CurrentUnselectedRadio_Ellipse"
+    ],
+    "patternColor": [
+     "black"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "7",
+     "10"
+    ]
+   },
+   "children": [
+    "animations",
+    "transform"
+   ]
+  },
+  {
+   "type": "enableUserButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "EnableUserButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "endKey",
+   "objects": 20,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "#263051"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "silver",
+     "navy"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "45",
+     "25"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0",
+     "260"
+    ],
+    "name": [
+     "EndButton1",
+     "EndButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus",
+     "linkedObject"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0",
+     "260"
+    ],
+    "width": [
+     "55",
+     "25"
+    ]
+   },
+   "children": [
+    "animations",
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "enterKey",
+   "objects": 2,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#263051"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "#263051"
+    ],
+    "borderStyle": [
+     "none",
+     "line"
+    ],
+    "borderWidth": [
+     "3",
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "50",
+     "31"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "EnterButton1",
+     "EnterButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "linkedObject"
+    ],
+    "shape": [
+     "rectangle",
+     "circle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "50",
+     "32"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "freehand",
+   "objects": 206,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "#00D0D0",
+     "#A0A0A4"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "gray"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "78",
+     "21"
+    ],
+    "lineStyle": [
+     "none",
+     "solid"
+    ],
+    "lineWidth": [
+     "1"
+    ],
+    "name": [
+     "Freehand6",
+     "AlarmBell_Animated_Group"
+    ],
+    "path": [
+     "673 557 668 561 668 561 667 562 666 562 666 563 665 563 664 564 663 564 663 565 663 566 662 567 662 568 661 569 660 569 659 570 659 571 658 571 658 572 658 573 658 574 658 575 657 575 657 576 657 577 657 578 657 579 657 580 657 581 657 582 657 583 657 584 657 585 658 585 658 586 658 587 659 588 659 589 660 589 661 589 662 589 663 590 666 591 668 591 672 591 672 592 673 592 674 592 674 593 675 594 675 595 676 595 677 595 678 595 679 595 681 595 682 595 683 595 684 595 686 595 689 595 692 595 694 595 695 595 697 595 698 595 699 595 700 595 701 595 703 595 705 594 706 594 707 594 708 594 709 594 711 594 712 594 714 594 715 593 716 593 716 592 717 592 718 592 719 592 720 592 720 591 720 590 722 590 722 589 723 589 724 589 725 589 725 588 726 588 727 588 728 588 729 588 730 588 731 587 732 587 733 587 734 587 735 587 739 587 744 587 748 587 749 587 750 587 751 587 752 587 753 587 754 587 756 587 757 587 758 587 760 587 761 587 763 588 764 588 765 588 766 588 767 588 768 588 769 588 770 588 773 588 774 588 775 588 776 588 777 588 778 588 779 588 780 588 781 588 781 587 781 586 781 585 781 584 781 583 782 582 782 581 782 580 783 580 783 579 783 578 783 577 784 576 784 575 784 574 784 573 784 572 784 571 785 570 785 569 785 568 785 567 785 566 785 565 784 564 784 563 784 562 784 561 784 560 784 559 784 558 784 556 784 555 784 554 784 553 784 552 784 551 784 550 784 549 784 548 784 547 784 546 784 545 784 544 784 543 784 542 784 542 784 541 784 540 784 539 784 538 784 537 784 536 784 535 784 534 784 533 784 532 784 531 784 529 783 528 782 527 780 526 779 524 778 523 777 522 776 521 775 520 774 520 773 520 772 519 772 518 770 518 769 518 768 518 767 518 765 518 764 518 763 518 762 518 761 518 760 518 759 518 758 518 757 518 756 518 755 518 754 518 753 518 752 518 751 518 750 518 749 518 748 518 747 518 745 518 744 518 743 518 742 518 741 518 740 518 739 518 738 518 737 518 736 518 735 518 734 518 733 518 732 518 731 518 730 518 729 518 728 518 727 518 726 518 724 518 723 518 722 518 719 518 718 518 716 518 715 518 714 518 713 518 712 518 711 518 710 518 709 518 708 518 707 518 706 518 705 518 704 518 703 519 702 519 700 519 699 520 698 520 697 520 695 521 694 521 693 522 691 522 690 523 689 523 688 523 688 524 687 524 686 524 686 525 686 526 686 527 686 529 685 530 685 531 685 532 684 532 683 532 683 533 683 534 682 534 682 535 682 536 682 537 681 537 680 537 679 538 678 539 678 540 677 540 677 541 677 542 677 542 676 543 676 544 675 545 674 546 674 547 674 548 674 549 674 550 674 551 674 552 673 552 672 552 672 553 672 553",
+     "25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 54 23 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 55 22 56 22 56 22 56 22 56 22 56 22 56 22 56 22 56 22 56 22 56 22 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 56 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 21 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 57 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 58 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 59 20 60 20 60 20 60 20 60 20 60 20 60 20 60 20 60 20 60 20 60 20 60 20 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 60 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 61 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 62 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 19 63 18 63 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 64 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 65 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 18 66 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 67 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 68 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 17 69 16 69 16 69 16 69 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 70 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 71 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 16 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 17 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 18 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 19 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 20 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 21 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 22 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 72 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 23 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 73 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 24 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 25 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 74 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 26 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 73 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 27 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 28 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 29 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 30 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 31 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 32 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 33 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 34 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 72 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 71 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 35 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 70 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 34 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 69 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 33 68 32 68 32 68 32 68 32 68 32 68 32 68 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 67 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 66 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 65 32 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 64 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 63 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 62 31 61 31 61 31 61 31 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 61 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 60 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 59 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 30 58 29 58 29 58 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 57 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 29 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 56 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 28 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 55 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 27 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 26 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 25 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 24 54 23 54 23 54 23 54 23 54 23 54 23 54"
+    ],
+    "patternColor": [
+     "black",
+     "#FF8080"
+    ],
+    "patternStyle": [
+     "waves",
+     "none"
+    ],
+    "width": [
+     "129",
+     "20"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "gotoButton",
+   "objects": 706,
+   "names": [
+    "UseVariableDisplay",
+    "UseVariableDisplayPosition",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "display",
+    "displayLeftPosition",
+    "displayPosition",
+    "displayTopPosition",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "parameterFile",
+    "parameterList",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#F0F0F0"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "gray"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "4",
+     "5"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "97",
+     "41"
+    ],
+    "highlightColor": [
+     "lime",
+     "black"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "GotoDisplayButton25",
+     "GotoDisplayButton26"
+    ],
+    "parameterType": [
+     "parameterList",
+     "parameterFile"
+    ],
+    "patternColor": [
+     "white",
+     "black"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "63",
+     "214"
+    ]
+   },
+   "children": [
+    "animations",
+    "caption",
+    "connections",
+    "imageSettings",
+    "parameters"
+   ]
+  },
+  {
+   "type": "gotoConfigureModeButton",
+   "objects": 5,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "88",
+     "45"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "GotoConfigureModeButton2",
+     "GotoConfigureModeButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "132",
+     "45"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "group",
+   "objects": 3583,
+   "names": [
+    "isReferenceObject",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "name": [
+     "Group2",
+     "Group7"
+    ]
+   },
+   "children": [
+    "acknowledgeAlarmButton",
+    "acknowledgeAllAlarmsButton",
+    "activeX",
+    "animations",
+    "arc",
+    "clearAlarmHistoryButton",
+    "closeButton",
+    "ellipse",
+    "endKey",
+    "enterKey",
+    "freehand",
+    "gotoButton",
+    "group",
+    "homeKey",
+    "image",
+    "interlockedButton",
+    "languageSwitchButton",
+    "line",
+    "listIndicator",
+    "loginButton",
+    "logoutButton",
+    "macroButton",
+    "maintainedButton",
+    "momentaryButton",
+    "moveDownKey",
+    "moveLeftKey",
+    "moveRightKey",
+    "moveUpKey",
+    "multistateButton",
+    "multistateIndicator",
+    "numericDisplay",
+    "numericInputCursorPoint",
+    "numericInputEnable",
+    "panel",
+    "parameters",
+    "polyPolygon",
+    "polygon",
+    "polyline",
+    "rampButton",
+    "recipePlusSelector",
+    "recipePlusTable",
+    "rectangle",
+    "returnToButton",
+    "roundedRectangle",
+    "scale",
+    "shutdownButton",
+    "stringDisplay",
+    "stringInputEnable",
+    "text",
+    "trendNextPenButton",
+    "trendPauseButton"
+   ]
+  },
+  {
+   "type": "homeKey",
+   "objects": 16,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "#263051"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "silver",
+     "navy"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "44",
+     "25"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "HomeButton1",
+     "HomeButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus",
+     "linkedObject"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "25"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "image",
+   "objects": 265,
+   "names": [
+    "description",
+    "imageBlink",
+    "imageName",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "height": [
+     "523",
+     "50"
+    ],
+    "imageBackColor": [
+     "navy"
+    ],
+    "imageBackStyle": [
+     "solid",
+     "transparent"
+    ],
+    "imageColor": [
+     "white",
+     "black"
+    ],
+    "name": [
+     "Image1",
+     "Image3"
+    ],
+    "width": [
+     "800",
+     "59"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "informationAckButton",
+   "objects": 5,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#002952"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "90",
+     "72"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F1"
+    ],
+    "name": [
+     "InformationAckButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "80",
+     "64"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "informationMessageDisplay",
+   "objects": 5,
+   "names": [
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wordWrap"
+   ],
+   "values": {
+    "alignment": [
+     "middleCenter"
+    ],
+    "backColor": [
+     "navy",
+     "#001C38"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#001C38"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "line"
+    ],
+    "borderWidth": [
+     "10",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fontSize": [
+     "12",
+     "10"
+    ],
+    "foreColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "90",
+     "72"
+    ],
+    "name": [
+     "InformationMessageDisplay"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "632",
+     "506"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "interlockedButton",
+   "objects": 104,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "1",
+     "5"
+    ],
+    "buttonValue": [
+     "0",
+     "3"
+    ],
+    "currentStateId": [
+     "1",
+     "0"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "height": [
+     "32",
+     "65"
+    ],
+    "highlightColor": [
+     "lime",
+     "black"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "InterlockedPushButton1",
+     "InterlockedPushButton7"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "32",
+     "50"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "languageSwitchButton",
+   "objects": 101,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "language",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "41",
+     "65"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "LanguageSwitchButton1",
+     "LanguageSwitchButton3"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "60",
+     "57"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "line",
+   "objects": 2202,
+   "names": [
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "teal",
+     "#CCCCCC"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "foreColor": [
+     "silver",
+     "#3F3F3F"
+    ],
+    "height": [
+     "52",
+     "51"
+    ],
+    "line": [
+     "735 129 735 79",
+     "796 128 796 79"
+    ],
+    "lineStyle": [
+     "solid",
+     "none"
+    ],
+    "lineWidth": [
+     "2",
+     "1"
+    ],
+    "name": [
+     "Line1",
+     "Line3"
+    ],
+    "width": [
+     "2",
+     "798"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "listIndicator",
+   "objects": 4,
+   "names": [
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "white",
+     "silver"
+    ],
+    "borderColor": [
+     "navy",
+     "#A0A0A4"
+    ],
+    "borderStyle": [
+     "none",
+     "inset"
+    ],
+    "borderWidth": [
+     "8",
+     "1"
+    ],
+    "captionTruncate": [
+     "word"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "8"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "16"
+    ],
+    "name": [
+     "ProcessTypeEnabled_ListIndicator",
+     "ProcessTypeDisabled_ListIndicator"
+    ],
+    "patternColor": [
+     "white",
+     "silver"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "selectionBackColor": [
+     "white",
+     "silver"
+    ],
+    "selectionForeColor": [
+     "black",
+     "#A0A0A4"
+    ],
+    "setLastStateId": [
+     "9"
+    ],
+    "triggerType": [
+     "value"
+    ],
+    "width": [
+     "85"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "loginButton",
+   "objects": 27,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "domainName",
+    "domainNameDisable",
+    "domainNameVisible",
+    "gradientStop",
+    "hideUserNameEntry",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "touch",
+    "useVariableDomainName",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#A0A0A4",
+     "navy"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "1",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "66",
+     "70"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F8"
+    ],
+    "name": [
+     "LoginButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "118"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "logoutButton",
+   "objects": 27,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "display",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "parameterFile",
+    "parameterList",
+    "showDisplayOnLogout",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "1",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "66",
+     "70"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F9"
+    ],
+    "name": [
+     "LogoutButton2",
+     "LogoutButton1"
+    ],
+    "parameterType": [
+     "parameterFile"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "115"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "macroButton",
+   "objects": 20,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "UseVariableMacro",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "macro",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "#0088C8"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "5",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100",
+     "50"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "MacroButton3",
+     "MacroButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "106",
+     "100"
+    ]
+   },
+   "children": [
+    "animations",
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "maintainedButton",
+   "objects": 189,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "4",
+     "1"
+    ],
+    "currentStateId": [
+     "1",
+     "0"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "height": [
+     "41",
+     "66"
+    ],
+    "highlightColor": [
+     "lime",
+     "black"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "MaintainedPushButton4",
+     "MaintainedPushButton5"
+    ],
+    "nextStateBasedOn": [
+     "currentState",
+     "valueControl"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "214",
+     "55"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "modifyGroupMembershipButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ModifyGroupMembershipButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "momentaryButton",
+   "objects": 43,
+   "names": [
+    "audio",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "3",
+     "4"
+    ],
+    "buttonAction": [
+     "normallyOpen"
+    ],
+    "currentStateId": [
+     "1",
+     "0"
+    ],
+    "height": [
+     "106",
+     "100"
+    ],
+    "highlightColor": [
+     "lime",
+     "red"
+    ],
+    "holdTime": [
+     "500",
+     "250"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "MomentaryPushButton2",
+     "MomentaryPushButton1"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "106",
+     "66"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "moveDownKey",
+   "objects": 14,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "silver",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "silver",
+     "navy"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "3"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "45",
+     "50"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F4"
+    ],
+    "name": [
+     "MoveDownButton1",
+     "MoveDownButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus",
+     "linkedObject"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "50"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "moveLeftKey",
+   "objects": 15,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "200",
+     "400"
+    ],
+    "autoRepeatRate": [
+     "1",
+     "0"
+    ],
+    "backColor": [
+     "silver",
+     "#002952"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "none",
+     "line"
+    ],
+    "borderWidth": [
+     "2",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "25",
+     "90"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F6"
+    ],
+    "name": [
+     "MoveLeftButton2",
+     "MoveLeftButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "linkedObject",
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "25",
+     "80"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "moveRightKey",
+   "objects": 15,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "silver",
+     "#002952"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "none",
+     "line"
+    ],
+    "borderWidth": [
+     "2",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "25",
+     "90"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F7"
+    ],
+    "name": [
+     "MoveRightButton2",
+     "MoveRightButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "linkedObject",
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "25",
+     "80"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "moveUpKey",
+   "objects": 14,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "silver",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "silver",
+     "navy"
+    ],
+    "borderStyle": [
+     "raised",
+     "none"
+    ],
+    "borderWidth": [
+     "2",
+     "3"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "44",
+     "50"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F3"
+    ],
+    "name": [
+     "MoveUpButton1",
+     "MoveUpButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus",
+     "linkedObject"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "50"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "multistateButton",
+   "objects": 11,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "3",
+     "1"
+    ],
+    "currentStateId": [
+     "0",
+     "3"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "height": [
+     "75",
+     "86"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "MultistatePushButton1",
+     "MultistatePushButton2"
+    ],
+    "nextStateBasedOn": [
+     "currentState",
+     "valueControl"
+    ],
+    "setLastStateId": [
+     "2",
+     "3"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "65",
+     "64"
+    ]
+   },
+   "children": [
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "multistateIndicator",
+   "objects": 154,
+   "names": [
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderStyle": [
+     "inset",
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "1",
+     "2"
+    ],
+    "currentStateId": [
+     "1",
+     "0"
+    ],
+    "height": [
+     "17",
+     "18"
+    ],
+    "name": [
+     "MultistateIndicator1",
+     "MultistateIndicator4"
+    ],
+    "setLastStateId": [
+     "2",
+     "3"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "triggerType": [
+     "value",
+     "LSB"
+    ],
+    "width": [
+     "55",
+     "75"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "numericDisplay",
+   "objects": 399,
+   "names": [
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "alignment": [
+     "middleCenter",
+     "middleLeft"
+    ],
+    "backColor": [
+     "navy",
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#0000C0"
+    ],
+    "borderStyle": [
+     "none",
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "7",
+     "8"
+    ],
+    "decimalPlaces": [
+     "1",
+     "0"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillLeftWith": [
+     "none",
+     "zeroes"
+    ],
+    "fontSize": [
+     "8",
+     "10"
+    ],
+    "foreColor": [
+     "black",
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "19",
+     "18"
+    ],
+    "name": [
+     "NumericDisplay1",
+     "NumericDisplay4"
+    ],
+    "numberOfDigits": [
+     "5",
+     "3"
+    ],
+    "patternColor": [
+     "white",
+     "black"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "37",
+     "43"
+    ]
+   },
+   "children": [
+    "connections"
+   ]
+  },
+  {
+   "type": "numericInputCursorPoint",
+   "objects": 76,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "captionOnPad",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "maxValue",
+    "minValue",
+    "rampValue",
+    "strikethrough",
+    "top",
+    "touch",
+    "underline",
+    "useVariableMinMax",
+    "visible"
+   ],
+   "values": {
+    "alignment": [
+     "middleCenter",
+     "middleRight"
+    ],
+    "backColor": [
+     "#0088C8",
+     "white"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "black"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "line"
+    ],
+    "borderWidth": [
+     "6",
+     "1"
+    ],
+    "decimalPlaces": [
+     "0",
+     "2"
+    ],
+    "decimalPoint": [
+     "implicit",
+     "fixedPosition"
+    ],
+    "digitsAfterDecimalPoint": [
+     "0",
+     "1"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "enterKeyControlDelay": [
+     "400"
+    ],
+    "enterKeyHandshakeTime": [
+     "4"
+    ],
+    "enterKeyHoldTime": [
+     "250"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "fillLeftWith": [
+     "none",
+     "spaces"
+    ],
+    "fixedPosition": [
+     "stripped",
+     "displayed"
+    ],
+    "fontSize": [
+     "10",
+     "8"
+    ],
+    "foreColor": [
+     "white",
+     "black"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "handshakeReset": [
+     "nonZeroValue"
+    ],
+    "height": [
+     "55",
+     "18"
+    ],
+    "highlightColor": [
+     "lime",
+     "black"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "NumericInputCursorPoint1",
+     "CVValueEnabled_NumericInput"
+    ],
+    "numberOfDigits": [
+     "5",
+     "7"
+    ],
+    "numericPopup": [
+     "keypad"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "88",
+     "60"
+    ]
+   },
+   "children": [
+    "animations",
+    "connections"
+   ]
+  },
+  {
+   "type": "numericInputEnable",
+   "objects": 78,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "keyNavigation",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "maxValue",
+    "minValue",
+    "rampValue",
+    "takeFocusOnPress",
+    "top",
+    "touch",
+    "useVariableMinMax",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "gray",
+     "#21829E"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none",
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "1",
+     "4"
+    ],
+    "decimalPoint": [
+     "implicit",
+     "fixedPosition"
+    ],
+    "digitsAfterDecimalPoint": [
+     "0"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "enterKeyControlDelay": [
+     "400"
+    ],
+    "enterKeyHandshakeTime": [
+     "4"
+    ],
+    "enterKeyHoldTime": [
+     "250"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "fixedPosition": [
+     "displayed",
+     "stripped"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "handshakeReset": [
+     "nonZeroValue"
+    ],
+    "height": [
+     "15",
+     "35"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "NumericInputEnable4",
+     "NumericInputEnable1"
+    ],
+    "numericPopup": [
+     "keypad"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "28",
+     "30"
+    ]
+   },
+   "children": [
+    "caption",
+    "connections",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "pageDownKey",
+   "objects": 3,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "silver"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "silver"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "45",
+     "60"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "PageDownButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "60"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "pageUpKey",
+   "objects": 3,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "silver"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "silver"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "44",
+     "60"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "PageUpButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "60"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "panel",
+   "objects": 392,
+   "names": [
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "white",
+     "silver"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "gray",
+     "navy"
+    ],
+    "borderStyle": [
+     "inset",
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "1",
+     "6"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "264",
+     "73"
+    ],
+    "name": [
+     "Panel1",
+     "Panel3"
+    ],
+    "patternColor": [
+     "silver",
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "246",
+     "343"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "passwordButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "modeType": [
+     "AnyUserMode"
+    ],
+    "name": [
+     "PasswordButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "pilotedControlListSelector",
+   "objects": 1,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wrapAround",
+    "writeOnEnter"
+   ],
+   "values": {
+    "backColor": [
+     "silver"
+    ],
+    "borderColor": [
+     "silver"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "7"
+    ],
+    "captionTruncate": [
+     "word"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "enterKeyControlDelay": [
+     "400"
+    ],
+    "enterKeyHandshakeTime": [
+     "4"
+    ],
+    "enterKeyHoldTime": [
+     "250"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "8"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "handshakeReset": [
+     "nonZeroValue"
+    ],
+    "height": [
+     "185"
+    ],
+    "name": [
+     "PilotedListSelector1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "selectionBackColor": [
+     "white"
+    ],
+    "selectionForeColor": [
+     "navy"
+    ],
+    "setLastStateId": [
+     "25"
+    ],
+    "width": [
+     "360"
+    ]
+   },
+   "children": [
+    "connections",
+    "states"
+   ]
+  },
+  {
+   "type": "polygon",
+   "objects": 9955,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "teal",
+     "#999999"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "4",
+     "21"
+    ],
+    "lineStyle": [
+     "solid",
+     "none"
+    ],
+    "lineWidth": [
+     "1",
+     "3"
+    ],
+    "name": [
+     "Polygon3",
+     "Polygon95"
+    ],
+    "path": [
+     "477 462 477 463 477 465",
+     "326 174 326 188 348 188 348 191 351 191 351 171 348 171 348 174 326 174"
+    ],
+    "patternColor": [
+     "black",
+     "white"
+    ],
+    "patternStyle": [
+     "none",
+     "ovals"
+    ],
+    "width": [
+     "1",
+     "26"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "polyline",
+   "objects": 2148,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "teal",
+     "#CCCCCC"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "silver",
+     "#3F3F3F"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "2",
+     "21"
+    ],
+    "lineStyle": [
+     "solid"
+    ],
+    "lineWidth": [
+     "2",
+     "1"
+    ],
+    "name": [
+     "Line4",
+     "Line2"
+    ],
+    "path": [
+     "735 79 786 79 796 79",
+     "735 129 786 129 796 129"
+    ],
+    "patternColor": [
+     "white",
+     "#4C4C4C"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "63",
+     "26"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "polyPolygon",
+   "objects": 28,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "black",
+     "#F2BF00"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "#4C4C4C",
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "38",
+     "50"
+    ],
+    "lineStyle": [
+     "none"
+    ],
+    "lineWidth": [
+     "1"
+    ],
+    "name": [
+     "PolyPolygon1",
+     "PolyPolygon2"
+    ],
+    "patternColor": [
+     "#4C4C4C",
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "90",
+     "51"
+    ]
+   },
+   "children": [
+    "innerPolygon"
+   ]
+  },
+  {
+   "type": "rampButton",
+   "objects": 22,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "limitValue",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "rampValue",
+    "top",
+    "touch",
+    "useVariableLimit",
+    "useVariableRamp",
+    "visible"
+   ],
+   "values": {
+    "autoRepeatDelay": [
+     "400"
+    ],
+    "autoRepeatRate": [
+     "0"
+    ],
+    "backColor": [
+     "navy",
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "#0088C8",
+     "silver"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "raised"
+    ],
+    "borderWidth": [
+     "6",
+     "1"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "28",
+     "15"
+    ],
+    "highlightColor": [
+     "lime",
+     "#3F3F3F"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "RampButton1",
+     "RampButton2"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "rampType": [
+     "up",
+     "down"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "26",
+     "15"
+    ]
+   },
+   "children": [
+    "caption",
+    "connections",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "recipePlusButton",
+   "objects": 7,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "action": [
+     "download",
+     "upload"
+    ],
+    "backColor": [
+     "#263051"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "#3F3F3F"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "32"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "RecipePlusButton1",
+     "RecipePlusButton5"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "106",
+     "75"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "recipePlusSelector",
+   "objects": 1,
+   "names": [
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "displayHeader",
+    "fontFamily",
+    "gradientStop",
+    "headerTextRecipe",
+    "headerTextUnit",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wordWrap",
+    "wrapAround"
+   ],
+   "values": {
+    "backColor": [
+     "#9DAEC4"
+    ],
+    "borderColor": [
+     "#263051"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "9"
+    ],
+    "foreColor": [
+     "black"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "headerBackColor": [
+     "#263051"
+    ],
+    "headerForeColor": [
+     "#F0F000"
+    ],
+    "height": [
+     "98"
+    ],
+    "linesPerItem": [
+     "1"
+    ],
+    "name": [
+     "RecipePlusSelector2"
+    ],
+    "selectionBackColor": [
+     "#FDFEE0"
+    ],
+    "selectionForeColor": [
+     "black"
+    ],
+    "width": [
+     "238"
+    ],
+    "widthRecipe": [
+     "92"
+    ],
+    "widthUnit": [
+     "200"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "recipePlusTable",
+   "objects": 1,
+   "names": [
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "displayCompareStatus",
+    "displayCurrentValue",
+    "displayFooter",
+    "displayHeader",
+    "displayIngredientName",
+    "displayRecipeValue",
+    "displayTagName",
+    "fontFamily",
+    "gradientStop",
+    "headerTextCompareStatus",
+    "headerTextCurrentValue",
+    "headerTextIngredientName",
+    "headerTextRecipeValue",
+    "headerTextTagName",
+    "isReferenceObject",
+    "italic",
+    "keyNavigation",
+    "left",
+    "strikethrough",
+    "top",
+    "underline",
+    "viewOnly",
+    "visible",
+    "wordWrap",
+    "wrapAround"
+   ],
+   "values": {
+    "backColor": [
+     "#9DAEC4"
+    ],
+    "borderColor": [
+     "#3F3F3F"
+    ],
+    "borderStyle": [
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fillStyle": [
+     "solid"
+    ],
+    "fontSize": [
+     "10"
+    ],
+    "footerBackColor": [
+     "#263051"
+    ],
+    "footerForeColor": [
+     "#F0F000"
+    ],
+    "foreColor": [
+     "black"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "gridColor": [
+     "black"
+    ],
+    "headerBackColor": [
+     "#263051"
+    ],
+    "headerForeColor": [
+     "#F0F000"
+    ],
+    "height": [
+     "158"
+    ],
+    "linesPerItem": [
+     "1"
+    ],
+    "name": [
+     "RecipePlusTable3"
+    ],
+    "selectionBackColor": [
+     "#FDFEE0"
+    ],
+    "selectionForeColor": [
+     "black"
+    ],
+    "width": [
+     "401"
+    ],
+    "widthCompareStatus": [
+     "50"
+    ],
+    "widthCurrentValue": [
+     "80"
+    ],
+    "widthIngredientName": [
+     "120"
+    ],
+    "widthRecipeValue": [
+     "80"
+    ],
+    "widthTagName": [
+     "200"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "rectangle",
+   "objects": 2886,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "blue",
+     "#408080"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "#C0C000"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "380",
+     "32"
+    ],
+    "lineStyle": [
+     "solid",
+     "none"
+    ],
+    "lineWidth": [
+     "3",
+     "1"
+    ],
+    "name": [
+     "Polygon1",
+     "Polygon2"
+    ],
+    "patternColor": [
+     "black",
+     "white"
+    ],
+    "patternStyle": [
+     "none",
+     "wideLDiagonal"
+    ],
+    "width": [
+     "670",
+     "55"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "returnToButton",
+   "objects": 8,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "navy"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "66"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ReturntoDisplayButton1",
+     "ReturntoDisplayButton3"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "roundedRectangle",
+   "objects": 10,
+   "names": [
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "gray",
+     "#A0A0A4"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "black",
+     "#A0A0A4"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "104",
+     "85"
+    ],
+    "lineStyle": [
+     "solid"
+    ],
+    "lineWidth": [
+     "1"
+    ],
+    "name": [
+     "RoundedRectangle6",
+     "RoundedRectangle7"
+    ],
+    "patternColor": [
+     "black",
+     "#A0A0A4"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "roundingHeight": [
+     "0"
+    ],
+    "roundingWidth": [
+     "0"
+    ],
+    "width": [
+     "5",
+     "6"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "scale",
+   "objects": 82,
+   "names": [
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "navy",
+     "black"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "black"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "1",
+     "2"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "foreColor": [
+     "navy",
+     "black"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "8",
+     "45"
+    ],
+    "lineStyle": [
+     "solid"
+    ],
+    "lineWidth": [
+     "1"
+    ],
+    "majorTicks": [
+     "3",
+     "10"
+    ],
+    "minorTicks": [
+     "1",
+     "5"
+    ],
+    "name": [
+     "Scale2",
+     "Scale3"
+    ],
+    "tickDirection": [
+     "up",
+     "right"
+    ],
+    "width": [
+     "55",
+     "16"
+    ]
+   },
+   "children": []
+  },
+  {
+   "type": "shutdownButton",
+   "objects": 8,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#002952",
+     "navy"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "#002952",
+     "navy"
+    ],
+    "borderStyle": [
+     "line",
+     "none"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "62",
+     "70"
+    ],
+    "highlightColor": [
+     "#0078D7",
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "ShutdownButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "125",
+     "77"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "silenceAlarmsButton",
+   "objects": 6,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "navy"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "#002952"
+    ],
+    "borderStyle": [
+     "raised",
+     "line"
+    ],
+    "borderWidth": [
+     "2",
+     "5"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "44",
+     "90"
+    ],
+    "highlightColor": [
+     "lime",
+     "#0078D7"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "keyAssignment": [
+     "F2"
+    ],
+    "name": [
+     "SilenceAlarmsButton2",
+     "SilenceAlarmsButton"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "55",
+     "80"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "stringDisplay",
+   "objects": 141,
+   "names": [
+    "blink",
+    "bold",
+    "borderUsesBackColor",
+    "description",
+    "fontFamily",
+    "gradientStop",
+    "isReferenceObject",
+    "italic",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wordWrap"
+   ],
+   "values": {
+    "alignment": [
+     "topLeft",
+     "middleLeft"
+    ],
+    "backColor": [
+     "navy",
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy",
+     "silver"
+    ],
+    "borderStyle": [
+     "none",
+     "raisedInset"
+    ],
+    "borderWidth": [
+     "10",
+     "8"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "fontSize": [
+     "9",
+     "10"
+    ],
+    "foreColor": [
+     "gray",
+     "black"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "20",
+     "36"
+    ],
+    "name": [
+     "StringDisplay4",
+     "StringDisplay13"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "width": [
+     "93",
+     "461"
+    ]
+   },
+   "children": [
+    "connections"
+   ]
+  },
+  {
+   "type": "stringInputEnable",
+   "objects": 107,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "captionOnBorder",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "keyNavigation",
+    "left",
+    "maskScratchpad",
+    "takeFocusOnPress",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#0080C0",
+     "#FF8000"
+    ],
+    "backStyle": [
+     "solid",
+     "transparent"
+    ],
+    "borderColor": [
+     "navy",
+     "#A0A0A4"
+    ],
+    "borderStyle": [
+     "raisedInset",
+     "raised"
+    ],
+    "borderWidth": [
+     "7",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "enterKeyControlDelay": [
+     "400"
+    ],
+    "enterKeyHandshakeTime": [
+     "4"
+    ],
+    "enterKeyHoldTime": [
+     "250"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "fillCharacter": [
+     "null"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "handshakeReset": [
+     "nonZeroValue"
+    ],
+    "height": [
+     "38",
+     "25"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "StringInputEnable2",
+     "StringInputEnable3"
+    ],
+    "numberOfInputCharacters": [
+     "82",
+     "24"
+    ],
+    "patternColor": [
+     "white",
+     "black"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "stringPopup": [
+     "keyboard"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "394",
+     "319"
+    ]
+   },
+   "children": [
+    "animations",
+    "caption",
+    "connections",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "text",
+   "objects": 1463,
+   "names": [
+    "bold",
+    "caption",
+    "fontFamily",
+    "isReferenceObject",
+    "italic",
+    "left",
+    "linkAnimations",
+    "linkBaseObject",
+    "linkConnections",
+    "linkSize",
+    "sizeToFit",
+    "strikethrough",
+    "top",
+    "underline",
+    "visible",
+    "wallpaper",
+    "wordWrap"
+   ],
+   "values": {
+    "alignment": [
+     "middleCenter",
+     "middleLeft"
+    ],
+    "backColor": [
+     "#637E9C",
+     "white"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "charHeight": [
+     "12",
+     "15"
+    ],
+    "charWidth": [
+     "6",
+     "4"
+    ],
+    "fontSize": [
+     "18",
+     "8"
+    ],
+    "foreColor": [
+     "white",
+     "#3F3F3F"
+    ],
+    "height": [
+     "30",
+     "15"
+    ],
+    "name": [
+     "Text11",
+     "Text5"
+    ],
+    "width": [
+     "670",
+     "59"
+    ]
+   },
+   "children": [
+    "animations"
+   ]
+  },
+  {
+   "type": "trendNextPenButton",
+   "objects": 1,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "#0088C8"
+    ],
+    "backStyle": [
+     "transparent"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "68"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "NextPenButton3"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "60"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "trendPauseButton",
+   "objects": 12,
+   "names": [
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "linkedObject",
+    "top",
+    "touch",
+    "visible"
+   ],
+   "values": {
+    "backColor": [
+     "silver",
+     "#0088C8"
+    ],
+    "backStyle": [
+     "transparent",
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "none",
+     "raised"
+    ],
+    "borderWidth": [
+     "2",
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "25",
+     "40"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "PausePenButton2",
+     "PausePenButton1"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "sendPressTo": [
+     "linkedObject",
+     "objectWithFocus"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "25",
+     "60"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  },
+  {
+   "type": "unlockUserButton",
+   "objects": 2,
+   "names": [
+    "AllowBlankComment",
+    "AuthorizedGroup",
+    "ESDomainName",
+    "ESDomainNameDisable",
+    "ESDomainNameVisible",
+    "RequireCounterSignature",
+    "RequireElectronicSignature",
+    "RequireReAuthentication",
+    "VariableDomainName",
+    "audio",
+    "blink",
+    "borderUsesBackColor",
+    "description",
+    "gradientStop",
+    "isReferenceObject",
+    "left",
+    "top",
+    "touch",
+    "visible",
+    "wallpaper"
+   ],
+   "values": {
+    "backColor": [
+     "#E0E0E0"
+    ],
+    "backStyle": [
+     "solid"
+    ],
+    "borderColor": [
+     "navy"
+    ],
+    "borderStyle": [
+     "raised"
+    ],
+    "borderWidth": [
+     "4"
+    ],
+    "endColor": [
+     "white"
+    ],
+    "ESDomainNameType": [
+     "ESDomainNameConstant"
+    ],
+    "gradientDirection": [
+     "gradientDirectionHorizontal"
+    ],
+    "gradientShadingStyle": [
+     "gradientHorizontalFromRight"
+    ],
+    "height": [
+     "100"
+    ],
+    "highlightColor": [
+     "lime"
+    ],
+    "horizontalMargin": [
+     "0"
+    ],
+    "name": [
+     "UnlockUserButton3"
+    ],
+    "patternColor": [
+     "white"
+    ],
+    "patternStyle": [
+     "none"
+    ],
+    "shape": [
+     "rectangle"
+    ],
+    "verticalMargin": [
+     "0"
+    ],
+    "width": [
+     "100"
+    ]
+   },
+   "children": [
+    "caption",
+    "imageSettings"
+   ]
+  }
+ ]
+}

@@ -17,7 +17,7 @@ A staged edit is written to a NEW export folder; the source is never modified. T
 a manual import; it does not drive Studio, contact a terminal, or decode MER/MED databases.
 
 Both export shapes are read: the Studio ME export (`<gfx>` displays and `Tags/*.csv`) and the older
-`<display>`-root files. Staged changes are re-parsed and checked against the installed `Gfx-ME*.xsd`.
+`<display>`-root files.
 
 ## Backups
 
@@ -53,8 +53,7 @@ is ever written to `<workspace>/_backups`.
 - `ftview_design_check` runs the design rules over the opened export: touch targets under 44 px,
   captionless controls, text contrast, a display nothing navigates to, a display an operator cannot
   leave, and a display whose canvas differs from the rest. `ftview_theme_audit` measures how much of
-  the house palette each display already uses. `docs/reference/hmi-design.md` carries the shared
-  screen grammar and names the corpus page behind every rule. These checks cover the computable part of
+  the house palette each display already uses. These checks cover the computable part of
   the product-neutral baseline: read `hmi-isa101-baseline` and `hmi-screen-architecture` before
   authoring, `hmi-rockwell-process-style-guide` for the vendor layer a FactoryTalk/PlantPAx plant starts
   from, and `hmi-standards-precedence` when the plant's own theme or an operator instruction overrides
@@ -76,7 +75,7 @@ unavailable, say editing is not enabled here rather than trying another tool.
 - `ftview_apply` writes a NEW export folder plus `Displays/BatchImport_<app>.xml` and `IMPORT.md`, the
   display list Studio's Batch Import expects. It never modifies the source.
 - `ftview_render` draws one display or up to eight (`displays_json`) to SVG and PNG: look before importing. `problems` flags clipped objects.
-  Pass `source: "draft"` to see staged edits before `ftview_apply`.
+  Pass `source: "draft"` to see staged edits first.
 - `ftview_studio_import_prepare` packages chosen displays for Studio's Graphics Import Export Wizard;
   put **every** display the task changes in one package so the human imports once, not once per screen.
 
@@ -92,7 +91,7 @@ Start from the installed application:
    - `ftview_draft_display_scaffold` for a new screen: chrome plus `slots` rectangles to place into;
    - `ftview_draft_screen` for a whole screen in one call: the scaffold plus up to four cards of
      label/value or label/lamp rows and up to four navigation buttons, positioned on those slots;
-- `ftview_draft_popup` for a modal popup: title, message (`\n` breaks a line), 1-3 buttons;
+    - `ftview_draft_popup` for a modal popup: title, message (`\n` breaks a line), 1-3 buttons;
    - `ftview_draft_display_create` for a new display;
    - `ftview_draft_object_add` for one object (`text`, `panel`, `momentaryButton`, `numericDisplay`,
      `gotoButton`, …) with `states_json` faces, `animations_json` and connections;
@@ -107,17 +106,21 @@ Start from the installed application:
 
 Read the contract instead of guessing:
 
-1. `ftview_object_types all="true"` returns the 34 drawable types, a per-type `guide` (required
-   attributes, children, one note) and what this export uses.
-2. `ftview_object_types type="momentaryButton"` returns the attributes this project actually writes on
-   that type, with usage counts and example values. Copy those names and values.
-3. `ftview_draft_object_add` refuses a type outside the contract and fills `left`, `top`, `width`,
-   `height` when omitted. One object per call.
+1. `ftview_object_types all="true"` returns the element names the installed schema declares, a
+   per-type `guide` (required attributes, children, one note) and what this export uses.
+2. `ftview_object_types type="momentaryButton"` returns what the schema declares for it:
+   its attributes with the values allowed, its child elements, and how many this export has.
+3. `ftview_draft_object_add` refuses an element the schema does not declare, and refuses attributes,
+   enum values or children it does not declare for it. `left`, `top`, `width`, `height`
+   are filled when omitted. One object per call.
 
 Rules the guide encodes:
 
-- A button's face is `<states><state><caption>`; colours and captions live there, not in a bare
-  `caption` attribute.
+- A stateful control's face is `<states><state>`, and what a face holds is per control: a `symbol` takes
+  `<imageSettings>` and no caption, a `listIndicator` caption no font. `text` carries its words in the
+  `caption` attribute instead, and `type=X` lists the children and values.
+- A part the schema requires — `polyPolygon`'s `<innerPolygon>` — goes in `children_json`, named by
+  `required_children`.
 - Values come from `<connections><connection name="Value" expression="Tag"/>`; a `gotoButton` needs
   `display`, and an `image` takes the file stem with no extension (`Equilateral triangle`, not `.bmp`).
 

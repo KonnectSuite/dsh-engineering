@@ -10,7 +10,7 @@
  * @module dsh-engineering-ftview/design
  */
 
-import { BUTTON_TYPES } from './catalog.ts'
+import { isPressTarget } from './catalog.ts'
 import type { Finding } from './checks.ts'
 import type { Application, DisplayFile } from './model.ts'
 
@@ -91,7 +91,7 @@ export function designFindings(app: Application): Finding[] {
         const target = attributes.display?.trim()
         if (target !== undefined && target !== '') targets.add(target)
       }
-      if (!BUTTON_TYPES.has(object.type)) continue
+      if (!isPressTarget(object.type)) continue
       const touch = attributes.touch !== 'false'
       const width = numberAttribute(attributes.width)
       const height = numberAttribute(attributes.height)

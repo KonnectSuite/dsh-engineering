@@ -4,7 +4,7 @@
 
 The engineering bundle registers **167 tools** for L5X and Migration and PLC-5 and RSLogix 500 and Engineering resources and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 167 definitions total **149467 characters** of model-visible JSON — name, description and
+Those 167 definitions total **150669 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -1167,13 +1167,13 @@ Compare two opened exports: displays added or removed, tags added or removed, ta
 
 #### `ftview_object_types`
 
-Catalog the object types the export uses, with each type’s attributes, how often they occur and example values. Read-only; the answer agents need before authoring an object.
+Catalog the object types the schema declares and the export uses, with each type’s attributes, enumerated values, allowed child elements and how often they occur. Read-only; the answer agents need before authoring an object.
 
 | Parameter | Type | Required | Meaning |
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
-| `type` | string | no | Optional exact element type, e.g. "momentaryButton", to list its attributes. |
-| `all` | string | no | Pass "true" to list every element type drafting accepts, including ones this export does not use. |
+| `type` | string | no | Optional exact element type, e.g. "momentaryButton", to list the attributes and children the schema declares for it. |
+| `all` | string | no | Pass "true" to list every element type the installed schema declares for a display, including ones this export does not use. |
 | `limit` | integer | no | Most types to return. Defaults to 20. |
 
 #### `ftview_design_check`
@@ -1458,13 +1458,14 @@ Stage one new object inside a display: geometry, attributes and tag connections.
 |---|---|---|---|
 | `view_id` | string | no | View handle returned by ftview_open. Omit when exactly one export is open in this chat. |
 | `display` | string | yes | Display name as listed by ftview_list. |
-| `type` | string | yes | Object element type as the export writes it, e.g. "momentaryButton", "text", "panel", "numericDisplay", "gotoButton". |
+| `type` | string | yes | Object element type as the schema declares it, e.g. "momentaryButton", "maintainedButton", "text", "panel", "numericDisplay", "gotoButton". ftview_object_types with all="true" lists the element names the installed schema declares. |
 | `name` | string | yes | New object name, unique inside the display. |
 | `attributes_json` | string | no | Object attributes as a JSON object, e.g. {"height":"50","width":"120","left":"20","top":"40"}. |
-| `caption` | string | no | Optional caption text; on buttons and indicators it becomes the face caption inside states. |
-| `states_json` | string | no | Optional button or indicator faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. Buttons accept 0, 1, Error; multistateIndicator accepts numbered stateId with value. |
+| `caption` | string | no | Optional caption text. The schema decides where it lands: inside the <caption> child of a <states> face for a stateful control, as a <caption> child for the caption-child family (gotoButton, closeButton, macroButton, the keypad objects), or as the caption attribute for text. Refused when the element declares no caption mechanism — including a symbol, whose faces carry an <imageSettings> and no caption. |
+| `states_json` | string | no | Optional state faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. The schema bounds the ids: push buttons take 0, 1 or Error; interlockedButton and the list and control selectors have no Error face; multistateButton reaches 254; symbol and multistateIndicator reach 1999. |
 | `animations_json` | string | no | Optional animations as JSON, e.g. {"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}. |
 | `connections_json` | string | no | Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}. |
+| `children_json` | string | no | Optional declared parts as a JSON object keyed by child element name, each value an attribute object or an array of them when the schema allows repeats, e.g. {"innerPolygon":[{"polygon":"0,0 100,0 100,100"}]} or {"threshold":{"level":"80","action":"Block"}}. Use it for content the schema requires but the tool does not manage: a polyPolygon needs an <innerPolygon>, a gauge carries <threshold> rows. ftview_object_types with type="…" lists the children and which are required. |
 | `parent` | string | no | Optional group name to add inside. Omit to add at the display root. |
 | `index` | integer | no | Optional position among siblings, for z-order. |
 | `profile_id` | string | no | Optional house-style profile from engineering_profile; its button geometry and font are used when the attributes omit them. |

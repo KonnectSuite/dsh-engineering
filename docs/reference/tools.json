@@ -393,7 +393,7 @@
         "ftview_apps",
         "ftview_export"
       ],
-      "contextChars": 17559
+      "contextChars": 17677
     },
     {
       "product": "FactoryTalk View",
@@ -425,7 +425,7 @@
         "ftview_apply",
         "ftview_render"
       ],
-      "contextChars": 24009
+      "contextChars": 25093
     },
     {
       "product": "FactoryTalk View",
@@ -499,14 +499,14 @@
     }
   ],
   "context": {
-    "characters": 149467,
+    "characters": 150669,
     "byProduct": {
       "L5X": 55453,
       "Migration": 10825,
       "PLC-5": 10922,
       "RSLogix 500": 6761,
       "Engineering resources": 1474,
-      "FactoryTalk View": 45544,
+      "FactoryTalk View": 46746,
       "MotionWorks IEC": 18488
     }
   }

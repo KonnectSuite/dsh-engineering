@@ -1,5 +1,120 @@
 ## [Unreleased]
 
+### Fixed
+
+- **FactoryTalk View ME drafts now speak the schema the host actually has.** The drafting contract was a
+  hand-kept list of 34 element names. Eight of them — `globalObject`, `listSelector`, `maintainButton`,
+  `numericInput`, `recipe`, `referenceObject`, `stringInput`, `trend` — are declared by no ME schema
+  (`numericInput`, `recipe` and `stringInput` are Studio SE vocabulary; the other five exist in no schema
+  at all), and 65 element types the vendor really ships were refused, 18 of them used by Rockwell's own
+  demo applications (`closeButton` 29 times in the shipped demos, `maintainedButton` 14, `macroButton` 13).
+  The vocabulary is now resolved at run time from the host's installed `Gfx-ME*.xsd` — 91 display object
+  types on this host — and falls back to a committed snapshot on a machine without Studio, so reads and
+  drafts work either way. `packages/ftview/src/xsd.ts` is the resolver: it takes the display vocabulary
+  from the root element's inline complexType, merges base chains, attribute groups and global attribute
+  references (the `use="required"` written on a ref is the only way `activeX`'s `classId` becomes
+  mandatory), descends nested containers, and reads enumerated values, numeric bounds **and pattern
+  facets** — the vendor's `colorType` is a union of a `#rrggbb` pattern and 147 named colours, and a
+  resolver that read only the enumeration refused every hex colour written in a Rockwell-authored display.
+- **The draft path refused nothing until the whole display was built.** `ftview_draft_object_add` accepted
+  an attribute the schema does not declare for that element and a value outside its enumeration, and the
+  vendor gate at `ftview_validate`/`ftview_apply` then refused the document after the draft existed. Both
+  `ftview_draft_object_add` and `ftview_draft_object_set` now check the object against the schema at the
+  call that makes the mistake: an element the schema does not declare is refused, with the real ME
+  counterpart named for the eight invented names (`maintainedButton`, `numericInputEnable`,
+  `stringInputEnable`, `displayListSelector`, `recipePlusTable`, and for `referenceObject` the
+  `isReferenceObject`/`linkBaseObject` attribute pair), and an attribute, enum value, pattern or child
+  element that element does not declare is refused with the values the schema offers. A required
+  attribute is reported to a caller that asks for the whole set rather than blocking a partial object the
+  engineer means to finish, and a legacy `<display>` export keeps its own shape as the contract.
+- **The caption shape and the state-face domains were guessed, not read.** 48 types carry a `<caption>`
+  child and declare no caption attribute — the hand-kept list held 12 of them, so the other 36 would have
+  been written with an attribute their own schema rejects; `text` and `numericDisplay` are the opposite
+  family and were claimed to take a `<caption>` child; `gotoButton` and `rampButton` were claimed to take
+  `<states>`. State faces were capped at three with ids `0|1|Error` for every type: `multistateButton`
+  allows 254 faces, `symbol` and `multistateIndicator` 1999, and `interlockedButton` and the list and
+  control selectors allow **no** `Error` face, which the writer used to emit. Both are now taken from the
+  schema per family.
+- **`ftview_object_types` counted parts as objects.** Its `used_types` reported `caption`, `state` and
+  `animations` among the object types in an export, because it counted child elements. Parts are filtered
+  out, and the count is now the objects that occur.
+- **A drafted display was tagged for a Studio release the host may not have.** The display document was
+  written with `Gfx-ME17.xsd` hardcoded; the Add Component Tool resolves that name against its own
+  release, so a display tagged for a version the host never installed imports as an empty display. The
+  tag now follows the schema the vocabulary resolved, and an opened export's own version wins.
+- **The state faces were one control's shape forced on every control.** The writer built every `<state>`
+  the way a push button writes one — the colours on the face, plus a caption child with a font set, an
+  alignment of `middleCenter` and `wordWrap` — and the installed editor refused it. On a draft of all 91
+  object types Studio reported 142 schema errors, and 141 of them sat on the six types whose faces are not
+  push-button faces: `controlListSelector`, `displayListSelector`, `listIndicator` and
+  `pilotedControlListSelector` at 33 each (three faces × eleven attributes) and `symbol` at 9. The schema
+  says otherwise: `listIndicatorStateType` declares `value` and `stateId` alone, and its caption child
+  takes the words and colours with an alignment of `left|center|right` and no font at all;
+  `symbolIndicatorStateType` declares `value`, `borderColor` and `stateId` with an `<imageSettings>` child
+  and no caption, which is why a caption there answered `The element 'state' has invalid child element
+  'caption'. List of possible elements expected: 'imageSettings'.` Faces are now written field by field
+  where that control declares the field, Rockwell's defaults applied only where declared, a field with no
+  home left out for Studio to fill, and a caption asked of a control whose faces carry none refused at the
+  call that stages it rather than on import. Children are also emitted in the order the schema declares
+  them — the writer used to put `<connections>` before `<animations>`.
+- **`polyPolygon` could not be drafted at all.** `basicPolyPolygonDrawingObjectType` requires an
+  `<innerPolygon>` child (`Gfx-ME16.xsd:2824`, `minOccurs="1"`), and the tool had no way to write a child
+  that was not a caption, a state or a connection, so every attempt came back `The element 'polyPolygon'
+  has incomplete content. List of possible elements expected: 'innerPolygon'.` `ftview_draft_object_add`
+  now takes `children_json` — declared parts keyed by child element name, an array where the schema allows
+  repeats — the writer emits them in the declared order, and `ftview_object_types` with `type=` reports
+  `required_children`, so the requirement is visible before the attempt rather than after the refusal.
+- **`group` was refused as "part of a display, not an object type".** It is declared by the schema
+  (`groupType`) and is the most-used object in Rockwell's own demos at 465 occurrences, and the tool's own
+  `parent` parameter already lets a caller add objects inside one; the reserved-element list that predated
+  the schema contract still blocked it, so a drafted panel frame was impossible to author.
+- **A repeated part was written once, and only the last one.** `packages/ftview/src/edit/operations.ts`
+  kept the rendered parts in a `Map` keyed by element name, so a `polyPolygon` with two `<innerPolygon>`
+  children — the only shape ME accepts, `minOccurs` 2 in practice — rendered the second row and dropped the
+  first. The draft passed its own `engine-constraint:innerPolygon` check and the schema validation, because
+  both read the draft; only the vendor refused the file, `A polyPolygon must contain at least 2
+  innerPolygons.` The map now holds a list per element, every part is appended in the caller's order, and a
+  regression test authors the two-row polygon and asserts both rows and their order in the rendered XML.
+  Measured end to end: the display that failed the import for three rounds imported on the first attempt
+  once the second row was written.
+- **The import could not be verified in the order the tools asked for it.** `ftview_apply` deleted the
+  edit draft it had just written, while its own next step and the generated `IMPORT.md` both say to run
+  `ftview_verify_import` afterwards — which needs that draft as the only comparison basis, so it answered
+  `NO_DRAFT` on every honest attempt. The draft is now kept and stamped with the folder it was written to
+  (`appliedTo`), a new draft starts on the next authoring call in the same view, `get()` prefers the live
+  draft and falls back to the applied one, `ftview_apply` refuses to write an applied draft twice
+  (`DRAFT_ALREADY_APPLIED`), and `ftview_verify_import` resolves the applied draft when the caller omits
+  `draft_id`. Measured on a real ME install: import, then verify, reports `0 staged object(s) missing` for
+  the authored display.
+
+### Changed
+
+- **`ftview_object_types` reports the contract, not the export.** `all="true"` returns the element names
+  the schema declares together with the schema it read; `type=<name>` returns that element's attributes
+  with their allowed values, defaults and required flags, its child elements, and the craft notes for it —
+  even when this export contains none of that type. `packages/ftview/src/catalog.ts` is now the craft
+  layer over the schema rather than the source of the vocabulary.
+- **The vocabulary snapshot is shipped and generated.** It moved to `packages/ftview/schema/me-schema.json`
+  so the packager ships it (it was previously generated into `src/`, unused by any code), and
+  `pnpm schema:ftview` regenerates it from the newest installed schema, recording the source file, its
+  bytes and its sha256.
+- **A new gate spec, replayed against the vendor's own writing.** `test/ftview-vocabulary.spec.mjs` (in
+  the bundle suite) checks the resolver against a fixture XSD that exercises the four shapes the old
+  generator missed, checks the committed snapshot declares the names the demos use and none of the eight
+  invented ones, checks a host with no Studio still drafts against the fallback, and replays the 2,555
+  attribute pairs and child sets harvested from 125 Rockwell-authored display files — the Displays folder
+  of every installed ME demo as `ftview_export` wrote it — expecting no finding, so the draft-time check
+  cannot refuse content the vendor software itself writes.
+- **The ME knowledge collection now answers what the editor rewrites on import.** Authoring a display and
+  re-exporting it does not return the document that was written: object geometry is a percentage of the
+  object's own box on the way in and absolute pixels inset by one on the way out, a `<line>` is a box whose
+  pen width is normalised to the box's short side, `fontSize` is write-only (`charHeight`/`charWidth` come
+  back recomputed), and a panel's `cornerRadius` is dropped although the schema declares it.
+  `pages/editor-rewrites.md` records each measurement with the pair of values that produced it, so a
+  comparison that reports an object as "changed" can be read for what it is. The handoff page also records
+  the measured Add Component Tool behaviour: the process can return exit code 0 before it writes
+  `$AddComponent.txt`, so the log is awaited rather than read the instant the process exits.
+
 ## 0.104.0 — 2026-11-23
 
 ### Added

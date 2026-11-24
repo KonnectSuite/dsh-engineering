@@ -78,6 +78,7 @@
   "scripts": {
     "test": "node scripts/test.mjs",
     "docs:tools": "tsx scripts/gen-tool-reference.ts",
+    "schema:ftview": "tsx scripts/sync-ftview-schema.ts",
     "docs:check": "tsx scripts/gen-tool-reference.ts --check && tsx scripts/gen-print-css.mts --check",
     "docs:figures": "node scripts/gen-doc-figures.mjs",
     "netlogic:sync": "node scripts/sync-netlogic.mjs",

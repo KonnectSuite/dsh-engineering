@@ -164,12 +164,31 @@ describe('authoring', { timeout: 30_000 }, () => {
     expect(written.indexOf('name="Second"')).toBeLessThan(written.indexOf('name="Title"'))
   })
 
-  it('refuses to apply a document the vendor schema rejects', async () => {
+  it('refuses an attribute the schema does not declare for that element, before staging it', async () => {
     const { l5x, view } = await opened()
-    await l5x.call('ftview_draft_object_add', {
+    const staged = await l5x.call('ftview_draft_object_add', {
       view_id: view, display: 'Main Screen', type: 'text', name: 'Bad',
       attributes_json: JSON.stringify({ height: '20', width: '100', left: '0', top: '0', notARealAttribute: 'x' }),
     })
+    expect(staged.error?.code).toBe('SCHEMA_VOCABULARY_MISMATCH')
+    expect(String(staged.error?.message)).toContain('notARealAttribute')
+    // Nothing was staged, so there is no draft to apply and nothing to write.
+    const applied = await l5x.call('ftview_apply', { output_root: 'out' })
+    expect(applied.error?.code).toBe('NO_DRAFT')
+    expect(l5x.written.size).toBe(0)
+  })
+
+  it('refuses to apply a document the vendor schema rejects', async () => {
+    const { l5x, view } = await opened()
+    // classId is the one attribute the schema makes mandatory on a display
+    // object. The draft-time check deliberately does not block on a missing
+    // attribute — an export may carry a partial object the engineer means to
+    // finish — so the vendor gate at apply is what stops this one.
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'activeX', name: 'NoClass',
+      attributes_json: JSON.stringify({ height: '20', width: '100', left: '0', top: '0' }),
+    })
+    expect(staged.error).toBeUndefined()
     const validated = await l5x.call('ftview_validate', {})
     const schema = schemaOutcome(validated)
     const applied = await l5x.call('ftview_apply', { output_root: 'out' })
@@ -221,5 +240,29 @@ describe('apply overwrite', { timeout: 30_000 }, () => {
     const tracked = session.appliedAt('C:/Projects/Out')
     expect(tracked?.has('IMPORT.md')).toBe(true)
     expect(tracked?.size).toBe(2)
+  })
+
+  // Apply used to delete the draft, so `ftview_verify_import` — whose whole job is
+  // comparing that draft with a fresh export after the vendor import — could never
+  // run in the order apply recommends. The draft stays, marked with the folder it
+  // wrote, and authoring after an apply starts a new draft instead of appending.
+  it('keeps the applied draft so the import proof can still be made from it', async () => {
+    const { l5x, view } = await opened()
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'text', name: 'ProofObject',
+      attributes_json: JSON.stringify({ height: '24', width: '200', left: '20', top: '180' }),
+    })
+    expect(staged.error).toBeUndefined()
+    const applied = await l5x.call('ftview_apply', { draft_id: staged.data?.draft_id, output_root: 'out' })
+    expect(applied.error).toBeUndefined()
+    const kept = await l5x.call('ftview_draft_ops', { draft_id: staged.data?.draft_id })
+    expect(kept.error).toBeUndefined()
+    expect(kept.data?.operations).toHaveLength(1)
+    const later = await l5x.call('ftview_draft_object_add', {
+      view_id: view, display: 'Main Screen', type: 'text', name: 'AfterApply',
+      attributes_json: JSON.stringify({ height: '24', width: '200', left: '20', top: '210' }),
+    })
+    expect(later.error).toBeUndefined()
+    expect(later.data?.draft_id).not.toBe(staged.data?.draft_id)
   })
 })

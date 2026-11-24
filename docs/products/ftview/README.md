@@ -58,7 +58,7 @@ Start from an installed application when there is one, otherwise from an export 
 | 2. Export it | `ftview_export {application, output_root}` | a new folder of display and global-object XML; the application itself is not modified, and any user-exported `Alarms.xml` or tag CSV found in the project store is copied along with its age reported as fresh, stale or missing |
 | 3. Open it | `ftview_open {root}` | displays, tag rows, alarm setup files, Studio import manifests, structural diagnostics, and which checks could not run |
 | 4. Check it | `ftview_check` | tag CSV integrity, duplicate names, unparsed files, `TAG_NOT_BOUND` (a connection names a tag the CSV does not declare), `IMAGE_MISSING` (artwork a display names but the export does not ship), and the alarm setup; `coverage` names every check that did not run |
-| 5. Learn the dialect | `ftview_object_types {all: "true"}` | every object type drafting accepts, with its real attributes and example values — read this before authoring, because attribute names differ from the ones a screenshot suggests |
+| 5. Learn the dialect | `ftview_object_types {all: "true"}` | every element type the installed schema declares for a display; with `type=` the same call gives the attributes, allowed values and child elements that element declares, even when this export has none of them — read this before authoring, because attribute names differ from the ones a screenshot suggests |
 | 6. Look at the screens | `ftview_render` | one display or up to 8 as SVG (and PNG when a headless browser is installed), with every object that leaves the canvas or overflows its box reported |
 
 A display in this export is a `<gfx>` document (older exports use `<display>`), and its connections carry

@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A miniature display schema, written to be read by parseSchemaModel and to
+  exercise the four things a naive XSD walk gets wrong on the real Gfx-ME*.xsd:
+
+    1. the display object elements are declared INLINE in the root element's own
+       complexType, so a walk of the top-level elements finds only `gfx`;
+    2. most attributes arrive as global REFS, and the requirement lives on the
+       ref (`use="required"`), not on the global declaration;
+    3. whole attribute sets arrive through an attributeGroup;
+    4. an object's children sit under nested sequence/choice containers, and the
+       interesting domains are one level deeper (object → states → state).
+
+  It also carries a base chain (objectBaseType), a named enumeration
+  (actionEnums) and an inline restriction (keyActionEnums), which is where
+  allowed values come from. The file name matters: the model's version is read
+  from the digits in it, so this is version 99.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+  <!-- Global declarations: an object's common geometry arrives by reference. -->
+  <xs:attribute name="name" type="xs:string"/>
+  <xs:attribute name="left" type="xs:int"/>
+  <xs:attribute name="top" type="xs:int"/>
+  <xs:attribute name="width" type="xs:int"/>
+  <xs:attribute name="height" type="xs:int"/>
+  <xs:attribute name="color" type="colorType"/>
+  <xs:attribute name="fontFamily" type="xs:string"/>
+  <xs:attribute name="classId" type="xs:string"/>
+
+  <xs:attributeGroup name="fontProperties">
+    <xs:attribute ref="color"/>
+    <xs:attribute ref="fontFamily"/>
+  </xs:attributeGroup>
+
+  <!-- A named enumeration: the values live here, referenced by name. -->
+  <xs:simpleType name="actionEnums">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="normallyOpen"/>
+      <xs:enumeration value="normallyClosed"/>
+      <xs:enumeration value="value"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- An inline restriction: the values live on the attribute itself. -->
+  <xs:attribute name="keyAction" type="xs:string">
+    <xs:simpleType>
+      <xs:restriction base="xs:string">
+        <xs:enumeration value="unassigned"/>
+        <xs:enumeration value="F1"/>
+        <xs:enumeration value="F2"/>
+      </xs:restriction>
+    </xs:simpleType>
+  </xs:attribute>
+
+  <!-- A union of a pattern and a named set, the shape the vendor's own colorType
+       uses: a display may carry "#002952" or "white", and a resolver that reads
+       only the enumeration refuses every hex colour Rockwell's displays write. -->
+  <xs:simpleType name="colorType">
+    <xs:annotation>
+      <xs:documentation>RGB color definition (6 digit hex)</xs:documentation>
+    </xs:annotation>
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:maxLength value="7"/>
+          <xs:pattern value="#[a-fA-F0-9]*"/>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="xs:NMTOKEN">
+          <xs:enumeration value="white"/>
+          <xs:enumeration value="black"/>
+          <xs:enumeration value="red"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <!-- A union of a named set and a bounded number: either half satisfies. -->
+  <xs:simpleType name="stateIdType">
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Error"/>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="xs:int">
+          <xs:minInclusive value="0"/>
+          <xs:maxInclusive value="1"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <xs:complexType name="objectBaseType">
+    <xs:attribute ref="name" use="required"/>
+    <xs:attribute ref="left"/>
+    <xs:attribute ref="top"/>
+    <xs:attribute ref="width"/>
+    <xs:attribute ref="height"/>
+  </xs:complexType>
+
+  <xs:complexType name="stateType">
+    <xs:attribute name="stateId" type="stateIdType"/>
+  </xs:complexType>
+
+  <xs:complexType name="stateListType">
+    <xs:sequence>
+      <xs:element name="state" type="stateType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="connectionListType">
+    <xs:sequence>
+      <xs:choice>
+        <xs:element name="connection">
+          <xs:complexType>
+            <xs:attribute name="name" use="required"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="captionListType">
+    <xs:sequence>
+      <xs:element name="caption">
+        <xs:complexType>
+          <xs:attribute name="caption" type="xs:string"/>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- A list indicator's face, the shape that made the installed editor refuse a
+       draft: its caption child declares only two attributes, and its alignment
+       domain is `left|center|right` — no font set, no `middleCenter`. A writer
+       that copies the press-button face onto this control writes ten attributes
+       this type never declared. -->
+  <xs:complexType name="listFaceCaptionType">
+    <xs:attribute name="caption" type="xs:string"/>
+    <xs:attribute name="alignment">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="left"/>
+          <xs:enumeration value="center"/>
+          <xs:enumeration value="right"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="listStateType">
+    <xs:sequence>
+      <xs:element name="caption" type="listFaceCaptionType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="stateId" type="stateIdType" use="required"/>
+    <xs:attribute name="value" type="xs:int"/>
+  </xs:complexType>
+
+  <xs:complexType name="listStateListType">
+    <xs:sequence>
+      <xs:element name="state" type="listStateType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- A symbol's face: the schema gives it an <imageSettings> and NO caption, so
+       words written on its faces are content the vendor validator rejects. -->
+  <xs:complexType name="symbolFaceImageType">
+    <xs:attribute ref="color"/>
+  </xs:complexType>
+
+  <xs:complexType name="symbolStateType">
+    <xs:sequence>
+      <xs:element name="imageSettings" type="symbolFaceImageType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="stateId" type="stateIdType" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="symbolStateListType">
+    <xs:sequence>
+      <xs:element name="state" type="symbolStateType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- A polygon and its part: the required child the writer used to have no way
+       to write, so the object could never be drafted at all. -->
+  <xs:complexType name="innerPartType">
+    <xs:attribute name="polygon" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="polygonType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="innerPart" type="innerPartType"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="listIndicatorType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="states" type="listStateListType" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="symbolType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="states" type="symbolStateListType" minOccurs="0"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- The push-button face, the shape the writer was built around: its caption
+       child carries a font set and an alignment domain that includes
+       middleCenter, and its state carries the colours, so the same face that
+       broke the list indicator is legal here. The real schema spells this as
+       basicCaptionType over pushButtonBaseStateValueType. -->
+  <xs:complexType name="pushFaceCaptionType">
+    <xs:attribute name="caption" type="xs:string"/>
+    <xs:attribute name="alignment" default="middleCenter">
+      <xs:simpleType>
+        <xs:restriction base="xs:NMTOKEN">
+          <xs:enumeration value="middleLeft"/>
+          <xs:enumeration value="middleCenter"/>
+          <xs:enumeration value="middleRight"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="fontFamily" type="xs:string"/>
+    <xs:attribute name="fontSize" type="xs:int"/>
+  </xs:complexType>
+
+  <xs:complexType name="pushStateType">
+    <xs:sequence>
+      <xs:element name="caption" type="pushFaceCaptionType" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="stateId" type="stateIdType" use="required"/>
+    <xs:attribute name="value" type="xs:int"/>
+    <xs:attribute name="backColor" type="colorType"/>
+    <xs:attribute name="borderColor" type="colorType"/>
+    <xs:attribute name="blink" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="pushStateListType">
+    <xs:sequence>
+      <xs:element name="state" type="pushStateType" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- A press button: a base chain, own attributes, a group ref, nested parts. -->
+  <xs:complexType name="pressButtonType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="states" type="pushStateListType" minOccurs="0"/>
+          <xs:element name="connections" type="connectionListType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute name="highlightColor" type="xs:string"/>
+        <xs:attribute name="buttonAction" type="actionEnums" default="normallyOpen"/>
+        <xs:attributeGroup ref="fontProperties"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A navigation button: the caption is a CHILD, never an attribute. -->
+  <xs:complexType name="navigationType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="caption" type="captionListType"/>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A label: the caption is an ATTRIBUTE, and it declares no children. -->
+  <xs:complexType name="labelType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:attribute name="caption" type="xs:string"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- A keypad key: values from an inline restriction. -->
+  <xs:complexType name="keyType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:sequence>
+          <xs:element name="states" type="stateListType" minOccurs="0"/>
+        </xs:sequence>
+        <xs:attribute ref="keyAction"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <!-- The one object whose required attribute comes only from the ref. -->
+  <xs:complexType name="activeXType">
+    <xs:complexContent>
+      <xs:extension base="objectBaseType">
+        <xs:attribute ref="classId" use="required"/>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="displaySettingsType">
+    <xs:attribute ref="width"/>
+    <xs:attribute ref="height"/>
+  </xs:complexType>
+
+  <!-- The object elements are declared here, inline, not at the top level. -->
+  <xs:element name="gfx">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="displaySettings" type="displaySettingsType" minOccurs="0"/>
+        <xs:choice minOccurs="0" maxOccurs="unbounded">
+          <xs:element name="pressButton" type="pressButtonType"/>
+          <xs:element name="navButton" type="navigationType"/>
+          <xs:element name="label" type="labelType"/>
+          <xs:element name="key" type="keyType"/>
+          <xs:element name="listIndicator" type="listIndicatorType"/>
+          <xs:element name="symbol" type="symbolType"/>
+          <xs:element name="polygon" type="polygonType"/>
+          <xs:element name="activeX" type="activeXType"/>
+        </xs:choice>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

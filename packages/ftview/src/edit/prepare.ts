@@ -15,7 +15,8 @@ import { parseDisplay, parseTagCsv, type Application, type DisplayFile, type Tag
 import { addObject, addAlarm, createDisplay, deleteAlarm, deleteObject, orderObject, renameDisplay, setAlarmAttribute, setAttribute, setObject, upsertTag, type EditOperation } from './operations.ts'
 import { alarmReport } from '../alarm-report.ts'
 import { DISPLAY_SETTING_ATTRIBUTES, setDisplaySetting } from '../display-tree.ts'
-import { validateSchema, type SchemaValidation } from '../schema.ts'
+import { validateSchema, vocabulary, type SchemaValidation } from '../schema.ts'
+import type { SchemaModel } from '../xsd.ts'
 
 /** One prepared edit set. */
 export interface PreparedEdit {
@@ -184,6 +185,13 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
   const missingTargets: Finding[] = []
   const addedObjects = new Map<string, Set<string>>()
   const displaySchemaVersion = await exportDisplaySchemaVersion(fs, app, signal)
+  // The vocabulary is resolved once per edit, against the schema the export's
+  // own displays declare, so the writer never hand-keeps an element family.
+  let draftModel: SchemaModel | undefined
+  const modelFor = (): SchemaModel => {
+    draftModel ??= vocabulary(displaySchemaVersion === undefined ? undefined : Number.parseInt(displaySchemaVersion, 10)).model
+    return draftModel
+  }
   for (const operation of operations) {
     if (operation.kind === 'display_set') {
       if (!displayByFile.has(operation.file) && !added.includes(operation.file)) {
@@ -232,8 +240,8 @@ export async function prepareEdit(fs: FsService, app: Application, operations: r
           continue
         }
       }
-      const next = operation.kind === 'object_add' ? addObject(current, operation)
-        : operation.kind === 'object_set' ? setObject(current, operation)
+      const next = operation.kind === 'object_add' ? addObject(current, operation, modelFor())
+        : operation.kind === 'object_set' ? setObject(current, operation, modelFor())
           : operation.kind === 'object_delete' ? deleteObject(current, operation)
             : orderObject(current, operation)
       texts.set(operation.file, next)

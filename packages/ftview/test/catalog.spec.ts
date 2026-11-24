@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { ELEMENT_TYPES, TYPE_GUIDE, observeObjects } from '../src/catalog.ts'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { PHANTOM_HINTS, TYPE_GUIDE, isPressTarget, observeObjects } from '../src/catalog.ts'
 import { contrastRatio, designFindings } from '../src/design.ts'
 import type { Application, DisplayFile, DisplayObject } from '../src/model.ts'
+
+/** The snapshot the package ships, read the way the runtime reads it when no Studio is installed. */
+const snapshot = JSON.parse(readFileSync(join(__dirname, '..', 'schema', 'me-schema.json'), 'utf8')) as {
+  schema: string
+  displayChildren: string[]
+  types: Record<string, { attributes: Record<string, { required: boolean }> }>
+}
 
 /** One object with attributes. */
 function object(type: string, name: string, attributes: Record<string, string>): DisplayObject {
@@ -30,6 +39,16 @@ describe('the object catalog', () => {
     const width = catalog[0].attributes.find(attribute => attribute.name === 'width')
     expect(width).toMatchObject({ used: 2, examples: ['120'] })
     expect(catalog.find(entry => entry.type === 'text')?.used).toBe(1)
+  })
+
+  it('keeps the schema parts out of the type list when a vocabulary is passed', () => {
+    const app = appWith([display('Main', [
+      object('momentaryButton', 'Start', { width: '120' }),
+      object('caption', 'leaked', {}),
+      object('state', 'leaked', {}),
+    ])])
+    const catalog = observeObjects(app, new Set(['momentaryButton', 'text']))
+    expect(catalog.map(entry => entry.type)).toEqual(['momentaryButton'])
   })
 })
 
@@ -60,22 +79,44 @@ describe('design checks', () => {
   })
 })
 
-describe('the element type contract', () => {
-  it('covers every drawable object family', () => {
-    for (const type of ['panel', 'group', 'text', 'rectangle', 'ellipse', 'line', 'polygon', 'polyline', 'arc', 'image', 'momentaryButton', 'maintainButton', 'latchedButton', 'multistateButton', 'rampButton', 'gotoButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'barGraph', 'gauge', 'trend', 'listSelector', 'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX', 'symbol', 'referenceObject', 'globalObject', 'multistateIndicator']) {
-      expect(ELEMENT_TYPES.has(type)).toBe(true)
+describe('the element vocabulary comes from the schema', () => {
+  it('ships a snapshot with the display elements the vendor declares', () => {
+    expect(snapshot.displayChildren.length).toBeGreaterThan(80)
+    // The vendor's own vocabulary, not a hand-kept list: these are real and were once refused.
+    for (const type of ['maintainedButton', 'closeButton', 'macroButton', 'numericInputEnable', 'stringInputEnable', 'interlockedButton', 'displayListSelector', 'controlListSelector', 'pilotedControlListSelector', 'recipePlusTable', 'scale', 'listIndicator']) {
+      expect(snapshot.displayChildren).toContain(type)
     }
-    expect(ELEMENT_TYPES.size).toBe(34)
   })
-})
-describe('the type guide', () => {
-  it('documents every drawable type with required attributes', () => {
-    expect(Object.keys(TYPE_GUIDE).sort()).toEqual([...ELEMENT_TYPES].sort())
-    for (const type of ELEMENT_TYPES) {
+
+  it('names no element the schema does not declare', () => {
+    for (const phantom of Object.keys(PHANTOM_HINTS)) {
+      expect(snapshot.displayChildren).not.toContain(phantom)
+      expect(PHANTOM_HINTS[phantom]).toMatch(/is|are/)
+    }
+    // The eight names the old contract invented, each with the real counterpart in its hint.
+    expect(Object.keys(PHANTOM_HINTS).sort()).toEqual(['globalObject', 'listSelector', 'maintainButton', 'numericInput', 'recipe', 'referenceObject', 'stringInput', 'trend'])
+  })
+
+  it('documents only elements the schema declares', () => {
+    for (const type of Object.keys(TYPE_GUIDE)) {
+      expect(snapshot.displayChildren).toContain(type)
       expect(TYPE_GUIDE[type]?.required.length ?? 0).toBeGreaterThan(0)
       expect(typeof TYPE_GUIDE[type]?.note).toBe('string')
     }
     expect(TYPE_GUIDE.momentaryButton?.children).toContain('states')
     expect(TYPE_GUIDE.image?.required).toContain('imageName')
+    // The corrected craft claims: a caption child where the schema has one, and none where it does not.
+    expect(TYPE_GUIDE.gotoButton?.children).toContain('caption')
+    expect(TYPE_GUIDE.text?.children ?? []).not.toContain('caption')
+    expect(TYPE_GUIDE.rampButton?.children ?? []).not.toContain('states')
+  })
+
+  it('treats every press target as one the schema declares', () => {
+    for (const type of ['momentaryButton', 'maintainedButton', 'gotoButton', 'acknowledgeAlarmButton', 'silenceAlarmsButton', 'loginButton', 'moveUpKey', 'enterKey']) {
+      expect(isPressTarget(type)).toBe(true)
+    }
+    for (const type of ['text', 'panel', 'numericDisplay', 'multistateIndicator', 'alarmList']) {
+      expect(isPressTarget(type)).toBe(false)
+    }
   })
 })

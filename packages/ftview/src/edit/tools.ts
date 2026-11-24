@@ -15,11 +15,13 @@ import { EngineeringError, targetPath, choice, integer, object, optionalInteger,
 import type { ViewSession } from '../session.ts'
 import type { EditDraft, EditDrafts } from './drafts.ts'
 import { EDIT_COVERAGE, prepareEdit } from './prepare.ts'
-import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, ObjectAnimations, ObjectState } from './operations.ts'
+import type { DisplayAddOperation, DisplayCreateOperation, EditOperation, ObjectAnimations, ObjectPart, ObjectState } from './operations.ts'
 import { verifyDraft } from './verify-draft.ts'
 import { exportApplication } from '../vendor.ts'
 import { allMatched, verifyDisplays } from '../handoff.ts'
-import { ELEMENT_TYPES } from '../catalog.ts'
+import { PHANTOM_HINTS } from '../catalog.ts'
+import { vocabulary } from '../schema.ts'
+import { checkDraftChild, checkDraftCombos, checkDraftObject, checkStateFaces, nearNames, objectFamily } from '../xsd.ts'
 import { scaffoldLayout, SCAFFOLD_THEME, type ScaffoldTheme } from './scaffold.ts'
 import { contrastRatio } from '../design.ts'
 import { restyleDisplay, type RestyleTheme } from './restyle.ts'
@@ -158,7 +160,7 @@ function draftOf(store: EditDrafts, exec: ExecContext): EditDraft | undefined {
 }
 
 /** One display by name, including a display this same draft creates. */
-function displayOf(view: { app: { displays: readonly { name: string; file: string; objects: readonly { name?: string }[] }[] } }, name: string, draft?: EditDraft) {
+function displayOf(view: { app: { displays: readonly { name: string; file: string; objects: readonly { name?: string; type?: string }[] }[] } }, name: string, draft?: EditDraft) {
   const display = view.app.displays.find(candidate => candidate.name === name)
   if (display !== undefined) return display
   const created = draft === undefined ? undefined : draft.operations.find((operation): operation is DisplayCreateOperation => operation.kind === 'display_create' && operation.name === name)
@@ -882,13 +884,14 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       parameters: object({
         view_id: VIEW_ID,
         display: string('Display name as listed by ftview_list.'),
-        type: string('Object element type as the export writes it, e.g. "momentaryButton", "text", "panel", "numericDisplay", "gotoButton".'),
+        type: string('Object element type as the schema declares it, e.g. "momentaryButton", "maintainedButton", "text", "panel", "numericDisplay", "gotoButton". ftview_object_types with all="true" lists the element names the installed schema declares.'),
         name: string('New object name, unique inside the display.'),
         attributes_json: string('Object attributes as a JSON object, e.g. {"height":"50","width":"120","left":"20","top":"40"}.'),
-        caption: string('Optional caption text; on buttons and indicators it becomes the face caption inside states.'),
-        states_json: string('Optional button or indicator faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. Buttons accept 0, 1, Error; multistateIndicator accepts numbered stateId with value.'),
+        caption: string('Optional caption text. The schema decides where it lands: inside the <caption> child of a <states> face for a stateful control, as a <caption> child for the caption-child family (gotoButton, closeButton, macroButton, the keypad objects), or as the caption attribute for text. Refused when the element declares no caption mechanism — including a symbol, whose faces carry an <imageSettings> and no caption.'),
+        states_json: string('Optional state faces as a JSON array, e.g. [{"stateId":"0","caption":"START","backColor":"#24384A"},{"stateId":"1","caption":"START","backColor":"#2FA8E0"}]. The schema bounds the ids: push buttons take 0, 1 or Error; interlockedButton and the list and control selectors have no Error face; multistateButton reaches 254; symbol and multistateIndicator reach 1999.'),
         animations_json: string('Optional animations as JSON, e.g. {"visibility":{"expression":"{AutoRunning} = 0","expressionTrueState":"visible"}}.'),
         connections_json: string('Optional connections as a JSON object, e.g. {"Value":"SystemRunning"}.'),
+        children_json: string('Optional declared parts as a JSON object keyed by child element name, each value an attribute object or an array of them when the schema allows repeats, e.g. {"innerPolygon":[{"polygon":"0,0 100,0 100,100"}]} or {"threshold":{"level":"80","action":"Block"}}. Use it for content the schema requires but the tool does not manage: a polyPolygon needs an <innerPolygon>, a gauge carries <threshold> rows. ftview_object_types with type="…" lists the children and which are required.'),
         parent: string('Optional group name to add inside. Omit to add at the display root.'),
         index: integer('Optional position among siblings, for z-order.', { minimum: 0 }),
         profile_id: string('Optional house-style profile from engineering_profile; its button geometry and font are used when the attributes omit them.'),
@@ -897,12 +900,15 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const view = session.require(optionalString(args, 'view_id'), exec)
         const display = displayOf(view, requiredString(args, 'display'), draftOf(drafts, exec))
         const type = requiredString(args, 'type')
-        if (!ELEMENT_TYPES.has(type)) {
+        const vocab = vocabulary()
+        if (!vocab.model.displayChildren.includes(type)) {
+          const near = nearNames(type, vocab.model.displayChildren)
+          const hint = PHANTOM_HINTS[type]
           throw new EngineeringError(
             'UNKNOWN_OBJECT_TYPE',
-            `${JSON.stringify(type)} is not a FactoryTalk View element type.`,
-            `Use one of the ${ELEMENT_TYPES.size} drawable types; ftview_object_types lists what this export already uses.`,
-            [...ELEMENT_TYPES].sort(),
+            `${JSON.stringify(type)} is not an element ${vocab.schema} declares for a display.`,
+            hint ?? `Use an element ${vocab.schema} declares. ${near.length > 0 ? `Nearest: ${near.join(', ')}.` : `ftview_object_types lists the ${vocab.model.displayChildren.length} element names the schema declares.`}`,
+            near.length > 0 ? near : vocab.model.displayChildren.slice(0, 12),
           )
         }
         const attributes = { ...jsonObject(args.attributes_json, 'attributes_json') }
@@ -929,8 +935,35 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const states = jsonStates(optionalString(args, 'states_json'))
         const animations = jsonAnimations(optionalString(args, 'animations_json'))
         const connections = jsonObject(optionalString(args, 'connections_json'), 'connections_json')
+        const children = jsonChildren(optionalString(args, 'children_json'))
         const parent = optionalString(args, 'parent')
         const index = optionalInteger(args, 'index')
+        const family = objectFamily(vocab.model, type)
+        if (caption !== undefined && family?.states === true && family.faceCaptionType === undefined) {
+          throw new EngineeringError('INVALID_CAPTION', `${type} carries its words on state faces, and the schema gives this control's faces no <caption> child to hold them.`, 'Write the words on a text object, or choose a control whose faces take captions.')
+        }
+        const checked: [string, string][] = [...Object.entries(attributes)]
+        if (caption !== undefined && family !== undefined && !family.states && !family.captionChild) checked.push(['caption', caption])
+        const childNames: string[] = []
+        if (states !== undefined || family?.states === true) childNames.push('states')
+        if (caption !== undefined && family?.captionChild === true) childNames.push('caption')
+        if (Object.keys(connections).length > 0) childNames.push('connections')
+        if (animations !== undefined) childNames.push('animations')
+        for (const part of children ?? []) childNames.push(part.element)
+        const mismatched = [
+          ...checkDraftObject(vocab.model, type, checked, childNames, { requireAll: false }),
+          ...(states === undefined || family === undefined ? [] : checkStateFaces(family, states)),
+          ...(children === undefined ? [] : children.flatMap(part => checkDraftChild(vocab.model, type, part.element, Object.entries(part.attributes ?? {})))),
+          ...checkDraftCombos(vocab.model, type, checked, childNames, states ?? []),
+        ]
+        if (mismatched.length > 0) {
+          throw new EngineeringError(
+            'SCHEMA_VOCABULARY_MISMATCH',
+            `${type} does not match ${vocab.schema}: ${mismatched.map(finding => finding.message).join(' ')}`,
+            `Correct the object against ${vocab.schema}; ftview_object_types with type="${type}" lists its attributes and children.`,
+            mismatched.map(finding => finding.name),
+          )
+        }
         const { draft } = stage(exec, optionalString(args, 'view_id'), {
           kind: 'object_add',
           file: display.file,
@@ -942,6 +975,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           ...(animations === undefined ? {} : { animations }),
           ...(parent === undefined ? {} : { parent }),
           ...(index === undefined ? {} : { index }),
+          ...(children === undefined ? {} : { children }),
           ...(Object.keys(connections).length === 0 ? {} : { connections }),
         })
         return staged(draft, draft.operations[draft.operations.length - 1] as EditOperation, profileId)
@@ -968,6 +1002,22 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         const caption = optionalString(args, 'caption')
         if (Object.keys(attributes).length === 0 && Object.keys(connections).length === 0 && caption === undefined) {
           throw new EngineeringError('INVALID_ARGUMENT', 'No change was requested.', 'Pass attributes_json, connections_json or caption.')
+        }
+        const target = display.objects.find(candidate => candidate.name === object)
+        if (target?.type !== undefined) {
+          const vocab = vocabulary()
+          const family = objectFamily(vocab.model, target.type)
+          const checked: [string, string][] = [...Object.entries(attributes)]
+          if (caption !== undefined && family !== undefined && !family.states && !family.captionChild) checked.push(['caption', caption])
+          const mismatched = checkDraftObject(vocab.model, target.type, checked, [], { requireAll: false })
+          if (mismatched.length > 0) {
+            throw new EngineeringError(
+              'SCHEMA_VOCABULARY_MISMATCH',
+              `${target.type} does not match ${vocab.schema}: ${mismatched.map(finding => finding.message).join(' ')}`,
+              `Correct the change against ${vocab.schema}; ftview_object_types with type="${target.type}" lists its attributes.`,
+              mismatched.map(finding => finding.name),
+            )
+          }
         }
         const { draft } = stage(exec, optionalString(args, 'view_id'), {
           kind: 'object_set',
@@ -1310,7 +1360,12 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         export_root: string('Export folder to verify against instead of running the vendor export, for a File > Export you made by hand after importing the package.'),
       }, ['application']),
       async run(args, exec) {
-        const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        // Verification runs after the import, so a draft id is optional: the applied
+        // draft is what the import was made from, and it outlives apply.
+        const requested = optionalString(args, 'draft_id')
+        const draft = requested === undefined || requested === ''
+          ? drafts.latestApplied(exec) ?? drafts.get(exec, undefined)
+          : drafts.get(exec, requested)
         const view = session.require(draft.viewId, exec)
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
         const expected = new Map([...prepared.texts].filter(([file]) => /\.xml$/iu.test(file) && !/batchimport/iu.test(file) && !/^alarms\//iu.test(file)))
@@ -1360,6 +1415,13 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
       }, ['output_root']),
       async run(args, exec) {
         const draft = drafts.get(exec, optionalString(args, 'draft_id'))
+        if (draft.appliedTo !== undefined) {
+          throw new EngineeringError(
+            'DRAFT_ALREADY_APPLIED',
+            `This draft was already written to ${draft.appliedTo}.`,
+            'Stage the remaining edits in a new draft, or import the folder this one wrote and prove it with ftview_verify_import.',
+          )
+        }
         const view = session.require(draft.viewId, exec)
         const prepared = await prepareEdit(fs, view.app, draft.operations, exec.signal)
         const schemaErrors = prepared.schema.findings.filter(finding => finding.error)
@@ -1509,7 +1571,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           written += 1
         }
         session.recordApplied(outputRoot, writtenFiles)
-        drafts.remove(exec, draft.id)
+        drafts.markApplied(exec, draft.id, outputRoot)
         const firstDisplay = changedDisplays[0]?.replace(/^Displays\//iu, '').replace(/\.xml$/iu, '')
         return success(
           `Wrote ${written} file(s) to ${outputRoot}${manifest === undefined ? '' : `; import manifest ${manifest}`}${copiedImages.length === 0 ? '' : `; ${copiedImages.length} image(s)`}${missingImages.length === 0 ? '' : `; ${missingImages.length} image(s) missing from the export`}.`,
@@ -1827,6 +1889,44 @@ function jsonStates(value: string | undefined): readonly ObjectState[] | undefin
     states.push(state as unknown as ObjectState)
   }
   return states
+}
+
+/**
+ * Parse the optional `children_json` object.
+ *
+ * The shape is keyed by child element name so a caller can say what it writes,
+ * and a value may be an array because the schema repeats some parts: a
+ * `polyPolygon` carries an unbounded number of `<innerPolygon>` elements. The
+ * part's own attributes are checked against its declared type, so a wrong name
+ * surfaces here instead of as a schema error at apply time.
+ *
+ * @param value - JSON text from the tool arguments.
+ * @returns The parts to write, or undefined when the argument is absent.
+ */
+function jsonChildren(value: string | undefined): readonly ObjectPart[] | undefined {
+  if (value === undefined) return undefined
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(value)
+  } catch {
+    throw new EngineeringError('INVALID_ARGUMENT', 'children_json is not valid JSON.', 'Pass an object like {"innerPolygon":[{"polygon":"0,0 100,0 100,100"}]}.')
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new EngineeringError('INVALID_ARGUMENT', 'children_json must be a JSON object keyed by child element name.', 'Pass {"threshold":{"level":"80"}} or {"innerPolygon":[{"polygon":"…"}]}.')
+  const parts: ObjectPart[] = []
+  for (const [element, entry] of Object.entries(parsed as Record<string, unknown>)) {
+    const list = Array.isArray(entry) ? entry : [entry]
+    for (const item of list) {
+      if (item === null || typeof item !== 'object' || Array.isArray(item)) throw new EngineeringError('INVALID_ARGUMENT', `The <${element}> part must be a JSON attribute object, or an array of them.`, `Pass {"${element}":{"level":"80"}}.`)
+      const attributes: Record<string, string> = {}
+      for (const [name, raw] of Object.entries(item as Record<string, unknown>)) {
+        if (typeof raw !== 'string' && typeof raw !== 'number' && typeof raw !== 'boolean') throw new EngineeringError('INVALID_ARGUMENT', `The "${name}" attribute of <${element}> must be a string, number or boolean.`, `Pass ${name} as text.`)
+        attributes[name] = String(raw)
+      }
+      parts.push({ element, attributes })
+    }
+  }
+  if (parts.length === 0) throw new EngineeringError('INVALID_ARGUMENT', 'children_json lists no parts.', 'Pass at least one child, for example {"innerPolygon":[{"polygon":"0,0 100,0 100,100"}]}.')
+  return parts
 }
 
 /**

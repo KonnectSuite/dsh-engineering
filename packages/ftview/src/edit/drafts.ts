@@ -17,6 +17,8 @@ export interface EditDraft {
   readonly viewId: string
   readonly operations: readonly EditOperation[]
   readonly createdAt: string
+  /** Export folder this draft was applied into; absent until apply writes it. */
+  readonly appliedTo?: string
 }
 
 /** Drafts, scoped to the chat that created them. */
@@ -35,7 +37,7 @@ export class EditDrafts {
    */
   append(exec: ExecContext | undefined, viewId: string, operation: EditOperation, maxOperations: number): EditDraft {
     const drafts = this.draftsOf(exec)
-    const current = [...drafts.values()].find(draft => draft.viewId === viewId)
+    const current = [...drafts.values()].find(draft => draft.viewId === viewId && draft.appliedTo === undefined)
     if (current === undefined) {
       const created: EditDraft = { id: randomUUID(), viewId, operations: [operation], createdAt: new Date().toISOString() }
       drafts.set(created.id, created)
@@ -58,15 +60,23 @@ export class EditDrafts {
    */
   get(exec: ExecContext | undefined, id: string | undefined): EditDraft {
     const drafts = this.draftsOf(exec)
-    const ids = [...drafts.keys()]
     if (id === undefined || id === '') {
-      const only = ids[0]
+      // Authoring acts on the live draft. An applied draft stays behind for the
+      // import proof, so it is only the answer when nothing else is staged.
+      const live = [...drafts.values()].filter(draft => draft.appliedTo === undefined)
+      if (live.length === 1) return live[0] as EditDraft
+      const pool = live.length === 0 ? [...drafts.values()] : live
+      const only = pool[0]
       if (only === undefined) throw new EngineeringError('NO_DRAFT', 'No edit draft exists in this chat.', 'Add an operation with an ftview_draft_* tool first.')
-      if (ids.length > 1) throw new EngineeringError('AMBIGUOUS_DRAFT', `${ids.length} drafts exist in this chat, so draft_id is required.`, `Pass one of: ${ids.join(', ')}.`, ids)
-      return drafts.get(only) as EditDraft
+      if (pool.length > 1) {
+        const ids = pool.map(draft => draft.id)
+        throw new EngineeringError('AMBIGUOUS_DRAFT', `${ids.length} drafts exist in this chat, so draft_id is required.`, `Pass one of: ${ids.join(', ')}.`, ids)
+      }
+      return only
     }
     const draft = drafts.get(id)
     if (draft === undefined) {
+      const ids = [...drafts.keys()]
       throw new EngineeringError('UNKNOWN_DRAFT', `No draft exists with draft_id ${JSON.stringify(id)} in this chat.`, ids.length === 0 ? 'Add an operation with an ftview_draft_* tool first.' : `Pass one of this chat's draft ids: ${ids.join(', ')}.`, ids)
     }
     return draft
@@ -101,13 +111,41 @@ export class EditDrafts {
   }
 
   /**
-   * Drop one draft after it is applied.
+   * Record that a draft was applied, keeping it for the import proof.
+   *
+   * The draft is the only record of what was staged, and `ftview_verify_import`
+   * compares that record with a fresh export after the vendor import. Dropping the
+   * draft here made the proof impossible in the order apply recommends (apply,
+   * import, verify), so it stays and is marked with the folder it wrote; a later
+   * authoring call starts a new draft instead of appending to an applied one.
    *
    * @param exec - Calling context.
    * @param id - Draft handle.
+   * @param outputRoot - Export folder apply wrote.
+   * @returns The marked draft.
    */
-  remove(exec: ExecContext | undefined, id: string): void {
-    this.draftsOf(exec).delete(id)
+  markApplied(exec: ExecContext | undefined, id: string, outputRoot: string): EditDraft {
+    const drafts = this.draftsOf(exec)
+    const current = drafts.get(id)
+    if (current === undefined) throw new EngineeringError('UNKNOWN_DRAFT', `No draft exists with draft_id ${JSON.stringify(id)} in this chat.`, 'Add an operation with an ftview_draft_* tool first.')
+    const updated: EditDraft = { ...current, appliedTo: outputRoot }
+    drafts.set(id, updated)
+    return updated
+  }
+
+  /**
+   * The most recently applied draft for a view, when one exists.
+   *
+   * Verification runs after the import, by which time new authoring may have
+   * started another draft; the applied one is what the import was made from.
+   *
+   * @param exec - Calling context.
+   * @param viewId - Optional view to narrow to.
+   * @returns The latest applied draft, or undefined.
+   */
+  latestApplied(exec: ExecContext | undefined, viewId?: string): EditDraft | undefined {
+    const applied = [...this.draftsOf(exec).values()].filter(draft => draft.appliedTo !== undefined && (viewId === undefined || draft.viewId === viewId))
+    return applied[applied.length - 1]
   }
 
   /** The draft map for one calling chat. */

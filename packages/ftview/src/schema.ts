@@ -11,9 +11,12 @@
  */
 
 import { spawn } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { createHash } from 'node:crypto'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Coverage } from './core.ts'
+import { fileURLToPath } from 'node:url'
+import { EngineeringError, type Coverage } from './core.ts'
+import { parseSchemaModel, type SchemaModel, type SchemaSnapshot } from './xsd.ts'
 
 /** Where Studio installs its display schemas. */
 const SCHEMA_ROOTS = [
@@ -94,6 +97,124 @@ export function schemaFor(xml: string): { path: string; name: string } | undefin
   if (versions.length === 0) return undefined
   const newest = versions[versions.length - 1] as string
   return { path: join(directory, newest), name: newest }
+}
+
+/** The vocabulary a draft is written against, and where it came from. */
+export interface Vocabulary {
+  /** The resolved model: element types, their attributes and their children. */
+  readonly model: SchemaModel
+  /** `installed` when it came from this host's Studio, `bundled` otherwise. */
+  readonly source: 'installed' | 'bundled'
+  /** The schema file name the vocabulary came from. */
+  readonly schema: string
+}
+
+/** Parsed installed schemas by file name, so one XSD is read once per process. */
+const installedCache = new Map<string, SchemaModel | undefined>()
+
+/**
+ * The model of one installed schema, newest when no version is named.
+ *
+ * @param version - ME major version, e.g. 16. Omit for the newest installed.
+ * @returns The resolved model, or undefined when no matching schema is installed.
+ */
+export function installedSchema(version?: number): SchemaModel | undefined {
+  const directory = schemaDirectory()
+  if (directory === undefined) return undefined
+  const files = schemaVersions()
+  if (files.length === 0) return undefined
+  const wanted = version === undefined
+    ? (files[files.length - 1] as string)
+    : files.find(name => Number.parseInt(name.replace(/\D+/gu, ''), 10) === version)
+  if (wanted === undefined) return undefined
+  const hit = installedCache.get(wanted)
+  if (hit !== undefined) return hit
+  let model: SchemaModel | undefined
+  try {
+    model = parseSchemaModel(wanted, readFileSync(join(directory, wanted), 'utf8'))
+  } catch {
+    model = undefined
+  }
+  installedCache.set(wanted, model)
+  return model
+}
+
+/** Where the bundled snapshot sits beside this build, in dev and in the payload. */
+function bundledPath(): string {
+  return fileURLToPath(new URL('../schema/me-schema.json', import.meta.url))
+}
+
+let bundledCache: SchemaSnapshot | undefined
+let bundledTried = false
+
+/**
+ * The snapshot committed with the bundle, used when no Studio schema is here.
+ *
+ * @returns The snapshot, or undefined when it is missing or unreadable.
+ */
+export function bundledSchema(): SchemaSnapshot | undefined {
+  if (bundledTried) return bundledCache
+  bundledTried = true
+  try {
+    const raw = JSON.parse(readFileSync(bundledPath(), 'utf8')) as SchemaSnapshot
+    if (!Array.isArray(raw.displayChildren) || raw.types === undefined) bundledCache = undefined
+    else bundledCache = raw
+  } catch {
+    bundledCache = undefined
+  }
+  return bundledCache
+}
+
+/**
+ * The vocabulary to draft against: this host's schema when Studio is installed,
+ * the bundled snapshot otherwise. Reads and drafts work without Studio, so the
+ * fallback is not an error — but the caller is told which one answered.
+ *
+ * @param version - ME major version to prefer, usually the export's own. When
+ * that version is not installed the newest installed schema answers, because
+ * the vendor software on this host is the authority for what it will accept.
+ * @returns The model and its source.
+ * @throws EngineeringError when neither the host nor the bundle can answer.
+ */
+export function vocabulary(version?: number): Vocabulary {
+  const installed = installedSchema(version) ?? installedSchema()
+  if (installed !== undefined) return { model: installed, source: 'installed', schema: installed.schema }
+  const bundled = bundledSchema()
+  if (bundled !== undefined) return { model: bundled, source: 'bundled', schema: bundled.schema }
+  throw new EngineeringError(
+    'SCHEMA_UNAVAILABLE',
+    'No FactoryTalk View display vocabulary is available: no Gfx-ME*.xsd is installed and the bundled snapshot cannot be read.',
+    `Install FactoryTalk View Studio, set FTVIEW_SCHEMA_DIR to the folder holding Gfx-ME*.xsd, or regenerate the snapshot with pnpm schema:ftview. Looked for the snapshot at ${bundledPath()}.`,
+  )
+}
+
+/**
+ * The ME major version a new display should declare, as the export writes it.
+ *
+ * The hard-coded `17` this module once defaulted to is a defect: Studio's Add
+ * Component Tool resolves the schema name against the schemas its own release
+ * installed, so a display tagged for a release the host never installed imports
+ * as an empty display. The answer is the newest schema this machine can see,
+ * falling back to the bundled snapshot's version when no Studio is installed.
+ *
+ * @returns The major version as a decimal string, e.g. "16".
+ */
+export function defaultSchemaVersion(): string {
+  return String(vocabulary().model.version)
+}
+
+/** The newest ME major version this host can draft against, when one is installed. */
+export function installedSchemaVersion(): number | undefined {
+  const directory = schemaDirectory()
+  if (directory === undefined) return undefined
+  const files = schemaVersions()
+  if (files.length === 0) return undefined
+  return Number.parseInt((files[files.length - 1] as string).replace(/\D+/gu, ''), 10)
+}
+
+/** The bytes of one file, hashed for the snapshot's provenance. */
+export function sha256(text: string): string {
+  return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
 /** PowerShell that validates a batch of XML strings against one schema. */

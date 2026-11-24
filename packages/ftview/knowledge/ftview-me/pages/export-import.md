@@ -93,6 +93,19 @@ Do not report an import as successful because Studio did not show an error dialo
 The error list lives in FactoryTalk Diagnostics and in the validation report, and
 both are easy to miss when running from a batch.
 
+## The Add Component Tool writes its log late
+
+`SEAddComponent.exe <application> ME / "<component list>" overwrite` is the
+scriptable path: it reads the component list XML, imports each file and writes
+`$AddComponent.txt` beside that list — the file that names a refused component and
+the engine's reason on the following line.
+
+Measured on this build: the process returned exit code 0 before the log file
+appeared, so a reader that opens `$AddComponent.txt` the moment the process exits
+finds nothing even when the import succeeded. Wait for the file to appear, then read
+it. When it never appears, export the affected display and compare that instead of
+treating a missing log as either success or failure.
+
 ## What the export/import path cannot prove
 
 The XML export is a projection of one display, not a complete application. It

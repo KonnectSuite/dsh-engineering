@@ -76,6 +76,7 @@ const BUNDLE = [
   'test/l5x-knowledge.spec.mjs',
   'test/legacy-knowledge.spec.mjs',
   'test/ftview-knowledge.spec.mjs',
+  'test/ftview-vocabulary.spec.mjs',
   'test/mwi-idefree.spec.mjs',
   'test/slc500-tools.spec.mjs',
   'packages/l5x/test/dist-smoke.mjs',

@@ -38,11 +38,8 @@ function files(): Map<string, string> {
 }
 
 describe('the authoring workflow end to end', () => {
-  it('stops a draft whose XML the vendor schema rejects', async () => {
+  it('stops an object the schema does not describe before it is staged', async () => {
     const l5x = harness(files(), { edit: true, studio: true })
-    const caps = await l5x.call('ftview_capabilities', {})
-    // The vendor XSD check is only meaningful where FactoryTalk View's schemas are installed.
-    if (((caps.data?.schemas as readonly unknown[] | undefined) ?? []).length === 0) return
     const open = await l5x.call('ftview_open', { root: 'export' })
     const view = open.data?.view_id as string
 
@@ -55,6 +52,31 @@ describe('the authoring workflow end to end', () => {
       attributes_json: JSON.stringify({ left: '20', top: '300', width: '120', height: '48', foreColor: '#FFFFFF' }),
       caption: 'BAD',
       connections_json: JSON.stringify({ display: 'Main Screen' }),
+    })
+    expect(staged.error?.code).toBe('SCHEMA_VOCABULARY_MISMATCH')
+    expect(String(staged.error?.message)).toContain('foreColor')
+    // The refusal happens at the draft step, so nothing reaches the export at all.
+    const applied = await l5x.call('ftview_apply', { output_root: 'out-bad' })
+    expect(applied.error?.code).toBe('NO_DRAFT')
+    expect(l5x.written.size).toBe(0)
+  })
+
+  it('stops a draft whose XML the vendor schema rejects', async () => {
+    const l5x = harness(files(), { edit: true, studio: true })
+    const caps = await l5x.call('ftview_capabilities', {})
+    // The vendor XSD check is only meaningful where FactoryTalk View's schemas are installed.
+    if (((caps.data?.schemas as readonly unknown[] | undefined) ?? []).length === 0) return
+    const open = await l5x.call('ftview_open', { root: 'export' })
+    const view = open.data?.view_id as string
+
+    // An activeX with no classId passes the draft-time checks — a missing
+    // attribute is not blocked there — and is stopped by the vendor gate at apply.
+    const staged = await l5x.call('ftview_draft_object_add', {
+      view_id: view,
+      display: 'Setup',
+      type: 'activeX',
+      name: 'NoClass',
+      attributes_json: JSON.stringify({ left: '20', top: '300', width: '120', height: '48' }),
     })
     expect(staged.error).toBeUndefined()
 
