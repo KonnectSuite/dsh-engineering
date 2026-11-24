@@ -1,6 +1,6 @@
 # Handoff
 
-The bundle after the 0.104.0 knowledge-and-legacy batch, now hardened against the vendor software
+The bundle after the 0.104.1 FactoryTalk View ME authoring batch, driven against the vendor software
 actually installed on this host. This file is the current state: version, what the batch changes,
 what was verified and how, what could not be run on this host, and the next step. History belongs
 to [CHANGELOG.md](CHANGELOG.md), not here.
@@ -9,20 +9,17 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
 
 | | |
 | --- | --- |
-| Branch | `main`, pushed to `origin`; `v0.104.0` is a lightweight tag on the release commit `7fbf495`. |
-| Version | **0.104.0** — `package.json` and the `## 0.104.0 — 2026-11-23` heading in `CHANGELOG.md`. |
-| Release state | **Shipped as 0.104.0 on 2026-11-23, on the owner's request**: published to npm (`dist-tags.latest` = 0.104.0), tagged `v0.104.0`, the tag push made the GitHub Release whose body is this version's changelog section, and the market catalogue's `releases[0]` points at 0.104.0 with the registry copy's sha256. |
-| Tarball | `artifacts/aryacode-dsh-engineering-0.104.0.tgz` — 5,280,649 B packed, SHA256 `67D2E5866587B9B00B25E8B1340C339E31363D5EAFFCB38AF3440EF18791B6B0`, SHA1 `C64A2D2193934BA92C34BD2EA81B99568B504936`. Packed from the release tree, so it **includes** the ladder-import, structure-family and motion-family work and the skill-brief fix. The registry copy is **byte-identical** — downloaded from `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.104.0.tgz` and hashed to the same 5,280,649 B and SHA256, and `npm view` reports the same SHA1 as `dist.shasum`. `check:package` on this tree reports 21.7 MiB in 1,096 files unpacked. |
+| Branch | `main`, pushed to `origin`; `v0.104.1` is a lightweight tag on the release commit `fbd5549`. |
+| Version | **0.104.1** — `package.json` and the `## 0.104.1 — 2026-11-24` heading in `CHANGELOG.md`. |
+| Release state | **Shipped as 0.104.1 on 2026-11-24, on the owner's request**: published to npm (`dist-tags.latest` = 0.104.1, accepted 2026-11-24T07:05:52Z), tagged `v0.104.1` at the release commit `fbd5549` and pushed with `main`, so the tag push cut the GitHub Release whose body is this version's changelog section. The market catalogue step runs from a clean tree and is recorded in the evidence table below. |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.104.1.tgz` — 5,356,725 B packed, SHA256 `3644D5BF6770227FF0754D2EDA6EBD09033AFE187CAE5E8D9EAC136DE72DAF6A`, SHA1 `22CE558313502A6928B34444BCCA303916E3DDC4`. The registry copy is **byte-identical**: `npm view` reports the same SHA1 as `dist.shasum` (`22ce5583…`), `dist.fileCount` 1,103 and `dist.unpackedSize` 24,819,058, and `node scripts/verify-release.mjs --wait 600` downloaded the published tarball and matched its files against the manifest. `check:package` on this tree reports 23.6 MiB in 1,100 files unpacked. |
 | Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **199 registered tools**, **174 default-on**, 8 skills, 6 product documents. |
 | Generated reference | `docs/reference/tools.md` and `tools.json`: **167 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
-| Context budget | **174 tools / 136,828 schema characters** — the ceiling is the 2026-11-22 measurement 131,565 + 4%; re-measured **132,336** on 2026-11-23 (L5X 55,453 + FTView 46,096 + MWI 18,488 + resources 1,474 + migration 10,825) after the FactoryTalk View schema-vocabulary wording landed. |
-| Verified | `pnpm test` **79/79 spec files pass** on the release tree `7fbf495` (56,295 ms; 51,124 ms on the pre-fold tree); the l5x package vitest suite **585/585** (45 files); `pnpm -r build` and `pnpm assemble` ("assembled 8 components and 1 viewer payloads into vendor/") and `pnpm docs:check`, `pnpm check:package` ("the tarball is conforming", 21.7 MiB in 1,096 files), `node scripts/eval-knowledge.mjs --check` ("all products pass"), `node scripts/sync-knowledge-lib.mjs --check` and the L5X knowledge generator check all green. Fresh Dev profile `verify-0104f` from the **earlier** 0.104.0 tarball boots **173 tools**, engineering 170, nine rows (7 active, plc5/slc disabled); the unreleased tree registers 199 tools / 174 default-on. **Packaged release smoke on the published payload** (Dev profile `verify-0104h`, whose `@aryacode/dsh-engineering` dependency is the tarball downloaded from the registry, `67d2e586…`): `node --import tsx/esm apps/cli/release-0104-smoke.mjs` boots **174 default-on tools** (56 `l5x_`), `l5x_export_rungs` writes a 1,004,886 B rung-target file (`TargetType="Rung"`, three `Use="Target"` rungs) and returns `paste_text`, `l5x_compose_rung` refuses `MDF(Axis1,…)` with "Axis1 is AXIS_VIRTUAL; MDF Axis must be AXIS_SERVO" and composes `MDF(AxisS,MdfInstr);`, and the shipped `vendor/l5x/SKILL.md` names `l5x_export_rungs` and `l5x_docs`. Driver and log: `AryaCode\tmp\release-0104-smoke.mjs`, `release-0104-smoke2.log`. |
+| Context budget | **174 tools / 136,828 schema characters** — the ceiling is the 2026-11-22 measurement 131,565 + 4%; re-measured **133,137** on 2026-11-24 (L5X 55,453 + FTView 46,897 + MWI 18,488 + resources 1,474 + migration 10,825) after the FactoryTalk View schema-vocabulary and folder-attribute wording landed, inside the ceiling. |
+| Verified | `pnpm test` **80/80 spec files pass** on the release tree `fbd5549` (48,921 ms), including the FTView vocabulary, knowledge, component-package and authoring specs; `pnpm -r build` and `pnpm assemble` ("assembled 8 components and 1 viewer payloads into vendor/") exit 0; `pnpm check:package` reports "the tarball is conforming" at **23.6 MiB in 1,100 files**. **Packaged-display proof on the shipped tool**: a fresh Dev profile (`verify-0104n`) installed the tree's own pack, `ftview_component_package` wrote a component list with **0 folder attributes**, `SEAddComponent AryaProbeME ME / … overwrite` answered exit 0 with "Program completed successfully" for all five displays, and Studio 15.0 lists `Probe1`…`Probe5` and `ProbeGeo` by name. Evidence: `tmp/ftview-folder-probe.log`, `tmp/ftview-e2e3/probe-pkg7/`, `tmp/ftview-probe-draft6.log`, `tmp/ftview-geo-probe2.log`. The 0.104.0 packaged release smoke (`release-0104-smoke.mjs`, 174 default-on tools, `l5x_export_rungs` writing a 1,004,886 B rung-target file) still describes the tool surface, which this batch does not change. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 
-## Unreleased on top of 0.104.0
-
-Not published, not tagged, no version bump. Everything below is staged under `## [Unreleased]`
-in [CHANGELOG.md](CHANGELOG.md) and covered by the suite.
+## What 0.104.1 changes
 
 - **The FTView vocabulary is the host's schema, not a list.** The display element names, their
   attributes, enumerations, patterns and required children come from the installed `Gfx-ME*.xsd`
@@ -103,7 +100,7 @@ All commands below were run on this tree; the tree then carried the evidence int
 | --- | --- | --- |
 | Suite | `pnpm test` (with `HANDBOOK_PYTHON` set to the bundled Python) | **79 file(s) passed in 54,264 ms**; includes knowledge core/packaging, per-product knowledge, legacy, MWI IDE-free, SLC and handbook specs. |
 | Generated docs | `pnpm docs:check` | `gen-tool-reference: reference is up to date.` / `gen-print-css: docs/print.css is up to date.` |
-| Packaging | `pnpm check:package` | `the tarball is conforming`; the 0.104.0 tarball is 1,094 files, the current unreleased tree 1,096; largest entries the ECAD wasm (6.11 MiB) and the L5X/optix indexes. |
+| Packaging | `pnpm check:package` | `the tarball is conforming`; the 0.104.0 tarball is 1,094 files, the 0.104.1 tarball 1,100; largest entries the ECAD wasm (6.11 MiB), the FTView schema snapshot (1.89 MiB) and the L5X/optix indexes. |
 | Knowledge eval | `node scripts/eval-knowledge.mjs --check` | **all products pass**, determinism true, no problems. |
 | Retrieval figures | `artifacts/eval-knowledge.json` | L5X 32 cases R@5 .957 / MRR .891 / nDCG .900; FTView 23 .933/.967/.942; migration 25 1/.972/.979; PLC-5 22 1/1/.991; SLC 22 1/.817/.864. Exact share 1, no-match 1, hit cap true, determinism true. |
 | Knowledge sync | `node scripts/sync-knowledge-lib.mjs --check` | Current; 5 consumers byte-equal to `packages/knowledge/src`. |
@@ -150,7 +147,8 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
 | FTView imported display in the Studio tree | **pass** — Studio 15.0 opened `AryaProbeME`; `Graphics > Displays` lists `Probe1`…`Probe5` and `ProbeGeo` by name, and `Probe1` opened in the Display Editor and painted its objects | The earlier "unnamed tree row" was **the import folder, not the display**: `folder="\"` in the component list makes a folder node with no name (measured four ways — absent lands a new display at the root, a name makes that folder, `\` makes the nameless one, `/` fails the move). The code now writes the attribute only for a named folder. Open item from the same read: one object in `Probe1` draws as the placeholder "Audit Trail Detail object is not properly configured." — evidence `C:\Users\KNPhu\AppData\Local\dsh-plugin-arya-desktop\screenshots\shot-1795501682773.png` |
 | Ten scripted tasks per product on a weaker model | **not run** — no weaker-model harness in this environment | Tool-level drills for every product were recorded here instead; the owner/agent walkthrough remains the intended check. |
 | Desktop Electron window and refreshed Plugins screenshots | **not run** — composition booted through the CLI/web probe path | The installed tarball's composition is proved; `docs/images/dev-components*.png` are still 0.102.0 screenshots. |
-| Publish / tag / market catalogue | **run on 2026-11-23, on the owner's request** | `pnpm publish --no-git-checks` → "✅ Published package @aryacode/dsh-engineering@0.104.0"; `v0.104.0` tagged at the release commit `7fbf495` and pushed with `main`; the tag push made the GitHub Release (body = this version's changelog section, 22,660 chars); `node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests` → "released @aryacode/dsh-engineering@0.104.0 · npm ok · catalogue ok · sha256 67d2e5866587". The registry lagged as documented (packument 404 for ~6 min, the tarball URL ~14 min); the script's github step warned `HTTP 422 Release.tag_name already exists`, which is the release the tag push had already created. No version was bumped. |
+| Publish / tag / market catalogue | **run on 2026-11-23 (0.104.0) and 2026-11-24 (0.104.1), both on the owner's request** | 0.104.0: `pnpm publish --no-git-checks` → "✅ Published package @aryacode/dsh-engineering@0.104.0"; `v0.104.0` tagged at `7fbf495` and pushed; `node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests` → "released … sha256 67d2e5866587". 0.104.1: `pnpm publish --no-git-checks` → "✅ Published package @aryacode/dsh-engineering@0.104.1"; `v0.104.1` tagged at `fbd5549` and pushed with `main`; `npm view` reports `dist.shasum` `22ce5583…` and `latest` = 0.104.1; `node scripts/verify-release.mjs --wait 600` downloaded the published tarball and matched it. The registry lagged as documented (the packument answered 404 for about 8 min after the publish; npm accepted the version at 07:05:52Z). The market catalogue step is recorded below. |
+| Registry lag, 0.104.1 | `npm view` / raw packument polls after `pnpm publish` | The version answered 404 for about 8 minutes and `dist-tags.latest` stayed 0.104.0 until the packument rolled over; no second publish and no version bump was made, matching the rule in AGENTS.md. |
 
 ## Known gaps
 
@@ -162,8 +160,10 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
   `v*` tag after the release workflow exists will.
 - `docs/images/dev-components.png` and `docs/images/dev-components-rows.png` are from the 0.102.0
   install and need a re-shoot on a Dev host running the current payload.
-- The FTView imported display renders as an unnamed tree row in Studio 15.0; the import is proved by
-  comparison, but the display-name metadata that Studio uses for the tree label is not written yet.
+- The FTView `auditTrailDetail` object draws as Studio's placeholder "Audit Trail Detail object is
+  not properly configured." in the imported `Probe1`; that application has no audit-trail
+  configuration and the export carries no project-settings file, so whether the object needs more
+  than the display XML is unmeasured.
 - PLC-5 has no positive `.PC5` text-export fixture; the text tools are parser-tested only. The
   headless COM read is proved with a real `.RSP`.
 - Studio's **Import Rungs** route is attended-verified on the generated `LadderReliability` project
