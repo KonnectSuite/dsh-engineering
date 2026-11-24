@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## 0.104.2 — 2026-11-24
+
 ### Added
 
 - **The display preview describes each object it cannot draw instead of leaving it blank.** The panel drew
