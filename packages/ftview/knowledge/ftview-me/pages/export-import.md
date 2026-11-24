@@ -106,6 +106,32 @@ finds nothing even when the import succeeded. Wait for the file to appear, then 
 it. When it never appears, export the affected display and compare that instead of
 treating a missing log as either success or failure.
 
+## The folder attribute decides where the display appears
+
+Each `<component>` in the list may carry `folder="…"`. Measured on Studio 15.0 with
+the same packaged file, installed four ways:
+
+| `folder` on the component | What the tool logged | What the Explorer shows |
+|---|---|---|
+| absent | `Import completed successfully.` then `Program completed successfully.` | a **new** display at the root of `Displays` |
+| `folder="Imported"` | plus `Moving component 'X' to folder 'Imported'.` | a folder named `Imported` holding the display |
+| `folder="\"` | plus `Moving component 'X' to folder '\'.` | a folder row with **no name** holding the display |
+| `folder="/"` | `Import completed successfully.` and then `Program completed with ERRORS.`, with no `Moving component` line | nothing moved, and the run reports failure |
+
+The move is what relocates an existing display: re-importing a display that already
+sits in a folder without a `folder` attribute leaves it in that folder and only
+replaces its contents. A display that is new to the application lands at the root.
+
+So the root is spelled by leaving the attribute off, not by pointing at it. A leading
+separator is not a path: `\` creates a nameless folder and `/` makes the move fail
+after the import already happened. `ftview_component_package` therefore writes no
+`folder` attribute when the target is the root and drops a leading separator from a
+named folder.
+
+A nameless folder is easy to mistake for a broken import — the displays are inside it
+and named correctly, but the row above them reads blank. Expanding that row (a repaint
+in the Explorer is enough) shows `Probe1` … `Probe5` and the rest by name.
+
 ## What the export/import path cannot prove
 
 The XML export is a projection of one display, not a complete application. It

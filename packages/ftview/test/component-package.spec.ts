@@ -32,13 +32,14 @@ describe('component package', () => {
     const list = readFileSync(plan.listFile, 'utf8')
     expect(list).toContain('<hmi>')
     expect(list).toContain(`    <category type="Graphics;Displays" folder="${out}">`)
-    expect(list).toContain(`        <component file="Main.xml" folder="\\"/>`)
+    expect(list).toContain('        <component file="Main.xml"/>')
     expect(list).toContain('        <component file="Alarm.xml"')
+    expect(list).not.toContain('folder="\\"')
     expect(list).toContain('</hmi>')
     expect(readFileSync(join(out, 'Main.xml'), 'utf8')).toContain('<gfx')
     expect(plan.components).toEqual([
-      { file: 'Main.xml', category: 'Graphics;Displays', folder: '\\' },
-      { file: 'Alarm.xml', category: 'Graphics;Displays', folder: '\\' },
+      { file: 'Main.xml', category: 'Graphics;Displays', folder: '' },
+      { file: 'Alarm.xml', category: 'Graphics;Displays', folder: '' },
     ])
     expect(plan.steps.join('\n')).toContain('$AddComponent.txt')
     expect(plan.steps.join('\n')).toContain('exit code 0 means installed, 1 means refused')
@@ -50,7 +51,22 @@ describe('component package', () => {
     expect(plan.command).toContain(' overwrite')
     const list = readFileSync(plan.listFile, 'utf8')
     expect(list).toContain('<category type="Graphics;Global Objects"')
-    expect(list).toContain('<component file="Main.xml" folder="\\Global"/>')
+    expect(list).toContain('<component file="Main.xml" folder="Global"/>')
+  })
+
+  it('leaves the folder attribute off at the root, and drops a leading separator', () => {
+    const exportRoot = exportOnDisk(['Main'])
+    for (const [index, target] of ['', '\\', '/', '  '].entries()) {
+      const plan = prepareComponentPackage('App', exportRoot, ['Main'], join(exportRoot, `root-${index}`), 'Graphics;Displays', target)
+      const list = readFileSync(plan.listFile, 'utf8')
+      expect(list, target).toContain('        <component file="Main.xml"/>')
+      expect(list, target).not.toContain('folder="\\"')
+      expect(plan.components[0]?.folder, target).toBe('')
+    }
+    // A separator at the front is not part of a folder name: the tool would make a
+    // nameless folder (measured: folder="\" produced an unnamed node in the Explorer).
+    const named = prepareComponentPackage('App', exportRoot, ['Main'], join(exportRoot, 'named'), 'Graphics;Displays', '\\Imported')
+    expect(readFileSync(named.listFile, 'utf8')).toContain('<component file="Main.xml" folder="Imported"/>')
   })
 
   it('refuses names the Add Component Tool forbids, unknown categories, and missing files', () => {

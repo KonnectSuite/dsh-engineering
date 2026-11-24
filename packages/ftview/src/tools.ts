@@ -814,7 +814,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
         export_root: string('Applied export folder that contains Displays/.'),
         components: string('Component (display) names to install, separated by commas, without .xml.'),
         category: string('Category to install into: Graphics;Displays, Graphics;Global Objects, Graphics;Images, Graphics;DisplayFolders or Graphics;GlobalObjectsFolders. Defaults to Graphics;Displays.'),
-        target_folder: string('Folder inside the application the components land in. Defaults to \\ (the application root).'),
+        target_folder: string('Folder inside the application the components land in. Defaults to the root of the category; a folder name creates that folder in the Explorer (measured: an empty folder attribute installs at the root, and "\\" creates a folder with no name).'),
         overwrite: choice('Append overwrite to the command: replace components the application already has.', ['no', 'yes']),
         output_root: string('Optional new folder for the package; defaults to a folder under the system temp directory.'),
       }, ['application', 'export_root', 'components']),
@@ -831,7 +831,7 @@ export function ftviewTools(session: ViewSession, read?: (path: string) => Promi
             names,
             outputRoot,
             category,
-            optionalString(args, 'target_folder') ?? '\\',
+            optionalString(args, 'target_folder') ?? '',
             optionalString(args, 'overwrite') === 'yes',
           )
           return success(

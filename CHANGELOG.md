@@ -86,6 +86,17 @@
   (`DRAFT_ALREADY_APPLIED`), and `ftview_verify_import` resolves the applied draft when the caller omits
   `draft_id`. Measured on a real ME install: import, then verify, reports `0 staged object(s) missing` for
   the authored display.
+- **A packaged display now installs at the root of the Explorer, not in a nameless folder.**
+  `ftview_component_package` wrote `folder="\"` on every `<component>`, and the measured effect on
+  Studio 15.0 is a folder row with **no name** between `Displays` and the display — the imported
+  displays were there and correctly named, but the tree read as if the import had produced a blank
+  entry. Installing the same file four ways settled the contract: with no `folder` attribute a new
+  display lands at the root; `folder="Imported"` creates that folder; `folder="\"` creates the
+  nameless folder; `folder="/"` imports the file, then logs no `Moving component` line and ends
+  `Program completed with ERRORS.` (the move is also what relocates a display that already sits in a
+  folder — a re-import without the attribute leaves it where it is). `packages/ftview/src/studio-assets.ts` now writes the attribute
+  only for a named folder and drops a leading separator, `target_folder` defaults to the root, and
+  the package spec covers each spelling.
 
 ### Changed
 
@@ -111,9 +122,11 @@
   pen width is normalised to the box's short side, `fontSize` is write-only (`charHeight`/`charWidth` come
   back recomputed), and a panel's `cornerRadius` is dropped although the schema declares it.
   `pages/editor-rewrites.md` records each measurement with the pair of values that produced it, so a
-  comparison that reports an object as "changed" can be read for what it is. The handoff page also records
+  comparison that reports an object as "changed" can be read for what it is. `pages/export-import.md` records
   the measured Add Component Tool behaviour: the process can return exit code 0 before it writes
-  `$AddComponent.txt`, so the log is awaited rather than read the instant the process exits.
+  `$AddComponent.txt`, so the log is awaited rather than read the instant the process exits, and the
+  `folder` attribute decides where the display appears — no attribute is the root, a name creates that
+  folder, `\` a nameless one, and `/` fails the move after the import.
 
 ## 0.104.0 — 2026-11-23
 

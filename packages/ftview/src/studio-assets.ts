@@ -299,7 +299,12 @@ export const COMPONENT_FORBIDDEN = /[."%:?*<>#{}[\]'\\\/;=&+\-]/u
  * @param components - Component (display) names, without `.xml`.
  * @param outputRoot - New folder for the package.
  * @param category - Category to install into, one of `COMPONENT_CATEGORIES`.
- * @param targetFolder - Folder inside the application, defaults to the root.
+ * @param targetFolder - Folder inside the application; empty installs at the root of
+ *   the category, and a leading separator is dropped rather than passed on. Measured
+ *   on Studio 15.0: a component with no `folder` attribute lands at the root,
+ *   `folder="\"` makes a folder with an empty name in the tree, and `folder="/"`
+ *   makes the tool import the file and then fail the move ("Program completed with
+ *   ERRORS." with no "Moving component" line).
  * @param overwrite - Append `overwrite` to the command, replacing existing components.
  * @returns The package paths, the command and the steps.
  */
@@ -309,7 +314,7 @@ export function prepareComponentPackage(
   components: readonly string[],
   outputRoot: string,
   category: string = 'Graphics;Displays',
-  targetFolder = '\\',
+  targetFolder = '',
   overwrite = false,
 ): ComponentPackagePlan {
   if (components.length === 0) throw new Error('name at least one component to install')
@@ -318,6 +323,8 @@ export function prepareComponentPackage(
   }
   if (existsSync(outputRoot)) throw new Error(`a file or folder already exists at ${outputRoot}`)
   mkdirSync(outputRoot, { recursive: true })
+  const folder = targetFolder.trim().replace(/^[\\/]+/u, '')
+  const atRoot = folder === ''
   const entries: { file: string; category: string; folder: string }[] = []
   for (const component of components) {
     const stem = component.replace(/\.xml$/iu, '')
@@ -330,7 +337,7 @@ export function prepareComponentPackage(
     const parsed = parseDisplay(`${stem}.xml`, text)
     if (parsed.parseError !== undefined) throw new Error(`${source} does not parse as a display: ${parsed.parseError}`)
     copyFileSync(source, join(outputRoot, `${stem}.xml`))
-    entries.push({ file: `${stem}.xml`, category, folder: targetFolder })
+    entries.push({ file: `${stem}.xml`, category, folder: atRoot ? '' : folder })
   }
   const listFile = join(outputRoot, `${application}-Components.xml`)
   const lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<hmi>']
@@ -342,7 +349,10 @@ export function prepareComponentPackage(
   }
   for (const [type, group] of groups) {
     lines.push(`    <category type="${escapeXmlAttribute(type)}" folder="${escapeXmlAttribute(outputRoot)}">`)
-    for (const entry of group) lines.push(`        <component file="${escapeXmlAttribute(entry.file)}" folder="${escapeXmlAttribute(entry.folder)}"/>`)
+    for (const entry of group) {
+      const attribute = entry.folder === '' ? '' : ` folder="${escapeXmlAttribute(entry.folder)}"`
+      lines.push(`        <component file="${escapeXmlAttribute(entry.file)}"${attribute}/>`)
+    }
     lines.push('    </category>')
   }
   lines.push('</hmi>', '')

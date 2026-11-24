@@ -39,6 +39,13 @@ in [CHANGELOG.md](CHANGELOG.md) and covered by the suite.
   records the measured coordinate system (percent of the object box in, absolute pixels out), the
   line/pen-width normalisation, `fontSize` being write-only, the dropped panel `cornerRadius`, and
   the Add Component Tool writing `$AddComponent.txt` after it has already exited.
+- **A packaged display installs at the root, not in a nameless folder.** The component list wrote
+  `folder="\"` on every entry, which on Studio 15.0 creates a folder row with no name between
+  `Displays` and the imported displays. The attribute is now written only for a folder the caller
+  names, and a leading separator is dropped. Measured four ways on the same file — attribute absent
+  (a new display lands at the root), `folder="Imported"` (that folder), `folder="\"` (a nameless
+  folder), `folder="/"` (import succeeds, the move fails, the run ends
+  `Program completed with ERRORS.`) — and recorded in `pages/export-import.md`.
 
 
 ## What 0.104.0 changes
@@ -140,7 +147,7 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
 | ECAD product / live AryaCAD bridge | **not-runnable** — component retired; no AryaCAD surface on this host | The row, 12 tools and skill are removed; the DXF/DWG drawing preview face still builds and mounts; the bridge's live path is not claimed anywhere. |
 | SLC 500 `.RSS` automation read | **not-runnable** — automation class registered, but no recorded transcript and the edition is unrecorded | `slc500_open` reads a text/Library export end to end; `.RSS` returns `NOT_LICENSED` with the export-text/record-transcript fix. |
 | PLC-5 `PC5 EXPORT` text path | **not-runnable** — RSLogix 5's UI/export tools do not write that document on this host (IMPEXP5.EXE is 16-bit; no `.PC5` fixture) | The headless COM read of a real `.RSP` is proved; the text tools stay parser/unit-tested only. |
-| FTView imported display in the Studio tree | **not-run** — the imported display appears as an unnamed tree row (UIA name blank) and an OCR/find search cannot select it | The import itself is proved object-for-object by `ftview_verify_import` (1/1, 87 defaults normalised). Candidate fix recorded: write display-name metadata so Studio labels the new display. |
+| FTView imported display in the Studio tree | **pass** — Studio 15.0 opened `AryaProbeME`; `Graphics > Displays` lists `Probe1`…`Probe5` and `ProbeGeo` by name, and `Probe1` opened in the Display Editor and painted its objects | The earlier "unnamed tree row" was **the import folder, not the display**: `folder="\"` in the component list makes a folder node with no name (measured four ways — absent lands a new display at the root, a name makes that folder, `\` makes the nameless one, `/` fails the move). The code now writes the attribute only for a named folder. Open item from the same read: one object in `Probe1` draws as the placeholder "Audit Trail Detail object is not properly configured." — evidence `C:\Users\KNPhu\AppData\Local\dsh-plugin-arya-desktop\screenshots\shot-1795501682773.png` |
 | Ten scripted tasks per product on a weaker model | **not run** — no weaker-model harness in this environment | Tool-level drills for every product were recorded here instead; the owner/agent walkthrough remains the intended check. |
 | Desktop Electron window and refreshed Plugins screenshots | **not run** — composition booted through the CLI/web probe path | The installed tarball's composition is proved; `docs/images/dev-components*.png` are still 0.102.0 screenshots. |
 | Publish / tag / market catalogue | **run on 2026-11-23, on the owner's request** | `pnpm publish --no-git-checks` → "✅ Published package @aryacode/dsh-engineering@0.104.0"; `v0.104.0` tagged at the release commit `7fbf495` and pushed with `main`; the tag push made the GitHub Release (body = this version's changelog section, 22,660 chars); `node ../dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests` → "released @aryacode/dsh-engineering@0.104.0 · npm ok · catalogue ok · sha256 67d2e5866587". The registry lagged as documented (packument 404 for ~6 min, the tarball URL ~14 min); the script's github step warned `HTTP 422 Release.tag_name already exists`, which is the release the tag push had already created. No version was bumped. |

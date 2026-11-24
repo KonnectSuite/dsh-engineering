@@ -4,7 +4,7 @@
 
 The engineering bundle registers **167 tools** for L5X and Migration and PLC-5 and RSLogix 500 and Engineering resources and FactoryTalk View and MotionWorks IEC. Each tool answers with a summary,
 structured data and suggested next calls; expected failures return a code, a message and a fix.
-Those 167 definitions total **150669 characters** of model-visible JSON — name, description and
+Those 167 definitions total **150820 characters** of model-visible JSON — name, description and
 parameter schema — which is the cost the [component contract](components.md) budgets for a default-on row.
 See [Examples](../examples.md) for end-to-end usage and the [README](../../README.md) for components and switches.
 
@@ -1285,7 +1285,7 @@ Package display XML from an applied export for Studio’s Add Component Tool: co
 | `export_root` | string | yes | Applied export folder that contains Displays/. |
 | `components` | string | yes | Component (display) names to install, separated by commas, without .xml. |
 | `category` | string | no | Category to install into: Graphics;Displays, Graphics;Global Objects, Graphics;Images, Graphics;DisplayFolders or Graphics;GlobalObjectsFolders. Defaults to Graphics;Displays. |
-| `target_folder` | string | no | Folder inside the application the components land in. Defaults to \ (the application root). |
+| `target_folder` | string | no | Folder inside the application the components land in. Defaults to the root of the category; a folder name creates that folder in the Explorer (measured: an empty folder attribute installs at the root, and "\" creates a folder with no name). |
 | `overwrite` | string (no \| yes) | no | Append overwrite to the command: replace components the application already has. |
 | `output_root` | string | no | Optional new folder for the package; defaults to a folder under the system temp directory. |
 
