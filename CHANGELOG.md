@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## 0.104.1 — 2026-11-24
+
 ### Fixed
 
 - **FactoryTalk View ME drafts now speak the schema the host actually has.** The drafting contract was a
