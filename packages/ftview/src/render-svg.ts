@@ -14,6 +14,21 @@ import { dirname, resolve } from 'node:path'
 import { encodeEntities } from './display-tree.ts'
 import { decodeEntities } from './model.ts'
 import type { DisplayObject } from './model.ts'
+import { ELEMENTS } from './render-vocabulary.generated.ts'
+
+/** How much of the display the renderer may claim. */
+export interface RenderOptions {
+  /**
+   * The coordinate space the file carries.
+   *
+   * `export` is a display Studio wrote: its `line`/`path` coordinates are display
+   * pixels. `draft` is a file the editing tools staged and Studio has not imported
+   * yet, where the same attributes are percent of the object's own box — measured
+   * in the authoring pass, where a drafted `line="0 0 100 0"` imported as
+   * `15 15 105 15 ` on a 100 px box.
+   */
+  readonly mode?: 'export' | 'draft'
+}
 
 /** Canvas size and background read from `displaySettings`. */
 export interface RenderSettings {
@@ -30,6 +45,10 @@ export interface RenderResult {
   readonly drawn: number
   readonly skipped: readonly string[]
   readonly problems: readonly RenderProblem[]
+  /** Objects whose element name the installed schema does not declare. */
+  readonly unknown: readonly string[]
+  /** The coordinate space the drawing used. */
+  readonly mode: 'export' | 'draft'
 }
 
 /** A geometry problem the drawing exposes before anyone imports it. */
@@ -92,6 +111,15 @@ export interface RasterImage {
 /** Child elements the parser reports as objects but which draw nothing. */
 const STRUCTURAL = new Set(['connections', 'connection', 'caption', 'states', 'state', 'animations', 'imagesettings', 'displaysettings', 'parameterfile', 'message', 'scada'])
 
+/**
+ * Every element name the installed schema declares, lower-cased.
+ *
+ * {@link kindOf} lower-cases the declared type, so the comparison has to be
+ * case-insensitive as well: comparing `momentarybutton` against the vocabulary's
+ * `momentaryButton` listed every ordinary button as an unknown object.
+ */
+const KNOWN_TYPES: ReadonlySet<string> = new Set(Object.keys(ELEMENTS).map(name => name.toLowerCase()))
+
 /** Browser executables that can rasterise an SVG here. */
 const BROWSERS: readonly string[] = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -132,15 +160,41 @@ function geometry(object: DisplayObject, name: string, fallback: number): number
   return Number.isFinite(value) ? value : fallback
 }
 
-/** The vendor's polyline marker: pairs of display coordinates, space separated. */
-function polyline(object: DisplayObject): string | undefined {
-  const raw = object.attributes.line
+/** Clamp a draft percentage into the box. */
+function clampPercent(value: number): number {
+  return value < 0 ? 0 : value > 100 ? 100 : value
+}
+
+/**
+ * One coordinate list as SVG points, resolving a draft's percentages.
+ *
+ * An exported display writes display pixels here. A file the editing tools staged
+ * writes percent of the object's own box — the editor converts it on import, and
+ * drawing the percentage as pixels put every staged line in the top-left corner.
+ *
+ * @param raw - The `line` or `path` attribute.
+ * @param object - The object the coordinates belong to.
+ * @param mode - `export` reads pixels, `draft` reads percentages.
+ * @returns `x,y` pairs, or undefined when the attribute is not a coordinate list.
+ */
+function polyline(raw: string | undefined, object: DisplayObject, mode: 'export' | 'draft'): readonly string[] | undefined {
   if (raw === undefined) return undefined
   const numbers = raw.trim().split(/\s+/u).map(Number).filter(Number.isFinite)
   if (numbers.length < 4 || numbers.length % 2 !== 0) return undefined
+  if (mode === 'export') {
+    const pairs: string[] = []
+    for (let index = 0; index < numbers.length; index += 2) pairs.push(`${numbers[index]},${numbers[index + 1]}`)
+    return pairs
+  }
+  const left = geometry(object, 'left', 0)
+  const top = geometry(object, 'top', 0)
+  const width = geometry(object, 'width', 0)
+  const height = geometry(object, 'height', 0)
   const pairs: string[] = []
-  for (let i = 0; i < numbers.length; i += 2) pairs.push(`${numbers[i]},${numbers[i + 1]}`)
-  return pairs.join(' ')
+  for (let index = 0; index < numbers.length; index += 2) {
+    pairs.push(`${left + (clampPercent(numbers[index]) / 100) * width},${top + (clampPercent(numbers[index + 1]) / 100) * height}`)
+  }
+  return pairs
 }
 
 /** SVG dash pattern for a vendor line style. */
@@ -182,7 +236,7 @@ function faceText(object: DisplayObject): string {
 }
 
 /** One object as SVG. */
-function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): string {
+function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>, mode: 'export' | 'draft'): string {
   const left = geometry(object, 'left', 0)
   const top = geometry(object, 'top', 0)
   const width = geometry(object, 'width', 0)
@@ -202,14 +256,17 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
       .join('')
     return `<text x="${left}" y="${top + size}" font-size="${size}" font-family="Segoe UI, Arial, sans-serif" fill="${colourText}">${spans}</text>`
   }
-  if (type === 'line') {
-    const points = polyline(object)
+  if (type === 'line' || type === 'polyline' || type === 'freehand' || type === 'polygon') {
     const strokeColour = colour(object.attributes.foreColor ?? object.attributes.color ?? object.attributes.backColor, '#000000')
-    const width = geometry(object, 'lineWidth', 1)
+    const pen = geometry(object, 'lineWidth', 1)
+    const points = polyline(object.attributes.line ?? object.attributes.path, object, mode)
     if (points === undefined) {
-      return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${strokeColour}" stroke-width="${width}"/>`
+      return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${strokeColour}" stroke-width="${pen}"${dash(object.attributes.lineStyle)}/>`
     }
-    return `<polyline points="${points}" fill="none" stroke="${strokeColour}" stroke-width="${width}"${dash(object.attributes.lineStyle)}/>`
+    if (type === 'polygon') {
+      return `<polygon points="${points.join(' ')}" fill="${fill}" stroke="${strokeColour}" stroke-width="${pen}"${dash(object.attributes.lineStyle)}/>`
+    }
+    return `<polyline points="${points.join(' ')}" fill="none" stroke="${strokeColour}" stroke-width="${pen}"${dash(object.attributes.lineStyle)}/>`
   }
   const imageName = object.attributes.imageName
   if (imageName !== undefined && images.has(imageName)) {
@@ -239,18 +296,22 @@ function draw(object: DisplayObject, images: ReadonlyMap<string, RasterImage>): 
 }
 
 /** Render a display to an SVG document. */
-export function renderDisplaySvg(name: string, objects: readonly DisplayObject[], settings: RenderSettings, images: ReadonlyMap<string, RasterImage> = new Map()): RenderResult {
+export function renderDisplaySvg(name: string, objects: readonly DisplayObject[], settings: RenderSettings, images: ReadonlyMap<string, RasterImage> = new Map(), options: RenderOptions = {}): RenderResult {
+  const mode = options.mode ?? 'export'
   const skipped: string[] = []
   const problems: RenderProblem[] = []
+  const unknown: string[] = []
   const shapes: string[] = []
   const marks: string[] = []
   for (const object of objects) {
     if (STRUCTURAL.has(object.type.toLowerCase()) || STRUCTURAL.has(kindOf(object))) continue
+    const kind = kindOf(object)
+    if (!KNOWN_TYPES.has(kind)) unknown.push(object.name ?? object.type)
     if (geometry(object, 'width', 0) === 0 && geometry(object, 'height', 0) === 0) {
       skipped.push(object.name ?? object.type)
       continue
     }
-    shapes.push(draw(object, images))
+    shapes.push(draw(object, images, mode))
     const found = problemsOf(object, settings)
     if (found.length > 0) {
       marks.push(
@@ -268,7 +329,7 @@ export function renderDisplaySvg(name: string, objects: readonly DisplayObject[]
     `</svg>`,
     '',
   ].join('\n')
-  return { svg, width: settings.width, height: settings.height, drawn: shapes.length, skipped, problems }
+  return { svg, width: settings.width, height: settings.height, drawn: shapes.length, skipped, problems, unknown, mode }
 }
 
 /** One drawing on a review sheet: the display name and its own SVG document. */

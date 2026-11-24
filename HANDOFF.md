@@ -1,9 +1,9 @@
 # Handoff
 
-The bundle after the 0.104.1 FactoryTalk View ME authoring batch, driven against the vendor software
-actually installed on this host. This file is the current state: version, what the batch changes,
-what was verified and how, what could not be run on this host, and the next step. History belongs
-to [CHANGELOG.md](CHANGELOG.md), not here.
+The bundle after the 0.104.1 FactoryTalk View ME authoring batch, plus one unreleased pass over the
+display preview, driven against the vendor software actually installed on this host. This file is the
+current state: version, what each batch changes, what was verified and how, what could not be run on
+this host, and the next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not here.
 
 ## Right now
 
@@ -18,6 +18,41 @@ to [CHANGELOG.md](CHANGELOG.md), not here.
 | Context budget | **174 tools / 136,828 schema characters** — the ceiling is the 2026-11-22 measurement 131,565 + 4%; re-measured **133,137** on 2026-11-24 (L5X 55,453 + FTView 46,897 + MWI 18,488 + resources 1,474 + migration 10,825) after the FactoryTalk View schema-vocabulary and folder-attribute wording landed, inside the ceiling. |
 | Verified | `pnpm test` **80/80 spec files pass** on the release tree `fbd5549` (48,921 ms), including the FTView vocabulary, knowledge, component-package and authoring specs; `pnpm -r build` and `pnpm assemble` ("assembled 8 components and 1 viewer payloads into vendor/") exit 0; `pnpm check:package` reports "the tarball is conforming" at **23.6 MiB in 1,100 files**. **Packaged-display proof on the shipped tool**: a fresh Dev profile (`verify-0104n`) installed the tree's own pack, `ftview_component_package` wrote a component list with **0 folder attributes**, `SEAddComponent AryaProbeME ME / … overwrite` answered exit 0 with "Program completed successfully" for all five displays, and Studio 15.0 lists `Probe1`…`Probe5` and `ProbeGeo` by name. Evidence: `tmp/ftview-folder-probe.log`, `tmp/ftview-e2e3/probe-pkg7/`, `tmp/ftview-probe-draft6.log`, `tmp/ftview-geo-probe2.log`. The 0.104.0 packaged release smoke (`release-0104-smoke.mjs`, 174 default-on tools, `l5x_export_rungs` writing a 1,004,886 B rung-target file) still describes the tool surface, which this batch does not change. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
+
+## Unreleased on top of 0.104.1
+
+The display preview was rebuilt around what the authoring pass measured. Nothing here is released.
+
+- **The previewer's vocabulary is the schema, not a hand-kept list.** `scripts/gen-ftview-viewer-vocabulary.mjs`
+  derives 91 element names, their attribute declarations and a painter family from the installed schema
+  snapshot and writes the same module to `packages/ftview-viewer/src/vocabulary.generated.ts` and
+  `packages/ftview/src/render-vocabulary.generated.ts`; `test/ftview-viewer-vocabulary.spec.mjs` fails when
+  the two copies differ, when `--check` says they are stale, or when a known-absent name returns.
+- **No element vanishes.** Every one of the 91 names either draws or is reported — a labelled placeholder
+  with its reason (ActiveX, an arc's assumed zero direction, a `polyPolygon` with fewer than two
+  `innerPolygon` parts, a chart other than a bar graph or gauge) or an unknown-name entry. The old
+  renderer's silent `return ''` is what made an undrawn object look authored.
+- **Coordinates are resolved by document mode.** `packages/ftview-viewer/src/geometry.ts` holds the measured
+  rules as pure functions: `line`, `path`, `polygon` and `innerPolygon` are percent of the object box in a
+  staged draft and absolute display pixels in a vendor export; a geometry-less `<polyline>` is the editor's
+  box diagonal; a value above 100 clamps to the box edge. `documentMode()` decides from `<displaySettings>`
+  and the import flags, and the toolbar badge says which rule was applied.
+- **The face obeys the host's rules.** `packages/ftview-viewer/face/display.ts` uses `--dsw-*` tokens for
+  every colour, radius, font and focus ring, 24 px minimum targets, and a 43-key `en`/`zh` dictionary pair;
+  the coverage chip opens a panel listing placeholders, unknown names and coordinate rules.
+- **`ftview_render` reports the same facts.** Its reply carries `mode` and `unknown`, and a draft render
+  resolves percentages instead of drawing them as pixels.
+- **The renderer was checked against an installed display, not just unit fixtures.** Drawing
+  `probe-after6/Displays/Probe1.xml` reported 19 objects and 41 drawn shapes, because a part's `<caption>`
+  and a bar graph's `<thresh1Value>` were treated as objects and painted one letter per line; the
+  generator now emits all 31 part names, so the same file reports 19 objects, 19 drawn, no unknowns, and
+  the PNG matches Studio's canvas. Two more of the same kind followed from that comparison: an `arc` whose
+  angles are both zero is the filled ellipse the editor draws (not an empty sweep), and a `barGraph` with
+  `backStyle="transparent"` and no controller value now paints a dashed "no value" outline instead of
+  nothing. Both are recorded in `docs/products/ftview/README.md` and covered by
+  `packages/ftview-viewer/test/geometry.spec.mjs`.
+- **Gate on this tree:** `pnpm test` **83/83 spec files pass** (44,165 ms), which now includes
+  `test/ftview-viewer-vocabulary.spec.mjs` and the viewer's `coverage` and `geometry` specs.
 
 ## What 0.104.1 changes
 

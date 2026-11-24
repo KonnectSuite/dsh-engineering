@@ -1,5 +1,48 @@
 ## [Unreleased]
 
+### Added
+
+- **The display preview describes each object it cannot draw instead of leaving it blank.** The panel drew
+  34 hand-kept element names against a schema that declares 91, so 29 real objects were dropped with no
+  trace and a blank area in the preview looked authored. `packages/ftview-viewer/src/vocabulary.generated.ts`
+  is now generated from the same `Gfx-ME*.xsd` snapshot the drafting tools read — 91 elements, each mapped
+  to a painter family with its attributes, children and required parts — and the renderer draws each family
+  or a labelled placeholder that names the reason: an ActiveX control, an arc, a `polyPolygon` carrying one
+  `innerPolygon`, a `trend` whose series the export does not carry. `renderDisplayWithReport` returns a
+  `RenderReport` with the drawn count, every placeholder, every element outside the installed schema and
+  every coordinate rule it applied; the face shows that as a coverage chip and a panel, and the inspector
+  names the object's family and the rule its geometry was read with.
+
+### Changed
+
+- **The preview reads a staged draft's geometry as the editor will.** Coordinates inside an object are a
+  percentage of its own box when written and display pixels when exported, and the preview applied the
+  pixel rule to both, so a drafted `line="0 0 100 0"` was drawn in the top-left corner. `geometry.ts` now
+  resolves `line`, `path`, `polygon` and `innerPolygon` by an explicit rule, detects draft versus exported
+  XML from the file's own marks (`<displaySettings>` and the `visible`/`wallpaper`/`isReferenceObject`
+  flags) and reports which rule it used; a `Draft`/`Export` badge states it in the panel, and
+  `ftview_render` gained the same `mode`, drawing a staged draft with draft coordinates and returning the
+  object names outside the installed schema.
+- **The FTView face uses the shell's theme tokens and its own dictionaries.** Every colour, border, radius
+  and the type scale come from `--dsw-*` tokens, so light and dark follow the shell, and the toolbar,
+  inspector and artifact card strings — including the two prompts — moved into the `factorytalkView`
+  locale dictionary in English and Chinese, with 24 px minimum targets and visible focus on every action.
+
+### Fixed
+
+- **An object's own settings are no longer drawn as objects.** The renderer decided what was an object with
+  a hand-kept list of part names, and 10 of the 31 parts the schema declares have no global part type, so a
+  `<caption>` or a bar graph's `<thresh1Value>` was drawn as an object of its own: the installed Probe
+  display reported 19 objects and 41 drawn shapes, and the captions appeared as one letter per line. The
+  generator now emits every part name, the renderer excludes all of them, and the object count matches the
+  file.
+- **An arc with equal angles is the filled ellipse the editor draws**, and a **bar graph with no value**
+  paints its frame plus a dashed "no value" outline instead of nothing at all. Both were measured on an
+  installed export: `startAngle="0" endAngle="0"` is the navy ellipse Studio paints, and a `barGraph` with
+  `backStyle="transparent"` and `borderStyle="none"` leaves a blank spot where the design has a bar. A
+  list's own element name is now an annotation in a contrast-checked colour, so it stays readable on the
+  navy of an alarm banner.
+
 ## 0.104.1 — 2026-11-24
 
 ### Fixed

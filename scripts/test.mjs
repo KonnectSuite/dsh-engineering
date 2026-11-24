@@ -77,10 +77,13 @@ const BUNDLE = [
   'test/legacy-knowledge.spec.mjs',
   'test/ftview-knowledge.spec.mjs',
   'test/ftview-vocabulary.spec.mjs',
+  'test/ftview-viewer-vocabulary.spec.mjs',
   'test/mwi-idefree.spec.mjs',
   'test/slc500-tools.spec.mjs',
   'packages/l5x/test/dist-smoke.mjs',
   'packages/ftview-viewer/test/render.spec.mjs',
+  'packages/ftview-viewer/test/coverage.spec.mjs',
+  'packages/ftview-viewer/test/geometry.spec.mjs',
   'packages/ftview-viewer/test/face.spec.mjs',
 ]
 

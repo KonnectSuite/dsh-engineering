@@ -3,17 +3,40 @@
  *
  * The renderer is deliberately a pure function of the display tree plus an
  * optional tag table: the same call runs in the browser preview, in a Node
- * snapshot test, and in the headless screenshot harness. It draws the objects
- * the application actually uses (panels, groups, text, buttons with per-state
- * captions and colours, images, numeric and string displays, multistate
- * indicators, alarm placeholders, basic shapes) and leaves a labelled
- * placeholder for a type it does not know yet rather than drawing nothing.
+ * snapshot test, and in the headless screenshot harness.
+ *
+ * Two rules shape it. First, the vocabulary comes from the vendor schema
+ * (`vocabulary.generated.ts`, generated from `Gfx-ME16.xsd`), so every object the
+ * editor can export is drawn by family instead of dropping out of a hand-kept
+ * list. Second, nothing disappears silently: an object the preview cannot draw
+ * faithfully becomes a labelled placeholder, and {@link renderDisplayWithReport}
+ * returns the count, the names and the reason for every one of them.
+ *
+ * Geometry follows the measured editor rules in `geometry.ts`; a file that has
+ * not been imported yet is read as a draft, where coordinates are percent of the
+ * object box.
  *
  * @module dsh-engineering-ftview-viewer/render
  */
 
 import { attribute, child, numberAttribute, parseXml, type XmlNode } from './xml.ts'
 import { evaluate } from './expression.ts'
+import { ELEMENTS, PART_NAMES, elementFacts, type Family } from './vocabulary.generated.ts'
+import {
+  arcPath,
+  boxDiagonal,
+  clamp,
+  documentMode,
+  lineSegment,
+  pathPoints,
+  pointsToPath,
+  polygonPoints,
+  roundedRectPath,
+  wedgePath,
+  type Box,
+  type CoordinateMode,
+  type CoordinateRule,
+} from './geometry.ts'
 
 /** Inputs a live preview may supply. */
 export interface RenderOptions {
@@ -23,15 +46,65 @@ export interface RenderOptions {
   readonly tagValues?: Readonly<Record<string, number | string | boolean>>
   /** Global Objects by `File.Object` name, for reference objects. */
   readonly globals?: Readonly<Record<string, XmlNode>>
+  /** Force the coordinate space; `auto` reads it from the document. */
+  readonly mode?: CoordinateMode | 'auto'
+  /** Draw the labelled placeholder for an object the preview cannot draw; default true. */
+  readonly markers?: boolean
 }
 
-const OBJECTS = new Set([
-  'panel', 'text', 'group', 'momentaryButton', 'gotoButton', 'multistateButton', 'multistateIndicator',
-  'latchedButton', 'maintainButton', 'numericDisplay', 'numericInput', 'stringDisplay', 'stringInput', 'image',
-  'line', 'rectangle', 'ellipse', 'polygon', 'polyline', 'arc', 'barGraph', 'gauge', 'listSelector', 'trend',
-  'alarmList', 'alarmStatusList', 'alarmBanner', 'clearAlarmBannerButton', 'recipe', 'activeX',
-  'symbol', 'referenceObject', 'globalObject', 'rampButton',
-])
+/** One object the preview did not draw as authored. */
+export interface RenderMarker {
+  /** Object name, when the export names it. */
+  readonly name?: string
+  /** Element name. */
+  readonly type: string
+  /** Painter family the vocabulary gave it. */
+  readonly family: Family | 'unknown'
+  /** Why it is a placeholder, in one sentence. */
+  readonly reason: string
+}
+
+/** One object whose coordinates were read through a rule worth stating. */
+export interface GeometryNote {
+  /** Object name, when the export names it. */
+  readonly name?: string
+  /** Element name. */
+  readonly type: string
+  /** The attribute read. */
+  readonly attribute: string
+  /** The rule applied. */
+  readonly rule: CoordinateRule
+}
+
+/** What the preview did, beyond the drawing itself. */
+export interface RenderReport {
+  /** The coordinate space the file was read in. */
+  readonly mode: CoordinateMode
+  /** Where that decision came from. */
+  readonly modeReason: 'settings' | 'imported-flags' | 'staged' | 'forced'
+  /** Objects considered. */
+  readonly objects: number
+  /** Objects drawn as authored. */
+  readonly drawn: number
+  /** Objects drawn as a labelled placeholder. */
+  readonly markers: readonly RenderMarker[]
+  /** Objects the vocabulary does not know at all. */
+  readonly unknown: readonly RenderMarker[]
+  /** Coordinates read through a percent or diagonal rule. */
+  readonly geometry: readonly GeometryNote[]
+}
+
+/** The drawable facts a render pass collects. */
+interface Pass {
+  readonly options: RenderOptions
+  readonly mode: CoordinateMode
+  readonly markers: RenderMarker[]
+  readonly unknown: RenderMarker[]
+  readonly geometry: GeometryNote[]
+  /** Objects considered, nested ones included, so `drawn/objects` is one ratio. */
+  objects: number
+  drawn: number
+}
 
 const NAMED_COLORS: Readonly<Record<string, string>> = {
   white: '#ffffff', black: '#000000', silver: '#c0c0c0', gray: '#808080', grey: '#808080',
@@ -39,6 +112,15 @@ const NAMED_COLORS: Readonly<Record<string, string>> = {
   magenta: '#ff00ff', maroon: '#800000', navy: '#000080', teal: '#008080', lime: '#00ff00',
   olive: '#808000', purple: '#800080', fuchsia: '#ff00ff', aqua: '#00ffff', orange: '#ffa500',
 }
+
+/**
+ * Child elements that are structural, not objects: the wrapper some exports put
+ * around the object list, and the schema's own `<displaySettings>`.
+ */
+const WRAPPERS = new Set(['objects', 'displaySettings'])
+
+/** The schema's part names, as a set: a part is never an object of its own. */
+const PART_SET: ReadonlySet<string> = new Set(PART_NAMES)
 
 /** Escape text for SVG. */
 function escapeXml(text: string): string {
@@ -58,6 +140,42 @@ export function colourOf(value: string | undefined): string | undefined {
   return undefined
 }
 
+/**
+ * A readable colour for an annotation drawn on top of an object's own fill.
+ *
+ * The list and stand-in labels are not authored text, so they must not disappear
+ * into a dark fill: grey on the navy of an alarm banner is unreadable, which
+ * makes a labelled stand-in as good as an empty one.
+ *
+ * @param fill - The fill the annotation sits on, when it is a hex colour.
+ * @returns A grey for a light fill and an off-white for a dark one.
+ */
+function annotationColour(fill: string | undefined): string {
+  const hex = fill !== undefined && /^#[0-9a-f]{6}$/u.test(fill) ? fill.slice(1) : undefined
+  if (hex === undefined) return '#606060'
+  const [red, green, blue] = [0, 2, 4].map(at => Number.parseInt(hex.slice(at, at + 2), 16) / 255)
+  const luma = 0.2126 * (red ?? 0) + 0.7152 * (green ?? 0) + 0.0722 * (blue ?? 0)
+  return luma < 0.45 ? '#f0f0f0' : '#606060'
+}
+
+/**
+ * Whether a child node is a drawing object rather than a part of one.
+ *
+ * The answer comes from the schema: every part name the vendor declares — the
+ * captions, thresholds, image settings, state tables, animations — is a piece of
+ * the object that contains it. Anything else that is not one of the two wrapper
+ * names is an object, including a name the installed schema does not know, which
+ * is then drawn generically and reported.
+ */
+function isObjectNode(node: XmlNode): boolean {
+  if (WRAPPERS.has(node.tag)) return false
+  // `thresh1Value`…`thresh8Value` are bar-graph settings the schema declares as
+  // children of the graph rather than as parts, so they are not in PART_NAMES;
+  // drawn as objects they used to paint one letter per line over the graph.
+  if (/^thresh\d+Value$/u.test(node.tag)) return false
+  return !PART_SET.has(node.tag)
+}
+
 /** One selected state of an object, with its caption. */
 interface ObjectState {
   readonly id: string
@@ -67,9 +185,38 @@ interface ObjectState {
   readonly captionColor?: string
   readonly fontFamily?: string
   readonly fontSize?: number
+  readonly charHeight?: number
+  readonly charWidth?: number
   readonly bold?: boolean
   readonly italic?: boolean
+  readonly underline?: boolean
+  readonly strikethrough?: boolean
+  readonly wordWrap?: boolean
   readonly alignment?: string
+}
+
+/** The numbers a caption carries, whatever element supplied them. */
+interface TextMetrics {
+  readonly family: string
+  readonly size: number
+  readonly charHeight?: number
+  readonly charWidth?: number
+  readonly color: string
+  readonly bold: boolean
+  readonly italic: boolean
+  readonly underline: boolean
+  readonly strikethrough: boolean
+  readonly wordWrap: boolean
+  readonly horizontal: 'start' | 'middle' | 'end'
+  readonly vertical: 'top' | 'middle' | 'bottom'
+}
+
+/** Split an ME alignment name into its two axes. */
+function alignmentOf(value: string | undefined): { horizontal: 'start' | 'middle' | 'end'; vertical: 'top' | 'middle' | 'bottom' } {
+  const text = (value ?? 'middleCenter').toLowerCase()
+  const horizontal = text.includes('left') ? 'start' : text.includes('right') ? 'end' : 'middle'
+  const vertical = text.startsWith('top') || text.includes('top') ? 'top' : text.includes('bottom') ? 'bottom' : 'middle'
+  return { horizontal, vertical }
 }
 
 /** The state an object displays now, defaulting to state 0. */
@@ -93,8 +240,13 @@ function stateOf(node: XmlNode): ObjectState | undefined {
       captionColor: colourOf(attribute(caption, 'color')),
       ...(attribute(caption, 'fontFamily') === undefined ? {} : { fontFamily: attribute(caption, 'fontFamily') as string }),
       fontSize: numberAttribute(caption, 'fontSize', 12),
+      ...(attribute(caption, 'charHeight') === undefined ? {} : { charHeight: numberAttribute(caption, 'charHeight', 12) }),
+      ...(attribute(caption, 'charWidth') === undefined ? {} : { charWidth: numberAttribute(caption, 'charWidth', 7) }),
       bold: attribute(caption, 'bold') === 'true',
       italic: attribute(caption, 'italic') === 'true',
+      underline: attribute(caption, 'underline') === 'true',
+      strikethrough: attribute(caption, 'strikethrough') === 'true',
+      wordWrap: attribute(caption, 'wordWrap') === 'true',
       alignment: attribute(caption, 'alignment'),
     }),
   }
@@ -112,45 +264,136 @@ function paintOf(node: XmlNode, state: ObjectState | undefined): { fill: string;
   return { fill, stroke, strokeWidth }
 }
 
-/** A caption, its font and its anchor for one object. */
-function captionOf(node: XmlNode, state: ObjectState | undefined): { text: string; color: string; family: string; size: number; bold: boolean; italic: boolean; anchor: string } {
+/**
+ * The text metrics of one caption.
+ *
+ * Measured: the editor stores `charHeight`/`charWidth` in pixels, recomputes them
+ * from the requested point size on import and drops `fontSize` entirely, so those
+ * two are authoritative and `fontSize` is only a fallback for a file that carries
+ * no metrics at all.
+ *
+ * @param node - The object.
+ * @param state - Its current state, when it has states.
+ * @returns The metrics used to place and wrap the caption.
+ */
+function metricsOf(node: XmlNode, state: ObjectState | undefined): TextMetrics {
   const own = child(node, 'caption')
-  const text = attribute(node, 'caption') ?? (own === undefined ? undefined : attribute(own, 'caption')) ?? state?.caption ?? ''
-  const anchor = ((): string => {
-    const alignment = state?.alignment ?? attribute(own ?? node, 'alignment') ?? 'middleCenter'
-    if (alignment.toLowerCase().includes('left')) return 'start'
-    if (alignment.toLowerCase().includes('right')) return 'end'
-    return 'middle'
-  })()
+  const source = state !== undefined && state.caption !== undefined ? undefined : own
+  const charHeight = state?.charHeight ?? (source === undefined ? undefined : numberAttribute(source, 'charHeight', Number.NaN))
+  const charWidth = state?.charWidth ?? (source === undefined ? undefined : numberAttribute(source, 'charWidth', Number.NaN))
+  const size = Number.isFinite(charHeight as number)
+    ? (charHeight as number)
+    : state?.fontSize ?? numberAttribute(source ?? node, 'fontSize', numberAttribute(node, 'fontSize', 12))
+  const alignment = alignmentOf(state?.alignment ?? attribute(source ?? node, 'alignment'))
   return {
-    text,
-    color: colourOf(state?.captionColor ?? (own === undefined ? undefined : attribute(own, 'color')) ?? attribute(node, 'foreColor')) ?? '#000000',
-    family: state?.fontFamily ?? attribute(own ?? node, 'fontFamily') ?? attribute(node, 'fontFamily') ?? 'Arial Unicode MS',
-    size: state?.fontSize ?? numberAttribute(own ?? node, 'fontSize', numberAttribute(node, 'fontSize', 12)),
-    bold: state?.bold ?? attribute(own ?? node, 'bold') === 'true',
-    italic: state?.italic ?? attribute(own ?? node, 'italic') === 'true',
-    anchor,
+    family: state?.fontFamily ?? attribute(source ?? node, 'fontFamily') ?? attribute(node, 'fontFamily') ?? 'Arial Unicode MS',
+    size,
+    ...(Number.isFinite(charHeight as number) ? { charHeight: charHeight as number } : {}),
+    ...(Number.isFinite(charWidth as number) ? { charWidth: charWidth as number } : {}),
+    color: state?.captionColor ?? (source === undefined ? undefined : colourOf(attribute(source, 'color'))) ?? colourOf(attribute(node, 'foreColor')) ?? '#000000',
+    bold: state?.bold ?? attribute(source ?? node, 'bold') === 'true',
+    italic: state?.italic ?? attribute(source ?? node, 'italic') === 'true',
+    underline: state?.underline ?? attribute(source ?? node, 'underline') === 'true',
+    strikethrough: state?.strikethrough ?? attribute(source ?? node, 'strikethrough') === 'true',
+    wordWrap: state?.wordWrap ?? attribute(source ?? node, 'wordWrap') !== 'false',
+    ...alignment,
   }
 }
 
+/** The caption text of one object, from its state, attribute or child part. */
+function captionOf(node: XmlNode, state: ObjectState | undefined): string {
+  const own = child(node, 'caption')
+  return attribute(node, 'caption') ?? (own === undefined ? undefined : attribute(own, 'caption')) ?? state?.caption ?? ''
+}
+
 /** Text position for one anchor. */
-function textX(left: number, width: number, anchor: string, margin: number): number {
-  if (anchor === 'start') return left + margin
-  if (anchor === 'end') return left + width - margin
+function textX(left: number, width: number, horizontal: 'start' | 'middle' | 'end', margin: number): number {
+  if (horizontal === 'start') return left + margin
+  if (horizontal === 'end') return left + width - margin
   return left + width / 2
 }
 
-/** The `<text>` element for one caption, vertically centred. */
-function textElement(caption: ReturnType<typeof captionOf>, left: number, top: number, width: number, height: number, margin: number): string {
-  const lines = caption.text.split(/\r?\n/u)
-  const lineHeight = caption.size * 1.25
-  const startY = top + height / 2 - ((lines.length - 1) * lineHeight) / 2
-  const parts = lines.map((line, index) => `<tspan x="${textX(left, width, caption.anchor, margin)}" y="${startY + index * lineHeight}">${escapeXml(line)}</tspan>`)
-  return `<text text-anchor="${caption.anchor}" dominant-baseline="middle" font-family="${escapeXml(caption.family)}" font-size="${caption.size}" fill="${caption.color}"${caption.bold ? ' font-weight="bold"' : ''}${caption.italic ? ' font-style="italic"' : ''}>${parts.join('')}</text>`
+/** Break one caption into rendered lines, honouring wrap and hard newlines. */
+function wrapText(text: string, metrics: TextMetrics, width: number, margin: number): readonly string[] {
+  const hard = text.split(/\r?\n/u)
+  if (metrics.wordWrap !== true) return hard
+  const advance = Math.max(1, metrics.charWidth ?? metrics.size * 0.55)
+  const perLine = Math.max(1, Math.floor((width - margin * 2) / advance))
+  const lines: string[] = []
+  for (const paragraph of hard) {
+    if (paragraph.length <= perLine) {
+      lines.push(paragraph)
+      continue
+    }
+    let rest = paragraph
+    while (rest.length > perLine) {
+      const cut = rest.lastIndexOf(' ', perLine)
+      const at = cut > 0 ? cut : perLine
+      lines.push(rest.slice(0, at).trimEnd())
+      rest = rest.slice(at).trimStart()
+    }
+    lines.push(rest)
+  }
+  return lines
+}
+
+/** The `<text>` element for one caption, placed by its nine-way alignment. */
+function textElement(text: string, metrics: TextMetrics, box: Box, margin: number, verticalMargin = 2): string {
+  if (text === '') return ''
+  const lines = wrapText(text, metrics, box.width, margin)
+  const lineHeight = (metrics.charHeight ?? metrics.size) * 1.25
+  const block = lines.length * lineHeight
+  const anchorX = textX(box.left, box.width, metrics.horizontal, margin)
+  const firstY = metrics.vertical === 'top'
+    ? box.top + verticalMargin + lineHeight / 2
+    : metrics.vertical === 'bottom'
+      ? box.top + box.height - verticalMargin - block + lineHeight / 2
+      : box.top + box.height / 2 - block / 2 + lineHeight / 2
+  const parts = lines.map((line, index) => `<tspan x="${anchorX}" y="${firstY + index * lineHeight}">${escapeXml(line)}</tspan>`)
+  const decoration = [
+    ...(metrics.underline ? ['underline'] : []),
+    ...(metrics.strikethrough ? ['line-through'] : []),
+  ]
+  return `<text text-anchor="${metrics.horizontal === 'start' ? 'start' : metrics.horizontal === 'end' ? 'end' : 'middle'}" dominant-baseline="middle" font-family="${escapeXml(metrics.family)}" font-size="${metrics.size}" fill="${metrics.color}"${metrics.bold ? ' font-weight="bold"' : ''}${metrics.italic ? ' font-style="italic"' : ''}${decoration.length === 0 ? '' : ` text-decoration="${decoration.join(' ')}"`}>${parts.join('')}</text>`
+}
+
+/** A labelled dashed box for an object the preview does not draw as authored. */
+function markerBox(box: Box, label: string, detail: string | undefined, dashed = true): string {
+  const stroke = detail === undefined ? '4 3' : '2 2'
+  // The label and the reason are annotations, not authored text: they are folded
+  // to the box so a stand-in never runs over its neighbour, and a long reason is
+  // cut rather than spilling out of the object it explains.
+  const perLine = Math.max(6, Math.floor((box.width - 10) / 4.8))
+  const rows = detail === undefined ? [] : foldText(detail, perLine, 3)
+  const labelText = foldText(label, Math.max(6, Math.floor((box.width - 10) / 5)), 1).join(' ')
+  return `<g><rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="#f6f6f6" fill-opacity="0.55" stroke="#909090"${dashed ? ` stroke-dasharray="${stroke}"` : ''}/>` +
+    `<text x="${box.left + 5}" y="${box.top + 14}" font-family="Segoe UI" font-size="10" fill="#606060">${escapeXml(labelText)}</text>` +
+    rows.map((row, index) => `<text x="${box.left + 5}" y="${box.top + 27 + index * 11}" font-family="Segoe UI" font-size="9" fill="#808080">${escapeXml(row)}</text>`).join('') +
+    '</g>'
+}
+
+/** Break a sentence onto at most `lines` rows of `width` characters. */
+function foldText(text: string, width: number, lines: number): string[] {
+  const words = text.split(/\s+/u).filter(word => word !== '')
+  const rows: string[] = []
+  let row = ''
+  for (const word of words) {
+    if (rows.length === lines) break
+    if (row === '') row = word
+    else if (row.length + 1 + word.length <= width) row = `${row} ${word}`
+    else {
+      rows.push(row)
+      row = word
+    }
+  }
+  if (rows.length < lines && row !== '') rows.push(row)
+  const joined = rows.join(' ')
+  if (joined.length < text.length && rows.length > 0) rows[rows.length - 1] = `${(rows[rows.length - 1] ?? '').replace(/\.$/u, '')}…`
+  return rows
 }
 
 /** Draw one image object, or its placeholder. */
-function imageElement(node: XmlNode, options: RenderOptions, left: number, top: number, width: number, height: number): string {
+function imageElement(node: XmlNode, options: RenderOptions, box: Box): string {
   const settings = child(node, 'imageSettings')
   const name = attribute(node, 'imageName') ?? (settings === undefined ? undefined : attribute(settings, 'imageName')) ?? ''
   const href = name === ''
@@ -158,8 +401,8 @@ function imageElement(node: XmlNode, options: RenderOptions, left: number, top: 
     : options.imageHref === undefined
       ? `Images/${name}`
       : options.imageHref(name)
-  if (href !== undefined) return `<image x="${left}" y="${top}" width="${width}" height="${height}" href="${escapeXml(href)}" preserveAspectRatio="none"/>`
-  return `<g><rect x="${left}" y="${top}" width="${width}" height="${height}" fill="#f0f0f0" stroke="#909090" stroke-dasharray="4 3"/><text x="${left + width / 2}" y="${top + height / 2}" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI" font-size="10" fill="#606060">image ${escapeXml(name || '(unnamed)')}</text></g>`
+  if (href !== undefined) return `<image x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" href="${escapeXml(href)}" preserveAspectRatio="none"/>`
+  return `<g><rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="#f0f0f0" stroke="#909090" stroke-dasharray="4 3"/><text x="${box.left + box.width / 2}" y="${box.top + box.height / 2}" text-anchor="middle" dominant-baseline="middle" font-family="Segoe UI" font-size="10" fill="#606060">image ${escapeXml(name || '(unnamed)')}</text></g>`
 }
 
 /** The expression wired to one connection name, when the object has one. */
@@ -178,16 +421,13 @@ function numericValue(expression: string | undefined, options: RenderOptions): n
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-/** Clamp one number to a range. */
-function clamp(value: number, low: number, high: number): number {
-  return Math.min(high, Math.max(low, value))
-}
-
 /** A bar graph: a track, the filled portion for the value, and its thresholds. */
-function barGraphElement(node: XmlNode, options: RenderOptions, left: number, top: number, width: number, height: number, paint: ReturnType<typeof paintOf>): string {
+function barGraphElement(node: XmlNode, options: RenderOptions, box: Box, paint: ReturnType<typeof paintOf>, pass: Pass): string {
+  const { left, top, width, height } = box
   const minimum = numberAttribute(node, 'minValue', 0)
   const maximum = numberAttribute(node, 'maxValue', 100)
-  const value = numericValue(connectionOf(node, 'Value'), options) ?? minimum
+  const reading = numericValue(connectionOf(node, 'Value'), options)
+  const value = reading ?? minimum
   const fraction = maximum === minimum ? 0 : clamp((value - minimum) / (maximum - minimum), 0, 1)
   const fill = colourOf(attribute(node, 'fillColor')) ?? colourOf(attribute(node, 'foreColor')) ?? '#00c000'
   const direction = attribute(node, 'fillDirection') ?? 'leftToRight'
@@ -216,20 +456,30 @@ function barGraphElement(node: XmlNode, options: RenderOptions, left: number, to
     const x = left + width * fractionOfMark
     marks.push(`<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#ff0000" stroke-width="1"/>`)
   }
+  // A bar with no controller value is not a bar at zero: with a transparent
+  // background and no border the export paints nothing at all, which reads as a
+  // blank spot in the design. The frame is still drawn, plus a dashed inner
+  // outline that says the bar itself is missing.
+  const stands = reading === undefined
+    ? `<rect x="${left + 2}" y="${top + 2}" width="${Math.max(1, width - 4)}" height="${Math.max(1, height - 4)}" fill="none" stroke="#909090" stroke-dasharray="3 3" stroke-width="1"/>` +
+      `<text x="${left + 6}" y="${top + Math.min(height - 6, 18)}" font-family="Segoe UI" font-size="9" fill="${annotationColour(paint.fill)}">${escapeXml(`${node.tag} · no value`)}</text>`
+    : ''
+  if (stands !== '') markMarker(pass, node, 'The bar needs a controller value, and this preview has none, so the frame is drawn in place of the bar.')
   return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>` +
     (fraction > 0 ? `<rect x="${filled.x}" y="${filled.y}" width="${filled.width}" height="${filled.height}" fill="${fill}"/>` : '') +
-    marks.join('')
+    marks.join('') +
+    stands
 }
 
 /** A gauge: the scale arc, ticks and a needle at the value. */
-function gaugeElement(node: XmlNode, options: RenderOptions, left: number, top: number, width: number, height: number): string {
+function gaugeElement(node: XmlNode, options: RenderOptions, box: Box): string {
   const minimum = numberAttribute(node, 'minValue', 0)
   const maximum = numberAttribute(node, 'maxValue', 100)
   const value = numericValue(connectionOf(node, 'Value'), options) ?? minimum
   const fraction = maximum === minimum ? 0 : clamp((value - minimum) / (maximum - minimum), 0, 1)
-  const cx = left + width / 2
-  const cy = top + height / 2
-  const radius = Math.min(width, height) / 2 - 4
+  const cx = box.left + box.width / 2
+  const cy = box.top + box.height / 2
+  const radius = Math.min(box.width, box.height) / 2 - 4
   const start = Math.PI * 0.75
   const end = Math.PI * 2.25
   const angle = start + (end - start) * fraction
@@ -241,22 +491,33 @@ function gaugeElement(node: XmlNode, options: RenderOptions, left: number, top: 
 }
 
 /** A trend placeholder with axes; live series arrive with the route. */
-function trendElement(node: XmlNode, left: number, top: number, width: number, height: number, paint: ReturnType<typeof paintOf>): string {
+function trendElement(box: Box, paint: ReturnType<typeof paintOf>): string {
   const lines: string[] = []
   for (let index = 1; index < 4; index += 1) {
-    const y = top + (height / 4) * index
-    lines.push(`<line x1="${left}" y1="${y}" x2="${left + width}" y2="${y}" stroke="#b0b0b0" stroke-width="1"/>`)
+    const y = box.top + (box.height / 4) * index
+    lines.push(`<line x1="${box.left}" y1="${y}" x2="${box.left + box.width}" y2="${y}" stroke="#b0b0b0" stroke-width="1"/>`)
   }
-  return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>${lines.join('')}` +
-    `<text x="${left + 6}" y="${top + 14}" font-family="Segoe UI" font-size="10" fill="#606060">trend</text>`
+  return `<rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>${lines.join('')}` +
+    `<text x="${box.left + 6}" y="${box.top + 14}" font-family="Segoe UI" font-size="10" fill="#606060">trend</text>`
 }
 
-/** A numeric value with the display's format, or a placeholder. */
-function valueElement(node: XmlNode, caption: ReturnType<typeof captionOf>, left: number, top: number, width: number, height: number, margin: number, options: RenderOptions): string {
+/**
+ * A numeric display's value: the tag table's entry when the caller supplied it,
+ * and `####` when it did not. The digits are the honest placeholder for "this
+ * value comes from a controller at run time", not an invented number.
+ */
+function valueElement(
+  node: XmlNode,
+  text: string,
+  metrics: TextMetrics,
+  box: Box,
+  margin: number,
+  options: RenderOptions,
+): string {
   const expression = attribute(node, 'expression') ?? connectionOf(node, 'Value') ?? ''
-  const value = options.tagValues?.[expression]
+  const value = expression === '' ? undefined : options.tagValues?.[expression]
   const shown = value === undefined ? '####' : String(value)
-  return textElement({ ...caption, text: shown }, left, top, width, height, margin)
+  return textElement(shown, metrics, box, margin)
 }
 
 /** A reference object resolved against its Global Objects base. */
@@ -299,80 +560,302 @@ function animatedVisibility(node: XmlNode, options: RenderOptions): boolean | un
   return undefined
 }
 
-/** Draw one object and its children. */
-function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): string {
-  const node = resolveReference(rawNode, options)
-  if (animatedVisibility(node, options) === false) return ''
-  const left = numberAttribute(node, 'left', 0)
-  const top = numberAttribute(node, 'top', 0)
-  const width = numberAttribute(node, 'width', 0)
-  const height = numberAttribute(node, 'height', 0)
-  const visible = attribute(node, 'visible')
-  if (visible === 'false' || visible === '0' || visible === 'no') return ''
+/** A colour from an `animateColor` animation, when its tags are known. */
+function animatedFill(node: XmlNode, options: RenderOptions): string | undefined {
+  const animations = child(node, 'animations')
+  if (animations === undefined) return undefined
+  for (const animation of animations.children) {
+    if (animation.tag !== 'animateFill' && animation.tag !== 'animateColor') continue
+    const expression = attribute(animation, 'expression')
+    if (expression === undefined) continue
+    if (evaluate(expression, options.tagValues ?? {}) !== true) continue
+    const colour = colourOf(attribute(animation, 'expressionTrueState') ?? attribute(animation, 'color'))
+    if (colour !== undefined) return colour
+  }
+  return undefined
+}
+
+/** A caption replaced by an animation or a tag value, when known. */
+function animatedCaption(node: XmlNode, options: RenderOptions): string | undefined {
+  const animations = child(node, 'animations')
+  if (animations === undefined) return undefined
+  for (const animation of animations.children) {
+    if (animation.tag !== 'animateString' && animation.tag !== 'animateCaption') continue
+    const expression = attribute(animation, 'expression')
+    if (expression === undefined) continue
+    const value = options.tagValues?.[expression]
+    if (value !== undefined) return String(value)
+  }
+  return undefined
+}
+
+/** Record a placeholder and return its drawing. */
+function placeholder(pass: Pass, node: XmlNode, box: Box, reason: string): string {
+  const name = attribute(node, 'name')
+  pass.markers.push({ ...(name === undefined ? {} : { name }), type: node.tag, family: elementFacts(node.tag)?.family ?? 'unknown', reason })
+  if (pass.options.markers === false) return ''
+  return markerBox(box, name === undefined ? node.tag : `${node.tag} ${name}`, reason)
+}
+
+/** Note how a coordinate list was read. */
+function noteGeometry(pass: Pass, node: XmlNode, attributeName: string, rule: CoordinateRule): void {
+  const name = attribute(node, 'name')
+  pass.geometry.push({ ...(name === undefined ? {} : { name }), type: node.tag, attribute: attributeName, rule })
+}
+
+/**
+ * Record an element name the installed schema does not declare. The drawing stays
+ * (a box, a caption, a frame), but the report says the name is not a view object,
+ * which is the difference between a faithful preview and a guess.
+ */
+function markUnknown(pass: Pass, node: XmlNode, reason: string): void {
+  const name = attribute(node, 'name')
+  pass.unknown.push({
+    ...(name === undefined ? {} : { name }),
+    type: node.tag,
+    family: 'unknown',
+    reason,
+  })
+}
+
+/**
+ * Record an object the preview draws as something other than what it declares —
+ * a placeholder body, or a drawing that rests on an assumption the export does
+ * not state. The report is what the operator sees instead of a silent blank.
+ */
+function markMarker(pass: Pass, node: XmlNode, reason: string): void {
+  const name = attribute(node, 'name')
+  pass.markers.push({
+    ...(name === undefined ? {} : { name }),
+    type: node.tag,
+    family: elementFacts(node.tag)?.family ?? 'unknown',
+    reason,
+  })
+}
+
+/** Stroke for a shape: the border colour, or the fill when there is no border. */
+function strokeOf(paint: ReturnType<typeof paintOf>): string {
+  return paint.stroke === 'none' ? paint.fill : paint.stroke
+}
+
+/** The SVG for one object's own body (children are drawn by the caller). */
+function bodyOf(node: XmlNode, box: Box, pass: Pass): string {
+  const options = pass.options
   const state = stateOf(node)
   const paint = paintOf(node, state)
-  const caption = captionOf(node, state)
+  const fill = animatedFill(node, options) ?? paint.fill
+  const captionText = animatedCaption(node, options) ?? captionOf(node, state)
+  const metrics = metricsOf(node, state)
   const margin = numberAttribute(node, 'horizontalMargin', 4)
-  const shape = ((): string => {
-    switch (node.tag) {
-      case 'panel':
-      case 'rectangle':
-        return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
-      case 'ellipse':
-        return `<ellipse cx="${left + width / 2}" cy="${top + height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
-      case 'line':
-        return `<line x1="${left}" y1="${top}" x2="${left + width}" y2="${top + height}" stroke="${paint.stroke === 'none' ? paint.fill : paint.stroke}" stroke-width="${Math.max(1, paint.strokeWidth)}"/>`
-      case 'image':
-        return imageElement(node, options, left, top, width, height)
-      case 'numericDisplay':
-      case 'numericInput':
-      case 'stringDisplay':
-      case 'stringInput':
-        return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>` + valueElement(node, caption, left, top, width, height, margin, options)
-      case 'barGraph':
-        return barGraphElement(node, options, left, top, width, height, paint)
-      case 'gauge':
-        return gaugeElement(node, options, left, top, width, height)
-      case 'trend':
-        return trendElement(node, left, top, width, height, paint)
-      case 'listSelector': {
-        const body = `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
-        const label = caption.text === '' ? 'list' : caption.text
-        return body + textElement({ ...caption, text: label, anchor: 'start' }, left, top, width, height, margin)
-      }
-      case 'alarmList':
-      case 'alarmStatusList':
-      case 'alarmBanner':
-      case 'clearAlarmBannerButton':
-        return `<rect x="${left}" y="${top}" width="${width}" height="${height}" fill="#f4f4f4" stroke="#a0a0a0"/><text x="${left + 8}" y="${top + 18}" font-family="Segoe UI" font-size="11" fill="#505050">${escapeXml(node.tag)}</text>`
-      case 'group':
-        return ''
-      default:
-        break
-    }
-    if (OBJECTS.has(node.tag)) {
-      // Buttons, indicators and any type with a face: the Studio `shape`
-      // attribute decides between a rectangle, a rounded rectangle and an
-      // ellipse, which is how status lamps are drawn as circles rather than
-      // blocks.
-      const objectShape = (attribute(node, 'shape') ?? 'rectangle').toLowerCase()
-      const body = objectShape === 'ellipse' || objectShape === 'circle'
-        ? `<ellipse cx="${left + width / 2}" cy="${top + height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
-        : `<rect x="${left}" y="${top}" width="${width}" height="${height}"${objectShape.includes('round') ? ' rx="4" ry="4"' : ''} fill="${paint.fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
-      return caption.text === '' ? body : body + textElement(caption, left, top, width, height, margin)
-    }
-    return ''
-  })()
+  const verticalMargin = numberAttribute(node, 'verticalMargin', 2)
+  const facts = elementFacts(node.tag)
+  const family: Family = facts?.family ?? 'box'
+  const shape = (attribute(node, 'shape') ?? '').toLowerCase()
+  const rounded = shape.includes('round')
+  const circle = shape === 'ellipse' || shape === 'circle'
 
-  const own = shape === '' ? '' : shape
-  const nested = node.children.filter(candidate => OBJECTS.has(candidate.tag))
-  const content = own + (nested.length === 0 ? '' : `<g transform="translate(${left},${top})">${nested.map(candidate => renderObject(candidate, depth + 1, options)).join('')}</g>`)
+  const boxOf = (): string => {
+    if (circle) return `<ellipse cx="${box.left + box.width / 2}" cy="${box.top + box.height / 2}" rx="${box.width / 2}" ry="${box.height / 2}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+    const radius = numberAttribute(node, 'cornerRadius', rounded ? 4 : 0)
+    if (radius > 0) return `<path d="${roundedRectPath(box, radius)}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+    return `<rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+  }
+
+  const frame = `<rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+
+  switch (family) {
+    case 'line': {
+      const segment = lineSegment(attribute(node, 'line'), box, pass.mode)
+      if (segment === undefined) {
+        const diagonal = boxDiagonal(box)
+        noteGeometry(pass, node, 'line', 'box-diagonal')
+        const [from, to] = diagonal.points as readonly [typeof diagonal.points[0], typeof diagonal.points[0]]
+        return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+      }
+      noteGeometry(pass, node, 'line', segment.rule)
+      const pen = Math.max(1, numberAttribute(node, 'lineWidth', 1))
+      const [from, to] = segment.points as readonly [typeof segment.points[0], typeof segment.points[0]]
+      return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="${strokeOf(paint)}" stroke-width="${pen}"/>`
+    }
+    case 'path': {
+      const resolved = pathPoints(attribute(node, 'path'), box, pass.mode)
+      if (resolved.points.length < 2) {
+        const diagonal = boxDiagonal(box)
+        noteGeometry(pass, node, 'path', 'box-diagonal')
+        const [from, to] = diagonal.points as readonly [typeof diagonal.points[0], typeof diagonal.points[0]]
+        return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+      }
+      noteGeometry(pass, node, 'path', resolved.rule)
+      return `<path d="${pointsToPath(resolved.points, false)}" fill="none" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+    }
+    case 'polygon': {
+      const resolved = polygonPoints(attribute(node, 'path'), box, pass.mode)
+      if (resolved.points.length < 2) return placeholder(pass, node, box, 'The polygon carries no path coordinates, so its outline is unknown.')
+      noteGeometry(pass, node, 'path', resolved.rule)
+      return `<path d="${pointsToPath(resolved.points, true)}" fill="${fill}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+    }
+    case 'polyPolygon': {
+      const parts = node.children.filter(candidate => candidate.tag === 'innerPolygon')
+      if (parts.length < 2) return placeholder(pass, node, box, `The schema requires at least two innerPolygon parts; this object carries ${parts.length}.`)
+      const paths = parts.map(part => {
+        const resolved = polygonPoints(attribute(part, 'polygon'), box, pass.mode)
+        noteGeometry(pass, node, 'innerPolygon', resolved.rule)
+        return `<path d="${pointsToPath(resolved.points, true)}" fill="${fill}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+      })
+      return paths.join('')
+    }
+    case 'angle': {
+      const start = numberAttribute(node, 'startAngle', 0)
+      const end = numberAttribute(node, 'endAngle', 90)
+      // Measured on an installed export: an arc written with startAngle and
+      // endAngle both zero is drawn by the editor as a full filled ellipse, not
+      // as an empty sweep. The same pair sent to arcPath() is a zero-length path,
+      // which is why this case is decided before the geometry is built.
+      if (start === end) {
+        markMarker(pass, node, 'startAngle and endAngle are equal, which the editor draws as a full ellipse rather than a sweep.')
+        return `<ellipse cx="${box.left + box.width / 2}" cy="${box.top + box.height / 2}" rx="${box.width / 2}" ry="${box.height / 2}" fill="${fill}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+      }
+      const path = node.tag === 'wedge' ? wedgePath(box, start, end) : arcPath(box, start, end)
+      markMarker(pass, node, 'The angle is drawn clockwise from 3 o\'clock; the vendor does not document the zero direction.')
+      return `<path d="${path}" fill="${node.tag === 'wedge' ? fill : 'none'}" stroke="${strokeOf(paint)}" stroke-width="${Math.max(1, numberAttribute(node, 'lineWidth', 1))}"/>`
+    }
+    case 'ellipse':
+      return `<ellipse cx="${box.left + box.width / 2}" cy="${box.top + box.height / 2}" rx="${box.width / 2}" ry="${box.height / 2}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+    case 'roundedRectangle': {
+      const rx = numberAttribute(node, 'roundingWidth', numberAttribute(node, 'cornerRadius', 4))
+      const ry = numberAttribute(node, 'roundingHeight', rx)
+      return `<rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+    }
+    case 'rectangle':
+      return frame
+    case 'panel': {
+      const radius = numberAttribute(node, 'cornerRadius', 0)
+      const body = radius > 0
+        ? `<path d="${roundedRectPath(box, radius)}" fill="${fill}" stroke="${paint.stroke}" stroke-width="${paint.strokeWidth}"/>`
+        : frame
+      const text = textElement(captionText, metrics, box, margin, verticalMargin)
+      const blink = attribute(node, 'blink') === 'true'
+        ? `<rect x="${box.left}" y="${box.top}" width="${box.width}" height="${box.height}" fill="none" stroke="#c00000" stroke-dasharray="6 4" stroke-width="1"/>`
+        : ''
+      return body + blink + text
+    }
+    case 'image':
+      return imageElement(node, options, box)
+    case 'group':
+      return ''
+    case 'text':
+      return textElement(captionText, metrics, box, margin, verticalMargin)
+    case 'button':
+      return boxOf() + (captionText === '' ? '' : textElement(captionText, metrics, box, margin, verticalMargin))
+    case 'indicator':
+      return boxOf() + (captionText === '' ? '' : textElement(captionText, metrics, box, margin, verticalMargin))
+    case 'field':
+      return frame + valueElement(node, captionText, metrics, box, margin, options)
+    case 'chart':
+      if (node.tag === 'barGraph') return barGraphElement(node, options, box, paint, pass)
+      if (node.tag === 'gauge') return gaugeElement(node, options, box)
+      return placeholder(pass, node, box, 'The preview draws charts only for a bar graph and a gauge.')
+    case 'list': {
+      // A list's rows and headers come from a controller at run time, so the
+      // preview draws the frame and an annotation instead. A state caption is a
+      // row caption, not the object's label, which is why it is not used here.
+      const own = attribute(node, 'caption')
+      const named = own !== undefined && own !== ''
+      const label = named ? own : node.tag
+      const style = named
+        ? { ...metrics, horizontal: 'start' as const, vertical: 'top' as const }
+        : { ...metrics, color: annotationColour(colourOf(attribute(node, 'backColor')) ?? fill), horizontal: 'start' as const, vertical: 'top' as const }
+      return frame + textElement(label, style, box, margin, verticalMargin + 2)
+    }
+    case 'activeX':
+      return placeholder(pass, node, box, 'An ActiveX control is drawn by its host, not by a display export.')
+    case 'box':
+    default: {
+      if (facts === undefined) {
+        markUnknown(pass, node, 'The element is not in the installed Gfx-ME schema.')
+        return frame + textElement(captionText === '' ? node.tag : captionText, metrics, box, margin, verticalMargin)
+      }
+      return boxOf() + (captionText === '' ? '' : textElement(captionText, metrics, box, margin, verticalMargin))
+    }
+  }
+}
+
+/** Draw one object and its children. */
+function renderObject(rawNode: XmlNode, depth: number, pass: Pass): string {
+  const node = resolveReference(rawNode, pass.options)
+  if (animatedVisibility(node, pass.options) === false) return ''
+  const visible = attribute(node, 'visible')
+  if (visible === 'false' || visible === '0' || visible === 'no') return ''
+  pass.objects += 1
+  const box: Box = {
+    left: numberAttribute(node, 'left', 0),
+    top: numberAttribute(node, 'top', 0),
+    width: numberAttribute(node, 'width', 0),
+    height: numberAttribute(node, 'height', 0),
+  }
+  if (node.tag === 'trend') {
+    // A trend is drawn as a frame with a grid: the series come from a data source
+    // the export does not carry. The element name is not in the Gfx-ME schema
+    // either, so it is listed with the unknowns rather than passed off as drawn.
+    markUnknown(pass, node, 'The element is not in the installed Gfx-ME schema; the preview draws its frame and grid, not its series.')
+    const name = attribute(node, 'name')
+    const paint = paintOf(node, stateOf(node))
+    pass.drawn += 1
+    return `<g data-ftv-type="trend"${name === undefined ? '' : ` data-ftv-name="${escapeXml(name)}"`}>${trendElement(box, paint)}</g>`
+  }
+  const own = bodyOf(node, box, pass)
+  if (own !== '') pass.drawn += 1
+  const nested = node.children.filter(isObjectNode).map(candidate => renderObject(candidate, depth + 1, pass)).join('')
+  const content = own + (nested === '' ? '' : `<g transform="translate(${box.left},${box.top})">${nested}</g>`)
   if (content === '') return ''
   // Identity for hit-testing and inspection: the preview maps a click back to the
   // object that produced the drawing without re-parsing coordinates.
   const name = attribute(node, 'name')
   const identity = `data-ftv-type="${escapeXml(node.tag)}"${name === undefined ? '' : ` data-ftv-name="${escapeXml(name)}"`}`
   return `<g ${identity}>${content}</g>`
+}
+
+/** Parse a display and its settings. */
+function readDisplay(source: string): { display: XmlNode; settings: XmlNode | undefined; width: number; height: number } {
+  const display = parseXml(source)
+  if (display.tag !== 'gfx' && display.tag !== 'display') throw new Error(`not a FactoryTalk View display: root element is <${display.tag}>`)
+  const settings = child(display, 'displaySettings')
+  const width = settings === undefined ? numberAttribute(display, 'width', 640) : numberAttribute(settings, 'width', numberAttribute(display, 'width', 640))
+  const height = settings === undefined ? numberAttribute(display, 'height', 480) : numberAttribute(settings, 'height', numberAttribute(display, 'height', 480))
+  return { display, settings, width, height }
+}
+
+/**
+ * Render one display file and report what was drawn, skipped or read through a rule.
+ *
+ * @param source - The display XML.
+ * @param options - Image resolver, tag values, globals and an optional forced mode.
+ * @returns The SVG document and the report.
+ */
+export function renderDisplayWithReport(source: string, options: RenderOptions = {}): { svg: string; report: RenderReport } {
+  const { display, settings, width, height } = readDisplay(source)
+  const container = child(display, 'objects') ?? display
+  const objects = container.children.filter(isObjectNode)
+  const flags = objects.filter(object => attribute(object, 'isReferenceObject') !== undefined).length
+  const detected = documentMode(settings !== undefined, objects.length, flags)
+  const forced = options.mode !== undefined && options.mode !== 'auto'
+  const mode: CoordinateMode = forced ? (options.mode as CoordinateMode) : detected.mode
+  const pass: Pass = { options, mode, markers: [], unknown: [], geometry: [], objects: 0, drawn: 0 }
+  const background = colourOf(attribute(display, 'backColor') ?? (settings === undefined ? undefined : attribute(settings, 'backColor'))) ?? '#c6c6c6'
+  const body = objects.map(object => renderObject(object, 0, pass)).join('')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${background}"/>${body}</svg>`
+  return {
+    svg,
+    report: {
+      mode,
+      modeReason: forced ? 'forced' : detected.reason,
+      objects: pass.objects,
+      drawn: pass.drawn,
+      markers: pass.markers,
+      unknown: pass.unknown,
+      geometry: pass.geometry,
+    },
+  }
 }
 
 /**
@@ -383,16 +866,7 @@ function renderObject(rawNode: XmlNode, depth: number, options: RenderOptions): 
  * @returns A complete, standalone SVG string.
  */
 export function renderDisplay(source: string, options: RenderOptions = {}): string {
-  const display = parseXml(source)
-  if (display.tag !== 'gfx' && display.tag !== 'display') throw new Error(`not a FactoryTalk View display: root element is <${display.tag}>`)
-  const settings = child(display, 'displaySettings')
-  const width = settings === undefined ? numberAttribute(display, 'width', 640) : numberAttribute(settings, 'width', numberAttribute(display, 'width', 640))
-  const height = settings === undefined ? numberAttribute(display, 'height', 480) : numberAttribute(settings, 'height', numberAttribute(display, 'height', 480))
-  const background = colourOf(attribute(display, 'backColor') ?? (settings === undefined ? undefined : attribute(settings, 'backColor'))) ?? '#c6c6c6'
-  const container = child(display, 'objects') ?? display
-  const objects = container.children.filter(candidate => OBJECTS.has(candidate.tag))
-  const body = objects.map(object => renderObject(object, 0, options)).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="${width}" height="${height}" fill="${background}"/>${body}</svg>`
+  return renderDisplayWithReport(source, options).svg
 }
 
 /**
@@ -465,3 +939,7 @@ export function detectArtifact(source: string): ArtifactSummary {
     return { kind: 'unknown', title: 'Unrecognised file', details: [] }
   }
 }
+
+/** Re-exported so a caller can name a family without importing the generated module. */
+export type { Family }
+export { ELEMENTS }

@@ -10,11 +10,28 @@
 
 export { parseXml, child, children, attribute, numberAttribute } from './xml.ts'
 export type { XmlNode } from './xml.ts'
-export { renderDisplay, colourOf, responsiveSvg, detectArtifact } from './render.ts'
-export type { ArtifactKind, ArtifactSummary } from './render.ts'
+export { renderDisplay, renderDisplayWithReport, colourOf, responsiveSvg, detectArtifact } from './render.ts'
+export type {
+  ArtifactKind,
+  ArtifactSummary,
+  GeometryNote,
+  RenderMarker,
+  RenderOptions,
+  RenderReport,
+} from './render.ts'
+export { ELEMENTS, FAMILIES, elementFacts, partFacts } from './vocabulary.generated.ts'
+export type { Family, NodeFacts } from './vocabulary.generated.ts'
+export {
+  boxDiagonal,
+  documentMode,
+  lineSegment,
+  pathPoints,
+  pointsToPath,
+  polygonPoints,
+} from './geometry.ts'
+export type { Box, CoordinateMode, CoordinateRule, Point, ResolvedPoints } from './geometry.ts'
 export { evaluate, referencesOf } from './expression.ts'
 export type { TagValues } from './expression.ts'
-export type { RenderOptions } from './render.ts'
 
 /** Host entry: this package is browser-only, so the server half has nothing to do. */
 export function apply(): void {}

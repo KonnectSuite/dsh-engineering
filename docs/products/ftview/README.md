@@ -85,6 +85,45 @@ operations resolve and the display passes the schema, `ftview_design_check` judg
 colour, `ftview_render` draws it. A draft that passes the first two can still read badly; the render is
 where that shows.
 
+## What the preview shows
+
+Open any display XML from an export folder — or the draft XML `ftview_apply` writes — and the panel draws
+it, so the geometry and the vocabulary are checked before a display reaches a terminal.
+
+The preview states what it is looking at instead of assuming it:
+
+- **Draft or Export** tells you how a coordinate inside an object was read. A staged draft writes a value
+  as a percentage of the object's own box; the vendor export writes display pixels, inset by half the pen.
+  The badge says which rule was applied, so `line="0 0 100 0"` is not silently mistaken for a line in the
+  top-left corner.
+- **Coverage** counts what was drawn against what the file holds. An object the preview cannot draw
+  faithfully — an ActiveX control, an arc, a `polyPolygon` carrying one `innerPolygon` — is drawn as a
+  labelled placeholder with the reason, and an element name the installed schema does not declare is
+  listed rather than dropped. Nothing vanishes without a trace, which is what made a blank area look
+  authored.
+- The inspector names the object's schema family, the coordinate rule its geometry was read with, and the
+  reason it is a placeholder, next to its attributes and connections.
+
+Three measured behaviours follow from the same rule, each of them a case where the file alone draws
+nothing and the preview says so instead:
+
+- An `arc` whose `startAngle` and `endAngle` are equal is a **filled ellipse**, not an empty sweep. Studio
+  writes `0` and `0` for the object on the Probe display and paints the ellipse; a zero-length sweep
+  paints nothing at all.
+- A `barGraph` with no value paints **its frame and a dashed "no value" outline**. With
+  `backStyle="transparent"` and `borderStyle="none"` — the shipped default — the export paints no pixels,
+  so a missing controller reading used to read as a blank spot in the design.
+- A **list** object draws its frame and, when it has no caption of its own, its element name as a muted
+  annotation. Its headers and rows come from a controller at run time; the annotation is not authored
+  text and never pretends to be.
+
+The picture a preview produces is therefore a statement about the design, not a promise about runtime
+values: a value the caller did not supply is drawn as `####` rather than as an invented number.
+
+The object vocabulary is generated from the installed `Gfx-ME*.xsd` (the committed snapshot on a host
+without Studio), so the preview and the drafting tools agree on all 91 display elements. `ftview_render`
+draws the same rules into an SVG or PNG file, and says which coordinate mode it used.
+
 ## The imported side
 
 `ftview_apply` writes a new export folder containing the edited displays and a verbatim copy of the other

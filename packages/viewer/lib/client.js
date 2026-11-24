@@ -497,6 +497,23 @@ var bool = (name = "Tag") => ({ name, kind: "BOOL" });
 var num = (name = "Source") => ({ name, kind: "NUMBER" });
 var any = (name) => ({ name, kind: "ANY" });
 var numW = (name) => ({ name, kind: "NUMBER", writable: true });
+var lit = (name, minimum, maximum) => ({
+  name,
+  kind: "NUMBER",
+  immediate: true,
+  ...minimum === void 0 ? {} : { minimum },
+  ...maximum === void 0 ? {} : { maximum }
+});
+var control = () => ({ name: "Control", kind: "ANY", tagOnly: true, types: ["CONTROL"] });
+var axis = (name = "Axis") => ({
+  name,
+  kind: "ANY",
+  tagOnly: true,
+  types: ["AXIS_CIP_DRIVE", "AXIS_VIRTUAL", "AXIS_GENERIC_DRIVE", "AXIS_SERVO", "AXIS_SERVO_DRIVE", "AXIS_CONSUMED", "AXIS_GENERIC"]
+});
+var motionControl = () => ({ name: "MotionControl", kind: "ANY", tagOnly: true, types: ["MOTION_INSTRUCTION"] });
+var motionGroup = (name = "Group") => ({ name, kind: "ANY", tagOnly: true, types: ["MOTION_GROUP"] });
+var cam = (name = "CamProfile") => ({ name, kind: "ANY", tagOnly: true, types: ["CAM_PROFILE", "CAM_PROFILE_EXTENDED"] });
 var str = (name) => ({ name, kind: "STRING" });
 var expression = (name = "Expression") => ({ name, kind: "EXPRESSION" });
 var routine = (name = "Routine") => ({ name, kind: "ROUTINE" });
@@ -524,15 +541,17 @@ var INSTRUCTIONS = [
   { name: "ISNAN", category: "Comparison", summary: "True when the source is not a number.", operands: [{ name: "Source", kind: "NUMBER", types: ["REAL"] }] },
   // ASCII serial port. These need a controller with a serial port: they build on ControlLogix 5570
   // (1756-L73) and are refused on CompactLogix 5380 (5069) and ControlLogix 5580 (1756-L83E), where
-  // the compiler answers RxCMP_E_AUDIT_INVALIDOPTYPE for every operand combination tried.
-  { name: "ABL", category: "ASCII", summary: "Count the characters in the serial port buffer until a line terminator.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
-  { name: "ACB", category: "ASCII", summary: "Count the characters still in the serial port buffer.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
-  { name: "ARD", category: "ASCII", summary: "Read characters from the serial port buffer into a destination.", operands: [num("Channel"), { name: "Destination", kind: "STRING", writable: true }, any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
-  { name: "ACL", category: "ASCII", summary: "Clear the serial port read buffer and the read and write queues.", operands: [num("Channel"), bool("Clear Serial Port Read"), bool("Clear Serial Port Write")] },
-  { name: "AHL", category: "ASCII", summary: "Apply an AND and OR mask to the serial port control lines.", operands: [num("Channel"), num("ANDMask"), num("ORMask"), any("Serial Port Control"), num("Channel Status")] },
-  { name: "ARL", category: "ASCII", summary: "Read a line from the serial port buffer into a destination.", operands: [num("Channel"), { name: "Destination", kind: "STRING", writable: true }, any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
-  { name: "AWA", category: "ASCII", summary: "Write characters to the serial port buffer, appended.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
-  { name: "AWT", category: "ASCII", summary: "Write characters to the serial port buffer.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
+  // the compiler answers RxCMP_E_AUDIT_INVALIDOPTYPE for every operand combination tried. The installed
+  // Studio 5000 v37 help carries no pages for this family, and importing AWA into a 1756-L71 answers
+  // "Unknown instruction", so the entries below stay as arity documentation but are not modelled.
+  { name: "ABL", category: "ASCII", notModelled: true, summary: "Count the characters in the serial port buffer until a line terminator.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
+  { name: "ACB", category: "ASCII", notModelled: true, summary: "Count the characters still in the serial port buffer.", operands: [num("Channel"), any("Serial Port Control"), num("Character Count")] },
+  { name: "ARD", category: "ASCII", notModelled: true, summary: "Read characters from the serial port buffer into a destination.", operands: [num("Channel"), { name: "Destination", kind: "STRING", writable: true }, any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
+  { name: "ACL", category: "ASCII", notModelled: true, summary: "Clear the serial port read buffer and the read and write queues.", operands: [num("Channel"), bool("Clear Serial Port Read"), bool("Clear Serial Port Write")] },
+  { name: "AHL", category: "ASCII", notModelled: true, summary: "Apply an AND and OR mask to the serial port control lines.", operands: [num("Channel"), num("ANDMask"), num("ORMask"), any("Serial Port Control"), num("Channel Status")] },
+  { name: "ARL", category: "ASCII", notModelled: true, summary: "Read a line from the serial port buffer into a destination.", operands: [num("Channel"), { name: "Destination", kind: "STRING", writable: true }, any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Read")] },
+  { name: "AWA", category: "ASCII", notModelled: true, summary: "Write characters to the serial port buffer, appended.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
+  { name: "AWT", category: "ASCII", notModelled: true, summary: "Write characters to the serial port buffer.", operands: [num("Channel"), str("Source"), any("Serial Port Control"), num("Serial Port Control Length"), num("Characters Sent")] },
   // Math
   { name: "ADD", category: "Math", summary: "Add source A and source B into the destination.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
   { name: "SUB", category: "Math", summary: "Subtract source B from source A into the destination.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
@@ -541,14 +560,14 @@ var INSTRUCTIONS = [
   { name: "MOD", category: "Math", summary: "Remainder of source A divided by source B.", operands: [num("Source A"), num("Source B"), numW("Destination")] },
   { name: "SQR", category: "Math", summary: "Square root of the source into the destination.", operands: [num("Source"), numW("Destination")] },
   { name: "CPT", category: "Math", summary: "Compute an expression into the destination; the destination comes first in the rung text.", operands: [numW("Destination"), expression()] },
-  { name: "STD", category: "File and array", summary: "Standard deviation of the array elements into a REAL destination.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, { name: "Dimension to Vary", kind: "NUMBER", maximum: 2 }, { name: "Destination", kind: "NUMBER", writable: true, types: ["REAL"] }, { name: "Control", kind: "ANY", writable: true, types: ["CONTROL"] }, num("Length"), num("Position")] },
+  { name: "STD", category: "File and array", summary: "Standard deviation of the array elements into a REAL destination.", operands: [{ name: "Array", kind: "ANY", tagOnly: true, arrayOrElement: true }, lit("Dimension to Vary", 0, 2), { name: "Destination", kind: "NUMBER", writable: true, types: ["REAL"] }, control(), lit("Length"), lit("Position")] },
   { name: "SIZE", category: "File and array", summary: "Number of elements in one dimension of an array into the size tag.", operands: [{ name: "Source", kind: "ANY", tagOnly: true, arrayTag: true }, { name: "Dimension to Vary", kind: "NUMBER", maximum: 2 }, numW("Size")] },
   { name: "JXR", category: "Program control", summary: "Run an external routine; parameters and a return tag may follow the control structure.", operands: [routine("External routine name"), { name: "External routine control", kind: "ANY", writable: true }] },
-  { name: "PID", category: "Process", summary: "PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.", operands: [{ name: "PID", kind: "ANY", writable: true, types: ["PID"] }, num("Process variable"), num("Tieback"), { name: "Control variable", kind: "NUMBER", writable: true }, { name: "PID master loop", kind: "ANY", types: ["PID"] }, bool("Inhold bit"), num("Inhold value")] },
+  { name: "PID", category: "Process", summary: "PID loop: the structure, the process variable, the tieback, the control variable, an optional master loop, and the inhold bit and value.", operands: [{ name: "PID", kind: "ANY", writable: true, types: ["PID"] }, num("Process variable"), { name: "Tieback", kind: "NUMBER", optional: true }, { name: "Control variable", kind: "NUMBER", writable: true }, { name: "PID master loop", kind: "ANY", optional: true, types: ["PID"] }, { name: "Inhold bit", kind: "BOOL", optional: true }, { name: "Inhold value", kind: "NUMBER", optional: true }] },
   { name: "ALMA", category: "Alarm", summary: "Analog alarm: the input is compared with the limits in the ALARM_ANALOG structure.", operands: [{ name: "Alarm", kind: "ANY", writable: true, types: ["ALARM_ANALOG"] }, num("In"), bool("ProgAckAll"), bool("ProgDisable"), bool("ProgEnable")] },
   { name: "ALMD", category: "Alarm", summary: "Digital alarm: the condition in the ALARM_DIGITAL structure, acknowledged and reset from the program.", operands: [{ name: "Alarm", kind: "ANY", writable: true, types: ["ALARM_DIGITAL"] }, bool("ProgAck"), bool("ProgReset"), bool("ProgDisable"), bool("ProgEnable")] },
   // Audited against the installed help and a Studio build: the compact table had these wrong.
-  { name: "SRT", category: "File and array", summary: "Sort the elements of an array in place, using a control structure for length and position.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, { name: "Dimension to Vary", kind: "NUMBER", maximum: 2 }, { name: "Control", kind: "ANY", writable: true, types: ["CONTROL"] }, num("Length"), num("Position")] },
+  { name: "SRT", category: "File and array", summary: "Sort the elements of an array in place, using a control structure for length and position.", operands: [{ name: "Array", kind: "ANY", tagOnly: true, arrayOrElement: true }, lit("Dimension to Vary", 0, 2), control(), lit("Length"), lit("Position")] },
   { name: "SWPB", category: "Move", summary: "Rearrange the bytes of the source into the destination; the order mode is a number (0 or 1), not the word HIGHLOW.", operands: [num("Source"), num("Order Mode"), { name: "Dest", kind: "NUMBER", writable: true }] },
   { name: "STOD", category: "String", summary: "Convert a string to an integer value in the destination.", operands: [str("Source"), { name: "Dest", kind: "NUMBER", writable: true }] },
   { name: "DTOS", category: "String", summary: "Convert an integer value to its decimal string in the destination.", operands: [num("Source"), { name: "Dest", kind: "STRING", writable: true }] },
@@ -599,8 +618,8 @@ var INSTRUCTIONS = [
   { name: "MVM", category: "Move", summary: "Masked move: copy the source through the mask into the destination.", operands: [num("Source"), num("Mask"), { name: "Dest", kind: "NUMBER", writable: true }] },
   { name: "GSV", category: "Communications", summary: "Get system value: read one attribute of a class instance into the destination.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), { name: "Dest", kind: "ANY", writable: true }] },
   { name: "SSV", category: "Communications", summary: "Set system value: write the source into one attribute of a class instance.", operands: [keyword("Class"), keyword("Instance"), keyword("Attribute"), { name: "Source", kind: "ANY", tagOnly: true }] },
-  { name: "SQO", category: "Sequencer", summary: "Sequencer output: drive the destination from one masked step of the array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, num("Mask"), { name: "Dest", kind: "NUMBER", writable: true, noArray: true }, { name: "Control", kind: "ANY", writable: true, types: ["CONTROL"] }, num("Length"), num("Position")] },
-  { name: "SQL", category: "Sequencer", summary: "Sequencer load: store the source into the current step of the array.", operands: [any("Array"), num("Source"), any("Control"), num("Length"), num("Position")] },
+  { name: "SQO", category: "Sequencer", summary: "Sequencer output: drive the destination from one masked step of the array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true, arrayOrElement: true, types: ["DINT"] }, num("Mask"), { name: "Dest", kind: "NUMBER", writable: true, noArray: true }, control(), lit("Length"), lit("Position")] },
+  { name: "SQL", category: "Sequencer", summary: "Sequencer load: store the source into the current step of the array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true, arrayOrElement: true, types: ["DINT"] }, num("Source"), control(), lit("Length"), lit("Position")] },
   { name: "FAL", category: "File and array", summary: "File arithmetic and logic. Not modelled: eight operand shapes were refused by the compiler, so write this one by hand until a real export shows the accepted form.", notModelled: true, operands: [] },
   { name: "DCM", category: "Safety", summary: "Dual Channel Input Monitor. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "DCM", kind: "ANY" }, { name: "Safety Function", kind: "ANY" }, { name: "Input Type", kind: "ANY" }, { name: "Input Delay", kind: "NUMBER" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
   { name: "DCS", category: "Safety", summary: "Dual Channel Input Stop. GuardLogix safety instruction. Not modelled: its safety-function and input-type operands are drop-down names, not tags, so the composer refuses it; the operand count comes from production usage and the vendor help table.", notModelled: true, operands: [{ name: "DCS", kind: "ANY" }, { name: "Safety Function", kind: "ANY" }, { name: "Input Type", kind: "ANY" }, { name: "Input Delay", kind: "NUMBER" }, { name: "Startup Inhibit", kind: "ANY" }, { name: "Reset Type", kind: "ANY" }, { name: "Channel A", kind: "ANY" }, { name: "Channel B", kind: "ANY" }, { name: "Status", kind: "ANY" }, { name: "Reset", kind: "ANY" }] },
@@ -612,24 +631,25 @@ var INSTRUCTIONS = [
   { name: "OSR", category: "Contacts and coils", summary: "One shot rising: true for one scan when the storage bit goes false to true.", operands: [{ name: "Storage", kind: "BOOL" }, { name: "Dest", kind: "BOOL", writable: true }] },
   { name: "OSF", category: "Contacts and coils", summary: "One shot falling: true for one scan when the storage bit goes true to false.", operands: [{ name: "Storage", kind: "BOOL" }, { name: "Dest", kind: "BOOL", writable: true }] },
   { name: "MEQ", category: "Comparison", summary: "Masked equal: true when source and compare agree through the mask.", operands: [num("Source"), num("Mask"), num("Compare")] },
-  { name: "BTD", category: "Move", summary: "Bit distribute: copy Length bits from the source bit position to the destination bit position.", operands: [num("Source"), num("Source bit"), { name: "Dest", kind: "NUMBER", writable: true }, { name: "Dest bit", kind: "NUMBER", writable: true }, num("Length")] },
-  { name: "AVE", category: "File and array", summary: "Average: average the array along one dimension into the destination.", operands: [any("Array"), num("Dimension"), any("Dest"), any("Control"), num("Length"), num("Position")] },
-  // Motion. Every operand is a field of the instruction box, in the order the vendor
-  // metadata writes them, so the count and order are right and the type is left open: this
-  // catalogue cannot verify AXIS, MOTION_GROUP or the enumerated unit types.
-  { name: "MAJ", category: "Motion", summary: "Motion axis jog: run the axis continuously at a speed until a stop.", operands: [any("Axis"), any("MotionControl"), any("Direction"), any("Speed"), any("SpeedUnits"), any("AccelRate"), any("AccelUnits"), any("DecelRate"), any("DecelUnits"), any("Profile"), any("AccelJerk"), any("DecelJerk"), any("JerkUnits"), any("Merge"), any("MergeSpeed"), any("LockPosition"), any("LockDirection")] },
-  { name: "MAM", category: "Motion", summary: "Motion axis move: one positioning move with the given type, speed, acceleration and merge.", operands: [any("Axis"), any("MotionControl"), any("MoveType"), any("Position"), any("Speed"), any("SpeedUnits"), any("AccelRate"), any("AccelUnits"), any("DecelRate"), any("DecelUnits"), any("Profile"), any("AccelJerk"), any("DecelJerk"), any("JerkUnits"), any("Merge"), any("MergeSpeed"), any("LockPosition"), any("LockDirection"), any("EventDistance"), any("CalculatedData")] },
-  { name: "MAPC", category: "Motion", summary: "Motion axis position cam: slave the axis to a master through a cam profile.", operands: [any("SlaveAxis"), any("MasterAxis"), any("MotionControl"), any("Direction"), any("CamProfile"), any("SlaveScaling"), any("MasterScaling"), any("ExecutionMode"), any("ExecutionSchedule"), any("MasterLockPosition"), any("CamLockPosition"), any("CamType"), any("MasterReference"), any("MasterDirection")] },
-  { name: "MAS", category: "Motion", summary: "Motion axis stop: stop the axis with the given stop type and deceleration.", operands: [any("Axis"), any("MotionControl"), any("StopType"), any("ChangeDecel"), any("DecelRate"), any("DecelUnits"), any("ChangeDecelJerk"), any("DecelJerk"), any("JerkUnits")] },
-  { name: "MATC", category: "Motion", summary: "Motion axis time cam: drive the axis from a cam profile against time.", operands: [any("Axis"), any("MotionControl"), any("Direction"), any("CamProfile"), any("DistanceScaling"), any("TimeScaling"), any("ExecutionMode"), any("ExecutionSchedule"), any("LockPosition"), any("CamType"), any("LockDirection"), any("InstructionMode")] },
-  { name: "MAH", category: "Motion", summary: "Motion axis home: home the axis using the configured home sequence.", operands: [any("Axis"), any("MotionControl")] },
-  { name: "MDF", category: "Motion", summary: "Motion axis disarm: disarm the axis so motion is no longer commanded.", operands: [any("Axis"), any("MotionControl")] },
-  { name: "MDW", category: "Motion", summary: "Motion axis dwell: hold the axis at its position for a time.", operands: [any("Axis"), any("MotionControl")] },
-  { name: "MGS", category: "Motion", summary: "Motion group stop: stop every axis in the group.", operands: [any("Group"), any("MotionControl"), any("StopMode")] },
-  { name: "MGSP", category: "Motion", summary: "Motion group shutdown: shut the group down.", operands: [any("Group"), any("MotionControl")] },
-  { name: "MRP", category: "Motion", summary: "Motion redefinition of position: redefine the axis position.", operands: [any("Axis"), any("MotionControl"), any("Type"), any("PositionSelect"), any("Position")] },
-  { name: "MSF", category: "Motion", summary: "Motion axis shutdown: shut the axis down.", operands: [any("Axis"), any("MotionControl")] },
-  { name: "MSO", category: "Motion", summary: "Motion servo on: turn the axis servo drive on.", operands: [any("Axis"), any("MotionControl")] },
+  { name: "BTD", category: "Move", summary: "Bit distribute: copy Length bits from the source bit position to the destination bit position.", operands: [num("Source"), lit("Source bit", 0, 31), { name: "Dest", kind: "NUMBER", writable: true }, lit("Dest bit", 0, 31), lit("Length", 1, 32)] },
+  { name: "AVE", category: "File and array", summary: "Average: average the array along one dimension into the destination.", operands: [{ name: "Array", kind: "ANY", tagOnly: true }, lit("Dimension", 0, 2), { name: "Dest", kind: "NUMBER", writable: true }, control(), lit("Length"), lit("Position")] },
+  // Motion. Every operand is a field of the instruction box, in the order the vendor help
+  // writes them. The axis, control-structure and group slots are typed tags; the enumerated
+  // direction, unit, profile and stop fields are immediates, which is what the Logix Designer
+  // compiler requires (a tag in an immediate slot builds as "Invalid kind of operand").
+  { name: "MAJ", category: "Motion", summary: "Motion axis jog: run the axis continuously at a speed until a stop.", operands: [axis(), motionControl(), lit("Direction"), num("Speed"), lit("SpeedUnits"), num("AccelRate"), lit("AccelUnits"), num("DecelRate"), lit("DecelUnits"), lit("Profile"), num("AccelJerk"), num("DecelJerk"), lit("JerkUnits"), lit("Merge"), lit("MergeSpeed"), num("LockPosition"), num("LockDirection")] },
+  { name: "MAM", category: "Motion", summary: "Motion axis move: one positioning move with the given type, speed, acceleration and merge.", operands: [axis(), motionControl(), lit("MoveType"), num("Position"), num("Speed"), lit("SpeedUnits"), num("AccelRate"), lit("AccelUnits"), num("DecelRate"), lit("DecelUnits"), lit("Profile"), num("AccelJerk"), num("DecelJerk"), lit("JerkUnits"), lit("Merge"), lit("MergeSpeed"), num("LockPosition"), lit("LockDirection"), any("EventDistance"), any("CalculatedData")] },
+  { name: "MAPC", category: "Motion", summary: "Motion axis position cam: slave the axis to a master through a cam profile.", operands: [axis("SlaveAxis"), axis("MasterAxis"), motionControl(), lit("Direction"), cam("CamProfile"), num("SlaveScaling"), num("MasterScaling"), lit("ExecutionMode"), lit("ExecutionSchedule"), num("MasterLockPosition"), num("CamLockPosition"), lit("CamType"), lit("MasterReference"), lit("MasterDirection")] },
+  { name: "MAS", category: "Motion", summary: "Motion axis stop: stop the axis with the given stop type and deceleration.", operands: [axis(), motionControl(), lit("StopType"), lit("ChangeDecel"), num("DecelRate"), lit("DecelUnits"), lit("ChangeDecelJerk"), num("DecelJerk"), lit("JerkUnits")] },
+  { name: "MATC", category: "Motion", summary: "Motion axis time cam: drive the axis from a cam profile against time.", operands: [axis(), motionControl(), lit("Direction"), cam("CamProfile"), num("DistanceScaling"), num("TimeScaling"), lit("ExecutionMode"), lit("ExecutionSchedule"), lit("LockPosition"), lit("CamType"), lit("LockDirection"), lit("InstructionMode")] },
+  { name: "MAH", category: "Motion", summary: "Motion axis home: home the axis using the configured home sequence.", operands: [axis(), motionControl()] },
+  { name: "MDF", category: "Motion", summary: "Motion direct drive off: deactivate the servo drive and hold the output offset voltage; the axis operand is AXIS_SERVO only.", operands: [{ name: "Axis", kind: "ANY", tagOnly: true, types: ["AXIS_SERVO"] }, motionControl()] },
+  { name: "MDW", category: "Motion", summary: "Motion axis dwell: hold the axis at its position for a time.", operands: [{ name: "Axis", kind: "ANY", tagOnly: true, types: ["AXIS_SERVO", "AXIS_SERVO_DRIVE"] }, motionControl()] },
+  { name: "MGS", category: "Motion", summary: "Motion group stop: stop every axis in the group.", operands: [motionGroup(), motionControl(), lit("StopMode")] },
+  { name: "MGSP", category: "Motion", summary: "Motion group shutdown: shut the group down.", operands: [motionGroup(), motionControl()] },
+  { name: "MRP", category: "Motion", summary: "Motion redefinition of position: redefine the axis position.", operands: [axis(), motionControl(), lit("Type"), lit("PositionSelect"), num("Position")] },
+  { name: "MSF", category: "Motion", summary: "Motion axis shutdown: shut the axis down.", operands: [{ name: "Axis", kind: "ANY", tagOnly: true, types: ["AXIS_SERVO", "AXIS_SERVO_DRIVE"] }, motionControl()] },
+  { name: "MSO", category: "Motion", summary: "Motion servo on: turn the axis servo drive on.", operands: [{ name: "Axis", kind: "ANY", tagOnly: true, types: ["AXIS_SERVO", "AXIS_SERVO_DRIVE"] }, motionControl()] },
   // FOR runs a named routine until the index passes the terminal value, so its first
   // operand is a routine, not an address. The compact table had a routine name, a source
   // and an expression, which is neither the right count nor the right meaning.
@@ -642,13 +662,13 @@ var INSTRUCTIONS = [
   { name: "SFP", category: "Program control", summary: "Pause an SFC routine at a target state.", operands: [], notModelled: true },
   // Operand lists transcribed from the installed Logix 5000 instruction help (Help\ENU\rs5000),
   // which states each slot by name; pseudo-operands Length and Position are real operands here.
-  { name: "FFL", category: "File and array", summary: "FIFO load: copy the source into the next FIFO element.", operands: [any("Source"), any("FIFO"), any("Control"), num("Length"), num("Position")] },
-  { name: "FFU", category: "File and array", summary: "FIFO unload: move the oldest FIFO element into the destination.", operands: [any("FIFO"), any("Destination"), any("Control"), num("Length"), num("Position")] },
-  { name: "LFL", category: "File and array", summary: "LIFO load: push the source onto a LIFO stack.", operands: [any("Source"), any("LIFO"), any("Control"), num("Length"), num("Position")] },
-  { name: "LFU", category: "File and array", summary: "LIFO unload: pop the most recent LIFO element into the destination.", operands: [any("LIFO"), any("Destination"), any("Control"), num("Length"), num("Position")] },
+  { name: "FFL", category: "File and array", summary: "FIFO load: copy the source into the next FIFO element.", operands: [any("Source"), { name: "FIFO", kind: "ANY", tagOnly: true, arrayTag: true }, control(), lit("Length"), lit("Position")] },
+  { name: "FFU", category: "File and array", summary: "FIFO unload: move the oldest FIFO element into the destination.", operands: [{ name: "FIFO", kind: "ANY", tagOnly: true, arrayTag: true }, any("Destination"), control(), lit("Length"), lit("Position")] },
+  { name: "LFL", category: "File and array", summary: "LIFO load: push the source onto a LIFO stack.", operands: [any("Source"), { name: "LIFO", kind: "ANY", tagOnly: true, arrayTag: true }, control(), lit("Length"), lit("Position")] },
+  { name: "LFU", category: "File and array", summary: "LIFO unload: pop the most recent LIFO element into the destination.", operands: [{ name: "LIFO", kind: "ANY", tagOnly: true, arrayTag: true }, any("Destination"), control(), lit("Length"), lit("Position")] },
   { name: "DTR", category: "Compare", summary: "Data transition: pass source bits through the mask and compare them with the reference.", operands: [any("Source"), any("Mask"), any("Reference")] },
   { name: "ATAN2", category: "Math", summary: "Two-argument arctangent: the angle of Source Y over Source X.", operands: [any("Source Y"), any("Source X"), any("Dest")] },
-  { name: "SQI", category: "Sequencer", summary: "Sequencer input: compare the source with one masked step of the array.", operands: [any("Array"), any("Mask"), any("Source"), any("Control"), num("Length"), num("Position")] },
+  { name: "SQI", category: "Sequencer", summary: "Sequencer input: compare the source with one masked step of the array.", operands: [{ name: "Array", kind: "ANY", tagOnly: true, arrayOrElement: true, types: ["DINT"] }, num("Mask"), num("Source"), control(), lit("Length"), lit("Position")] },
   { name: "EVENT", category: "Program control", summary: "Trigger an event task.", operands: [keyword("Task")] },
   // The rest of the set, declared compactly in instruction-set.ts so this table stays readable.
   ...MORE_INSTRUCTIONS.map((instruction) => ({

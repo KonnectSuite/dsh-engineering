@@ -77,6 +77,19 @@ object as changed.
 - `fontSize="1"` is clamped to `2` on the list, gauge, message and time displays
   that report it.
 
+## An arc with equal angles is drawn as a full ellipse
+
+An `<arc>` on the probe display exports as `startAngle="0" endAngle="0"` with
+`backStyle="solid"` and a `backColor`. A zero-length sweep would draw nothing, but
+Studio paints a filled ellipse inside the object's box. So the angles in the file
+are not the angles on the screen: when both are equal, read the object as an
+ellipse. A `wedge` follows the same rule.
+
+A `<barGraph>` is the other side of that coin. With `backStyle="transparent"` and
+`borderStyle="none"` — the default — an export with no controller value paints no
+pixels at all, so the design shows a blank spot where the runtime shows a bar. The
+frame in the file is present; only the fill is missing.
+
 ## The export adds far more than it rewrites
 
 The same import added 127 default attributes across the 13 objects of the probe

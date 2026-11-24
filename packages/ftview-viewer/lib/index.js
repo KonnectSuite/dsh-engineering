@@ -8,7 +8,9 @@
  * @module dsh-engineering-ftview-viewer
  */
 export { parseXml, child, children, attribute, numberAttribute } from "./xml.js";
-export { renderDisplay, colourOf, responsiveSvg, detectArtifact } from "./render.js";
+export { renderDisplay, renderDisplayWithReport, colourOf, responsiveSvg, detectArtifact } from "./render.js";
+export { ELEMENTS, FAMILIES, elementFacts, partFacts } from "./vocabulary.generated.js";
+export { boxDiagonal, documentMode, lineSegment, pathPoints, pointsToPath, polygonPoints, } from "./geometry.js";
 export { evaluate, referencesOf } from "./expression.js";
 /** Host entry: this package is browser-only, so the server half has nothing to do. */
 export function apply() { }

@@ -77,6 +77,32 @@ describe('renderDisplaySvg', () => {
     const result = renderDisplaySvg('Overview', [{ type: 'vendorWidget', name: 'Trend1', attributes: { left: '10', top: '10', width: '100', height: '50' } }], settings)
     expect(result.svg).toContain('>Trend1</text>')
   })
+
+  it('reads a staged line as percent of its box and an exported one as pixels', () => {
+    const object = { type: 'line', name: 'Rule', attributes: { left: '10', top: '10', width: '100', height: '10', line: '0 0 100 0', lineWidth: '2' } }
+    const drafted = renderDisplaySvg('Draft', [object], settings, new Map(), { mode: 'draft' })
+    expect(drafted.mode).toBe('draft')
+    expect(drafted.svg).toContain('points="10,10 110,10"')
+
+    // Measured: Studio wrote `0 0 100 0` on this box as `15 15 105 15 `, i.e. the
+    // same percentage with the pen inset; the display coordinates are absolute.
+    const exported = renderDisplaySvg('Export', [{ ...object, attributes: { ...object.attributes, line: '15 15 105 15 ' } }], settings, new Map(), { mode: 'export' })
+    expect(exported.mode).toBe('export')
+    expect(exported.svg).toContain('points="15,15 105,15"')
+  })
+
+  it('draws a polygon from its path attribute', () => {
+    const result = renderDisplaySvg('Draft', [{ type: 'polygon', name: 'Triangle', attributes: { left: '0', top: '0', width: '100', height: '100', path: '0 0 100 0 50 100', backColor: '#00FF00' } }], settings, new Map(), { mode: 'draft' })
+    expect(result.svg).toContain('<polygon points="0,0 100,0 50,100"')
+  })
+
+  it('names the object types the installed schema does not declare', () => {
+    const result = renderDisplaySvg('Overview', [
+      { type: 'vendorWidget', name: 'Trend1', attributes: { left: '10', top: '10', width: '100', height: '50' } },
+      { type: 'momentaryButton', name: 'Start', attributes: { left: '10', top: '10', width: '100', height: '50' } },
+    ], settings)
+    expect(result.unknown).toEqual(['Trend1'])
+  })
 })
 
 describe('ftview_render', { timeout: 30_000 }, () => {

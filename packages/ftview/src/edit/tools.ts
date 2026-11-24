@@ -1634,10 +1634,10 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             settings = settingsFromXml(new TextDecoder().decode(bytes))
           }
           const images = await loadRasters(fs, view.app.root, objects, exec?.signal)
-          const result = renderDisplaySvg(name, objects, settings, images)
+          const result = renderDisplaySvg(name, objects, settings, images, { mode: fromDraft ? 'draft' : 'export' })
           const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
           const written = await writeRender(outputRoot, name, result)
-          return { display: name, svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, problems: result.problems }
+          return { display: name, svg: written.svg, ...(written.png === undefined ? {} : { png: written.png }), width: result.width, height: result.height, drawn: result.drawn, problems: result.problems, unknown: result.unknown, mode: result.mode }
         }
         const sheetWanted = optionalString(args, 'sheet') === 'yes'
         const browser = findBrowser()
@@ -1648,9 +1648,13 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
         for (const name of names) screens.push(await drawOne(name))
         for (const screen of screens) session.recordRendered(screen.display)
         const problems = screens.flatMap(screen => screen.problems)
+        const unknown = [...new Set(screens.flatMap(screen => screen.unknown))]
         const trouble = problems.length === 0
           ? 'No object leaves the canvas or overflows its box.'
           : `${problems.length} layout problem(s): ${problems.slice(0, 3).map(problem => `${problem.object} ${problem.kind === 'outside' ? 'leaves the canvas' : 'overflows its box'}`).join('; ')}${problems.length > 3 ? ' and more' : ''}.`
+        const vocabulary = unknown.length === 0
+          ? ''
+          : ` ${unknown.length} object type(s) are not in the installed schema (${unknown.slice(0, 3).join(', ')}${unknown.length > 3 ? ' and more' : ''}) and are drawn generically.`
         const written = screens.map(screen => screen.png ?? screen.svg).join(', ')
         let sheet: string | undefined
         if (sheetWanted && screens.length > 1) {
@@ -1658,14 +1662,15 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
           const footer = `${screens.length} display(s) from the ${fromDraft ? 'staged draft' : 'export'}; ${problems.length === 0 ? 'no layout problems' : `${problems.length} layout problem(s) marked in red`}`
           const composed = composeSheet(screens.map(screen => ({ name: screen.display, svg: screen.svg })), width, footer)
           const outputRoot = optionalString(args, 'output') ?? `${view.app.root}/renders`
-          const written = await writeRender(outputRoot, 'sheet', { ...composed, drawn: 0, problems: [], skipped: [] })
+          const written = await writeRender(outputRoot, 'sheet', { ...composed, drawn: 0, problems: [], skipped: [], unknown: [], mode: 'export' })
           sheet = written.png ?? written.svg
         }
         const first = screens[0] as { svg: string; png?: string; width: number; height: number; drawn: number }
         return success(
-          `Rendered ${screens.length === 1 ? first === undefined ? 'one display' : names[0] : `${screens.length} displays (${names.join(', ')})`} from the ${fromDraft ? 'staged draft' : 'export'} to ${written}. ${note ?? `PNG written by ${browser}.`}${sheet === undefined ? '' : ` Sheet: ${sheet}.`} ${trouble}`,
+          `Rendered ${screens.length === 1 ? first === undefined ? 'one display' : names[0] : `${screens.length} displays (${names.join(', ')})`} from the ${fromDraft ? 'staged draft with draft coordinates' : 'export'} to ${written}. ${note ?? `PNG written by ${browser}.`}${sheet === undefined ? '' : ` Sheet: ${sheet}.`} ${trouble}${vocabulary}`,
           {
             source: fromDraft ? 'draft' : 'export',
+            mode: fromDraft ? 'draft' : 'export',
             ...(screens.length === 1 ? {} : { screens }),
             svg: first.svg,
             ...(first.png === undefined ? {} : { png: first.png }),
@@ -1673,6 +1678,7 @@ export function editTools(session: ViewSession, drafts: EditDrafts, fs: FsServic
             height: first.height,
             drawn: screens.reduce((total, screen) => total + screen.drawn, 0),
             problems,
+            unknown,
             ...(sheet === undefined ? {} : { sheet }),
             browser: browser ?? null,
           },
