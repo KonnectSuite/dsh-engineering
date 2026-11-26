@@ -11,6 +11,7 @@
  * new surface, listed and disabled until a person enables it.
  */
 import * as plc5 from '../vendor/plc5/lib/index.js'
+import { apply as mountRow } from './activation.js'
 
 export const name = 'engineering-plc5'
 
@@ -25,5 +26,5 @@ export const inject = ['tools', 'fs']
  * one flag each.
  */
 export function apply(ctx, config = {}) {
-  plc5.apply(ctx, config)
+  mountRow(ctx, 'plc5', plc5, config)
 }

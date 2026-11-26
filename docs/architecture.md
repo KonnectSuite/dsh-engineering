@@ -70,9 +70,10 @@ composite that mounts the whole surface (`ctx.plugin(part)`) and exposes its opt
 `Config` schema the page renders; a **support component** mounts one part. `viewers` carries no tools.
 
 **Every optional surface ships on.** L5X drafts, Studio SDK and live reads default on and a read-only
-profile turns them off, and MotionWorks edits default on. A fresh install therefore pays for 174 tools,
+profile turns them off, and MotionWorks edits default on. A fresh install therefore mounts 174 tools,
 the recorded budget in
-[components.json](../components.json).
+[components.json](../components.json) — though a mounted tool is not a declared one; see
+[conditional admission](#conditional-admission) below.
 
 **Why not `cordis:group`.** The Plugins page skips group rows outright
 (`plugin-manager/src/index.ts`: *"Group rows are containers without a plugin inventory entry; their
@@ -92,8 +93,8 @@ export const name = 'engineering-l5x'
 export const inject = ['tools', 'fs']
 export const Config = z.object({ /* schemastery fields, mostly .volatile() */ })
 export function apply(ctx, config = {}) {
-  ctx.plugin(read)
-  ctx.plugin(skill)
+  mount(ctx, 'l5x', read) // entries/activation.js: the gate rides on every registration
+  mount(ctx, 'l5x', skill)
   /* mount or dispose the optional parts from the switches */
   ctx.on('loader/volatile-update', sync) // re-read a switch the user just flipped
 }
@@ -147,11 +148,54 @@ document it owns.
 change between releases, and `stabilityNote` says what is not proved yet. `since` is the first release
 whose patch carried the row id, not the last change.
 
-Two budgets come from it. `contextBudget.defaultOnTools` = **174** and
-`defaultOnSchemaCharacters` = **136828** are the measured default-on surface: one more default-on tool
-fails the suite until the count is raised with its measurement, or the component ships off.
+Three budgets come from it. `contextBudget.defaultOnTools` = **174** is the exact default-on tool
+surface: one more default-on tool fails the suite until the count is raised with its measurement, or the
+component ships off. `defaultOnSchemaCharacters` = **136828** is the ceiling for what a fully activated
+default-on surface sends, and `defaultOnCatalogCharacters` = **1650** is the ceiling for what an idle
+session sends — the skill catalog, not the schemas.
 `skillPolicy.defaultBudget` = **8000** characters is the ceiling for a skill body, because a skill is
 injected into the request when it is invoked; depth belongs on `docs/` pages and is linked.
+
+## Conditional admission
+
+Registering a tool is not declaring it. `@deepseek-ai/dsh-tools` accepts
+`register(definition, { when })` and evaluates that condition once per model step; `false` keeps the tool
+out of the tool list, the PTC bindings and dispatch, and the row pays nothing for it that step.
+`entries/activation.js` is the bundle's only gate: `mount()` and `apply()` wrap the context a part is
+given so every `tools.register` it makes carries the condition for its row.
+
+The condition is open when the session has loaded a skill that names one of the row's tools, or when the
+request header it already sent declares one. That table is `COMPONENTS` in the same module:
+
+| Row | Prefixes | Skills that admit it |
+|---|---|---|
+| `l5x` | `l5x_` | `rockwell-l5x`, `engineering-standards`, `legacy-to-logix-migration` |
+| `ftview` | `ftview_` | `factorytalk-view`, `engineering-standards` |
+| `mwi` | `mw_` | `motionworks-iec`, `engineering-standards` |
+| `optix` | `optix_` | `factorytalk-optix` |
+| `migration` | `migration_`, `l5k_`, `slc_` | `legacy-to-logix-migration`, `rslogix-500` |
+| `engineering-resources` | `engineering_` | any of the eight (the resource tools are named by every skill) |
+| `plc5` | `plc5_` | `rslogix-5` |
+| `slc` | `slc500_` | `rslogix-500` |
+
+A skill is in a row's list exactly when its prose names one of that row's tools, and
+`test/activation.spec.mjs` derives the table from `docs/reference/tools.json` and the SKILL.md bodies, so
+prose and gate cannot drift. Three consequences are deliberate:
+
+- **One step of latency.** The host seals admission before a step's tool calls run, so the step that
+  loads a skill still sees the old surface; the next step sees the row. A cached prefix therefore stays
+  warm while the surface changes.
+- **Resume is covered by the header.** `session.requestHeader()` carries the last request's tool names,
+  so a resumed session keeps the surface it had; an agent that carries only `run_code` (PTC) reloads the
+  skill.
+- **The switch stays the row.** There is no per-skill filter in the host — the older
+  `@deepseek-ai/dsh-tool-skill` config is not on this line — and the row remains what a profile disables.
+  A project skill that reuses a bundle skill's name admits that row, because the name is the key.
+
+The gate fails open when there is no agent (an executor test, a scripted caller) and fails closed when
+its own predicate throws, so a broken condition hides a row rather than failing step preparation. On a
+harness older than `0.2.2-alpha.2` the second argument to `register` is ignored, every schema is sent as
+before, and nothing breaks.
 
 ## Switches
 
@@ -167,7 +211,9 @@ row is absent (`dsh: [...] patch: entry "..." not found`) and the bundle refuses
 **No capability policy.** Earlier releases carried a per-skill tool filter (`policyOnly`,
 `toolPolicy`, `capabilities`) inherited from a different harness. That filter lives in that fork of
 `@deepseek-ai/dsh-tool-skill`; the DeepSeek Harness (AryaCode) line's copy has no such config, so the
-layer could only ever be skipped on an older harness or fail composition on the current one.
+layer could only ever be skipped on an older harness or fail composition on the current one. The
+replacement is [conditional admission](#conditional-admission): the same intent, but the condition is
+evaluated by the host per step and no harness config is involved.
 
 ## The EtherNet/IP surface
 

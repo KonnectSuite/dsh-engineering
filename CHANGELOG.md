@@ -1,5 +1,36 @@
 ## [Unreleased]
 
+### Added
+
+- **A row costs nothing until its work starts.** Every engineering tool is now registered with a per-step
+  condition (`ctx.tools.register(definition, { when })`), so the host declares a row's schemas only after
+  this session loads a skill that names one of its tools. A default-on profile sent **174 tool definitions
+  and 136,828 schema characters on every request** — about 34k tokens of tool surface on every turn; it now
+  sends none of them, and the idle surface is the skill catalog at **1,586 characters**. `entries/activation.js`
+  is the whole mechanism: `mount()` and `apply()` hand each part a proxied context that attaches the gate to
+  every registration it makes, and the gate is open when this session marked the row's skill through the
+  `skill` tool or a `/name` gesture, or when the last request header already declared one of the row's
+  prefixes. The per-row table (prefixes → admitting skills) comes from the SKILL.md prose and
+  `test/activation.spec.mjs` re-derives it from `docs/reference/tools.json`, so a prose edit that adds a tool
+  name either updates the table or fails the suite. A skill that names another row's tool admits that row,
+  which is how `engineering-standards` reaches the standards tools from an L5X session.
+- **`entries/optix-skill.js`** registers `factorytalk-optix` with the row it belongs to, instead of from the
+  `netlogic` switch.
+
+### Changed
+
+- **The harness floor is `^0.2.2-alpha.2`.** The `^0.2.1-rc.3` arm is gone because the older line's
+  `tools.register` ignores its second argument: nothing breaks there, but every schema is sent, so that host
+  cannot save the surface and is no longer claimed. `@deepseek-ai/dsh-tools` is `^0.2.2-alpha.2` as a peer
+  and `0.2.2-alpha.3` for development — the release that first carries the feature is `dsh-v0.2.2-alpha.2`.
+- **The `netlogic` switch drops one tool, not the product.** With the skill moved to the row, switching
+  `netlogic` off removes `optix_netlogic` and keeps the FactoryTalk Optix guidance and the other 31 tools.
+- **The documentation states the new contract.** README, `cordis.patch.yml`, `docs/architecture.md` (a new
+  **Conditional admission** section), the component contract's context budget and the Optix pages all
+  describe a mounted row that is not yet a declared one, the one step of latency, header recovery and the
+  older-host degradation; `components.json` records the idle ceiling as
+  `contextBudget.defaultOnCatalogCharacters`.
+
 ## 0.104.2 — 2026-11-24
 
 ### Added

@@ -14,10 +14,12 @@ ships as **AryaCode**; the two names are the same host and this page applies to 
 **One bundle: 9 component rows · 199 tools · 6 products · every component is beta**
 
 The bundle is one npm package with one install surface. Inside it, each product is a **row** on the
-Plugins page: a row is a plugin, so switching one off unloads that product and its tool schemas stop
-being sent with every request. The components are deliberately fine-grained — one per toolchain —
-because that is how an engineer adopts them: Studio 5000 this week, Optix next month, the drawing
-preview when a print arrives.
+Plugins page: a row is a plugin, so switching one off unloads that product and its tool schemas leave
+the request. A row that stays on still declares nothing until its work starts: every tool is
+registered with a per-step condition, and the host sends a product's schemas only after this session
+loads a skill that names one of its tools. The components are deliberately fine-grained — one per
+toolchain — because that is how an engineer adopts them: Studio 5000 this week, Optix next month, the
+drawing preview when a print arrives.
 
 New here? Read [Getting started](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/getting-started.md),
 then open the page for the product you have in front of you.
@@ -134,18 +136,20 @@ that product installed, and the SLC 500 automation read has no recorded transcri
 ships off rather than claiming a result. Both stay listed, so one switch enables a row without a
 reinstall.
 
-The default-on surface is budgeted, not accidental: `components.json` records the tools and the
-characters of model-visible schema a fresh install may mount (174 tools, 136,828 characters today), and
-a component that would exceed either ceiling ships off until the ceiling is raised with its
-measurement. The budget and the field set are documented in the
+The default-on surface is budgeted, not accidental: `components.json` records the tools a fresh install
+may mount (174 tools), the characters of model-visible schema a loaded row sends (136,828), and the
+characters the idle skill catalog costs (1,650). A component that would exceed a ceiling ships off until
+the ceiling is raised with its measurement. The budget and the field set are documented in the
 [component contract](https://github.com/KonnectSuite/dsh-engineering/blob/main/docs/reference/components.md#context-budget).
 
 ## What it needs
 
-- **Host:** DeepSeek Harness or AryaCode, `^0.2.1-rc.3 || ^0.2.2-alpha.2` (declared as
-  `dsh.engines.dsh`, so the market states the requirement on the card). Verified on AryaCode
-  `0.2.2-alpha.2`, installed from npm into a clean packaged profile: no import or activation error,
-  the market reported the bundle live with `diagnostics.findings` empty.
+- **Host:** DeepSeek Harness or AryaCode, `^0.2.2-alpha.2` (declared as `dsh.engines.dsh`, so the
+  market states the requirement on the card). Conditional tool admission is a harness feature from
+  `0.2.2-alpha.2`; on an older host the second registration argument is ignored and every schema is
+  sent on every request, which works but costs what it did before.
+- **Verified on:** AryaCode `0.2.2-alpha.2`, installed from npm into a clean packaged profile: no
+  import or activation error, the market reported the bundle live with `diagnostics.findings` empty.
 - **Node:** the bundle's own runtime is Node 22.19+ or 24+.
 - **Vendor software** is needed only for the surfaces that talk to it: Logix Designer SDK (optional),
   FactoryTalk View Studio ME (discovery and the manual import), FactoryTalk Optix Studio, MotionWorks
@@ -174,11 +178,12 @@ measurement. The budget and the field set are documented in the
 ## Skills
 
 The bundle ships eight skills, each attached to the row that can act on it. The agent loads one when the
-work matches, so the tool schemas and the method arrive together: `rockwell-l5x`, `factorytalk-view`,
-`factorytalk-optix`, `motionworks-iec`, `legacy-to-logix-migration`, `rslogix-5`, `rslogix-500`,
-`engineering-standards`. Each product page says when its skill engages, and the resource skill is
-cross-toolchain: it is what the other seven reach for when a question is about house style or a standard
-rather than a tool.
+work matches, and the load is what admits the row's tools: the next step sends the schemas of the tools
+that skill names — its own product, plus a cross-toolchain skill only when its prose calls one. The
+eight are `rockwell-l5x`, `factorytalk-view`, `factorytalk-optix`, `motionworks-iec`,
+`legacy-to-logix-migration`, `rslogix-5`, `rslogix-500`, `engineering-standards`. Each product page says
+when its skill engages, and the resource skill is cross-toolchain: it is what the other seven reach for
+when a question is about house style or a standard rather than a tool.
 
 ## Known limits
 
@@ -205,6 +210,11 @@ rather than a tool.
 - The installed-help indexes record titles, paths and sections, not vendor page bodies. A `read` needs the
   vendor help installed locally; without it the tool answers `SOURCE_NOT_INSTALLED`.
 - FBD and SFC semantics are not exercised.
+- **Tools arrive one step after their skill.** The host seals a step's tool admission before the step's
+  own tool calls run, so the step that loads `rockwell-l5x` still sees only the tools it started with;
+  the next step sends them. A resumed session recovers the surface from the request header it already
+  sent, and an agent whose header carries only `run_code` (a PTC run) loads the skill again. A project
+  skill that reuses a bundle skill's name admits that row's tools, because the name is the whole key.
 - All nine components are beta, and each one records in `components.json` what is not proved yet.
 
 ## Documentation

@@ -7,6 +7,7 @@
  * project open, and says so when none is.
  */
 import * as resources from '../vendor/resources/lib/index.js'
+import { apply as mountRow } from './activation.js'
 
 export const name = 'engineering-resources'
 
@@ -19,5 +20,5 @@ export const inject = ['tools']
  * @param config - `reference` (default true) controls the two read tools.
  */
 export function apply(ctx, config = {}) {
-  resources.apply(ctx, config)
+  mountRow(ctx, 'engineering-resources', resources, config)
 }

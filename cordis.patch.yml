@@ -16,8 +16,13 @@
 # Every product except PLC-5 and SLC 500 ships on so a fresh install can use it.
 # Both are new, read-only surfaces on a legacy platform, so they ship listed and
 # disabled until a person enables them. Turn any row off from its Configure page
-# when the profile is read-only or the request budget is tight; the schemas are
-# sent on every request.
+# when the profile is read-only or the request budget is tight.
+#
+# A mounted row is not a declared row. Each entry registers its tools with
+# `entries/activation.js`, which attaches a per-step condition: the host omits a
+# tool from the request until this session has loaded a skill that names it, so
+# a fresh session sends the skill catalog only. Loading `rockwell-l5x` sends the
+# L5X and standards tools on the next step, and no other product's.
 #
 # The patch only ever inserts. It must never target a row another bundle owns:
 # a profile without that row makes composition fail ("patch: entry ... not
@@ -25,7 +30,7 @@
 #
 # There is no per-skill tool filter here (`policyOnly` / `toolPolicy`): that is
 # an AryaAI harness feature and the AryaCode line's `@deepseek-ai/dsh-tool-skill`
-# has no such config. The row is the switch.
+# has no such config. The row is the switch; the skill load is the admission.
 - insert:
     - id: l5x
       name: '@aryacode/dsh-engineering/l5x'

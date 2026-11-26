@@ -12,6 +12,8 @@ import z from '@deepseek-ai/schemastery'
 import { dirname, join } from 'node:path'
 import * as optix from '../vendor/optix/lib/index.js'
 import * as netlogic from './netlogic.js'
+import * as optixSkill from './optix-skill.js'
+import { mount } from './activation.js'
 import { flag, list, text } from './config.js'
 
 export const name = 'engineering-optix'
@@ -70,7 +72,7 @@ export const Config = z.object({
     'Folder holding the .traineddata files. Empty derives tessdata beside tesseract.exe.',
   ),
   netlogic: z.boolean().default(true).volatile().description(
-    'Register the pinned NetLogic cheat-sheet reader (optix_netlogic) and the FactoryTalk Optix skill. Off removes one tool and its guidance.',
+    'Register the pinned NetLogic cheat-sheet reader (optix_netlogic). Off removes that one tool; the product guidance and the rest of the row stay.',
   ),
   requestTimeoutMs: z.natural().min(1).max(2147483647).default(20000),
   maxResponseBytes: z.natural().min(1).default(2000000),
@@ -117,20 +119,24 @@ export function apply(ctx, config = {}) {
   }
   let mounted
   let netlogicMounted
+  // The product's guidance belongs to the row, not to a switch: a skill that
+  // vanished with `netlogic` would take the catalog entry with it and leave the
+  // row's tools unreachable, because they are admitted by the skill load.
+  mount(ctx, 'optix', optixSkill)
   // Volatile-only config changes are committed into the live references and
   // emit `loader/volatile-update` instead of re-running apply(). The prebuilt
   // plugin reads its options once, so remount it to pick up a switch change.
   const sync = () => {
     if (mounted !== undefined) void mounted.dispose()
-    mounted = ctx.plugin(optix, options())
+    mounted = mount(ctx, 'optix', optix, options())
     // The NetLogic reader is this repository's own entry: it is a separate plugin
-    // so the row's `netlogic` switch can drop one tool and its guidance without
-    // touching the prebuilt engine.
+    // so the row's `netlogic` switch can drop one tool without touching the
+    // prebuilt engine.
     if (netlogicMounted !== undefined) {
       void netlogicMounted.dispose()
       netlogicMounted = undefined
     }
-    if (flag(config.netlogic)) netlogicMounted = ctx.plugin(netlogic)
+    if (flag(config.netlogic)) netlogicMounted = mount(ctx, 'optix', netlogic)
   }
   sync()
   ctx.on('loader/volatile-update', sync)

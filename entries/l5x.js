@@ -17,6 +17,7 @@ import * as skill from '../vendor/l5x/lib/skill.js'
 import * as editing from '../vendor/l5x/lib/editing.js'
 import * as studio from '../vendor/l5x/lib/studio.js'
 import * as live from '../vendor/l5x/lib/live.js'
+import { mount } from './activation.js'
 import { flag, list } from './config.js'
 
 export const name = 'engineering-l5x'
@@ -47,8 +48,8 @@ export const Config = z.object({
  * @param config - the optional surfaces, all off unless enabled.
  */
 export function apply(ctx, config = {}) {
-  ctx.plugin(read)
-  ctx.plugin(skill)
+  mount(ctx, 'l5x', read)
+  mount(ctx, 'l5x', skill)
   // Volatile-only config changes never re-run apply(): the loader commits the
   // new values and emits loader/volatile-update. Remount the optional surfaces
   // from that event so a switch flipped in the row page takes effect at once.
@@ -58,14 +59,14 @@ export function apply(ctx, config = {}) {
   let liveSignature = ''
   const sync = () => {
     const wantEditing = flag(config.editing)
-    if (wantEditing && editingFiber === undefined) editingFiber = ctx.plugin(editing)
+    if (wantEditing && editingFiber === undefined) editingFiber = mount(ctx, 'l5x', editing)
     else if (!wantEditing && editingFiber !== undefined) {
       void editingFiber.dispose()
       editingFiber = undefined
     }
 
     const wantStudio = flag(config.studio)
-    if (wantStudio && studioFiber === undefined) studioFiber = ctx.plugin(studio)
+    if (wantStudio && studioFiber === undefined) studioFiber = mount(ctx, 'l5x', studio)
     else if (!wantStudio && studioFiber !== undefined) {
       void studioFiber.dispose()
       studioFiber = undefined
@@ -76,7 +77,7 @@ export function apply(ctx, config = {}) {
     const signature = wantLive ? JSON.stringify([flag(config.allowWrites), addresses]) : ''
     if (wantLive && (liveFiber === undefined || signature !== liveSignature)) {
       if (liveFiber !== undefined) void liveFiber.dispose()
-      liveFiber = ctx.plugin(live, {
+      liveFiber = mount(ctx, 'l5x', live, {
         allowWrites: flag(config.allowWrites),
         ...(addresses.length === 0 ? {} : { allowedAddresses: addresses }),
       })

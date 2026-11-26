@@ -29,6 +29,7 @@ const BUNDLE = [
   'test/client-face.spec.mjs',
   'test/config.spec.mjs',
   'test/entries-schema.spec.mjs',
+  'test/activation.spec.mjs',
   'test/netlogic.spec.mjs',
   'test/optix-chain.spec.mjs',
   'test/optix-arm.spec.mjs',

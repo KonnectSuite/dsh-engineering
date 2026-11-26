@@ -10,6 +10,7 @@
  * No controller is touched.
  */
 import * as migration from '../vendor/migration/lib/index.js'
+import { apply as mountRow } from './activation.js'
 
 export const name = 'engineering-migration'
 
@@ -23,5 +24,5 @@ export const inject = ['tools', 'fs']
  * (all default true) control the tools, one flag each.
  */
 export function apply(ctx, config = {}) {
-  migration.apply(ctx, config)
+  mountRow(ctx, 'migration', migration, config)
 }

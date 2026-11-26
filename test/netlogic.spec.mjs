@@ -7,7 +7,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { apply, answer, definition, SKILL, dataDirectory, loadSnapshot } from '../entries/netlogic.js'
+import { apply, answer, definition, dataDirectory, loadSnapshot } from '../entries/netlogic.js'
+import { apply as applyOptixSkill, SKILL } from '../entries/optix-skill.js'
 
 const root = new URL('../', import.meta.url)
 const netlogic = new URL('../packages/optix/netlogic/', import.meta.url)
@@ -95,7 +96,7 @@ test('a slug outside the snapshot is refused, never read', async () => {
   assert.ok(missing.error.fix.includes('available slugs'))
 })
 
-test('apply registers the tool and the optix skill', () => {
+test('apply registers the tool and nothing else', () => {
   const tools = []
   const skills = []
   apply({
@@ -105,6 +106,12 @@ test('apply registers the tool and the optix skill', () => {
   assert.equal(tools.length, 1)
   assert.equal(tools[0].name, 'optix_netlogic')
   assert.equal(tools[0].parameters.required.length, 0)
+  assert.equal(skills.length, 0, 'the optix skill belongs to the row, not to the netlogic switch')
+})
+
+test('the row-owned optix skill plugin registers the guidance and its path', () => {
+  const skills = []
+  applyOptixSkill({ get(name) { return name === 'skills' ? { register(skill) { skills.push(skill) } } : undefined } })
   assert.equal(skills.length, 1)
   assert.equal(skills[0].name, SKILL.name)
   assert.equal(skills[0].source, 'custom')

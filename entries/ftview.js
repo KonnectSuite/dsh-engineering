@@ -10,6 +10,7 @@ import * as read from '../vendor/ftview/lib/index.js'
 import * as skill from '../vendor/ftview/lib/skill.js'
 import * as edit from '../vendor/ftview/lib/edit.js'
 import * as studio from '../vendor/ftview/lib/studio.js'
+import { mount } from './activation.js'
 import { flag } from './config.js'
 
 export const name = 'engineering-ftview'
@@ -31,8 +32,8 @@ export const Config = z.object({
  * @param config - the two optional surfaces, on by default.
  */
 export function apply(ctx, config = {}) {
-  ctx.plugin(read)
-  ctx.plugin(skill)
-  if (flag(config.edit, true)) ctx.plugin(edit)
-  if (flag(config.studio, true)) ctx.plugin(studio)
+  mount(ctx, 'ftview', read)
+  mount(ctx, 'ftview', skill)
+  if (flag(config.edit, true)) mount(ctx, 'ftview', edit)
+  if (flag(config.studio, true)) mount(ctx, 'ftview', studio)
 }

@@ -32,9 +32,10 @@ says the host is not the source.
 A build is a scaffold, one screen and a rendered look inside five minutes. If no screen exists yet and
 you have been reading files for a while, stop and say what blocked you.
 
-If the `optix_*` tools are not in your tool list at all, the Optix row is switched off in this profile:
-say that in one line and stop. Never rebuild the tools by importing the plugin's `lib/` from Node, and
-never drive Studio to fake the surface.
+The `optix_*` tools are declared on the step after this skill loads, so an empty first look is not a
+fault. If they are still absent on a later step, the Optix row is switched off in this profile: say that
+in one line and stop. Never rebuild the tools by importing the plugin's `lib/` from Node, and never
+drive Studio to fake the surface.
 
 ## Boundary
 

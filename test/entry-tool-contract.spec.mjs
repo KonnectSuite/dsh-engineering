@@ -25,8 +25,21 @@ const entriesDir = join(root, 'entries')
 /** Entries that mount product tools and must therefore register at least one. */
 const ENTRIES_WITH_TOOLS = ['resources', 'l5x', 'ftview', 'optix', 'mwi', 'plc5', 'migration']
 
+/** The switches that turn every optional part of a row on. */
+const CONFIG = {
+  l5x: { editing: true, studio: true, live: true, allowWrites: true },
+  ftview: { edit: true, studio: true },
+  mwi: { edit: true },
+  optix: { bridgeUrls: ['http://127.0.0.1:5599'], preview: true, allowInvoke: true, allowWrites: true, allowDestructive: true },
+}
+
 /**
  * Mount one entry the way the harness does, rejecting what it rejects.
+ *
+ * The stub executes each mounted plugin and hands out the services the parts
+ * ask for, because every row now reaches the registry through
+ * `entries/activation.js`: a stub that ignores `plugin` would assert nothing.
+ *
  * @param {string} name - entry module name without extension.
  * @returns {Promise<{ registered: string[], refused: string[] }>} what mounted.
  */
@@ -34,7 +47,13 @@ async function mountEntry(name) {
   const module = await import(pathToFileURL(join(entriesDir, `${name}.js`)).href)
   const registered = []
   const refused = []
+  const services = new Map([
+    ['skills', { register: () => {} }],
+    ['attachments', { put: async () => 'attachment', get: async () => undefined }],
+  ])
+  const reply = () => {}
   const ctx = {
+    root: undefined,
     tools: {
       register(definition) {
         const output = definition?.output
@@ -47,16 +66,35 @@ async function mountEntry(name) {
         return () => {}
       },
     },
-    get: () => undefined,
-    provide: () => {},
-    plugin: () => {},
-    effect: () => () => {},
-    logger: { warn: () => {}, error: () => {}, info: () => {}, debug: () => {} },
+    get: service => services.get(service),
+    provide: (service, value) => { services.set(service, value) },
+    plugin(part, config) {
+      if (typeof part === 'function') return part(ctx, config)
+      if (part !== null && typeof part === 'object' && typeof part.apply === 'function') return part.apply(ctx, config)
+      return undefined
+    },
+    effect(callback) {
+      const dispose = callback()
+      return typeof dispose === 'function' ? dispose : () => {}
+    },
+    logger: { warn: reply, error: reply, info: reply, debug: reply },
     on: () => () => {},
-    emit: () => {},
+    emit: reply,
+    inject: (_services, callback) => callback(ctx),
+    fs: {
+      resolve: target => ({ targetKey: String(target), displayPath: String(target) }),
+      stat: async () => ({ size: 0 }),
+      readBytes: async () => new Uint8Array(),
+      readText: async () => '',
+      writeText: async () => undefined,
+      exists: async () => false,
+      listDir: async () => [],
+      readdir: async () => [],
+    },
   }
+  ctx.root = ctx
   try {
-    module.apply(ctx, {})
+    module.apply(ctx, CONFIG[name] ?? {})
   } catch {
     // A row that needs a service we did not stub may throw after mounting its
     // tools; the registrations it already made still count.

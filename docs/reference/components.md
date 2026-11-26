@@ -95,21 +95,32 @@ evidence behind.
 
 ## Context budget
 
-A row that mounts on a fresh install costs every request: the host sends each registered tool's name,
-description and parameter schema. `docs/reference/tools.json` measures that surface per group and per
-product, and `components.json` records the ceiling:
+A mounted row does not cost every request. `entries/activation.js` registers each tool with a per-step
+condition, so the host declares a row's schemas only after this session loads a skill that names one of
+its tools (see [conditional admission](../architecture.md#conditional-admission)). Two surfaces are
+budgeted: what an idle session sends — the skill catalog — and what a fully activated row sends.
+
+`docs/reference/tools.json` measures the schema surface per group and per product, and `components.json`
+records the ceilings:
 
 | Field | Ceiling |
 |---|---|
 | `defaultOnTools` | The tools a fresh install mounts. Exact: one more default-on tool fails the suite. |
 | `defaultOnSchemaCharacters` | The characters of the generated default-on definitions, plus a small allowance for wording changes. |
+| `defaultOnCatalogCharacters` | The characters the skill catalog costs an idle session: name plus description per default-on row, plus a small allowance. |
 
-A component added with `default: "off"` leaves both ceilings where they are. Make one default-on only
-by raising the ceiling in the same change, with the measurement in the changelog. The 9 vendored Optix
+A component added with `default: "off"` leaves every ceiling where it is. Make one default-on only by
+raising the ceiling in the same change, with the measurement in the changelog. The 9 vendored Optix
 definitions are not generated from source here, so the character ceiling covers the 133 generated
 definitions while the tool ceiling covers every default-on tool. The generated reference and the
 README's tool total count **every** registered tool; only the budget counts the default-on subset, so a
 component that ships off still appears in both without moving a ceiling.
+
+Two rules keep conditional admission honest. A component's skill must name at least one of its own
+tools, because the load is what admits the row; and a skill that names another row's tool admits that
+row too, which is how `engineering-standards` reaches the standards tools from an L5X session.
+`test/activation.spec.mjs` derives both directions from the SKILL.md bodies and the generated
+reference, so a prose edit that adds a tool name either updates the table or fails the suite.
 
 ## Adding a component
 

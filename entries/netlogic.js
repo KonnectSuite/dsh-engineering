@@ -20,15 +20,8 @@ import { fileURLToPath } from 'node:url'
 /** Plugin name in a composition. */
 export const name = 'engineering-optix-netlogic'
 
-/** The tool needs the registry; the skill is registered when the host offers it. */
+/** The tool needs the registry. */
 export const inject = ['tools']
-
-/** Registration metadata, kept here so a test can assert it without the file. */
-export const SKILL = {
-  name: 'factorytalk-optix',
-  description: 'FactoryTalk Optix Studio engineering: inspect and author the loaded project through the Studio bridge, validate expressions, take preview screenshots, read NetLogic C# snippets from the pinned cheat-sheet snapshot, and start from a template.',
-  whenToUse: 'The user asks about FactoryTalk Optix — project structure, nodes, variables, aliases, expressions, NetLogic C#, alarms, trends, recipes, OPC UA, or the emulator preview. Route FactoryTalk View ME elsewhere.',
-}
 
 /** The upstream statement every page result repeats. */
 export const DISCLAIMER = 'Reference only. The upstream repository states these snippets may use non-public APIs, may break a project, and must not be used in production as-is; adapt and test them in your own project.'
@@ -38,11 +31,6 @@ const DATA_DIRS = [
   join(HERE, '..', 'vendor', 'optix', 'netlogic'),
   join(HERE, '..', 'packages', 'optix', 'netlogic'),
 ]
-const SKILL_PATHS = [
-  join(HERE, '..', 'vendor', 'optix', 'SKILL.md'),
-  join(HERE, '..', 'packages', 'optix', 'SKILL.md'),
-]
-
 const RISKS = new Set(['normal', 'advanced', 'unsupported'])
 
 /** The first existing path from a candidate list. */
@@ -294,30 +282,13 @@ export const definition = {
 }
 
 /**
- * Register the retrieval tool and, when the host offers it, the Optix skill.
+ * Register the retrieval tool.
  *
- * @param ctx - Plugin context with the tool registry and an optional skills service.
+ * The FactoryTalk Optix skill is not this plugin's: the product row mounts
+ * `entries/optix-skill.js` so the guidance survives the `netlogic` switch.
+ *
+ * @param ctx - Plugin context with the tool registry.
  */
 export function apply(ctx) {
   ctx.tools.register(definition)
-  const skillPath = first(SKILL_PATHS)
-  const skills = typeof ctx.get === 'function' ? ctx.get('skills') : undefined
-  if (skillPath === undefined || skills === undefined || typeof skills.register !== 'function') {
-    try {
-      ctx.logger?.warn?.('optix-netlogic: the skill was not registered; the tool is available.')
-    } catch {
-      // A logger that refuses must not turn a missing skill into a crash.
-    }
-    return
-  }
-  const raw = readFileSync(skillPath, 'utf8')
-  const content = raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, '')
-  skills.register({
-    ...SKILL,
-    content,
-    path: skillPath,
-    source: 'custom',
-    provider: '@aryacode/dsh-engineering',
-    invocation: { modelInvocable: true, userInvocable: true },
-  })
 }

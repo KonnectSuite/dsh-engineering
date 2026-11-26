@@ -10,6 +10,7 @@
  * RSLogix 500 is not on the machine.
  */
 import * as slc from '../vendor/slc/lib/index.js'
+import { apply as mountRow } from './activation.js'
 
 export const name = 'engineering-slc'
 
@@ -24,5 +25,5 @@ export const inject = ['tools', 'fs']
  * control the tools, one flag each.
  */
 export function apply(ctx, config = {}) {
-  slc.apply(ctx, config)
+  mountRow(ctx, 'slc', slc, config)
 }

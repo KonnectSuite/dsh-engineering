@@ -139,7 +139,8 @@ optix_screenshot                                 # the saved build, as the Web e
 optix_production_check                           # the release gate
 ```
 
-If the `optix_*` tools are not in the tool list at all, the row is switched off in this profile — say
+The `optix_*` tools are declared on the step after the `factorytalk-optix` skill loads, so an empty first
+look is expected. If they are still absent on a later step, the row is switched off in this profile — say
 that in one line and stop. Never rebuild the surface by importing the plugin's `lib/` from Node, and
 never drive Studio to fake it.
 
