@@ -1,7 +1,7 @@
 # Handoff
 
-The bundle after the 0.104.2 display-preview batch, plus an unreleased change on top of it: tools are
-now declared only when the session has loaded a skill that names them. This file is the current state:
+The bundle as 0.105.0: tools are now declared only when the session has loaded a skill that names them,
+on top of the 0.104.2 display-preview batch. This file is the current state:
 version, what each batch changes, what was verified and how, what could not be run on this host, and the
 next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not here.
 
@@ -9,18 +9,18 @@ next step. History belongs to [CHANGELOG.md](CHANGELOG.md), not here.
 
 | | |
 | --- | --- |
-| Branch | `main`, pushed to `origin`; `v0.104.2` is a lightweight tag on the release commit `43a4bf5`. |
-| Version | **0.104.2** released; the activation batch sits under `## [Unreleased]` in `CHANGELOG.md` and is **not bumped, tagged or published**. |
-| Release state | **Shipped as 0.104.2 on 2026-11-24, on the owner's request**: published to npm (`dist-tags.latest` = 0.104.2, the version entry accepted 2026-11-24T07:55:46Z), tagged `v0.104.2` at the release commit `43a4bf5` and pushed with `main`, so the tag push cut the GitHub Release whose body is this version's changelog section; the market catalogue's `releases[0]` points at 0.104.2 with the registry copy's sha256 `c349b8d22576…`. The unreleased activation batch is on `main` ahead of that tag. |
-| Tarball | `artifacts/aryacode-dsh-engineering-0.104.2.tgz` — 5,380,599 B packed, SHA256 `C349B8D225761F16853C3018D324BFB87D386C1399064F49FA6D6A27A8C764C9`, SHA1 `1A85225359D951C4DDE5D2F8E12A14B9419F19D1`. The registry copy is **byte-identical**: downloaded from `https://registry.npmjs.org/@aryacode/dsh-engineering/-/dsh-engineering-0.104.2.tgz` and hashed to the same 5,380,599 B, SHA256 and SHA1, and `npm view` reports that SHA1 as `dist.shasum`, `dist.fileCount` 1,105, `dist.unpackedSize` 25,004,975. `node scripts/verify-release.mjs --wait 600` answers with the published version and its tarball URL (it reads the registry metadata, not the body). `check:package` on this tree reports 23.8 MiB in 1,102 files unpacked. |
+| Branch | `main`, pushed to `origin`; `v0.105.0` is a lightweight tag on the release commit `c91ab08`. |
+| Version | **0.105.0** released 2026-11-26; its entries are under `## 0.105.0 — 2026-11-26` in `CHANGELOG.md` and nothing is left under `## [Unreleased]`. |
+| Release state | **Shipped as 0.105.0 on 2026-11-26, on the owner's request**: published to npm (`dist-tags.latest` = 0.105.0, the version answered `npm view` about 140 s after `pnpm publish`), tagged `v0.105.0` at `c91ab08` and pushed with `main`, so the tag push cut the GitHub Release (the `release` workflow concluded success, `gh release view v0.105.0` → created 2026-11-26T05:09:06Z) whose body is this version's changelog section; the market catalogue's `releases[0]` points at 0.105.0 with the registry copy's sha256 `0049264cda11…`, recorded by `dsh-arya-market/scripts/release-plugin.mjs --skip-build --skip-tests`. |
+| Tarball | `artifacts/aryacode-dsh-engineering-0.105.0.tgz` — 5,383,905 B packed, SHA256 `0049264CDA11FD930607256A8C3620B31EFC0E8E61E05C88A84BB68C3477C5D7`, SHA1 `1B5C3B079DA7E3D587550E905B509EDBAB461201`. The registry copy is **byte-identical**: `npm view … dist.shasum` reports that SHA1, `dist.fileCount` 1,107, and the market step recorded the same sha256 as this machine's pack. `pnpm check:package` on this tree reports 23.8 MiB in 1,104 files unpacked. |
 | Surface | 9 component rows: **7 ship on, 2 off** (`plc5`, `slc`). **199 registered tools**, **174 default-on**, 8 skills, 6 product documents. A mounted tool is not a declared one: an idle session is sent **no** engineering tool schema until it loads a skill that names the row. |
 | Generated reference | `docs/reference/tools.md` and `tools.json`: **167 tools** in 23 groups (the 32 vendored Optix tools are not generated). |
 | Context budget | **174 tools / 136,828 schema characters** for a fully activated surface, and **1,650 idle catalog characters** — the schema ceiling is the 2026-11-22 measurement 131,565 + 4% (re-measured 133,137 on 2026-11-24), and the idle ceiling is the 2026-11-25 catalog measurement 1,586 + 4%. |
-| Verified (unreleased batch) | **`pnpm test` 84/84 spec files pass** (52,084 ms, `test/activation.spec.mjs` now among them), `pnpm docs:check` reports the reference and print CSS up to date, `pnpm check:package` reports "the tarball is conforming" at 23.8 MiB in 1,104 files, `pnpm -r build` + `node scripts/build-client.mjs` + `node scripts/assemble.mjs` exit 0 ("assembled 8 components and 1 viewer payloads into vendor/"). **Then measured on the packaged payload**, not the source tree: profile `verify-activation` installs `artifacts/aryacode-dsh-engineering-0.104.2.tgz`, and `AryaCode/tmp/activation-smoke.mjs` boots it with the harness's own `runProfile` and reads `ctx.tools.resolve()` — **174 definitions mounted, a fresh session declares 1 (none of them engineering)**, `skill` with `rockwell-l5x` declares **56 `l5x_*` + the 2 `engineering_*` tools** on the next step, adding `factorytalk-view` declares **52 `ftview_*`** with `l5x_*` still there, `factorytalk-optix` declares **31 `optix_*` + `engineering_profile`**, a second agent with no skill still declares **0**, and a header declaring `l5x_open_project` recovers **56 `l5x_*`** after a restart. |
+| Verified (0.105.0) | **Release gate on the bumped tree:** `pnpm test` 84/84 spec files pass (47,149 ms before the build, 46,310 ms after it, `test/activation.spec.mjs` now among them), `pnpm docs:check` reports the reference and print CSS up to date, `pnpm check:package` reports "the tarball is conforming" at 23.8 MiB in 1,104 files, `pnpm -r build` + `node scripts/build-client.mjs` + `node scripts/assemble.mjs` exit 0 ("assembled 8 components and 1 viewer payloads into vendor/"). **Then measured on the packaged payload**, not the source tree: profile `verify-activation` installs `artifacts/aryacode-dsh-engineering-0.104.2.tgz`, and `AryaCode/tmp/activation-smoke.mjs` boots it with the harness's own `runProfile` and reads `ctx.tools.resolve()` — **174 definitions mounted, a fresh session declares 1 (none of them engineering)**, `skill` with `rockwell-l5x` declares **56 `l5x_*` + the 2 `engineering_*` tools** on the next step, adding `factorytalk-view` declares **52 `ftview_*`** with `l5x_*` still there, `factorytalk-optix` declares **31 `optix_*` + `engineering_profile`**, a second agent with no skill still declares **0**, and a header declaring `l5x_open_project` recovers **56 `l5x_*`** after a restart. **Then driven through the real web app on the Dev home**: profile `verify-activation` (web bundle + the packaged tarball) served a session whose recorded `request/header` events declare **23, 31 and 32 tools with 0 engineering** and `skill` present, which is the idle claim measured in the product rather than through the smoke; the turn itself stopped at the provider — the default `deepseek-official` route answers `MISSING_CREDENTIAL` and the account route answers `402 Insufficient Balance (request_id 4263158d-a35d-4946-9935-33f95debb98d)` — so no model reply was produced there and the post-skill declaration half rests on the `runProfile` measurement above. |
 | Verified | `pnpm test` **83/83 spec files pass** on the release tree `43a4bf5` (46,530 ms), including the generated viewer vocabulary, the viewer's coverage/geometry/render specs, the FTView knowledge and component-package specs; `pnpm -r build` and `pnpm assemble` ("assembled 8 components and 1 viewer payloads into vendor/") exit 0; `pnpm check:package` reports "the tarball is conforming" at **23.8 MiB in 1,102 files**. **Rendered against an installed display**: `scripts/ftview-preview.mjs` drew `tmp/ftview-e2e3/probe-after6/Displays/Probe1.xml` to `artifacts/viewer-check/Probe1.png` with `{objects: 19, drawn: 19, unknown: []}` and a layout that matches Studio's own canvas, which is what exposed the three drawing defects this batch fixes (a part drawn as an object, the arc, the bar graph). Evidence: `artifacts/viewer-check/`, `artifacts/viewer-check-draft/`, `tmp/ftview-probe-draft6.log`, `tmp/ftview-geo-probe2.log`, `tmp/ftview-folder-probe.log`. |
 | Installed-software pass | Studio 5000, FactoryTalk View, RSLogix 500, RSLogix 5 and FactoryTalk Optix were each driven against the installed applications as the user (Computer Use), with real edits/builds/imports/renders. Evidence paths are in the table below. MotionWorks IEC is absent and is **not-runnable**, never "pass". |
 
-## What the unreleased activation batch changes
+## What 0.105.0 changes
 
 - **A mounted row is no longer a declared row.** Every engineering tool is registered with
   `ctx.tools.register(definition, { when })`; the host evaluates that condition once per model step and
@@ -268,13 +268,15 @@ files live under `C:\Users\KNPhu\AryaCode\KonnectSuite\AryaCode\tmp\` and are no
 
 ## Picking it up
 
-The activation batch is code-complete, verified on the packaged payload and unversioned. What is left is
-a release decision, not more code: the suite, the generated reference, the packaging contract, the build
-and the Dev-home measurement are all green (see the Verified row), and the measurement is reproducible
-with `DSH_HOME=%LOCALAPPDATA%\AryaCode-dev\home` plus
-`AryaCode\node_modules\.bin\tsx.cmd tmp\activation-smoke.mjs` from the harness checkout after
-`pnpm install` in `profiles/verify-activation`. When the owner says ship, bump once, move the
-`## [Unreleased]` entries under the version, and take the usual path to the catalogue.
+0.105.0 is shipped: bumped once, the suite and the build ran, the tarball was packed, published, tagged
+`v0.105.0` at `c91ab08` and recorded in the market catalogue. Nothing is pending and nothing is staged:
+the next change starts under `## [Unreleased]` again and ships as one batch, only on the owner's request
+(see `AGENTS.md`). One measurement the release did **not** complete: a live model turn after a skill load
+on the Dev home, because that account answered `402 Insufficient Balance`. To close it on a funded
+account, boot `verify-activation` under `DSH_HOME=%LOCALAPPDATA%\AryaCode-dev\home`, send `hi`, then
+`/rockwell-l5x`, and read the second request header with
+`node tmp/read-header.mjs <session>.jsonl.zstd` — it should show 56 `l5x_*` plus the `engineering_*`
+tools and no other product.
 
 1. `git switch main`, `pnpm install`, `pnpm -r build`.
 2. `pnpm test` — needs a full-access shell because the runner spawns one process per spec; set
@@ -294,6 +296,8 @@ with `DSH_HOME=%LOCALAPPDATA%\AryaCode-dev\home` plus
    copy's sha256. 0.104.1 did the same at `fbd5549`, and 0.104.2 at `43a4bf5`. The lesson carried
    forward: the tarball body replicates minutes after the packument, so the market step is retried
    rather than forced, and the first `npm view` that answers is the signal — not a second publish.
+   0.105.0 shipped the same way on 2026-11-26 at `c91ab08`: `npm view` answered 140 s after the publish,
+   the tag push cut the GitHub Release, and the market step recorded the registry copy's sha256.
    Versions are immutable — never republish or bump to work around registry lag.
 6. The installed-software drivers live under `AryaCode\tmp\` in the harness checkout and are not
    part of the bundle: `studio-e2e-full.mjs`, `ftview-e2e.mjs`/`ftview-author-e2e.mjs`/
